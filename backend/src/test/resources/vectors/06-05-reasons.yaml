@@ -1,0 +1,105 @@
+# source: 06 §5.8, rows: 6
+# 최소 1개 보장, modifier·과제 reason 우선, 최대 3개, 기여도 순서. contributions는 factor × WEIGHT_BP (micro × bp).
+vectors:
+  - id: V01
+    case: 조건을 만족하는 reason이 없으면 기여도 1위 factor의 reason (최소 1개)
+    contributions: { PRACTICAL_IMPORTANCE: 750000000, SKILL_GAP: 400000000, REVIEW_URGENCY: 0, MILESTONE_URGENCY: 0, PROJECT_NEED: 0, PREREQUISITE_READINESS: 1000000000 }
+    practicalImportance: 300000
+    skillGap: 200000
+    overdueDays: 0
+    recentRecallFailure: false
+    currentMilestone: false
+    nextMilestone: false
+    projectNeed: false
+    deadlineRiskMust: false
+    continuation: false
+    energy: NORMAL
+    comebackMode: false
+    selectedType: EXPLAIN
+    selectedEstimated: 15
+    expected: [HIGH_PRACTICAL_IMPORTANCE]
+  - id: V02
+    case: modifier reason이 먼저, 전체 최대 3개
+    contributions: { PRACTICAL_IMPORTANCE: 2250000000, SKILL_GAP: 1200000000, REVIEW_URGENCY: 0, MILESTONE_URGENCY: 750000000, PROJECT_NEED: 0, PREREQUISITE_READINESS: 1000000000 }
+    practicalImportance: 900000
+    skillGap: 600000
+    overdueDays: 0
+    recentRecallFailure: false
+    currentMilestone: true
+    nextMilestone: false
+    projectNeed: false
+    deadlineRiskMust: true
+    continuation: true
+    energy: NORMAL
+    comebackMode: true
+    selectedType: EXPLAIN
+    selectedEstimated: 15
+    expected: [DEADLINE_RISK_MUST, CONTINUE_YESTERDAY, COMEBACK_EASY_START]
+  - id: V03
+    case: factor reason은 기여도 순서
+    contributions: { PRACTICAL_IMPORTANCE: 2250000000, SKILL_GAP: 1200000000, REVIEW_URGENCY: 0, MILESTONE_URGENCY: 750000000, PROJECT_NEED: 0, PREREQUISITE_READINESS: 1000000000 }
+    practicalImportance: 900000
+    skillGap: 600000
+    overdueDays: 0
+    recentRecallFailure: false
+    currentMilestone: true
+    nextMilestone: false
+    projectNeed: false
+    deadlineRiskMust: false
+    continuation: false
+    energy: NORMAL
+    comebackMode: false
+    selectedType: EXPLAIN
+    selectedEstimated: 15
+    expected: [HIGH_PRACTICAL_IMPORTANCE, LARGE_SKILL_GAP, MILESTONE_CORE]
+  - id: V04
+    case: 가벼운 과제(≤ 30분)와 LOW 컨디션, 연체 복습과 최근 실패는 같은 factor
+    contributions: { PRACTICAL_IMPORTANCE: 1250000000, SKILL_GAP: 0, REVIEW_URGENCY: 2000000000, MILESTONE_URGENCY: 0, PROJECT_NEED: 0, PREREQUISITE_READINESS: 1000000000 }
+    practicalImportance: 500000
+    skillGap: 0
+    overdueDays: 3
+    recentRecallFailure: true
+    currentMilestone: false
+    nextMilestone: false
+    projectNeed: false
+    deadlineRiskMust: false
+    continuation: false
+    energy: LOW
+    comebackMode: false
+    selectedType: RECALL
+    selectedEstimated: 10
+    expected: [LOW_ENERGY_LIGHT_TASK, REVIEW_OVERDUE, RECENT_RECALL_FAILURE]
+  - id: V05
+    case: 다음 milestone skill과 집중 skill
+    contributions: { PRACTICAL_IMPORTANCE: 750000000, SKILL_GAP: 0, REVIEW_URGENCY: 0, MILESTONE_URGENCY: 150000000, PROJECT_NEED: 1000000000, PREREQUISITE_READINESS: 1000000000 }
+    practicalImportance: 300000
+    skillGap: 0
+    overdueDays: 0
+    recentRecallFailure: false
+    currentMilestone: false
+    nextMilestone: true
+    projectNeed: true
+    deadlineRiskMust: false
+    continuation: false
+    energy: NORMAL
+    comebackMode: false
+    selectedType: PROJECT_TASK
+    selectedEstimated: 30
+    expected: [PROJECT_FOCUS, MILESTONE_NEXT]
+  - id: V06
+    case: READ_CODE 과제 reason
+    contributions: { PRACTICAL_IMPORTANCE: 2000000000, SKILL_GAP: 1000000000, REVIEW_URGENCY: 0, MILESTONE_URGENCY: 0, PROJECT_NEED: 0, PREREQUISITE_READINESS: 1000000000 }
+    practicalImportance: 800000
+    skillGap: 500000
+    overdueDays: 0
+    recentRecallFailure: false
+    currentMilestone: false
+    nextMilestone: false
+    projectNeed: false
+    deadlineRiskMust: false
+    continuation: false
+    energy: NORMAL
+    comebackMode: false
+    selectedType: READ_CODE
+    selectedEstimated: 15
+    expected: [READ_REAL_CODE, HIGH_PRACTICAL_IMPORTANCE, LARGE_SKILL_GAP]

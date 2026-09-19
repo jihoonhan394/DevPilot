@@ -36,6 +36,11 @@ class DomainPurityArchTest {
                     "com.devpilot.plan.domain.StudyBudgetCalculator",
                     "com.devpilot.plan.domain.DeadlineRiskEvaluator",
                     "com.devpilot.plan.domain.ReplanSuggestionPolicy",
+                    "com.devpilot.today.domain.PlannerScoring",
+                    "com.devpilot.today.domain.TaskProposalPolicy",
+                    "com.devpilot.today.domain.TimeAllocator",
+                    "com.devpilot.today.domain.ReasonTemplates",
+                    "com.devpilot.learning.domain.ComebackModePolicy",
                     "com.devpilot.review.domain.FinalRatingPolicy",
                     "com.devpilot.review.domain.RuleBasedV1Scheduler",
                     "com.devpilot.review.domain.DueReviewSelector");

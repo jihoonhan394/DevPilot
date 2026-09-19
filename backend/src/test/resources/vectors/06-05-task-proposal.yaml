@@ -1,0 +1,160 @@
+# source: 06 §5.3, rows: 13
+# 분기 5개(CHALLENGE·READ_CODE·READING·PROJECT_TASK·EXPLAIN) + d−1 fallback + 복귀 모드 + ACTIVE 프로젝트 없음 + 제안 분기 T-1~T-5.
+# planning은 K|I. challenges·readings는 호출자가 조건(14 plan-day 안 시도·제안, 해결, 완료)을 거른 뒤의 후보다.
+vectors:
+  - id: V01
+    case: CHALLENGE (difficulty d = I + 1, 같은 difficulty는 seed_key ASC)
+    planning: "2|1"
+    energy: NORMAL
+    comebackMode: false
+    aiAvailable: true
+    projectNeed: false
+    sideProject: null
+    challenges:
+      - { seedKey: JAVA.B, difficulty: 2, estimated: 20 }
+      - { seedKey: JAVA.A, difficulty: 2, estimated: 25 }
+      - { seedKey: JAVA.C, difficulty: 3, estimated: 30 }
+    readings: []
+    expected: { type: CHALLENGE, estimated: 25, difficulty: 2, challengeSeedKey: JAVA.A }
+  - id: V02
+    case: CHALLENGE d가 없으면 d−1
+    planning: "2|2"
+    energy: NORMAL
+    comebackMode: false
+    aiAvailable: true
+    projectNeed: false
+    sideProject: null
+    challenges:
+      - { seedKey: null, difficulty: 2, estimated: 20 }
+    readings: []
+    expected: { type: CHALLENGE, estimated: 20, difficulty: 2 }
+  - id: V03
+    case: READ_CODE (challenge 없음, K ≥ 1, reading key ASC)
+    planning: "1|1"
+    energy: NORMAL
+    comebackMode: false
+    aiAvailable: true
+    projectNeed: false
+    sideProject: null
+    challenges: []
+    readings:
+      - { key: READ.REPO.B.001, estimated: 20 }
+      - { key: READ.REPO.A.001, estimated: 10 }
+    expected: { type: READ_CODE, estimated: 10, difficulty: 2, readingKey: READ.REPO.A.001 }
+  - id: V04
+    case: READING (K < 2)
+    planning: "1|1"
+    energy: NORMAL
+    comebackMode: false
+    aiAvailable: false
+    projectNeed: true
+    sideProject: 주문 시스템
+    challenges: []
+    readings: []
+    expected: { type: READING, estimated: 25, difficulty: 1 }
+  - id: V05
+    case: PROJECT_TASK (projectNeed, energy != LOW, ACTIVE 프로젝트)
+    planning: "3|3"
+    energy: HIGH
+    comebackMode: false
+    aiAvailable: false
+    projectNeed: true
+    sideProject: 주문 시스템
+    challenges: []
+    readings: []
+    expected: { type: PROJECT_TASK, estimated: 30, difficulty: 3, title: 주문 시스템에 Skill S 적용하기 }
+  - id: V06
+    case: EXPLAIN (energy LOW라 PROJECT_TASK 아님)
+    planning: "3|3"
+    energy: LOW
+    comebackMode: false
+    aiAvailable: false
+    projectNeed: true
+    sideProject: 주문 시스템
+    challenges: []
+    readings: []
+    expected: { type: EXPLAIN, estimated: 15, difficulty: 2 }
+  - id: V07
+    case: 복귀 모드면 d = min(d, 2)
+    planning: "3|3"
+    energy: NORMAL
+    comebackMode: true
+    aiAvailable: true
+    projectNeed: false
+    sideProject: null
+    challenges:
+      - { seedKey: JAVA.HARD, difficulty: 4, estimated: 30 }
+      - { seedKey: JAVA.EASY, difficulty: 2, estimated: 15 }
+    readings: []
+    expected: { type: CHALLENGE, estimated: 15, difficulty: 2, challengeSeedKey: JAVA.EASY }
+  - id: V08
+    case: ACTIVE 사이드 프로젝트가 없으면 PROJECT_TASK를 제안하지 않는다 (SP-1)
+    planning: "3|3"
+    energy: NORMAL
+    comebackMode: false
+    aiAvailable: false
+    projectNeed: true
+    sideProject: null
+    challenges: []
+    readings: []
+    expected: { type: EXPLAIN, estimated: 15, difficulty: 2 }
+  - id: V09
+    case: T-1 (0,0) ENABLED, reading 있음 → READING (RC-3)
+    planning: "0|0"
+    energy: NORMAL
+    comebackMode: false
+    aiAvailable: true
+    projectNeed: false
+    sideProject: null
+    challenges: []
+    readings:
+      - { key: READ.PETCLINIC.CONTROLLER_SLICE.001, estimated: 15 }
+    expected: { type: READING, estimated: 25, difficulty: 1 }
+  - id: V10
+    case: T-2 (1,1) ENABLED → READ_CODE 15분 difficulty 2
+    planning: "1|1"
+    energy: NORMAL
+    comebackMode: false
+    aiAvailable: true
+    projectNeed: false
+    sideProject: null
+    challenges: []
+    readings:
+      - { key: READ.PETCLINIC.CONTROLLER_SLICE.001, estimated: 15 }
+    expected: { type: READ_CODE, estimated: 15, difficulty: 2, readingKey: READ.PETCLINIC.CONTROLLER_SLICE.001 }
+  - id: V11
+    case: T-3 (1,1) DISABLED → READING
+    planning: "1|1"
+    energy: NORMAL
+    comebackMode: false
+    aiAvailable: false
+    projectNeed: false
+    sideProject: null
+    challenges: []
+    readings:
+      - { key: READ.PETCLINIC.CONTROLLER_SLICE.001, estimated: 15 }
+    expected: { type: READING, estimated: 25, difficulty: 1 }
+  - id: V12
+    case: T-4 (3,3) ENABLED, reading 전부 완료, projectNeed → PROJECT_TASK
+    planning: "3|3"
+    energy: NORMAL
+    comebackMode: false
+    aiAvailable: true
+    projectNeed: true
+    sideProject: 주문 시스템
+    challenges: []
+    readings: []
+    expected: { type: PROJECT_TASK, estimated: 30, difficulty: 3 }
+  - id: V13
+    case: T-5 (3,3) ENABLED, reading 2개 → key ASC
+    planning: "3|3"
+    energy: NORMAL
+    comebackMode: false
+    aiAvailable: true
+    projectNeed: true
+    sideProject: 주문 시스템
+    challenges: []
+    readings:
+      - { key: READ.RESTBUCKS.STATE_TRANSITION.001, estimated: 15 }
+      - { key: READ.RESTBUCKS.AGGREGATE.001, estimated: 15 }
+    expected: { type: READ_CODE, estimated: 15, difficulty: 2, readingKey: READ.RESTBUCKS.AGGREGATE.001 }

@@ -1,0 +1,8 @@
+# source: 06 §5.5 comebackMode, rows: 6
+id,today,completedPlanDates,expected
+V01,2026-10-10,2026-10-06,true
+V02,2026-10-10,2026-10-07,false
+V03,2026-10-10,null,false
+V04,2026-10-10,2026-10-01|2026-10-09,false
+V05,2026-10-10,2026-10-06|2026-10-10,true
+V06,2026-10-10,2026-10-02|2026-10-07,false

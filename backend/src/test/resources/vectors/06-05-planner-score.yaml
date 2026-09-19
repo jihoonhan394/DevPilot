@@ -1,0 +1,75 @@
+# source: 06 §5.7, rows: 6
+# 공통: today=2026-10-10. A = MUST, importance 0.90, skillGap 600000, due 없음, 현재 milestone(2026-10-01~2026-10-20 →
+# milestoneUrgency 500000), focus 아님, 선행 없음. B = SHOULD, importance 0.50, skillGap 800000, 2일 연체 복습(reviewUrgency
+# 500000), milestone 밖, 선행 없음. 제안 기본값: A EXPLAIN(15, d2), B CHALLENGE(20, d2). 어제 main은 2026-10-09, 그제는 2026-10-08.
+common:
+  today: "2026-10-10"
+  a: { code: A, priority: MUST, importanceBp: 9000, skillGap: 600000, overdueDays: null, milestoneStart: "2026-10-01", milestoneEnd: "2026-10-20" }
+  b: { code: B, priority: SHOULD, importanceBp: 5000, skillGap: 800000, overdueDays: 2, milestoneStart: null, milestoneEnd: null }
+vectors:
+  - id: V01
+    condition: 기본
+    risk: LOW
+    energy: NORMAL
+    yesterday: null
+    dayBefore: null
+    aProposal: { estimated: 15, difficulty: 2 }
+    bProposal: { estimated: 20, difficulty: 2 }
+    expectedA: 520000
+    expectedB: 485000
+    selected: A
+  - id: V02
+    condition: risk HIGH
+    risk: HIGH
+    energy: NORMAL
+    yesterday: null
+    dayBefore: null
+    aProposal: { estimated: 15, difficulty: 2 }
+    bProposal: { estimated: 20, difficulty: 2 }
+    expectedA: 624000
+    expectedB: 388000
+    selected: A
+  - id: V03
+    condition: A가 어제·그제 main (둘 다 COMPLETED)
+    risk: LOW
+    energy: NORMAL
+    yesterday: { code: A, status: COMPLETED }
+    dayBefore: { code: A, status: COMPLETED }
+    aProposal: { estimated: 15, difficulty: 2 }
+    bProposal: { estimated: 20, difficulty: 2 }
+    expectedA: 312000
+    expectedB: 485000
+    selected: B
+  - id: V04
+    condition: A가 어제 main, IN_PROGRESS
+    risk: LOW
+    energy: NORMAL
+    yesterday: { code: A, status: IN_PROGRESS }
+    dayBefore: null
+    aProposal: { estimated: 15, difficulty: 2 }
+    bProposal: { estimated: 20, difficulty: 2 }
+    expectedA: 598000
+    expectedB: 485000
+    selected: A
+  - id: V05
+    condition: A가 어제 main만 COMPLETED
+    risk: LOW
+    energy: NORMAL
+    yesterday: { code: A, status: COMPLETED }
+    dayBefore: null
+    aProposal: { estimated: 15, difficulty: 2 }
+    bProposal: { estimated: 20, difficulty: 2 }
+    expectedA: 416000
+    expectedB: 485000
+    selected: B
+  - id: V06
+    condition: energy LOW, B 제안 CHALLENGE(40분, d2)
+    risk: LOW
+    energy: LOW
+    yesterday: null
+    dayBefore: null
+    aProposal: { estimated: 15, difficulty: 2 }
+    bProposal: { estimated: 40, difficulty: 2 }
+    expectedA: 520000
+    expectedB: 339500
+    selected: A
