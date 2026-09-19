@@ -211,9 +211,10 @@ backend에는 로그아웃 endpoint가 없다.
 | 404 | 타 사용자 리소스와 존재하지 않는 리소스는 같은 `NotFoundException` → 같은 `code`(`RESOURCE_NOT_FOUND` 또는 도메인 코드 `PLAN_NOT_FOUND` 등)와 같은 `detail`. 응답 시간 차이를 만들지 않도록 존재 확인 쿼리를 따로 두지 않는다 |
 | 간접 참조 | body 안의 ID(`learningTaskId`, `sourceLearningEventId`, 러버덕 `targetId`, coach `sideProjectId`)도 `userId` 조건으로 조회한다. 없거나 타 사용자 소유면 똑같이 400 `VALIDATION_FAILED` + field error `REFERENCE_NOT_FOUND` (`05-api-spec.md` §1.2.3). `rubber_duck_turn`처럼 `user_id`가 없는 자식 행은 부모(`rubber_duck_session.user_id`)로 소유를 확인한 뒤에만 읽는다 |
 | 지원하지 않는 메서드 | 405 대신 404 `RESOURCE_NOT_FOUND` (`05-api-spec.md` §1.3) |
+| 새 리소스 | 사용자 소유 테이블이 늘어나면(`side_project_note` 등) 조회·수정·삭제에 `user_id` 조건을 넣고, 부모 경로가 있으면(`/side-projects/{id}/notes/{noteId}`) **부모와 자식 모두 본인 것인지** 한 쿼리로 확인한다. 격리 catalog(`09` §9.2)에 같은 PR에서 추가한다 |
 | 공용 데이터 | `skill`, `role_skill_target`, `owner_user_id IS NULL`인 seed challenge, 코드 읽기 콘텐츠(`content/curated-repos.yaml` → `CuratedReadingRegistry`, `GET /readings/{readingKey}` — DB에 없고 사용자 데이터가 아니다)만 모든 허용 사용자가 읽을 수 있다. `owner_user_id`가 있는 challenge는 소유자만 |
 | 목록 | 목록 API는 `where user_id = :userId`를 항상 포함한다. cursor는 사용자 범위를 바꾸지 못한다(§5.6) |
-| 사용자 간 공유 | 없음 (DEC-01) |
+| 사용자 간 공유 | **없음** (DEC-01). 사용자 둘이 같은 주제의 사이드 프로젝트를 공부해도(예: 서로 다른 학습 트랙으로) 계정은 완전히 분리된다 — 프로젝트·기록·계획·증거·러버덕 대화 어느 것도 공유되지 않고, 상대의 진행 상황을 보는 endpoint·화면·초대 기능이 없다. 한쪽의 학습 트랙(`learning_goal.target_role`)은 다른 쪽의 어떤 계산에도 들어가지 않는다 |
 
 ### 4.4 역할
 
@@ -283,6 +284,8 @@ backend에는 로그아웃 endpoint가 없다.
 | 러버덕 턴 수 | 5 (`devpilot.rubberduck.max-turns`) | 턴/세션 | 409 `INVALID_STATE_TRANSITION` |
 | 사이드 프로젝트 `name` / `description` / `stack` | 1~100 / 1,000 / 300 | 문자 | 400 |
 | 사이드 프로젝트 `repoUrl` | 500자, http(s) URL (§5.5) | — | 400 (`URL`) |
+| 프로젝트 기록 본문 항목 (`decision*`·`incident*`, 최대 4개 항목) | 각 1~4,000 | 문자 | 400 |
+| 프로젝트 기록 `occurredOn` | 오늘(plan-day) 이하 | — | 400 (`DATE_OUT_OF_RANGE`) |
 | reading key (path) | `^[A-Z0-9][A-Z0-9_.]{2,149}$` | — | 400 (`Pattern`) |
 | evidence `problem`/`analysis`/`action`/`result` | 3,000 | 문자 | 400 |
 | 수동 카드 `prompt` / `expectedAnswer` / `rubric` | 1~2,000 / 1~3,000 / 1~6개(항목 500자) | 문자 | 400 |

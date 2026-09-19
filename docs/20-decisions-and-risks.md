@@ -1,12 +1,12 @@
 # 20. Decisions & Risks
 
-> Status: Accepted (v2) · Last updated: 2026-09-19 · Related: `14-adrs.md`, `11-development-roadmap.md`, `13-product-backlog.md`, `16-definition-of-ready-done.md` §4
+> Status: Accepted (v2) · Last updated: 2026-09-20 · Related: `14-adrs.md`, `11-development-roadmap.md`, `13-product-backlog.md`, `16-definition-of-ready-done.md` §4
 >
 > 적용된 기본 결정(DEC), 구현 시 다시 확인할 외부 사실과 문서 정합성 항목, 리스크 레지스터, 이번 주 할 일을 모은다. 결정 이유의 상세는 ADR에 있다. 이 문서는 단계 종료마다 갱신한다(`16-definition-of-ready-done.md` §4 S-7).
 
 ---
 
-## 1. 적용된 결정 (DEC-01 ~ DEC-28)
+## 1. 적용된 결정 (DEC-01 ~ DEC-31)
 
 모든 DEC는 기본값으로 **이미 적용되었다**. 바꾸려면 §2 절차를 따른다.
 
@@ -40,6 +40,9 @@
 | DEC-26 | 러버덕 설명 증거의 coverage는 **고정 7000**(`devpilot.rubberduck.evidence-coverage-bp`) — gaps 0·턴 ≥ 3인 세션만, E2·E3에 쓰이고 E4에는 닿지 않는다. 독립은 `hintDisclosed = false`일 때 (2026-09-18) | AI가 coverage를 매김(AI가 레벨 입력을 직접 결정 — `AGENTS.md` 금지) · 8000(E4 가능 — 전이 증거 없이 E4가 되어 과대평가) | 4주 사용 후 레벨이 실제 설명력과 어긋나면 설정값만 바꾼다 | ADR-036 |
 | DEC-27 | **학습 목표 = 무엇을, 언제까지**: 학습 트랙(`targetRole`)과 **목표일**(`targetCompletionDate`) 하나. 목표일은 내일 ~ 오늘+3년. budget·risk horizon은 목표일이고(`06` §3.1), 계획 템플릿 배치는 창 하나 `[today, 목표일]`에 PREPARATION milestone을 앞에, CONSOLIDATION("설명과 정리")을 목표일 바로 앞에 `weightBp`로 배분한다(`19` §5, vector V1~V8). 사용자 프로필은 표시 이름·timezone·하루 시작 시각·학습 시간만 받는다. 온보딩 1단계는 "무엇을, 언제까지 공부할지 정해요"(표시 이름·학습 트랙·목표일, 빠른 선택 3개월 후·6개월 후·1년 후·직접 선택). 화면의 날짜 표시는 "목표일 {date}" 하나다. S7 기능 이름은 **로드맵 비교**: 공개 학습 로드맵이나 기술 목록을 붙여넣으면 항목별 READY/STRETCH/LATER(식별자 `radar`·`requirement_*`·`REQUIREMENT_EXTRACT`는 그대로) (2026-09-19 사용자 결정) | 필수 항목용 날짜를 따로 두어 창·horizon을 둘로 나누기 · 개발 경험 프로필로 시작 수준을 조정하기 | 목표일 값은 사용자가 설정에서 언제든 바꾼다(`replan_recommended`). 날짜 모델·배치 규칙을 바꾸려면 ADR | ADR-039 |
 | DEC-28 | **소스 점검과 읽기 평가**: `READ_CODE` 저장소·읽기 단위는 사람이 주기적으로 점검한다(`19` §8.5) — 첫 점검은 S3 구현 시작 직전, 이후 단계 회고마다와 사용자 요청 시. 입력은 빈틈 목록(낮은 레벨·막히는 복습·읽을 단위가 없는 skill), 읽기 평가, 저장소의 라이선스·유지 상태. 후보 기준은 OSI 라이선스(Apache-2.0·MIT 우선, 라이선스 없는 저장소부터 교체)·활발한 유지·가까운 스택·다룰 만한 크기·테스트·읽기 쉬운 도메인이고, 큰 실제 프로젝트의 부분 읽기를 허용한다. 결과는 사용자와 정한 추가·교체·은퇴이며 `pinnedCommit` 고정·경로·줄 재확인·검증기·`catalogVersion` +1로 반영한다. 은퇴한 단위는 지난 과제를 위해 계속 조회된다. 자동 실행과 서버의 저장소·코드 조회는 없다. `READ_CODE`를 완료할 때 선택 평가 "도움 됐어요·어려웠어요·지루했어요"(`readingFeedback`, `learning_task.reading_feedback`)를 받고, 어떤 규칙의 입력으로도 쓰지 않는다(`BL-CNT-16`) (2026-09-19 사용자 결정) | 저장소 자동 추천·수집(URL fetch 금지와 충돌) · 평가를 planner·레벨 규칙 입력으로 쓰기(자기 신고라 흔들린다) | 점검 시점·기준은 `19` §8.5를 고친다. 평가를 규칙 입력으로 쓰려면 ADR | ADR-036 |
+| DEC-29 | **재현 과제**: `CHALLENGE`·`PROJECT_TASK`를 마치고 **3~7일**(양 끝 포함) 뒤에 Today가 같은 것을 **AI 없이 처음부터 다시 만드는** 과제(`TaskType.REDO`)를 제안한다. 열려 있는 동안 그 대상의 힌트·러버덕은 409 `AI_ASSIST_LOCKED_FOR_REDO`로 잠긴다. 완료할 때 "AI 도움 없이 끝냈나요?" 하나를 묻고, **성공한 재현만** `I3_SOLVED_INDEPENDENT`의 독립 구현 증거로 센다. 실패는 복습 카드가 되고 창이 다시 열려 최대 2회까지다. AI를 부르지 않으므로 `aiStatus`와 무관하게 동작한다 (2026-09-20 사용자 결정) | 힌트를 본 풀이를 증거에서 아예 빼기(막혔을 때 쓰라고 둔 것이라 쓰면 손해라는 신호가 된다) · 제출물 비교·AI 채점으로 판정(구현물을 서버가 받지 않고, AI가 증거를 결정하게 된다) · 잠금 없이 권고만(막히면 힌트를 보게 되어 재현의 의미가 사라진다) | 창·시도 횟수·modifier는 `devpilot.planner.redo.*`와 `planner.modifiers.redo-due` 설정이다. 4주 사용 후 조정한다. 판정 방식을 바꾸려면 ADR | ADR-040 |
+| DEC-30 | **학습 트랙 두 가지**: `TargetRole`은 `JAVA_BACKEND`("Java 백엔드")와 `JAVA_BACKEND_STARTER`("Java 백엔드 입문") 둘이다. 트랙이 바꾸는 것은 role target(필수 skill 수·목표 레벨), 계획 템플릿, planner 기본값(`devpilot.tracks.<트랙>`의 `max-task-difficulty`·`read-code-min-knowledge`), 진단 제안 범위뿐이고 **skill 카탈로그와 그 밖의 모든 규칙은 공유**한다. 트랙은 온보딩 1단계에서 고르고 이후 바꿀 수 없다. 두 사용자는 allowlist로 초대된 독립 계정이고 데이터 공유도 상호 조회도 없다(DEC-01) (2026-09-20 사용자 결정) | 난이도 배율 하나로 조절(입문자에게 필요한 것은 더 짧은 필수 목록이다) · 입문 트랙에 별도 skill 카탈로그(증거·카드·문제를 공유하지 못하고 콘텐츠가 두 배) · 트랙 변경 허용(계획과 증거를 이을 수 없다) | 트랙별 기본값은 설정이다. 세 번째 트랙(다른 스택)은 skill tree부터 새로 쓴다(`19` §10.4). 트랙 변경을 허용하려면 ADR | ADR-040 |
+| DEC-31 | **사이드 프로젝트 결정·장애 기록**: 프로젝트마다 **결정 기록**(무엇을 골랐나·선택지·왜)과 **장애 기록**(증상·발견·수정·예방)을 남긴다. 텍스트와 날짜, 선택 skill 하나뿐이고 파일 업로드는 없다. 유형은 생성 시 고정이고 본문 컬럼 조합은 DB CHECK로 강제한다. **학습 이벤트를 만들지 않고 skill 레벨을 바꾸지 않는다** — 자기 신고 텍스트이기 때문이다. 대신 주간 리뷰 지표(`projectNoteCount`)와 학습 기록 초안(`sourceProjectNoteId`)의 입력이 된다 (2026-09-20 사용자 결정) | 러버덕 대화에서 자동 추출(대상과 AI가 있어야 시작된다 — 결정·장애는 즉시 남길 수 있어야 한다) · 기록을 레벨 입력으로 쓰기(자기 신고라 흔들린다) · 첨부·이미지 업로드(보관·마스킹 범위가 커진다) | 항목 구성을 바꾸려면 `04` §10의 컬럼과 I-22를 함께 고친다. 레벨 입력으로 쓰려면 ADR | ADR-040 |
 
 ## 2. 결정 변경 절차
 
@@ -171,3 +174,7 @@ canonical 문서끼리 또는 canonical과 다른 v2 문서 사이에서 발견�
 **끝난 것 (2026-09-19)**
 
 - [x] 첫 소스 점검(DEC-28, `19` §8.5 점검 기록): 라이선스 명시가 없는 `restbucks`를 `modular-monolith`로 교체하고 reading 5개를 은퇴, 보안 예제(`security-samples`, `webgoat`)와 JDK 25·Spring Framework 7.0.9·HikariCP 7.0.2 부분 읽기, `petclinic` 추가 reading, curated source 9개. catalogVersion 5, reading이 있는 MUST skill 17 → 34/43
+
+**끝난 것 (2026-09-20)**
+
+- [x] 실력을 증명하는 세 가지 설계 반영(DEC-29~31, ADR-040): 재현 과제(`06` §5.10 RE-1~RE-8, HL-9, `06` §7.2 독립 구현 증거, S4), 학습 트랙 2종(`devpilot.tracks`, 입문 트랙 콘텐츠, S3), 사이드 프로젝트 결정·장애 기록(`side_project_note`, PN-1~PN-4, S3). 공통 migration `V10__track_notes_redo.sql`(S3), 새 AC-31·AC-32·AC-33, 새 BL 14개(`13` §5·§6 색인 갱신)

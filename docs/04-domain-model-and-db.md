@@ -1,6 +1,6 @@
 # 04. Domain Model & Database
 
-> Status: Accepted (v2) · Last updated: 2026-09-19 · Related: ADR-001, ADR-014, ADR-038, ADR-039, `database/schema.sql`, `06-learning-engine-rules.md`
+> Status: Accepted (v2) · Last updated: 2026-09-20 · Related: ADR-001, ADR-014, ADR-038, ADR-039, ADR-040, `database/schema.sql`, `06-learning-engine-rules.md`
 >
 > 컬럼 수준의 기준은 `database/schema.sql`이다. 이 문서는 **aggregate와 소유 관계, enum 레지스트리, 상태 전이, JSON 컬럼 스키마, 이벤트 payload, 불변식, migration 계획**을 정의한다.
 
@@ -42,6 +42,7 @@
 | plan | `LearningPlan` | `learning_plan`, `plan_milestone`, `milestone_skill`, `plan_skill_target` | `user_id` | 구조 변경 = 새 version (`06` §11) |
 | plan | `PlanProgressSnapshot` | `plan_progress_snapshot` | `user_id` | job이 upsert |
 | project | `SideProject` | `side_project` | `user_id` | 수정 |
+| project | `SideProjectNote` | `side_project_note` | `user_id` (프로젝트 경로 `side_project_id`) | 수정 |
 | today | `DailyPlan` | `daily_plan`, `learning_task` | `user_id` | 수정 |
 | training | `Challenge` | `challenge`, `challenge_skill` | `owner_user_id` (null = seed 공용) | AI·수동 생성분은 생성 후 불변(status만 변경). seed는 §9의 갱신 규칙 |
 | training | `ChallengeAttempt` | `challenge_attempt`, `challenge_submission` | `user_id` | 수정 |
@@ -67,7 +68,7 @@
 
 | Enum (Java 위치) | 값 | 사용처 |
 |---|---|---|
-| `TargetRole` (goal.domain) | `JAVA_BACKEND` | learning_goal, role_skill_target |
+| `TargetRole` (goal.domain) | `JAVA_BACKEND`("Java 백엔드"), `JAVA_BACKEND_STARTER`("Java 백엔드 입문") | learning_goal, role_skill_target — 학습 트랙. 트랙마다 role target 파일 1개·계획 템플릿 1개가 있고, 트랙별 기본값은 `devpilot.tracks.<트랙>`이다(`03` §9, `06` §5.3) |
 | `UserRole` (common.security) | `USER`, `ADMIN` | app_user |
 | `UserStatus` (user.domain) | `ACTIVE`, `DELETION_REQUESTED` | app_user |
 | `AiProvider` 값 (설정 문자열, Java enum 아님) | `deepseek`, `anthropic`(대안), `fake`, `disabled` — **소문자**. `devpilot.ai.provider` 설정값이 그대로 `ai_call_log.provider`에 들어가므로 이 표의 다른 enum과 달리 소문자다 | ai_call_log |
@@ -91,7 +92,7 @@
 | `ReviewRating` (review.domain) | `AGAIN`(0), `HARD`(1), `GOOD`(2), `EASY`(3) | review_answer, review_item.last_result |
 | `RatingAdjustment` (review.domain) | `EVALUATED_INCORRECT`, `EVALUATED_PARTIAL`, `HINT_CAP_AGAIN`, `HINT_CAP_HARD`, `HINT_CAP_GOOD` | review_answer.adjusted_by |
 | `ReviewType` (review.domain) | `RECALL`, `BUG_SPOT`, `EXPLAIN`, `CHOICE` | review_item |
-| `ReviewItemSourceType` (review.domain) | `SEED_CARD`, `MANUAL`, `CHALLENGE_ATTEMPT`, `COACH_FINDING`, `EVIDENCE`, `RUBBER_DUCK` | review_item.source_type — `RUBBER_DUCK`은 러버덕 정리의 gap(`05` §9.8) |
+| `ReviewItemSourceType` (review.domain) | `SEED_CARD`, `MANUAL`, `CHALLENGE_ATTEMPT`, `COACH_FINDING`, `EVIDENCE`, `RUBBER_DUCK`, `REDO_TASK` | review_item.source_type — `RUBBER_DUCK`은 러버덕 정리의 gap(`05` §9.8), `REDO_TASK`는 AI 없이 다시 만들지 못한 재현 과제(`06` §5.10 RE-7) |
 | `ReviewItemStatus` (review.domain) | `ACTIVE`, `SUSPENDED`, `ARCHIVED` | review_item — due 여부는 `due_at < planDayStart(today + 1)`로 계산 (`06` §6.5) |
 | `VariantStatus` (review.domain) | `NONE`, `PENDING`, `RUNNING`, `READY`, `FAILED` | review_item.variant_status |
 | `EvaluatedOutcome` (learning.domain) | `CORRECT`, `PARTIAL`, `INCORRECT`, `NOT_EVALUATED` | submission, attempt, review_answer |
@@ -110,7 +111,7 @@
 | `MilestoneStatus` (plan.domain) | `PLANNED`, `IN_PROGRESS`, `DONE`, `DEFERRED`, `DROPPED` | plan_milestone |
 | `TargetAdjustment` (plan.domain) | `ROLE_DEFAULT`, `DEFERRED`, `TARGET_REDUCED`, `USER_EDITED` | plan_skill_target.adjustment. 확장 제안을 받아들인 목표 상향도 `USER_EDITED`다(`06` §11.2) |
 | `ExpansionKind` (plan.domain) | `RESTORE_DEFERRED`, `RAISE_TARGET` | replan preview 응답 `expansionSuggestions[].kind` (저장 안 함, `06` §4.4 6단계) |
-| `TaskType` (today.domain) | `RECALL`, `REVIEW`, `CHALLENGE`, `PROJECT_TASK`, `COACH_REVIEW`, `READING`, `READ_CODE`, `EXPLAIN` | learning_task — `READ_CODE`는 큐레이션 저장소 읽기(`06` §5, RC-1~4) |
+| `TaskType` (today.domain) | `RECALL`, `REVIEW`, `CHALLENGE`, `PROJECT_TASK`, `COACH_REVIEW`, `READING`, `READ_CODE`, `EXPLAIN`, `REDO` | learning_task — `READ_CODE`는 큐레이션 저장소 읽기(`06` §5, RC-1~4), `REDO`는 며칠 뒤 **AI 없이 혼자 다시 만드는 재현 과제**(`06` §5.10, RE-1~RE-8) |
 | `TaskStatus` (today.domain) | `PLANNED`, `IN_PROGRESS`, `COMPLETED`, `SKIPPED`, `DEFERRED` | learning_task |
 | `ReadingFeedback` (today.domain) | `HELPFUL`, `TOO_HARD`, `BORING` | learning_task.reading_feedback — `READ_CODE` 완료 때 사용자가 고르는 읽기 평가(선택, `05` §8.4). 규칙 입력이 아니다(`06` §5.3). 소스 점검(`19` §8.5)의 입력 |
 | `ReasonCode` (today.domain) | §5.1 | learning_task.reason_codes |
@@ -118,11 +119,12 @@
 | `RubberDuckTargetType` (rubberduck.domain) | `CODE_READING`, `CHALLENGE`, `REVIEW_ITEM`, `CONCEPT`, `PROJECT_WORK` | rubber_duck_session.target_type — `CONCEPT`이면 `target_id` 대신 `concept_key`, `PROJECT_WORK`이면 `target_id`가 `side_project.id` |
 | `RubberDuckStatus` (rubberduck.domain) | `IN_PROGRESS`, `COMPLETED`, `ABANDONED` | rubber_duck_session.status |
 | `SideProjectStatus` (project.domain) | `ACTIVE`, `PAUSED`, `DONE` | side_project.status |
+| `SideProjectNoteType` (project.domain) | `DECISION`("결정 기록"), `INCIDENT`("장애 기록") | side_project_note.note_type — 값마다 채우는 본문 컬럼이 다르다(I-22, `05` §19.8) |
 | `SkillAxis` (skill.domain) | `KNOWLEDGE`, `IMPLEMENTATION`, `EXPLANATION`, `DEBUGGING` | skill_state_change |
 | `SkillLevel` (skill.domain) | `UNKNOWN`(0), `SEEN`(1), `GUIDED`(2), `INDEPENDENT_BASIC`(3), `PRACTICAL`(4), `TRANSFERABLE`(5) | 표시용 (DB는 smallint) |
 | `SkillCategory` (skill.domain) | `JAVA`, `SPRING`, `DATABASE`, `WEB_HTTP`, `NETWORK`, `CS`, `ALGORITHM`, `TESTING`, `DEVOPS`, `SECURITY`, `PRACTICAL_ENGINEERING`, `SYSTEM_DESIGN`, `EXPLANATION` (13개) | skill |
 | `LearningEventType` (learning.domain) | §6 | learning_event |
-| `EventSourceType` (learning.domain) | `LEARNING_SESSION`, `CHALLENGE_ATTEMPT`, `CHALLENGE_SUBMISSION`, `REVIEW_ITEM`, `COACH_REVIEW`, `COACH_FINDING`, `EVIDENCE`, `LEARNING_PLAN`, `RUBBER_DUCK_SESSION` | learning_event.source_type |
+| `EventSourceType` (learning.domain) | `LEARNING_SESSION`, `CHALLENGE_ATTEMPT`, `CHALLENGE_SUBMISSION`, `REVIEW_ITEM`, `COACH_REVIEW`, `COACH_FINDING`, `EVIDENCE`, `LEARNING_PLAN`, `RUBBER_DUCK_SESSION`, `LEARNING_TASK` | learning_event.source_type — `LEARNING_TASK`는 재현 과제 완료(`REDO_COMPLETED`, §6) |
 | `EvidenceStatus` (evidence.domain) | `CANDIDATE`, `ACCEPTED`, `REJECTED` | evidence_candidate |
 | `RequirementType` (radar.domain) | `REQUIRED`, `PREFERRED` | requirement_item |
 | `RequirementFitCategory` (radar.domain) | `READY`, `STRETCH`, `LATER` | requirement_item |
@@ -141,7 +143,7 @@
 |---|---|---|
 | `PLANNED → IN_PROGRESS` | `PATCH /today/tasks/{id}` status=IN_PROGRESS, 또는 `POST /learning-sessions`가 이 task를 참조할 때 자동 전이(`05` §9.1) | 재생성이 PLANNED task를 삭제해도 진행 중 세션의 task가 사라지지 않게 |
 | `PLANNED → SKIPPED` | PATCH | — |
-| `IN_PROGRESS → COMPLETED` | PATCH (`READ_CODE`는 RC-1 조건 + 선택 `readingFeedback`, `05` §8.4) | `completed_at`, `READ_CODE`이고 평가가 있으면 `reading_feedback` |
+| `IN_PROGRESS → COMPLETED` | PATCH (`READ_CODE`는 RC-1 조건 + 선택 `readingFeedback`, `REDO`는 필수 `redoWithoutAi`, `05` §8.4) | `completed_at`, `READ_CODE`이고 평가가 있으면 `reading_feedback`, `REDO`면 `redo_without_ai` + `REDO_COMPLETED` 이벤트(§6). `redo_without_ai = false`면 복습 카드 upsert (`06` §5.10 RE-7) |
 | `IN_PROGRESS → DEFERRED` | PATCH, 또는 `POST /today/generate force=true` | 다음날 planner 이어하기 보너스 대상 |
 | `PLANNED → (삭제)` | `POST /today/generate` 재생성 | 같은 daily_plan의 PLANNED task 모두 삭제 후 flush → 새 task INSERT |
 | `SKIPPED → PLANNED` | PATCH (되돌리기) | 같은 날 활성 main이 없을 때만 |
@@ -224,6 +226,10 @@ CoachReview `status`: `PENDING → RUNNING → COMPLETED | FAILED`. `COMPLETED` 
 
 세 상태 사이의 모든 전이를 허용하고 같은 상태로의 변경은 no-op이다(`05` §19.5). `ACTIVE`는 사용자당 여러 개일 수 있고, planner는 가장 최근 `updated_at`인 `ACTIVE` 하나만 쓴다(`06` SP-3).
 
+### 4.10 SideProjectNote
+
+상태 컬럼이 없다. 생성·수정·삭제만 있고 전이표가 없다(`05` §19.8~§19.12). `note_type`은 **생성 시 고정**이고 `PATCH`로 바꿀 수 없다 — 유형이 바뀌면 본문 컬럼 조합도 바뀌어 I-22를 지킬 수 없다. 유형을 잘못 골랐으면 지우고 다시 만든다. 프로젝트가 삭제되면 그 프로젝트의 노트도 함께 삭제된다(`on delete cascade`, §8).
+
 ---
 
 ## 5. JSON 컬럼 스키마
@@ -241,12 +247,13 @@ CoachReview `status`: `PENDING → RUNNING → COMPLETED | FAILED`. `COMPLETED` 
   "modifiers": [ { "code": "RISK_HIGH_MUST", "multiplierBp": 12000 } ],
   "finalScore": 624000,
   "rank": 1,
-  "reasonParams": { "milestoneTitle": "Spring/JPA 핵심", "planningImplementation": 1, "targetImplementation": 4, "overdueDays": 2 }
+  "reasonParams": { "milestoneTitle": "Spring/JPA 핵심", "planningImplementation": 1, "targetImplementation": 4, "overdueDays": 2, "repoName": null, "redoDaysAfter": null }
 }
 ```
 - `reasonParams`는 reason 문구 템플릿(`06-learning-engine-rules.md` §5.8)의 변수 값이다. 응답을 만들 때 이 값으로 문구를 채운다. 값이 없는 변수는 null이다.
 - 점수와 factor는 **micro 단위 정수**(1.0 = 1,000,000)다.
-- `ReasonCode`: `MILESTONE_CORE`, `MILESTONE_NEXT`, `HIGH_PRACTICAL_IMPORTANCE`, `LARGE_SKILL_GAP`, `REVIEW_OVERDUE`, `RECENT_RECALL_FAILURE`, `PROJECT_FOCUS`, `CONTINUE_YESTERDAY`, `DEADLINE_RISK_MUST`, `LOW_ENERGY_LIGHT_TASK`, `COMEBACK_EASY_START`
+- `ReasonCode`: `MILESTONE_CORE`, `MILESTONE_NEXT`, `HIGH_PRACTICAL_IMPORTANCE`, `LARGE_SKILL_GAP`, `REVIEW_OVERDUE`, `RECENT_RECALL_FAILURE`, `PROJECT_FOCUS`, `READ_REAL_CODE`, `REDO_WITHOUT_AI`, `CONTINUE_YESTERDAY`, `DEADLINE_RISK_MUST`, `LOW_ENERGY_LIGHT_TASK`, `COMEBACK_EASY_START`
+- `modifiers[].code`: `RISK_HIGH_MUST`, `RISK_HIGH_SHOULD`, `LOW_ENERGY_DEEP_TASK`, `HIGH_ENERGY_HARD_TASK`, `CONTINUATION`, `FATIGUE_TWO_DAYS`, `FATIGUE_ONE_DAY`, `COMEBACK_HARD_TASK`, `REDO_DUE` (`06` §5.5)
 
 ### 5.2 `challenge.*_json`
 
@@ -317,6 +324,7 @@ coverage 계산은 서버가 한다(`06` §8.1).
   "completedSessions": 5, "studyMinutes": 310,
   "independentSolveRateBp": 5000, "averageHintLevelMilli": 1800, "recallSuccessRateBp": 7200,
   "selfFoundRiskCount": 2, "acceptedEvidenceCount": 1, "completedRubberDuckSessions": 4,
+  "projectNoteCount": 3, "independentRedoCount": 1,
   "riskLevel": "MEDIUM", "ratioBp": 9400,
   "weakThinkingAxes": ["RESOURCE_LIFECYCLE", "CONCURRENCY"]
 }
@@ -379,6 +387,7 @@ coverage 계산은 서버가 한다(`06` §8.1).
 | `COACH_REVIEW_COMPLETED` | COACH_REVIEW | 관련 skill별 (`context.skillCodes` + finding skill) | `{ coachReviewId, findingCount, selfReviewAxes[] }` | `COACH_COMPLETED:{coachReviewId}:{skillId}` |
 | `COACH_FINDING_CLOSED` | COACH_FINDING | finding.skill_id (없으면 기록 생략) | `{ coachReviewId, findingId, findingType, axis, confidence, discoveredBy, maxHintLevel, finalStatus }` | `FINDING_CLOSED:{findingId}` |
 | `DIAGNOSTIC_PASSED` / `DIAGNOSTIC_FAILED` | CHALLENGE_ATTEMPT | challenge skill별 | `{ attemptId, challengeId, claimedLevel, rubricCoverageBp }` | `DIAGNOSTIC:{attemptId}:{skillId}` |
+| `REDO_COMPLETED` | LEARNING_TASK (`learning_task.id`) | task의 skill (null이면 기록 생략) | `{ taskId, sourceTaskId, sourceTaskType, withoutAi, difficulty }` — `sourceTaskType`은 `CHALLENGE` 또는 `PROJECT_TASK`, `difficulty`는 원본 과제의 difficulty(`06` §5.3), `withoutAi`는 완료 때 사용자가 답한 값 | `REDO:{taskId}:{skillId}` |
 | `EVIDENCE_ACCEPTED` | EVIDENCE | evidence skill | `{ evidenceId }` | `EVIDENCE_ACCEPTED:{evidenceId}` |
 | `PLAN_REPLANNED` | LEARNING_PLAN | null | `{ fromPlanId, toPlanId, fromVersion, toVersion, deferredSkillCodes[], reducedSkillCodes[] }` | `REPLANNED:{toPlanId}` |
 
@@ -410,6 +419,9 @@ coverage 계산은 서버가 한다(`06` §8.1).
 | I-17 | `READ_CODE` 과제에만 `reading_key`가 있고, `READ_CODE` 과제에는 반드시 있다 | CHECK `learning_task_reading_key_type` + `TaskProposalPolicy`(`06` §5.3). 값은 `content/curated-repos.yaml`의 reading `key`이고 FK가 없다 — 콘텐츠에서 reading이 은퇴해도 과제 행은 남는다(`19` §8.2) |
 | I-18 | 사용자당 `IN_PROGRESS` 러버덕 세션은 1개다 | partial unique index `uq_rubber_duck_session_one_in_progress` + `RubberDuckService`(시작 시 이전 세션 `ABANDONED` → flush → INSERT, 동시 시작 위반은 409 `CONCURRENT_MODIFICATION`, `05` §9.6). I-05(학습 세션)와 같은 방식 |
 | I-19 | `reading_feedback`은 `READ_CODE` 과제에만 있을 수 있고(nullable), 값은 `ReadingFeedback`이다 | CHECK `learning_task_reading_feedback_type`(`reading_feedback is null or task_type = 'READ_CODE'`) + 값 CHECK + `TodayPlanService`(`status = COMPLETED` PATCH에서만 받는다, 그 외 400 `VALUE_NOT_ALLOWED`, `05` §8.4) |
+| I-20 | `redo_source_task_id`는 `REDO` 과제에만 있고, `REDO` 과제에는 반드시 있다 | CHECK `learning_task_redo_source_type`(`(redo_source_task_id is not null) = (task_type = 'REDO')`) + `TaskProposalPolicy`(`06` §5.10 RE-3). 자기 참조 FK는 `on delete set null`이 아니라 **cascade 없음** — 원본 행은 사용자 삭제 때만 사라진다 |
+| I-21 | `redo_without_ai`는 `REDO` 과제에만 있을 수 있고(nullable), `COMPLETED` 상태의 `REDO` 과제에는 반드시 있다 | CHECK `learning_task_redo_without_ai_type`(`redo_without_ai is null or task_type = 'REDO'`) + CHECK `learning_task_redo_answer_required`(`not (task_type = 'REDO' and status = 'COMPLETED' and redo_without_ai is null)`) + `TodayPlanService`(완료 PATCH에 `redoWithoutAi` 필수, 없으면 400 `VALUE_REQUIRED`, `05` §8.4) |
+| I-22 | `side_project_note`의 본문 컬럼은 `note_type`과 일치한다 — `DECISION`이면 `decision_*` 셋이 모두 있고 `incident_*` 넷이 모두 null, `INCIDENT`이면 반대 | CHECK `side_project_note_body_by_type` + `SideProjectNoteService`(어긋나면 400 `VALUE_REQUIRED`/`VALUE_NOT_ALLOWED`, `05` §19.9) |
 
 - `rubber_duck_turn`에는 `user_id`가 없다. 소유자 검증은 `coach_finding`과 같이 부모(`rubber_duck_session.user_id`)로 한다(I-15).
 
@@ -426,6 +438,7 @@ coverage 계산은 서버가 한다(`06` §8.1).
 | 학습 기록 (event, answer, state change, finding, evidence) | 계정 유지 기간 | 계정 삭제 시 cascade |
 | 러버덕 (`rubber_duck_session`, `rubber_duck_turn` — `user_text`는 마스킹본만, 원문 없음) | 계정 유지 기간 | 계정 삭제 시 cascade. `IN_PROGRESS`로 24시간 방치된 세션은 `StaleRubberDuckJob`이 `ABANDONED`로 바꾼다(삭제하지 않음) |
 | `side_project` | 사용자가 삭제할 때까지 | `DELETE /side-projects/{id}` → 행 삭제, `learning_task`·`coach_review`의 `side_project_id`는 null. 계정 삭제 시 cascade |
+| `side_project_note` (결정·장애 기록, 마스킹본) | 사용자가 삭제할 때까지 | `DELETE …/notes/{id}` → 행 삭제. 프로젝트 삭제와 계정 삭제 시 cascade(프로젝트가 사라지면 그 프로젝트의 기록도 사라진다 — `05` §19.6 삭제 안내에 적는다) |
 | catalog (`skill`, `role_skill_target`, seed challenge) | 영구 | 비활성화 (`active=false`, `RETIRED`) |
 | 백업 | 서버 7일 + 로컬 PC 8주(주 1회 pull) | `10-deployment-and-operations.md` §8 |
 
@@ -461,9 +474,55 @@ coverage 계산은 서버가 한다(`06` §8.1).
 | `V7__evidence_weekly.sql` | S5–S6 | `evidence_candidate`, `weekly_review` |
 | `V8__requirement_radar.sql` | S7 | `requirement_doc`, `requirement_item` |
 | `V9__rubberduck_project.sql` | S1(`side_project`) · S3(러버덕, 읽기 평가) | `side_project`, `rubber_duck_session`, `rubber_duck_turn`, `learning_task.side_project_id`·`reading_key`(+ CHECK `learning_task_reading_key_type`)·`reading_feedback`(`varchar(20)` null, 값 CHECK `HELPFUL`/`TOO_HARD`/`BORING` + CHECK `learning_task_reading_feedback_type`)·`coach_review.side_project_id` 추가 |
+| `V10__track_notes_redo.sql` | S3(학습 트랙 2종, 프로젝트 기록) · S4(재현 과제) | 아래 §10.1 |
+
+### 10.1 `V10__track_notes_redo.sql` (내용)
+
+`V1`~`V9`는 고치지 않는다(ADR-038). `V10`은 **`alter`만** 쓴다.
+
+| # | 내용 |
+|---|---|
+| 1 | `learning_goal.target_role`·`role_skill_target.target_role`의 값 CHECK를 `('JAVA_BACKEND','JAVA_BACKEND_STARTER')`로 다시 만든다: `alter table … drop constraint if exists learning_goal_target_role_check` → `add constraint learning_goal_target_role_check check (…)` (같은 방식으로 `role_skill_target_target_role_check`). 이름은 PostgreSQL이 V2의 인라인 CHECK에 붙인 자동 이름이고, `V10`이 **명시적으로 같은 이름을 다시 붙인다** |
+| 2 | `learning_task.task_type` CHECK를 `('RECALL','REVIEW','CHALLENGE','PROJECT_TASK','COACH_REVIEW','READING','READ_CODE','EXPLAIN','REDO')`로 다시 만든다(`learning_task_task_type_check`) |
+| 3 | `learning_task`에 `redo_source_task_id uuid references learning_task(id)`(cascade 없음)와 `redo_without_ai boolean`을 추가하고 CHECK 셋을 붙인다: `learning_task_redo_source_type`, `learning_task_redo_without_ai_type`, `learning_task_redo_answer_required`(I-20·I-21) |
+| 4 | 부분 인덱스 `idx_learning_task_redo_candidate`(§11) |
+| 5 | `learning_event.event_type` CHECK에 `REDO_COMPLETED`, `source_type` CHECK에 `LEARNING_TASK`를 더해 다시 만든다(`learning_event_event_type_check`, `learning_event_source_type_check`) |
+| 6 | `review_item.source_type` CHECK에 `REDO_TASK`를 더해 다시 만든다(`review_item_source_type_check`) |
+| 7 | `side_project_note` 테이블 생성 + CHECK `side_project_note_body_by_type`(I-22) + 인덱스 `idx_side_project_note_project`(§11) |
+
+```sql
+create table side_project_note (
+    id                  uuid primary key default gen_random_uuid(),
+    user_id             uuid not null references app_user(id) on delete cascade,
+    side_project_id     uuid not null references side_project(id) on delete cascade,
+    note_type           varchar(20) not null check (note_type in ('DECISION','INCIDENT')),
+    title               varchar(200) not null,
+    occurred_on         date not null,
+    skill_id            uuid references skill(id),          -- 선택. skill이 비활성화돼도 기록은 남는다
+    decision_choice     text,                                -- DECISION: 무엇을 골랐나
+    decision_options    text,                                -- DECISION: 어떤 선택지가 있었나
+    decision_rationale  text,                                -- DECISION: 왜 그것을 골랐나
+    incident_symptom    text,                                -- INCIDENT: 무엇이 잘못됐나
+    incident_detection  text,                                -- INCIDENT: 어떻게 찾았나
+    incident_fix        text,                                -- INCIDENT: 무엇으로 고쳤나
+    incident_prevention text,                                -- INCIDENT: 무엇으로 다시 막나
+    created_at          timestamptz not null default now(),
+    updated_at          timestamptz not null default now(),
+    version             bigint not null default 0,
+    constraint side_project_note_body_by_type check (
+        (note_type = 'DECISION'
+         and decision_choice is not null and decision_options is not null and decision_rationale is not null
+         and incident_symptom is null and incident_detection is null
+         and incident_fix is null and incident_prevention is null)
+     or (note_type = 'INCIDENT'
+         and incident_symptom is not null and incident_detection is not null
+         and incident_fix is not null and incident_prevention is not null
+         and decision_choice is null and decision_options is null and decision_rationale is null))
+);
+```
 
 규칙:
-- **적용된 migration 파일은 수정하지 않는다.** 변경은 새 `V{n}`으로 한다. 이 규칙은 **첫 배포 시점부터** 발효한다 — `V1`~`V9`는 아직 어떤 환경에도 적용된 적이 없으므로(백엔드 코드가 없다) v3 설계로 늘어난 enum 값(`learning_event.event_type`·`source_type`, `learning_task.task_type`, `ai_call_log.operation`)은 `V9`의 `alter ... drop/add constraint`가 아니라 `V4`를 직접 고쳐 반영했다.
+- **적용된 migration 파일은 수정하지 않는다.** 변경은 새 `V{n}`으로 한다. 이 규칙은 **첫 배포 시점부터** 발효한다 — `V1`~`V9`는 아직 어떤 환경에도 적용된 적이 없으므로(백엔드 코드가 없다) v3 설계로 늘어난 enum 값(`learning_event.event_type`·`source_type`, `learning_task.task_type`, `ai_call_log.operation`)은 `V9`의 `alter ... drop/add constraint`가 아니라 `V4`를 직접 고쳐 반영했다. **`V10`부터는 이 방식을 쓰지 않는다** — `V1`~`V9`는 ADR-038에 따라 확정됐으므로 `V10`은 `alter table … drop constraint if exists <이름>` → `add constraint <같은 이름> check (…)`으로 enum CHECK를 다시 만든다(§10.1). 인라인 CHECK의 자동 이름은 PostgreSQL이 `<table>_<column>_check`로 정하므로 그 이름을 그대로 쓰고, 다시 만들 때 **명시적으로 같은 이름을 붙인다**(다음 migration이 또 찾을 수 있게).
 - Sprint 열은 그 테이블을 **처음 쓰는 단계**다(`11-development-roadmap.md` §3의 `S0`~`S7`). migration 파일은 V1~V9가 이미 저장소에 있고 Flyway는 버전 순서대로 **전부** 적용한다 — 단계별로 파일을 나눠 넣지 않는다. 그래서 `V9`가 `V6`의 `coach_review`를 고쳐도 순서 문제가 없다.
 - **서버 개발 DB와 첫 배포 전 migration 수정**: 2026-09-18 확인 결과 서버 `devpilot` DB에는 SP-2 때의 스키마가 남아 있지 않았고, 첫 `bootRun`이 V1~V9를 적용했다(초기화 불필요). 첫 배포 전에 V1~V9를 다시 고치면 개발 DB의 `flyway_schema_history` checksum과 어긋나 기동이 실패하므로, 그때는 개발 DB의 `devpilot` schema를 지우고 다시 적용한다(실데이터 없음, `18` §5.3 "DB 초기화").
 - 각 migration은 `schema.sql`의 해당 부분과 같아야 한다. `schema.sql`은 전체 migration 적용 결과의 스냅샷이므로 migration을 추가하면 함께 갱신한다.
@@ -491,6 +550,10 @@ coverage 계산은 서버가 한다(`06` §8.1).
 | `uq_rubber_duck_session_one_in_progress (user_id) where status='IN_PROGRESS'` | I-18(사용자당 진행 중 1개) 강제 + 진행 중 세션 조회(`where user_id=? and status='IN_PROGRESS'`) |
 | `rubber_duck_turn` `unique (session_id, turn_no)` | 세션의 턴을 순서대로 조회(`where session_id=? order by turn_no`). unique 제약의 인덱스가 정렬을 겸하므로 별도 인덱스를 두지 않는다 |
 | `idx_side_project_user_status (user_id, status, updated_at desc)` | planner: `where user_id=? and status='ACTIVE' order by updated_at desc limit 1` (`06` SP-3), 프로젝트 목록 |
+| `idx_side_project_note_project (side_project_id, occurred_on desc, id desc)` | 프로젝트 기록 목록·cursor 정렬: `where side_project_id=? [and note_type=?] order by occurred_on desc, id desc` (`05` §19.10) |
+| `idx_learning_task_redo_candidate (user_id, task_type, status, completed_at desc) where task_type in ('CHALLENGE','PROJECT_TASK','REDO')` | 재현 과제 후보 조회(`06` §5.10 RE-2 1단계 두 쿼리): 최근 완료한 CHALLENGE·PROJECT_TASK, 그리고 그 사용자의 모든 `REDO` task(열려 있는 것·지난 시도). 부분 인덱스라 `READING`·`EXPLAIN` 등은 담지 않는다. RE-5의 잠금 판정(`RedoLockService`)도 같은 인덱스를 쓴다 |
 | FK 인덱스 (`idx_*_plan`, `_review`, `_doc` 등) | 부모 삭제 cascade, 자식 조회 |
+
+`learning_task.redo_source_task_id`에는 별도 인덱스를 두지 않는다 — 조회는 항상 `idx_learning_task_redo_candidate`로 사용자·기간을 먼저 좁힌 뒤 메모리에서 짝짓는다(RE-2 창이 최대 며칠이라 행이 적다).
 
 `learning_task.side_project_id`·`reading_key`와 `coach_review.side_project_id`에는 인덱스를 두지 않는다 — `learning_task.challenge_id`·`milestone_id`와 같은 기준이다(프로젝트 삭제가 드물고, 프로젝트별 과제·리뷰 목록 조회가 없다). 조회가 생기면 그때 인덱스를 추가한다.

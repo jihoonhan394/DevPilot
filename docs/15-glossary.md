@@ -1,6 +1,6 @@
 # 15. Glossary
 
-> Status: Accepted (v2) · Last updated: 2026-09-19 (v3: 러버덕 · 코드 읽기 · 사이드 프로젝트 · 교차 학습 · 확장 제안 · 단계 · 소스 점검) · Related: `04-domain-model-and-db.md` §3, `05-api-spec.md`, `06-learning-engine-rules.md`, `08-coding-conventions.md`, `11-development-roadmap.md`, ADR-010
+> Status: Accepted (v2) · Last updated: 2026-09-20 (러버덕 · 코드 읽기 · 사이드 프로젝트 · 교차 학습 · 확장 제안 · 단계 · 소스 점검 · 재현 과제 · 학습 트랙 · 프로젝트 기록) · Related: `04-domain-model-and-db.md` §3, `05-api-spec.md`, `06-learning-engine-rules.md`, `08-coding-conventions.md`, `11-development-roadmap.md`, ADR-010
 >
 > 용어 정의와 **한국어 → 영어 식별자 명명 사전**이다. 코드·DB·API·Dart의 이름은 §6을 따른다. 사전에 없는 도메인 용어가 필요하면 구현 전에 이 문서에 먼저 추가한다(`16-definition-of-ready-done.md` §1).
 
@@ -10,7 +10,8 @@
 
 | 용어 | 정의 |
 |---|---|
-| Learning goal (학습 목표) | **무엇을, 언제까지** — 학습 트랙(`JAVA_BACKEND`)과 목표일 하나. 사용자당 1개(ADR-039) |
+| Learning goal (학습 목표) | **무엇을, 언제까지** — 학습 트랙과 목표일 하나. 사용자당 1개(ADR-039) |
+| Learning track (학습 트랙, `TargetRole`) | 무엇을 공부하는지. `JAVA_BACKEND`("Java 백엔드")와 `JAVA_BACKEND_STARTER`("Java 백엔드 입문") 둘. 트랙이 정하는 것은 role target·계획 템플릿·planner 기본값(`devpilot.tracks`)·진단 범위뿐이고 skill 카탈로그와 다른 규칙은 공유한다. 온보딩에서 고르고 이후 바꾸지 않는다(ADR-040) |
 | Target date (목표일) | 사용자가 정한 학습 목표 날짜(`targetCompletionDate`) 하나. budget horizon이자 계획 템플릿 배치 창의 끝이다(`06` §3.1, `19` §5). 내일 ~ 오늘 + 3년 |
 | Consolidation phase (정리 단계) | 계획 템플릿의 마지막 milestone phase `CONSOLIDATION`("설명과 정리", `EXPLAIN_AND_CONSOLIDATE`, `19` §5). 한 창 안에서 목표일 바로 앞에 놓인다. 만든 것을 설명으로 정리하고 CS 기초의 빈틈을 채운다 |
 | Learning plan (학습 계획) | 목표까지의 milestone과 skill 목표 묶음. 구조가 바뀌면 새 plan version이 생긴다 |
@@ -47,6 +48,10 @@
 | Source review (소스 점검) | `READ_CODE` 저장소·읽기 범위를 사람이 주기적으로 다시 보고 추가·교체·은퇴를 정하는 수동 절차. 첫 점검은 S3 시작 전, 이후 단계 회고마다(`19` §8.5) |
 | Pinned commit (기준 커밋) | reading의 줄 번호가 맞는 저장소 커밋 SHA(`pinnedCommit`, 40자 hex). 저장소가 바뀌어도 줄 번호가 틀어지지 않게 `cloneHint`가 이 커밋을 체크아웃한다(`19` §8.4) |
 | Side project (사이드 프로젝트) | 학습한 것을 적용해 **직접 만드는** 사용자 프로젝트(기본 예: "주문 시스템", `SideProject`). `PROJECT_TASK` 과제와 코치 리뷰·러버덕(`PROJECT_WORK`)의 대상이다. DevPilot 자체는 사이드 프로젝트가 아니다 |
+| Project note (프로젝트 기록) | 사이드 프로젝트의 **결정 기록**(`DECISION` — 무엇을 골랐나·선택지·왜)과 **장애 기록**(`INCIDENT` — 증상·발견·수정·예방). 텍스트·날짜·선택 skill 하나뿐이고 첨부는 없다. 학습 이벤트를 만들지 않고 레벨을 바꾸지 않는다(PN-1~PN-4, `06` §9.5) |
+| Redo task (재현 과제, `TaskType.REDO`) | 며칠 전에 마친 `CHALLENGE`·`PROJECT_TASK`를 **AI 없이 처음부터 다시 만드는** 과제. 열려 있는 동안 그 대상의 힌트·러버덕이 잠긴다(RE-5). 완료할 때 "AI 도움 없이 끝냈나요?"에 답하고, **성공만 독립 구현 증거**가 된다(`06` §5.10 RE-1~RE-8) |
+| Redo window (재현 창) | 원본(또는 지난 재현)을 마친 날로부터 `min-days-after`~`max-days-after`(기본 3~7일, 양 끝 포함) 사이의 plan-day. 이 창 안에서만 재현 과제가 제안되고, 지나면 그 기회는 사라진다(RE-2) |
+| Independent implementation evidence (독립 구현 증거) | AI가 거들지 않은 상태에서 만들어 낸 기록. 독립 해결한 challenge 평가(`CHALLENGE_EVALUATED` SOLVED_INDEPENDENTLY)와 성공한 재현(`REDO_COMPLETED` `withoutAi = true`) 둘. `I3_SOLVED_INDEPENDENT`가 `evidenceKey`로 구분해 센다(`06` §7.2) |
 
 ## 2. 학습 엔진 용어
 
@@ -214,12 +219,21 @@
 | 코드 읽기 과제 | `TaskType.READ_CODE` | `task_type = 'READ_CODE'` | `taskType` | 개념 읽기 과제 `READING`과 다르다. 러버덕 대상 값은 `CODE_READING`이다(아래) — 두 이름을 섞지 않는다 |
 | 읽기 범위 (reading) | `CuratedReadingView`, `CuratedReadingRegistry`, `readingKey` | `reading_key` (FK 없음, CHECK `learning_task_reading_key_type`) | `/readings/{readingKey}`, `readingKey` | key 형식 `READ.<REPO>.<TOPIC>.NNN`. `Lesson`, `Snippet`, `CodeSample` 금지 |
 | 읽기 평가 | `ReadingFeedback readingFeedback` | `reading_feedback` | `readingFeedback` | 값 `HELPFUL`(도움 됐어요) · `TOO_HARD`(어려웠어요) · `BORING`(지루했어요). `READ_CODE` 완료 요청에서만, 선택. `rating`(복습 등급 `ReviewRating`)과 섞지 않는다 |
+| 재현 과제 | `TaskType.REDO` | `task_type = 'REDO'` | `taskType` | "AI 없이 재현". `RETRY`·`REPEAT`·`REDO_TASK`(이 이름은 `ReviewItemSourceType` 값이다)와 섞지 않는다 |
+| 재현 원본 | `redoSourceTaskId` | `redo_source_task_id` | `redoSourceTaskId`, `redoSourceTaskType` | `learning_task`를 가리키는 자기 참조. `originalTaskId`·`parentTaskId` 금지 |
+| 재현 결과 | `redoWithoutAi` | `redo_without_ai` | `redoWithoutAi` | "AI 도움 없이 끝냈나"의 답(boolean). `REDO` 완료 요청에서 필수(RE-6). `solvedAlone`·`independent` 금지 |
+| 학습 트랙 | `TargetRole targetRole`, `TrackDefaults` | `target_role` | `targetRole`, query `role` | 화면 라벨은 "학습 트랙". 식별자는 `role`을 유지한다(`15` 규칙). `Track` 단독 enum을 만들지 않는다 |
 | 은퇴한 reading | `retired` (`CuratedReadingView.retired`) | — (`curated-repos.yaml`의 `readings[].retired`, `catalog.yaml`의 `retired.readingKeys`) | `retired` | 삭제가 아니다. 조회는 되고 제안만 안 된다 |
 | 소스 점검 | — (수동 절차, 코드 없음) | — | — | `19` §8.5. 자동 job 이름으로 쓰지 않는다 |
 | 큐레이션 저장소 | `CuratedRepoView` (`repo.key`) | — (`content/curated-repos.yaml`의 `repos[]`) | `repo` | 근거 ID인 curated source(`curated-sources.yaml`)와 구분 |
 | 기준 커밋 · clone 안내 | `pinnedCommit`, `cloneHint` | — | `pinnedCommit`, `cloneHint` | `pinnedCommit`은 40자 소문자 hex SHA. `commitHash`, `revision` 금지 |
 | 사이드 프로젝트 | `SideProject`, `SideProjectService`, `SideProjectQueryService`, 모듈 `com.devpilot.project` | `side_project`, `side_project_id` | `/side-projects`, `sideProjectId`, `sideProject`(온보딩) | `Project` 단독 클래스, `sideproject`·`Sideproject`(한 단어), `PersonalProject` 금지. 코치의 `CoachProjectType`·과제 `PROJECT_TASK`와 구분 |
 | 사이드 프로젝트 상태 | `SideProjectStatus` | `status` | `status` | `ACTIVE` / `PAUSED` / `DONE` |
+| 프로젝트 기록 | `SideProjectNote`, `SideProjectNoteService`, `SideProjectNoteQueryService` | `side_project_note` | `/side-projects/{id}/notes`, `noteId` | `Note` 단독 클래스, `ProjectLog`·`Journal`·`Diary` 금지. 복습 카드(`ReviewItem`)·러버덕 정리(`summary_json`)와 섞지 않는다 |
+| 기록 유형 | `SideProjectNoteType noteType` | `note_type` | `noteType` | `DECISION`(결정 기록) / `INCIDENT`(장애 기록). 생성 후 변경 불가(PN-2). `FindingType`·`ReviewType`과 섞지 않는다 |
+| 결정 기록 항목 | `decisionChoice`, `decisionOptions`, `decisionRationale` | 같은 이름 snake_case | 같은 이름 | 세 항목 모두 `DECISION`일 때만 채운다(I-22). `why`·`reason` 단독 금지 |
+| 장애 기록 항목 | `incidentSymptom`, `incidentDetection`, `incidentFix`, `incidentPrevention` | 같은 이름 snake_case | 같은 이름 | 네 항목 모두 `INCIDENT`일 때만 채운다(I-22). `rootCause`·`postmortem` 금지 |
+| 기록 발생일 | `occurredOn` | `occurred_on` | `occurredOn` | 사용자가 적는 일어난 날(`LocalDate`). `occurredAt`(이벤트 시각)·`createdAt`과 다르다 |
 | 저장소 URL | `repoUrl` | `repo_url` | `repoUrl` | 저장만 한다. 서버는 fetch하지 않는다(`07` §5.5) |
 | 추천 사유 | `ReasonCode`, `reasonCodes` | `reason_codes` | `reasons[]` | |
 | 점수 내역 | `ScoreBreakdown scoreBreakdown` | `score_breakdown` | (MVP 비노출) | |

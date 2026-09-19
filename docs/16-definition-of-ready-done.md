@@ -1,6 +1,6 @@
 # 16. Definition of Ready / Done
 
-> Status: Accepted (v2) · Last updated: 2026-09-19 · Related: `11-development-roadmap.md` §7, `12-acceptance-criteria.md`, `13-product-backlog.md`, `08-coding-conventions.md`, `09-test-and-quality.md`
+> Status: Accepted (v2) · Last updated: 2026-09-20 · Related: `11-development-roadmap.md` §7, `12-acceptance-criteria.md`, `13-product-backlog.md`, `08-coding-conventions.md`, `09-test-and-quality.md`
 >
 > BL 작업을 시작해도 되는 조건(DoR)과 끝났다고 말할 수 있는 조건(DoD)의 **유일한 기준**이다. 다른 문서의 체크리스트는 이 문서를 참조한다. 사람과 에이전트에 똑같이 적용한다.
 
@@ -26,6 +26,7 @@
 | R-12 | 화면 작업이면 SCR ID, 상태(loading/empty/error/AI unavailable), 문구가 `02-user-scenarios-and-ux.md`에 있다 | 해당 화면 |
 | R-13 | 규칙 클래스(`06`의 test vector가 있는 것)를 만드는 작업이면, vector를 옮긴 `@ParameterizedTest`가 같은 PR에 있거나 먼저 merge되었다 | PR |
 | R-14 | 작업 크기: 에이전트 지시 1회에 BL 최대 3개, 변경 파일 예상 30개 이하. 넘으면 BL을 나눈다 | 계획 |
+| R-16 | 학습 트랙을 추가·변경하는 BL이면, 그 트랙의 role target·plan template 파일과 `devpilot.tracks.<트랙>` 항목이 모두 있고 `ContentValidator`(CV-21·CV-25·CV-26·CV-30·CV-36)를 통과한다(`19-content-spec.md` §10.4 A) | 콘텐츠 PR, 설정 diff |
 | R-15 | `READ_CODE` 콘텐츠를 적재·제안하는 BL(`BL-CNT-15`, `BL-TDY-16`, `BL-CNT-16`)이면, S3 구현 시작 전 첫 소스 점검(`19-content-spec.md` §8.5)을 마쳤고 사용자가 고른 추가·교체·은퇴가 `content/curated-repos.yaml`에 반영되어 있다(바꿀 것이 없다는 결정도 기록) | 소스 점검 기록(콘텐츠 PR 설명) |
 
 ---
@@ -54,7 +55,7 @@
 - [ ] migration 추가 시 `database/schema.sql`을 같은 PR에서 갱신했고, 빈 DB → 전체 migration → `ddl-auto=validate` 테스트가 통과한다
 - [ ] 파괴적 변경(컬럼 삭제·타입 축소)은 2단계 배포 절차를 따랐다
 - [ ] API 변경 시 `docs/api/openapi.yaml` 스냅샷을 갱신했고(CI diff 통과), `05-api-spec.md`와 Dart 모델을 같은 PR에서 맞췄다
-- [ ] enum 값을 추가했으면 `04-domain-model-and-db.md` §3, DB CHECK, Java, Dart, OpenAPI가 모두 같다
+- [ ] enum 값을 추가했으면 `04-domain-model-and-db.md` §3, DB CHECK, Java, Dart, OpenAPI가 모두 같다. **기존 enum에 값을 더했으면** 그 값을 쓰는 CHECK를 새 migration에서 재생성했다(`04` §10.1 방식)
 - [ ] seed 콘텐츠 변경은 `ContentValidator`와 CI content job을 통과했고 `catalog_version`을 올렸다
 
 **보안·개인정보**

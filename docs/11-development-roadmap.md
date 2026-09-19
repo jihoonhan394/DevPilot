@@ -1,6 +1,6 @@
 # 11. Development Roadmap
 
-> Status: Accepted (v3) · Last updated: 2026-09-19 · Related: `13-product-backlog.md`, `12-acceptance-criteria.md`, `16-definition-of-ready-done.md`, `20-decisions-and-risks.md`, ADR-003, ADR-005, ADR-030, ADR-031, ADR-032, ADR-036, ADR-037
+> Status: Accepted (v3) · Last updated: 2026-09-20 · Related: `13-product-backlog.md`, `12-acceptance-criteria.md`, `16-definition-of-ready-done.md`, `20-decisions-and-risks.md`, ADR-003, ADR-005, ADR-030, ADR-031, ADR-032, ADR-036, ADR-037, ADR-040
 >
 > 목표는 **M1(S0~S3)을 최대한 빨리 끝내고 DevPilot으로 매일 공부하기 시작하는 것**이다. 단계에는 날짜가 없다 — exit criteria를 통과하면 끝난다. 목표일은 사용자가 설정창에 등록하는 값(`learning_goal.target_completion_date`)이고, 개발 일정이 아니다.
 >
@@ -82,10 +82,10 @@ S0~S7은 **구현 순서를 나타내는 단계 ID**다. 기간·날짜가 없�
 | M1 | **S0** | Bootstrap + walking skeleton + 수동 배포 + spike | FND-01~07·22, SEC-03·07·09·12·16, OPS-01·02·04~07·09·10·21, CLI-01~03 | CI green(`main`·`developer`), `https://<tailnet-host>`에서 dev 로그인(`POST /api/v1/dev/token`) → `/me` 200(AC-25), SP-1~4 결론 ADR 기록, `deploy.sh` 배포 + 롤백 확인, 배포 환경 확인 |
 | M1 | **S1** | Identity · Onboarding(진단 선택·사이드 프로젝트) · Goal · Plan · seed v0 | FND-08~14·20·21, SEC-04~06·14, AIP-16, CLI-04~11·32, GOL-01~06, SKL-01~02, CNT-01~05, PRJ-01 | AC-01, AC-11(온보딩 — seed 카드·snapshot·진단 풀이 생략), AC-18, AC-25(allowlist 재확인), AC-24, AC-27(사이드 프로젝트 CRUD), AC-08(S1 endpoint), AC-09(planning level), AC-15(`DELETE /me` 상태 변경), 배포 환경 확인 |
 | M1 | **S2** | Today · Session · Review(교차 학습, AI 없음) · **기한 역산(budget·risk·축소/확장 제안)** · Dashboard 최소 · PWA · 백업 자동화 | FND-15, SEC-10·11, OPS-11~13·19, CLI-12·13·15~17·19·25, GOL-07~14·17, SKL-03, TDY-01~11, MEM-01~06·08·12, CNT-06 | AC-02, AC-03, AC-05(복습 스케줄), AC-10, AC-11(seed 카드), AC-17, AC-29, AC-30, AC-08(S2 endpoint), 배포 환경 확인 |
-| M1 | **S3** | AI Platform(DeepSeek) · Training · 진단 · Skill updater · **러버덕 · 코드 읽기** · 수동 카드 · evals | FND-16·23~26, OPS-15, CLI-14·20~23·33·34, SKL-04~06, TDY-14·16, MEM-07·09, TRN-01~03·05~13, AIP-01~03·05~13·15·17, RDK-01~04, CNT-07~10·15·16 | AC-04, AC-05(challenge 실패·수동 카드), AC-09, AC-11(진단), AC-12, AC-13, AC-14(submission·러버덕), AC-16(challenge), AC-23, AC-26, AC-28, 배포 환경 확인 → **실사용 시작** |
-| M2 | **S4** | Project Coach · CSP 강제 | FND-17, SEC-08, CLI-24, COA-01~10, CNT-11 | AC-06, AC-07(coach E2E), AC-12(coach 재검증), AC-14, AC-16(coach), AC-19(기록), AC-23(coach 재검증), 배포 환경 확인 |
+| M1 | **S3** | AI Platform(DeepSeek) · Training · 진단 · Skill updater · **러버덕 · 코드 읽기** · **학습 트랙 2종** · **프로젝트 기록** · 수동 카드 · evals | FND-16·23~27, OPS-15, CLI-14·20~23·33~36, SKL-04~06, TDY-14·16, MEM-07·09, TRN-01~03·05~13·16, AIP-01~03·05~13·15·17, RDK-01~04, PRJ-02, GOL-18, CNT-07~10·15~17 | AC-04, AC-05(challenge 실패·수동 카드), AC-09, AC-11(진단), AC-12, AC-13, AC-14(submission·러버덕·프로젝트 기록), AC-16(challenge), AC-23, AC-26, AC-28, AC-32, AC-33, 배포 환경 확인 → **실사용 시작** |
+| M2 | **S4** | Project Coach · CSP 강제 · **재현 과제** | FND-17, SEC-08, CLI-24·37, COA-01~10, TDY-17·18, TRN-17, RDK-05, SKL-08, CNT-11 | AC-06, AC-07(coach E2E), AC-12(coach 재검증, 재현 과제), AC-14, AC-16(coach), AC-19(기록), AC-23(coach 재검증), AC-31, 배포 환경 확인 |
 | M2 | **S5** | Weekly · Dashboard 완성 · 캘린더 · AI 문제 생성 · 실측 튜닝 | FND-18, CLI-18·26, SKL-07, TDY-12·13, TRN-04, EVD-01~04, AIP-14, CNT-14 | AC-12(402·content_filter), AC-19(추세), AC-21(weekly), FR-20(캘린더), 배포 환경 확인 |
-| M2 | **S6** | Evidence · Export · 복구 리허설 · 하드닝 | SEC-13·15, OPS-16~18, CLI-27~28, EVD-05~08, CNT-12 | AC-15(export), AC-21(evidence), AC-08·AC-18 전체 재검증, 복구 리허설 1회 기록, 배포 환경 확인 |
+| M2 | **S6** | Evidence · Export · 복구 리허설 · 하드닝 | SEC-13·15, OPS-16~18, CLI-27~28, EVD-05~09, CNT-12 | AC-15(export), AC-21(evidence), AC-33(프로젝트 기록 → 증거 초안), AC-08·AC-18 전체 재검증, 복구 리허설 1회 기록, 배포 환경 확인 |
 | M2 | **S7** | 로드맵 비교 | FND-19, CLI-29, REQ-01~04, CNT-13 | AC-22, 배포 환경 확인 |
 | — | **Later** | 현재 계획 밖 | OPS-20·22, SEC-17, CLI-30·31, GOL-15·16, MEM-10·11, TDY-15, TRN-14·15, COA-11, REQ-05. **`BL-SEC-18`(공개 인증)은 Later가 아니라 공개 전환 게이트의 필수 선행(P0)이다 — §3.10** | AC-20(Supabase 도입 시), AC-15(삭제 job) |
 
@@ -93,6 +93,7 @@ S0~S7은 **구현 순서를 나타내는 단계 ID**다. 기간·날짜가 없�
 
 범위 조정 기록:
 - (2026-09-18 v2) 공개 인증은 단계 범위 밖(`BL-SEC-18` — 공개 전환 게이트의 필수 선행, §3.10), `POST /plans` Later(`BL-GOL-16`), `REVIEW_VARIANT` Later(`BL-MEM-10`), 계정 삭제 job Later(`BL-SEC-17`, `DELETE /me` 상태 변경은 S1), 수동 카드 CRUD는 S3, Trivy·CodeQL·digest 고정은 S2 P1(`BL-SEC-10`). S1 온보딩은 8·9단계(seed 카드 배정·snapshot)를 생략한다(`assignedSeedCardCount = 0`, `latestRiskLevel = null`).
+- (2026-09-20, DEC-29~31 / ADR-040) **학습 트랙 2종**(`BL-GOL-18`, `BL-CNT-17`, `BL-CLI-36`, `BL-TRN-16`)과 **사이드 프로젝트 결정·장애 기록**(`BL-PRJ-02`, `BL-CLI-35`)은 **S3**이다 — 둘 다 실사용 시작 시점에 있어야 한다(두 번째 학습자가 같은 날 시작할 수 있어야 하고, 프로젝트의 결정·장애는 그때부터 쌓인다). **재현 과제**(`BL-TDY-17`·`BL-TDY-18`, `BL-RDK-05`, `BL-TRN-17`, `BL-SKL-08`, `BL-CLI-37`)는 **S4**다 — 창(3~7일) 특성상 첫 재현은 실사용 시작 뒤에야 생기고, 잠금이 S3 P0인 hint·러버덕 위에 붙는다. 세 기능이 함께 쓰는 `V10` migration(`BL-FND-27`)은 S3에 넣는다.
 - (2026-09-18 v3, DEC-25) **budget·risk·replan 제안(축소·확장)은 S5 → S2** — "목표일을 등록하면 중요한 것 위주로"가 MUST이고 risk는 planner 입력이다. 이제 S2부터 `deadline_risk`가 계산된다. **ICS 캘린더·AI 문제 생성(`BL-TRN-04`)은 S3 → S5**, **CSP 강제(`BL-SEC-08`)는 S3 → S4**(실사용 시작이 S3 완료로 옮겨졌으므로), **evals v1(`BL-AIP-13`)은 S4 → S3**(러버덕 prompt 품질을 M1 안에서 확인), 진단(`BL-TRN-13`·`BL-CLI-23`·`BL-CNT-08`)은 S3 P1 → P0. 새 BL: 사이드 프로젝트(`BL-PRJ-01`, `BL-CLI-32`)는 S1, 교차 학습(`BL-MEM-12`)·확장 제안(`BL-GOL-17`)은 S2, 러버덕(`BL-RDK-01~04`, `BL-CLI-33`)·코드 읽기(`BL-TDY-16`, `BL-CNT-15`, `BL-CLI-34`)는 S3.
 
 ### 3.2 S0 — Bootstrap
@@ -152,6 +153,8 @@ S0~S7은 **구현 순서를 나타내는 단계 ID**다. 기간·날짜가 없�
 
 - 순서: `BL-AIP-15`(DeepSeek 잔액 소액 충전·`AiBalanceCheckJob`·동의 문구)와 `BL-OPS-15`(키 유출 runbook) 완료 전에는 prod provider를 `deepseek`로 바꾸지 않는다. 개발·테스트는 `fake`로 진행하고 실제 호출은 eval(`ai-eval.yml`, 1회 상한 USD 0.5, `BL-AIP-13`)에서만 한다.
 - 가장 무거운 단계다(항목 수는 `13-product-backlog.md` §5.1). 러버덕(`BL-RDK-*`)은 `AiGateway`(`BL-AIP-07`)·가드(`BL-AIP-08`)·`SecretMasker`(`BL-AIP-09`) 뒤에 붙는다. P1·P2 이월 순서는 같은 문서 §5.
+- **학습 트랙 2종**과 **프로젝트 기록**은 AI에 의존하지 않으므로 AI Platform과 **병렬로** 진행할 수 있다. 둘의 공통 선행은 `BL-FND-27`(`V10`)뿐이고, 트랙 쪽은 콘텐츠 작업(`BL-CNT-17`)이 임계 경로다 — role target 75개와 계획 템플릿을 새로 쓴다(`19` §10.4). 프로젝트 기록의 마스킹은 `BL-AIP-09`가 선행이다.
+- **두 번째 학습자**는 S3 완료 시점에 같이 시작한다. allowlist에 이메일을 하나 더 넣는 것은 설정 변경이고(DEC-01, 최대 3명), 계정은 서로 완전히 분리된다(`07` §4.3).
 - 코드 읽기는 서버가 저장소에 접근하지 않는다. 사용자가 `cloneHint`로 로컬에 clone하고 IDE로 읽는다(`07` §5.5, `19` §3.8).
 - **S3 시작 전 첫 소스 점검**(`19` §8.5, `BL-CNT-16`): `READ_CODE`가 처음 제안되기 전에 현재 저장소 3개·읽기 단위 13개를 점검한다. 에이전트가 빈틈 목록(skill별 reading 유무)과 저장소의 라이선스·유지 상태를 모아 추가·교체·은퇴 제안을 만들고, 사용자가 고른 것만 `content/curated-repos.yaml`에 반영한다(`pinnedCommit` 고정, 경로·줄 재확인, `validate_content.py`, `catalogVersion` +1). 라이선스가 없는 저장소(`restbucks`)가 먼저 교체 후보다. 이 시점에는 읽기 평가가 아직 없다.
 
@@ -168,11 +171,16 @@ S0~S7은 **구현 순서를 나타내는 단계 ID**다. 기간·날짜가 없�
 - [ ] 설정 화면 AI 사용량(오늘 호출 수, 이번 달 비용/USD 3, 잔액 상태) 표시. `ai_call_log`의 `provider = deepseek`, `cost_micro_usd`가 peak ×2 공식과 일치
 - [ ] `rubber.duck`·`rubber.duck.summary` eval 1회 결과(합격 기준 충족 여부)를 PR에 첨부
 - [ ] 첫 소스 점검(`19` §8.5) 결과 — 제안 목록과 사용자 결정, 반영한 콘텐츠 PR — 가 기록되어 있다
+- [ ] **학습 트랙**: 두 번째 테스트 계정으로 온보딩 1단계에서 "Java 백엔드 입문"을 골라 완료 → plan 제목·milestone 수가 입문 템플릿과 같고, `GET /skills/tree?role=JAVA_BACKEND_STARTER`의 MUST 수가 기본 트랙보다 적다. 같은 planning level에서 제안 난이도가 기본 트랙보다 낮고, KNOWLEDGE 1에서는 `READ_CODE` 대신 `READING`이 나온다. `PUT /learning-goal`로 트랙을 바꾸면 400 (AC-32)
+- [ ] **두 계정 분리**: 두 계정을 모두 온보딩한 상태에서 각자의 Today·Plan·기술·사이드 프로젝트·export에 상대 항목이 0건이다 (AC-08, AC-32 S7)
+- [ ] **프로젝트 기록**: SCR-PROJECTS 카드 → 상세 → "+ 장애 기록" → 네 항목 작성 → 저장 → 목록에 표시. 유형 필터, 수정(유형 입력 없음), 삭제. 프로젝트를 지우면 기록도 사라진다. 본문에 secret 문자열 → 마스킹, private key → 422 (AC-33, AC-14)
 - [ ] §2.2 단계 회고 기록
 
 **실사용 시작 조건 (M1 완료)**: S0~S3 exit criteria 전부 통과. 통과한 날을 **실사용 시작일**로 `20-decisions-and-risks.md`에 기록한다 — stop-loss(§6)와 성공 지표(`01`)의 기준일이다. 미달이면 미달 AC와 대체 사용 방법(예: Today·Review만 먼저 사용)을 같은 곳에 기록한다.
 
-### 3.6 S4 — Project Coach
+### 3.6 S4 — Project Coach · 재현 과제
+
+재현 과제(`BL-TDY-17`·`BL-TDY-18`)는 Coach와 독립적이라 순서에 제약이 없다. 잠금(`BL-RDK-05`, `BL-TRN-17`)은 S3의 러버덕·hint 위에 `learning.application.RedoLockProvider` port로 붙는다(`03` §2.2). 첫 재현 과제는 실사용 시작 뒤 3일이 지나야 나오므로, S4를 시작할 때 이미 원본이 쌓여 있다.
 
 데모 체크리스트:
 - [ ] SCR-COACH-NEW에 DeepSeek 동의 문구("코드는 AI 공급자 DeepSeek(중국 소재)로 전송되며 … 회사 코드를 붙여넣지 마세요.")가 동의 체크 옆에 표시된다
@@ -182,6 +190,9 @@ S0~S7은 **구현 순서를 나타내는 단계 ID**다. 기간·날짜가 없�
 - [ ] 원문 삭제 버튼 → content null, finding 유지
 - [ ] coach eval case 실행 결과 요약(합격 기준 충족 여부)을 PR에 첨부
 - [ ] 실사용 시작 후 1주 동안 CSP Report-Only 위반 0건 → `Content-Security-Policy` 강제 전환(`BL-SEC-08`)
+- [ ] **재현 과제**: 3일 전 힌트를 보고 푼 문제가 Today에 "혼자 다시 만들기"로 나오고, 카드에 잠금 안내가 보인다. 그 문제의 힌트 요청과 러버덕 시작이 409 `AI_ASSIST_LOCKED_FOR_REDO`이고 다른 대상은 정상이다. 완료 시트의 "AI 도움 없이 끝냈나요?"를 고르지 않으면 완료되지 않는다 (AC-31)
+- [ ] "네"로 완료 → skill 상세에 `I3_SOLVED_INDEPENDENT` 근거로 그 기록이 들어간다(조건이 찼을 때). "아니요"로 완료 → 다음 plan-day due 복습 카드가 생기고, 3~7일 뒤 같은 과제가 한 번 더 제안된다 (AC-31 S6)
+- [ ] provider=`disabled`로 재배포해도 재현 과제는 그대로 제안·완료된다. `ai_call_log` 새 행 0 (AC-12 S9)
 
 ### 3.7 S5 — Weekly · Dashboard · 캘린더 · AI 문제 생성
 
@@ -197,6 +208,7 @@ S0~S7은 **구현 순서를 나타내는 단계 ID**다. 기간·날짜가 없�
 
 데모 체크리스트:
 - [ ] 독립 해결 이벤트로 evidence 초안 → 편집 → accept → skill `evidence_count` 증가
+- [ ] 사이드 프로젝트의 장애 기록 하나로 초안 요청(`sourceProjectNoteId`) → STAR 초안에 그 기록의 내용이 반영되고 evidence skill이 기록의 skill이다 (AC-33 S9)
 - [ ] 학습 기록(STAR) Markdown export 다운로드
 - [ ] `GET /me/export` JSON에 모든 섹션 존재
 - [ ] `account-deletion` runbook 리허설: 테스트 계정 `DELETE /me` → allowlist 제거 → 재기동 → 그 이메일로 `/api/v1/dev/token` 403(자동 삭제 job은 Later `BL-SEC-17`)

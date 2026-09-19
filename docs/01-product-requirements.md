@@ -1,6 +1,6 @@
 # 01. Product Requirements (PRD)
 
-> Status: Accepted (v3) · Last updated: 2026-09-19 · Related: DEC-01, DEC-05, DEC-06, DEC-16, DEC-18, DEC-27, DEC-28, ADR-039, `02-user-scenarios-and-ux.md`, `04-domain-model-and-db.md`, `06-learning-engine-rules.md`, `11-development-roadmap.md`, `12-acceptance-criteria.md`
+> Status: Accepted (v3) · Last updated: 2026-09-20 · Related: DEC-01, DEC-05, DEC-06, DEC-16, DEC-18, DEC-27, DEC-28, DEC-29, DEC-30, DEC-31, ADR-039, ADR-040, `02-user-scenarios-and-ux.md`, `04-domain-model-and-db.md`, `06-learning-engine-rules.md`, `11-development-roadmap.md`, `12-acceptance-criteria.md`
 >
 > 이 문서는 **무엇을, 왜, 어느 단계(S0~S7)에** 만드는지 정의한다. 알고리즘 수치는 `06-learning-engine-rules.md`, enum·상태 전이는 `04-domain-model-and-db.md`, 요청·응답 DTO는 `05-api-spec.md`, 화면은 `02-user-scenarios-and-ux.md`가 기준이다. 여기서 ID(FR, NFR)를 정의하고 다른 문서는 이 ID로 참조한다.
 >
@@ -41,6 +41,9 @@ DevPilot은 **사용자가 스스로 정한 목표일까지 실무에 쓰이는 
 | P-7 | 스스로 정한 목표일이 있어 모든 기술을 완벽히 공부할 수 없다. 반대로 여유가 있을 때는 무엇을 더 깊이 할지 모른다 | 기한 역산 양방향 — 촉박하면 필수 위주 축소, 여유 있으면 깊이 확장 제안(FR-05) |
 | P-8 | 공부한 내용이 내 말로 설명할 수 있는 형태로 남지 않아, 무엇을 왜 그렇게 했는지 나중에 되짚기 어렵다 | 사이드 프로젝트 결과물(FR-26), 러버덕으로 설명해 본 기록(FR-25), 학습 기록 정리 (STAR) export(FR-18) |
 | P-9 | 교재 예제는 너무 간단해서 **실무 코드가 어떻게 생겼는지** 모른다 | 검증된 오픈소스의 파일 1개·줄 범위 1개 읽기(FR-27) |
+| P-10 | AI가 거들어 풀린 것을 "이해했다"로 착각한다 | 며칠 뒤 **AI 없이 혼자 다시 만드는 재현 과제**(FR-28) |
+| P-11 | 프로젝트에서 왜 그렇게 정했고 무엇이 터졌는지 며칠 뒤면 흐려진다 | 프로젝트 **결정·장애 기록**(FR-29) |
+| P-12 | 수준이 다른 사람과 같은 계획을 쓰면 한쪽에는 너무 어렵거나 너무 쉽다 | 학습자마다 **학습 트랙**을 고른다(FR-03) |
 | P-10 | 개념을 배우고 연습문제를 풀어도 **직접 만들어 보지 않아** 쓸 줄 모르고, **남에게 설명해 보지 않아** 어디를 모르는지 모른다 | 사이드 프로젝트 과제(FR-26), 러버덕(FR-25) |
 
 v2까지의 학습 루프는 **개념 → 연습문제 → 복습**이었다. 이 루프에는 "만든다"와 "설명한다"가 비어 있었다(P-9, P-10). v3는 루프를 **읽는다 → 만든다 → 설명한다 → 반복한다 → 증거가 된다**로 다시 세운다(§5).
@@ -95,6 +98,7 @@ v2까지의 학습 루프는 **개념 → 연습문제 → 복습**이었다. �
 
 - 사용자는 **소유자 1명 + 초대 최대 2명**이다. backend allowlist(`devpilot.security.allowed-emails`/`allowed-subjects`)로만 접근을 허용한다.
 - 사용자 간 데이터 공유, 조회, 비교 기능은 없다. 모든 데이터는 `user_id`로 격리한다(I-15).
+- **두 사람이 같은 주제의 사이드 프로젝트를 공부해도 계정은 완전히 분리된다.** 서로 다른 학습 트랙(FR-03)을 고를 수 있고, 계획·기록·증거·프로젝트 기록은 공유되지 않으며 상대의 진행 상황을 보는 기능도 없다(`07` §4.3).
 - `UserRole.ADMIN`은 운영 작업용이다. MVP에 ADMIN 전용 화면은 없다.
 
 ### 3.2 Persona — 목표일을 정해 스스로 공부하는 개발자
@@ -105,7 +109,9 @@ v2까지의 학습 루프는 **개념 → 연습문제 → 복습**이었다. �
 | 목표 | 설정에 등록한 목표일(예: 2027-04-01)까지 Java 백엔드 학습 트랙의 필수 역량을 실무 수준으로 끌어올린다 |
 | 제약 | 주당 학습 시간이 한정되어 있다(평일은 짧게, 주말은 길게). 매일 무엇을 할지 고르는 데 시간을 쓰고 싶지 않다 |
 | 주 사용 패턴 | 평일 저녁 30~60분(데스크톱: 코드 읽기·러버덕), 짬 시간 5분 복습(모바일 PWA), 주말 사이드 프로젝트(주문 시스템) 구현·코드 리뷰 |
-| 제품에 기대하는 것 | 매일 할 일 1개(FR-07), 이미 아는 기초를 반복하지 않기(온보딩 진단 FR-02·FR-15), 목표일까지 남은 시간으로 무엇을 미루고 무엇을 더할지 결정(FR-05), 막혔을 때 답이 아니라 되묻는 질문과 단계적 힌트(FR-25, FR-10), 실무 코드를 읽고 설명하는 힘(FR-27, FR-25), 기초 개념의 반복 회상(FR-11), 따라 만들 수 있는 정석 프로젝트(FR-26), 실무 문제 인지력의 증거(FR-12, FR-18) |
+| 제품에 기대하는 것 | 매일 할 일 1개(FR-07), 이미 아는 기초를 반복하지 않기(온보딩 진단 FR-02·FR-15), 목표일까지 남은 시간으로 무엇을 미루고 무엇을 더할지 결정(FR-05), 막혔을 때 답이 아니라 되묻는 질문과 단계적 힌트(FR-25, FR-10), 실무 코드를 읽고 설명하는 힘(FR-27, FR-25), **AI 없이 혼자 다시 만들 수 있는지 확인**(FR-28), 기초 개념의 반복 회상(FR-11), 따라 만들 수 있는 정석 프로젝트와 그 과정의 기록(FR-26, FR-29), 실무 문제 인지력의 증거(FR-12, FR-18) |
+
+> 같은 사이드 프로젝트 주제를 **개발을 막 시작한 사람**이 함께 공부할 수 있다. 그때는 입문 학습 트랙(`JAVA_BACKEND_STARTER`, FR-03)을 고른다 — 필수 skill이 적고 목표 레벨과 과제 난이도가 낮다. 계정은 서로 완전히 분리된다(§3.1).
 
 ### 3.3 속성 사용 규칙
 
@@ -148,7 +154,12 @@ v2까지의 학습 루프는 **개념 → 연습문제 → 복습**이었다. �
  반복한다      막힌 지점이 복습 카드가 된다 (간격 반복 + 교차 학습)       복습 (FR-11)
    ↓
  증거가 된다   내 말로 설명할 수 있는 형태로 정리된다                      skill state (FR-06), Evidence (FR-18)
+   ↓
+ 혼자 해낸다   며칠 뒤 같은 것을 AI 없이 처음부터 다시 만든다             재현 과제 REDO (FR-28)
 ```
+
+- "혼자 해낸다"가 마지막에 붙는 이유: 앞의 다섯 단계는 모두 **도움을 받는 상태**에서 일어난다. 실력의 증거는 도움이 없을 때 남는다. 재현 과제는 그래서 며칠을 기다렸다가, AI를 잠근 채 같은 것을 다시 만들게 한다(FR-28).
+- "만든다"에서 내린 결정과 겪은 장애는 그 자리에서 **프로젝트 기록**으로 남긴다(FR-29). 나중에 "설명한다"와 "증거가 된다"의 재료가 된다.
 
 - 학습 순서는 과목이 아니라 **주문 시스템을 만드는 순서**다: 기반 다지기 → 회원과 인증 → 상품과 CRUD → 주문 생성 → 취소와 환불 → 조회 성능(1~6 MUST) → 구조 정리 → 배포와 운영 → 설명과 정리(7~9 SHOULD). 기한이 촉박하면 7~9부터 미루거나 줄인다(FR-04, FR-05).
 - 이 루프를 **얼마나 깊이** 돌릴지는 사용자가 등록한 목표일로 역산한다(FR-05): 촉박하면 필수(MUST) 위주로 줄이는 안, 여유 있으면 미룬 항목 복원·목표 상향 안을 제안한다.
@@ -241,7 +252,7 @@ v2까지의 학습 루프는 **개념 → 연습문제 → 복습**이었다. �
 
 S0~S7은 **구현 순서를 나타내는 단계 ID**다. 기간·날짜·일수가 없고, 단계는 exit criteria(`11-development-roadmap.md` §3)를 통과하면 끝난다. 단계는 두 묶음이다.
 
-- **M1 — 쓸 수 있는 최소 (S0 · S1 · S2 · S3)**: 온보딩(진단·사이드 프로젝트 등록) · 학습 계획 · 기한 역산 · 오늘 할 일 · 코드 읽기 · 러버덕 · 복습(교차 학습) · 레벨 갱신 · 로그인 · 배포. **S3 완료 = M1 완료 = 실사용 시작(매일 쓰기 시작).** S2가 끝나면 AI 없이 Today·Review만 먼저 써도 된다(선택).
+- **M1 — 쓸 수 있는 최소 (S0 · S1 · S2 · S3)**: 온보딩(학습 트랙 선택·진단·사이드 프로젝트 등록) · 학습 계획 · 기한 역산 · 오늘 할 일 · 코드 읽기 · 러버덕 · 프로젝트 결정·장애 기록 · 복습(교차 학습) · 레벨 갱신 · 로그인 · 배포. **S3 완료 = M1 완료 = 실사용 시작(매일 쓰기 시작).** S2가 끝나면 AI 없이 Today·Review만 먼저 써도 된다(선택).
 - **M2 — M1을 쓰면서 필요한 순서로 (S4 · S5 · S6 · S7)**: Coach 코드 리뷰, 주간 리뷰·Dashboard 완성, 캘린더, AI 문제 자동 생성, 증거·export, 로드맵 비교. 단계 순서는 잠정이다.
 - 목표일은 사용자가 설정에 등록하는 값(`learning_goal`)이고 단계 진행과 무관하다. 문서에 목표일·실사용 시작 날짜를 상수로 쓰지 않는다.
 
@@ -250,12 +261,12 @@ S0~S7은 **구현 순서를 나타내는 단계 ID**다. 기간·날짜·일수�
 | M1 | S0 | Bootstrap, walking skeleton, 배포, spike | FR-01(로그인 왕복, `GET /me` 401→200) | — |
 | M1 | S1 | Identity · Onboarding · Goal · Plan · **사이드 프로젝트** · seed v0 | FR-01(allowlist, JIT), FR-02(목표·시간·자기평가·사이드 프로젝트 등록), FR-03, FR-04(9개 milestone 템플릿, milestone 편집, 최소 replan 저장), FR-06(조회, 자기평가 반영), FR-24, **FR-26(등록·조회·수정·삭제)** | AC-01, AC-11(온보딩·`sideProject`), AC-18, AC-24, AC-27 |
 | M1 | S2 | Today · Session · Review(AI 없음, **교차 학습**) · **Budget·Risk·Replan 제안(축소·확장)** · Dashboard 최소 · PWA | **FR-05**, FR-07, FR-08, FR-11(due, 답변, 스케줄, 수동 카드, 교차 학습), FR-16(최소), FR-21, FR-26(PROJECT_TASK 연결) | AC-02, **AC-03**, AC-05, AC-10, AC-17, AC-27(PROJECT_TASK), **AC-29**, **AC-30** |
-| M1 | S3 | AI Platform · Training · Skill updater · **온보딩 진단** · **코드 읽기** · **러버덕** — 완료 = 실사용 시작 | FR-02(진단 모드), FR-06(규칙 갱신, 이력), FR-09(seed challenge 풀이·평가), FR-10(challenge), FR-11(evaluate, variant, 러버덕 gaps 카드), FR-14(guard 기반), FR-15, FR-22, **FR-25**, **FR-27** | AC-04, AC-09, AC-11(진단), AC-12, AC-13, AC-16, AC-23, **AC-26**, **AC-28** |
-| M2 | S4 | Project Coach · evals v1 | FR-10(coach finding), FR-12(사이드 프로젝트 연결 포함), FR-13(기록), FR-14(finding 배지) | AC-06, AC-07, AC-14, AC-19, AC-12·AC-23 재검증 |
-| M2 | S5 | Weekly review · Dashboard 완성 · **캘린더 구독** · **AI 문제 자동 생성** | FR-09(AI 문제 생성), FR-13(추세), FR-16(완성), FR-17, FR-20 | AC-21(weekly) |
-| M2 | S6 | Evidence · Export · 계정 삭제 · 백업 · 하드닝 | FR-18, FR-23 | AC-08 재검증, AC-15, AC-20, AC-21(evidence) |
+| M1 | S3 | AI Platform · Training · Skill updater · **온보딩 진단** · **코드 읽기** · **러버덕** · **학습 트랙 2종** · **프로젝트 기록** — 완료 = 실사용 시작 | FR-02(진단 모드, 트랙 선택), FR-03(학습 트랙 2종), FR-06(규칙 갱신, 이력), FR-09(seed challenge 풀이·평가), FR-10(challenge), FR-11(evaluate, variant, 러버덕 gaps 카드), FR-14(guard 기반), FR-15, FR-22, **FR-25**, **FR-27**, **FR-29** | AC-04, AC-09, AC-11(진단), AC-12, AC-13, AC-16, AC-23, **AC-26**, **AC-28**, **AC-32**, **AC-33** |
+| M2 | S4 | Project Coach · evals v1 · **재현 과제** | FR-10(coach finding), FR-12(사이드 프로젝트 연결 포함), FR-13(기록), FR-14(finding 배지), **FR-28** | AC-06, AC-07, AC-14, AC-19, **AC-31**, AC-12·AC-23 재검증 |
+| M2 | S5 | Weekly review · Dashboard 완성 · **캘린더 구독** · **AI 문제 자동 생성** | FR-09(AI 문제 생성), FR-13(추세), FR-16(완성), FR-17(`projectNoteCount`·`independentRedoCount` 포함), FR-20 | AC-21(weekly) |
+| M2 | S6 | Evidence · Export · 계정 삭제 · 백업 · 하드닝 | FR-18(프로젝트 기록 초안 포함), FR-23 | AC-08 재검증, AC-15, AC-20, AC-21(evidence), AC-33(초안 연결) |
 | M2 | S7 | 로드맵 비교 | FR-19 | AC-22 |
-| — | Later | 확장 | Android 앱, FSRS, code runner, IDE plugin, 데모 모드, 공휴일 반영, 다크 모드, 이메일·Push 알림, 다른 학습 트랙(값 추가 + 콘텐츠 작업, C-7) | — |
+| — | Later | 확장 | Android 앱, FSRS, code runner, IDE plugin, 데모 모드, 공휴일 반영, 다크 모드, 이메일·Push 알림, **세 번째 이후 학습 트랙**(다른 스택이면 skill tree부터 새로 쓴다, `19` §10.4), 학습 트랙 변경 | — |
 
 v3에서 옮긴 것(`11` §3, `13` §2): Budget·Risk·Replan 제안은 S5 → **S2**(목표일 역산은 MUST이고 risk는 planner 입력 `DEADLINE_RISK_MUST`이므로 Today와 같은 단계다 — 이제 S2부터 `deadline_risk`가 계산된다), 캘린더 구독·AI 문제 자동 생성은 S2·S3 → **S5**(M1에 필요 없다), 진단 제안은 S3 안에서 필수(P0)로 올렸다.
 
@@ -273,7 +284,7 @@ v3에서 옮긴 것(`11` §3, `13` §2): Budget·Risk·Replan 제안은 S5 → *
 - **관련 화면**의 SCR ID는 `02-user-scenarios-and-ux.md` §3에서 정의한다.
 - **Sprint** 칸의 값은 §7의 단계 ID(S0~S7)다. 기간이 없다.
 - **우선순위**: MUST = 해당 단계 완료 조건, SHOULD = 다음 단계로 넘길 수 있음.
-- v3에서 새로 쓴 FR(FR-25~27)은 **범위 밖** 줄을 둔다. 규칙 ID는 러버덕 RD-1~RD-7·코드 읽기 RC-1~RC-4(`06` §9.5), 사이드 프로젝트 SP-1~SP-3(FR-26)이다. 사이드 프로젝트 규칙 SP-n은 스파이크 SP-1~SP-5(`11` §4)와 다른 것이다.
+- FR-25~29는 **범위 밖** 줄을 둔다. 규칙 ID는 러버덕 RD-1~RD-7·코드 읽기 RC-1~RC-4·프로젝트 기록 PN-1~PN-4(`06` §9.5), 사이드 프로젝트 SP-1~SP-3(FR-26), 재현 과제 RE-1~RE-8(`06` §5.10)이다. 사이드 프로젝트 규칙 SP-n은 스파이크 SP-1~SP-5(`11` §4)와 다른 것이다.
 - 입력 상한은 `05-api-spec.md`가 서버 기준이며, 클라이언트는 `02` §3.2 표로 같은 값을 미리 검사한다.
 
 ### FR-01 인증·접근 제어 (devtoken, allowlist, JIT 사용자 생성)
@@ -338,22 +349,25 @@ v3에서 옮긴 것(`11` §3, `13` §2): Budget·Risk·Replan 제안은 S5 → *
 
 ### FR-03 학습 목표 관리
 
-**설명** — 학습 목표는 **무엇을(학습 트랙), 언제까지(목표일)** 두 가지다. 사용자는 학습 트랙, 목표일, 집중 skill을 조회·수정한다. **목표일은 사용자가 직접 등록하는 날짜 하나**이고(온보딩 ①, 설정의 "학습 목표"), DevPilot은 이 날짜로 남은 시간을 역산한다(FR-05). 계획의 마지막 milestone "설명과 정리"(만든 것을 설명으로 정리하고 CS 기초를 채우는 정리 단계)는 목표일 바로 앞에 놓인다(FR-04, `19` §5). 제품·문서에 목표일을 상수로 두지 않는다.
+**설명** — 학습 목표는 **무엇을(학습 트랙), 언제까지(목표일)** 두 가지다. 학습 트랙은 온보딩 1단계에서 둘 중 하나를 고른다 — **Java 백엔드**(`JAVA_BACKEND`)와, 개발을 막 시작한 사람을 위한 **Java 백엔드 입문**(`JAVA_BACKEND_STARTER`). 같은 skill 카탈로그를 쓰되 트랙마다 필수(MUST) skill 수와 목표 레벨, 과제 난이도 기본값이 다르다. 사용자는 학습 트랙, 목표일, 집중 skill을 조회·수정한다. **목표일은 사용자가 직접 등록하는 날짜 하나**이고(온보딩 ①, 설정의 "학습 목표"), DevPilot은 이 날짜로 남은 시간을 역산한다(FR-05). 계획의 마지막 milestone "설명과 정리"(만든 것을 설명으로 정리하고 CS 기초를 채우는 정리 단계)는 목표일 바로 앞에 놓인다(FR-04, `19` §5). 제품·문서에 목표일을 상수로 두지 않는다.
 
 **사용자 스토리** — As a 목표일을 정해 공부하는 사용자, I want 사정이 바뀌면 목표 날짜를 고치고 싶다, so that 계획과 위험 계산이 현실을 따라간다.
 
 **규칙**
 - 사용자당 학습 목표는 1개다(I-01). `GET /learning-goal`에서 없으면 `404 LEARNING_GOAL_NOT_FOUND`(온보딩 완료 사용자에게는 발생하지 않는다).
 - `PUT /learning-goal`은 전체 교체이며 `version`이 필수다. 불일치면 `409 CONCURRENT_MODIFICATION`.
-- 검증: `targetRole=JAVA_BACKEND`, `targetCompletionDate`는 오늘(plan-day)+1일 ~ +3년(`DATE_OUT_OF_RANGE`), `focusSkillCodes` 최대 10개·중복 없음·활성 catalog code.
+- 검증: `targetRole`은 `TargetRole` 값(`JAVA_BACKEND` | `JAVA_BACKEND_STARTER`), `targetCompletionDate`는 오늘(plan-day)+1일 ~ +3년(`DATE_OUT_OF_RANGE`), `focusSkillCodes` 최대 10개·중복 없음·고른 트랙에 role target이 있는 활성 catalog code.
+- **학습 트랙은 온보딩에서 정하고 이후 바꾸지 않는다.** `PUT /learning-goal`에 다른 트랙을 보내면 `400 VALIDATION_FAILED`(`VALUE_NOT_ALLOWED`)다 — 트랙을 바꾸면 role target·계획 템플릿·skill state 집합이 통째로 달라져 계획과 증거를 이을 수 없다(`19` §10.4).
+- 트랙이 정하는 것: role target 파일(필수 skill과 목표 레벨), 계획 템플릿(milestone 구성), planner 난이도 상한과 코드 읽기 진입 문턱(`devpilot.tracks.<트랙>`, `06` §5.3), 진단 제안 범위(FR-15). 그 밖의 규칙(점수, 복습 간격, 레벨 갱신, 기한 역산)은 트랙과 무관하게 같다.
+- 두 사용자가 서로 다른 트랙으로 같은 사이드 프로젝트 주제를 공부해도 계정은 완전히 분리된다 — 데이터 공유도, 서로의 진행 상황을 보는 기능도 없다(`07` §4.3).
 - `PUT`은 기존 목표만 교체한다. 목표가 없으면 `404 LEARNING_GOAL_NOT_FOUND`이고 새로 만들지 않는다(생성은 온보딩).
 - 날짜가 바뀌면 goal은 즉시 저장하고 활성 plan의 `replan_recommended=true`로 표시한다. **자동으로 replan하지 않는다**(`06` §11.1).
 - budget horizon은 `targetCompletionDate`다(`06` §3.1). 계획 템플릿 배치의 창도 오늘 ~ 목표일 하나다(`19` §5).
 - focus skill은 planner의 `projectNeed` factor다(`06` §5.4).
 
-**관련 API** — `GET /learning-goal`, `PUT /learning-goal`
-**관련 화면** — SCR-LEARNING-GOAL, SCR-SETTINGS("학습 목표" 행), SCR-PLAN
-**AC** — AC-01 · **Sprint** — S1 · **우선순위** — MUST
+**관련 API** — `GET /learning-goal`, `PUT /learning-goal`, `POST /onboarding`(`learningGoal.targetRole`), `GET /skills/tree?role=`
+**관련 화면** — SCR-LEARNING-GOAL, SCR-SETTINGS("학습 목표" 행), SCR-PLAN, SCR-ONBOARDING(1단계 트랙 선택)
+**AC** — AC-01, AC-32 · **Sprint** — S1 (학습 트랙 2종은 S3) · **우선순위** — MUST
 
 ### FR-04 학습 계획·milestone·계획 버전
 
@@ -439,7 +453,7 @@ v3에서 옮긴 것(`11` §3, `13` §2): Budget·Risk·Replan 제안은 S5 → *
 - 입력: `availableMinutes` 5~720, `energyLevel` `LOW|NORMAL|HIGH`, `force`(기본 false).
 - "오늘"은 plan-day다(`06` §2). plan-day당 `daily_plan` 1개(I-03), 활성 main task(PLANNED/IN_PROGRESS) 1개(I-04).
 - 후보·task 제안·factor·modifier·동점 처리는 `06` §5.2~5.5, 시간 배분은 `06` §5.6이다. AI를 쓰지 않는다.
-- task 제안 순서(`06` §5.3): CHALLENGE → **READ_CODE**(AI 사용 가능 + 해당 skill planning KNOWLEDGE ≥ 1(RC-3) + 선택 가능한 reading이 있을 때, FR-27) → READING → **PROJECT_TASK**(projectNeed + 컨디션 LOW 아님 + `ACTIVE` 사이드 프로젝트가 있을 때만, SP-1·SP-3) → EXPLAIN.
+- task 제안 순서(`06` §5.3): **REDO**(재현 창 안일 때, FR-28) → CHALLENGE → **READ_CODE**(AI 사용 가능 + 해당 skill planning KNOWLEDGE ≥ 트랙 문턱(RC-3) + 선택 가능한 reading이 있을 때, FR-27) → READING → **PROJECT_TASK**(projectNeed + 컨디션 LOW 아님 + `ACTIVE` 사이드 프로젝트가 있을 때만, SP-1·SP-3) → EXPLAIN. 난이도 상한과 코드 읽기 문턱은 학습 트랙이 정한다(FR-03).
 - `PROJECT_TASK` 제목·설명에는 사이드 프로젝트 이름과 skill 이름이 들어간다(SP-2, 예: "주문 시스템에 Spring Transaction 적용하기"). task에 `side_project_id`, `READ_CODE` task에 `reading_key`를 생성 시점에 고정한다(`05-api-spec.md` §8.1 `sideProjectId`, `readingKey`).
 - `READ_CODE`가 선택되면 이유 `READ_REAL_CODE`("{저장소 이름}에서 같은 문제를 어떻게 풀었는지 먼저 봅니다")가 붙는다(`06` §5.8).
 - due 복습이 있고 배분된 `reviewMinutes > 0`이면 `REVIEW` task 1개(`is_main=false`, `sort_order=0`)를 만든다. 가능 시간이 짧아 `reviewMinutes = 0`이면(예: 5분, `06` §5.6) 만들지 않고 `reviewTask = null`이다. 일일 복습 상한은 20장(복귀 모드 10장).
@@ -452,6 +466,7 @@ v3에서 옮긴 것(`11` §3, `13` §2): Budget·Risk·Replan 제안은 S5 → *
 - 후보 skill이 하나도 없으면(모든 목표 달성 등) main task를 만들지 않는다. due 복습이 있으면 REVIEW task만 만들고 `mainTask`는 `null`이다(`06` §5.2). 화면은 계획 조정을 안내한다.
 - `aiStatus`가 `DISABLED`·`BALANCE_EXHAUSTED`이면 planner는 `CHALLENGE`(평가가 AI에 의존)와 `READ_CODE`(완료 조건인 러버덕이 AI에 의존) task를 제안하지 않는다(`06` §5.3).
 - `READ_CODE` task의 `IN_PROGRESS → COMPLETED`는 그 task를 대상으로 한 러버덕 세션이 `COMPLETED`여야 한다(RC-1, FR-27). 아니면 `409 INVALID_STATE_TRANSITION`.
+- `REDO` task의 `IN_PROGRESS → COMPLETED`에는 `redoWithoutAi`(AI 도움 없이 끝냈는지) 답이 필요하다(RE-6, FR-28). 없으면 `400 VALIDATION_FAILED`.
 - task 상태와 학습 세션(FR-08)은 별개 리소스다. 클라이언트가 둘 다 갱신한다(`02` §4.2).
 
 **관련 API** — `POST /today/generate`, `GET /today`, `PATCH /today/tasks/{taskId}`
@@ -871,11 +886,11 @@ v3에서 옮긴 것(`11` §3, `13` §2): Budget·Risk·Replan 제안은 S5 → *
 
 **규칙**
 - 콘텐츠는 `content/curated-repos.yaml`이다 — 저장소(`key`, 이름, URL, 하위 경로, 라이선스, 스택, `why`, `cloneHint`, `pinnedCommit`)와 reading(`key`, 저장소, 파일 경로, 줄 범위, `skillCodes`, 예상 시간, `question`, `lookFor`). 형식·검증은 `19` §3.8·§4.1, 줄 번호는 `pinnedCommit` 기준이고 갱신은 콘텐츠 작업이다(`19` §8.4).
-- 과제 유형 `READ_CODE`. planner는 CHALLENGE 다음 순위로 제안한다(`06` §5.3): AI 사용 가능 + 해당 skill planning KNOWLEDGE ≥ 1 + 그 skill의 reading 중 완료하지 않았고 최근 14 plan-day 안에 제안하지 않은 것이 있을 때, `reading.key` 오름차순 첫 번째. 예상 시간 = reading의 `estimatedMinutes`, 난이도 2. 이유 `READ_REAL_CODE`.
+- 과제 유형 `READ_CODE`. planner는 CHALLENGE 다음 순위로 제안한다(`06` §5.3): AI 사용 가능 + 해당 skill planning KNOWLEDGE ≥ 학습 트랙의 문턱(`devpilot.tracks.<트랙>.read-code-min-knowledge`, 기본 트랙 1 / 입문 트랙 2) + 그 skill의 reading 중 완료하지 않았고 최근 14 plan-day 안에 제안하지 않은 것이 있을 때, `reading.key` 오름차순 첫 번째. 예상 시간 = reading의 `estimatedMinutes`, 난이도 2. 이유 `READ_REAL_CODE`.
 - 규칙 RC-1~RC-4(`06` §9.5):
   - **RC-1** `READ_CODE` 과제의 완료 조건은 **러버덕 세션 1개 완료**(`targetType = CODE_READING`, `targetId` = 그 task)다. 읽었다고 체크만 하는 것은 완료가 아니다 — 없으면 `PATCH … COMPLETED`가 `409 INVALID_STATE_TRANSITION`. 건너뛰기·미루기에는 조건이 없다.
   - **RC-2** 한 과제는 파일 1개·범위 1개다.
-  - **RC-3** planning KNOWLEDGE가 1 이상일 때만 제안한다. 아무것도 모르는 상태에서 코드를 읽으면 좌절한다 — 그때는 READING이 나온다.
+  - **RC-3** planning KNOWLEDGE가 학습 트랙의 문턱 이상일 때만 제안한다(FR-03). 아무것도 모르는 상태에서 코드를 읽으면 좌절한다 — 그때는 READING이 나온다.
   - **RC-4** 저장소가 로컬에 없으면 화면이 `cloneHint`(그 커밋으로 checkout하는 명령)를 먼저 보여준다. **서버는 저장소를 fetch하지 않는다.**
 - `GET /readings/{readingKey}`는 저장소 정보·파일 경로·줄 범위·질문·볼 지점·관련 skill만 준다. **코드 본문은 없다.** 사용자 소유 리소스가 아닌 공용 콘텐츠이고(인증은 필요), AI를 호출하지 않는다(비용 0).
 - 라이선스가 명시되지 않은 저장소(`UNSPECIFIED`, 현재 restbucks)는 **읽기만** 한다. 화면은 "코드 복사 금지"를 함께 보여주고, 콘텐츠·문서에 그 코드를 옮겨 적지 않는다(`19` §3.8).
@@ -889,6 +904,49 @@ v3에서 옮긴 것(`11` §3, `13` §2): Budget·Risk·Replan 제안은 S5 → *
 **관련 규칙** — RC-1~RC-4(`06` §9.5), `06` §5.3 READ_CODE 분기·reading 선택, `06` §5.8 `READ_REAL_CODE`
 **AC** — AC-28 · **Sprint** — S3 · **우선순위** — MUST
 **범위 밖** — 서버가 저장소를 clone·fetch하거나 코드 본문을 저장·표시·검색하는 것, 사용자가 임의 저장소·reading을 등록하는 것(큐레이션만), 여러 파일을 묶은 과제, 코드 실행(NG-7), 저장소 최신 커밋 자동 추적(`pinnedCommit` 갱신은 콘텐츠 작업), 평가로 저장소·단위를 자동 교체하는 것(소스 점검은 사람이 한다), IDE 플러그인(NG-1).
+
+### FR-28 재현 과제 (`REDO`, AI 없이 혼자 다시 만들기)
+
+**설명** — AI가 옆에서 거들 때 풀린 것은 "이해했다"처럼 느껴진다. 실제로 할 수 있는지는 **며칠 뒤 혼자 처음부터 다시 만들 때** 드러난다. 문제나 프로젝트 과제를 마치고 며칠 지나면 Today가 **재현 과제**를 제안한다 — 같은 것을, 처음부터, **AI 없이**. 그 과제가 열려 있는 동안에는 그 대상의 힌트와 러버덕이 잠긴다. 마칠 때 사용자는 질문 하나에 답한다: "AI 도움 없이 끝냈나요?" **성공한 재현만 독립 구현 증거로 센다.** 실패는 벌이 아니라 복습 카드가 되고, 며칠 뒤 다시 제안될 수 있다.
+
+**사용자 스토리** — As a AI와 함께 문제를 푼 사용자, I want 며칠 뒤 같은 것을 혼자 다시 만들어 보고 싶다, so that 내가 할 수 있는 것과 AI가 해 준 것을 구분할 수 있다.
+
+**규칙**
+- 규칙 RE-1~RE-8(`06` §5.10). 요약:
+  - **RE-1·RE-2 언제** — 원본은 `COMPLETED`인 `CHALLENGE`·`PROJECT_TASK`다. 원본을 마친(또는 지난 재현을 마친) 날로부터 **3~7일**(`devpilot.planner.redo.min-days-after`·`max-days-after`, 양 끝 포함) 사이의 plan-day에만 제안한다. 창을 놓치면 그 기회는 사라진다.
+  - **RE-3 몇 번** — 한 원본에 열려 있는 재현은 하나뿐이다. 성공하면 끝이고, 실패·건너뛰기는 시도로 세어 `max-attempts`(기본 2)까지다.
+  - **RE-4 크기** — 예상 시간은 원본 그대로다. 오늘 예산에 안 들어가면 오늘은 제안하지 않는다.
+  - **RE-5 잠금** — 재현 과제가 `PLANNED`·`IN_PROGRESS`인 동안 그 대상(원본의 challenge 또는 사이드 프로젝트)의 힌트 공개와 러버덕 시작은 `409 AI_ASSIST_LOCKED_FOR_REDO`다. 화면은 **이유를 보여 준다**. 다른 대상의 AI 기능과 복습·계획·기록은 그대로다.
+  - **RE-6 답** — 완료하려면 `redoWithoutAi`(예/아니오)가 필요하다. 답 없이 완료할 수 없다.
+  - **RE-7 실패** — `false`면 레벨 증거가 되지 않고 그 skill의 복습 카드가 생긴다(다음 plan-day due).
+  - **RE-8 증거** — `true`만 `I3_SOLVED_INDEPENDENT`의 독립 구현 증거로 센다(`06` §7.2). AI 상태와 무관하게 동작한다 — 재현 과제는 AI를 부르지 않는다.
+- Today 안에서의 자리: 같은 skill에서는 다른 제안보다 앞서지만(§5.3 0번), skill 사이 경쟁은 점수로 한다(modifier `REDO_DUE` ×1.30).
+
+**관련 API** — `GET /today`·`POST /today/generate`(`MainTaskView.redoSourceTaskId`·`redoSourceTaskType`·`redoWithoutAi`), `PATCH /today/tasks/{taskId}`(완료 + 필수 `redoWithoutAi`), `POST /challenge-attempts/{attemptId}/hints`·`POST /rubber-duck`(409 잠금)
+**관련 화면** — SCR-TODAY(REDO 카드·완료 시트의 질문), SCR-TRAINING-ATTEMPT·SCR-RUBBER-DUCK(잠금 안내)
+**관련 규칙** — RE-1~RE-8(`06` §5.10), HL-9(`06` §9.1), `06` §5.3 0번·§5.5 `REDO_DUE`·§5.8 `REDO_WITHOUT_AI`·§7.2 독립 구현 증거
+**AC** — AC-31 · **Sprint** — S4 · **우선순위** — MUST
+**범위 밖** — 제출물 비교·유사도 판정(무엇을 만들었는지 서버가 보지 않는다), "AI 없이 했는지"를 서버가 감시하거나 추정하는 것(사용자의 답을 그대로 믿는다), 재현 과제의 자동 채점, `READ_CODE`·`REVIEW`·`EXPLAIN` 과제의 재현, 잠금 우회 요청.
+
+### FR-29 사이드 프로젝트 결정·장애 기록
+
+**설명** — 사이드 프로젝트는 실력을 증명하는 자리인데, **무엇을 왜 골랐고 무엇이 어떻게 깨졌는지**는 며칠만 지나도 흐려진다. 프로젝트마다 두 가지 기록을 남긴다 — **결정 기록**(무엇을 골랐나 · 어떤 선택지가 있었나 · 왜)과 **장애 기록**(무엇이 잘못됐나 · 어떻게 찾았나 · 무엇으로 고쳤나 · 무엇으로 다시 막나). 텍스트와 날짜, 선택 skill 하나뿐이고 파일 첨부는 없다. 이 기록이 나중에 학습 기록 초안(FR-18)과 주간 리뷰(FR-17)의 재료가 된다.
+
+**사용자 스토리** — As a 주문 시스템을 만드는 사용자, I want 그때 왜 그렇게 정했고 무엇이 터졌는지 바로 적어 두고 싶다, so that 나중에 그 과정을 내 말로 설명할 수 있다.
+
+**규칙**
+- 규칙 PN-1~PN-4(`06` §9.5). 유형은 `DECISION`·`INCIDENT` 둘이고, 유형마다 채우는 항목이 정해져 있다(I-22). **유형은 생성 후 바꿀 수 없다** — 바꾸려면 지우고 다시 만든다.
+- 필드: `title` 1~200자(필수), `occurredOn`(필수, 오늘 이하), `skillCode`(선택), 본문 항목 각 1~4000자. 모든 텍스트는 저장 전 `SecretMasker`를 통과한다(private key면 `422`).
+- 기록은 **학습 이벤트를 만들지 않고 skill 레벨을 바꾸지 않는다**(PN-3, 자기 신고 텍스트다). 붙인 skill은 표시와 나중 초안 입력으로만 쓴다.
+- 목록은 `occurredOn` 최신순 cursor 페이지이고 유형으로 거를 수 있다. 다른 사용자의 프로젝트·기록은 없는 것과 같이 `404`.
+- 프로젝트를 지우면 그 프로젝트의 기록도 함께 사라진다. 삭제 확인 화면이 이를 알린다.
+- 이어지는 곳: `POST /evidence/drafts`의 `sourceProjectNoteId`(S6, FR-18)와 주간 리뷰 지표 `projectNoteCount`(S5, FR-17).
+
+**관련 API** — `POST /side-projects/{sideProjectId}/notes`, `GET …/notes`, `GET …/notes/{noteId}`, `PATCH …/notes/{noteId}`, `DELETE …/notes/{noteId}`, `POST /evidence/drafts`(`sourceProjectNoteId`)
+**관련 화면** — SCR-PROJECT-DETAIL, SCR-PROJECT-NOTE-EDIT, SCR-PROJECTS(기록 수 표시)
+**관련 규칙** — PN-1~PN-4(`06` §9.5), `06` §12 `projectNoteCount`
+**AC** — AC-33 · **Sprint** — S3 (증거 초안 연결 S6, 지표 S5) · **우선순위** — MUST
+**범위 밖** — 파일·이미지 업로드, 커밋·이슈 자동 연동, 기록으로 skill 레벨을 올리는 것, AI가 기록을 대신 쓰거나 검증하는 것, 기록 공유·공개.
 
 ---
 
@@ -959,3 +1017,7 @@ v3에서 새로 쓰는 말의 요약이다(정의는 `15`가 기준이다):
 | 확장 제안 | 여유가 있을 때 미뤄 둔 항목 복원·MUST 목표 +1을 제안하는 것. 축소 제안과 배타 (FR-05) |
 | 학습 목표 · 목표일 | 학습 목표 = 학습 트랙 + 목표일(날짜 하나). budget horizon이자 계획 배치의 끝 (FR-03) |
 | 소스 점검 | `READ_CODE` 저장소·읽기 단위를 사람이 주기적으로 다시 보는 절차 (FR-27, `19` §8.5) |
+| 학습 트랙 (`TargetRole`) | 무엇을 공부하는지. `JAVA_BACKEND`(Java 백엔드)와 `JAVA_BACKEND_STARTER`(Java 백엔드 입문) 둘. 필수 skill·목표 레벨·과제 난이도 기본값이 다르다 (FR-03) |
+| 재현 과제 (`REDO`) | 며칠 전에 마친 과제를 **AI 없이** 처음부터 다시 만드는 과제. 성공만 독립 구현 증거가 된다 (FR-28, `06` §5.10) |
+| 독립 구현 증거 | AI가 거들지 않은 상태에서 만들어 낸 기록. 독립 해결한 challenge 평가와 성공한 재현 과제 (`06` §7.2) |
+| 프로젝트 기록 | 사이드 프로젝트의 결정 기록(무엇을·선택지·왜)과 장애 기록(증상·발견·수정·예방) (FR-29) |

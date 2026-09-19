@@ -1,6 +1,6 @@
 # 14. Architecture Decision Records
 
-> Status: Accepted (v3) · Last updated: 2026-09-19 · Related: `20-decisions-and-risks.md`, `03-system-architecture.md`, `11-development-roadmap.md` §4
+> Status: Accepted (v3) · Last updated: 2026-09-20 · Related: `20-decisions-and-risks.md`, `03-system-architecture.md`, `11-development-roadmap.md` §4
 >
 > 되돌리기 비용이 큰 결정과 그 이유를 기록한다. 결정을 바꿀 때는 기존 ADR을 고치지 않고 `Superseded by ADR-xxx`로 표시한 뒤 새 ADR을 추가한다. 적용된 기본값(DEC)은 `20-decisions-and-risks.md` §1, 확인할 외부 사실은 같은 문서 §3이 기준이다.
 
@@ -10,7 +10,7 @@
 
 | 항목 | 규칙 |
 |---|---|
-| 새 ADR | 다음 번호(ADR-040~)로 추가. 필드: Status, Date, Context, Decision, Alternatives considered, Consequences, Related DEC |
+| 새 ADR | 다음 번호(ADR-041~)로 추가. 필드: Status, Date, Context, Decision, Alternatives considered, Consequences, Related DEC |
 | Status 값 | `Proposed`(에이전트 초안, 사용자 승인 전) · `Accepted` · `Superseded by ADR-xxx` |
 | 에이전트 | 문서 모순·미정 결정을 발견하면 구현을 멈추고 `Proposed` ADR 초안을 PR로 올린다(`11-development-roadmap.md` §7). `Accepted`로 바꾸는 것은 사용자만 한다 |
 | Spike 결과 | SP-1~SP-5 결과는 해당 ADR의 Consequences에 "SP-n 결과 (날짜)" 줄로 추가한다 |
@@ -59,6 +59,7 @@
 | ADR-037 | 날짜 없는 단계(M1/M2) | Accepted | DEC-25 |
 | ADR-038 | 첫 릴리스 전 migration 확정, 이후 불변 | Accepted | — |
 | ADR-039 | 학습 목표 = 학습 트랙 + 목표일 하나 | Accepted | DEC-27 |
+| ADR-040 | 실력을 증명하는 세 가지: AI 없는 재현 · 학습자별 트랙 · 프로젝트 기록 | Accepted | DEC-29, DEC-30, DEC-31 |
 
 ---
 
@@ -642,3 +643,48 @@
 **Alternatives considered** — 필수(MUST) 항목용 날짜를 따로 받아 배치 창과 horizon을 둘로 나누기(규칙이 두 갈래가 되고 사용자가 정할 값이 는다. "설명과 정리"의 위치는 템플릿 순서만으로 정해진다) · 개발 경험 프로필로 시작 수준이나 AI 맥락을 조정하기(자기 신고라 부정확하다. 진단과 증거 레벨이 같은 일을 더 정확하게 한다).
 
 **Consequences** — API: `LearningGoalView`·`LearningGoalUpdateRequest`·`LearningGoalInput`의 날짜 필드는 `targetCompletionDate` 하나이고, `OnboardingRequest`·`MeResponse`·`UpdateMeRequest`는 프로필 필드로 표시 이름·timezone·하루 시작 시각·학습 시간만 갖는다(`05` §3·§4·§5). DB: `learning_goal`의 날짜 컬럼은 `target_completion_date` 하나다(V2, ADR-038에 따라 첫 릴리스 전 확정). 목표일을 바꾸면 horizon과 배치 창이 함께 바뀌므로 활성 plan에 `replan_recommended = true`를 둔다(`06` §11.1). 화면에는 날짜 표시가 목표일 하나다(계획 헤더·설정 요약 "목표일 {date}", 타임라인의 목표일 표시).
+
+## ADR-040 실력을 증명하는 세 가지: AI 없는 재현 · 학습자별 트랙 · 프로젝트 기록
+
+- **Status**: Accepted · **Date**: 2026-09-20 · **Related DEC**: DEC-29, DEC-30, DEC-31
+
+**Context** — DevPilot이 재는 것은 "얼마나 공부했나"가 아니라 **무엇을 할 수 있게 됐나**다(`01` §5). 지금까지의 증거 경로에는 세 가지 빈틈이 있다.
+
+1. **도움을 받은 상태에서만 잰다.** challenge는 Hint Ladder와 함께 풀고, 코드 읽기는 러버덕으로 설명하며 끝난다. `06` §7.2의 "독립"은 그 한 번의 세션 안에서 힌트를 봤는지만 본다. AI가 옆에 있을 때 풀린 것은 이해한 것처럼 느껴지지만, 며칠 뒤 혼자 같은 것을 만들 수 있는지는 확인된 적이 없다.
+2. **학습자 하나를 전제한다.** `TargetRole`이 `JAVA_BACKEND` 하나여서 role target·계획 템플릿·과제 난이도가 모두 한 수준이다. 같은 사이드 프로젝트 주제를 **개발을 막 시작한 사람**이 함께 공부하면 필수 항목이 너무 많고 과제가 너무 어렵다.
+3. **프로젝트의 과정이 남지 않는다.** 사이드 프로젝트(`side_project`)는 이름·설명·저장소 주소만 있고, 그 안에서 **무엇을 왜 골랐는지**와 **무엇이 어떻게 깨졌는지**는 어디에도 기록되지 않는다. 며칠만 지나도 흐려지고, 나중에 설명(FR-25)이나 학습 기록(FR-18)을 만들 때 재료가 없다.
+
+셋은 따로 보면 별개 기능이지만 같은 질문의 세 면이다 — **누가, 무엇을, 정말로 할 수 있는가.**
+
+**Decision** —
+
+1. **재현 과제(`TaskType.REDO`, FR-28)를 둔다.** `CHALLENGE`·`PROJECT_TASK`를 마치고 **3~7일**(`devpilot.planner.redo.*`, 양 끝 포함) 뒤의 plan-day에 Today가 같은 것을 **AI 없이 처음부터 다시 만드는** 과제를 제안한다. 규칙은 `06` §5.10 RE-1~RE-8이다.
+   - **열려 있는 동안 그 대상의 AI 지원을 잠근다**(RE-5, HL-9): 그 challenge의 hint와 그 대상의 러버덕 시작이 409 `AI_ASSIST_LOCKED_FOR_REDO`다. 다른 대상과 복습·계획·기록은 그대로다. 잠금 판정은 `learning.application.RedoLockProvider` port(구현 `today`)로 한다.
+   - 완료할 때 **질문 하나**에 답한다(RE-6): "AI 도움 없이 끝냈나요?" 답은 `learning_task.redo_without_ai`와 `REDO_COMPLETED` payload에 남는다.
+   - **성공한 재현만 독립 구현 증거**다(RE-8). `06` §7.2의 `I3_SOLVED_INDEPENDENT`는 "독립 해결한 challenge 평가 **또는** 성공한 재현"을 `evidenceKey`로 구분해 센다. 실패는 벌이 아니라 복습 카드가 되고(RE-7), 창이 다시 열려 최대 2회까지 시도한다.
+   - 재현 과제는 **AI를 부르지 않으므로** `aiStatus`와 무관하게 동작한다.
+2. **학습 트랙을 둘로 한다(FR-03).** `TargetRole`에 `JAVA_BACKEND_STARTER`("Java 백엔드 입문")를 더한다. 트랙이 바꾸는 것은 네 가지뿐이다 — role target 파일(필수 skill 수와 목표 레벨), 계획 템플릿, planner 기본값(`devpilot.tracks.<트랙>`의 `max-task-difficulty`·`read-code-min-knowledge`), 진단 제안 범위. **점수·복습 간격·레벨 갱신·기한 역산 규칙은 두 트랙에서 같다.** skill 카탈로그도 공유한다(같은 Java 백엔드 스택이다). 트랙은 온보딩 1단계에서 고르고 **이후 바꾸지 않는다**. 두 사용자는 allowlist로 초대된 **독립 계정**이고 데이터 공유도 상호 조회도 없다(DEC-01, `07` §4.3).
+3. **사이드 프로젝트에 기록을 둔다(FR-29).** `side_project_note` 한 테이블에 **결정 기록**(무엇을 골랐나·선택지·왜)과 **장애 기록**(증상·발견·수정·예방)을 남긴다. 텍스트와 날짜, 선택 skill 하나뿐이고 파일 업로드는 없다. 유형은 생성 시 고정이고(PN-2) 본문 컬럼 조합은 DB CHECK로 강제한다(I-22). 기록은 **학습 이벤트를 만들지 않고 레벨을 바꾸지 않는다**(PN-3) — 자기 신고 텍스트이기 때문이다. 대신 주간 리뷰 지표(`projectNoteCount`)와 학습 기록 초안(`POST /evidence/drafts`의 `sourceProjectNoteId`)의 입력이 된다.
+
+세 기능이 함께 쓰는 스키마 변경은 `V10__track_notes_redo.sql` 하나로 묶는다(`04` §10.1). `V1`~`V9`는 고치지 않는다(ADR-038).
+
+**Alternatives considered** —
+
+- **재현 대신 기존 증거를 더 엄격하게** (예: 힌트를 본 풀이를 아예 증거에서 빼기) — 힌트는 막혔을 때 쓰라고 둔 것이고(FR-10), 쓰면 손해라는 신호를 주면 좌절한 채로 버티게 된다. 시간을 두고 다시 재는 쪽이 원리(간격 효과·인출 연습, `06` §6.0)와도 맞는다.
+- **재현 결과를 서버가 판정** (제출물 비교·유사도·AI 채점) — DevPilot은 사용자의 구현물을 받지 않는다(코드 읽기·프로젝트 과제 모두 로컬에서 한다). AI에게 "혼자 했는지"를 묻는 것은 `AGENTS.md`가 금지하는 "AI가 증거를 결정"하는 경로다. 질문 하나를 믿는다.
+- **잠금 없이 권고만** — 잠기지 않으면 막혔을 때 힌트를 보게 되고, 그러면 재현의 의미가 사라진다. 대신 잠금을 **그 대상·열려 있는 동안**으로 좁히고 화면이 이유를 먼저 보여 준다.
+- **트랙을 난이도 슬라이더 하나로** (같은 role target에 배율) — 입문자에게 필요한 것은 "같은 목록을 쉽게"가 아니라 **더 짧은 필수 목록**이다. 배율로는 MUST 수를 줄일 수 없다.
+- **입문 트랙에 별도 skill 카탈로그** — 같은 스택을 배우는데 카탈로그가 둘이면 증거·복습 카드·문제를 공유하지 못하고 콘텐츠가 두 배가 된다.
+- **트랙 변경 허용** — role target·계획 템플릿·`user_skill_state` 대상 집합이 통째로 달라져 계획과 증거를 이을 수 없다. 필요하면 별도 ADR로 마이그레이션 규칙을 정한다.
+- **기록을 러버덕 대화에서 자동 추출** — 러버덕은 대상이 있어야 시작하고 AI가 필요하다. 결정·장애는 AI 없이 즉시 남길 수 있어야 한다.
+- **기록을 skill 레벨 입력으로** — 자기 신고 텍스트라 흔들린다. `06` §7의 입력은 관찰된 행동(평가·복습·힌트)으로만 유지한다.
+
+**Consequences** —
+
+- **DB**: `V10` 하나로 `learning_task`에 `redo_source_task_id`·`redo_without_ai`(+ CHECK 3종, I-20·I-21), `side_project_note`(+ CHECK, I-22), 그리고 enum CHECK 재생성(`TargetRole`, `TaskType`, `LearningEventType`, `EventSourceType`, `ReviewItemSourceType`)이 들어간다. 인덱스 둘(`idx_learning_task_redo_candidate`, `idx_side_project_note_project`).
+- **API**: 새 오류 코드 `AI_ASSIST_LOCKED_FOR_REDO`(409)와 field error `VALUE_REQUIRED`. `PATCH /today/tasks/{taskId}`에 `redoWithoutAi`, `MainTaskView`에 `redoSourceTaskId`·`redoSourceTaskType`·`redoWithoutAi`, 프로젝트 기록 endpoint 5개, `POST /evidence/drafts`의 `sourceProjectNoteId`, `PUT /learning-goal`의 트랙 변경 차단.
+- **모듈**: `learning.application.RedoLockProvider` port가 하나 늘고(`today`가 구현) `project → skill`, `evidence → project` 의존이 추가된다. 새 규칙 클래스는 `today.domain.RedoTaskPolicy` 하나다.
+- **단계**: 학습 트랙과 프로젝트 기록은 **S3**(실사용 시작 시점에 둘 다 있어야 한다), 재현 과제는 **S4**(창 특성상 첫 재현은 실사용 시작 뒤에 생기고, 잠금이 S3의 hint·러버덕 위에 붙는다). `V10`은 S3다.
+- **콘텐츠**: 입문 트랙의 role target 75개와 계획 템플릿 1개를 새로 쓴다(`19` §10.4, `BL-CNT-17`). skill tree·복습 카드·challenge·curated repo는 그대로 쓴다.
+- **레벨 도달 속도**: `I3`에 도달하는 경로가 하나 늘지만 조건은 더 엄격해진 셈이다 — 힌트를 보고 푼 challenge는 여전히 증거가 아니고, 재현은 며칠을 기다려야 한다. `11` §1 R-8의 "M1은 K·I·E ≤ 3" 상한은 그대로다(재현 과제는 S4).
+- **AI 비용**: 0이 늘어난다. 재현 과제와 프로젝트 기록은 AI를 부르지 않고, 잠금은 오히려 hint·러버덕 호출을 줄인다.

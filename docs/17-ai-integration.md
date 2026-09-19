@@ -375,21 +375,22 @@ while est > op.input-token-budget:
 | 항목 | 값 |
 |---|---|
 | mode / timeout / retries | ASYNC / 120s / 1 |
-| trigger | `POST /evidence/drafts` (202). `sourceLearningEventId`의 `event_type` ∈ {`CHALLENGE_EVALUATED`, `COACH_FINDING_CLOSED`, `COACH_REVIEW_COMPLETED`, `SESSION_COMPLETED`}, 무효화되지 않은 본인 이벤트. 아니면 400 `VALIDATION_FAILED` |
-| 실행 | `EvidenceService`(candidate INSERT `generation_status=PENDING`, `skill_id`=event skill) → `EvidenceDraftTask` |
+| trigger | `POST /evidence/drafts` (202). 원천은 둘 중 하나다(`05` §14.5). **`sourceLearningEventId`**: `event_type` ∈ {`CHALLENGE_EVALUATED`, `COACH_FINDING_CLOSED`, `COACH_REVIEW_COMPLETED`, `SESSION_COMPLETED`, `REDO_COMPLETED`}, 무효화되지 않은 본인 이벤트. **`sourceProjectNoteId`**(S6): 본인 `side_project_note`(유형 제한 없음). 아니면 400 `VALIDATION_FAILED` |
+| 실행 | `EvidenceService`(candidate INSERT `generation_status=PENDING`, `skill_id` = 이벤트 또는 기록의 skill) → `EvidenceDraftTask` |
 | prompt id | `evidence.draft` |
 | input-token-budget | 6000 |
 | output | `EvidenceDraftOutput` (§4.8) |
 
 | 변수 | 타입 | 출처 | user | 절삭 |
 |---|---|---|---|---|
-| `eventType` | `LearningEventType` | `learning_event.event_type` | | — |
+| `sourceKind` | `LEARNING_EVENT` \| `PROJECT_NOTE` | 요청이 고른 원천 | | — |
+| `eventType` | `LearningEventType` 또는 `(없음)` | `learning_event.event_type` (기록 경로면 `(없음)`) | | — |
 | `skillCode`, `skillName` | string 또는 `(없음)` | `learning_event.skill_id` → `skill` | | — |
-| `eventFacts` | 줄 목록 `key: value` | `learning_event.payload` (`04` §6)에서 id 필드를 뺀 값, `plan_date` | | — |
-| `sourceDetail` | text | `CHALLENGE_EVALUATED`: challenge title·scenario, rubric criterion별 met, misconceptions, followUpQuestion / `COACH_FINDING_CLOSED`: finding summary·learningQuestion·ai_feedback·discovered_by·max_hint_level / `COACH_REVIEW_COMPLETED`: finding 요약 목록 / `SESSION_COMPLETED`: task title·description·actual_minutes | | 2, `TAIL_CHARS`, 500자 |
-| `learnerNotes` | TEXT | 라벨을 붙여 연결: attempt `self_explanation`, finding `user_response`, session `self_reflection` (있는 것만) | ✔ | 1, `TAIL_CHARS`, 300자 |
+| `eventFacts` | 줄 목록 `key: value` | `learning_event.payload` (`04` §6)에서 id 필드를 뺀 값, `plan_date`. 기록 경로면 `noteType`·`occurredOn` | | — |
+| `sourceDetail` | text | `CHALLENGE_EVALUATED`: challenge title·scenario, rubric criterion별 met, misconceptions, followUpQuestion / `COACH_FINDING_CLOSED`: finding summary·learningQuestion·ai_feedback·discovered_by·max_hint_level / `COACH_REVIEW_COMPLETED`: finding 요약 목록 / `SESSION_COMPLETED`: task title·description·actual_minutes / `REDO_COMPLETED`: 원본 과제 title·description, `withoutAi`, `difficulty`, 원본과의 간격(일) | | 2, `TAIL_CHARS`, 500자 |
+| `learnerNotes` | TEXT | 라벨을 붙여 연결: attempt `self_explanation`, finding `user_response`, session `self_reflection` (있는 것만). **기록 경로**면 그 기록의 `title`과 유형별 본문 항목 전부(라벨 = `02` SCR-PROJECT-NOTE-EDIT 문구). 모두 **마스킹본**이다 | ✔ | 1, `TAIL_CHARS`, 300자 |
 
-**후처리** (`EvidenceDraftTask` tx): `ai_draft_json` = 출력 + `promptVersion`, 편집 필드 `title/problem/analysis/action/result` 초기값 복사, `explanation_topics` 복사, `ai_call_id`, `generation_status=COMPLETED`, `status_updated_at`. 사용자가 편집해도 `ai_draft_json`은 바꾸지 않는다 (`04` §5.8).
+**후처리** (`EvidenceDraftTask` tx): `ai_draft_json` = 출력 + `promptVersion` + (기록 경로면) `sourceProjectNoteId`, 편집 필드 `title/problem/analysis/action/result` 초기값 복사, `explanation_topics` 복사, `ai_call_id`, `generation_status=COMPLETED`, `status_updated_at`. 사용자가 편집해도 `ai_draft_json`은 바꾸지 않는다 (`04` §5.8).
 
 **가드**: Language.
 

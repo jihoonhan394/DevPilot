@@ -1,8 +1,8 @@
 # 06. Learning Engine Rules
 
-> Status: Accepted (v3) · Last updated: 2026-09-19 · Related: ADR-008, ADR-009, ADR-017, ADR-018, ADR-039, `04-domain-model-and-db.md`, `19-content-spec.md`
+> Status: Accepted (v3) · Last updated: 2026-09-20 · Related: ADR-008, ADR-009, ADR-017, ADR-018, ADR-039, ADR-040, `04-domain-model-and-db.md`, `19-content-spec.md`
 >
-> Planner, study budget, deadline risk(축소·확장 양방향), 복습 스케줄(교차 학습 포함), skill 레벨 갱신, attempt 판정, Hint Ladder, 러버덕·코드 읽기, verification guard, 계획 버전, 지표의 **결정적 규칙**이다. 이 문서의 모든 규칙은 AI 없이 동작한다 — 단, 러버덕(§9.5)과 `READ_CODE` 제안(§5.3)은 AI가 있어야 하므로 `aiStatus`가 불가하면 제안하지 않는다.
+> Planner, study budget, deadline risk(축소·확장 양방향), 복습 스케줄(교차 학습 포함), skill 레벨 갱신, attempt 판정, Hint Ladder, 러버덕·코드 읽기, 재현 과제, verification guard, 계획 버전, 지표의 **결정적 규칙**이다. 이 문서의 모든 규칙은 AI 없이 동작한다 — 단, 러버덕(§9.5)과 `READ_CODE` 제안(§5.3)은 AI가 있어야 하므로 `aiStatus`가 불가하면 제안하지 않는다. 재현 과제(§5.10)는 반대로 **AI를 쓰지 않는 것이 목적**이라 `aiStatus`와 무관하게 동작한다.
 >
 > - 숫자(가중치, 임계값, 간격)는 **초기 기본값**이다. 코드에 하드코딩하지 않고 `devpilot.*` 설정으로 둔다(`03-system-architecture.md` §9). 4주 사용 후 조정한다.
 > - 규칙을 구현하는 클래스는 Spring/JPA에 의존하지 않는 순수 Java다. 이름은 `03` §3.2를 따른다.
@@ -225,7 +225,7 @@ ratioBp (저장·표시용) = effective == 0 ? null : floorDiv(requiredMust × 1
 
 ### 5.1 입력
 
-`today`, `availableMinutes`(5~720), `energyLevel`, 활성 plan(milestones, skill targets), planning level, due review 목록, 최근 2 plan-day의 main task, 최근 3 plan-day 세션 기록, risk level.
+`today`, `availableMinutes`(5~720), `energyLevel`, 활성 plan(milestones, skill targets), planning level, due review 목록, 최근 2 plan-day의 main task, 최근 3 plan-day 세션 기록, risk level, **학습 트랙 기본값**(`trackDefaults` — 학습 목표의 `targetRole`로 고른 `devpilot.tracks.<트랙>`, `03` §9), **재현 후보 목록**(§5.10 RE-2).
 
 ### 5.2 후보 skill
 
@@ -234,12 +234,13 @@ ratioBp (저장·표시용) = effective == 0 ? null : floorDiv(requiredMust × 1
 2. 시작일이 오늘 이후인 가장 가까운 milestone의 `milestone_skill`
 3. due review가 있는 skill
 4. `plan_skill_target`에서 priority MUST/SHOULD인 skill
+5. **오늘 재현 후보가 있는 skill**(§5.10 RE-2). 이 경로로만 들어온 skill에는 아래 제외 규칙 중 "모든 축에서 `planningLevel ≥ target`" 하나를 적용하지 않는다 — 목표에 닿은 skill이라도 AI 없이 다시 만들 수 있는지는 아직 확인하지 않았기 때문이다
 
 제외:
 - `deferred=true`
 - `skill.active=false` (retire된 skill)
 - risk ≥ HIGH이면 priority LATER
-- 모든 축에서 `planningLevel ≥ target`이고 due review가 없는 skill
+- 모든 축에서 `planningLevel ≥ target`이고 due review가 없는 skill (5번으로 들어온 skill은 예외)
 - `prerequisiteReadiness < 500_000`인 skill → 대신 **준비되지 않은 prerequisite 중 planning IMPLEMENTATION이 가장 낮은 skill**(동점이면 code ASC)을 후보에 추가
 
 후보가 하나도 없으면(모든 목표 달성 등) main task를 만들지 않는다. due review가 있으면 REVIEW task만 만들고, 응답의 `mainTask`는 `null`이다.
@@ -249,22 +250,28 @@ ratioBp (저장·표시용) = effective == 0 ? null : floorDiv(requiredMust × 1
 점수를 매기기 전에 후보 skill마다 main task 제안 1개를 만든다.
 
 ```text
-d = clamp(planning IMPLEMENTATION + 1, 1, 5)
+d = clamp(planning IMPLEMENTATION + 1, 1, trackDefaults.maxTaskDifficulty)   # 트랙 기본값, §5.3의 "학습 트랙" 문단
 if comebackMode: d = min(d, 2)
 
-1. `aiStatus ∉ {DISABLED, BALANCE_EXHAUSTED}`이고(평가가 AI에 의존하므로), 해당 skill에 VALIDATED challenge(PRACTICE, seed 또는 본인 소유)가 있고,
+0. 이 skill에 오늘 제안할 재현 후보가 있으면(§5.10 RE-2)
+   → REDO (estimated = §5.10 RE-4, difficulty = 원본 과제의 difficulty, `redoSourceTaskId` = 그 후보의 원본 task)
+1. else if `aiStatus ∉ {DISABLED, BALANCE_EXHAUSTED}`이고(평가가 AI에 의존하므로), 해당 skill에 VALIDATED challenge(PRACTICE, seed 또는 본인 소유)가 있고,
    최근 14 plan-day 안에 attempt하지 않았고 **해결(outcome ∈ {SOLVED_INDEPENDENTLY, SOLVED_WITH_HINTS})한 attempt가 없는** 문제가 difficulty d, 없으면 d−1(≥1) 순서로 있으면
    → CHALLENGE (estimated = challenge.estimated_minutes, difficulty = 찾은 문제의 difficulty)
    같은 difficulty에 여러 개면 seed_key ASC(null은 뒤), 그다음 ID ASC 첫 번째
 2. else if `aiStatus ∉ {DISABLED, BALANCE_EXHAUSTED}`이고(RC-1의 완료 조건이 러버덕이므로),
-   **planning KNOWLEDGE ≥ 1**이고(RC-3), 해당 skill의 선택 가능한 reading이 있으면
+   **planning KNOWLEDGE ≥ trackDefaults.readCodeMinKnowledge**이고(RC-3), 해당 skill의 선택 가능한 reading이 있으면
    → READ_CODE (estimated = reading.estimatedMinutes, difficulty 2)
 3. else if planning KNOWLEDGE < 2   → READING  (estimated 25, difficulty 1)
 4. else if projectNeed && energy != LOW && ACTIVE 사이드 프로젝트가 있으면(SP-1) → PROJECT_TASK (estimated 30, difficulty 3)
 5. else                               → EXPLAIN  (estimated 15, difficulty 2)
 ```
 
-**READ_CODE의 자리 (2번)와 그 이유** — CHALLENGE는 I축·K축 상승 규칙(§7.2)의 증거를 직접 만들므로 1번 자리를 유지한다. READ_CODE를 READING보다 **앞**에 두는 것은 §12의 핵심 루프(읽는다 → 만든다 → 설명한다)를 따르기 위해서다: 무엇인지 조금이라도 아는 상태(KNOWLEDGE ≥ 1)라면 요약 글을 한 번 더 읽는 것보다 검증된 실제 코드를 읽는 편이 낫다. 아무것도 모르는 상태(KNOWLEDGE = 0)에서 코드를 읽으면 좌절하므로 RC-3이 이를 막고, 그때는 3번 READING으로 내려간다. 결과적으로 READING은 **KNOWLEDGE = 0**이거나 해당 skill에 reading 콘텐츠가 없을 때만 나온다.
+**REDO의 자리 (0번)와 그 이유** — 재현 과제는 새로 배우는 과제가 아니라 **이미 한 것을 AI 없이 혼자 다시 만들어 확인하는 과제**다(§5.10). 창(RE-2)이 며칠뿐이고 창을 놓치면 그 기회는 사라지므로, 같은 skill 안에서는 다른 제안보다 앞선다. 다만 **skill 사이의 경쟁은 그대로 점수로 한다** — 재현 후보가 있다고 해서 그 skill이 자동으로 오늘의 main이 되지는 않고, §5.5의 `REDO_DUE` modifier로 가중치만 받는다. AI 상태와 무관하다(재현 과제는 AI를 쓰지 않는다).
+
+**학습 트랙과 난이도 상한** — `d`의 상한은 고정 5가 아니라 학습 목표의 트랙 기본값 `trackDefaults.maxTaskDifficulty`다(`devpilot.tracks.<트랙>`, `03` §9). `JAVA_BACKEND`는 5, `JAVA_BACKEND_STARTER`는 3이다. 같은 planning level이라도 입문 트랙에서는 난이도 4·5 challenge가 제안되지 않는다. 트랙은 `READ_CODE`의 진입 문턱도 정한다(RC-3, `trackDefaults.readCodeMinKnowledge` — `JAVA_BACKEND` 1, `JAVA_BACKEND_STARTER` 2). 그 밖의 planner 규칙(factor, weight, modifier, 시간 배분)은 트랙과 무관하게 같다.
+
+**READ_CODE의 자리 (2번)와 그 이유** — CHALLENGE는 I축·K축 상승 규칙(§7.2)의 증거를 직접 만들므로 1번 자리를 유지한다. READ_CODE를 READING보다 **앞**에 두는 것은 §12의 핵심 루프(읽는다 → 만든다 → 설명한다)를 따르기 위해서다: 무엇인지 조금이라도 아는 상태(KNOWLEDGE ≥ `trackDefaults.readCodeMinKnowledge`)라면 요약 글을 한 번 더 읽는 것보다 검증된 실제 코드를 읽는 편이 낫다. 그 문턱 아래에서 코드를 읽으면 좌절하므로 RC-3이 이를 막고, 그때는 3번 READING으로 내려간다. 결과적으로 READING은 **문턱 미만**이거나 해당 skill에 reading 콘텐츠가 없을 때만 나온다(기본 트랙은 KNOWLEDGE = 0, 입문 트랙은 0~1).
 
 **reading 선택 (결정적)**
 
@@ -286,6 +293,7 @@ task 제목 템플릿:
 
 | TaskType | title | description |
 |---|---|---|
+| REDO | `{원본 과제 title} 혼자 다시 만들기` | "{n}일 전에 한 과제입니다. 이번에는 **AI 도움 없이** 처음부터 혼자 다시 만들어 보세요. 막히면 기록해 두고, 끝나고 혼자 해냈는지 답해 주세요." (`{n}` = `daysBetween(원본 완료 plan-day, today)`) |
 | CHALLENGE | `{challenge.title}` | challenge scenario 요약 (앞 200자) |
 | READ_CODE | `{repo.name} 읽기 — {path의 파일명} {lines[0]}~{lines[1]}줄` | `reading.question` + 줄바꿈 + "읽고 나서 러버덕으로 설명하면 완료입니다." (저장소가 로컬에 없으면 화면이 `cloneHint`를 먼저 보여준다 — RC-4) |
 | READING | `{skill.name} 핵심 개념 정리` | `skill.description` + "공식 문서를 읽고 핵심 3가지를 스스로 적어 보세요." |
@@ -294,7 +302,7 @@ task 제목 템플릿:
 | RECALL | `{skill.name} 5분 떠올리기` | "자료를 보지 않고 기억나는 내용을 적어 보세요." |
 | REVIEW | `복습 {n}장` | — |
 
-**Test vectors (제안 분기)** — 공통: energy NORMAL, comebackMode 아님, 해당 skill에 조건을 만족하는 CHALLENGE 없음.
+**Test vectors (제안 분기)** — 공통: energy NORMAL, comebackMode 아님, 해당 skill에 조건을 만족하는 CHALLENGE 없음, 재현 후보 없음, 트랙 `JAVA_BACKEND`(`maxTaskDifficulty` 5, `readCodeMinKnowledge` 1).
 
 | # | planning (K,I) | aiStatus | 선택 가능한 reading | projectNeed | 결과 |
 |---|---|---|---|---|---|
@@ -303,6 +311,15 @@ task 제목 템플릿:
 | T-3 | (1,1) | DISABLED | 있음 | N | **READING** (25, d1) — AI 불가라 CHALLENGE·READ_CODE 모두 제외, KNOWLEDGE < 2 |
 | T-4 | (3,3) | ENABLED | 없음(전부 완료) | Y | **PROJECT_TASK** (30, d3) |
 | T-5 | (3,3) | ENABLED | 2개(`READ.MODULAR_MONOLITH.SECURITY_CONFIG.001`, `READ.MODULAR_MONOLITH.STOCK_UPDATE.001`) | Y | **READ_CODE** — key ASC로 `READ.MODULAR_MONOLITH.SECURITY_CONFIG.001`, estimated **15**, difficulty 2 |
+
+**Test vectors (학습 트랙)** — 공통: energy NORMAL, comebackMode 아님, 재현 후보 없음, aiStatus ENABLED.
+
+| # | 트랙 | planning (K,I) | 상황 | 결과 |
+|---|---|---|---|---|
+| T-6 | `JAVA_BACKEND` (max d 5, minK 1) | (4,4) | 해당 skill에 d5·d4 challenge 있음 | **CHALLENGE d5** — `d = clamp(4+1, 1, 5) = 5` |
+| T-7 | `JAVA_BACKEND_STARTER` (max d 3, minK 2) | (4,4) | 같음 | **CHALLENGE d3** — `d = clamp(5, 1, 3) = 3`, d3이 없으면 d2 |
+| T-8 | `JAVA_BACKEND_STARTER` | (1,1) | 선택 가능한 reading 있음, CHALLENGE 없음 | **READING** (25, d1) — KNOWLEDGE 1 < `readCodeMinKnowledge` 2 |
+| T-9 | `JAVA_BACKEND_STARTER` | (2,1) | 같음 | **READ_CODE** — KNOWLEDGE 2 ≥ 2 |
 
 ### 5.4 Factor (micro, 0 ~ 1_000_000)
 
@@ -333,6 +350,9 @@ baseScore = floorDiv(Σ factor × WEIGHT_BP, 10_000)
 | 3b | 어제와 그제 main task가 모두 같은 skill (상태 무관) | 6_000 | `FATIGUE_TWO_DAYS` |
 | 3b | 어제 main task만 같은 skill | 8_000 | `FATIGUE_ONE_DAY` |
 | 4 | comebackMode, difficulty ≥ 3 | 7_000 | `COMEBACK_HARD_TASK` |
+| 5 | 제안이 `REDO`다 (§5.10 RE-2 창 안) | 13_000 | `REDO_DUE` |
+
+`REDO_DUE`를 마지막에 두는 이유: 앞의 modifier(특히 `FATIGUE_*`)가 재현 과제에도 그대로 적용돼야 한다. 같은 skill을 이틀 연속 main으로 잡았다면 재현이라도 하루 쉬는 편이 낫고, 창(RE-2)이 하루 밀릴 뿐이다.
 
 `comebackMode = (최근 3 plan-day(today−3 ~ today−1)에 COMPLETED 세션 없음) && (그 이전에 COMPLETED 세션이 1개 이상 있음)`
 
@@ -350,6 +370,8 @@ mainBudget = available − reviewMinutes              # 항상 ≥ 5
 limit = floorDiv(mainBudget × 11_000, 10_000)       # 초과 허용 10%
 
 선택된 후보의 제안 estimated > limit 이면:
+  REDO      → 같은 것을 다시 만드는 과제라 줄일 수 없다(RE-4). 오늘은 제안하지 않고 그 skill의
+              제안을 §5.3의 1번부터 다시 만든다. 재현 후보는 창(RE-2) 안에 남아 다음 날 다시 걸린다
   CHALLENGE → 같은 skill에서 difficulty를 1씩 낮춰 estimated ≤ limit인 challenge 탐색
   READ_CODE → 줄 범위가 고정이라 줄일 수 없다(RC-2). 같은 skill의 다음 reading을 key ASC로
               이어 보며 estimated ≤ limit인 것을 찾는다
@@ -389,7 +411,7 @@ mainBudget < 10 이면 제안과 무관하게 RECALL(estimated = mainBudget)
 ### 5.8 Reason (`ReasonTemplates`)
 
 1. `factor × WEIGHT_BP` 기여도가 큰 순서로 아래 조건을 만족하는 reason을 최대 3개 고른다.
-2. modifier·task reason(`DEADLINE_RISK_MUST`, `CONTINUE_YESTERDAY`, `LOW_ENERGY_LIGHT_TASK`, `COMEBACK_EASY_START`, `READ_REAL_CODE`)은 해당 조건이 맞으면 추가한다. 전체는 최대 3개이고, 이쪽을 우선한다.
+2. modifier·task reason(`REDO_WITHOUT_AI`, `DEADLINE_RISK_MUST`, `CONTINUE_YESTERDAY`, `LOW_ENERGY_LIGHT_TASK`, `COMEBACK_EASY_START`, `READ_REAL_CODE`)은 해당 조건이 맞으면 추가한다. 전체는 최대 3개이고, 이쪽을 우선한다. 이 목록 안에서도 순서가 있다: `REDO_WITHOUT_AI`가 가장 앞이다(과제의 성격 자체를 설명한다).
 3. 조건을 만족하는 것이 하나도 없으면 기여도 1위 factor의 code를 조건 없이 넣는다(**최소 1개 보장**, AC-02).
 
 | ReasonCode | 조건 | 문구 |
@@ -402,6 +424,7 @@ mainBudget < 10 이면 제안과 무관하게 RECALL(estimated = mainBudget)
 | `RECENT_RECALL_FAILURE` | 최근 7 plan-day 안에 해당 skill review AGAIN | `최근 복습에서 기억이 흔들림` |
 | `PROJECT_FOCUS` | projectNeed | `현재 프로젝트에 필요` |
 | `READ_REAL_CODE` | 선택된 task가 READ_CODE | `{repo.name}에서 같은 문제를 어떻게 풀었는지 먼저 봅니다` |
+| `REDO_WITHOUT_AI` | 선택된 task가 REDO | `{redoDaysAfter}일 전에 한 것을 AI 없이 혼자 다시 만들어 확인합니다` |
 | `DEADLINE_RISK_MUST` | RISK_HIGH_MUST 적용 | `마감 위험이 높아 필수 항목 우선` |
 | `CONTINUE_YESTERDAY` | CONTINUATION 적용 | `어제 하던 과제 이어하기` |
 | `LOW_ENERGY_LIGHT_TASK` | energy=LOW이고 선택 task estimated ≤ 30 | `컨디션에 맞춘 가벼운 과제` |
@@ -419,6 +442,64 @@ mainBudget < 10 이면 제안과 무관하게 RECALL(estimated = mainBudget)
 | main `COMPLETED` (active main 없음) | `409 TODAY_ALREADY_COMPLETED` | 추가 main INSERT (COMPLETED 유지) |
 
 행 판정 순서(한 daily_plan에 main task가 여러 개일 수 있으므로): `IN_PROGRESS` main이 하나라도 있으면 3행 → 없고 `COMPLETED` main이 하나라도 있으면 4행 → 그 외(PLANNED·SKIPPED·DEFERRED만 있거나 main 없음)는 2행.
+
+### 5.10 재현 과제 (`RedoTaskPolicy`)
+
+AI가 옆에서 거들 때 풀린 것은 "이해했다"처럼 느껴진다. 실제로 할 수 있는지는 **며칠 뒤 혼자 처음부터 다시 만들 때** 드러난다. 재현 과제(`TaskType.REDO`)는 그 확인을 하나의 과제로 만든 것이다.
+
+| ID | 규칙 |
+|---|---|
+| RE-1 | 원본이 될 수 있는 과제는 `COMPLETED`인 `CHALLENGE`와 `PROJECT_TASK`뿐이다. `skill_id`가 없는 과제는 원본이 되지 않는다(증거를 어느 skill에 붙일지 정할 수 없다). `REDO` 과제 자체는 원본이 되지 않는다 |
+| RE-2 | **제안 창**: 원본 과제는 `lastAttemptDate + minDaysAfter ≤ today ≤ lastAttemptDate + maxDaysAfter`인 plan-day에만 재현 후보가 된다. `lastAttemptDate`는 그 원본의 `completed_at` plan-day와, 그 원본을 가리키는 **가장 최근 `COMPLETED` `REDO` 과제**의 `completed_at` plan-day 중 **큰 값**이다. 기본값은 `minDaysAfter = 3`, `maxDaysAfter = 7`(`devpilot.planner.redo.*`) |
+| RE-3 | **한 원본에 재현은 하나씩**: 그 원본을 가리키는 `PLANNED`·`IN_PROGRESS` `REDO` 과제가 이미 있으면 새로 만들지 않는다. `withoutAi = true`로 완료한 `REDO`가 하나라도 있으면 그 원본은 끝난 것이고 다시 후보가 되지 않는다. 실패(`COMPLETED` + `withoutAi = false`)와 `SKIPPED`는 **시도 횟수**로 세고, 시도가 `devpilot.planner.redo.max-attempts`(기본 2)에 이르면 그 원본은 더 이상 후보가 아니다. `DEFERRED`는 아직 해 보지 않은 것이라 시도로 세지 않고, 다음 plan-day에 창 안이면 다시 제안된다 |
+| RE-4 | **예상 시간은 원본 그대로**다(`원본 task.estimated_minutes`). 같은 것을 다시 만드는 과제라 줄일 수 없다 — 오늘 예산에 안 들어가면 오늘은 제안하지 않는다(§5.6) |
+| RE-5 | **열려 있는 동안 그 대상의 AI 기능을 막는다.** `PLANNED`·`IN_PROGRESS`인 `REDO` 과제가 있으면, 그 과제의 **재현 대상**에 대한 (a) 러버덕 시작과 (b) Hint Ladder 공개를 409 `AI_ASSIST_LOCKED_FOR_REDO`로 거절한다(HL-9, `05` §9.6·§10.8). 재현 대상은 원본이 `CHALLENGE`면 그 `challenge_id`의 모든 attempt, `PROJECT_TASK`면 그 `side_project_id`다. 그 밖의 대상(다른 challenge, 복습 카드, 코드 읽기, 개념)과 복습·계획·기록은 막지 않는다 |
+| RE-6 | 완료할 때 사용자는 **질문 하나**에 답한다 — "AI 도움 없이 끝냈나요?" 답(`redoWithoutAi`)은 `learning_task.redo_without_ai`에 저장하고 `REDO_COMPLETED` 이벤트 payload에 넣는다(`04` §6). 답이 없으면 완료할 수 없다(I-21) |
+| RE-7 | `withoutAi = false`로 완료하면 **레벨 증거가 되지 않고** 그 skill의 복습 카드를 upsert한다(§6.3 "수동 생성" 경로, due = 다음 plan-day 시작). `concept_key = REDO:{sourceTaskId}`, `review_type = EXPLAIN`, `source_type = REDO_TASK`, `origin = MANUAL`(서버 템플릿이고 AI를 쓰지 않는다). prompt `"{원본 과제 title}"을 AI 없이 다시 만들 때 막힌 지점과, 다음에 어떻게 풀지 설명하세요.`, `expected_answer`는 원본 과제의 `description`, `rubric_json` = `[{"id":"R1","criterion":"막힌 지점을 구체적으로 짚는다"},{"id":"R2","criterion":"다음에 쓸 방법을 설명한다"}]` |
+| RE-8 | `withoutAi = true`로 완료해야 **독립 구현 증거**가 된다(§7.2). 재현 과제는 AI를 부르지 않으므로 `aiStatus`와 무관하게 제안·수행·완료된다 |
+
+**제안 절차 (결정적)**
+
+```text
+redoCandidates(today, userId):
+  1. idx_learning_task_redo_candidate로 [today − maxDaysAfter − 1, today] 범위의
+     COMPLETED CHALLENGE·PROJECT_TASK·REDO task를 읽는다.
+     그리고 같은 사용자의 PLANNED/IN_PROGRESS/SKIPPED REDO task를 읽는다(날짜 제한 없음)
+  2. 원본 후보마다 attempts = 그 원본을 가리키는 (COMPLETED + SKIPPED) REDO 수
+     성공한 REDO(COMPLETED + withoutAi = true)가 있으면 제외 (RE-3)
+     attempts >= max-attempts 이면 제외 (RE-3)
+     그 원본을 가리키는 PLANNED/IN_PROGRESS REDO가 있으면 제외 (RE-3)
+     skill_id가 null이면 제외 (RE-1)
+  3. lastAttemptDate = max(원본 completed plan-day, 가장 최근 COMPLETED REDO의 plan-day)
+     창 밖이면 제외 (RE-2)
+  4. 남은 후보를 (lastAttemptDate ASC → 원본 task.id ASC)로 정렬한다
+  5. skill 하나당 첫 번째 후보만 §5.3 0번에 넘긴다
+```
+
+**Test vectors** — `minDaysAfter = 3`, `maxDaysAfter = 7`, `max-attempts = 2`, today = 2026-10-20.
+
+| # | 원본 (완료 plan-day, 유형) | 그 원본의 지난 REDO | 결과 |
+|---|---|---|---|
+| RE-V1 | 2026-10-17 CHALLENGE(d2, 35분) | 없음 | **후보** — `daysBetween = 3 = minDaysAfter`(경계 포함). 제안 REDO, estimated 35, difficulty 2 |
+| RE-V2 | 2026-10-18 CHALLENGE | 없음 | 후보 아님 — `daysBetween = 2 < 3` |
+| RE-V3 | 2026-10-13 PROJECT_TASK(30분) | 없음 | **후보** — `daysBetween = 7 = maxDaysAfter`(경계 포함) |
+| RE-V4 | 2026-10-12 PROJECT_TASK | 없음 | 후보 아님 — `daysBetween = 8 > 7`, 창이 닫혔다 |
+| RE-V5 | 2026-10-05 CHALLENGE | 2026-10-16 `withoutAi = false` 1회 | **후보** — `lastAttemptDate = 2026-10-16`, `daysBetween = 4`, 시도 1 < 2 |
+| RE-V6 | 2026-10-05 CHALLENGE | 2026-10-16 `false`, 2026-10-17 `false` | 후보 아님 — 시도 2 = `max-attempts` |
+| RE-V7 | 2026-10-05 CHALLENGE | 2026-10-16 `withoutAi = true` | 후보 아님 — 성공한 재현이 있다(RE-3) |
+| RE-V8 | 2026-10-16 CHALLENGE | 그 원본을 가리키는 `PLANNED` REDO 1개 | 후보 아님 — 열려 있는 재현이 있다(RE-3) |
+| RE-V9 | 2026-10-16 CHALLENGE, `skill_id = null` | 없음 | 후보 아님 (RE-1) |
+| RE-V10 | 같은 skill에 2026-10-15 CHALLENGE와 2026-10-16 PROJECT_TASK | 없음 | **후보 1개** — `lastAttemptDate ASC`로 10-15 CHALLENGE만 넘긴다(RE-2 정렬 5단계) |
+| RE-V11 | 2026-10-17 CHALLENGE(60분), `mainBudget` 40 → `limit` 44 | 없음 | REDO 제안이 `limit`을 넘어 오늘은 §5.3 1번부터 다시 고른다(RE-4·§5.6). 후보는 창 안에 남는다 |
+
+**완료 처리 Test vectors** (RE-6·RE-7·RE-8)
+
+| # | `redoWithoutAi` | 결과 |
+|---|---|---|
+| RE-V12 | `true` | `redo_without_ai = true`, `REDO_COMPLETED{ withoutAi: true }` 1행(skill별), 복습 카드 없음. §7.2의 **독립 구현 증거** 1개 |
+| RE-V13 | `false` | `redo_without_ai = false`, `REDO_COMPLETED{ withoutAi: false }` 1행, `concept_key = REDO:{sourceTaskId}` 복습 카드 upsert(due = 다음 plan-day 시작). 독립 구현 증거가 아니다 |
+| RE-V14 | 생략 | 400 `VALIDATION_FAILED`(field `redoWithoutAi`, code `VALUE_REQUIRED`). 상태·이벤트·카드 변화 없음 |
+| RE-V15 | `REDO`가 아닌 task에 `redoWithoutAi` | 400 `VALIDATION_FAILED`(field `redoWithoutAi`, code `VALUE_NOT_ALLOWED`) |
 
 ---
 
@@ -599,7 +680,7 @@ RV-INTERLEAVE(list)                      # list = 1~2단계 결과, 0-based, 무
 | `K5_TRANSFER` | KNOWLEDGE | 5 | `CHALLENGE_EVALUATED` difficulty = 5, outcome = SOLVED_INDEPENDENTLY, 1개 이상 |
 | `I1_ATTEMPTED` | IMPLEMENTATION | 1 | `CHALLENGE_SUBMITTED` 1개 이상 |
 | `I2_SOLVED_GUIDED` | IMPLEMENTATION | 2 | `CHALLENGE_EVALUATED` 해결, maxHintLevel ≤ PARTIAL_CODE, 1개 이상 |
-| `I3_SOLVED_INDEPENDENT` | IMPLEMENTATION | 3 | `CHALLENGE_EVALUATED` SOLVED_INDEPENDENTLY, difficulty ≥ 2, 3개 이상, 서로 다른 challengeId 2개 이상 |
+| `I3_SOLVED_INDEPENDENT` | IMPLEMENTATION | 3 | **독립 구현 증거**(아래 정의) difficulty ≥ 2, 3개 이상, 서로 다른 `evidenceKey` 2개 이상 |
 | `I4_PRODUCTION_LIKE` | IMPLEMENTATION | 4 | `CHALLENGE_EVALUATED` 해결, difficulty ≥ 4, maxHintLevel ≤ CONCEPT_HINT, 1개 이상 **그리고** `EVIDENCE_ACCEPTED` 1개 이상 |
 | `I5_TRANSFER` | IMPLEMENTATION | 5 | `CHALLENGE_EVALUATED` SOLVED_INDEPENDENTLY, difficulty = 5, 서로 다른 challengeId 2개 이상, 그중 1개 이상 isTransfer = true |
 | `E1_ANY_EXPLANATION` | EXPLANATION | 1 | `SELF_EXPLANATION_SUBMITTED` 1개 이상, 또는 `REVIEW_ANSWERED` reviewType = EXPLAIN 1개 이상, 또는 `RUBBER_DUCK_COMPLETED` 1개 이상(gap 수와 무관 — 설명을 시도한 것 자체가 E1이다) |
@@ -614,6 +695,17 @@ RV-INTERLEAVE(list)                      # list = 1~2단계 결과, 0-based, 무
 | `D5_TRANSFER` | DEBUGGING | 5 | D3 조건 이벤트의 axis 종류가 3개 이상 |
 
 **도달 가능 상한(Sprint별, 규칙이 아니라 사실):** S3까지는 D = 0(coach는 S4), I ≤ 3(I4는 `EVIDENCE_ACCEPTED`가 필요 → S6), E ≤ 3(E4는 variant 답변이 필요 → REVIEW_VARIANT가 Later이므로 그 전까지 불가), K·I·E의 5는 difficulty 5 challenge가 필요(seed는 최대 L4, AI 생성 L5는 S5부터(`BL-TRN-04`)). UI는 정체된 레벨 옆에 다음 레벨의 조건을 보여준다(`02-user-scenarios-and-ux.md` SCR-SKILL-DETAIL).
+
+**독립 구현 증거 (I3):** 아래 둘 중 하나인 이벤트다. 둘 다 "AI가 거들지 않은 상태에서 만들어 냈다"는 같은 것을 재는데, 두 번째가 **시간이 지난 뒤**를 잰다.
+
+| 이벤트 | 조건 | `evidenceKey` | difficulty |
+|---|---|---|---|
+| `CHALLENGE_EVALUATED` | outcome = `SOLVED_INDEPENDENTLY` | `CHALLENGE:{challengeId}` | payload `difficulty` |
+| `REDO_COMPLETED` | `withoutAi = true` (§5.10 RE-8) | `REDO:{sourceTaskId}` | payload `difficulty`(원본 과제의 difficulty) |
+
+- `REDO_COMPLETED`의 `withoutAi = false`는 어떤 상승 규칙에도 쓰지 않는다. 대신 복습 카드가 생긴다(RE-7).
+- `I4_PRODUCTION_LIKE`·`I5_TRANSFER`는 challenge 전용 조건(`maxHintLevel`, `isTransfer`)을 쓰므로 `CHALLENGE_EVALUATED`만 센다. 재현 과제에는 힌트 단계도 전이 표시도 없기 때문이다.
+- `evidenceKey`를 둘로 나눈 이유: 같은 challenge를 풀고 며칠 뒤 그것을 재현하면 서로 다른 증거 2개가 된다. 실제로 다른 날 다른 조건에서 만든 것이므로 맞다.
 
 **설명 증거와 coverage:**
 - `CHALLENGE_EVALUATED`의 `explanationCoverageBp` (null이면 제외)
@@ -666,6 +758,8 @@ planningLevel_axis = self_assessment_active ? max(evidenceLevel_axis, selfCap) :
 | 13 | self 4, active, evidence (1,0,0,0) | — | planning = (3,3,3,3) |
 | 14 | self 4, active=false, evidence (1,0,0,0) | — | planning = (1,0,0,0) |
 | 15 | (1,1,0,0), claimed 3 | DIAGNOSTIC_PASSED | K→3, I→3 (`DIAG_PASSED`, cooldown 무시) |
+| 16 | (1,2,0,0) | `CHALLENGE_EVALUATED` SOLVED_INDEPENDENTLY d2 ×2(challengeId 서로 다름) + `REDO_COMPLETED` withoutAi=true d2 ×1(sourceTaskId가 그중 한 challenge task) | I→3 (`I3_SOLVED_INDEPENDENT`) — 독립 구현 증거 3개, `evidenceKey` 3종 |
+| 17 | (1,2,0,0) | 위와 같지만 `REDO_COMPLETED` withoutAi=**false** | 변경 없음 — 실패한 재현은 증거가 아니다(RE-7·RE-8), 독립 구현 증거 2개 |
 
 ---
 
@@ -735,11 +829,15 @@ else                                                                           �
 | HL-6 | 내용 출처: challenge 1~3단계는 `challenge.hints_json`(SEED/PREGENERATED), 4단계 이상과 coach finding 전 단계는 `HINT_GENERATE`(AI) |
 | HL-7 | 공개할 때마다 `hint_disclosure` 행 + `HINT_DISCLOSED` 이벤트 + 대상의 `max_hint_level` 갱신 |
 | HL-8 | AI 생성 hint 중 `DIRECTION` 이하 단계에 코드 블록이나 코드 줄 3줄 이상이 있으면 가드가 거절한다(`17-ai-integration.md` §6) |
+| HL-9 | **재현 과제가 열려 있으면 그 대상의 hint를 공개하지 않는다.** `PLANNED`·`IN_PROGRESS`인 `REDO` 과제의 원본이 `CHALLENGE`이고 요청한 attempt의 `challenge_id`가 그 원본의 `challenge_id`와 같으면 409 `AI_ASSIST_LOCKED_FOR_REDO`(§5.10 RE-5). 검사 위치는 §9.2 순서의 HL-2 **앞**이다 — 자기설명을 요구하기 전에 막는다. `hint_disclosure`·`HINT_DISCLOSED`·AI 호출은 없다 |
 
 ### 9.2 Test vectors
 
 | 현재 max | 요청 | 조건 | 결과 |
 |---|---|---|---|
+| SELF_EXPLAIN | CONCEPT_HINT | 그 challenge의 재현 과제가 `PLANNED`, self-explanation 없음 | 409 AI_ASSIST_LOCKED_FOR_REDO (HL-9가 HL-2보다 먼저) |
+| CONCEPT_HINT | DIRECTION | 그 challenge의 재현 과제가 `IN_PROGRESS` | 409 AI_ASSIST_LOCKED_FOR_REDO |
+| CONCEPT_HINT | DIRECTION | 그 challenge의 재현 과제가 `COMPLETED`(또는 `SKIPPED`) | 정상 처리 — 잠금은 열려 있는 동안만이다 |
 | SELF_EXPLAIN | CONCEPT_HINT | self-explanation 없음 | 409 SELF_EXPLANATION_REQUIRED |
 | SELF_EXPLAIN | CONCEPT_HINT | 제출됨 | CONCEPT_HINT 공개, skippedLevels=[QUESTION_ONLY] |
 | CONCEPT_HINT | QUESTION_ONLY | — | 저장된 ≤ QUESTION_ONLY 없음 → CONCEPT_HINT 내용 반환 (AI 호출 0) |
@@ -821,7 +919,7 @@ else                                             → MISSED
 |---|---|
 | RC-1 | `READ_CODE` 과제의 완료 조건은 **러버덕 세션 1개 완료**다. 읽었다고 체크만 하는 것은 완료가 아니다 |
 | RC-2 | 한 과제는 파일 1개·범위 1개다. 여러 파일을 묶지 않는다 |
-| RC-3 | planner는 해당 skill의 planning **KNOWLEDGE가 1 이상**일 때만 `READ_CODE`를 제안한다(§5.3 2번). 아무것도 모르는 상태에서 코드를 읽으면 좌절한다 |
+| RC-3 | planner는 해당 skill의 planning **KNOWLEDGE가 `trackDefaults.readCodeMinKnowledge` 이상**일 때만 `READ_CODE`를 제안한다(§5.3 2번, `JAVA_BACKEND` 1 / `JAVA_BACKEND_STARTER` 2). 아무것도 모르는 상태에서 코드를 읽으면 좌절한다 |
 | RC-4 | 저장소가 로컬에 없으면 화면이 `cloneHint`를 먼저 보여준다. **서버는 저장소를 fetch하지 않는다**(`07-security-and-privacy.md` §5.5) — 사용자가 직접 clone해서 IDE로 읽는다 |
 
 읽을 대상은 `content/curated-repos.yaml`이 정한다(형식·검증은 `19-content-spec.md` §3.8·§4.1, 줄 번호 관리는 §8.4).
@@ -833,6 +931,15 @@ else                                             → MISSED
 | SP-1 | 온보딩 마지막 단계에서 사이드 프로젝트를 **하나 만든다.** 기본 이름("주문 시스템")은 클라이언트가 채워 보내고 바꿀 수 있다. 건너뛸 수 있으며, `ACTIVE` 프로젝트가 하나도 없으면 §5.3이 `PROJECT_TASK`를 제안하지 않는다 |
 | SP-2 | `PROJECT_TASK` 제안 문구는 프로젝트 이름과 skill 이름을 넣어 구체화한다(§5.8 표 `PROJECT_TASK` 행) |
 | SP-3 | `ACTIVE` 프로젝트는 여러 개일 수 있지만 planner는 `updated_at`이 가장 최근인 `ACTIVE` 하나만 쓴다. 그 id를 생성 시점에 `learning_task.side_project_id`에 고정한다(`05` §8.1) |
+
+**사이드 프로젝트 기록 규칙 (PN-1~PN-4)** — 프로젝트에서 무엇을 왜 골랐고 무엇이 어떻게 깨졌는지는 며칠만 지나도 흐려진다. 그때 적어 두는 것이 나중에 설명할 거리가 된다(`01` FR-29). 이 규칙들은 AI를 쓰지 않는다.
+
+| ID | 규칙 |
+|---|---|
+| PN-1 | 기록은 두 유형이다. **결정 기록**(`DECISION`)은 무엇을 골랐나·어떤 선택지가 있었나·왜 그것을 골랐나 셋을 모두 채운다. **장애 기록**(`INCIDENT`)은 무엇이 잘못됐나·어떻게 찾았나·무엇으로 고쳤나·무엇으로 다시 막나 넷을 모두 채운다. 유형에 맞지 않는 항목은 비어 있어야 한다(I-22) |
+| PN-2 | 유형은 생성 시 고정이고 수정으로 바꿀 수 없다(`04` §4.10). 날짜(`occurredOn`)는 사용자가 적는 **일어난 날**이고 plan-day 계산과 무관하다. 미래 날짜는 받지 않는다(`05` §19.9) |
+| PN-3 | 기록마다 skill 하나를 **선택**으로 붙일 수 있다. 붙이면 나중에 그 skill의 증거 초안(`05` §14.5)과 skill 화면에서 함께 보인다. 붙이지 않아도 기록은 유효하다. **기록은 skill 레벨을 바꾸지 않는다** — 학습 이벤트를 만들지 않고 §7의 입력이 아니다(자기 신고 텍스트이기 때문이다) |
+| PN-4 | 모든 텍스트 항목은 저장 전에 `SecretMasker`를 통과한다(`05` §1.11). 첨부·파일 업로드는 없다 |
 
 ---
 
@@ -933,6 +1040,8 @@ AI 출력 파싱 직후 finding마다 순서대로 적용한다.
 | `selfFoundRiskCount` | `COACH_FINDING_CLOSED` 중 discoveredBy = MENTIONED_UNPROMPTED, findingType ∈ {BUG, RISK} | 개 |
 | `acceptedEvidenceCount` | status = ACCEPTED evidence 수 (기간 내 accepted_at) | 개 |
 | `completedRubberDuckSessions` | status = COMPLETED `rubber_duck_session` 수 (기간 내 `completed_at`의 plan-day). skill 유무와 무관하다 — 이벤트가 아니라 세션 행으로 센다(RD-7) | 개 |
+| `projectNoteCount` | 기간 내 `occurred_on`인 `side_project_note` 수 (유형 무관) | 개 |
+| `independentRedoCount` | 기간 내 `completed_at`의 plan-day가 들어오는 `REDO` 과제 중 `redo_without_ai = true`인 수 (§5.10 RE-8). 과제 행으로 센다 — `skill_id`가 없는 재현 과제는 없으므로(RE-1) 이벤트 수와 같지만, 기준은 행이다 | 개 |
 | `riskLevel`, `ratioBp` | 기간 마지막 snapshot | — |
 | `weakThinkingAxes` | axis별 `MISSED` 비율(`MISSED / 전체 observation`) 상위 3개, observation 3개 이상인 axis만 | 목록 |
 | `requirementCoverageBp` | 최근 분석한 요구사항 문서(로드맵 비교에 붙여넣은 로드맵·기술 목록) 5개의 REQUIRED 항목 중 fit = READY 비율 | bp |

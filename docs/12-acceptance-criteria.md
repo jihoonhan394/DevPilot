@@ -2,6 +2,8 @@
 
 > Status: Accepted (v2) · Last updated: 2026-09-19 · Related: `01-product-requirements.md`, `05-api-spec.md`, `06-learning-engine-rules.md`, `09-test-and-quality.md`, `11-development-roadmap.md`, `13-product-backlog.md`
 >
+> 2026-09-20 반영: AC-31 재현 과제(FR-28), AC-32 학습 트랙 2종(FR-03), AC-33 프로젝트 결정·장애 기록(FR-29)을 추가했다. AC-09에 독립 구현 증거(재현 과제)를, AC-12에 재현 잠금이 AI 불가와 다르다는 것을, AC-14에 프로젝트 기록 마스킹을 더했다.
+>
 > 2026-09-18 v3 반영: AC-26 러버덕, AC-27 사이드 프로젝트, AC-28 코드 읽기, AC-29 교차 학습, AC-30 기한 역산 확장 제안을 추가했다. AC-11에 진단 우선(`runDiagnostic`)·사이드 프로젝트(`sideProject`), AC-03을 S5 → S2로 옮겼다(budget·risk가 Today와 같은 단계). Sprint 열은 날짜 없는 단계 ID다(M1 = S0~S3, S3 완료 = 실사용 시작 / M2 = S4~S7, `13-product-backlog.md` §2).
 >
 > 기능 완료를 판단하는 기준이다. 각 AC의 시나리오는 자동 테스트(또는 표시된 수동 절차)로 그대로 옮긴다. 오류 코드는 `05-api-spec.md` 카탈로그, enum은 `04-domain-model-and-db.md` §3, 규칙은 `06-learning-engine-rules.md`가 기준이다.
@@ -35,12 +37,12 @@
 | AC-06 | Project Coach | FR-12 | S4 | M2 |
 | AC-07 | Verification | FR-14 | S4 | M2 |
 | AC-08 | 보안 격리·오류 노출 금지 | FR-01, NFR-04 | S1~S7 (endpoint 추가마다), 전체 재검증 S6 | M1 → M2 |
-| AC-09 | Learning state 갱신 | FR-06 | S1 (planning level), S3 (updater, 러버덕 설명 증거) | M1 |
+| AC-09 | Learning state 갱신 | FR-06 | S1 (planning level), S3 (updater, 러버덕 설명 증거), S4 (재현 과제 독립 구현 증거) | M1 → M2 |
 | AC-10 | 모바일 복습 | FR-11, NFR-08 | S2 | M1 |
 | AC-11 | 온보딩·진단 제안 | FR-02, FR-15, FR-26 | S1 (사이드 프로젝트 포함, seed 카드·snapshot S2, 진단 S3) | M1 |
-| AC-12 | AI 불가 시 동작 | NFR-03, FR-22 | S3 (러버덕·코드 읽기 포함), S4 재검증 (challenge 생성 S5) | M1 → M2 |
+| AC-12 | AI 불가 시 동작 | NFR-03, FR-22 | S3 (러버덕·코드 읽기 포함), S4 재검증(재현 과제는 AI 없이 그대로 동작), (challenge 생성 S5) | M1 → M2 |
 | AC-13 | AI 예산 가드 | FR-22, NFR-01 | S3 | M1 |
-| AC-14 | Secret masking | FR-12, NFR-05 | S3 (training·review·session·사이드 프로젝트·러버덕), S4 (coach), S7 (로드맵 비교) | M1 → M2 |
+| AC-14 | Secret masking | FR-12, NFR-05 | S3 (training·review·session·사이드 프로젝트·프로젝트 기록·러버덕), S4 (coach), S7 (로드맵 비교) | M1 → M2 |
 | AC-15 | Export·계정 삭제 | FR-23, NFR-05 | S6 | M2 |
 | AC-16 | Hint Ladder 정책 | FR-10 | S3 (challenge), S4 (coach) | M1 → M2 |
 | AC-17 | 날짜 경계 | FR-07, FR-24, NFR-09 | S2 | M1 |
@@ -57,6 +59,9 @@
 | AC-28 | 코드 읽기 | FR-27, FR-07 | S3 | M1 |
 | AC-29 | 교차 학습 | FR-11 | S2 | M1 |
 | AC-30 | 기한 역산 확장 제안 | FR-05 | S2 | M1 |
+| AC-31 | 재현 과제 (AI 없이 다시 만들기) | FR-28 | S4 | M2 |
+| AC-32 | 학습 트랙 2종 | FR-03, FR-02 | S3 | M1 |
+| AC-33 | 사이드 프로젝트 결정·장애 기록 | FR-29 | S3 (증거 초안 S6, 지표 S5) | M1 → M2 |
 
 ---
 
@@ -640,9 +645,9 @@
 | 항목 | 값 |
 |---|---|
 | 관련 요구사항 | NFR-03, FR-22 |
-| Sprint | S3 (training·review·hint·러버덕·코드 읽기), S4 (coach 재검증), S5 (challenge 생성) |
+| Sprint | S3 (training·review·hint·러버덕·코드 읽기), S4 (coach 재검증, 재현 과제), S5 (challenge 생성) |
 | 검증 수준 | API E2E, unit(오류 매핑), UI |
-| 테스트 클래스 | `AiDisabledFlowTest`, `ReviewEvaluateFallbackTest`, `CoachResponseFeedbackFallbackTest`, `AiGatewayTest`, `DeepSeekAiProviderRequestTest`, `SubmissionEvaluationTaskIntegrationTest` |
+| 테스트 클래스 | `AiDisabledFlowTest`, `ReviewEvaluateFallbackTest`, `CoachResponseFeedbackFallbackTest`, `AiGatewayTest`, `DeepSeekAiProviderRequestTest`, `SubmissionEvaluationTaskIntegrationTest`, `RedoTaskFlowTest`(S9) |
 
 **S1. 비-AI 기능은 그대로 동작 (`devpilot.ai.provider = disabled`)**
 - `POST /today/generate`, `GET /today`, `PATCH /today/tasks/{id}`, 세션 4종, `GET /reviews/due`, `POST /reviews/{id}/answer`(`evaluate = false`), review-items 3종, `GET /plans/active`, `POST /plans/{id}/replan`, `POST /plans/{id}/replan/preview`, `GET /plans/active/budget`, `GET /skills/me`, `GET /dashboard`, `GET /challenges`, side-projects 5종, `GET /readings/{readingKey}`, `GET /rubber-duck/{sessionId}` → 모두 2xx
@@ -684,6 +689,10 @@
 **S8. 러버덕·코드 읽기 (S3)**
 - `POST /rubber-duck` → 201(시작은 AI를 부르지 않는다), `POST /rubber-duck/{id}/turns` → 503 `AI_UNAVAILABLE`, 턴 미저장 / 정리(`complete`)는 오류 없이 `COMPLETED` + `summarySkippedReason = AI_UNAVAILABLE` — 상세는 AC-26 S9·S11
 - planner는 `READ_CODE`를 제안하지 않는다(완료 조건이 러버덕이므로). 이미 만든 `READ_CODE` task의 `GET /readings/{readingKey}`는 200 — AC-28 S6
+
+**S9. 재현 과제는 AI 없이도 그대로 (S4, RE-8)**
+- provider `disabled`에서도 `POST /today/generate`가 `REDO`를 제안하고, `PATCH /today/tasks/{taskId}` `{status: COMPLETED, redoWithoutAi}`가 200이며 `REDO_COMPLETED` 이벤트와 실패 시 복습 카드가 그대로 생긴다. `ai_call_log` 새 행 0
+- **재현 잠금은 AI 불가와 다르다**: `409 AI_ASSIST_LOCKED_FOR_REDO`는 `aiStatus`와 무관하게 나오고, 화면은 AI 불가 배너가 아니라 잠금 사유를 보인다(AC-31 S7, `02` §6.5)
 
 ---
 
@@ -1602,3 +1611,209 @@
 
 **S5. UI (SCR-REPLAN)**
 - 여유가 있을 때 확장 제안 목록(복원·목표 상향)이 체크박스로 나오고, 체크한 항목이 `restoredDeferrals`·`acceptedTargetRaises`로 전송된다. 축소 제안 목록과 한 화면에 함께 나오지 않는다(widget test)
+
+---
+
+## AC-31 재현 과제 (AI 없이 다시 만들기)
+
+| 항목 | 값 |
+|---|---|
+| 관련 요구사항 | FR-28 (RE-1~RE-8 = `06` §5.10, HL-9 = `06` §9.1, 독립 구현 증거 = `06` §7.2) |
+| Sprint | S4 |
+| 검증 수준 | unit(vector), integration, API E2E, UI |
+| 테스트 클래스 | `RedoTaskPolicyTest`, `TaskProposalPolicyTest`, `PlannerScoringTest`, `ReasonTemplatesTest`, `SkillLevelRulesTest`, `TodayPlanServiceIntegrationTest`, `RedoLockServiceIntegrationTest`, `InvariantConstraintIntegrationTest`, `RedoTaskFlowTest`, `today_redo_test.dart`, `redo_lock_test.dart` |
+
+**S1. 제안 창 (RE-2)** — 설정 `min-days-after = 3`, `max-days-after = 7`, today = `D`.
+
+- Given skill S의 `CHALLENGE` task T1(difficulty 2, 35분)이 `COMPLETED`이고 완료 plan-day가 아래와 같다
+- Then `POST /today/generate`의 main task는
+
+| T1 완료 plan-day | `daysBetween` | main |
+|---|---|---|
+| `D − 2` | 2 | `REDO` 아님 (창 전) |
+| `D − 3` | 3 | **`REDO`** (경계 포함) |
+| `D − 7` | 7 | **`REDO`** (경계 포함) |
+| `D − 8` | 8 | `REDO` 아님 (창 지남 — 이 기회는 사라진다) |
+
+- `REDO`일 때: `taskType = REDO`, `redoSourceTaskId = T1`, `redoSourceTaskType = CHALLENGE`, `estimatedMinutes = 35`(원본 그대로, RE-4), `title = "{T1 title} 혼자 다시 만들기"`, `reasons`에 `REDO_WITHOUT_AI`, `score_breakdown.modifiers`에 `{code: "REDO_DUE", multiplierBp: 13000}`, `reasonParams.redoDaysAfter` = 실제 일수
+- `PROJECT_TASK`도 같은 규칙으로 원본이 된다. `READ_CODE`·`READING`·`EXPLAIN`·`RECALL`·`REVIEW`·`COACH_REVIEW`·`REDO`는 원본이 되지 않는다(RE-1)
+- `skill_id`가 없는 원본은 후보가 아니다(RE-1)
+- `aiStatus = DISABLED`여도 `REDO`는 그대로 제안된다(RE-8)
+
+**S2. 한 원본에 하나씩 (RE-3)**
+
+| 그 원본을 가리키는 REDO | 오늘 창 안에서 |
+|---|---|
+| 없음 | 후보 |
+| `PLANNED` 또는 `IN_PROGRESS` 1개 | 후보 아님 |
+| `COMPLETED` + `withoutAi = true` 1개 | 후보 아님 (끝났다) |
+| `COMPLETED` + `withoutAi = false` 1개 | 후보 — 그 완료일부터 다시 3~7일 |
+| `COMPLETED` + `false` 2개 | 후보 아님 (`max-attempts = 2`) |
+| `SKIPPED` 1개 + `COMPLETED` + `false` 1개 | 후보 아님 (시도 2회) |
+| `DEFERRED` 1개 | 후보 (시도로 세지 않는다) |
+
+- 같은 skill에 재현 후보가 둘이면 `lastAttemptDate ASC → 원본 task.id ASC`로 첫 번째만 제안한다
+
+**S3. 시간이 모자라면 오늘은 제안하지 않는다 (RE-4)**
+- Given 원본 estimated 60분, `availableMinutes` 40 → `mainBudget` 40, `limit` 44
+- Then main은 `REDO`가 아니라 `06` §5.3 1번부터 다시 고른 제안이고, 후보는 창 안에 남는다. 다음 날 `availableMinutes` 90으로 생성하면 `REDO`가 나온다
+
+**S4. AI 잠금 (RE-5, HL-9)** — Given 그 challenge의 `REDO`가 `PLANNED` 또는 `IN_PROGRESS`
+
+| 요청 | 결과 |
+|---|---|
+| `POST /challenge-attempts/{그 challenge의 attempt}/hints` | 409 `AI_ASSIST_LOCKED_FOR_REDO`. `hint_disclosure` 새 행 0, `HINT_DISCLOSED` 0건, AI 호출 0. 자기설명이 없어도 이 코드가 먼저다(HL-9 > HL-2) |
+| `POST /rubber-duck` `{targetType: CHALLENGE, targetId: 그 attempt}` | 409 `AI_ASSIST_LOCKED_FOR_REDO`. `rubber_duck_session` 새 행 0, 기존 `IN_PROGRESS` 세션이 `ABANDONED`가 되지 않는다 |
+| (원본이 `PROJECT_TASK`일 때) `POST /rubber-duck` `{targetType: PROJECT_WORK, targetId: 그 프로젝트}` | 409 `AI_ASSIST_LOCKED_FOR_REDO` |
+| **다른** challenge의 hint, `REVIEW_ITEM`·`CODE_READING`·`CONCEPT` 러버덕 | 정상 |
+| 그 challenge의 자기설명·제출·평가 | 정상 — 잠기는 것은 AI 도움뿐이다 |
+| B(다른 사용자)의 같은 seed challenge hint | 정상 — 잠금은 사용자별이다 |
+| `REDO`가 `COMPLETED`·`SKIPPED`·`DEFERRED`가 된 뒤 같은 요청 | 정상 |
+
+**S5. 완료와 질문 (RE-6)**
+
+| `PATCH /today/tasks/{taskId}` | 결과 |
+|---|---|
+| `{status: COMPLETED, version}` (답 없음) | 400 `VALIDATION_FAILED`(field `redoWithoutAi`, code `VALUE_REQUIRED`). 상태·이벤트·카드 변화 0 |
+| `{status: COMPLETED, redoWithoutAi: true, version}` | 200. `redo_without_ai = true` |
+| `{status: SKIPPED, redoWithoutAi: true, version}` | 400 (`VALUE_NOT_ALLOWED`) |
+| `READ_CODE` task에 `{status: COMPLETED, redoWithoutAi: true, …}` | 400 (`VALUE_NOT_ALLOWED`) |
+
+- DB CHECK `learning_task_redo_answer_required`가 JDBC 직접 INSERT도 거부한다(23514, I-21)
+
+**S6. 성공만 증거가 된다 (RE-7, RE-8)**
+- When `redoWithoutAi: true` → `REDO_COMPLETED` 1행(skill별, dedupe `REDO:{taskId}:{skillId}`), payload `{taskId, sourceTaskId, sourceTaskType, withoutAi: true, difficulty}`. `review_item` 새 행 0
+- And 그 skill에 `CHALLENGE_EVALUATED` SOLVED_INDEPENDENTLY(difficulty ≥ 2)가 2개 더 있으면 IMPLEMENTATION 2 → 3 (`I3_SOLVED_INDEPENDENT`, 독립 구현 증거 3개·`evidenceKey` 3종)
+- When `redoWithoutAi: false` → `REDO_COMPLETED{withoutAi: false}` 1행. 레벨 변화 없음. `review_item` 1장: `concept_key = REDO:{sourceTaskId}`, `source_type = REDO_TASK`, `origin = MANUAL`, `review_type = EXPLAIN`, `due_at = planDayStart(today + 1)`, skill = task의 skill
+- And 같은 원본으로 두 번째 실패면 카드를 새로 만들지 않고 `due_at`만 당긴다(I-06)
+- And `REDO_COMPLETED`는 `withoutAi` 값과 무관하게 `I4`·`I5`에 쓰이지 않는다(`06` §7.2)
+
+**S7. UI (SCR-TODAY)**
+- `REDO` 카드에 배지 "AI 없이 재현"과 잠금 줄 `today.redo.locked`가 `PLANNED`·`IN_PROGRESS` 모두에서 보인다. `IN_PROGRESS`에 "러버덕으로 설명하기" 버튼이 없다
+- 완료 시트에 질문 "AI 도움 없이 끝냈나요?"와 버튼 둘이 있고, 고르기 전에는 "완료 기록"이 비활성이다. "아니요" 후 완료 → 토스트 + "복습하러 가기"
+- SCR-TRAINING-ATTEMPT·SCR-RUBBER-DUCK이 `409 AI_ASSIST_LOCKED_FOR_REDO`를 받으면 AI 불가 배너가 아니라 버튼 비활성 + 사유 1줄 + "Today로 가기"다(widget test)
+
+---
+
+## AC-32 학습 트랙 2종
+
+| 항목 | 값 |
+|---|---|
+| 관련 요구사항 | FR-03, FR-02 (트랙 기본값 = `devpilot.tracks`, `06` §5.3 / 콘텐츠 = `19` §3.3·§3.4·§10.4) |
+| Sprint | S3 |
+| 검증 수준 | unit(vector), integration(content·DB CHECK), API E2E, UI |
+| 테스트 클래스 | `TaskProposalPolicyTest`, `DevPilotPropertiesBindingTest`, `ContentValidatorTest`, `OnboardingServiceIntegrationTest`, `LearningGoalServiceIntegrationTest`, `DiagnosticSuggestionServiceIntegrationTest`, `onboarding_track_test.dart`, `content/tools/validate_content.py` |
+
+**S1. 두 트랙이 모두 온보딩된다**
+- When `POST /onboarding` `{learningGoal: {targetRole: "JAVA_BACKEND_STARTER", targetCompletionDate, focusSkillCodes}, …}`
+- Then 201. `learning_goal.target_role = 'JAVA_BACKEND_STARTER'`, plan v1의 `title`은 그 트랙 템플릿의 `planTitle`, milestone 수는 그 템플릿의 수
+- And `user_skill_state` 행은 **그 트랙에 role target이 있는 활성 non-root skill**에만 생긴다(`05` §4.1 5단계)
+- And `GET /skills/tree?role=JAVA_BACKEND_STARTER`의 `roleTarget.priority = MUST` 수가 `JAVA_BACKEND`보다 **적다**, 그리고 같은 skill의 축별 목표 합이 입문 트랙에서 더 작거나 같다
+- When `targetRole`에 없는 값 → 400 `UNKNOWN_ENUM_VALUE`. `focusSkillCodes`에 그 트랙의 role target이 없는 skill → 400 `SKILL_CODE_UNKNOWN`
+
+**S2. 트랙은 바꿀 수 없다**
+- When `PUT /learning-goal` `{targetRole: <다른 트랙>, …}` → 400 `VALIDATION_FAILED`(field `targetRole`, code `VALUE_NOT_ALLOWED`), `learning_goal` 변화 0
+- When 같은 `targetRole`로 날짜만 변경 → 200
+
+**S3. 트랙이 planner를 바꾼다 (`06` §5.3 T-6~T-9)**
+- Given planning (K, I) = (4, 4), 그 skill에 d5·d4·d3·d2 challenge가 있고 AI 사용 가능
+
+| 트랙 | `maxTaskDifficulty` | 제안 |
+|---|---|---|
+| `JAVA_BACKEND` | 5 | `CHALLENGE` difficulty 5 |
+| `JAVA_BACKEND_STARTER` | 3 | `CHALLENGE` difficulty 3 |
+
+- Given CHALLENGE 없음, 선택 가능한 reading 있음
+
+| 트랙 | `readCodeMinKnowledge` | planning K = 1 | planning K = 2 |
+|---|---|---|---|
+| `JAVA_BACKEND` | 1 | `READ_CODE` | `READ_CODE` |
+| `JAVA_BACKEND_STARTER` | 2 | `READING` | `READ_CODE` |
+
+- 그 밖의 규칙(factor·weight·modifier·시간 배분·복습 간격·레벨 갱신·budget)은 두 트랙에서 같은 입력에 같은 결과다
+
+**S4. 트랙이 진단 제안을 바꾼다**
+- `GET /diagnostics/suggestions`는 그 트랙에 role target이 있는 category만 제안하고, 제안하는 challenge의 `difficulty ≤ trackDefaults.maxTaskDifficulty`다. 입문 트랙에서는 difficulty 4·5 진단이 나오지 않는다
+
+**S5. 설정 검증**
+- `devpilot.tracks`에 `TargetRole` 값이 하나라도 빠지면 기동 실패. `max-task-difficulty`가 1~5 밖이거나 `read-code-min-knowledge`가 0~5 밖이면 기동 실패
+
+**S6. 콘텐츠 검증**
+- `ContentValidator`: 트랙마다 role target 파일 1개(CV-21 — 그 트랙의 non-root skill 하나당 target 1개)와 plan template 1개(CV-30), 그 트랙의 모든 MUST skill이 그 템플릿의 milestone에 있다(CV-36). 입문 트랙 파일을 빼면 기동 실패
+- `content/tools/validate_content.py`도 같은 규칙으로 실패한다(오류 fixture, `19` §4.3)
+
+**S7. 두 사용자는 서로를 보지 못한다**
+- A(`JAVA_BACKEND`)와 B(`JAVA_BACKEND_STARTER`)가 모두 온보딩한 상태에서 `AuthorizationIsolationTest` 전체가 통과한다. B의 `GET /skills/me`·`GET /plans/active`·`GET /side-projects`·`GET /me/export` 어디에도 A의 항목이 없고, A의 트랙이 B의 어떤 계산에도 들어가지 않는다 (AC-08, `07` §4.3)
+
+**S8. UI (SCR-ONBOARDING 1단계)**
+- 라디오 2개, 기본 `JAVA_BACKEND`. 각 항목에 이름·한 줄 설명·필수 skill 수. 트랙을 바꾸면 3단계 입력이 초기화된다. SCR-LEARNING-GOAL에서는 읽기 전용이고 `onboarding.goal.track.locked`가 보인다(widget test)
+
+---
+
+## AC-33 사이드 프로젝트 결정·장애 기록
+
+| 항목 | 값 |
+|---|---|
+| 관련 요구사항 | FR-29 (PN-1~PN-4 = `06` §9.5, I-22 = `04` §7) |
+| Sprint | S3 (증거 초안 연결 S6, 주간 지표 S5) |
+| 검증 수준 | API E2E, integration, unit, UI |
+| 테스트 클래스 | `SideProjectNoteServiceIntegrationTest`, `SideProjectNoteFlowTest`, `InvariantConstraintIntegrationTest`, `MetricsCalculatorTest`, `EvidenceDraftTaskIntegrationTest`, `project_notes_screen_test.dart` |
+
+**S1. 결정 기록 만들기**
+- When `POST /side-projects/{P}/notes` `{ noteType: "DECISION", title: "주문 번호를 시퀀스 기반으로", occurredOn: <오늘>, skillCode: "<S>", decisionChoice, decisionOptions, decisionRationale }`
+- Then 201 `SideProjectNoteView`: 요청값 그대로, `incidentSymptom`·`incidentDetection`·`incidentFix`·`incidentPrevention` 모두 `null`, `version = 0`, `createdAt = updatedAt`
+- And `GET …/notes/{noteId}`가 같은 값, `GET …/notes`가 1건
+
+**S2. 유형별 필수·금지 (PN-1, I-22)**
+
+| 입력 | 결과 |
+|---|---|
+| `DECISION`인데 `decisionRationale` 없음 | 400 `VALIDATION_FAILED`(field `decisionRationale`, code `VALUE_REQUIRED`) |
+| `DECISION`인데 `incidentSymptom` 있음 | 400 (`VALUE_NOT_ALLOWED`) |
+| `INCIDENT`인데 넷 중 하나 없음 | 400 (`VALUE_REQUIRED`) |
+| `INCIDENT`인데 `decisionChoice` 있음 | 400 (`VALUE_NOT_ALLOWED`) |
+| 본문 항목이 공백만 | 400 (`VALUE_REQUIRED` — 앞뒤 공백 제거 후 판정) |
+| `title` 없음 / 201자 / 본문 항목 4001자 | 400 `VALIDATION_FAILED` |
+| `occurredOn` 내일 | 400 (`DATE_OUT_OF_RANGE`) |
+| 없는 `skillCode` / 비활성 skill | 400 (`SKILL_CODE_UNKNOWN`) |
+| 없는 `noteType` | 400 `UNKNOWN_ENUM_VALUE` |
+
+- 400이면 `side_project_note` 새 행 0. JDBC로 CHECK를 직접 위반하면 23514(I-22)
+
+**S3. 목록·필터·페이지**
+- Given N1(`INCIDENT`, `occurredOn = D−1`), N2(`DECISION`, `D−3`), N3(`DECISION`, `D−1`, id가 N1보다 작음)
+- `GET …/notes` → N1, N3, N2 (`occurredOn` DESC, `id` DESC) / `?noteType=DECISION` → N3, N2 / `?noteType=BUG` → 400 `UNKNOWN_ENUM_VALUE` / `limit=2` → 2건 + `nextCursor`, 다음 페이지 1건
+
+**S4. 수정 — 유형은 바꿀 수 없다 (PN-2)**
+- `PATCH …/notes/{N}` `{title: "…", version: 0}` → 200, `version = 1`, `updatedAt` 갱신
+- 같은 값으로 다시 → 200, `version`·`updatedAt` 그대로(바뀐 필드 없음)
+- body에 `noteType` → 400 `MALFORMED_REQUEST`(알 수 없는 속성)
+- 유형에 필요한 항목에 `""` → 400 `VALUE_REQUIRED` / 유형에 맞지 않는 항목에 값 → 400 `VALUE_NOT_ALLOWED`
+- `{skillCode: "", version}` → 200, `skill = null` / 이전 `version` → 409 `CONCURRENT_MODIFICATION`
+
+**S5. 삭제와 cascade**
+- `DELETE …/notes/{N}` → 204, 다시 → 404 `RESOURCE_NOT_FOUND`
+- 기록 2개가 있는 프로젝트에 `DELETE /side-projects/{P}` → 204, `side_project_note` 0행(`04` §8)
+
+**S6. 소유권 (AC-08)**
+- B가 A의 `sideProjectId`로 `GET`·`POST …/notes` → 404 `RESOURCE_NOT_FOUND`, 새 행 0
+- B가 **본인 프로젝트 id + A의 noteId**로 `GET`·`PATCH`·`DELETE` → 404, A의 기록은 `version`·내용 그대로
+- B의 `GET …/notes`에 A 항목 0건
+
+**S7. Masking (AC-14)**
+- 본문 항목에 런타임 조합 fake secret → 201, 저장값·응답·로그에 원문 0건
+- 어느 항목이든 private key 블록 → 422 `SECRET_DETECTED_BLOCKED`, 행 0, 감사 로그 `SECRET_BLOCKED`
+- `title`도 마스킹 대상이다(`05` §1.11)
+
+**S8. 레벨·계획에 영향이 없다 (PN-3)**
+- S1~S7 어디에서도 `learning_event`·`user_skill_state`·`skill_state_change`·`daily_plan` 행이 바뀌지 않는다
+
+**S9. 나중 기능으로 이어진다**
+- (S5) `MetricsCalculator`: 기간 내 `occurredOn`인 기록 수가 `weekly_review.metrics_json.projectNoteCount`에 들어간다
+- (S6) `POST /evidence/drafts` `{sourceProjectNoteId: N}` → 202. `evidence_candidate.skill_id` = 기록의 skill(없으면 null), `ai_draft_json.sourceProjectNoteId = N`. AI 입력은 그 기록의 **마스킹본**이다
+- `POST /evidence/drafts`에 둘 다 없으면 400 `ONE_OF_REQUIRED`, 둘 다 있으면 400 `MUTUALLY_EXCLUSIVE`, B의 기록 id면 400 `REFERENCE_NOT_FOUND`
+
+**S10. UI (SCR-PROJECT-DETAIL, SCR-PROJECT-NOTE-EDIT)**
+- 유형 필터 3개, 카드에 유형 배지·날짜·본문 첫 항목 2줄·skill 칩. "+ 결정 기록"·"+ 장애 기록"이 각각 `noteType` query로 이동
+- 편집 화면에 **유형을 바꾸는 입력이 없다**. 유형별 입력 항목이 3개·4개이고 전부 필수, 비면 "저장" 비활성. 날짜 선택기가 오늘 이후를 막는다
+- `422` → 인라인 `projectNote.secretBlocked`, `409` → 최신 값으로 다시 채우고 토스트(widget test)

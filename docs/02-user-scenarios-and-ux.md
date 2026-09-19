@@ -6,6 +6,8 @@
 >
 > **v3 (2026-09-18)** — 핵심 루프 "읽는다 → 만든다 → 설명한다 → 반복한다"(`01` §5)에 맞춰 SCR-RUBBER-DUCK·SCR-READ-CODE·SCR-PROJECTS를 추가하고(§3.16), 온보딩을 5단계(짧은 진단·사이드 프로젝트)로 바꾸고, 기한 역산 확장 제안을 SCR-REPLAN에 넣었다. 핵심 루프 하루 시나리오는 §4.16이다.
 >
+> 온보딩 1단계에서 **학습 트랙**을 고르고(FR-03), SCR-TODAY에 **재현 과제** 카드와 완료 질문이 있으며(FR-28, §4.18), 사이드 프로젝트의 **결정·장애 기록**은 SCR-PROJECT-DETAIL·SCR-PROJECT-NOTE-EDIT에서 남긴다(FR-29, §4.19).
+>
 > 클라이언트 스택: Flutter web(PWA), Riverpod, go_router, dio, freezed(DEC-10, DEC-12). 인증은 `AUTH_MODE` dart-define으로 고른다 — `dev`(기본: `POST /api/v1/dev/token`) / `supabase`(Later: `supabase_flutter`).
 
 ---
@@ -59,7 +61,8 @@
 | More | `menu` | `/more` | 탭 | 없음 | S2 |
 
 - Dashboard(`/dashboard`)와 Weekly(`/weekly`)는 목적지가 아니다. SCR-TODAY 헤더의 "진행 현황" 링크, SCR-MORE, SCR-PLAN에서 진입한다.
-- 러버덕(`/rubber-duck/*`)은 목적지가 아니다. 진입점: SCR-READ-CODE "읽었으면 설명하기", SCR-TODAY(PROJECT_TASK·EXPLAIN 카드, 진행 중 세션 이어 하기), SCR-TRAINING-ATTEMPT 결과, SCR-REVIEW-SESSION 끝 화면, SCR-REVIEW-ITEMS 메뉴, SCR-SKILL-DETAIL "개념 설명하기", SCR-PROJECTS "이 프로젝트 작업 설명하기". 러버덕 화면은 하단 탭·rail을 숨기는 집중 화면이다(SCR-REVIEW-SESSION과 같음).
+- 러버덕(`/rubber-duck/*`)은 목적지가 아니다. 진입점: SCR-READ-CODE "읽었으면 설명하기", SCR-TODAY(PROJECT_TASK·EXPLAIN 카드, 진행 중 세션 이어 하기), SCR-TRAINING-ATTEMPT 결과, SCR-REVIEW-SESSION 끝 화면, SCR-REVIEW-ITEMS 메뉴, SCR-SKILL-DETAIL "개념 설명하기", SCR-PROJECTS·SCR-PROJECT-DETAIL "이 프로젝트 작업 설명하기". 러버덕 화면은 하단 탭·rail을 숨기는 집중 화면이다(SCR-REVIEW-SESSION과 같음).
+- 사이드 프로젝트 상세(`/projects/:sideProjectId`)와 기록 편집(`…/notes/*`)도 목적지가 아니다. 진입점은 SCR-PROJECTS 카드와 SCR-TODAY `PROJECT_TASK` 카드의 "이 프로젝트 기록"이다.
 - 현재 라우트가 목적지 하위(예: `/training/attempts/…`, `/today/read/…`)면 해당 목적지를 선택 상태로 표시한다. `/dashboard`, `/weekly/*`는 Mobile에서 More, 그 외에서는 Today를 선택 상태로 표시한다.
 - 하위 화면은 앱 바 뒤로가기(`←`)를 둔다. 목적지 화면에는 뒤로가기가 없다.
 - 브라우저 뒤로가기는 go_router 히스토리를 따른다. 작성 중인 입력이 있으면 §6.8 이탈 확인을 띄운다.
@@ -86,6 +89,9 @@
 | `/rubber-duck/new` | SCR-RUBBER-DUCK (시작 전) | Y | Y | S3 |
 | `/rubber-duck/:sessionId` | SCR-RUBBER-DUCK | Y | Y | S3 |
 | `/projects` | SCR-PROJECTS | Y | Y | S1 |
+| `/projects/:sideProjectId` | SCR-PROJECT-DETAIL | Y | Y | S3 |
+| `/projects/:sideProjectId/notes/new` | SCR-PROJECT-NOTE-EDIT (생성) | Y | Y | S3 |
+| `/projects/:sideProjectId/notes/:noteId` | SCR-PROJECT-NOTE-EDIT (수정) | Y | Y | S3 |
 | `/dashboard` | SCR-DASHBOARD | Y | Y | S2 (최소) / S5 (완성) |
 | `/review` | SCR-REVIEW-HOME | Y | Y | S2 |
 | `/review/session` | SCR-REVIEW-SESSION | Y | Y | S2 |
@@ -124,6 +130,7 @@
 |---|---|---|
 | `/login` | `from` (URL 인코딩된 경로), `reason` (`expired`, `deleted`) | 로그인 후 복귀, 안내 문구 |
 | `/today` | `complete=<taskId>` | 완료 시트를 바로 연다 (Training·Review에서 복귀) |
+| `/projects/:sideProjectId/notes/new` | `noteType` (필수, `DECISION` \| `INCIDENT`) | 어느 유형을 만들지. 유형은 생성 후 바꿀 수 없다(PN-2) |
 | `/review/session` | `taskId` | Today REVIEW task에서 진입 |
 | `/review/items` | `skillId`, `status` | 필터 초기값 |
 | `/training` | `skillId` | 필터 초기값 |
@@ -187,8 +194,9 @@ go_router `redirect`는 아래 순서로 평가하고 처음 해당하는 규칙
 | Enum | 값 → 라벨 |
 |---|---|
 | `EnergyLevel` | LOW 낮음 · NORMAL 보통 · HIGH 좋음 |
-| `TaskType` | RECALL 떠올리기 · REVIEW 복습 · CHALLENGE 문제 풀이 · PROJECT_TASK 프로젝트 과제 · COACH_REVIEW 코드 리뷰 · READING 개념 읽기 · READ_CODE 코드 읽기 · EXPLAIN 설명하기 |
+| `TaskType` | RECALL 떠올리기 · REVIEW 복습 · CHALLENGE 문제 풀이 · PROJECT_TASK 프로젝트 과제 · COACH_REVIEW 코드 리뷰 · READING 개념 읽기 · READ_CODE 코드 읽기 · EXPLAIN 설명하기 · REDO AI 없이 재현 |
 | `RubberDuckTargetType` | CODE_READING 읽은 코드 · CHALLENGE 문제 풀이 · REVIEW_ITEM 복습 카드 · CONCEPT 개념 · PROJECT_WORK 프로젝트 작업 |
+| `SideProjectNoteType` | DECISION 결정 기록 · INCIDENT 장애 기록 |
 | `RubberDuckStatus` | IN_PROGRESS 설명 중 · COMPLETED 정리함 · ABANDONED 그만둠 |
 | `SideProjectStatus` | ACTIVE 진행 중 · PAUSED 잠시 멈춤 · DONE 완료 |
 | `ExpansionKind` | RESTORE_DEFERRED 다시 포함 · RAISE_TARGET 목표 올리기 |
@@ -237,6 +245,11 @@ go_router `redirect`는 아래 순서로 평가하고 처음 해당하는 규칙
 | 사이드 프로젝트 `description` | SCR-PROJECTS | 0~1000자 | `validation.maxLength` |
 | 사이드 프로젝트 `repoUrl` | SCR-PROJECTS | 선택, `http://` 또는 `https://`, ≤ 500자 | `validation.url`, `validation.maxLength` |
 | 사이드 프로젝트 `stack` | SCR-PROJECTS | 0~300자 | `validation.maxLength` |
+| 프로젝트 기록 `title` | SCR-PROJECT-NOTE-EDIT | 앞뒤 공백 제거 후 1~200자 | `validation.required`, `validation.maxLength` |
+| 프로젝트 기록 `occurredOn` | SCR-PROJECT-NOTE-EDIT | 필수, 오늘(plan-day) 이하. 날짜 선택기도 이 범위만 연다 | `validation.required`, `validation.datePast` |
+| 프로젝트 기록 본문 항목 | SCR-PROJECT-NOTE-EDIT | 고른 유형의 항목 **전부** 필수, 각 1~4000자. 유형에 맞지 않는 항목은 화면에 없다 | `validation.required`, `validation.maxLength` |
+| 프로젝트 기록 `skillCode` | SCR-PROJECT-NOTE-EDIT | 선택. skill 검색 목록에서 고른다 | — |
+| `redoWithoutAi` | SCR-TODAY 완료 시트 | `REDO` 과제를 완료할 때 **필수**, 예/아니오 | `validation.required` |
 | 러버덕 `explanation` | SCR-RUBBER-DUCK | 공백 아닌 문자 1개 이상, ≤ 2000자(`devpilot.rubberduck.max-explanation-chars`), private key 정규식 불일치 | `validation.required`, `validation.maxLength`, `rubberDuck.validation.privateKey` |
 | milestone `title` | SCR-REPLAN | 1~200자 | `validation.required`, `validation.maxLength` |
 | milestone `description` | SCR-PLAN, SCR-REPLAN | 0~2000자 | `validation.maxLength` |
@@ -406,10 +419,17 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ 표시 이름 *                      │
 │ [MT                          ]  │
 │                                │
-│ 학습 트랙                       │
+│ 학습 트랙 *                     │
 │ ┌────────────────────────────┐ │
-│ │ Java 백엔드                 │ │  읽기 전용
+│ │ (●) Java 백엔드              │ │
+│ │     Spring Boot·JPA·DB를 실무 │ │
+│ │     수준으로 (필수 34개)      │ │
+│ ├────────────────────────────┤ │
+│ │ ( ) Java 백엔드 입문         │ │
+│ │     개발을 막 시작했다면 여기 │ │
+│ │     부터 (필수 14개, 쉬운 과제)│ │
 │ └────────────────────────────┘ │
+│ 트랙은 나중에 바꿀 수 없어요.     │
 │                                │
 │ 목표일 *                         │
 │ [3개월 후] [6개월 후] [1년 후]    │
@@ -422,7 +442,9 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 └────────────────────────────────┘
 ```
 
-- 필드는 셋이다: 표시 이름(1~100자, 기본값 `GET /me.displayName`), 학습 트랙(읽기 전용 "Java 백엔드" = `targetRole: JAVA_BACKEND`), 목표일(`targetCompletionDate`, 필수). 학습 목표는 무엇을(학습 트랙)·언제까지(목표일) 두 가지뿐이다(`01` FR-03).
+- 필드는 셋이다: 표시 이름(1~100자, 기본값 `GET /me.displayName`), **학습 트랙**(필수, 라디오 2개), 목표일(`targetCompletionDate`, 필수). 학습 목표는 무엇을(학습 트랙)·언제까지(목표일) 두 가지뿐이다(`01` FR-03).
+- **학습 트랙 선택**: `JAVA_BACKEND`("Java 백엔드", 기본 선택)와 `JAVA_BACKEND_STARTER`("Java 백엔드 입문"). 각 항목은 이름 + 한 줄 설명 + 필수 skill 수를 보인다. 필수 skill 수는 `GET /skills/tree?role={트랙}`의 `roleTarget.priority = MUST` 개수로 채우고, 조회에 실패하면 설명만 보인다(숫자는 생략). 아래에 `onboarding.goal.track.locked`("트랙은 나중에 바꿀 수 없어요.")를 둔다 — 서버도 `PUT /learning-goal`에서 변경을 막는다(`05` §5.2).
+- 트랙을 바꾸면 3단계(자기평가·진단)의 카테고리 목록과 5단계 계획 미리보기가 달라진다. 그래서 트랙 변경 시 3단계의 입력값을 지우고 다시 받는다(사용자에게 `onboarding.goal.track.reset` 토스트).
 - 기본값: 목표일 없음(필수). 날짜는 사용자가 고른 값이다(와이어프레임의 날짜는 예시).
 - 빠른 선택 칩: "3개월 후" = 오늘(plan-day) + 3개월, "6개월 후" = + 6개월, "1년 후" = + 1년, "직접 선택" = 날짜 선택기(범위 내일 ~ 오늘+3년). 칩을 누르면 계산한 날짜를 칩 아래에 보이고, 선택한 칩은 선택 상태로 둔다. 날짜를 직접 고르면 "직접 선택"이 선택 상태가 된다.
 - 목표일 아래에 `onboarding.goal.completion.help`를 둔다. 이 날짜는 나중에 설정 > 학습 목표(SCR-LEARNING-GOAL)에서 바꿀 수 있다.
@@ -587,6 +609,13 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `onboarding.goal.title` | 무엇을, 언제까지 공부할지 정해요 |
 | `onboarding.goal.displayName` | 표시 이름 |
 | `onboarding.goal.role` | 학습 트랙 |
+| `onboarding.goal.track.javaBackend` | Java 백엔드 |
+| `onboarding.goal.track.javaBackend.desc` | Spring Boot · JPA · DB를 실무 수준으로 |
+| `onboarding.goal.track.javaBackendStarter` | Java 백엔드 입문 |
+| `onboarding.goal.track.javaBackendStarter.desc` | 개발을 막 시작했다면 여기부터. 필수 항목이 적고 과제가 쉬워요 |
+| `onboarding.goal.track.mustCount` | 필수 {count}개 |
+| `onboarding.goal.track.locked` | 트랙은 나중에 바꿀 수 없어요. |
+| `onboarding.goal.track.reset` | 트랙을 바꿔서 수준 입력을 다시 받아요. |
 | `onboarding.goal.completion` | 목표일 |
 | `onboarding.goal.completion.help` | 목표일까지 남은 시간으로 무엇을 먼저 할지 정해요. |
 | `onboarding.goal.quick.3m` | 3개월 후 |
@@ -730,6 +759,38 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
   - 제목·예상 시간·설명은 `MainTaskView`의 `title`, `estimatedMinutes`, `description`(서버가 `06` §5.3 템플릿으로 만든 값)을 그대로 쓴다. 파일·줄 범위를 클라이언트가 다시 조합하지 않는다.
   - description은 reading의 `question` + "읽고 나서 러버덕으로 설명하면 완료입니다."(`06` §5.3)이다. 카드에서는 2줄로 접고 펼쳐 볼 수 있다. 그 아래 보조 줄 `today.readCode.local`로 코드는 사용자 컴퓨터에서 읽는다는 것을 알린다(서버는 코드를 가져오지 않는다).
 
+- **main 카드 — `REDO`** (재현 과제, S4. FR-28, `06` §5.10)
+
+```text
+│ ┌────────────────────────────┐ │
+│ │ [AI 없이 재현] Spring Transaction│
+│ │ 트랜잭션 전파 수정하기        │ │  "{원본 제목} 혼자 다시 만들기"
+│ │ 혼자 다시 만들기              │ │
+│ │ 약 35분 · AI 도움 없이         │ │
+│ │ 4일 전에 한 과제입니다. 이번에는│ │
+│ │ AI 도움 없이 처음부터 혼자 다시 │ │
+│ │ 만들어 보세요. 막히면 기록해   │ │
+│ │ 두고, 끝나고 혼자 해냈는지     │ │
+│ │ 답해 주세요.                  │ │
+│ │ 🔒 이 과제를 하는 동안 이 문제의│ │  today.redo.locked
+│ │ 힌트와 러버덕은 잠겨 있어요.   │ │
+│ │                              │ │
+│ │ 왜 오늘?                      │ │
+│ │ • 4일 전에 한 것을 AI 없이 혼자 │ │  REDO_WITHOUT_AI
+│ │   다시 만들어 확인합니다       │ │
+│ │ ┌──────────────────────────┐ │ │
+│ │ │          시작            │ │ │
+│ │ └──────────────────────────┘ │ │
+│ │       원본 과제 보기          │ │
+│ │       오늘은 건너뛰기         │ │
+│ └────────────────────────────┘ │
+```
+
+  - 제목·설명·예상 시간은 `MainTaskView`를 그대로 쓴다(`06` §5.3 템플릿). 배지는 `taskType` 라벨 `task.type.REDO`("AI 없이 재현")다.
+  - **잠금 줄 `today.redo.locked`는 카드에 항상 보인다**(`PLANNED`·`IN_PROGRESS`). 왜 잠겼는지를 사용자가 다른 화면에서 처음 알게 되지 않도록 여기서 먼저 알린다(RE-5).
+  - 보조 "원본 과제 보기": `redoSourceTaskType`이 `CHALLENGE`면 `/training/challenges/{원본 challengeId}`(원본 task의 `challengeId`는 `GET /today`의 `earlierMainTasks`나 과거 기록에 없을 수 있으므로, 없으면 이 버튼을 숨긴다), `PROJECT_TASK`면 `/projects/{sideProjectId}`. 원본을 **다시 풀라는 뜻이 아니라** 무엇을 만들었는지 확인하는 용도다.
+  - `IN_PROGRESS`에서는 보조 버튼에 "러버덕으로 설명하기"를 **두지 않는다**(잠겨 있다). primary는 "완료"다.
+
 - **main 카드 — `PROJECT_TASK`** (SP-2: 제목에 사이드 프로젝트 이름)
 
 ```text
@@ -749,14 +810,15 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 ```
 
   - `IN_PROGRESS`가 되면 보조 버튼 "러버덕으로 설명하기"(`today.explainWithDuck`)가 생긴다 → `/rubber-duck/new?targetType=PROJECT_WORK&targetId={sideProjectId}&skillCode={skillCode}&taskId={taskId}`. 완료 조건이 아니라 권장이다. `sideProjectId`가 `null`(프로젝트 삭제)이면 이 버튼을 숨긴다.
+  - 보조 버튼 "이 프로젝트 기록"(`today.projectNotes`) → `/projects/{sideProjectId}`(SCR-PROJECT-DETAIL, S3). 구현하면서 내린 결정과 겪은 장애를 그 자리에서 남기게 한다(FR-29). `sideProjectId`가 `null`이면 숨긴다.
   - `EXPLAIN`·`READING` task도 `IN_PROGRESS`에서 같은 보조 버튼을 두고 `targetType=CONCEPT&conceptKey={skillCode}&skillCode={skillCode}`로 연다.
 
 - **main task 상태별 카드 하단**
 
 | main 상태 | 표시 | primary | 보조 |
 |---|---|---|---|
-| `PLANNED` | 이유 목록 | "시작" | "오늘은 건너뛰기" |
-| `IN_PROGRESS` | "진행 중 · {n}분째"(세션 `startedAt` 기준 1분마다 갱신) | "완료". **`READ_CODE`는 이 task를 대상으로 한 러버덕이 `COMPLETED`로 확인될 때만 "완료"**, 아니면 primary는 "코드 읽기로 돌아가기"(RC-1) | "여기까지 기록", CHALLENGE면 "문제로 돌아가기", COACH_REVIEW면 "리뷰로 돌아가기", PROJECT_TASK·EXPLAIN·READING이면 "러버덕으로 설명하기" |
+| `PLANNED` | 이유 목록 (REDO면 잠금 줄 `today.redo.locked` 포함) | "시작" | "오늘은 건너뛰기", REDO면 "원본 과제 보기"도 |
+| `IN_PROGRESS` | "진행 중 · {n}분째"(세션 `startedAt` 기준 1분마다 갱신) | "완료". **`READ_CODE`는 이 task를 대상으로 한 러버덕이 `COMPLETED`로 확인될 때만 "완료"**, 아니면 primary는 "코드 읽기로 돌아가기"(RC-1) | "여기까지 기록", CHALLENGE면 "문제로 돌아가기", COACH_REVIEW면 "리뷰로 돌아가기", PROJECT_TASK·EXPLAIN·READING이면 "러버덕으로 설명하기", **REDO면 러버덕 버튼을 두지 않는다**(RE-5) |
 | `COMPLETED` | 체크 아이콘 + "오늘의 핵심을 마쳤어요" + 기록한 시간 | 없음 | "하나 더 하기" |
 | `SKIPPED` (active main 없음) | "오늘 과제를 건너뛰었어요" | "다시 만들기" | "되돌리기" (같은 날 active main이 없을 때만) |
 | `DEFERRED` (active main 없음) | "내일 이어서 할 수 있어요" | "다시 만들기" | — |
@@ -786,6 +848,16 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 ```text
 │ 이 코드 읽기는 어땠나요? (선택)   │
 │ [도움 됐어요] [어려웠어요] [지루했어요]│
+```
+
+  - **`REDO` 재현 결과 (S4)**: 완료할 task가 `REDO`이면 "완료 기록" 시트의 회고 **위**에 질문 하나를 둔다 — `today.redo.question`("AI 도움 없이 끝냈나요?")과 버튼 둘(`today.redo.answer.yes` "네, 혼자 했어요" / `today.redo.answer.no` "아니요, 도움을 받았어요"). **필수다** — 고르지 않으면 "완료 기록"이 비활성이다(`05` §8.4 `VALUE_REQUIRED`). 고른 값은 `PATCH /today/tasks/{taskId}` `{status: COMPLETED, redoWithoutAi, version}`에 넣는다.
+  - 질문 아래에 `today.redo.answer.help`("솔직하게 고르는 게 도움이 돼요. '아니요'를 고르면 벌점이 아니라 복습 카드가 생겨요.")를 둔다. "아니요"로 완료하면 결과 토스트 `today.redo.reviewCreated`를 보이고 "복습하러 가기"(→ `/review`)를 함께 준다.
+  - "여기까지 기록"(`DEFERRED`) 시트에는 이 질문이 없다(아직 해 보지 않은 것이다). `SKIPPED`도 마찬가지다.
+
+```text
+│ AI 도움 없이 끝냈나요? *          │
+│ [네, 혼자 했어요][아니요, 도움 받았어요]│
+│ 솔직하게 고르는 게 도움이 돼요.    │
 ```
 
 - **진행 중 러버덕 줄** (`ActiveRubberDuckTile`, S3): 기기에 저장한 진행 중 세션(`localStorage` `devpilot.rubberduck.active.<externalAuthId>` = `{sessionId, taskId}`, try/catch)이 있고 `GET /rubber-duck/{sessionId}`가 `IN_PROGRESS`이면 복습 줄 위에 `today.duck.continue` + "이어서 설명하기"(→ `/rubber-duck/{sessionId}`)를 한 줄로 보인다. `IN_PROGRESS`가 아니거나 404면 저장값을 지우고 숨긴다. 세션 목록 API가 없어서 다른 기기에서 시작한 세션은 보이지 않는다(`05` §9.10).
@@ -875,6 +947,15 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `today.completeSheet.reflection` | 한 줄 회고 (선택) |
 | `today.completeSheet.reflection.hint` | 오늘 배운 것, 막힌 것… |
 | `today.completeSheet.submit` | 완료 기록 |
+| `today.redo.locked` | 이 과제를 하는 동안 이 문제의 힌트와 러버덕은 잠겨 있어요. |
+| `today.redo.viewSource` | 원본 과제 보기 |
+| `today.redo.question` | AI 도움 없이 끝냈나요? |
+| `today.redo.answer.yes` | 네, 혼자 했어요 |
+| `today.redo.answer.no` | 아니요, 도움을 받았어요 |
+| `today.redo.answer.help` | 솔직하게 고르는 게 도움이 돼요. '아니요'를 고르면 벌점이 아니라 복습 카드가 생겨요. |
+| `today.redo.reviewCreated` | 막힌 부분을 복습 카드로 만들었어요. |
+| `today.projectNotes` | 이 프로젝트 기록 |
+| `today.redo.lockedElsewhere` | 지금은 이 과제를 AI 없이 혼자 다시 만드는 중이에요. Today의 재현 과제를 마치면 다시 쓸 수 있어요. |
 | `today.noPlan` | 활성 계획이 없어요. 계획을 먼저 만들어 주세요. |
 | `today.noPlan.button` | 계획 만들기 |
 | `today.noCandidate` | 목표를 모두 달성했어요. 계획을 조정해 새 목표를 잡아 보세요. |
@@ -1116,7 +1197,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 - **목적**: 복습 카드를 찾아 일시중지·다시 사용·보관·수정한다(FR-11). **진입**: SCR-REVIEW-HOME "카드 관리", SCR-SKILL-DETAIL "복습 카드". **Sprint**: S2.
 - **레이아웃**: 상단 상태 `SegmentedButton`(사용 중·일시중지·보관, 기본 사용 중) + skill 필터 칩(탭 → `SkillPicker`) + "추가" 아이콘 버튼. 목록 행: 문항 2줄 말줄임, `skill 이름 · 유형 라벨 · 출처 라벨`, `다음 복습 {date}` 또는 상태, 마지막 결과 라벨. 행 오른쪽 `⋮` 메뉴.
-- **출처 라벨**: `SEED_CARD` 기본 카드 · `MANUAL` 직접 만듦 · `CHALLENGE_ATTEMPT` 문제 풀이 · `COACH_FINDING` 코드 리뷰 · `EVIDENCE` 증거 · `RUBBER_DUCK` 러버덕(설명하다 막힌 곳).
+- **출처 라벨**: `SEED_CARD` 기본 카드 · `MANUAL` 직접 만듦 · `CHALLENGE_ATTEMPT` 문제 풀이 · `COACH_FINDING` 코드 리뷰 · `EVIDENCE` 증거 · `RUBBER_DUCK` 러버덕(설명하다 막힌 곳) · `REDO_TASK` 재현 과제(혼자 다시 만들 때 막힌 곳).
 - **데이터**: 진입·필터 변경 시 `GET /review-items?skillId=&status=&cursor=`. 목록 끝 80% 스크롤 시 `nextCursor`로 다음 페이지. `⋮` 메뉴 → `PATCH /review-items/{reviewItemId}` `{status, version}`.
 - **메뉴 항목**: ACTIVE → "일시중지", "보관", "수정", "러버덕으로 설명하기" / SUSPENDED → "다시 사용", "보관", "수정", "러버덕으로 설명하기" / ARCHIVED → 메뉴 없음(보관은 되돌리지 않는다, `04` §4.5). "러버덕으로 설명하기"(S3, `rubber_duck` flag, AI 가능할 때만) → `/rubber-duck/new?targetType=REVIEW_ITEM&targetId={reviewItemId}`.
 - **상태**: Loading — 행 skeleton 6개. Empty — 필터별 `review.items.empty.{status}` + "카드 직접 추가"(ACTIVE일 때만). Error·Offline — 공통. 페이지 추가 로드 실패 — 목록 끝에 "다시 불러오기" 행.
@@ -1433,6 +1514,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
   - 평가 `FAILED`: 결과 자리에 `failureCode` 문구 + "다시 평가"(`retryable=true`일 때). 최신 제출이 `FAILED`인 동안 새 제출 영역은 잠근다(서버 409). `AI_BUDGET_EXCEEDED`면 "다시 평가" 비활성 + 사유.
   - attempt `ABANDONED`: 읽기 전용, 상단 `training.attempt.abandoned`.
   - AI unavailable: 제출 버튼 비활성 + `training.detail.aiSubmitNote`. 4~6단계 힌트 비활성, 1~3단계 사용 가능.
+  - **재현 잠금 (S4)**: 이 challenge의 재현 과제가 열려 있으면(`409 AI_ASSIST_LOCKED_FOR_REDO`, RE-5·HL-9) 힌트 버튼 **전 단계**와 "러버덕으로 설명하기"를 비활성으로 두고 그 아래 `today.redo.lockedElsewhere` 1줄 + "Today로 가기"를 보인다(§5.1). 자기설명·제출·평가는 그대로 된다 — 잠기는 것은 AI 도움뿐이다. 잠금 여부는 미리 알 수 없으므로 첫 409를 받은 뒤 이 상태로 바꾼다.
   - Budget warning: 제출 버튼·4단계 이상 힌트 아래 `ai.budgetWarning.note`.
   - Offline: 공통. 입력은 계속 가능, 전송 버튼 비활성.
 - **행동·검증**
@@ -2095,7 +2177,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 #### SCR-LEARNING-GOAL
 
 - **목적**: 학습 목표(무엇을·언제까지 — 학습 트랙과 목표일)와 집중 기술을 등록·수정한다(FR-03). **목표일은 사용자가 여기서 직접 정하는 날짜 하나**이고, DevPilot은 이 날짜로 남은 시간을 역산해 빠듯하면 필수 위주로, 여유 있으면 깊이 있게 안내한다(FR-05). **진입**: SCR-SETTINGS "목표"(주 진입점), SCR-PLAN "목표 수정". **Sprint**: S1.
-- **레이아웃**: 학습 트랙(읽기 전용 "Java 백엔드", 라벨 `onboarding.goal.role`) → 목표일(필수, 라벨 `onboarding.goal.completion`, SCR-ONBOARDING 1단계와 같은 빠른 선택 칩 `onboarding.goal.quick.*`과 날짜 선택기) → 집중 기술(칩 목록 + "기술 선택", 최대 10) → 안내 `goal.help` → primary "저장".
+- **레이아웃**: 학습 트랙(**읽기 전용** — 온보딩에서 고른 트랙 이름, 라벨 `onboarding.goal.role`, 아래에 `onboarding.goal.track.locked`) → 목표일(필수, 라벨 `onboarding.goal.completion`, SCR-ONBOARDING 1단계와 같은 빠른 선택 칩 `onboarding.goal.quick.*`과 날짜 선택기) → 집중 기술(칩 목록 + "기술 선택", 최대 10) → 안내 `goal.help` → primary "저장".
 - **데이터**: 진입 `GET /learning-goal`. 저장 `PUT /learning-goal` `{targetRole, targetCompletionDate, focusSkillCodes, version}`.
 - **상태**: Loading — 폼 skeleton. Error — `404 LEARNING_GOAL_NOT_FOUND`는 `ErrorView`(온보딩 이후 정상 흐름에서는 발생하지 않고, PUT은 목표를 새로 만들지 않는다). `409 CONCURRENT_MODIFICATION`은 최신 목표로 폼을 다시 채운다. 그 외 공통·§5. Offline — 공통.
 - **행동·검증**: §3.2. 저장 성공 시 날짜가 바뀌었으면 대화상자 `goal.saved.datesChanged`("지금 조정" → `/plan/replan?from=goal`, "나중에" → `/plan`). 날짜가 그대로면 토스트 후 뒤로.
@@ -2517,9 +2599,9 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 - **레이아웃**: 아이콘(`search_off`) + `notFound.title` + `notFound.body` + primary "Today로"(S1은 "Plan으로").
 - **문구**: `notFound.title` = "페이지를 찾을 수 없어요", `notFound.body` = "주소가 바뀌었거나 삭제된 항목이에요.", `notFound.home` = "Today로"
 
-### 3.16 러버덕 · 코드 읽기 · 사이드 프로젝트 (v3)
+### 3.16 러버덕 · 코드 읽기 · 사이드 프로젝트 · 프로젝트 기록
 
-핵심 루프(`01` §5)의 "설명한다"·"읽는다"·"만든다"를 맡는 화면이다. 러버덕(SCR-RUBBER-DUCK)이 중심이고, 코드 읽기와 사이드 프로젝트는 러버덕으로 이어진다.
+핵심 루프(`01` §5)의 "설명한다"·"읽는다"·"만든다"를 맡는 화면이다. 러버덕(SCR-RUBBER-DUCK)이 중심이고, 코드 읽기와 사이드 프로젝트는 러버덕으로 이어진다. 프로젝트에서 내린 결정과 겪은 장애는 SCR-PROJECT-DETAIL에 기록으로 남는다(FR-29).
 
 #### SCR-RUBBER-DUCK
 
@@ -2696,6 +2778,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
   - Error (정리): `complete`는 AI 실패를 HTTP 오류로 주지 않는다 — `200` + `summarySkippedReason`으로 ④에 표시한다. `409 INVALID_STATE_TRANSITION`(이미 정리·중단됨)은 `GET`으로 다시 읽어 ④로 간다.
   - **AI 불가** (`aiStatus ∈ {DISABLED, BALANCE_EXHAUSTED}` 또는 `503 AI_UNAVAILABLE`): 상단 `AiUnavailableBanner`. ① 시작 전이면 "설명 보내기" 비활성 + 버튼 아래 `ai.disabledReason`/`ai.balanceExhaustedReason`(§6.5)과 `rubberDuck.aiOff`. 진입 화면의 러버덕 버튼도 같은 조건으로 미리 막고 같은 사유를 보인다. ② 대화 중이면 "보내기" 비활성, **"정리하고 끝내기"는 그대로 둔다** — 서버가 AI 없이 정리 실패 경로로 세션을 끝내고 대화는 남는다(`05` §9.8 4단계). 지난 세션 조회는 언제나 된다(`17` §3.10).
+  - **재현 잠금 (S4)**: 대상이 `CHALLENGE`·`PROJECT_WORK`이고 그 대상의 재현 과제가 열려 있으면 시작 요청이 `409 AI_ASSIST_LOCKED_FOR_REDO`다(RE-5). ① 시작 전 화면에서 "설명 보내기"를 비활성으로 바꾸고 아래 `today.redo.lockedElsewhere` 1줄 + "Today로 가기"를 보인다(§5.1). 이미 시작한 세션은 영향을 받지 않는다(잠금은 **시작**에만 걸린다).
   - Budget warning: "보내기" 아래 `ai.budgetWarning.note`.
   - Offline: 공통. 입력은 계속 가능, 보내기·정리 버튼 비활성.
 - **행동·검증**
@@ -2925,7 +3008,8 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 - **목록 규칙**: 서버 정렬(`updatedAt` DESC, `id` DESC)을 그대로 쓴다. 목록에서 첫 번째 `ACTIVE` 프로젝트에 `projects.todayTarget` 라벨을 붙인다(SP-3 — planner가 쓰는 프로젝트. `ACTIVE`가 여러 개여도 하나만 쓴다). `ACTIVE`가 하나도 없으면 목록 위에 `projects.noActive`(프로젝트 과제가 제안되지 않음)를 둔다. 상태 라벨은 §3.1 `SideProjectStatus`.
 - **`repoUrl`**: 링크 텍스트는 scheme을 뺀 주소, 탭하면 새 탭으로 연다(사용자 브라우저가 여는 것, 서버는 요청하지 않는다). 입력 시트에는 `projects.repoUrl.note`를 항상 둔다(FR-26, `07` §5.5).
-- **컴포넌트**: `ProjectCard`(이름, 상태 배지, Today 대상 라벨, 설명 2줄 말줄임, 스택, 저장소 링크, 수정일, `⋮` 메뉴, 러버덕 버튼), `ProjectEditSheet`, `StatusSegmented`, `DeleteProjectDialog`, `EmptyState`.
+- **컴포넌트**: `ProjectCard`(이름, 상태 배지, Today 대상 라벨, 설명 2줄 말줄임, 스택, 저장소 링크, 수정일, 기록 수, `⋮` 메뉴, 러버덕 버튼), `ProjectEditSheet`, `StatusSegmented`, `DeleteProjectDialog`, `EmptyState`.
+- **기록으로 가기 (S3)**: 카드 전체를 누르면 SCR-PROJECT-DETAIL(`/projects/{sideProjectId}`)로 간다. 카드 아래에 `projects.noteCount`를 보인다 — 수는 목록 응답에 없으므로 상세 화면에 들어간 적이 있으면 캐시한 값을, 없으면 라벨을 생략한다(목록 API를 늘리지 않는다). `⋮` 메뉴와 러버덕 버튼은 카드 탭보다 우선한다.
 - **데이터**
 
 | 시점 | API |
@@ -2979,14 +3063,140 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `projects.created` | 프로젝트를 추가했어요. |
 | `projects.statusChanged` | 다음 Today 계획부터 반영돼요. 이미 만든 과제는 그대로예요. |
 | `projects.delete.title` | 이 프로젝트를 삭제할까요? |
-| `projects.delete.body` | 이 프로젝트로 만든 Today 과제와 코드 리뷰는 남고 연결만 끊겨요. 지난 러버덕 대화도 남아요. 삭제는 되돌릴 수 없어요. |
+| `projects.delete.body` | 이 프로젝트로 만든 Today 과제와 코드 리뷰는 남고 연결만 끊겨요. 지난 러버덕 대화도 남아요. **이 프로젝트의 결정·장애 기록은 함께 지워져요.** 삭제는 되돌릴 수 없어요. |
 | `projects.delete.lastActive` | 진행 중인 프로젝트가 없으면 Today가 프로젝트 과제를 제안하지 않아요. |
 | `projects.delete.confirm` | 삭제 |
 | `projects.deleted` | 프로젝트를 삭제했어요. |
+| `projects.noteCount` | 기록 {count}개 |
+| `projects.openDetail` | 기록 보기 |
 | `projects.empty` | 사이드 프로젝트가 없어요. 프로젝트가 있어야 Today가 배운 것을 적용하는 과제를 제안해요. |
 | `projects.empty.start` | 주문 시스템으로 시작 |
 | `projects.secretBlocked` | 개인 키(private key)로 보이는 내용이 있어 저장할 수 없어요. 해당 부분을 지워 주세요. |
 | `projects.reloaded` | 다른 곳에서 바뀌어 최신 내용으로 다시 불러왔어요. |
+
+#### SCR-PROJECT-DETAIL
+
+- **목적**: 프로젝트 하나의 요약과 **결정·장애 기록**을 본다(FR-29, PN-1~PN-4, AC-33). 프로젝트를 만들면서 내린 결정과 겪은 장애를 그 자리에서 남기고, 나중에 설명·증거의 재료로 쓴다. **진입**: SCR-PROJECTS 카드 탭, SCR-TODAY `PROJECT_TASK` 카드의 "이 프로젝트 기록". **Sprint**: S3.
+- **레이아웃** (`/projects/{sideProjectId}`)
+
+```text
+┌────────────────────────────────┐
+│ ← 주문 시스템          [진행 중] │
+│ 회원가입 · 상품 · 주문 · 취소까지 │
+│ 직접 만드는 학습용 백엔드        │
+│ Spring Boot, PostgreSQL          │
+│ github.com/example/order-service↗│
+│ [수정] [이 프로젝트 작업 설명하기]│
+│ ────────────────────────────── │
+│ 기록 3개                        │
+│ [전체✓] [결정] [장애]            │
+│ ┌────────────────────────────┐ │
+│ │ [장애] 10월 11일             │ │
+│ │ 재고가 음수로 내려갔다        │ │
+│ │ 동시에 주문 두 건이 들어오면… │ │  incidentSymptom 2줄
+│ │ DATABASE.TRANSACTION       ⋮ │ │
+│ └────────────────────────────┘ │
+│ ┌────────────────────────────┐ │
+│ │ [결정] 10월 9일              │ │
+│ │ 주문 번호를 시퀀스 기반으로   │ │
+│ │ yyyyMMdd + 일련번호 형식을…  │ │  decisionChoice 2줄
+│ │ DATABASE.INDEX             ⋮ │ │
+│ └────────────────────────────┘ │
+│ ┌──────────────┬─────────────┐ │
+│ │ + 결정 기록   │ + 장애 기록  │ │
+│ └──────────────┴─────────────┘ │
+└────────────────────────────────┘
+```
+
+- **규칙**
+  - 상단은 `GET /side-projects/{sideProjectId}`의 요약이다. "수정"은 SCR-PROJECTS의 `ProjectEditSheet`를 그대로 연다. 삭제는 여기에 두지 않는다(목록에서 한다).
+  - 기록 목록은 `GET /side-projects/{sideProjectId}/notes?noteType=&cursor=`다. 서버 정렬(`occurredOn` DESC, `id` DESC)을 그대로 쓰고 스크롤 페이지네이션한다. 필터 칩 3개(전체·결정·장애)는 `noteType` query가 된다.
+  - 카드는 유형 배지 + `occurredOn` + `title` + 본문 첫 항목 2줄 말줄임(`DECISION`은 `decisionChoice`, `INCIDENT`는 `incidentSymptom`) + skill 칩(있을 때)이다. 카드를 누르면 SCR-PROJECT-NOTE-EDIT(수정)로 간다.
+  - `⋮` 메뉴: "수정"(→ 편집 화면), "삭제"(확인 대화상자 → `DELETE …/notes/{noteId}` → 204 → 목록에서 제거).
+  - 하단 버튼 둘은 각각 `/projects/{id}/notes/new?noteType=DECISION`·`…=INCIDENT`로 간다. **유형은 여기서 정해지고 이후 바뀌지 않는다**(PN-2).
+  - 데스크톱(≥ 1024)은 왼쪽 열(35%)에 프로젝트 요약을 고정하고 오른쪽 열(65%)에 기록 목록을 둔다.
+- **상태**
+  - Loading: 요약 skeleton + 카드 skeleton 2개.
+  - Empty: `projectNotes.empty` + 버튼 둘. 첫 기록을 권하는 한 줄 설명을 함께 둔다.
+  - Error: 공통. `404 RESOURCE_NOT_FOUND`(다른 곳에서 프로젝트 삭제) → SCR-NOT-FOUND.
+  - AI unavailable: 이 화면은 AI를 쓰지 않는다. 배너를 두지 않고 "이 프로젝트 작업 설명하기"만 비활성 + 사유 1줄(§6.5).
+- **문구**
+
+| key | 문구 |
+|---|---|
+| `projectNotes.title` | 기록 |
+| `projectNotes.count` | 기록 {count}개 |
+| `projectNotes.filter.all` | 전체 |
+| `projectNotes.filter.decision` | 결정 |
+| `projectNotes.filter.incident` | 장애 |
+| `projectNotes.add.decision` | + 결정 기록 |
+| `projectNotes.add.incident` | + 장애 기록 |
+| `projectNotes.empty` | 아직 기록이 없어요. 무엇을 왜 골랐는지, 무엇이 어떻게 깨졌는지 지금 적어 두면 나중에 설명할 거리가 돼요. |
+| `projectNotes.menu.edit` | 수정 |
+| `projectNotes.menu.delete` | 삭제 |
+| `projectNotes.delete.title` | 이 기록을 지울까요? |
+| `projectNotes.delete.body` | 되돌릴 수 없어요. |
+| `projectNotes.deleted` | 기록을 지웠어요. |
+
+#### SCR-PROJECT-NOTE-EDIT
+
+- **목적**: 결정 기록 또는 장애 기록 하나를 쓰고 고친다(FR-29, PN-1~PN-4). **진입**: SCR-PROJECT-DETAIL의 "+ 결정 기록"·"+ 장애 기록"(생성)과 기록 카드 탭(수정). **Sprint**: S3.
+- **레이아웃 (장애 기록 생성)** (`/projects/{sideProjectId}/notes/new?noteType=INCIDENT`)
+
+```text
+┌────────────────────────────────┐
+│ ✕  장애 기록                [저장]│
+│ 제목 *                     12/200│
+│ [재고가 음수로 내려갔다       ] │
+│ 일어난 날 *                      │
+│ [ 2026년 10월 11일        📅 ] │
+│ 관련 기술 (선택)                 │
+│ [ DATABASE.TRANSACTION    ▾ ] │
+│ ────────────────────────────── │
+│ 무엇이 잘못됐나요? *       88/4000│
+│ [동시에 주문 두 건이 들어오면 ] │
+│ [재고가 음수가 됐다.          ] │
+│ 어떻게 찾았나요? *               │
+│ [주문 목록에서 수량이 -1인 것을] │
+│ 어떻게 고쳤나요? *               │
+│ [재고 차감을 비관적 락으로 감쌌다]│
+│ 다시 안 생기게 하려면? *          │
+│ [동시 주문 테스트를 추가했다   ] │
+│ 비밀값은 저장 전에 가려요.        │
+└────────────────────────────────┘
+```
+
+- **규칙**
+  - 유형은 `noteType` query(생성) 또는 조회한 기록(수정)에서 오고 **화면에서 바꿀 수 없다**. 앱 바 제목이 유형이다. 수정 화면에는 유형을 바꾸는 입력이 없다(PN-2, `05` §19.11).
+  - 본문 입력은 유형에 따라 다르다. 결정 기록은 `decisionChoice`("무엇을 골랐나요?")·`decisionOptions`("어떤 선택지가 있었나요?")·`decisionRationale`("왜 그것을 골랐나요?") 셋, 장애 기록은 `incidentSymptom`·`incidentDetection`·`incidentFix`·`incidentPrevention` 넷이다. **전부 필수**이고 각 1~4000자(§3.2). 유형에 맞지 않는 항목은 화면에 없다.
+  - `occurredOn`은 필수이고 기본값은 오늘(plan-day)이다. 날짜 선택기는 오늘 이하만 연다.
+  - 관련 기술은 선택이다. `GET /skills/tree`의 활성 skill을 검색해 고르고, 지우면 연결이 끊긴다(`skillCode: ""`). 아래에 `projectNote.skill.help`("고르면 나중에 이 기술의 학습 기록을 만들 때 함께 보여요.")를 둔다.
+  - 저장: 생성은 `POST /side-projects/{id}/notes`(IK) → 201 → 상세로 돌아가 목록 맨 위 갱신. 수정은 `PATCH …/notes/{noteId}`(바뀐 필드 + `version`) → 200. `409 CONCURRENT_MODIFICATION`이면 최신 값을 다시 읽어 폼을 채우고 토스트(`projectNote.reloaded`), 입력은 유지한다.
+  - "저장"은 필수 입력이 모두 찼고 변경이 있을 때만 활성이다. 입력 중 이탈은 §6.8.
+  - `422 SECRET_DETECTED_BLOCKED` → 폼 하단 인라인 `projectNote.secretBlocked`. 400 `VALIDATION_FAILED`의 `errors[]`는 필드별 인라인(`VALUE_REQUIRED`는 `validation.required`).
+- **컴포넌트**: `NoteTypeHeader`, `DatePickerField`, `SkillPickerField`, `LongTextField`(글자 수 카운터), `UnsavedChangesGuard`.
+- **문구**
+
+| key | 문구 |
+|---|---|
+| `projectNote.title.decision` | 결정 기록 |
+| `projectNote.title.incident` | 장애 기록 |
+| `projectNote.field.title` | 제목 |
+| `projectNote.field.occurredOn` | 일어난 날 |
+| `projectNote.field.skill` | 관련 기술 (선택) |
+| `projectNote.skill.help` | 고르면 나중에 이 기술의 학습 기록을 만들 때 함께 보여요. |
+| `projectNote.decision.choice` | 무엇을 골랐나요? |
+| `projectNote.decision.options` | 어떤 선택지가 있었나요? |
+| `projectNote.decision.rationale` | 왜 그것을 골랐나요? |
+| `projectNote.incident.symptom` | 무엇이 잘못됐나요? |
+| `projectNote.incident.detection` | 어떻게 찾았나요? |
+| `projectNote.incident.fix` | 어떻게 고쳤나요? |
+| `projectNote.incident.prevention` | 다시 안 생기게 하려면? |
+| `projectNote.maskingNote` | 비밀값은 저장 전에 가려요. |
+| `projectNote.save` | 저장 |
+| `projectNote.saved` | 기록을 저장했어요. |
+| `projectNote.secretBlocked` | 개인 키(private key)로 보이는 내용이 있어 저장할 수 없어요. 해당 부분을 지워 주세요. |
+| `projectNote.reloaded` | 다른 곳에서 바뀌어 최신 내용으로 다시 불러왔어요. |
 
 ---
 
@@ -3296,6 +3506,41 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 - 제안은 저장하지 않고 자동 적용하지 않는다. 사용자가 체크한 것만 저장된다(FR-05).
 - 필요 ÷ 가능이 70%~80%이거나 위험이 보통이면 어느 쪽 제안도 없다(`replan.preview.noSuggestions`).
 
+### 4.18 재현 과제 — 며칠 뒤 AI 없이 혼자 다시 만들기 (S4)
+
+전제: 4일 전(예시) 사용자가 challenge "트랜잭션 전파 수정하기"를 힌트 2단계를 보고 풀어 `COMPLETED`했다. 오늘은 그 창(3~7일) 안이다(`06` §5.10 RE-2).
+
+| # | 사용자 | 화면 | API | [서버] |
+|---|---|---|---|---|
+| 1 | Today 생성 | SCR-TODAY | `POST /today/generate` (IK) | 그 skill의 재현 후보가 있어 제안 0번이 `REDO`. modifier `REDO_DUE` ×1.30으로 그 skill이 1위 → main task `REDO`(`redoSourceTaskId` 고정), 이유 `REDO_WITHOUT_AI` |
+| 2 | 카드에서 잠금 줄을 읽고 "시작" | SCR-TODAY | `PATCH /today/tasks/{taskId}` `{status: IN_PROGRESS}` → `POST /learning-sessions` (IK) | task `IN_PROGRESS` |
+| 3 | 원본 문제를 다시 열어 힌트를 누름 | SCR-TRAINING-ATTEMPT | `POST /challenge-attempts/{id}/hints` | **409 `AI_ASSIST_LOCKED_FOR_REDO`**(HL-9). `hint_disclosure`·이벤트·AI 호출 0. 화면은 이유와 "Today로 가기" |
+| 4 | 러버덕으로 설명해 보려 함 | SCR-RUBBER-DUCK 시작 전 | `POST /rubber-duck` `{targetType: CHALLENGE, targetId}` (IK) | **409 `AI_ASSIST_LOCKED_FOR_REDO`**(RE-5). 세션 0개 |
+| 5 | 내 IDE에서 처음부터 다시 구현 (35분) | 내 IDE | — | — |
+| 6a | "완료" → 시간 입력 → **"네, 혼자 했어요"** → "완료 기록" | SCR-TODAY 완료 시트 | `POST /learning-sessions/{id}/complete` (IK) → `PATCH /today/tasks/{taskId}` `{status: COMPLETED, redoWithoutAi: true}` | `redo_without_ai = true`, `REDO_COMPLETED{withoutAi: true}` → §7.2 **독립 구현 증거** 1개. 복습 카드 없음 |
+| 6b | (대신) **"아니요, 도움을 받았어요"** | SCR-TODAY 완료 시트 | 같은 요청, `redoWithoutAi: false` | `REDO_COMPLETED{withoutAi: false}`(레벨 증거 아님) + 복습 카드 1장(`REDO:{sourceTaskId}`, 내일 due). 토스트 + "복습하러 가기" |
+| 7 | 다음 Today | SCR-TODAY | `POST /today/generate` | 6a면 그 원본은 끝났다(RE-3). 6b면 시도 1회로 세고, 그 완료일에서 다시 3~7일 뒤 창이 열린다(최대 `max-attempts` 2회) |
+
+분기:
+- 3·4의 잠금은 **그 대상만**이다. 다른 challenge의 힌트, 복습 카드·코드 읽기·개념 러버덕은 그대로 된다.
+- "오늘은 건너뛰기"(`SKIPPED`)도 시도 1회로 센다. "여기까지 기록"(`DEFERRED`)은 세지 않고 다음 날 다시 제안된다.
+- 답을 고르지 않으면 "완료 기록"이 비활성이다. 서버도 `400 VALUE_REQUIRED`로 막는다(RE-6).
+- AI가 멈춘 날에도 재현 과제는 그대로 제안·수행·완료된다(RE-8 — AI를 부르지 않는다).
+
+### 4.19 프로젝트 기록 — 결정과 장애를 그 자리에서 (S3)
+
+| # | 사용자 | 화면 | API | [서버] |
+|---|---|---|---|---|
+| 1 | `PROJECT_TASK`를 하다 재고가 음수가 되는 것을 발견 | 내 IDE | — | — |
+| 2 | Today 카드의 "이 프로젝트 기록" | SCR-TODAY → SCR-PROJECT-DETAIL | `GET /side-projects/{id}`, `GET …/notes` | 기록 목록 |
+| 3 | "+ 장애 기록" → 제목·날짜·관련 기술 → 네 항목 작성 → "저장" | SCR-PROJECT-NOTE-EDIT | `POST …/notes` (IK) | 마스킹 → INSERT. 학습 이벤트·레벨 변화 없음(PN-3) |
+| 4 | 며칠 뒤 왜 그렇게 정했는지 기록 | SCR-PROJECT-DETAIL → SCR-PROJECT-NOTE-EDIT | `POST …/notes` `{noteType: DECISION, …}` | 〃 |
+| 5 | (S5) 주간 리뷰 | SCR-WEEKLY-DETAIL | `GET /weekly-reviews/{weekStartDate}` | `metrics_json.projectNoteCount`에 그 주의 기록 수 |
+| 6 | (S6) 학습 기록 초안 만들기 | SCR-EVIDENCE-DETAIL | `POST /evidence/drafts` `{sourceProjectNoteId}` (IK) | 그 기록의 마스킹본을 입력으로 STAR 초안 생성. 기록의 skill이 evidence skill이 된다 |
+
+- 유형은 3·4에서 정해지고 이후 바꿀 수 없다(PN-2). 잘못 골랐으면 지우고 다시 만든다.
+- 프로젝트를 지우면 그 기록도 함께 사라진다. 삭제 확인 대화상자가 이를 알린다(SCR-PROJECTS).
+
 ---
 
 ## 5. 오류 코드 → UI 처리
@@ -3334,6 +3579,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | 409 | `EVALUATION_IN_PROGRESS` | 이전 제출을 평가하고 있어요. | 인라인: 제출 버튼 잠금 + polling 시작 | 결과 기다리기 |
 | 409 | `AI_TASK_NOT_RETRYABLE` | 다시 시도할 수 없는 상태예요. | 토스트 + 리소스 재조회 | 없음 |
 | 409 | `REVIEW_ALREADY_CLOSED` | 이미 마친 리뷰예요. | 토스트 + 재조회 → 읽기 전용 | 없음 |
+| 409 | `AI_ASSIST_LOCKED_FOR_REDO` | 지금은 이 과제를 AI 없이 혼자 다시 만드는 중이에요. 재현 과제를 마치면 다시 쓸 수 있어요. | 대화상자(`today.redo.lockedElsewhere`) + "Today로 가기"(→ `/today`). SCR-TRAINING-ATTEMPT는 힌트 버튼을, SCR-RUBBER-DUCK 시작 전 화면은 "설명 보내기"를 비활성으로 바꾸고 그 아래 같은 문구 1줄 | "Today로 가기" / 확인 |
 | 409 | `INVALID_STATE_TRANSITION` | 지금 상태에서는 할 수 없는 작업이에요. | 토스트 + 해당 리소스 재조회. 복습 답변이면 카드 건너뛰기(§3.6), attempt 시작이면 기존 attempt 열기(§3.7) | 새 상태 확인 |
 | 409 | `CONCURRENT_MODIFICATION` | 다른 곳에서 먼저 바뀌었어요. 최신 내용으로 다시 불러왔어요. | 상태 변경(PATCH status): 재조회 후 1회 자동 재시도, 실패 시 토스트 / 긴 입력 편집(replan, weekly reflection, evidence): 대화상자로 최신 내용 불러오기 또는 덮어쓰기 선택 | 확인 후 다시 편집 |
 | 409 | `IDEMPOTENCY_IN_PROGRESS` | (표시 안 함) | 흐름 분기: API 계층이 1초 뒤 같은 키로 재시도(최대 5회, `05-api-spec.md` §1.7). 5회 모두 같으면 토스트 `error.IDEMPOTENCY_IN_PROGRESS` = "요청을 처리하고 있어요. 잠시 후 확인해 주세요." | 잠시 후 새로고침 |
@@ -3473,7 +3719,8 @@ challenge 생성, 제출 평가, coach 분석, evidence 초안, 로드맵 비교
 | `BudgetWarningNote` | `aiStatus == BUDGET_WARNING` | AI 실행 버튼 바로 아래 한 줄, 아이콘 `info` + `color.warning` 텍스트 | `ai.budgetWarning.note` = "이번 달 AI 사용량이 예산의 80%를 넘었어요." |
 | AI 버튼 비활성 사유 | `aiAvailable == false` | 버튼 아래 `bodySmall` | `DISABLED` → `ai.disabledReason` = "AI를 쓸 수 없어 잠시 막아 두었어요." / `BALANCE_EXHAUSTED` → `ai.balanceExhaustedReason` = "AI 잔액이 떨어져 잠시 막아 두었어요." |
 
-- 배너 표시 화면: SCR-RUBBER-DUCK, SCR-READ-CODE, SCR-TRAINING-LIST, SCR-CHALLENGE-DETAIL, SCR-TRAINING-ATTEMPT, SCR-COACH-LIST, SCR-COACH-NEW, SCR-COACH-DETAIL(마치기 전), SCR-EVIDENCE-DETAIL(초안 생성 중·실패), SCR-REQUIREMENTS-LIST, SCR-REQUIREMENT-NEW, SCR-MORE. **SCR-TODAY, SCR-REVIEW-\*, SCR-PLAN, SCR-PROJECTS에는 표시하지 않는다**(AI 없이 동작하는 화면). 러버덕 진입 버튼만 있는 화면(SCR-TODAY, SCR-REVIEW-SESSION, SCR-REVIEW-ITEMS, SCR-SKILL-DETAIL, SCR-PROJECTS)은 배너 없이 그 버튼만 막고 버튼 아래 사유 1줄(`ai.disabledReason`/`ai.balanceExhaustedReason`)을 보인다.
+- 배너 표시 화면: SCR-RUBBER-DUCK, SCR-READ-CODE, SCR-TRAINING-LIST, SCR-CHALLENGE-DETAIL, SCR-TRAINING-ATTEMPT, SCR-COACH-LIST, SCR-COACH-NEW, SCR-COACH-DETAIL(마치기 전), SCR-EVIDENCE-DETAIL(초안 생성 중·실패), SCR-REQUIREMENTS-LIST, SCR-REQUIREMENT-NEW, SCR-MORE. **SCR-TODAY, SCR-REVIEW-\*, SCR-PLAN, SCR-PROJECTS, SCR-PROJECT-DETAIL, SCR-PROJECT-NOTE-EDIT에는 표시하지 않는다**(AI 없이 동작하는 화면). 러버덕 진입 버튼만 있는 화면(SCR-TODAY, SCR-REVIEW-SESSION, SCR-REVIEW-ITEMS, SCR-SKILL-DETAIL, SCR-PROJECTS, SCR-PROJECT-DETAIL)은 배너 없이 그 버튼만 막고 버튼 아래 사유 1줄(`ai.disabledReason`/`ai.balanceExhaustedReason`)을 보인다.
+- **재현 잠금은 AI 불가와 다르다.** `409 AI_ASSIST_LOCKED_FOR_REDO`(RE-5)는 AI가 멈춘 것이 아니라 **지금 그 대상만** 잠긴 것이므로 배너를 쓰지 않고 해당 버튼 아래 `today.redo.lockedElsewhere` 1줄과 "Today로 가기"를 보인다(§5.1).
 - `aiStatus`는 `meProvider` 갱신 시점(§2.4)에 바뀐다. AI 관련 429/503 응답을 받으면 즉시 갱신한다.
 
 ### 6.6 API 계층 (`lib/core/api/`)

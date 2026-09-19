@@ -1,6 +1,6 @@
 # 19. Content Spec (Seed 콘텐츠)
 
-> Status: Accepted (v3) · Last updated: 2026-09-19 · Related: DEC-14, DEC-27, DEC-28, ADR-039, `03-system-architecture.md` §2.2·§9, `04-domain-model-and-db.md` §3·§5·§9, `05-api-spec.md` §4.2, `06-learning-engine-rules.md` §4·§5·§6.3·§7·§8·§9·§10·§11, `17-ai-integration.md` §6, `database/schema.sql`
+> Status: Accepted (v3) · Last updated: 2026-09-20 · Related: DEC-14, DEC-27, DEC-28, DEC-30, ADR-039, ADR-040, `03-system-architecture.md` §2.2·§9, `04-domain-model-and-db.md` §3·§5·§9, `05-api-spec.md` §4.2, `06-learning-engine-rules.md` §4·§5·§6.3·§7·§8·§9·§10·§11, `17-ai-integration.md` §6, `database/schema.sql`
 >
 > 저장소 `content/`의 **seed 파일 형식, 검증 규칙(CV-xx), 적재·은퇴 규칙, plan template 날짜 배치 알고리즘, 작성 가이드, 현재 인벤토리**를 정의한다. 초기 파일은 문서 세트의 `repo-seed/content/`에 있다.
 
@@ -32,9 +32,11 @@ content/
 ├── skill-tree/
 │   └── java-backend.yaml            # skill 88개 (root 13 + non-root 75)
 ├── role-targets/
-│   └── java-backend.yaml            # JAVA_BACKEND role target 75개
+│   ├── java-backend.yaml            # JAVA_BACKEND role target 75개
+│   └── java-backend-starter.yaml    # JAVA_BACKEND_STARTER role target 75개 (같은 skill, 다른 priority·목표)
 ├── plan-templates/
-│   └── java-backend.yaml            # JAVA_BACKEND_DEFAULT milestone 9개
+│   ├── java-backend.yaml            # JAVA_BACKEND_DEFAULT milestone 9개
+│   └── java-backend-starter.yaml    # JAVA_BACKEND_STARTER_DEFAULT milestone 6개
 ├── review-cards/
 │   ├── java.yaml  spring.yaml  database.yaml  web-http.yaml  testing.yaml
 │   └── security.yaml  practical-engineering.yaml  devops.yaml  network-cs.yaml  explanation.yaml
@@ -123,7 +125,7 @@ skills:
 
 | 필드 | 타입 | 필수 | 제약 | DB 매핑 |
 |---|---|---|---|---|
-| `targetRole` | TargetRole | Y | `JAVA_BACKEND` | `role_skill_target.target_role` |
+| `targetRole` | TargetRole | Y | `TargetRole` 값. **학습 트랙마다 파일 1개** (`JAVA_BACKEND`, `JAVA_BACKEND_STARTER`) | `role_skill_target.target_role` |
 | `targets[].skill` | string | Y | 존재하는 non-root code, 역할당 non-root skill마다 정확히 1개 | `role_skill_target.skill_id` (키: `(target_role, skill_id)`) |
 | `targets[].priority` | Priority | Y | `MUST`/`SHOULD`/`LATER` | `role_skill_target.priority` |
 | `targets[].importance` | decimal | Y | 0.00~1.00, 소수 둘째 자리까지 | `role_skill_target.practical_importance` numeric(3,2) |
@@ -142,6 +144,17 @@ targets:
     target: { knowledge: 4, implementation: 4, explanation: 4, debugging: 3 }
 ```
 
+**학습 트랙과 role target** — skill 카탈로그(§3.2)는 트랙과 무관하게 하나다. 트랙이 바꾸는 것은 이 파일뿐이다. 그래서 **모든 트랙 파일이 같은 non-root skill 목록을 갖고**(CV-21 — 하나당 정확히 1개), `priority`·`importance`·축별 `target`만 다르다. 입문 트랙(`JAVA_BACKEND_STARTER`)은 같은 75개 skill에 대해 MUST를 14개 안팎으로 줄이고 나머지를 SHOULD·LATER로 두며, 축별 목표는 같은 skill의 기본 트랙 값 **이하**로 둔다. `importance`는 그 트랙 기준으로 다시 매긴다(기본 트랙 값을 복사하지 않는다).
+
+```yaml
+targetRole: JAVA_BACKEND_STARTER
+targets:
+  - skill: SPRING.TRANSACTION
+    priority: SHOULD                 # 기본 트랙에서는 MUST
+    importance: 0.60
+    target: { knowledge: 3, implementation: 2, explanation: 2, debugging: 1 }
+```
+
 ### 3.4 `plan-templates/*.yaml`
 
 DB 테이블이 없다. `ContentSeeder`가 검증한 템플릿을 plan 모듈 application 계층의 템플릿 보관 컴포넌트에 메모리로 등록하고(§13 O-2), plan 생성 시 아래처럼 사용한다.
@@ -149,7 +162,7 @@ DB 테이블이 없다. `ContentSeeder`가 검증한 템플릿을 plan 모듈 ap
 | 필드 | 타입 | 필수 | 제약 | 사용처 |
 |---|---|---|---|---|
 | `templateKey` | string | Y | `^[A-Z][A-Z0-9_]{2,59}$` | 식별·로그 |
-| `targetRole` | TargetRole | Y | 역할당 템플릿 정확히 1개 | 학습 목표의 `target_role`(학습 트랙)로 선택 |
+| `targetRole` | TargetRole | Y | **트랙당 템플릿 정확히 1개**(CV-30) | 학습 목표의 `target_role`(학습 트랙)로 선택 |
 | `planTitle` | string | Y | 1~200자 | `learning_plan.title` |
 | `placement.minMilestoneDays` | int | Y | 1~28 | §5 배치 알고리즘 |
 | `milestones[].key` | string | Y | `^[A-Z][A-Z0-9_]{2,59}$`, 템플릿 안 유일 | 저장하지 않음 (템플릿 추적용) |
@@ -366,13 +379,15 @@ Severity `ERROR`는 기동 실패와 CI 실패, `WARN`은 로그만 남긴다. J
 | CV-21 | ERROR | 역할마다 non-root skill 하나당 target이 정확히 1개(누락·중복 금지) |
 | CV-22 | ERROR | `priority` ∈ Priority. `importance`는 0.00~1.00이고 소수 둘째 자리까지 |
 | CV-23 | ERROR | 네 축 target이 정수 0~5이고 합이 1 이상 |
-| CV-24 | WARN | DEC-14 기본값과 다르다: ALGORITHM 카테고리가 SHOULD가 아니거나 EXPLANATION 카테고리가 MUST가 아니다 (§10.1에 따라 의도적으로 바꾼 경우 경고를 허용) |
+| CV-24 | WARN | DEC-14 기본값과 다르다: ALGORITHM 카테고리가 SHOULD가 아니거나 EXPLANATION 카테고리가 MUST가 아니다 (§10.1에 따라 의도적으로 바꾼 경우 경고를 허용). **모든 학습 트랙에 적용한다** — 입문 트랙에서도 EXPLANATION은 MUST다(설명이 러버덕 루프의 중심이다) |
+| CV-25 | ERROR | 모든 role target 파일이 **같은 non-root skill 집합**을 덮는다(트랙마다 CV-21을 만족하므로 집합이 같아야 한다). 트랙 하나에만 있는 skill code가 있으면 실패 |
+| CV-26 | WARN | 상위 트랙(`JAVA_BACKEND`)과 같은 skill을 비교해 입문 트랙(`JAVA_BACKEND_STARTER`)의 축별 target이 더 크다 (§10.4 A) |
 
 **Plan template**
 
 | ID | Sev | 규칙 |
 |---|---|---|
-| CV-30 | ERROR | `templateKey` 패턴, `targetRole` enum, `planTitle` 1~200자. TargetRole마다 템플릿이 정확히 1개 |
+| CV-30 | ERROR | `templateKey` 패턴, `targetRole` enum, `planTitle` 1~200자. **`TargetRole` 값마다 템플릿이 정확히 1개**(값이 늘면 템플릿도 늘어야 한다) |
 | CV-31 | ERROR | milestone 1~24개. `key` 패턴·유일, `title` 1~200자, `description` 1~2000자(있을 때) |
 | CV-32 | ERROR | `weightBp` 정수 100~10000, 템플릿 전체 합 = 10000 |
 | CV-33 | ERROR | `phase` enum. PREPARATION이 모두 CONSOLIDATION보다 앞. 두 단계 모두 1개 이상 |
@@ -474,7 +489,7 @@ Java 구현 전에는 이 스크립트가 기준이다. Java `ContentValidator`�
 | 종료 코드 | 0: ERROR 없음(WARN 허용), 1: ERROR 1개 이상, 2: 사용법·IO 오류 |
 | `--report` | §12 인벤토리 표와 budget 점검 표 출력 |
 | `--placement-vectors` | §5.4 test vector 표 출력 |
-| 구현 범위 | CV-01~CV-87 전부(CV-15 non-root 하한 60, CV-80~CV-87 curated repo 포함). SD-xx는 DB가 필요하므로 제외 |
+| 구현 범위 | CV-01~CV-87 전부(CV-15 non-root 하한 60, CV-25·CV-26 학습 트랙, CV-80~CV-87 curated repo 포함). SD-xx는 DB가 필요하므로 제외 |
 | CI | content 검증 step에서 `python content/tools/validate_content.py`를 실행하고 종료 코드 1이면 실패 |
 
 2026-09-18 실행 결과 (catalogVersion 3): `skills=88 roleTargets=75 templates=1 cards=82 challenges=23 curatedSources=10 curatedRepos=3 readings=13 catalogVersion=3` / `result: PASS (errors=0, warnings=0)`. 결함을 넣은 복사본으로 검증기 자체를 확인했다.
@@ -503,6 +518,10 @@ Java 구현 전에는 이 스크립트가 기준이다. Java `ContentValidator`�
 | `retired.readingKeys`에 있는 key의 reading을 파일에서 지움 (2026-09-19) | CV-83 (1건, 위치 `catalog.yaml#retired.readingKeys`) |
 | `retired.readingKeys`에 있는 key의 reading에서 `retired: true`를 뺌 (2026-09-19) | CV-83 (1건) + 그 저장소 활성 수에 따른 CV-87 WARN |
 | 한 저장소의 활성 reading을 2개로 줄임 (2026-09-19) | CV-87 (WARN). 활성 0개인 `restbucks`는 WARN 없음 |
+| `role-targets/java-backend-starter.yaml`을 `files.roleTargets`에서 뺌 (2026-09-20) | CV-04(파일이 나열되지 않음) + CV-21(그 트랙의 target 0개) |
+| 입문 트랙 role target에서 skill 1개를 지움 (2026-09-20) | CV-21 (누락) + CV-25 (트랙 간 skill 집합 불일치) |
+| 입문 트랙 plan template을 빼거나 MUST skill 1개를 milestone에서 뺌 (2026-09-20) | CV-30 (트랙당 템플릿 1개) / CV-36 |
+| 입문 트랙의 한 skill 축 target을 기본 트랙보다 크게 (2026-09-20) | CV-26 (WARN) |
 
 ---
 
@@ -964,9 +983,22 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 
 사용자가 자기 plan에서 skill target을 조정하는 경로는 replan이다(구조 변경 = 새 version, `06` §11.1). `06` §11.2 7번이 정의하는 조정은 defer(`DEFERRED`), target 축소(`TARGET_REDUCED`), defer 해제(`USER_EDITED`), 새 seed skill 자동 추가(`ROLE_DEFAULT`)다. target 상향은 확장 제안(`06` §4.4 6단계)을 받아들이는 `acceptedTargetRaises`로만 한다. **priority 변경과 그 밖의 target 상향은 MVP 범위 밖(Later)** 이다. 필요하면 운영자가 content YAML의 role target을 바꾸고(§10.1) 새 plan을 만든다(§13 O-4).
 
-### 10.4 다른 학습 트랙을 추가할 때 (콘텐츠 작업)
+### 10.4 학습 트랙을 추가할 때 (콘텐츠 작업)
 
-`target_role`은 사용자별 컬럼이고 `TargetRole` CHECK에 값을 더하면 구조 변경 없이 늘어난다. 다만 **지금의 skill 카탈로그 88개는 Java 백엔드 전용**이라(JVM·JPA·Spring이 절반) 새 학습 트랙을 더하려면 migration과 seed 외에 **skill tree·role target·plan template·review card·challenge·curated repo를 그 트랙용으로 새로 쓰는 콘텐츠 작업**이 따른다. 절차는 `04-domain-model-and-db.md` §3(enum 값 추가 + migration) → `role_skill_target` seed → 이 문서의 §3.2~§3.8 파일 추가 순이고, CV-21(역할마다 non-root skill 하나당 target 1개)·CV-30(역할마다 template 1개)·CV-36(모든 MUST skill이 milestone에 있음)이 누락을 잡는다.
+`target_role`은 사용자별 컬럼이고 `TargetRole` CHECK에 값을 더하면 구조 변경 없이 늘어난다. 새 트랙은 두 종류다.
+
+**A. 같은 스택의 다른 수준** (예: `JAVA_BACKEND` → `JAVA_BACKEND_STARTER`) — skill 카탈로그·복습 카드·challenge·curated repo를 **그대로 공유**한다. 새로 쓰는 것은 둘뿐이다.
+
+| 파일 | 내용 |
+|---|---|
+| `content/role-targets/<track>.yaml` | 기존 non-root skill **전부**에 target 1개씩(CV-21). `priority`로 필수 범위를 정하고(입문 트랙은 MUST 14개 안팎), 축별 목표는 같은 skill의 상위 트랙 값 이하, `importance`는 그 트랙 기준으로 다시 매긴다(§3.3) |
+| `content/plan-templates/<track>.yaml` | 그 트랙의 MUST skill 전부를 담는 milestone 구성(CV-35·CV-36). `weightBp` 합 10000, PREPARATION이 앞·CONSOLIDATION이 마지막(CV-33). 입문 트랙은 6개(PREPARATION 5 + CONSOLIDATION 1) |
+
+절차: `04` §3에 enum 값 추가 → `V{n}`으로 `learning_goal`·`role_skill_target`의 `target_role` CHECK 재생성 → `03` §9 `devpilot.tracks.<트랙>` 항목 추가(누락이면 기동 실패) → 위 두 파일 추가 + `catalog.yaml`의 `files.roleTargets`·`files.planTemplates`에 등록 + `catalogVersion` +1 → `02` 온보딩 1단계 선택지와 l10n.
+
+**B. 다른 스택** (예: 프런트엔드) — 지금의 skill 카탈로그 88개는 Java 백엔드 전용이라(JVM·JPA·Spring이 절반) **skill tree·role target·plan template·review card·challenge·curated repo를 모두 새로 쓰는** 콘텐츠 작업이 따른다. 현재 계획 밖이다(`01` §7 Later).
+
+두 경우 모두 CV-21(트랙마다 non-root skill 하나당 target 1개)·CV-30(트랙마다 template 1개)·CV-36(그 트랙의 모든 MUST skill이 milestone에 있음)이 누락을 잡는다. **학습 트랙 변경은 지원하지 않는다**(`05` §5.2) — 사용자가 트랙을 바꾸려면 계정을 새로 만든다.
 
 ---
 
@@ -990,6 +1022,7 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 - [ ] `pinnedCommit`을 올렸다면 그 저장소의 **모든** reading을 다시 확인했다 (§8.4 LN-3)
 - [ ] 라이선스가 `UNSPECIFIED`인 저장소의 코드를 문서·콘텐츠에 옮겨 적지 않았다
 - [ ] 저장소·reading의 추가·교체·은퇴는 소스 점검(§8.5)에서 사용자가 고른 것만 반영했고, 은퇴한 reading은 지우지 않고 `retired: true`로 남겼다(§8.2)
+- [ ] 학습 트랙을 추가·수정했다면 role target과 plan template을 **같은 PR에서** 고쳤고, 그 트랙의 MUST skill이 모두 milestone에 있으며(CV-36), 입문 트랙의 축별 목표가 상위 트랙 값을 넘지 않는다(§10.4 A)
 
 ---
 
@@ -1022,6 +1055,8 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 | review card 유형 | RECALL 41, EXPLAIN 22, BUG_SPOT 16, CHOICE 3 |
 | PRACTICE 난이도 | L1 2, L2 8, L3 6, L4 2 (isTransfer 2: `PRACTICE.SPRING.TRANSACTION.L4.001`, `PRACTICE.SECURITY.AUTHN_AUTHZ.L4.001`) |
 | plan template | `JAVA_BACKEND_DEFAULT`: milestone **9개** — PREPARATION 8 (weight 9200), CONSOLIDATION 1 (800). priority는 1~6 MUST / 7~9 SHOULD. 75개 non-root skill 전부가 정확히 한 milestone에 들어간다 (CV-35·CV-36) |
+| plan template (입문 트랙) | `JAVA_BACKEND_STARTER_DEFAULT`: milestone **6개** — PREPARATION 5 + CONSOLIDATION 1. 그 트랙의 MUST skill 전부를 담는다 (CV-36). `BL-CNT-17`에서 작성 |
+| role target (입문 트랙) | `JAVA_BACKEND_STARTER`: 같은 non-root skill 75개, MUST 14개 안팎, 축별 목표는 기본 트랙 이하 (§3.3, `BL-CNT-17`) |
 | curated source | 19 (Oracle 4, Spring 5, PostgreSQL 5, OWASP 2, IETF 1, MDN 1, OpenJDK 1) |
 | curated repo | **9** (`modulith`, `petclinic`, `restbucks`(은퇴 단위만), `modular-monolith`, `jdk25`, `spring-framework`, `hikaricp`, `security-samples`, `webgoat`) — 모두 `pinnedCommit` 있음 (§8.4) |
 | reading | **41** — 활성 36 (modulith 4, petclinic 8, modular-monolith 7, jdk25 5, spring-framework 3, hikaricp 3, security-samples 3, webgoat 3, 합계 547분), 은퇴 5 (restbucks). 활성 reading이 서로 다른 skill **43개**(MUST 34/43)를 덮는다 |
