@@ -26,17 +26,11 @@ enum OnboardingStep {
 abstract final class OnboardingRules {
   static const focusSkillCodesField = 'learningGoal.focusSkillCodes';
 
-  /// "3개월 후" / "6개월 후" chips.
-  static LocalDate completionAfterMonths(LocalDate today, int months) => today.addMonths(months);
+  /// Months of the target date quick choices "3개월 후", "6개월 후", "1년 후".
+  static const quickTargetMonths = [3, 6, 12];
 
-  /// "완료일 3개월 전" chip value, or null when it would be before today (chip disabled).
-  static LocalDate? checkpointThreeMonthsBefore(LocalDate? completion, LocalDate today) {
-    if (completion == null) {
-      return null;
-    }
-    final candidate = completion.addMonths(-3);
-    return candidate.isBefore(today) ? null : candidate;
-  }
+  /// A quick choice: [months] after today.
+  static LocalDate completionAfterMonths(LocalDate today, int months) => today.addMonths(months);
 
   /// The zone step 2 starts with: the draft's choice, else the browser zone, else Asia/Seoul.
   static String timeZone(OnboardingDraft draft, TimeZoneSupport support) =>
@@ -46,17 +40,11 @@ abstract final class OnboardingRules {
   static int weeklyMinutes(OnboardingDraft draft) =>
       draft.weekdayStudyMinutes * 5 + draft.weekendStudyMinutes * 2;
 
-  /// Step 1 "다음" is enabled: profile chosen, display name and goal dates valid (docs/02 step 1).
-  static bool canLeaveGoalStep(OnboardingDraft draft, String displayName, LocalDate today) {
-    final completion = LocalDate.tryParse(draft.targetCompletionDate);
-    final checkpoint = LocalDate.tryParse(draft.checkpointDate);
-    final experienceStart = LocalDate.tryParse(draft.experienceStartDate);
-    return draft.experienceProfile != null &&
-        InputRules.isValidDisplayName(displayName) &&
-        GoalDateRules.completionViolation(completion, today) == null &&
-        GoalDateRules.checkpointViolation(checkpoint, completion, today) == null &&
-        GoalDateRules.experienceStartViolation(experienceStart, today) == null;
-  }
+  /// Step 1 "다음" is enabled: display name and target date valid (docs/02 step 1).
+  static bool canLeaveGoalStep(OnboardingDraft draft, String displayName, LocalDate today) =>
+      InputRules.isValidDisplayName(displayName) &&
+      GoalDateRules.completionViolation(LocalDate.tryParse(draft.targetCompletionDate), today) ==
+          null;
 
   /// Categories whose chosen level is 3 or more get the diagnostic note (docs/02 step 3).
   static bool hasHighSelfAssessment(OnboardingDraft draft) =>
@@ -71,9 +59,8 @@ abstract final class OnboardingRules {
     required String projectDescription,
     required bool withProject,
   }) {
-    final experienceProfile = draft.experienceProfile;
     final completion = draft.targetCompletionDate;
-    if (experienceProfile == null || completion == null) {
+    if (completion == null) {
       throw StateError('Step 1 is incomplete');
     }
     return OnboardingRequest(
@@ -82,11 +69,8 @@ abstract final class OnboardingRules {
       dayStartHour: draft.dayStartHour,
       weekdayStudyMinutes: draft.weekdayStudyMinutes,
       weekendStudyMinutes: draft.weekendStudyMinutes,
-      experienceProfile: experienceProfile,
-      experienceStartDate: draft.experienceStartDate,
       learningGoal: LearningGoalInput(
         targetRole: TargetRole.javaBackend,
-        checkpointDate: draft.checkpointDate,
         targetCompletionDate: completion,
         focusSkillCodes: draft.focusSkillCodes,
       ),
@@ -122,10 +106,7 @@ abstract final class OnboardingRules {
     bool isFocusSkills(String field) => field.startsWith(focusSkillCodesField);
     if (any(
       (field) =>
-          (field.startsWith('learningGoal') && !isFocusSkills(field)) ||
-          field == 'displayName' ||
-          field == 'experienceProfile' ||
-          field == 'experienceStartDate',
+          (field.startsWith('learningGoal') && !isFocusSkills(field)) || field == 'displayName',
     )) {
       return OnboardingStep.goal;
     }

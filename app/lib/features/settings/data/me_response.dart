@@ -16,8 +16,6 @@ abstract class MeResponse with _$MeResponse {
     required int dayStartHour,
     required int weekdayStudyMinutes,
     required int weekendStudyMinutes,
-    @JsonKey(unknownEnumValue: ExperienceProfile.unknown) ExperienceProfile? experienceProfile,
-    String? experienceStartDate,
     required bool onboardingCompleted,
     DateTime? onboardingCompletedAt,
 

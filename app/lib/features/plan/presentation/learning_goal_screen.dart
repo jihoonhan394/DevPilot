@@ -24,8 +24,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// SCR-LEARNING-GOAL: the user's own goal dates and focus skills (docs/02 §3.9). DevPilot plans
-/// backwards from these dates; changing them only recommends a replan.
+/// SCR-LEARNING-GOAL: the learning track, the user's own target date (목표일) and focus skills
+/// (docs/02 §3.9). DevPilot plans backwards from the date; changing it only recommends a replan.
 class LearningGoalScreen extends ConsumerWidget {
   const LearningGoalScreen({super.key});
 
@@ -95,7 +95,6 @@ class _GoalForm extends ConsumerWidget {
     final controller = ref.read(learningGoalControllerProvider.notifier);
     final today = LocalDate.parse(ref.watch(meProvider).requireValue.today);
     final completion = LocalDate.tryParse(form.completionDate);
-    final checkpoint = LocalDate.tryParse(form.checkpointDate);
     final saveError = form.saveError;
     final fallback = l10n.errorValidationFailed;
     return Column(
@@ -118,15 +117,6 @@ class _GoalForm extends ConsumerWidget {
               saveError?.fieldMessage('targetCompletionDate', fallback: fallback),
           onChanged: controller.setCompletionDate,
         ),
-        const SizedBox(height: AppSpacing.md),
-        _CheckpointDate(
-          checkpoint: checkpoint,
-          completion: completion,
-          today: today,
-          enabled: !form.isSaving,
-          serverError: saveError?.fieldMessage('checkpointDate', fallback: fallback),
-          onChanged: controller.setCheckpointDate,
-        ),
         const SizedBox(height: AppSpacing.lg),
         _FocusSkills(
           codes: form.focusSkillCodes,
@@ -142,62 +132,6 @@ class _GoalForm extends ConsumerWidget {
           onPressed: form.isDirty && form.isValid(today) && !form.isSaving ? onSave : null,
           child: Text(l10n.goalSave),
         ),
-      ],
-    );
-  }
-}
-
-/// Optional checkpoint date: the "없음" switch clears it (docs/02 SCR-LEARNING-GOAL).
-class _CheckpointDate extends StatelessWidget {
-  const _CheckpointDate({
-    required this.checkpoint,
-    required this.completion,
-    required this.today,
-    required this.enabled,
-    required this.serverError,
-    required this.onChanged,
-  });
-
-  final LocalDate? checkpoint;
-  final LocalDate? completion;
-  final LocalDate today;
-  final bool enabled;
-  final String? serverError;
-  final ValueChanged<LocalDate?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final date = checkpoint;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SwitchListTile(
-          key: const Key('goal.checkpointSwitch'),
-          contentPadding: EdgeInsets.zero,
-          title: Text(l10n.onboardingGoalCheckpoint),
-          subtitle: Text(l10n.onboardingGoalCheckpointHelp),
-          value: date != null,
-          onChanged: enabled
-              ? (on) => onChanged(on ? (completion ?? today).addMonths(-3) : null)
-              : null,
-        ),
-        if (date != null)
-          DateField(
-            key: const Key('goal.checkpointField'),
-            label: l10n.onboardingGoalCheckpoint,
-            value: date,
-            firstDate: today.addYears(-1),
-            lastDate: completion ?? today.addYears(3),
-            enabled: enabled,
-            errorText:
-                goalDateMessage(
-                  GoalDateRules.checkpointViolation(date, completion, today),
-                  l10n,
-                ) ??
-                serverError,
-            onChanged: onChanged,
-          ),
       ],
     );
   }

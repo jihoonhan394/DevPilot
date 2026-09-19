@@ -15,7 +15,6 @@ Future<void> runOnboardingToTodayFlow(WidgetTester tester) async {
   await pumpApp(tester, backend: backend);
   expect(locationOf(tester), '/onboarding/goal');
 
-  await tapKey(tester, 'onboarding.profile.workingDeveloper');
   await tapKey(tester, 'onboarding.completion.quick6m');
   await tapKey(tester, 'onboarding.nextButton');
   await tapKey(tester, 'onboarding.nextButton');

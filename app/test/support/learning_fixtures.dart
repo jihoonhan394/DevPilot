@@ -163,7 +163,7 @@ DashboardView testDashboard({
 BudgetView testBudget({RiskLevel risk = RiskLevel.high, int? ratioBp = 11950}) => BudgetView(
   planId: planId,
   today: testToday,
-  horizonDate: '2027-01-05',
+  horizonDate: '2027-04-01',
   nominalBudgetMinutes: 7020,
   completionRateBp: 7000,
   effectiveBudgetMinutes: 4914,
@@ -180,7 +180,7 @@ SkillRef testSkillRef(String code, String name, SkillCategory category) =>
 ReplanPreviewResponse testShrinkPreview({RiskLevel risk = RiskLevel.high}) => ReplanPreviewResponse(
   planId: planId,
   today: testToday,
-  horizonDate: '2027-01-05',
+  horizonDate: '2027-04-01',
   nominalBudgetMinutes: 2820,
   completionRateBp: 6800,
   effectiveBudgetMinutes: 1917,

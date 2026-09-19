@@ -36,8 +36,7 @@ void main() {
     await pumpApp(tester, backend: backend, at: '/plan');
 
     expect(find.text('Java 백엔드 성장 계획 · v1'), findsOneWidget);
-    expect(find.text('완료 목표 2027년 4월 1일'), findsOneWidget);
-    expect(find.text('중간 점검 2027년 1월 5일'), findsOneWidget);
+    expect(find.text('목표일 2027년 4월 1일'), findsOneWidget);
     expect(find.text('기반 다지기'), findsWidgets);
     expect(find.byKey(const Key('plan.todayDivider')), findsOneWidget);
     // Today (9/19) lies after the first milestone's start and before the second one.
@@ -167,7 +166,7 @@ void main() {
     backend.planRepository.activePlan = testPlan(replanRecommended: true);
     await pumpApp(tester, backend: backend, at: '/plan');
 
-    expect(find.text('목표 날짜가 바뀌었어요. 계획을 다시 맞춰 보세요.'), findsOneWidget);
+    expect(find.text('목표일이 바뀌었어요. 계획을 다시 맞춰 보세요.'), findsOneWidget);
     await tapKey(tester, 'plan.replanButton');
     expect(locationOf(tester), '/plan/replan');
   });
@@ -206,7 +205,7 @@ void main() {
     await pumpApp(tester, backend: backend, at: '/plan');
 
     expect(find.bySemanticsLabel('마감 위험: 빠듯함'), findsOneWidget);
-    expect(find.text('1월 5일까지 가능 약 82시간'), findsOneWidget);
+    expect(find.text('4월 1일까지 가능 약 82시간'), findsOneWidget);
     expect(find.text('필수 목표에 필요 약 98시간'), findsOneWidget);
     expect(find.text('필요 ÷ 가능 119%'), findsOneWidget);
     expect(find.text('최근 실제 완료율 70% 반영'), findsOneWidget);
@@ -237,7 +236,7 @@ void main() {
     expect(find.text('문제가 생겼어요. 잠시 후 다시 시도해 주세요.'), findsOneWidget);
 
     await tapKey(tester, 'plan.budgetRetryButton');
-    expect(find.text('1월 5일까지 가능 약 82시간'), findsOneWidget);
+    expect(find.text('4월 1일까지 가능 약 82시간'), findsOneWidget);
     expect(backend.planRepository.budgetFetchCount, 2);
   });
 

@@ -15,7 +15,7 @@ abstract class BudgetView with _$BudgetView {
     required String planId,
     required String today,
 
-    /// The checkpoint date when it is still ahead, otherwise the completion date.
+    /// The target date (목표일) the budget counts up to (docs/06 §3.1).
     required String horizonDate,
     required int nominalBudgetMinutes,
     required int completionRateBp,

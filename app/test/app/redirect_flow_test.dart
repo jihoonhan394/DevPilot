@@ -24,7 +24,7 @@ void main() {
     await pumpApp(tester, backend: backend);
 
     expect(locationOf(tester), '/onboarding/goal');
-    expect(find.text('목표를 알려 주세요'), findsOneWidget);
+    expect(find.text('무엇을, 언제까지 공부할지 정해요'), findsOneWidget);
 
     await goTo(tester, '/plan');
     expect(locationOf(tester), '/onboarding/goal');

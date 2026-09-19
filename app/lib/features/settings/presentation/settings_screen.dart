@@ -174,15 +174,9 @@ class _GoalTile extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final goal = ref.watch(settingsGoalProvider).value;
     final completion = LocalDate.tryParse(goal?.targetCompletionDate);
-    final checkpoint = LocalDate.tryParse(goal?.checkpointDate);
     final summary = completion == null
         ? null
-        : checkpoint == null
-        ? l10n.settingsGoalSummaryNoCheckpoint(formatLongDate(completion, l10n))
-        : l10n.settingsGoalSummary(
-            formatLongDate(completion, l10n),
-            formatLongDate(checkpoint, l10n),
-          );
+        : l10n.settingsGoalSummary(formatLongDate(completion, l10n));
     return ListTile(
       key: const Key('settings.goalTile'),
       contentPadding: EdgeInsets.zero,

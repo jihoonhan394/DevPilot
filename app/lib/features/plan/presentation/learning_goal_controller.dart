@@ -7,13 +7,13 @@ import 'package:devpilot_app/features/plan/data/learning_goal_repository.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Editable copy of the learning goal (docs/02 SCR-LEARNING-GOAL).
+/// Editable copy of the learning goal: the target date and focus skills
+/// (docs/02 SCR-LEARNING-GOAL).
 @immutable
 final class LearningGoalForm {
   const LearningGoalForm({
     required this.goal,
     required this.completionDate,
-    required this.checkpointDate,
     required this.focusSkillCodes,
     this.isSaving = false,
     this.saveError,
@@ -22,14 +22,14 @@ final class LearningGoalForm {
   factory LearningGoalForm.of(LearningGoalView goal) => LearningGoalForm(
     goal: goal,
     completionDate: goal.targetCompletionDate,
-    checkpointDate: goal.checkpointDate,
     focusSkillCodes: [for (final skill in goal.focusSkills) skill.code],
   );
 
   /// The saved goal the form started from.
   final LearningGoalView goal;
+
+  /// The target date (목표일, `targetCompletionDate`).
   final String completionDate;
-  final String? checkpointDate;
   final List<String> focusSkillCodes;
   final bool isSaving;
 
@@ -38,26 +38,19 @@ final class LearningGoalForm {
 
   bool get isDirty =>
       completionDate != goal.targetCompletionDate ||
-      checkpointDate != goal.checkpointDate ||
       !listEquals(focusSkillCodes, [for (final skill in goal.focusSkills) skill.code]);
 
-  bool isValid(LocalDate today) {
-    final completion = LocalDate.tryParse(completionDate);
-    final checkpoint = LocalDate.tryParse(checkpointDate);
-    return GoalDateRules.completionViolation(completion, today) == null &&
-        GoalDateRules.checkpointViolation(checkpoint, completion, today) == null;
-  }
+  bool isValid(LocalDate today) =>
+      GoalDateRules.completionViolation(LocalDate.tryParse(completionDate), today) == null;
 
   LearningGoalForm copyWith({
     String? completionDate,
-    String? Function()? checkpointDate,
     List<String>? focusSkillCodes,
     bool? isSaving,
     ApiException? Function()? saveError,
   }) => LearningGoalForm(
     goal: goal,
     completionDate: completionDate ?? this.completionDate,
-    checkpointDate: checkpointDate == null ? this.checkpointDate : checkpointDate(),
     focusSkillCodes: focusSkillCodes ?? this.focusSkillCodes,
     isSaving: isSaving ?? this.isSaving,
     saveError: saveError == null ? this.saveError : saveError(),
@@ -71,7 +64,7 @@ sealed class LearningGoalSaveOutcome {
 final class LearningGoalSaved extends LearningGoalSaveOutcome {
   const LearningGoalSaved({required this.datesChanged});
 
-  /// True when a goal date changed: the server set `replanRecommended` (docs/05 §5.2).
+  /// True when the target date changed: the server set `replanRecommended` (docs/05 §5.2).
   final bool datesChanged;
 }
 
@@ -102,10 +95,6 @@ final class LearningGoalController extends AsyncNotifier<LearningGoalForm> {
   void setCompletionDate(LocalDate date) =>
       _edit((form) => form.copyWith(completionDate: date.toIso()));
 
-  /// Null is the "없음" switch: the date is cleared on save.
-  void setCheckpointDate(LocalDate? date) =>
-      _edit((form) => form.copyWith(checkpointDate: () => date?.toIso()));
-
   void setFocusSkills(List<String> codes) => _edit((form) => form.copyWith(focusSkillCodes: codes));
 
   Future<LearningGoalSaveOutcome> save() async {
@@ -123,7 +112,6 @@ final class LearningGoalController extends AsyncNotifier<LearningGoalForm> {
               targetRole: goal.targetRole == TargetRole.unknown
                   ? TargetRole.javaBackend
                   : goal.targetRole,
-              checkpointDate: form.checkpointDate,
               targetCompletionDate: form.completionDate,
               focusSkillCodes: form.focusSkillCodes,
               version: goal.version,
@@ -131,9 +119,7 @@ final class LearningGoalController extends AsyncNotifier<LearningGoalForm> {
           );
       state = AsyncData(LearningGoalForm.of(saved));
       return LearningGoalSaved(
-        datesChanged:
-            saved.targetCompletionDate != goal.targetCompletionDate ||
-            saved.checkpointDate != goal.checkpointDate,
+        datesChanged: saved.targetCompletionDate != goal.targetCompletionDate,
       );
     } on ApiException catch (error) {
       if (error.code == ApiErrorCode.concurrentModification) {

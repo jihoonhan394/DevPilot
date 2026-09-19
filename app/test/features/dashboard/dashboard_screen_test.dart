@@ -45,7 +45,7 @@ void main() {
     await pumpApp(tester, backend: backend, at: '/dashboard');
 
     expect(find.text('목표를 모두 달성했어요. 계획을 조정해 새 목표를 잡아 보세요.'), findsOneWidget);
-    expect(find.text('목표 날짜가 바뀌었어요.'), findsOneWidget);
+    expect(find.text('목표일이 바뀌었어요.'), findsOneWidget);
     await tapKey(tester, 'dashboard.replanButton');
     expect(locationOf(tester), '/plan/replan?from=goal');
   });

@@ -18,7 +18,7 @@ void main() {
 
   testWidgets('shouldPatchOnlyTheChangedDisplayName', (tester) async {
     await openSettings(tester);
-    expect(find.text('완료 2027년 4월 1일 · 점검 2027년 1월 5일'), findsOneWidget);
+    expect(find.text('목표일 2027년 4월 1일'), findsOneWidget);
     expect(isButtonEnabled(tester, 'settings.saveButton'), isFalse);
 
     await enterTextByKey(tester, 'settings.displayNameField', '  민수 ');

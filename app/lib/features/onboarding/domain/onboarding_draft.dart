@@ -13,13 +13,9 @@ abstract class OnboardingDraft with _$OnboardingDraft {
   const factory OnboardingDraft({
     /// Null until edited; the field starts with `GET /me.displayName`.
     String? displayName,
-    @JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue)
-    ExperienceProfile? experienceProfile,
-    String? experienceStartDate,
-    String? targetCompletionDate,
 
-    /// Null = "없음" (docs/02 step 1 default).
-    String? checkpointDate,
+    /// The target date (목표일); null until chosen.
+    String? targetCompletionDate,
     @Default(OnboardingDefaults.weekdayStudyMinutes) int weekdayStudyMinutes,
     @Default(OnboardingDefaults.weekendStudyMinutes) int weekendStudyMinutes,
     @Default(OnboardingDefaults.dayStartHour) int dayStartHour,

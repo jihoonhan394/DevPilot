@@ -33,8 +33,6 @@ MeResponse testMe({
   dayStartHour: dayStartHour,
   weekdayStudyMinutes: 45,
   weekendStudyMinutes: 240,
-  experienceProfile: onboardingCompleted ? ExperienceProfile.workingDeveloper : null,
-  experienceStartDate: null,
   onboardingCompleted: onboardingCompleted,
   onboardingCompletedAt: onboardingCompleted ? testInstant : null,
   today: testToday,
@@ -137,12 +135,10 @@ PlanSummaryView testPlanSummary({
 
 LearningGoalView testGoal({
   String completion = '2027-04-01',
-  String? checkpoint = '2027-01-05',
   int version = 0,
 }) => LearningGoalView(
   id: 'c0a10000-0000-4000-8000-000000000001',
   targetRole: TargetRole.javaBackend,
-  checkpointDate: checkpoint,
   targetCompletionDate: completion,
   focusSkills: const [],
   replanRecommended: false,

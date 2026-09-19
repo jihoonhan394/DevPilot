@@ -8,13 +8,13 @@ import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-/// `PlanHeader`: title · version, the user's goal dates and "목표 수정" (docs/02 SCR-PLAN).
+/// `PlanHeader`: title · version, the user's target date and "목표 수정" (docs/02 SCR-PLAN).
 class PlanHeader extends StatelessWidget {
   const PlanHeader({super.key, required this.plan, required this.goal});
 
   final PlanView plan;
 
-  /// Null when `GET /learning-goal` failed: the date lines are hidden.
+  /// Null when `GET /learning-goal` failed: the date line is hidden.
   final LearningGoalView? goal;
 
   @override
@@ -22,7 +22,6 @@ class PlanHeader extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final textTheme = Theme.of(context).textTheme;
     final goalView = goal;
-    final checkpoint = LocalDate.tryParse(goalView?.checkpointDate);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -38,8 +37,8 @@ class PlanHeader extends StatelessWidget {
             l10n.planGoalCompletion(
               formatLongDate(LocalDate.parse(goalView.targetCompletionDate), l10n),
             ),
+            key: const Key('plan.targetDate'),
           ),
-          if (checkpoint != null) Text(l10n.planGoalCheckpoint(formatLongDate(checkpoint, l10n))),
         ],
         Align(
           alignment: Alignment.centerRight,

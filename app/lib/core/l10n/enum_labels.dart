@@ -60,15 +60,6 @@ extension TargetRoleLabel on TargetRole {
   };
 }
 
-extension ExperienceProfileLabel on ExperienceProfile {
-  String label(AppLocalizations l10n) => switch (this) {
-    ExperienceProfile.workingDeveloper => l10n.enumExperienceProfileWorkingDeveloper,
-    ExperienceProfile.developerStarter => l10n.enumExperienceProfileDeveloperStarter,
-    ExperienceProfile.other => l10n.enumExperienceProfileOther,
-    ExperienceProfile.unknown => l10n.enumUnknown,
-  };
-}
-
 extension SideProjectStatusLabel on SideProjectStatus {
   String label(AppLocalizations l10n) => switch (this) {
     SideProjectStatus.active => l10n.enumSideProjectStatusActive,

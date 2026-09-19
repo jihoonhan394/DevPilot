@@ -46,36 +46,6 @@ void main() {
         GoalDateViolation.tooFar,
       );
     });
-
-    test('shouldKeepCheckpointBetweenLastYearAndCompletion', () {
-      final completion = today.addMonths(6);
-      expect(GoalDateRules.checkpointViolation(null, completion, today), isNull);
-      expect(
-        GoalDateRules.checkpointViolation(today.addYears(-1), completion, today),
-        isNull,
-      );
-      expect(
-        GoalDateRules.checkpointViolation(today.addYears(-1).addDays(-1), completion, today),
-        GoalDateViolation.tooEarly,
-      );
-      expect(GoalDateRules.checkpointViolation(completion, completion, today), isNull);
-      expect(
-        GoalDateRules.checkpointViolation(completion.addDays(1), completion, today),
-        GoalDateViolation.afterCompletion,
-      );
-    });
-
-    test('shouldKeepExperienceStartBetween1970AndToday', () {
-      expect(GoalDateRules.experienceStartViolation(today, today), isNull);
-      expect(
-        GoalDateRules.experienceStartViolation(today.addDays(1), today),
-        GoalDateViolation.notPast,
-      );
-      expect(
-        GoalDateRules.experienceStartViolation(const LocalDate(1969, 12, 31), today),
-        GoalDateViolation.tooEarly,
-      );
-    });
   });
 
   group('InputRules', () {

@@ -18,8 +18,6 @@ abstract class OnboardingRequest with _$OnboardingRequest {
     required int dayStartHour,
     required int weekdayStudyMinutes,
     required int weekendStudyMinutes,
-    required ExperienceProfile experienceProfile,
-    required String? experienceStartDate,
     required LearningGoalInput learningGoal,
 
     /// true = short diagnostic (then [selfAssessments] is empty), false = self-assessment.
@@ -35,11 +33,11 @@ abstract class OnboardingRequest with _$OnboardingRequest {
       _$OnboardingRequestFromJson(json);
 }
 
+/// The learning track and its target date (목표일).
 @freezed
 abstract class LearningGoalInput with _$LearningGoalInput {
   const factory LearningGoalInput({
     required TargetRole targetRole,
-    required String? checkpointDate,
     required String targetCompletionDate,
     required List<String> focusSkillCodes,
   }) = _LearningGoalInput;

@@ -16,8 +16,12 @@ void main() {
 
   Future<void> completeGoalStep(WidgetTester tester) async {
     expect(find.text('1 / 5'), findsOneWidget);
+    expect(find.text('무엇을, 언제까지 공부할지 정해요'), findsOneWidget);
+    for (final chip in ['3개월 후', '6개월 후', '1년 후', '직접 선택']) {
+      expect(find.text(chip), findsOneWidget, reason: chip);
+    }
+    expect(find.text('목표일까지 남은 시간으로 무엇을 먼저 할지 정해요.'), findsOneWidget);
     expect(isButtonEnabled(tester, 'onboarding.nextButton'), isFalse);
-    await tapKey(tester, 'onboarding.profile.workingDeveloper');
     await tapKey(tester, 'onboarding.completion.quick6m');
     expect(find.text('2027년 3월 19일'), findsOneWidget);
     expect(isButtonEnabled(tester, 'onboarding.nextButton'), isTrue);
@@ -47,10 +51,8 @@ void main() {
     expect(request.dayStartHour, 4);
     expect(request.weekdayStudyMinutes, 60);
     expect(request.weekendStudyMinutes, 240);
-    expect(request.experienceProfile, ExperienceProfile.workingDeveloper);
     expect(request.learningGoal.targetRole, TargetRole.javaBackend);
     expect(request.learningGoal.targetCompletionDate, '2027-03-19');
-    expect(request.learningGoal.checkpointDate, isNull);
     expect(request.runDiagnostic, isTrue);
     expect(request.selfAssessments, isEmpty);
     expect(request.sideProject?.name, '주문 시스템');

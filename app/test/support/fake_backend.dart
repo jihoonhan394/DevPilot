@@ -99,14 +99,12 @@ final class FakeOnboardingRepository implements OnboardingRepository {
     final user = _meRepository.me = _meRepository.me.copyWith(
       displayName: request.displayName,
       onboardingCompleted: true,
-      experienceProfile: request.experienceProfile,
     );
     final project = request.sideProject;
     return OnboardingResponse(
       user: user,
       learningGoal: testGoal(
         completion: request.learningGoal.targetCompletionDate,
-        checkpoint: request.learningGoal.checkpointDate,
       ),
       activePlan: testPlanSummary(),
       sideProject: project == null
@@ -280,7 +278,6 @@ final class FakeLearningGoalRepository implements LearningGoalRepository {
       throw failure;
     }
     return goal = goal.copyWith(
-      checkpointDate: request.checkpointDate,
       targetCompletionDate: request.targetCompletionDate,
       version: goal.version + 1,
     );

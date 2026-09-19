@@ -17,16 +17,6 @@ enum TargetRole {
   String get wireName => _$TargetRoleEnumMap[this]!;
 }
 
-enum ExperienceProfile {
-  @JsonValue('WORKING_DEVELOPER')
-  workingDeveloper,
-  @JsonValue('DEVELOPER_STARTER')
-  developerStarter,
-  @JsonValue('OTHER')
-  other,
-  unknown,
-}
-
 enum UserRole {
   @JsonValue('USER')
   user,
