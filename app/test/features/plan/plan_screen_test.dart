@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fake_backend.dart';
 import '../../support/fixtures.dart';
+import '../../support/learning_fixtures.dart';
 import '../../support/test_app.dart';
 import '../../support/widget_actions.dart';
 
@@ -197,6 +198,54 @@ void main() {
     await goTo(tester, '/plan/versions/$previousPlanId');
 
     expect(find.text('페이지를 찾을 수 없어요'), findsOneWidget);
+  });
+
+  // BL-CLI-25 / AC-03: the budget card shows the server's budget and risk (docs/02 SCR-PLAN).
+  testWidgets('shouldShowBudgetCardWithRiskAndTightHint', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await pumpApp(tester, backend: backend, at: '/plan');
+
+    expect(find.bySemanticsLabel('마감 위험: 빠듯함'), findsOneWidget);
+    expect(find.text('1월 5일까지 가능 약 82시간'), findsOneWidget);
+    expect(find.text('필수 목표에 필요 약 98시간'), findsOneWidget);
+    expect(find.text('필요 ÷ 가능 119%'), findsOneWidget);
+    expect(find.text('최근 실제 완료율 70% 반영'), findsOneWidget);
+    expect(find.text('빠듯해요. 필수 위주로 줄이는 안을 볼 수 있어요.'), findsOneWidget);
+
+    await tapKey(tester, 'plan.budgetReplanButton');
+    expect(locationOf(tester), '/plan/replan');
+    semantics.dispose();
+  });
+
+  testWidgets('shouldShowRoomyHintAndNoTimeLine', (tester) async {
+    backend.planRepository.budget = testBudget(risk: RiskLevel.low, ratioBp: null);
+    await pumpApp(tester, backend: backend, at: '/plan');
+
+    expect(find.text('여유가 있어요. 더 깊이 공부하는 안을 볼 수 있어요.'), findsOneWidget);
+    expect(
+      find.text('목표일까지 남은 학습 가능 시간이 없어요. 목표일이나 학습 시간을 확인해 주세요.'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('plan.budgetRatio')), findsNothing);
+  });
+
+  testWidgets('shouldShowBudgetErrorOnlyInItsCard', (tester) async {
+    backend.planRepository.budgetFailures.add(internalError());
+    await pumpApp(tester, backend: backend, at: '/plan');
+
+    expect(find.text('Java 백엔드 성장 계획 · v1'), findsOneWidget);
+    expect(find.text('문제가 생겼어요. 잠시 후 다시 시도해 주세요.'), findsOneWidget);
+
+    await tapKey(tester, 'plan.budgetRetryButton');
+    expect(find.text('1월 5일까지 가능 약 82시간'), findsOneWidget);
+    expect(backend.planRepository.budgetFetchCount, 2);
+  });
+
+  testWidgets('shouldOpenDashboardFromPlan', (tester) async {
+    await pumpApp(tester, backend: backend, at: '/plan');
+
+    await tapKey(tester, 'plan.dashboardLink');
+    expect(locationOf(tester), '/dashboard');
   });
 
   testWidgets('shouldFitPlanIn360PixelWidthWithBottomTabs', (tester) async {

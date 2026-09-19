@@ -2,7 +2,6 @@ import 'package:devpilot_app/app/routes.dart';
 import 'package:devpilot_app/core/l10n/display_format.dart';
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/time/local_date.dart';
-import 'package:devpilot_app/core/widgets/badges.dart';
 import 'package:devpilot_app/features/plan/data/learning_goal_models.dart';
 import 'package:devpilot_app/features/plan/data/plan_models.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
@@ -23,22 +22,15 @@ class PlanHeader extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final textTheme = Theme.of(context).textTheme;
     final goalView = goal;
-    final risk = plan.latestSnapshot?.riskLevel;
     final checkpoint = LocalDate.tryParse(goalView?.checkpointDate);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Wrap(
-          spacing: AppSpacing.sm,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Text(
-              l10n.planHeader(plan.title, plan.planVersion),
-              key: const Key('plan.header'),
-              style: textTheme.titleMedium,
-            ),
-            if (risk != null) RiskBadge(risk: risk),
-          ],
+        // The current risk is on the budget card below.
+        Text(
+          l10n.planHeader(plan.title, plan.planVersion),
+          key: const Key('plan.header'),
+          style: textTheme.titleMedium,
         ),
         if (goalView != null) ...[
           const SizedBox(height: AppSpacing.xs),

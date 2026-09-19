@@ -1,6 +1,8 @@
 import 'package:devpilot_app/core/api/api_enums.dart';
+import 'package:devpilot_app/core/api/common_models.dart';
 import 'package:devpilot_app/core/api/learning_enums.dart';
 import 'package:devpilot_app/features/dashboard/data/dashboard_models.dart';
+import 'package:devpilot_app/features/plan/data/plan_budget_models.dart';
 import 'package:devpilot_app/features/review/data/review_enums.dart';
 import 'package:devpilot_app/features/review/data/review_models.dart';
 import 'package:devpilot_app/features/today/data/learning_session_models.dart';
@@ -156,4 +158,100 @@ DashboardView testDashboard({
   weekCompletedSessions: 4,
   aiStatus: AiStatus.disabled,
   replanRecommended: replanRecommended,
+);
+
+BudgetView testBudget({RiskLevel risk = RiskLevel.high, int? ratioBp = 11950}) => BudgetView(
+  planId: planId,
+  today: testToday,
+  horizonDate: '2027-01-05',
+  nominalBudgetMinutes: 7020,
+  completionRateBp: 7000,
+  effectiveBudgetMinutes: 4914,
+  requiredMustMinutes: 5880,
+  requiredShouldMinutes: 1810,
+  ratioBp: ratioBp,
+  riskLevel: risk,
+);
+
+SkillRef testSkillRef(String code, String name, SkillCategory category) =>
+    SkillRef(id: 'skill-$code', code: code, name: name, category: category);
+
+/// A HIGH-risk preview with one deferral and one MUST target reduction (docs/05 §7.7 example).
+ReplanPreviewResponse testShrinkPreview({RiskLevel risk = RiskLevel.high}) => ReplanPreviewResponse(
+  planId: planId,
+  today: testToday,
+  horizonDate: '2027-01-05',
+  nominalBudgetMinutes: 2820,
+  completionRateBp: 6800,
+  effectiveBudgetMinutes: 1917,
+  requiredMustMinutes: 2240,
+  requiredShouldMinutes: 900,
+  ratioBp: 11684,
+  riskLevel: risk,
+  deferSuggestions: [
+    DeferSuggestionView(
+      skill: testSkillRef('DEVOPS.KUBERNETES_BASICS', 'Kubernetes 기초', SkillCategory.devops),
+      priority: Priority.should,
+      practicalImportanceBp: 3000,
+      requiredMinutes: 480,
+    ),
+  ],
+  mustTargetReductionSuggestions: [
+    TargetReductionSuggestionView(
+      skill: testSkillRef('DATABASE.EXECUTION_PLAN', '실행계획 읽기', SkillCategory.database),
+      axis: SkillAxis.implementation,
+      currentTarget: 4,
+      newTarget: 3,
+      planningLevel: 1,
+      savedMinutes: 172,
+    ),
+  ],
+  expansionSuggestions: const [],
+  riskAfterSuggestions: const RiskEstimateView(
+    requiredMustMinutes: 1896,
+    requiredShouldMinutes: 0,
+    ratioBp: 9890,
+    riskLevel: RiskLevel.medium,
+  ),
+);
+
+/// A LOW-risk preview with a restore and a MUST target raise (docs/06 §4.4 vector 3).
+ReplanPreviewResponse testExpandPreview() => ReplanPreviewResponse(
+  planId: planId,
+  today: testToday,
+  horizonDate: '2027-04-01',
+  nominalBudgetMinutes: 7143,
+  completionRateBp: 7000,
+  effectiveBudgetMinutes: 5000,
+  requiredMustMinutes: 3400,
+  requiredShouldMinutes: 900,
+  ratioBp: 6800,
+  riskLevel: RiskLevel.low,
+  deferSuggestions: const [],
+  mustTargetReductionSuggestions: const [],
+  expansionSuggestions: [
+    ExpansionSuggestionView(
+      kind: ExpansionKind.restoreDeferred,
+      skill: testSkillRef('SYSTEM_DESIGN.CACHE', 'Cache', SkillCategory.systemDesign),
+      priority: Priority.should,
+      practicalImportanceBp: 8000,
+      addedMinutes: 600,
+    ),
+    ExpansionSuggestionView(
+      kind: ExpansionKind.raiseTarget,
+      skill: testSkillRef('SPRING.TRANSACTION', 'Spring Transaction', SkillCategory.spring),
+      priority: Priority.must,
+      practicalImportanceBp: 9000,
+      axis: SkillAxis.explanation,
+      currentTarget: 3,
+      newTarget: 4,
+      addedMinutes: 500,
+    ),
+  ],
+  riskAfterSuggestions: const RiskEstimateView(
+    requiredMustMinutes: 3900,
+    requiredShouldMinutes: 900,
+    ratioBp: 7800,
+    riskLevel: RiskLevel.low,
+  ),
 );

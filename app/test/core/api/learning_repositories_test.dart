@@ -8,6 +8,9 @@ import 'package:devpilot_app/core/api/learning_enums.dart';
 import 'package:devpilot_app/core/auth/token_store.dart';
 import 'package:devpilot_app/core/auth/token_store_provider.dart';
 import 'package:devpilot_app/core/config/app_config.dart';
+import 'package:devpilot_app/features/dashboard/data/dashboard_repository.dart';
+import 'package:devpilot_app/features/plan/data/plan_models.dart';
+import 'package:devpilot_app/features/plan/data/plan_repository.dart';
 import 'package:devpilot_app/features/review/data/review_enums.dart';
 import 'package:devpilot_app/features/review/data/review_models.dart';
 import 'package:devpilot_app/features/review/data/review_repository.dart';
@@ -193,5 +196,25 @@ void main() {
     expect(last().uri.path, '/api/v1/reviews/r1/answer');
     expect(last().headers['Idempotency-Key'], _key.value);
     expect(last().data, containsPair('hintLevel', 'SELF_EXPLAIN'));
+  });
+
+  test('shouldCallBudgetPreviewWithoutKeyAndDashboard', () async {
+    final plans = ApiPlanRepository(apiClient);
+    adapter.body = {};
+
+    await expectLater(
+      plans.previewReplan('p1', const ReplanRequest(reason: '', version: 0, milestones: [])),
+      throwsA(anything),
+    );
+    expect(last().method, 'POST');
+    expect(last().uri.path, '/api/v1/plans/p1/replan/preview');
+    expect(last().headers.containsKey('Idempotency-Key'), isFalse);
+    expect((last().data as Map<String, Object?>)['restoredDeferrals'], isEmpty);
+
+    await expectLater(plans.fetchActiveBudget(), throwsA(anything));
+    expect(last().uri.path, '/api/v1/plans/active/budget');
+
+    await expectLater(ApiDashboardRepository(apiClient).fetchDashboard(), throwsA(anything));
+    expect(last().uri.path, '/api/v1/dashboard');
   });
 }

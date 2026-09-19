@@ -8,7 +8,7 @@ import '../../support/fixtures.dart';
 import '../../support/test_app.dart';
 import '../../support/widget_actions.dart';
 
-/// SCR-REPLAN, S1 "edit → save" (BL-CLI-09, AC-01 S3, AC-24).
+/// SCR-REPLAN edit → preview → save (BL-CLI-09, BL-CLI-25, AC-01 S3, AC-24).
 void main() {
   late FakeBackend backend;
 
@@ -20,17 +20,27 @@ void main() {
     expect(locationOf(tester), '/plan/replan');
   }
 
+  Future<void> previewAndSave(WidgetTester tester) async {
+    await tapKey(tester, 'replan.previewButton');
+    expect(find.text('미리보기'), findsOneWidget);
+    await tapKey(tester, 'replan.saveButton');
+  }
+
   testWidgets('shouldSaveNewVersionWithExistingIdsAndNewMilestone', (tester) async {
     await openReplan(tester);
-    expect(isButtonEnabled(tester, 'replan.saveButton'), isFalse);
-    expect(find.text('새 버전(v2)으로 저장'), findsOneWidget);
+    expect(find.byKey(const Key('replan.saveButton')), findsNothing);
 
     await enterTextByKey(tester, 'replan.reasonField', '야근으로 2주 지연');
     await tapKey(tester, 'replan.addButton');
     await enterTextByKey(tester, 'replan.milestone.3.title', '설명과 정리');
     await tapKey(tester, 'replan.milestone.3.priority.later');
+    await tapKey(tester, 'replan.previewButton');
+    expect(find.text('새 버전(v2)으로 저장'), findsOneWidget);
     await tapKey(tester, 'replan.saveButton');
 
+    final previewed = backend.planRepository.previews.single;
+    expect(previewed.reason, '야근으로 2주 지연');
+    expect(previewed.toJson()['acceptedDeferrals'], isEmpty);
     final call = backend.planRepository.replans.single;
     final request = call.request;
     expect(request.reason, '야근으로 2주 지연');
@@ -68,10 +78,10 @@ void main() {
     await tapKey(tester, 'replan.milestone.0.moveDown');
     await tapKey(tester, 'replan.milestone.2.delete');
     expect(find.text('milestone을 삭제했어요.'), findsOneWidget);
-    // Let the undo toast expire so it does not cover the save button.
+    // Let the undo toast expire so it does not cover the buttons.
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
-    await tapKey(tester, 'replan.saveButton');
+    await previewAndSave(tester);
 
     expect(backend.planRepository.replans.single.request.milestones.map((m) => m.id), [
       milestoneAuthId,
@@ -98,16 +108,26 @@ void main() {
     final fetches = backend.planRepository.activeFetchCount;
     await enterTextByKey(tester, 'replan.reasonField', '지연');
 
-    await tapKey(tester, 'replan.saveButton');
+    await previewAndSave(tester);
     expect(find.text('계획이 이미 바뀌었어요'), findsOneWidget);
     await tapKey(tester, 'replan.conflictReloadButton');
 
     expect(backend.planRepository.activeFetchCount, fetches + 1);
+    expect(find.byKey(const Key('replan.previewButton')), findsOneWidget);
     expect(find.widgetWithText(TextField, '지연'), findsNothing);
     expect(locationOf(tester), '/plan/replan');
   });
 
-  testWidgets('shouldShowServerFieldErrorOnMilestoneCard', (tester) async {
+  testWidgets('shouldShowConflictDialogWhenPreviewFindsNewerPlan', (tester) async {
+    backend.planRepository.previewFailures.add(conflict());
+    await openReplan(tester);
+
+    await tapKey(tester, 'replan.previewButton');
+
+    expect(find.text('계획이 이미 바뀌었어요'), findsOneWidget);
+  });
+
+  testWidgets('shouldShowServerFieldErrorOnMilestoneCardAfterFailedSave', (tester) async {
     backend.planRepository.replanFailures.add(
       const ApiException(
         code: ApiErrorCode.validationFailed,
@@ -124,8 +144,10 @@ void main() {
     await openReplan(tester);
     await enterTextByKey(tester, 'replan.reasonField', '지연');
 
-    await tapKey(tester, 'replan.saveButton');
+    await previewAndSave(tester);
 
+    // Milestone problems are fixed in the edit step.
+    expect(find.byKey(const Key('replan.previewButton')), findsOneWidget);
     expect(find.text('허용 범위를 벗어난 날짜입니다.'), findsOneWidget);
     expect(locationOf(tester), '/plan/replan');
   });

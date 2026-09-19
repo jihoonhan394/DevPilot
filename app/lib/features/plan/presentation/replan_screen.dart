@@ -1,24 +1,25 @@
-import 'package:devpilot_app/app/routes.dart';
-import 'package:devpilot_app/core/api/api_exception.dart';
+import 'dart:async';
+
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
+import 'package:devpilot_app/core/time/local_date.dart';
 import 'package:devpilot_app/core/validation/input_rules.dart';
-import 'package:devpilot_app/core/widgets/action_error.dart';
-import 'package:devpilot_app/core/widgets/app_toast.dart';
 import 'package:devpilot_app/core/widgets/error_view.dart';
 import 'package:devpilot_app/core/widgets/inline_error.dart';
 import 'package:devpilot_app/core/widgets/screen_body.dart';
 import 'package:devpilot_app/core/widgets/skeleton.dart';
 import 'package:devpilot_app/features/plan/domain/replan_draft.dart';
 import 'package:devpilot_app/features/plan/presentation/milestone_editor_card.dart';
+import 'package:devpilot_app/features/plan/presentation/replan_actions.dart';
 import 'package:devpilot_app/features/plan/presentation/replan_controller.dart';
+import 'package:devpilot_app/features/plan/presentation/replan_preview_controller.dart';
+import 'package:devpilot_app/features/plan/presentation/replan_preview_view.dart';
 import 'package:devpilot_app/features/settings/data/me_provider.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-/// SCR-REPLAN, S1 flow "edit → save a new version" (docs/02 §3.9, §4.8). Preview and the
-/// shrink/expand suggestions arrive in S2.
+/// SCR-REPLAN: edit → preview (risk and suggestions) → save a new version (docs/02 §3.9, §4.8).
+/// The preview is a second step of the same route; its back arrow returns to the edit.
 class ReplanScreen extends ConsumerWidget {
   const ReplanScreen({super.key, this.fromGoal = false});
 
@@ -29,14 +30,30 @@ class ReplanScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final replan = ref.watch(replanControllerProvider);
+    final previewing =
+        ref.watch(replanPreviewControllerProvider.select((preview) => preview.stage)) ==
+        ReplanStage.preview;
     return Scaffold(
-      appBar: AppBar(title: Semantics(header: true, child: Text(l10n.replanTitle))),
+      appBar: AppBar(
+        leading: previewing
+            ? BackButton(
+                key: const Key('replan.previewBackButton'),
+                onPressed: ref.read(replanPreviewControllerProvider.notifier).backToEdit,
+              )
+            : null,
+        title: Semantics(
+          header: true,
+          child: Text(previewing ? l10n.replanPreviewTitle : l10n.replanTitle),
+        ),
+      ),
       body: replan.when(
         loading: () => const ScreenBody(child: SkeletonList(count: 3, lines: 4)),
         error: (error, _) => ScreenBody(
           child: ErrorView(error: error, onRetry: () => ref.invalidate(replanControllerProvider)),
         ),
-        data: (state) => _ReplanEditor(state: state, fromGoal: fromGoal),
+        data: (state) => previewing
+            ? ReplanPreviewView(replan: state)
+            : _ReplanEditor(state: state, fromGoal: fromGoal),
       ),
     );
   }
@@ -48,53 +65,13 @@ class _ReplanEditor extends ConsumerWidget {
   final ReplanState state;
   final bool fromGoal;
 
-  Future<void> _save(BuildContext context, WidgetRef ref) async {
-    final l10n = AppLocalizations.of(context);
-    final outcome = await ref.read(replanControllerProvider.notifier).save();
-    if (!context.mounted) {
-      return;
-    }
-    switch (outcome) {
-      case ReplanSaved(:final planVersion):
-        showToast(context, l10n.replanSaved(planVersion));
-        context.go(AppRoutes.plan);
-      case ReplanConflict():
-        await _showConflict(context, ref);
-      case ReplanSaveFailed(:final error):
-        // Field errors are shown under their inputs; anything else follows docs/02 §5.1.
-        if (error is ApiException &&
-            error.code == ApiErrorCode.validationFailed &&
-            error.fieldErrors.isNotEmpty) {
-          return;
-        }
-        await presentActionError(context, ref, error);
-    }
-  }
-
-  Future<void> _showConflict(BuildContext context, WidgetRef ref) async {
-    final l10n = AppLocalizations.of(context);
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.replanConflictTitle),
-        content: Text(l10n.replanConflictBody),
-        actions: [
-          TextButton(
-            key: const Key('replan.conflictReloadButton'),
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(l10n.replanConflictReload),
-          ),
-        ],
-      ),
-    );
-    ref.read(replanControllerProvider.notifier).reloadLatest();
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final controller = ref.read(replanControllerProvider.notifier);
+    final previewBusy = ref.watch(
+      replanPreviewControllerProvider.select((preview) => preview.busy),
+    );
     final today = ref.watch(userTodayProvider);
     final draft = state.draft;
     final saveError = state.saveError;
@@ -114,23 +91,7 @@ class _ReplanEditor extends ConsumerWidget {
           SectionTitle(l10n.replanCount(draft.milestones.length)),
           if (!countValid) InlineError(message: l10n.validationMilestoneCount),
           const SizedBox(height: AppSpacing.sm),
-          for (var index = 0; index < draft.milestones.length; index++)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: MilestoneEditorCard(
-                // A reloaded plan (conflict) must rebuild the fields, so the plan version is part of
-                // the key.
-                key: ValueKey(
-                  '${draft.basePlan.id}:${draft.basePlan.version}:${draft.milestones[index].localKey}',
-                ),
-                milestone: draft.milestones[index],
-                index: index,
-                count: draft.milestones.length,
-                today: today,
-                enabled: !state.isSaving,
-                saveError: saveError,
-              ),
-            ),
+          _MilestoneEditors(state: state, today: today),
           OutlinedButton.icon(
             key: const Key('replan.addButton'),
             onPressed: state.isSaving || draft.milestones.length >= InputRules.milestoneMaxCount
@@ -140,15 +101,48 @@ class _ReplanEditor extends ConsumerWidget {
             label: Text(l10n.replanAdd),
           ),
           const SizedBox(height: AppSpacing.xl),
-          _SaveButton(
-            nextVersion: draft.basePlan.planVersion + 1,
-            isSaving: state.isSaving,
-            onPressed: ReplanRules.canSave(draft, today) && !state.isSaving
-                ? () => _save(context, ref)
+          _PreviewButton(
+            busy: previewBusy,
+            onPressed: ReplanRules.canPreview(draft, today) && !previewBusy
+                ? () => unawaited(previewReplan(context, ref))
                 : null,
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MilestoneEditors extends StatelessWidget {
+  const _MilestoneEditors({required this.state, required this.today});
+
+  final ReplanState state;
+  final LocalDate today;
+
+  @override
+  Widget build(BuildContext context) {
+    final draft = state.draft;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var index = 0; index < draft.milestones.length; index++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            child: MilestoneEditorCard(
+              // A reloaded plan (conflict) must rebuild the fields, so the plan version is part of
+              // the key.
+              key: ValueKey(
+                '${draft.basePlan.id}:${draft.basePlan.version}:${draft.milestones[index].localKey}',
+              ),
+              milestone: draft.milestones[index],
+              index: index,
+              count: draft.milestones.length,
+              today: today,
+              enabled: !state.isSaving,
+              saveError: state.saveError,
+            ),
+          ),
+      ],
     );
   }
 }
@@ -173,21 +167,20 @@ class _FromGoalNote extends StatelessWidget {
   }
 }
 
-/// "새 버전(v{n})으로 저장" with an in-button progress indicator.
-class _SaveButton extends StatelessWidget {
-  const _SaveButton({required this.nextVersion, required this.isSaving, required this.onPressed});
+/// "변경 미리보기" with an in-button progress indicator.
+class _PreviewButton extends StatelessWidget {
+  const _PreviewButton({required this.busy, required this.onPressed});
 
-  final int nextVersion;
-  final bool isSaving;
+  final bool busy;
   final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return FilledButton(
-      key: const Key('replan.saveButton'),
+      key: const Key('replan.previewButton'),
       onPressed: onPressed,
-      child: isSaving
+      child: busy
           ? SizedBox.square(
               dimension: 20,
               child: CircularProgressIndicator(
@@ -195,12 +188,12 @@ class _SaveButton extends StatelessWidget {
                 semanticsLabel: l10n.commonSubmitting,
               ),
             )
-          : Text(l10n.replanSave(nextVersion)),
+          : Text(l10n.replanPreviewButton),
     );
   }
 }
 
-/// "변경 이유 *": required when saving (1~1000).
+/// "변경 이유 *": required when saving (1~1000), optional for the preview.
 class _ReasonField extends StatefulWidget {
   const _ReasonField({
     required this.reason,

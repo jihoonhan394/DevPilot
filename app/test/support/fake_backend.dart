@@ -6,6 +6,7 @@ import 'package:devpilot_app/features/onboarding/data/onboarding_models.dart';
 import 'package:devpilot_app/features/onboarding/data/onboarding_repository.dart';
 import 'package:devpilot_app/features/plan/data/learning_goal_models.dart';
 import 'package:devpilot_app/features/plan/data/learning_goal_repository.dart';
+import 'package:devpilot_app/features/plan/data/plan_budget_models.dart';
 import 'package:devpilot_app/features/plan/data/plan_models.dart';
 import 'package:devpilot_app/features/plan/data/plan_repository.dart';
 import 'package:devpilot_app/features/project/data/side_project_models.dart';
@@ -19,6 +20,7 @@ import 'package:devpilot_app/features/today/data/today_models.dart';
 
 import 'fixtures.dart';
 import 'learning_fakes.dart';
+import 'learning_fixtures.dart';
 
 export 'learning_fakes.dart';
 
@@ -228,6 +230,36 @@ class FakePlanRepository implements PlanRepository {
   @override
   Future<PlanView> createPlan({required IdempotencyKey idempotencyKey}) async =>
       activePlan = testPlan();
+
+  BudgetView budget = testBudget();
+  final budgetFailures = <ApiException>[];
+  var budgetFetchCount = 0;
+
+  /// Answers every preview; defaults to a HIGH-risk shrink preview.
+  ReplanPreviewResponse Function(ReplanRequest request) previewResponder = (_) =>
+      testShrinkPreview();
+  final previews = <ReplanRequest>[];
+  final previewFailures = <ApiException>[];
+
+  @override
+  Future<BudgetView> fetchActiveBudget() async {
+    budgetFetchCount++;
+    final failure = _next(budgetFailures);
+    if (failure != null) {
+      throw failure;
+    }
+    return budget;
+  }
+
+  @override
+  Future<ReplanPreviewResponse> previewReplan(String planId, ReplanRequest request) async {
+    previews.add(request);
+    final failure = _next(previewFailures);
+    if (failure != null) {
+      throw failure;
+    }
+    return previewResponder(request);
+  }
 }
 
 final class FakeLearningGoalRepository implements LearningGoalRepository {

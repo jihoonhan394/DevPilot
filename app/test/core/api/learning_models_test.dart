@@ -1,6 +1,7 @@
 import 'package:devpilot_app/core/api/api_enums.dart';
 import 'package:devpilot_app/core/api/learning_enums.dart';
 import 'package:devpilot_app/features/dashboard/data/dashboard_models.dart';
+import 'package:devpilot_app/features/plan/data/plan_budget_models.dart';
 import 'package:devpilot_app/features/review/data/review_enums.dart';
 import 'package:devpilot_app/features/review/data/review_models.dart';
 import 'package:devpilot_app/features/today/data/learning_session_models.dart';
@@ -145,6 +146,74 @@ void main() {
     expect(answer.finalRating, ReviewRating.hard);
     expect(answer.adjustedBy, [RatingAdjustment.hintCapHard, RatingAdjustment.unknown]);
     expect(answer.evaluationSkippedReason, AsyncFailureCode.aiUnavailable);
+  });
+
+  test('shouldReadBudgetAndPreviewWithNullableRaiseFields', () {
+    final budget = BudgetView.fromJson({
+      'planId': '9e2b1c7a-0f0e-4d7b-8e59-0c3e1f6b2a01',
+      'today': '2026-12-07',
+      'horizonDate': '2026-12-14',
+      'nominalBudgetMinutes': 705,
+      'completionRateBp': 7000,
+      'effectiveBudgetMinutes': 493,
+      'requiredMustMinutes': 0,
+      'requiredShouldMinutes': 0,
+      'ratioBp': null,
+      'riskLevel': 'LOW',
+    });
+    expect(budget.ratioBp, isNull);
+    expect(budget.riskLevel, RiskLevel.low);
+
+    final preview = ReplanPreviewResponse.fromJson({
+      'planId': '9e2b1c7a-0f0e-4d7b-8e59-0c3e1f6b2a01',
+      'today': '2026-12-08',
+      'horizonDate': '2027-01-05',
+      'nominalBudgetMinutes': 7143,
+      'completionRateBp': 7000,
+      'effectiveBudgetMinutes': 5000,
+      'requiredMustMinutes': 3400,
+      'requiredShouldMinutes': 900,
+      'ratioBp': 6800,
+      'riskLevel': 'LOW',
+      'deferSuggestions': <Object?>[],
+      'mustTargetReductionSuggestions': <Object?>[],
+      'expansionSuggestions': [
+        {
+          'kind': 'RESTORE_DEFERRED',
+          'skill': {
+            'id': 's1',
+            'code': 'SYSTEM_DESIGN.CACHE',
+            'name': 'Cache',
+            'category': 'SYSTEM_DESIGN',
+          },
+          'priority': 'SHOULD',
+          'practicalImportanceBp': 8000,
+          'axis': null,
+          'currentTarget': null,
+          'newTarget': null,
+          'addedMinutes': 600,
+        },
+        {
+          'kind': 'WIDEN_SCOPE',
+          'skill': {'id': 's2', 'code': 'X.Y', 'name': 'X', 'category': 'JAVA'},
+          'priority': 'MUST',
+          'practicalImportanceBp': 9000,
+          'axis': 'EXPLANATION',
+          'currentTarget': 3,
+          'newTarget': 4,
+          'addedMinutes': 500,
+        },
+      ],
+      'riskAfterSuggestions': {
+        'requiredMustMinutes': 3900,
+        'requiredShouldMinutes': 900,
+        'ratioBp': 7800,
+        'riskLevel': 'LOW',
+      },
+    });
+    expect(preview.expansionSuggestions.first.axis, isNull);
+    expect(preview.expansionSuggestions.last.kind, ExpansionKind.unknown);
+    expect(preview.riskAfterSuggestions.ratioBp, 7800);
   });
 
   test('shouldReadMinimalDashboardAndIgnoreLaterSections', () {

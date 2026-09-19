@@ -7,6 +7,7 @@ import 'package:devpilot_app/core/widgets/refreshing_bar.dart';
 import 'package:devpilot_app/core/widgets/screen_body.dart';
 import 'package:devpilot_app/core/widgets/skeleton.dart';
 import 'package:devpilot_app/features/plan/domain/milestone_ordering.dart';
+import 'package:devpilot_app/features/plan/presentation/budget_risk_card.dart';
 import 'package:devpilot_app/features/plan/presentation/milestone_card.dart';
 import 'package:devpilot_app/features/plan/presentation/plan_action_feedback.dart';
 import 'package:devpilot_app/features/plan/presentation/plan_controller.dart';
@@ -18,8 +19,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// SCR-PLAN: milestone timeline of the active plan with in-place status, memo and order edits
-/// (docs/02 §3.9). The budget card arrives with S2.
+/// SCR-PLAN: milestone timeline of the active plan with in-place status, memo and order edits,
+/// and the deadline budget card (docs/02 §3.9).
 class PlanScreen extends ConsumerWidget {
   const PlanScreen({super.key});
 
@@ -102,6 +103,8 @@ class _PlanContent extends ConsumerWidget {
             const SizedBox(height: AppSpacing.md),
             const ReplanRecommendedBanner(),
           ],
+          const SizedBox(height: AppSpacing.md),
+          const BudgetRiskCard(),
           if (wide && milestones.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.lg),
             PlanTimelineBar(milestones: milestones, today: today, goal: data.goal),
@@ -128,17 +131,36 @@ class _PlanContent extends ConsumerWidget {
             child: Text(l10n.planRestructure),
           ),
           const SizedBox(height: AppSpacing.sm),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              key: const Key('plan.projectsLink'),
-              onPressed: () => context.go(AppRoutes.projects),
-              icon: const Icon(Icons.chevron_right),
-              label: Text(l10n.planProjectsLink),
-            ),
-          ),
+          const _PlanLinks(),
         ],
       ),
+    );
+  }
+}
+
+/// "진행 현황 보기 >" and "사이드 프로젝트 보기 >".
+class _PlanLinks extends StatelessWidget {
+  const _PlanLinks();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextButton.icon(
+          key: const Key('plan.dashboardLink'),
+          onPressed: () => context.go(AppRoutes.dashboard),
+          icon: const Icon(Icons.chevron_right),
+          label: Text(l10n.planDashboardLink),
+        ),
+        TextButton.icon(
+          key: const Key('plan.projectsLink'),
+          onPressed: () => context.go(AppRoutes.projects),
+          icon: const Icon(Icons.chevron_right),
+          label: Text(l10n.planProjectsLink),
+        ),
+      ],
     );
   }
 }

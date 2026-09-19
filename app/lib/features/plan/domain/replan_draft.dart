@@ -142,7 +142,8 @@ final class ReplanDraft {
     milestones: milestones ?? this.milestones,
   );
 
-  /// `POST /plans/{planId}/replan` body. S1 sends the four suggestion lists empty (docs/05 §7.8).
+  /// `ReplanRequest` of the edit with empty suggestion lists; the checked suggestions are added by
+  /// `ReplanSuggestionSelection.applyTo` (docs/05 §7.7, §7.8).
   ReplanRequest toRequest() => ReplanRequest(
     reason: reason,
     version: basePlan.version,
@@ -179,7 +180,12 @@ abstract final class ReplanRules {
   };
 
   static bool canSave(ReplanDraft draft, LocalDate today) =>
-      isReasonValid(draft.reason) &&
+      isReasonValid(draft.reason) && canPreview(draft, today);
+
+  /// The preview needs valid milestones; the reason is optional there but still within its
+  /// limit (docs/02 §3.2 "미리보기는 선택").
+  static bool canPreview(ReplanDraft draft, LocalDate today) =>
+      draft.reason.length <= InputRules.replanReasonMaxLength &&
       isCountValid(draft.milestones.length) &&
       draft.milestones.every((milestone) => violations(milestone, today).isEmpty);
 

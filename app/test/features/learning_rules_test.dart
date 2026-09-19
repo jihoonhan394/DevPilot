@@ -1,5 +1,9 @@
+import 'package:devpilot_app/core/api/api_enums.dart';
 import 'package:devpilot_app/core/time/local_date.dart';
 import 'package:devpilot_app/core/time/session_time_rules.dart';
+import 'package:devpilot_app/features/plan/data/plan_models.dart';
+import 'package:devpilot_app/features/plan/domain/budget_display.dart';
+import 'package:devpilot_app/features/plan/domain/replan_suggestion_selection.dart';
 import 'package:devpilot_app/features/review/data/review_enums.dart';
 import 'package:devpilot_app/features/review/domain/review_card_progress.dart';
 import 'package:devpilot_app/features/today/domain/today_rules.dart';
@@ -102,5 +106,62 @@ void main() {
       final late = card.request(ReviewRating.hard, testNow.add(const Duration(days: 2)));
       expect(late.responseSeconds, 86400);
     });
+  });
+
+  group('ReplanSuggestionSelection', () {
+    const raise = TargetChangeInput(
+      skillCode: 'SPRING.TRANSACTION',
+      axis: SkillAxis.explanation,
+      newTarget: 4,
+    );
+    const reduce = TargetChangeInput(
+      skillCode: 'DATABASE.EXECUTION_PLAN',
+      axis: SkillAxis.implementation,
+      newTarget: 3,
+    );
+
+    test('shouldToggleAndApplyCheckedSuggestionsInCheckOrder', () {
+      final selection = ReplanSuggestionSelection.empty
+          .toggleDeferral('B')
+          .toggleDeferral('A')
+          .toggleReduction(reduce)
+          .toggleRestoration('C')
+          .toggleRaise(raise)
+          .toggleDeferral('B');
+      const request = ReplanRequest(reason: '', version: 3, milestones: []);
+
+      final applied = selection.applyTo(request).toJson();
+
+      expect(applied['acceptedDeferrals'], ['A']);
+      expect(applied['acceptedTargetReductions'], [
+        {'skillCode': 'DATABASE.EXECUTION_PLAN', 'axis': 'IMPLEMENTATION', 'newTarget': 3},
+      ]);
+      expect(applied['restoredDeferrals'], ['C']);
+      expect(applied['acceptedTargetRaises'], [
+        {'skillCode': 'SPRING.TRANSACTION', 'axis': 'EXPLANATION', 'newTarget': 4},
+      ]);
+      expect(selection.isEmpty, isFalse);
+      expect(ReplanSuggestionSelection.empty.isEmpty, isTrue);
+    });
+
+    test('shouldFindTheRowOfAServerFieldError', () {
+      final selection = ReplanSuggestionSelection.empty.toggleRaise(raise).toggleDeferral('A');
+
+      expect(
+        selection.identityOfField('acceptedTargetRaises[0].newTarget'),
+        SuggestionIdentity.raise(raise),
+      );
+      expect(selection.identityOfField('acceptedDeferrals[0]'), SuggestionIdentity.defer('A'));
+      expect(selection.identityOfField('acceptedDeferrals[4]'), isNull);
+      expect(selection.identityOfField('milestones[0].title'), isNull);
+    });
+  });
+
+  test('BudgetDisplay rounds hours half up and floors percent', () {
+    expect(BudgetDisplay.hours(4914), 82);
+    expect(BudgetDisplay.hours(89), 1);
+    expect(BudgetDisplay.hours(29), 0);
+    expect(BudgetDisplay.percent(11950), 119);
+    expect(BudgetDisplay.percent(6800), 68);
   });
 }
