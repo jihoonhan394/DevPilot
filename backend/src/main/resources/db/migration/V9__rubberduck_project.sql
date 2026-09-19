@@ -67,5 +67,13 @@ alter table learning_task
 alter table learning_task
     add constraint learning_task_reading_key_type check ((reading_key is not null) = (task_type = 'READ_CODE'));
 
+-- READ_CODE 완료 때 사용자가 고르는 읽기 평가(선택). 규칙 입력이 아니다 (docs/04 I-19, docs/05 §8.4)
+alter table learning_task
+    add column reading_feedback varchar(20)
+        check (reading_feedback in ('HELPFUL','TOO_HARD','BORING'));
+
+alter table learning_task
+    add constraint learning_task_reading_feedback_type check (reading_feedback is null or task_type = 'READ_CODE');
+
 alter table coach_review
     add column side_project_id uuid references side_project(id) on delete set null;

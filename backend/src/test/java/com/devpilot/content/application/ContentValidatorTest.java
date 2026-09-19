@@ -1,6 +1,7 @@
 package com.devpilot.content.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import com.devpilot.content.domain.RawContent;
 import com.devpilot.content.infrastructure.YamlContentReader;
@@ -29,6 +30,7 @@ class ContentValidatorTest {
 
     private static final String TEST_CONTENT = "classpath:test-content/";
     private static final String PRODUCTION_CONTENT = "classpath:content/";
+    private static final String RETIRED_READING = "READ.TESTREPO.LEGACY_CONTROLLER.001";
 
     private final YamlContentReader reader = new YamlContentReader(new DefaultResourceLoader());
     private final ContentValidator validator =
@@ -345,6 +347,102 @@ class ContentValidatorTest {
                         f -> f.readings().getFirst().put("retired", "yes")));
     }
 
+    /** CV-83 은퇴 규칙은 경우마다 정확히 1건, 위치는 해당 reading 또는 catalog 목록 (docs/19 §8.2). */
+    @ParameterizedTest(name = "[{index}] {0}")
+    @MethodSource("retirementCases")
+    void shouldReportExactlyOneRetirementErrorAtItsLocation(
+            String description, String location, Consumer<Fixture> mutation) {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        mutation.accept(fixture);
+
+        ContentValidationReport report = validator.validate(fixture.content);
+
+        assertThat(report.errors())
+                .as(description)
+                .extracting(
+                        ContentValidationReport.Issue::rule, ContentValidationReport.Issue::where)
+                .containsExactly(tuple("CV-83", location));
+    }
+
+    static Stream<Arguments> retirementCases() {
+        return Stream.of(
+                Arguments.of(
+                        "retired reading whose key is not listed",
+                        "curated-repos.yaml#" + RETIRED_READING,
+                        (Consumer<Fixture>) f -> f.retired("readingKeys").remove(RETIRED_READING)),
+                Arguments.of(
+                        "active reading whose key is listed",
+                        "curated-repos.yaml#READ.TESTREPO.ORDER_SERVICE.001",
+                        (Consumer<Fixture>)
+                                f ->
+                                        f.retired("readingKeys")
+                                                .add("READ.TESTREPO.ORDER_SERVICE.001")),
+                Arguments.of(
+                        "listed key without definition",
+                        "catalog.yaml#retired.readingKeys",
+                        (Consumer<Fixture>)
+                                f -> f.retired("readingKeys").add("READ.TESTREPO.GONE.001")),
+                Arguments.of(
+                        "retired reading removed from the file",
+                        "catalog.yaml#retired.readingKeys",
+                        (Consumer<Fixture>) f -> f.readings().removeLast()));
+    }
+
+    @Test
+    void shouldNotWarnWhenRepoKeepsOnlyRetiredReadings() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        for (Map<String, Object> reading : fixture.readings()) {
+            if (!Boolean.TRUE.equals(reading.get("retired"))) {
+                reading.put("retired", true);
+                fixture.retired("readingKeys").add(reading.get("key"));
+            }
+        }
+
+        ContentValidationReport report = validator.validate(fixture.content);
+
+        assertThat(report.errors()).isEmpty();
+        assertThat(report.warnings()).isEmpty();
+    }
+
+    /** 운영 콘텐츠에 실제로 쓰이는 값 모양 (repo key 하이픈, 점으로 시작하는 경로, 긴 license·cloneHint, 조각이 있는 URL). */
+    @Test
+    void shouldAcceptRealWorldRepoAndSourceValues() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        Map<String, Object> repo = new LinkedHashMap<>(fixture.repos().getFirst());
+        repo.put("key", "modular-monolith");
+        repo.put("name", "Modular Monolith Sample");
+        repo.put("license", "GPL-2.0-only WITH Classpath-exception-2.0");
+        repo.put(
+                "cloneHint",
+                "저장소를 아직 받지 않았다면 먼저 받고, 줄 번호가 맞도록 고정 커밋으로 checkout한다. "
+                        + "git clone https://repo.example.invalid/modular-monolith.git && "
+                        + "cd modular-monolith && git checkout "
+                        + "0123456789abcdef0123456789abcdef01234567 "
+                        + "— 이미 받았다면 git fetch 후 같은 커밋으로 checkout한다. ".repeat(4));
+        repo.put("licenseNote", "읽기만 한다. 코드를 복사해 쓰지 않는다.");
+        fixture.repos().add(repo);
+        List<String> paths =
+                List.of(".github/workflows/maven-build.yml", "compose.yml", "src/App.java");
+        for (int index = 0; index < paths.size(); index++) {
+            Map<String, Object> reading = new LinkedHashMap<>(fixture.readings().getFirst());
+            reading.put("key", "READ.MODULAR_MONOLITH.TOPIC_" + index + ".001");
+            reading.put("repo", "modular-monolith");
+            reading.put("path", paths.get(index));
+            fixture.readings().add(reading);
+        }
+        Map<String, Object> source = new LinkedHashMap<>(fixture.sources().getFirst());
+        source.put("id", "CS-RFC-9110-STATUS");
+        source.put("title", "RFC 9110: HTTP Semantics");
+        source.put("url", "https://www.rfc-editor.org/rfc/rfc9110.html#name-status-codes");
+        fixture.sources().add(source);
+
+        ContentValidationReport report = validator.validate(fixture.content);
+
+        assertThat(String.valueOf(repo.get("license"))).hasSize(41);
+        assertThat(String.valueOf(repo.get("cloneHint")).length()).isBetween(300, 500);
+        assertThat(report.errors()).isEmpty();
+    }
+
     @Test
     void shouldAcceptOptionalRetiredFlagOnReading() {
         Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
@@ -384,7 +482,17 @@ class ContentValidatorTest {
                         "CV-82",
                         "pinnedCommit null",
                         f -> f.repos().getFirst().put("pinnedCommit", null)),
-                warning("CV-87", "only two readings for a repo", f -> f.readings().removeLast()));
+                warning(
+                        "CV-87",
+                        "only two active readings for a repo",
+                        f -> f.readings().removeFirst()),
+                warning(
+                        "CV-87",
+                        "retired readings are not counted",
+                        f -> {
+                            f.readings().getFirst().put("retired", true);
+                            f.retired("readingKeys").add(f.readings().getFirst().get("key"));
+                        }));
     }
 
     private static Arguments error(String rule, String description, Consumer<Fixture> mutation) {

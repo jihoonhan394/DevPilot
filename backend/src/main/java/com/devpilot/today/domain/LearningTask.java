@@ -97,6 +97,10 @@ public class LearningTask implements Persistable<UUID> {
     @Column(name = "completed_at")
     private @Nullable Instant completedAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "reading_feedback")
+    private @Nullable ReadingFeedback readingFeedback;
+
     @Version private @Nullable Long version;
 
     protected LearningTask() {
@@ -163,6 +167,16 @@ public class LearningTask implements Persistable<UUID> {
         this.status = target;
         if (target == TaskStatus.COMPLETED) {
             this.completedAt = Objects.requireNonNull(now, "now");
+        }
+    }
+
+    /**
+     * {@code READ_CODE} 과제를 완료하면서 고른 읽기 평가를 저장한다 (docs/05 §8.4, I-19). {@code null}이면 바꾸지 않는다. 허용
+     * 여부는 호출자가 확인한다({@code READ_CODE}이고 {@code COMPLETED}로 바꿀 때만).
+     */
+    public void recordReadingFeedback(@Nullable ReadingFeedback feedback) {
+        if (feedback != null) {
+            this.readingFeedback = feedback;
         }
     }
 
@@ -276,6 +290,10 @@ public class LearningTask implements Persistable<UUID> {
 
     public int getSortOrder() {
         return sortOrder;
+    }
+
+    public @Nullable ReadingFeedback getReadingFeedback() {
+        return readingFeedback;
     }
 
     public @Nullable Instant getCompletedAt() {

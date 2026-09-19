@@ -10,8 +10,11 @@ import com.devpilot.skill.application.SkillCatalogSeedService;
 import com.devpilot.skill.domain.Priority;
 import com.devpilot.skill.domain.SkillCategory;
 import com.devpilot.skill.domain.TargetRole;
+import com.devpilot.today.domain.CuratedReading;
+import com.devpilot.today.domain.CuratedRepo;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -130,6 +133,54 @@ final class CatalogMapping {
             }
         }
         return cards;
+    }
+
+    /**
+     * curated repo·reading (docs/19 §3.8). 은퇴한 reading도 넣는다({@code retired = true}) — 조회는 되고
+     * planner만 제외한다 (docs/19 §8.2).
+     */
+    static List<CuratedReading> curatedReadings(Map<String, Object> document) {
+        Map<String, CuratedRepo> repos = new HashMap<>();
+        for (Object value : RawYaml.asList(document.get("repos"))) {
+            Map<String, Object> repo = RawYaml.asMap(value);
+            String key = (String) repo.get("key");
+            repos.put(
+                    key,
+                    new CuratedRepo(
+                            key,
+                            (String) repo.get("name"),
+                            (String) repo.get("url"),
+                            (String) repo.get("subPath"),
+                            (String) repo.get("license"),
+                            (String) repo.get("licenseNote"),
+                            (String) repo.get("stack"),
+                            (String) repo.get("why"),
+                            (String) repo.get("cloneHint"),
+                            (String) repo.get("pinnedCommit")));
+        }
+        List<CuratedReading> readings = new ArrayList<>();
+        for (Object value : RawYaml.asList(document.get("readings"))) {
+            Map<String, Object> reading = RawYaml.asMap(value);
+            List<?> lines = RawYaml.asList(reading.get("lines"));
+            readings.add(
+                    new CuratedReading(
+                            (String) reading.get("key"),
+                            Objects.requireNonNull(
+                                    repos.get((String) reading.get("repo")), "reading repo"),
+                            (String) reading.get("path"),
+                            Math.toIntExact(RawYaml.longValue(lines.get(0))),
+                            Math.toIntExact(RawYaml.longValue(lines.get(1))),
+                            strings(reading.get("skillCodes")),
+                            Math.toIntExact(RawYaml.longValue(reading.get("estimatedMinutes"))),
+                            (String) reading.get("question"),
+                            strings(reading.get("lookFor")),
+                            Boolean.TRUE.equals(reading.get("retired"))));
+        }
+        return readings;
+    }
+
+    private static List<String> strings(Object value) {
+        return RawYaml.asList(value).stream().map(String::valueOf).toList();
     }
 
     /** YAML 원문 문자열 → {@code numeric(3,2)} (docs/19 §3.0: double을 거치지 않는다). */

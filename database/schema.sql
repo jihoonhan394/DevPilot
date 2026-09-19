@@ -437,7 +437,9 @@ create table learning_task (
     version           bigint not null default 0,
     side_project_id   uuid references side_project(id) on delete set null,   -- PROJECT_TASK 대상 프로젝트 (V9에서 추가)
     reading_key       varchar(150),                                          -- READ_CODE 대상 reading key, FK 없음 (V9에서 추가)
-    constraint learning_task_reading_key_type check ((reading_key is not null) = (task_type = 'READ_CODE'))
+    reading_feedback  varchar(20) check (reading_feedback in ('HELPFUL','TOO_HARD','BORING')), -- READ_CODE 읽기 평가, 선택 (V9에서 추가)
+    constraint learning_task_reading_key_type check ((reading_key is not null) = (task_type = 'READ_CODE')),
+    constraint learning_task_reading_feedback_type check (reading_feedback is null or task_type = 'READ_CODE')
 );
 create index idx_learning_task_daily_plan on learning_task(daily_plan_id);
 create index idx_learning_task_user on learning_task(user_id);

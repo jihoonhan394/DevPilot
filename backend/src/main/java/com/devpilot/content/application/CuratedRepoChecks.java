@@ -12,8 +12,11 @@ import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 
 /**
- * CV-80 ~ CV-87 (curated repo·reading, docs/19 §3.8·§4.1). reading 등록({@code
- * CuratedReadingRegistry})은 S3(BL-CNT-15)이고 지금은 검증만 한다. 서버는 저장소를 fetch하지 않는다.
+ * CV-80 ~ CV-87 (curated repo·reading, docs/19 §3.8·§4.1·§8.2). 서버는 저장소를 fetch하지 않는다.
+ *
+ * <p>은퇴 규칙(CV-83): {@code retired: true}인 reading은 key가 {@code catalog.yaml#retired.readingKeys}에
+ * 있어야 하고, 은퇴하지 않은 reading은 그 목록에 없어야 한다. 목록의 key마다 정의가 남아 있어야 한다(은퇴한 단위도 조회된다). CV-87은 은퇴하지 않은
+ * reading만 센다 — 은퇴한 reading만 남은 저장소(활성 0개)는 경고 대상이 아니다.
  */
 final class CuratedRepoChecks {
 
@@ -46,7 +49,7 @@ final class CuratedRepoChecks {
                     "question",
                     "lookFor");
 
-    /** 선택 필드 {@code retired}(boolean)까지. CV-83·CV-87 은퇴 규칙은 S3(BL-CNT-16)에 붙는다. */
+    /** 선택 필드 {@code retired}(boolean, 기본 false)까지 (docs/19 §3.8). */
     private static final Set<String> READING_ALLOWED_KEYS =
             Set.of(
                     "key",
@@ -58,6 +61,8 @@ final class CuratedRepoChecks {
                     "question",
                     "lookFor",
                     "retired");
+
+    private static final String RETIRED_READING_KEYS = "catalog.yaml#retired.readingKeys";
 
     private static final int MIN_READINGS_PER_REPO = 3;
     private static final int MAX_READINGS_PER_REPO = 5;
@@ -85,13 +90,26 @@ final class CuratedRepoChecks {
         for (int index = 0; index < readings.size(); index++) {
             checkReading(context, file, index, readings.get(index), readingKeys, readingCounts);
         }
+        context.retiredReadingKeys.stream()
+                .filter(key -> !readingKeys.contains(key))
+                .sorted()
+                .forEach(
+                        key ->
+                                context.error(
+                                        "CV-83",
+                                        RETIRED_READING_KEYS,
+                                        key
+                                                + " has no reading definition in "
+                                                + file
+                                                + " (keep it with retired: true)"));
         readingCounts.forEach(
                 (key, count) -> {
-                    if (count < MIN_READINGS_PER_REPO || count > MAX_READINGS_PER_REPO) {
+                    if (count > 0
+                            && (count < MIN_READINGS_PER_REPO || count > MAX_READINGS_PER_REPO)) {
                         context.warn(
                                 "CV-87",
                                 file + "#" + key,
-                                "repo has " + count + " readings (expected 3..5)");
+                                "repo has " + count + " active readings (expected 3..5)");
                     }
                 });
     }
@@ -163,6 +181,7 @@ final class CuratedRepoChecks {
         if (reading.containsKey("retired") && !(reading.get("retired") instanceof Boolean)) {
             context.error("CV-03", position, "retired must be a boolean");
         }
+        boolean retired = Boolean.TRUE.equals(reading.get("retired"));
         String key = String.valueOf(reading.get("key"));
         String where = file + "#" + key;
         if (!(READING_KEY.matcher(key).matches() && key.length() <= 100)) {
@@ -174,14 +193,20 @@ final class CuratedRepoChecks {
         if (!readingKeys.add(key)) {
             context.error("CV-83", where, "duplicate reading key");
         }
-        if (context.retiredReadingKeys.contains(key)) {
-            context.error("CV-83", where, "key is in retired.readingKeys");
+        boolean listed = context.retiredReadingKeys.contains(key);
+        if (retired && !listed) {
+            context.error(
+                    "CV-83", where, "retired reading key must be listed in retired.readingKeys");
+        }
+        if (!retired && listed) {
+            context.error(
+                    "CV-83", where, "key is in retired.readingKeys but the reading is not retired");
         }
         String repo = String.valueOf(reading.get("repo"));
-        if (readingCounts.containsKey(repo)) {
-            readingCounts.merge(repo, 1, Integer::sum);
-        } else {
+        if (!readingCounts.containsKey(repo)) {
             context.error("CV-84", where, "unknown repo reference " + repo);
+        } else if (!retired) {
+            readingCounts.merge(repo, 1, Integer::sum);
         }
         checkPath(context, where, reading.get("path"));
         checkLines(context, where, reading.get("lines"));

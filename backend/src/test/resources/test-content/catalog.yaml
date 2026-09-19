@@ -20,4 +20,4 @@ retired:
   challengeSeedKeys: []
   conceptKeys: []
   curatedSourceIds: []
-  readingKeys: []
+  readingKeys: [READ.TESTREPO.LEGACY_CONTROLLER.001]

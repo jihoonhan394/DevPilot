@@ -155,6 +155,6 @@ vectors:
     sideProject: 주문 시스템
     challenges: []
     readings:
-      - { key: READ.RESTBUCKS.STATE_TRANSITION.001, estimated: 15 }
-      - { key: READ.RESTBUCKS.AGGREGATE.001, estimated: 15 }
-    expected: { type: READ_CODE, estimated: 15, difficulty: 2, readingKey: READ.RESTBUCKS.AGGREGATE.001 }
+      - { key: READ.MODULAR_MONOLITH.STOCK_UPDATE.001, estimated: 15 }
+      - { key: READ.MODULAR_MONOLITH.SECURITY_CONFIG.001, estimated: 15 }
+    expected: { type: READ_CODE, estimated: 15, difficulty: 2, readingKey: READ.MODULAR_MONOLITH.SECURITY_CONFIG.001 }

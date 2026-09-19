@@ -302,7 +302,7 @@ task 제목 템플릿:
 | T-2 | (1,1) | ENABLED | `READ.PETCLINIC.CONTROLLER_SLICE.001` (15분) | N | **READ_CODE**, estimated **15**, difficulty **2** |
 | T-3 | (1,1) | DISABLED | 있음 | N | **READING** (25, d1) — AI 불가라 CHALLENGE·READ_CODE 모두 제외, KNOWLEDGE < 2 |
 | T-4 | (3,3) | ENABLED | 없음(전부 완료) | Y | **PROJECT_TASK** (30, d3) |
-| T-5 | (3,3) | ENABLED | 2개(`READ.RESTBUCKS.AGGREGATE.001`, `READ.RESTBUCKS.STATE_TRANSITION.001`) | Y | **READ_CODE** — key ASC로 `READ.RESTBUCKS.AGGREGATE.001`, estimated **15**, difficulty 2 |
+| T-5 | (3,3) | ENABLED | 2개(`READ.MODULAR_MONOLITH.SECURITY_CONFIG.001`, `READ.MODULAR_MONOLITH.STOCK_UPDATE.001`) | Y | **READ_CODE** — key ASC로 `READ.MODULAR_MONOLITH.SECURITY_CONFIG.001`, estimated **15**, difficulty 2 |
 
 ### 5.4 Factor (micro, 0 ~ 1_000_000)
 
@@ -861,7 +861,7 @@ AI 출력 파싱 직후 finding마다 순서대로 적용한다.
 ```
 
 - **서버는 URL을 fetch하지 않는다.** 호스트 문자열만 검사한다.
-- allowlist (`devpilot.ai.trusted-source-hosts`): `docs.spring.io`, `spring.io`, `docs.oracle.com`, `openjdk.org`, `www.postgresql.org`, `owasp.org`, `cheatsheetseries.owasp.org`, `www.kisa.or.kr`, `supabase.com`, `dart.dev`, `docs.flutter.dev`, `api.flutter.dev`, `pmd.github.io`, `spotbugs.readthedocs.io`, `checkstyle.org`, `junit.org`, `hibernate.org`, `docs.jboss.org`, `developer.mozilla.org`, `www.rfc-editor.org`
+- allowlist (`devpilot.ai.trusted-source-hosts`): `docs.spring.io`, `spring.io`, `docs.oracle.com`, `openjdk.org`, `www.postgresql.org`, `owasp.org`, `cheatsheetseries.owasp.org`, `www.kisa.or.kr`, `supabase.com`, `dart.dev`, `docs.flutter.dev`, `api.flutter.dev`, `pmd.github.io`, `spotbugs.readthedocs.io`, `checkstyle.org`, `junit.org`, `hibernate.org`, `docs.jboss.org`, `developer.mozilla.org`, `www.rfc-editor.org`, `git-scm.com`
 - DB CHECK로 이중 방어한다(`schema.sql` coach_finding).
 
 **Test vectors**

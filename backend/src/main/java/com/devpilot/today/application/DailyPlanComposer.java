@@ -31,6 +31,7 @@ import com.devpilot.today.domain.ScoreBreakdown;
 import com.devpilot.today.domain.TaskProposalPolicy;
 import com.devpilot.today.domain.TaskProposalPolicy.Proposal;
 import com.devpilot.today.domain.TaskProposalPolicy.ProposalInput;
+import com.devpilot.today.domain.TaskProposalPolicy.ReadingOption;
 import com.devpilot.today.domain.TaskProposalPolicy.SkillContext;
 import com.devpilot.today.domain.TimeAllocator;
 import com.devpilot.today.domain.TimeAllocator.Allocation;
@@ -51,8 +52,8 @@ import org.springframework.stereotype.Component;
  * level, 집중 skill, leech, 최근 복습 실패, 어제·그제 main, ACTIVE 사이드 프로젝트)을 모아 규칙 클래스를 순서대로 돌린다: 후보 → 제안 →
  * 점수·순위 → 시간 배분·과제 조정 → reason. 저장은 {@link TodayPlanService}가 한다. AI를 호출하지 않는다.
  *
- * <p>S2는 AI가 없으므로({@code aiStatus = DISABLED}, docs/11 R-3) challenge·reading 후보를 빈 목록으로
- * 넘긴다(BL-TDY-14·16은 S3). 규칙 입력은 {@link PlannerInputCollector}가 모은다.
+ * <p>AI 사용 가능 여부와 reading 후보는 {@link ProposalOptionCollector}가 모은다(BL-TDY-16). challenge 후보는
+ * training 모듈(BL-TDY-14)이 붙기 전까지 빈 목록이다. 규칙 입력은 {@link PlannerInputCollector}가 모은다.
  */
 @Component
 public class DailyPlanComposer {
@@ -62,6 +63,7 @@ public class DailyPlanComposer {
     private final LearningSessionQueryService learningSessionQueryService;
     private final ReviewQueryService reviewQueryService;
     private final PlannerInputCollector inputCollector;
+    private final ProposalOptionCollector proposalOptionCollector;
     private final PlannerScoring scoring;
     private final TaskProposalPolicy proposalPolicy = new TaskProposalPolicy();
     private final TimeAllocator timeAllocator;
@@ -73,12 +75,14 @@ public class DailyPlanComposer {
             LearningSessionQueryService learningSessionQueryService,
             ReviewQueryService reviewQueryService,
             PlannerInputCollector inputCollector,
+            ProposalOptionCollector proposalOptionCollector,
             DevPilotProperties properties) {
         this.planQueryService = planQueryService;
         this.studyBudgetService = studyBudgetService;
         this.learningSessionQueryService = learningSessionQueryService;
         this.reviewQueryService = reviewQueryService;
         this.inputCollector = inputCollector;
+        this.proposalOptionCollector = proposalOptionCollector;
         this.scoring = new PlannerScoring(TodayRuleSettings.planner(properties));
         this.timeAllocator = new TimeAllocator(TodayRuleSettings.timeAllocation(properties));
         this.reasonTemplates = new ReasonTemplates(TodayRuleSettings.reasons(properties));
@@ -102,11 +106,14 @@ public class DailyPlanComposer {
                         plan,
                         new Context(risk == null ? RiskLevel.LOW : risk, energy, comebackMode),
                         due);
-        Optional<LearningTask.MainValues> main = chooseMain(inputs, allocation);
+        ProposalOptionCollector.ProposalOptions options =
+                proposalOptionCollector.collect(userId, today);
+        Optional<LearningTask.MainValues> main = chooseMain(inputs, options, allocation);
         return new Composition(plan.id(), risk, comebackMode, allocation, main.orElse(null));
     }
 
-    private Optional<LearningTask.MainValues> chooseMain(Inputs inputs, Allocation allocation) {
+    private Optional<LearningTask.MainValues> chooseMain(
+            Inputs inputs, ProposalOptionCollector.ProposalOptions options, Allocation allocation) {
         List<MilestoneSpan> current =
                 PlannerScoring.currentMilestones(inputs.today(), inputs.milestones());
         Set<String> currentCodes = new HashSet<>();
@@ -129,7 +136,7 @@ public class DailyPlanComposer {
         }
         List<Evaluated> evaluated = new ArrayList<>();
         for (String code : candidates) {
-            evaluated.add(evaluate(code, inputs));
+            evaluated.add(evaluate(code, inputs, options));
         }
         Map<ScoredCandidate, Evaluated> byScore = new HashMap<>();
         evaluated.forEach(candidate -> byScore.put(candidate.scored(), candidate));
@@ -138,7 +145,8 @@ public class DailyPlanComposer {
         return Optional.of(toMain(byScore.get(best), inputs, allocation));
     }
 
-    private Evaluated evaluate(String code, Inputs inputs) {
+    private Evaluated evaluate(
+            String code, Inputs inputs, ProposalOptionCollector.ProposalOptions options) {
         SkillProfile profile = inputs.profiles().get(code);
         SkillTarget target = inputs.targets().get(code);
         MilestoneContext milestone =
@@ -160,9 +168,9 @@ public class DailyPlanComposer {
                                 skill,
                                 inputs.context().energy(),
                                 inputs.context().comebackMode(),
-                                false,
+                                options.aiAvailable(),
                                 List.of(),
-                                List.of(),
+                                options.readingsFor(code),
                                 inputs.sideProject()));
         ScoredCandidate scored =
                 scoring.score(
@@ -179,13 +187,17 @@ public class DailyPlanComposer {
                                 inputs.context().risk(),
                                 inputs.context().energy(),
                                 inputs.context().comebackMode()));
-        return new Evaluated(scored, proposal, milestone, skill, target);
+        return new Evaluated(scored, proposal, milestone, skill, target, options.readingsFor(code));
     }
 
     private LearningTask.MainValues toMain(Evaluated chosen, Inputs inputs, Allocation allocation) {
         Proposal fitted =
                 timeAllocator.fit(
-                        chosen.proposal(), allocation, chosen.skill(), List.of(), List.of());
+                        chosen.proposal(),
+                        allocation,
+                        chosen.skill(),
+                        List.of(),
+                        chosen.readings());
         ScoredCandidate scored = chosen.scored();
         Factors factors = scored.input().factors();
         String code = scored.input().skillCode();
@@ -269,5 +281,6 @@ public class DailyPlanComposer {
             Proposal proposal,
             MilestoneContext milestone,
             SkillContext skill,
-            @Nullable SkillTarget target) {}
+            @Nullable SkillTarget target,
+            List<ReadingOption> readings) {}
 }

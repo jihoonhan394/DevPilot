@@ -1438,18 +1438,18 @@
 | T-2 | (1, 1) | ENABLED | `READ.PETCLINIC.CONTROLLER_SLICE.001` (15분) | N | `READ_CODE`, estimated **15**, difficulty **2** |
 | T-3 | (1, 1) | DISABLED | 있음 | N | `READING` — AI 불가라 CHALLENGE·READ_CODE 모두 제외 |
 | T-4 | (3, 3) | ENABLED | 없음(전부 완료) | Y | `PROJECT_TASK` (30분, difficulty 3, `ACTIVE` 사이드 프로젝트 있음) |
-| T-5 | (3, 3) | ENABLED | 2개(`READ.RESTBUCKS.AGGREGATE.001`, `READ.RESTBUCKS.STATE_TRANSITION.001`) | Y | `READ_CODE` — key ASC로 `READ.RESTBUCKS.AGGREGATE.001` |
+| T-5 | (3, 3) | ENABLED | 2개(`READ.MODULAR_MONOLITH.SECURITY_CONFIG.001`, `READ.MODULAR_MONOLITH.STOCK_UPDATE.001`, 둘 다 15분) | Y | `READ_CODE` — key ASC로 `READ.MODULAR_MONOLITH.SECURITY_CONFIG.001`, estimated 15 |
 
 **S2. reading 선택은 결정적이다**
-- Given skill `SPRING.TRANSACTION`, planning KNOWLEDGE 1. `content/curated-repos.yaml`에서 이 skill을 가진 reading은 key ASC로 `READ.MODULITH.EVENT_FAILURE.001` → `READ.MODULITH.EVENT_PUBLISH.001` → `READ.RESTBUCKS.PAYMENT_TX.001` → `READ.RESTBUCKS.REPOSITORY_TX.001`
+- Given skill `SPRING.TRANSACTION`, planning KNOWLEDGE 1. `content/curated-repos.yaml`에서 이 skill을 가진 은퇴하지 않은 reading은 key ASC로 `READ.MODULITH.EVENT_FAILURE.001` → `READ.MODULITH.EVENT_PUBLISH.001` → `READ.SPRING_FRAMEWORK.CGLIB_PROXY.001` → `READ.SPRING_FRAMEWORK.TX_INTERCEPTOR.001` (은퇴한 `READ.RESTBUCKS.PAYMENT_TX.001`·`READ.RESTBUCKS.REPOSITORY_TX.001`은 후보가 아니다)
 
 | Given | 고른 reading |
 |---|---|
 | 이력 없음 | `READ.MODULITH.EVENT_FAILURE.001` |
 | A가 `EVENT_FAILURE`의 `READ_CODE` task를 `COMPLETED` | `READ.MODULITH.EVENT_PUBLISH.001` |
-| 위 + `EVENT_PUBLISH`가 D − 13에 제안됨(최근 14 plan-day) | `READ.RESTBUCKS.PAYMENT_TX.001` |
+| 위 + `EVENT_PUBLISH`가 D − 13에 제안됨(최근 14 plan-day) | `READ.SPRING_FRAMEWORK.CGLIB_PROXY.001` |
 | 위 + `EVENT_PUBLISH`가 D − 14에 제안됨 | `READ.MODULITH.EVENT_PUBLISH.001` |
-| 네 reading 모두 제외 | `READ_CODE` 없음 → `06` §5.3 3번(`READING`, KNOWLEDGE < 2) |
+| 네 reading(`EVENT_FAILURE`, `EVENT_PUBLISH`, `CGLIB_PROXY`, `TX_INTERCEPTOR`) 모두 제외 | `READ_CODE` 없음 → `06` §5.3 3번(`READING`, KNOWLEDGE < 2) |
 
 - 같은 입력으로 여러 번 생성해도 같은 reading이다(무작위 없음)
 
@@ -1490,7 +1490,7 @@
 - 이미 만든 `READ_CODE` task의 `GET /readings/{readingKey}`는 AI 불가여도 200(읽기 안내까지는 동작)
 
 **S7. 콘텐츠 검증 (`19` §3.8·§4.1 CV-80~CV-87)**
-- 저장소의 `content/curated-repos.yaml`(저장소 3개·reading 13개) → `python3 content/tools/validate_content.py` ERROR 0, 백엔드 `ContentValidator` 기동 성공, 모든 저장소에 `pinnedCommit` 있음(CV-82 WARN 0)
+- 저장소의 `content/curated-repos.yaml`(저장소 9개·reading 41개 = 활성 36 + 은퇴 5) → `python3 content/tools/validate_content.py` ERROR 0, 백엔드 `ContentValidator` 기동 성공, 모든 저장소에 `pinnedCommit` 있음(CV-82 WARN 0)
 
 | 오류 fixture (`19` §4.3) | 결과 |
 |---|---|
