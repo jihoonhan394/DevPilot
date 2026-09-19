@@ -36,6 +36,9 @@ class DomainPurityArchTest {
                     "com.devpilot.plan.domain.StudyBudgetCalculator",
                     "com.devpilot.plan.domain.DeadlineRiskEvaluator",
                     "com.devpilot.plan.domain.ReplanSuggestionPolicy",
+                    "com.devpilot.review.domain.FinalRatingPolicy",
+                    "com.devpilot.review.domain.RuleBasedV1Scheduler",
+                    "com.devpilot.review.domain.DueReviewSelector");
 
     private static final Set<String> FLOATING_TYPES =
             Set.of("double", "float", "java.lang.Double", "java.lang.Float");
