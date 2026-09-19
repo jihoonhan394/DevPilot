@@ -12,8 +12,8 @@
 #
 # JVM 메모리 옵션은 이미지에 넣지 않고 compose.prod.yml의 JAVA_TOOL_OPTIONS(-Xmx1g)로 준다.
 
-# TODO(S2 P1): pin @sha256 digest (docs/07 §11.5, docs/10 §7.4) — 예: eclipse-temurin:25-jre@sha256:<digest>, Dependabot docker가 갱신
-FROM eclipse-temurin:25-jre
+# base image는 멀티아치 index digest로 고정한다 (docs/07 §11.5, docs/10 §7.4). Dependabot docker가 digest를 갱신한다
+FROM eclipse-temurin:25-jre@sha256:bb036ed6cfdc57e3da7c22634d15f1b840d2caf76183861c80e81ca4b5104abb
 
 RUN groupadd --system --gid 10001 app \
     && useradd --system --uid 10001 --gid app --home-dir /app --no-create-home --shell /usr/sbin/nologin app \

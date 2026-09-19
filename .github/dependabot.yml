@@ -1,6 +1,6 @@
 # DevPilot Dependabot version updates — S0: gradle, pub, github-actions (docs/10 §7.4, 2026-09-18)
 # minor/patch는 생태계별로 한 PR로 묶고, major는 개별 PR로 받는다. CI green이면 주 1회 developer에 병합한다.
-# docker / docker-compose 생태계는 S2 P1 (컨테이너 base image digest 고정)과 함께 추가한다.
+# docker / docker-compose: 컨테이너 base image digest 갱신 (docs/07 §11.5).
 version: 2
 
 updates:
@@ -41,3 +41,22 @@ updates:
     groups:
       actions-minor-patch:
         update-types: [minor, patch]
+
+  # 컨테이너 base image digest (backend/Dockerfile, infra/compose.*.yml — docs/07 §11.5)
+  - package-ecosystem: docker
+    directory: /backend
+    target-branch: developer
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Seoul
+
+  - package-ecosystem: docker-compose
+    directory: /infra
+    target-branch: developer
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Seoul

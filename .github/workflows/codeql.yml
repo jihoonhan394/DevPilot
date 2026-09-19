@@ -1,0 +1,39 @@
+# DevPilot CodeQL — Java 코드 정적 분석 (public 저장소, docs/07 §11.4)
+# PR(main·developer 대상)과 주 1회. high severity 이상 알림은 머지 전에 처리한다.
+# build-mode none: Gradle 빌드 없이 소스를 분석한다(JDK 25 toolchain과 무관).
+name: codeql
+
+on:
+  pull_request:
+    branches: [main, developer]
+  push:
+    branches: [main, developer]
+  schedule:
+    - cron: "17 3 * * 1" # 월요일 03:17 UTC
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  analyze:
+    name: analyze (java-kotlin)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: github/codeql-action/init@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
+        with:
+          languages: java-kotlin
+          build-mode: none
+          queries: security-extended
+      - uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
+        with:
+          category: /language:java-kotlin
