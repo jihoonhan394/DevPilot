@@ -111,9 +111,7 @@ public class ProfileService {
                         command.timezone(),
                         command.dayStartHour(),
                         command.weekdayStudyMinutes(),
-                        command.weekendStudyMinutes(),
-                        command.experienceProfile(),
-                        command.experienceStartDate()),
+                        command.weekendStudyMinutes()),
                 clock.instant());
         appUserRepository.flush();
         return toResponse(user);
@@ -144,8 +142,6 @@ public class ProfileService {
                 user.getDayStartHour(),
                 user.getWeekdayStudyMinutes(),
                 user.getWeekendStudyMinutes(),
-                user.getExperienceProfile(),
-                user.getExperienceStartDate(),
                 user.isOnboardingCompleted(),
                 user.getOnboardingCompletedAt(),
                 PlanDayCalculator.planDate(now, user.getZoneId(), user.getDayStartHour()),

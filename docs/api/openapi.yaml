@@ -617,9 +617,6 @@ components:
     LearningGoalInput:
       type: object
       properties:
-        checkpointDate:
-          type: string
-          format: date
         focusSkillCodes:
           type: array
           items:
@@ -642,9 +639,6 @@ components:
     LearningGoalUpdateRequest:
       type: object
       properties:
-        checkpointDate:
-          type: string
-          format: date
         focusSkillCodes:
           type: array
           items:
@@ -671,9 +665,6 @@ components:
     LearningGoalView:
       type: object
       properties:
-        checkpointDate:
-          type: string
-          format: date
         createdAt:
           type: string
           format: date-time
@@ -700,7 +691,6 @@ components:
           type: integer
           format: int64
       required:
-      - checkpointDate
       - createdAt
       - focusSkills
       - id
@@ -734,15 +724,6 @@ components:
           format: date-time
         displayName:
           type: string
-        experienceProfile:
-          type: string
-          enum:
-          - WORKING_DEVELOPER
-          - DEVELOPER_STARTER
-          - OTHER
-        experienceStartDate:
-          type: string
-          format: date
         id:
           type: string
           format: uuid
@@ -783,8 +764,6 @@ components:
       - dayStartHour
       - deletionRequestedAt
       - displayName
-      - experienceProfile
-      - experienceStartDate
       - id
       - onboardingCompleted
       - onboardingCompletedAt
@@ -954,15 +933,6 @@ components:
           type: string
           maxLength: 100
           minLength: 0
-        experienceProfile:
-          type: string
-          enum:
-          - WORKING_DEVELOPER
-          - DEVELOPER_STARTER
-          - OTHER
-        experienceStartDate:
-          type: string
-          format: date
         learningGoal:
           $ref: "#/components/schemas/LearningGoalInput"
         runDiagnostic:
@@ -994,7 +964,6 @@ components:
       required:
       - dayStartHour
       - displayName
-      - experienceProfile
       - learningGoal
       - runDiagnostic
       - selfAssessments

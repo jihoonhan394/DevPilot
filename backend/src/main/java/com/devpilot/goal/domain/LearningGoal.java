@@ -37,9 +37,6 @@ public class LearningGoal extends BaseTimeEntity {
     @Column(name = "target_role", nullable = false)
     private TargetRole targetRole;
 
-    @Column(name = "checkpoint_date")
-    private @Nullable LocalDate checkpointDate;
-
     @Column(name = "target_completion_date", nullable = false)
     private LocalDate targetCompletionDate;
 
@@ -61,7 +58,7 @@ public class LearningGoal extends BaseTimeEntity {
         this.userId = Objects.requireNonNull(userId, "userId");
     }
 
-    /** 온보딩 생성 (docs/05 §4.1 처리 4). 날짜 순서는 호출자가 검증했다. */
+    /** 온보딩 생성 (docs/05 §4.1 처리 4). 목표일 범위는 호출자가 검증했다. */
     public static LearningGoal create(UUID userId, GoalValues values) {
         LearningGoal goal = new LearningGoal(userId);
         goal.apply(values);
@@ -69,25 +66,17 @@ public class LearningGoal extends BaseTimeEntity {
     }
 
     /**
-     * 전체 교체 (docs/05 §5.2). {@code checkpointDate = null}은 값을 지운다. 두 날짜 중 하나라도 바뀌면 {@code true}를
-     * 돌려준다 — 활성 plan의 {@code replan_recommended}를 켜는 신호다(docs/06 §11.1).
+     * 전체 교체 (docs/05 §5.2). 목표일이 바뀌면 {@code true}를 돌려준다 — 활성 plan의 {@code replan_recommended}를 켜는
+     * 신호다(docs/06 §11.1).
      */
     public boolean replace(GoalValues values) {
-        boolean datesChanged =
-                !Objects.equals(checkpointDate, values.checkpointDate())
-                        || !targetCompletionDate.equals(values.targetCompletionDate());
+        boolean dateChanged = !targetCompletionDate.equals(values.targetCompletionDate());
         apply(values);
-        return datesChanged;
+        return dateChanged;
     }
 
     private void apply(GoalValues values) {
-        LocalDate checkpoint = values.checkpointDate();
-        if (checkpoint != null && checkpoint.isAfter(values.targetCompletionDate())) {
-            throw new IllegalArgumentException(
-                    "checkpointDate must not be after targetCompletionDate");
-        }
         this.targetRole = Objects.requireNonNull(values.targetRole(), "targetRole");
-        this.checkpointDate = values.checkpointDate();
         this.targetCompletionDate =
                 Objects.requireNonNull(values.targetCompletionDate(), "targetCompletionDate");
         if (!focusSkillIds.equals(values.focusSkillIds())) {
@@ -107,10 +96,6 @@ public class LearningGoal extends BaseTimeEntity {
 
     public TargetRole getTargetRole() {
         return targetRole;
-    }
-
-    public @Nullable LocalDate getCheckpointDate() {
-        return checkpointDate;
     }
 
     public LocalDate getTargetCompletionDate() {
@@ -137,10 +122,7 @@ public class LearningGoal extends BaseTimeEntity {
 
     /** 목표 값 한 벌. */
     public record GoalValues(
-            TargetRole targetRole,
-            @Nullable LocalDate checkpointDate,
-            LocalDate targetCompletionDate,
-            Set<UUID> focusSkillIds) {
+            TargetRole targetRole, LocalDate targetCompletionDate, Set<UUID> focusSkillIds) {
 
         public GoalValues {
             focusSkillIds = Set.copyOf(focusSkillIds);

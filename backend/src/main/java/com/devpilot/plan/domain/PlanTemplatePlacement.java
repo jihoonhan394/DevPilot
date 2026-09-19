@@ -5,19 +5,17 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.IntStream;
-import org.jspecify.annotations.Nullable;
 
 /**
  * 계획 템플릿 배치 알고리즘 (docs/19 §5, vector §5.4). milestone마다 {@code [start, end]}(양 끝 포함)를 정한다. 모든 계산은
  * {@link LocalDate}와 정수다. 순수 규칙 클래스다(ARCH-12).
  *
  * <ul>
- *   <li>창: 중간 점검일이 있고 {@code today < checkpointDate}면 PREPARATION은 {@code [today, 중간 점검일 − 1]},
- *       CONSOLIDATION은 {@code [중간 점검일, 목표일]}. 아니면 전부 {@code [today, 목표일]}.
+ *   <li>창: 모든 milestone이 창 하나 {@code [today, 목표일]}을 템플릿 순서대로 나눈다. 템플릿은 PREPARATION을 앞에,
+ *       CONSOLIDATION("설명과 정리")을 뒤에 둔다(CV-33이 순서를 검사한다).
  *   <li>SEQUENTIAL(날짜가 충분): 모두 {@code minDays} 이상, 빈 날·겹침 없이 창 전체를 덮는다.
  *   <li>COMPRESSED(부족): 같은 길이 {@code min(minDays, D)} 구간을 누적 weight 비율만큼 밀어 겹쳐 놓는다.
  * </ul>
@@ -27,7 +25,6 @@ public final class PlanTemplatePlacement {
     /** 전제: {@code today ≤ targetCompletionDate}. 결과는 입력 순서와 같다. */
     public List<DateSpan> place(
             LocalDate today,
-            @Nullable LocalDate checkpointDate,
             LocalDate targetCompletionDate,
             List<PlacementInput> milestones,
             int minMilestoneDays) {
@@ -39,31 +36,7 @@ public final class PlanTemplatePlacement {
         if (minMilestoneDays < 1) {
             throw new IllegalArgumentException("minMilestoneDays must be positive");
         }
-        if (checkpointDate == null || !today.isBefore(checkpointDate)) {
-            return allocate(today, targetCompletionDate, weights(milestones), minMilestoneDays);
-        }
-        List<DateSpan> result = new ArrayList<>(milestones.size());
-        List<DateSpan> preparation =
-                allocate(
-                        today,
-                        checkpointDate.minusDays(1),
-                        weights(phase(milestones, MilestonePhase.PREPARATION)),
-                        minMilestoneDays);
-        List<DateSpan> consolidation =
-                allocate(
-                        checkpointDate,
-                        targetCompletionDate,
-                        weights(phase(milestones, MilestonePhase.CONSOLIDATION)),
-                        minMilestoneDays);
-        Iterator<DateSpan> preparationSpans = preparation.iterator();
-        Iterator<DateSpan> consolidationSpans = consolidation.iterator();
-        for (PlacementInput milestone : milestones) {
-            result.add(
-                    milestone.phase() == MilestonePhase.PREPARATION
-                            ? preparationSpans.next()
-                            : consolidationSpans.next());
-        }
-        return result;
+        return allocate(today, targetCompletionDate, weights(milestones), minMilestoneDays);
     }
 
     /** {@code allocate(windowStart, windowEnd, w, minDays)} (docs/19 §5.3). */
@@ -139,23 +112,17 @@ public final class PlanTemplatePlacement {
         return spans;
     }
 
-    private static List<PlacementInput> phase(
-            List<PlacementInput> milestones, MilestonePhase phase) {
-        return milestones.stream().filter(milestone -> milestone.phase() == phase).toList();
-    }
-
     private static List<Long> weights(List<PlacementInput> milestones) {
         return milestones.stream().map(milestone -> (long) milestone.weightBp()).toList();
     }
 
-    /** 배치 입력: 템플릿 milestone의 weight와 단계. */
-    public record PlacementInput(int weightBp, MilestonePhase phase) {
+    /** 배치 입력: 템플릿 milestone의 weight. */
+    public record PlacementInput(int weightBp) {
 
         public PlacementInput {
             if (weightBp <= 0) {
                 throw new IllegalArgumentException("weightBp must be positive");
             }
-            Objects.requireNonNull(phase, "phase");
         }
     }
 

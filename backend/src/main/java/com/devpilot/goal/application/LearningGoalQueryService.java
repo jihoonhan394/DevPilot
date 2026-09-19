@@ -59,7 +59,6 @@ public class LearningGoalQueryService {
         return new LearningGoalView(
                 goal.getId(),
                 goal.getTargetRole(),
-                goal.getCheckpointDate(),
                 goal.getTargetCompletionDate(),
                 focusSkills,
                 replanRecommendationProvider.isReplanRecommended(goal.getUserId()),

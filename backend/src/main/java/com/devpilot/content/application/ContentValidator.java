@@ -6,10 +6,8 @@ import com.devpilot.plan.application.PlanTemplateRegistry;
 import com.devpilot.plan.domain.PlanTemplate;
 import com.devpilot.plan.domain.PlanTemplatePlacement.DateSpan;
 import java.time.LocalDate;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 
 /**
@@ -50,30 +48,30 @@ public class ContentValidator {
 
     /** CV-61: 고정 입력 4개에서 모든 milestone이 {@code today ≤ start ≤ end ≤ targetCompletionDate}. */
     private void checkPlacementSmoke(ValidationContext context) {
-        List<SmokeCase> cases =
-                Arrays.asList(
-                        new SmokeCase(null, SMOKE_TODAY),
-                        new SmokeCase(null, SMOKE_TODAY.plusDays(9)),
-                        new SmokeCase(SMOKE_TODAY.plusDays(20), SMOKE_TODAY.plusDays(30)),
-                        new SmokeCase(SMOKE_TODAY.plusDays(150), SMOKE_TODAY.plusDays(210)));
+        List<LocalDate> targets =
+                List.of(
+                        SMOKE_TODAY,
+                        SMOKE_TODAY.plusDays(9),
+                        SMOKE_TODAY.plusDays(30),
+                        SMOKE_TODAY.plusDays(210));
         for (Map<String, Object> document : context.validTemplates) {
             PlanTemplate template = CatalogMapping.template(document);
-            for (SmokeCase smoke : cases) {
-                checkPlacement(context, template, smoke);
+            for (LocalDate target : targets) {
+                checkPlacement(context, template, target);
             }
         }
     }
 
-    private void checkPlacement(ValidationContext context, PlanTemplate template, SmokeCase smoke) {
+    private void checkPlacement(
+            ValidationContext context, PlanTemplate template, LocalDate target) {
         try {
             List<DateSpan> spans =
-                    planTemplateRegistry.placeMilestones(
-                            template, SMOKE_TODAY, smoke.checkpointDate(), smoke.target());
+                    planTemplateRegistry.placeMilestones(template, SMOKE_TODAY, target);
             for (int i = 0; i < spans.size(); i++) {
                 DateSpan span = spans.get(i);
                 if (span.start().isBefore(SMOKE_TODAY)
                         || span.end().isBefore(span.start())
-                        || span.end().isAfter(smoke.target())) {
+                        || span.end().isAfter(target)) {
                     context.error(
                             "CV-61",
                             template.templateKey(),
@@ -92,6 +90,4 @@ public class ContentValidator {
                     "placement failed: " + exception.getClass().getSimpleName());
         }
     }
-
-    private record SmokeCase(@Nullable LocalDate checkpointDate, LocalDate target) {}
 }

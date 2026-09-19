@@ -30,9 +30,10 @@ class PlanQueryServiceIntegrationTest extends ApiTestSupport {
         assertThat(plan.path("latestSnapshot").isNull()).isTrue();
         JsonNode milestones = plan.path("milestones");
         assertThat(milestones).hasSize(3);
-        assertMilestone(milestones.get(0), "기반 다지기", "2026-10-05", "2026-11-19", "MUST", 0);
-        assertMilestone(milestones.get(1), "주문 흐름", "2026-11-20", "2027-01-04", "MUST", 1);
-        assertMilestone(milestones.get(2), "설명과 정리", "2027-01-05", "2027-04-01", "SHOULD", 2);
+        // 창 하나 [2026-10-05, 2027-04-01] = 179일, weight 4000·4000·2000 → 70·70·39일 (docs/19 §5.3)
+        assertMilestone(milestones.get(0), "기반 다지기", "2026-10-05", "2026-12-13", "MUST", 0);
+        assertMilestone(milestones.get(1), "주문 흐름", "2026-12-14", "2027-02-21", "MUST", 1);
+        assertMilestone(milestones.get(2), "설명과 정리", "2027-02-22", "2027-04-01", "SHOULD", 2);
         assertThat(texts(milestones.get(0).path("skillCodes")))
                 .containsExactlyInAnyOrder(
                         "JAVA.EXCEPTION",

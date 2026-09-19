@@ -39,8 +39,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class OnboardingService {
 
-    private static final LocalDate EARLIEST_EXPERIENCE_START = LocalDate.of(1970, 1, 1);
-
     private final ProfileService profileService;
     private final LearningGoalService learningGoalService;
     private final SkillCatalogQueryService skillCatalogQueryService;
@@ -93,7 +91,6 @@ public class OnboardingService {
                         new PlanCommandService.NewPlanCommand(
                                 learningGoal.id(),
                                 command.learningGoal().targetRole(),
-                                command.learningGoal().checkpointDate(),
                                 command.learningGoal().targetCompletionDate(),
                                 today,
                                 command.useTemplate()));
@@ -109,12 +106,6 @@ public class OnboardingService {
         List<ApiFieldError> errors = new ArrayList<>();
         if (!validTimezone) {
             errors.add(ApiFieldError.of("timezone", FieldErrorCodes.TIMEZONE_INVALID));
-        }
-        LocalDate experienceStart = command.experienceStartDate();
-        if (experienceStart != null
-                && (experienceStart.isBefore(EARLIEST_EXPERIENCE_START)
-                        || experienceStart.isAfter(today))) {
-            errors.add(ApiFieldError.of("experienceStartDate", FieldErrorCodes.DATE_OUT_OF_RANGE));
         }
         errors.addAll(learningGoalService.validate(command.learningGoal(), today, "learningGoal."));
         errors.addAll(validateSelfAssessments(command));
@@ -177,8 +168,6 @@ public class OnboardingService {
                 command.timezone(),
                 command.dayStartHour(),
                 command.weekdayStudyMinutes(),
-                command.weekendStudyMinutes(),
-                command.experienceProfile(),
-                command.experienceStartDate());
+                command.weekendStudyMinutes());
     }
 }

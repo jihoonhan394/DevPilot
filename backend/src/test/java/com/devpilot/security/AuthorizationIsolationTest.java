@@ -235,7 +235,6 @@ class AuthorizationIsolationTest extends ApiTestSupport {
         JsonNode goal = api.body(api.get(owner, "/api/v1/learning-goal"));
         Map<String, Object> learningGoalBody = new LinkedHashMap<>();
         learningGoalBody.put("targetRole", "JAVA_BACKEND");
-        learningGoalBody.put("checkpointDate", null);
         learningGoalBody.put("targetCompletionDate", "2027-04-01");
         learningGoalBody.put("focusSkillCodes", List.of());
         learningGoalBody.put("version", 0);

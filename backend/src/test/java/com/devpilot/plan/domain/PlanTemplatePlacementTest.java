@@ -28,13 +28,8 @@ class PlanTemplatePlacementTest {
     @ParameterizedTest(name = "[{index}] {0}")
     @MethodSource("vectors")
     void shouldMatchVectorWhenTemplateIsPlaced(
-            String id,
-            LocalDate today,
-            LocalDate checkpointDate,
-            LocalDate targetCompletionDate,
-            List<DateSpan> expected) {
-        List<DateSpan> result =
-                placement.place(today, checkpointDate, targetCompletionDate, inputs(), minDays());
+            String id, LocalDate today, LocalDate targetCompletionDate, List<DateSpan> expected) {
+        List<DateSpan> result = placement.place(today, targetCompletionDate, inputs(), minDays());
 
         assertThat(result).as(id).containsExactlyElementsOf(expected);
     }
@@ -44,7 +39,7 @@ class PlanTemplatePlacementTest {
         LocalDate today = LocalDate.parse("2026-10-01");
         LocalDate target = LocalDate.parse("2027-03-31");
 
-        List<DateSpan> result = placement.place(today, null, target, inputs(), minDays());
+        List<DateSpan> result = placement.place(today, target, inputs(), minDays());
 
         assertThat(result.getFirst().start()).isEqualTo(today);
         assertThat(result.getLast().end()).isEqualTo(target);
@@ -63,9 +58,8 @@ class PlanTemplatePlacementTest {
         List<DateSpan> result =
                 placement.place(
                         LocalDate.parse("2026-10-01"),
-                        null,
                         LocalDate.parse("2026-10-31"),
-                        List.of(new PlacementInput(10_000, MilestonePhase.PREPARATION)),
+                        List.of(new PlacementInput(10_000)),
                         7);
 
         assertThat(result)
@@ -79,7 +73,6 @@ class PlanTemplatePlacementTest {
                         () ->
                                 placement.place(
                                         LocalDate.parse("2026-10-02"),
-                                        null,
                                         LocalDate.parse("2026-10-01"),
                                         inputs(),
                                         minDays()))
@@ -92,7 +85,6 @@ class PlanTemplatePlacementTest {
                         () ->
                                 placement.place(
                                         LocalDate.parse("2026-10-01"),
-                                        null,
                                         LocalDate.parse("2026-12-01"),
                                         inputs(),
                                         0))
@@ -101,7 +93,7 @@ class PlanTemplatePlacementTest {
 
     @Test
     void shouldRejectWhenWeightIsNotPositive() {
-        assertThatThrownBy(() -> new PlacementInput(0, MilestonePhase.PREPARATION))
+        assertThatThrownBy(() -> new PlacementInput(0))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -112,18 +104,13 @@ class PlanTemplatePlacementTest {
                                 Arguments.of(
                                         row.get("id"),
                                         date(row.get("today")),
-                                        date(row.get("checkpointDate")),
                                         date(row.get("targetCompletionDate")),
                                         spans(row.get("expected"))));
     }
 
     private static List<PlacementInput> inputs() {
         return milestones().stream()
-                .map(
-                        milestone ->
-                                new PlacementInput(
-                                        (Integer) milestone.get("weightBp"),
-                                        MilestonePhase.valueOf((String) milestone.get("phase"))))
+                .map(milestone -> new PlacementInput((Integer) milestone.get("weightBp")))
                 .toList();
     }
 

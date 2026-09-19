@@ -51,29 +51,12 @@ class StudyBudgetCalculatorTest {
     }
 
     @Test
-    void shouldUseCheckpointAsHorizonWhenCheckpointIsAfterToday() {
-        LocalDate today = LocalDate.parse("2026-12-07");
-
-        assertThat(
-                        StudyBudgetCalculator.horizonDate(
-                                today,
-                                LocalDate.parse("2026-12-14"),
-                                LocalDate.parse("2027-04-01")))
-                .isEqualTo(LocalDate.parse("2026-12-14"));
-        assertThat(StudyBudgetCalculator.horizonDate(today, today, LocalDate.parse("2027-04-01")))
-                .isEqualTo(LocalDate.parse("2027-04-01"));
-        assertThat(StudyBudgetCalculator.horizonDate(today, null, LocalDate.parse("2027-04-01")))
-                .isEqualTo(LocalDate.parse("2027-04-01"));
-    }
-
-    @Test
-    void shouldCalculateAc03BudgetWhenCheckpointIsNextMonday() {
+    void shouldUseTargetCompletionDateAsHorizon() {
         StudyBudgetCalculator.Budget budget =
                 calculator.calculate(
                         new StudyBudgetCalculator.Input(
                                 LocalDate.parse("2026-12-07"),
                                 LocalDate.parse("2026-12-14"),
-                                LocalDate.parse("2027-04-01"),
                                 45,
                                 240,
                                 0,
@@ -84,6 +67,25 @@ class StudyBudgetCalculatorTest {
                 .isEqualTo(
                         new StudyBudgetCalculator.Budget(
                                 LocalDate.parse("2026-12-14"), 705, 7_000, 493));
+    }
+
+    @Test
+    void shouldUseRecentCompletionRateWhenHistoryIsLongEnough() {
+        StudyBudgetCalculator.Budget budget =
+                calculator.calculate(
+                        new StudyBudgetCalculator.Input(
+                                LocalDate.parse("2026-12-07"),
+                                LocalDate.parse("2026-12-14"),
+                                45,
+                                240,
+                                20,
+                                1_500,
+                                600));
+
+        assertThat(budget)
+                .isEqualTo(
+                        new StudyBudgetCalculator.Budget(
+                                LocalDate.parse("2026-12-14"), 705, 4_000, 282));
     }
 
     @Test

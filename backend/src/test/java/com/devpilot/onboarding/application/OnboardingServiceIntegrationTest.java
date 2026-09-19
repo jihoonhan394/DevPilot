@@ -41,16 +41,10 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
                                 .andExpect(status().isCreated())
                                 .andExpect(jsonPath("$.user.onboardingCompleted").value(true))
                                 .andExpect(jsonPath("$.user.displayName").value("Test Owner"))
-                                .andExpect(
-                                        jsonPath("$.user.experienceProfile")
-                                                .value("WORKING_DEVELOPER"))
-                                .andExpect(
-                                        jsonPath("$.user.experienceStartDate").value("2020-02-01"))
+                                .andExpect(jsonPath("$.user.weekdayStudyMinutes").value(45))
                                 .andExpect(
                                         jsonPath("$.learningGoal.targetRole").value("JAVA_BACKEND"))
-                                .andExpect(
-                                        jsonPath("$.learningGoal.checkpointDate")
-                                                .value("2027-01-05"))
+                                .andExpect(jsonPath("$.learningGoal.checkpointDate").doesNotExist())
                                 .andExpect(
                                         jsonPath("$.learningGoal.targetCompletionDate")
                                                 .value("2027-04-01"))
@@ -263,10 +257,10 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
     }
 
     @Test
-    void shouldRejectInvalidTimezoneAndDateOrder() throws Exception {
+    void shouldRejectInvalidTimezoneAndTargetDateBeyondThreeYears() throws Exception {
         Map<String, Object> request = TestApi.onboardingRequest();
         request.put("timezone", "Mars/Olympus");
-        learningGoal(request).put("checkpointDate", "2027-05-01");
+        learningGoal(request).put("targetCompletionDate", "2029-10-06");
 
         api.post(TestUser.owner(), ONBOARDING, request)
                 .andExpect(status().isBadRequest())
@@ -274,14 +268,32 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
                         jsonPath("$.errors[?(@.field == 'timezone')].code")
                                 .value("TIMEZONE_INVALID"))
                 .andExpect(
-                        jsonPath("$.errors[?(@.field == 'learningGoal.checkpointDate')].code")
-                                .value("DATE_ORDER_INVALID"));
+                        jsonPath(
+                                        "$.errors[?(@.field =="
+                                                + " 'learningGoal.targetCompletionDate')].code")
+                                .value("DATE_OUT_OF_RANGE"));
+    }
+
+    @Test
+    void shouldRejectPropertiesOutsideGoalModel() throws Exception {
+        TestUser user = TestUser.owner();
+        Map<String, Object> withProfile = TestApi.onboardingRequest();
+        withProfile.put("experienceProfile", "WORKING_DEVELOPER");
+        Map<String, Object> withCheckpoint = TestApi.onboardingRequest();
+        learningGoal(withCheckpoint).put("checkpointDate", "2027-01-05");
+
+        api.post(user, ONBOARDING, withProfile)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
+        api.post(user, ONBOARDING, withCheckpoint)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
+        assertNothingPersisted(user);
     }
 
     @Test
     void shouldRejectTargetDateNotAfterToday() throws Exception {
         Map<String, Object> request = TestApi.onboardingRequest();
-        learningGoal(request).put("checkpointDate", null);
         learningGoal(request).put("targetCompletionDate", "2026-10-05");
 
         api.post(TestUser.owner(), ONBOARDING, request)
@@ -308,7 +320,7 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldRejectUnknownEnumValue() throws Exception {
         Map<String, Object> request = TestApi.onboardingRequest();
-        request.put("experienceProfile", "working_developer");
+        learningGoal(request).put("targetRole", "java_backend");
 
         api.post(TestUser.owner(), ONBOARDING, request)
                 .andExpect(status().isBadRequest())

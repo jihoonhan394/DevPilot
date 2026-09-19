@@ -4,19 +4,20 @@ import com.devpilot.common.math.FixedPointMath;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Study budget (docs/06 §3, BL-GOL-08). 순수 규칙 클래스다(ARCH-12). 학습 목표일까지 남은 학습 가능 시간을 사용자가 정한 평일·주말 학습
  * 시간과 최근 완료율로 추정한다.
  *
  * <pre>
- * horizonDate    = checkpointDate > today ? checkpointDate : targetCompletionDate
+ * horizonDate    = targetCompletionDate
  * nominalMinutes = Σ_{d = today .. horizonDate − 1} (주말 ? weekend : weekday)      (horizon ≤ today → 0)
  * completionRate = days < minHistoryDays or Σavail == 0 ? defaultRate
  *                                                      : clamp(floorDiv(Σactual × 10_000, Σavail), minRate, 10_000)
  * effective      = floorDiv(nominal × completionRate, 10_000)
  * </pre>
+ *
+ * <p>horizon은 학습 목표일 하나다. 중간 점검일은 budget 계산에 쓰지 않는다.
  */
 public final class StudyBudgetCalculator {
 
@@ -26,15 +27,6 @@ public final class StudyBudgetCalculator {
 
     public StudyBudgetCalculator(Settings settings) {
         this.settings = Objects.requireNonNull(settings, "settings");
-    }
-
-    /** docs/06 §3.1. 중간 점검일이 오늘 이후면 중간 점검일, 아니면 학습 완료 목표일. */
-    public static LocalDate horizonDate(
-            LocalDate today, @Nullable LocalDate checkpointDate, LocalDate targetCompletionDate) {
-        if (checkpointDate != null && checkpointDate.isAfter(today)) {
-            return checkpointDate;
-        }
-        return targetCompletionDate;
     }
 
     /** docs/06 §3.2. 오늘을 포함하고 horizon 당일은 뺀다. 공휴일은 반영하지 않는다. */
@@ -69,8 +61,7 @@ public final class StudyBudgetCalculator {
 
     /** 세 값을 한 번에 계산한다. */
     public Budget calculate(Input input) {
-        LocalDate horizon =
-                horizonDate(input.today(), input.checkpointDate(), input.targetCompletionDate());
+        LocalDate horizon = input.targetCompletionDate();
         int nominal =
                 nominalMinutes(
                         input.today(), horizon, input.weekdayMinutes(), input.weekendMinutes());
@@ -97,13 +88,13 @@ public final class StudyBudgetCalculator {
     /**
      * 계산 입력.
      *
+     * @param targetCompletionDate 학습 목표일 = horizon
      * @param historyDays 완료율 창(최근 28 plan-day) 안에서 daily plan이 있는 날 수
      * @param sumAvailableMinutes 그 날들의 {@code available_minutes} 합
      * @param sumActualMinutes 창 안 COMPLETED 세션의 {@code actual_minutes} 합
      */
     public record Input(
             LocalDate today,
-            @Nullable LocalDate checkpointDate,
             LocalDate targetCompletionDate,
             int weekdayMinutes,
             int weekendMinutes,

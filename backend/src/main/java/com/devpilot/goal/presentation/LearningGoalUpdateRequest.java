@@ -8,19 +8,16 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.List;
 import org.hibernate.validator.constraints.UniqueElements;
-import org.jspecify.annotations.Nullable;
 
-/** {@code PUT /learning-goal} 요청 (docs/05 §5.2). 전체 교체 — {@code checkpointDate: null}은 값을 지운다. */
+/** {@code PUT /learning-goal} 요청 (docs/05 §5.2). 전체 교체: 학습 트랙, 목표일, 집중 skill. */
 public record LearningGoalUpdateRequest(
         @NotNull TargetRole targetRole,
-        @Nullable LocalDate checkpointDate,
         @NotNull LocalDate targetCompletionDate,
         @NotNull @Size(max = 10) @UniqueElements
                 List<@NotBlank @Size(max = 100) String> focusSkillCodes,
         @NotNull Long version) {
 
     LearningGoalCommand toCommand() {
-        return new LearningGoalCommand(
-                targetRole, checkpointDate, targetCompletionDate, focusSkillCodes);
+        return new LearningGoalCommand(targetRole, targetCompletionDate, focusSkillCodes);
     }
 }

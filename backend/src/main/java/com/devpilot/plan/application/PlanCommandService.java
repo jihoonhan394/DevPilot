@@ -141,10 +141,7 @@ public class PlanCommandService {
             LearningPlan plan, PlanTemplate template, NewPlanCommand command) {
         List<DateSpan> spans =
                 planTemplateRegistry.placeMilestones(
-                        template,
-                        command.today(),
-                        command.checkpointDate(),
-                        command.targetCompletionDate());
+                        template, command.today(), command.targetCompletionDate());
         Set<String> codes = new HashSet<>();
         template.milestones().forEach(milestone -> codes.addAll(milestone.skillCodes()));
         Map<String, SkillRef> skills = skillCatalogQueryService.findActiveByCodes(codes);
@@ -189,7 +186,6 @@ public class PlanCommandService {
     public record NewPlanCommand(
             @Nullable UUID learningGoalId,
             TargetRole targetRole,
-            @Nullable LocalDate checkpointDate,
             LocalDate targetCompletionDate,
             LocalDate today,
             boolean useTemplate) {}

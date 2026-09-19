@@ -121,7 +121,6 @@ public final class TestApi {
     public static Map<String, Object> onboardingRequest() {
         Map<String, Object> learningGoal = new LinkedHashMap<>();
         learningGoal.put("targetRole", "JAVA_BACKEND");
-        learningGoal.put("checkpointDate", "2027-01-05");
         learningGoal.put("targetCompletionDate", "2027-04-01");
         learningGoal.put("focusSkillCodes", new ArrayList<>(List.of("SPRING.TRANSACTION")));
         List<Object> selfAssessments = new ArrayList<>();
@@ -135,8 +134,6 @@ public final class TestApi {
         request.put("dayStartHour", 4);
         request.put("weekdayStudyMinutes", 45);
         request.put("weekendStudyMinutes", 240);
-        request.put("experienceProfile", "WORKING_DEVELOPER");
-        request.put("experienceStartDate", "2020-02-01");
         request.put("learningGoal", learningGoal);
         request.put("runDiagnostic", false);
         request.put("selfAssessments", selfAssessments);

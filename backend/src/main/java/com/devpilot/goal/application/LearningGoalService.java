@@ -26,14 +26,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 학습 목표 생성(온보딩)·수정 (docs/05 §4.1 처리 4, §5.2, BL-GOL-01). 날짜가 바뀌면 {@link LearningGoalDatesChanged}를
+ * 학습 목표 생성(온보딩)·수정 (docs/05 §4.1 처리 4, §5.2, BL-GOL-01). 목표일이 바뀌면 {@link LearningGoalDatesChanged}를
  * 발행하고 plan 모듈이 같은 트랜잭션에서 {@code replan_recommended}를 켠다.
  */
 @Service
 public class LearningGoalService {
 
     private static final int MAX_YEARS_AHEAD = 3;
-    private static final int MAX_YEARS_BEHIND = 1;
 
     private final LearningGoalRepository learningGoalRepository;
     private final LearningGoalQueryService learningGoalQueryService;
@@ -69,19 +68,6 @@ public class LearningGoalService {
                     ApiFieldError.of(
                             fieldPrefix + "targetCompletionDate",
                             FieldErrorCodes.DATE_OUT_OF_RANGE));
-        }
-        LocalDate checkpoint = command.checkpointDate();
-        if (checkpoint != null) {
-            if (checkpoint.isBefore(today.minusYears(MAX_YEARS_BEHIND))) {
-                errors.add(
-                        ApiFieldError.of(
-                                fieldPrefix + "checkpointDate", FieldErrorCodes.DATE_OUT_OF_RANGE));
-            } else if (checkpoint.isAfter(target)) {
-                errors.add(
-                        ApiFieldError.of(
-                                fieldPrefix + "checkpointDate",
-                                FieldErrorCodes.DATE_ORDER_INVALID));
-            }
         }
         Map<String, SkillRef> known =
                 skillCatalogQueryService.findActiveByCodes(command.focusSkillCodes());
@@ -119,7 +105,7 @@ public class LearningGoalService {
     }
 
     /**
-     * {@code PUT /learning-goal} (docs/05 §5.2). 조회(404) → version(409) → 도메인 검사(400) → 전체 교체. 날짜가
+     * {@code PUT /learning-goal} (docs/05 §5.2). 조회(404) → version(409) → 도메인 검사(400) → 전체 교체. 목표일이
      * 바뀌면 이벤트를 발행한다. plan 구조는 바꾸지 않는다.
      */
     @Transactional
@@ -139,9 +125,9 @@ public class LearningGoalService {
         if (!errors.isEmpty()) {
             throw new BusinessValidationException("invalid learning goal", errors);
         }
-        boolean datesChanged = goal.replace(values(command));
+        boolean dateChanged = goal.replace(values(command));
         learningGoalRepository.flush();
-        if (datesChanged) {
+        if (dateChanged) {
             eventPublisher.publishEvent(new LearningGoalDatesChanged(userId, goal.getId()));
         }
         return learningGoalQueryService.toView(goal);
@@ -159,10 +145,7 @@ public class LearningGoalService {
             focusSkillIds.add(skill.id());
         }
         return new LearningGoal.GoalValues(
-                command.targetRole(),
-                command.checkpointDate(),
-                command.targetCompletionDate(),
-                focusSkillIds);
+                command.targetRole(), command.targetCompletionDate(), focusSkillIds);
     }
 
     private static ConflictException alreadyOnboarded() {

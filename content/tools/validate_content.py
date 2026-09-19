@@ -203,21 +203,11 @@ def allocate(window_start: dt.date, window_end: dt.date, weights: list[int], min
     return out
 
 
-def place_template(template: dict, today: dt.date, checkpoint, target: dt.date):
-    """Return list of (key, phase, start, end, mode). Precondition: today <= target."""
+def place_template(template: dict, today: dt.date, target: dt.date):
+    """Return list of (key, phase, start, end). One window [today, target] in template order.
+    Precondition: today <= target."""
     ms = template["milestones"]
     min_days = template.get("placement", {}).get("minMilestoneDays", 7)
-    if checkpoint is not None and today < checkpoint:
-        result = []
-        windows = {"PREPARATION": (today, checkpoint - dt.timedelta(days=1)),
-                   "CONSOLIDATION": (checkpoint, target)}
-        for phase in PHASES:
-            group = [m for m in ms if m["phase"] == phase]
-            ws, we = windows[phase]
-            spans = allocate(ws, we, [m["weightBp"] for m in group], min_days)
-            for m, (s, e) in zip(group, spans):
-                result.append((m["key"], phase, s, e))
-        return result
     spans = allocate(today, target, [m["weightBp"] for m in ms], min_days)
     return [(m["key"], m["phase"], s, e) for m, (s, e) in zip(ms, spans)]
 
@@ -903,11 +893,10 @@ def validate(content_dir: str):
     for tpl in data["templates"]:
         try:
             today = dt.date(2026, 10, 1)
-            cases = [(None, today), (None, today + dt.timedelta(days=9)),
-                     (today + dt.timedelta(days=20), today + dt.timedelta(days=30)),
-                     (today + dt.timedelta(days=150), today + dt.timedelta(days=210))]
-            for checkpoint, target in cases:
-                for key, phase, s, e in place_template(tpl, today, checkpoint, target):
+            targets = [today, today + dt.timedelta(days=9),
+                       today + dt.timedelta(days=30), today + dt.timedelta(days=210)]
+            for target in targets:
+                for key, phase, s, e in place_template(tpl, today, target):
                     if not (today <= s <= e <= target):
                         res.error("CV-61", tpl.get("templateKey", "?"),
                                   f"placement out of range for {key}: {s}..{e}")
@@ -999,19 +988,19 @@ def print_placement_vectors(data: dict) -> None:
     tpl = data["templates"][0]
     d = dt.date
     cases = [
-        ("V1 checkpoint in future", d(2026, 10, 1), d(2027, 3, 1), d(2027, 4, 30)),
-        ("V2 no checkpoint", d(2026, 10, 1), None, d(2027, 3, 31)),
-        ("V3 short 20 days, no checkpoint", d(2026, 10, 1), None, d(2026, 10, 20)),
-        ("V4 5 days", d(2026, 10, 1), None, d(2026, 10, 5)),
-        ("V5 checkpoint <= today", d(2026, 10, 1), d(2026, 9, 20), d(2026, 12, 31)),
-        ("V6 prep 10 days", d(2026, 10, 1), d(2026, 10, 11), d(2026, 11, 30)),
-        ("V7 target == today", d(2026, 10, 1), None, d(2026, 10, 1)),
+        ("V1 212 days", d(2026, 10, 1), d(2027, 4, 30)),
+        ("V2 182 days", d(2026, 10, 1), d(2027, 3, 31)),
+        ("V3 short 20 days", d(2026, 10, 1), d(2026, 10, 20)),
+        ("V4 5 days", d(2026, 10, 1), d(2026, 10, 5)),
+        ("V5 92 days", d(2026, 10, 1), d(2026, 12, 31)),
+        ("V6 61 days", d(2026, 10, 1), d(2026, 11, 30)),
+        ("V7 target == today", d(2026, 10, 1), d(2026, 10, 1)),
     ]
-    for name, today, checkpoint, target in cases:
-        print(f"\n### {name}: today={today} checkpointDate={checkpoint} targetCompletionDate={target}")
+    for name, today, target in cases:
+        print(f"\n### {name}: today={today} targetCompletionDate={target}")
         print("| key | phase | start | end | days |")
         print("|---|---|---|---|---|")
-        for key, phase, s, e in place_template(tpl, today, checkpoint, target):
+        for key, phase, s, e in place_template(tpl, today, target):
             print(f"| {key} | {phase} | {s} | {e} | {(e - s).days + 1} |")
 
 

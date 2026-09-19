@@ -2,7 +2,6 @@ package com.devpilot.user.application;
 
 import com.devpilot.common.security.UserRole;
 import com.devpilot.integration.ai.api.AiStatus;
-import com.devpilot.user.domain.ExperienceProfile;
 import com.devpilot.user.domain.UserStatus;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -22,8 +21,6 @@ public record MeResponse(
         int dayStartHour,
         int weekdayStudyMinutes,
         int weekendStudyMinutes,
-        @Nullable ExperienceProfile experienceProfile,
-        @Nullable LocalDate experienceStartDate,
         boolean onboardingCompleted,
         @Nullable Instant onboardingCompletedAt,
         LocalDate today,

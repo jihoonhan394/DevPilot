@@ -1,14 +1,12 @@
 package com.devpilot.onboarding.presentation;
 
 import com.devpilot.onboarding.application.OnboardingCommand;
-import com.devpilot.user.domain.ExperienceProfile;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import java.time.LocalDate;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -22,8 +20,6 @@ public record OnboardingRequest(
         @NotNull @Min(0) @Max(6) Integer dayStartHour,
         @NotNull @Min(0) @Max(720) Integer weekdayStudyMinutes,
         @NotNull @Min(0) @Max(720) Integer weekendStudyMinutes,
-        @NotNull ExperienceProfile experienceProfile,
-        @Nullable LocalDate experienceStartDate,
         @NotNull @Valid LearningGoalInput learningGoal,
         @NotNull Boolean runDiagnostic,
         @NotNull @Size(max = 13) List<@NotNull @Valid SelfAssessmentInput> selfAssessments,
@@ -37,8 +33,6 @@ public record OnboardingRequest(
                 dayStartHour,
                 weekdayStudyMinutes,
                 weekendStudyMinutes,
-                experienceProfile,
-                experienceStartDate,
                 learningGoal.toCommand(),
                 runDiagnostic,
                 selfAssessments.stream()
