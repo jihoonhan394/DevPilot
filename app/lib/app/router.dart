@@ -32,6 +32,7 @@ import 'package:devpilot_app/features/settings/presentation/settings_controller.
 import 'package:devpilot_app/features/settings/presentation/settings_screen.dart';
 import 'package:devpilot_app/features/skill/presentation/skill_detail_screen.dart';
 import 'package:devpilot_app/features/skill/presentation/skill_tree_screen.dart';
+import 'package:devpilot_app/features/today/presentation/diagnostics_screen.dart';
 import 'package:devpilot_app/features/today/presentation/today_screen.dart';
 import 'package:devpilot_app/features/training/presentation/attempt_input_guard.dart';
 import 'package:devpilot_app/features/training/presentation/attempt_screen.dart';
@@ -118,6 +119,12 @@ final routerProvider = Provider<GoRouter>((ref) {
               completeTaskId: state.uri.queryParameters[AppRoutes.completeParameter],
               footer: const InstallCard(),
             ),
+            routes: [
+              GoRoute(
+                path: 'diagnostics',
+                builder: (context, state) => const DiagnosticsScreen(),
+              ),
+            ],
           ),
           GoRoute(path: AppRoutes.dashboard, builder: (context, state) => const DashboardScreen()),
           GoRoute(path: AppRoutes.review, builder: (context, state) => const ReviewHomeScreen()),

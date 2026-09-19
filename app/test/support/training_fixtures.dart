@@ -1,6 +1,7 @@
 import 'package:devpilot_app/core/api/api_enums.dart';
 import 'package:devpilot_app/core/api/common_models.dart';
 import 'package:devpilot_app/core/api/learning_enums.dart';
+import 'package:devpilot_app/features/onboarding/data/onboarding_models.dart';
 import 'package:devpilot_app/features/review/data/review_enums.dart';
 import 'package:devpilot_app/features/training/data/attempt_models.dart';
 import 'package:devpilot_app/features/training/data/challenge_models.dart';
@@ -148,3 +149,19 @@ EvaluationView testEvaluation({EvaluatedOutcome outcome = EvaluatedOutcome.parti
       misconceptions: const ['checked 예외는 항상 잡아야 한다고 설명함'],
       followUpQuestion: '이 예외를 호출자가 복구할 수 없다면 어떤 타입이 더 적절할까요?',
     );
+
+/// A diagnostic suggestion; [claimedLevel] null means diagnostic mode (docs/05 §4.2).
+DiagnosticSuggestionView testDiagnostic({
+  String id = challengeId,
+  SkillCategory category = SkillCategory.java,
+  int? claimedLevel,
+  String title = 'Java 예외 기본 확인',
+}) => DiagnosticSuggestionView(
+  category: category,
+  selfAssessedLevel: claimedLevel,
+  skill: javaExceptionSkill,
+  challengeId: id,
+  title: title,
+  difficulty: 1,
+  estimatedMinutes: 10,
+);

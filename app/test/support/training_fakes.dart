@@ -3,6 +3,8 @@ import 'package:devpilot_app/core/api/api_exception.dart';
 import 'package:devpilot_app/core/api/common_models.dart';
 import 'package:devpilot_app/core/api/cursor_page.dart';
 import 'package:devpilot_app/core/api/idempotency_key.dart';
+import 'package:devpilot_app/features/onboarding/data/diagnostic_repository.dart';
+import 'package:devpilot_app/features/onboarding/data/onboarding_models.dart';
 import 'package:devpilot_app/features/review/data/review_enums.dart';
 import 'package:devpilot_app/features/training/data/attempt_models.dart';
 import 'package:devpilot_app/features/training/data/challenge_models.dart';
@@ -239,4 +241,21 @@ final class FakeTrainingRepository implements TrainingRepository {
     statusUpdatedAt: testNow,
     pollPath: '/api/v1/challenge-attempts/$attemptId',
   );
+}
+
+/// `GET /diagnostics/suggestions`: [suggestions] as set by the test (empty by default).
+final class FakeDiagnosticRepository implements DiagnosticRepository {
+  List<DiagnosticSuggestionView> suggestions = [];
+  final failures = <ApiException>[];
+  var fetchCount = 0;
+
+  @override
+  Future<List<DiagnosticSuggestionView>> fetchSuggestions() async {
+    fetchCount++;
+    final failure = _next(failures);
+    if (failure != null) {
+      throw failure;
+    }
+    return suggestions;
+  }
 }

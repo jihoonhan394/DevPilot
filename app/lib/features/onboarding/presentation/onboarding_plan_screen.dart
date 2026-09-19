@@ -11,6 +11,7 @@ import 'package:devpilot_app/features/onboarding/presentation/onboarding_step_sc
 import 'package:devpilot_app/features/onboarding/presentation/onboarding_submit_controller.dart';
 import 'package:devpilot_app/features/plan/data/plan_models.dart';
 import 'package:devpilot_app/features/plan/data/plan_repository.dart';
+import 'package:devpilot_app/features/settings/data/me_provider.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -156,14 +157,15 @@ class _MilestoneRow extends StatelessWidget {
   }
 }
 
-/// Side project, seed cards and diagnostic lines (docs/02 step 5 "데이터").
-class _ResultNotes extends StatelessWidget {
+/// Side project, seed cards and diagnostic lines (docs/02 step 5 "데이터"). Evaluating a
+/// diagnostic answer needs the AI, so the card says so while it is off (docs/02 step 5 "AI").
+class _ResultNotes extends ConsumerWidget {
   const _ResultNotes({required this.result});
 
   final OnboardingResult result;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final response = result.response;
     final project = response.sideProject;
@@ -183,10 +185,21 @@ class _ResultNotes extends StatelessWidget {
             key: const Key('onboarding.plan.diagnosticCard'),
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Text(
-                suggestions.isEmpty
-                    ? l10n.onboardingPlanDiagnosticNone
-                    : l10n.onboardingPlanDiagnostic(suggestions.length),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    suggestions.isEmpty
+                        ? l10n.onboardingPlanDiagnosticNone
+                        : l10n.onboardingPlanDiagnostic(suggestions.length),
+                  ),
+                  if (suggestions.isNotEmpty && !ref.watch(aiStatusProvider).allowsAi)
+                    Text(
+                      l10n.diagnosticsAiNote,
+                      key: const Key('onboarding.plan.diagnosticAiNote'),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ],
               ),
             ),
           ),

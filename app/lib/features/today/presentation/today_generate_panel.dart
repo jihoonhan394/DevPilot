@@ -4,6 +4,7 @@ import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/widgets/empty_state.dart';
 import 'package:devpilot_app/features/today/presentation/today_actions.dart';
 import 'package:devpilot_app/features/today/presentation/today_controller.dart';
+import 'package:devpilot_app/features/today/presentation/today_diagnostic_card.dart';
 import 'package:devpilot_app/features/today/presentation/today_input_controller.dart';
 import 'package:devpilot_app/features/today/presentation/today_input_fields.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
@@ -50,6 +51,8 @@ class TodayGeneratePanel extends ConsumerWidget {
                 )
               : Text(l10n.todayGenerateButton),
         ),
+        const SizedBox(height: AppSpacing.xl),
+        const TodayDiagnosticCard(),
         if (footerWidget != null) ...[const SizedBox(height: AppSpacing.xl), footerWidget],
       ],
     );

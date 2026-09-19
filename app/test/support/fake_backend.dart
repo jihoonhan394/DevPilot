@@ -417,4 +417,5 @@ final class FakeBackend {
   final reviewRepository = FakeReviewRepository();
   final dashboardRepository = FakeDashboardRepository();
   final trainingRepository = FakeTrainingRepository();
+  final diagnosticRepository = FakeDiagnosticRepository();
 }

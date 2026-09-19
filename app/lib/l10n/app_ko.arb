@@ -1642,5 +1642,60 @@
   "diagnosticsResultPassed": "확인됐어요. 이 분야는 기초 과제를 건너뛰어요.",
   "@diagnosticsResultPassed": {"description": "Diagnostic result: passed."},
   "diagnosticsResultFailed": "이 분야는 기록을 쌓으며 다시 올려 가요. 괜찮아요.",
-  "@diagnosticsResultFailed": {"description": "Diagnostic result: not passed."}
+  "@diagnosticsResultFailed": {"description": "Diagnostic result: not passed."},
+
+  "diagnosticsTitle": "실력 확인 문제",
+  "@diagnosticsTitle": {"description": "SCR-DIAGNOSTICS: title."},
+  "diagnosticsHelp": "'혼자 가능' 이상으로 고른 분야를 짧은 문제로 확인해요. 통과하면 기초 과제를 건너뛰어요. 풀지 않아도 괜찮아요.",
+  "@diagnosticsHelp": {"description": "SCR-DIAGNOSTICS: help in self-assessment mode."},
+  "diagnosticsHelpDiagnosticMode": "분야마다 짧은 문제 1개로 지금 수준을 확인해요. 풀지 않은 분야는 처음부터 시작해요.",
+  "@diagnosticsHelpDiagnosticMode": {"description": "SCR-DIAGNOSTICS: help in diagnostic mode."},
+  "diagnosticsClaimed": "내가 고른 수준: {level}",
+  "@diagnosticsClaimed": {
+    "description": "SCR-DIAGNOSTICS: the self-assessed level of the category.",
+    "placeholders": {"level": {"type": "String"}}
+  },
+  "diagnosticsDifficulty": "L{level}",
+  "@diagnosticsDifficulty": {
+    "description": "SCR-DIAGNOSTICS: challenge difficulty.",
+    "placeholders": {"level": {"type": "int"}}
+  },
+  "diagnosticsSolve": "풀기",
+  "@diagnosticsSolve": {"description": "SCR-DIAGNOSTICS: start the diagnostic challenge."},
+  "diagnosticsSkip": "건너뛰기",
+  "@diagnosticsSkip": {"description": "SCR-DIAGNOSTICS: skip the suggestion on this device."},
+  "diagnosticsSkipped": "건너뛴 항목",
+  "@diagnosticsSkipped": {"description": "SCR-DIAGNOSTICS: folded section of skipped suggestions."},
+  "diagnosticsRestore": "다시 보기",
+  "@diagnosticsRestore": {"description": "SCR-DIAGNOSTICS: bring a skipped suggestion back."},
+  "diagnosticsEmpty": "지금 확인할 문제가 없어요.",
+  "@diagnosticsEmpty": {"description": "SCR-DIAGNOSTICS: no suggestions."},
+  "diagnosticsAiNote": "제출한 답은 AI가 평가해요. 지금은 AI를 쓸 수 없어 제출이 막혀 있어요.",
+  "@diagnosticsAiNote": {"description": "Diagnostic cards while the AI is off."},
+
+  "todayDiagnosticTitle": "실력 확인 (선택)",
+  "@todayDiagnosticTitle": {"description": "SCR-TODAY diagnostic card: title."},
+  "todayDiagnosticItem": "{category} 확인 문제",
+  "@todayDiagnosticItem": {
+    "description": "SCR-TODAY diagnostic card: the first suggestion.",
+    "placeholders": {"category": {"type": "String"}}
+  },
+  "todayDiagnosticItemMinutes": "{category} 확인 문제 · 약 {minutes}",
+  "@todayDiagnosticItemMinutes": {
+    "description": "SCR-TODAY diagnostic card: the first suggestion with its time.",
+    "placeholders": {"category": {"type": "String"}, "minutes": {"type": "String"}}
+  },
+  "todayDiagnosticBody": "통과하면 이미 아는 기초 과제를 건너뛰어요.",
+  "@todayDiagnosticBody": {"description": "SCR-TODAY diagnostic card body (self-assessment mode)."},
+  "todayDiagnosticBodyDiagnosticMode": "아직 풀지 않은 진단이 {count}문제 있어요. 풀면 그 분야의 시작 수준이 정해져요.",
+  "@todayDiagnosticBodyDiagnosticMode": {
+    "description": "SCR-TODAY diagnostic card body (diagnostic mode).",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "todayDiagnosticSolve": "풀기",
+  "@todayDiagnosticSolve": {"description": "SCR-TODAY diagnostic card: solve."},
+  "todayDiagnosticSkip": "건너뛰기",
+  "@todayDiagnosticSkip": {"description": "SCR-TODAY diagnostic card: skip."},
+  "todayDiagnosticAll": "모두 보기",
+  "@todayDiagnosticAll": {"description": "SCR-TODAY diagnostic card: open SCR-DIAGNOSTICS."}
 }
