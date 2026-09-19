@@ -1,4 +1,6 @@
+import 'package:devpilot_app/app/install_card.dart';
 import 'package:devpilot_app/core/api/api_enums.dart';
+import 'package:devpilot_app/core/storage/key_value_store.dart';
 import 'package:devpilot_app/core/time/local_date.dart';
 import 'package:devpilot_app/core/time/session_time_rules.dart';
 import 'package:devpilot_app/features/plan/data/plan_models.dart';
@@ -163,5 +165,23 @@ void main() {
     expect(BudgetDisplay.hours(29), 0);
     expect(BudgetDisplay.percent(11950), 119);
     expect(BudgetDisplay.percent(6800), 68);
+  });
+
+  group('InstallCardPolicy (docs/02 §8.2)', () {
+    const first = LocalDate(2026, 9, 19);
+
+    test('shouldShowFromSecondPlanDayOnly', () {
+      final policy = InstallCardPolicy(MemoryKeyValueStore());
+      expect(policy.shouldShow(first), isFalse);
+      expect(policy.shouldShow(first), isFalse);
+      expect(policy.shouldShow(first.addDays(1)), isTrue);
+    });
+
+    test('shouldStayHiddenFor30DaysAfterDismiss', () {
+      final store = MemoryKeyValueStore({InstallCardPolicy.firstVisitKey: '2026-09-01'});
+      final policy = InstallCardPolicy(store)..dismiss(first);
+      expect(policy.shouldShow(first.addDays(29)), isFalse);
+      expect(policy.shouldShow(first.addDays(30)), isTrue);
+    });
   });
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:devpilot_app/app/app_shell.dart';
+import 'package:devpilot_app/app/install_card.dart';
 import 'package:devpilot_app/app/more_screen.dart';
 import 'package:devpilot_app/app/not_found_screen.dart';
 import 'package:devpilot_app/app/routes.dart';
@@ -111,6 +112,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.today,
             builder: (context, state) => TodayScreen(
               completeTaskId: state.uri.queryParameters[AppRoutes.completeParameter],
+              footer: const InstallCard(),
             ),
           ),
           GoRoute(path: AppRoutes.dashboard, builder: (context, state) => const DashboardScreen()),
