@@ -4,7 +4,6 @@ import com.devpilot.common.error.ConflictException;
 import com.devpilot.common.error.ErrorCode;
 import com.devpilot.common.error.NotFoundException;
 import com.devpilot.goal.domain.LearningGoalDatesChanged;
-import com.devpilot.integration.ai.masking.SecretMasker;
 import com.devpilot.plan.domain.LearningPlan;
 import com.devpilot.plan.domain.MilestoneStatus;
 import com.devpilot.plan.domain.PlanMilestone;
@@ -45,19 +44,19 @@ public class PlanCommandService {
     private final PlanTemplateRegistry planTemplateRegistry;
     private final SkillCatalogQueryService skillCatalogQueryService;
     private final PlanQueryService planQueryService;
-    private final SecretMasker secretMasker;
+    private final ReplanInputs inputs;
 
     public PlanCommandService(
             LearningPlanRepository learningPlanRepository,
             PlanTemplateRegistry planTemplateRegistry,
             SkillCatalogQueryService skillCatalogQueryService,
             PlanQueryService planQueryService,
-            SecretMasker secretMasker) {
+            ReplanInputs inputs) {
         this.learningPlanRepository = learningPlanRepository;
         this.planTemplateRegistry = planTemplateRegistry;
         this.skillCatalogQueryService = skillCatalogQueryService;
         this.planQueryService = planQueryService;
-        this.secretMasker = secretMasker;
+        this.inputs = inputs;
     }
 
     /**
@@ -108,9 +107,7 @@ public class PlanCommandService {
     @Transactional
     public MilestoneView updateMilestone(
             UUID userId, UUID planId, UUID milestoneId, MilestonePatchCommand command) {
-        String description =
-                secretMasker.maskOrRejectNullable(
-                        userId, ReplanService.MASKING_SOURCE, command.description());
+        String description = inputs.maskedDescription(userId, command.description());
         LearningPlan plan =
                 learningPlanRepository
                         .findByIdAndUserId(planId, userId)

@@ -8,8 +8,6 @@ import com.devpilot.common.error.FieldErrorCodes;
 import com.devpilot.common.math.FixedPointMath;
 import com.devpilot.common.security.CurrentUser;
 import com.devpilot.common.time.PlanDayCalculator;
-import com.devpilot.goal.application.LearningGoalQueryService;
-import com.devpilot.integration.ai.masking.SecretMasker;
 import com.devpilot.plan.application.ReplanPreviewResult.DeferSuggestionView;
 import com.devpilot.plan.application.ReplanPreviewResult.ExpansionSuggestionView;
 import com.devpilot.plan.application.ReplanPreviewResult.RiskEstimateView;
@@ -25,7 +23,6 @@ import com.devpilot.plan.domain.ReplanSuggestionPolicy;
 import com.devpilot.plan.domain.ReplanSuggestionPolicy.Suggestions;
 import com.devpilot.plan.infrastructure.LearningPlanRepository;
 import com.devpilot.skill.application.RoleSkillTargetView;
-import com.devpilot.skill.application.SkillCatalogQueryService;
 import com.devpilot.skill.application.SkillRef;
 import com.devpilot.skill.domain.TargetAdjustment;
 import com.devpilot.skill.domain.TargetRole;
@@ -60,41 +57,32 @@ public class ReplanService {
     private static final int MAX_YEARS_AHEAD = 3;
     private static final int MAX_YEARS_BEHIND = 1;
 
-    /** {@code SECRET_BLOCKED} 감사 source (docs/07 §6.3). */
-    static final String MASKING_SOURCE = "LEARNING_PLAN";
-
     private final LearningPlanRepository learningPlanRepository;
-    private final SkillCatalogQueryService skillCatalogQueryService;
+    private final ReplanInputs inputs;
     private final PlanQueryService planQueryService;
-    private final LearningGoalQueryService learningGoalQueryService;
     private final StudyBudgetService studyBudgetService;
     private final ReplanEventRecorder replanEventRecorder;
-    private final SecretMasker secretMasker;
     private final Clock clock;
 
     ReplanService(
             LearningPlanRepository learningPlanRepository,
-            SkillCatalogQueryService skillCatalogQueryService,
+            ReplanInputs inputs,
             PlanQueryService planQueryService,
-            LearningGoalQueryService learningGoalQueryService,
             StudyBudgetService studyBudgetService,
             ReplanEventRecorder replanEventRecorder,
-            SecretMasker secretMasker,
             Clock clock) {
         this.learningPlanRepository = learningPlanRepository;
-        this.skillCatalogQueryService = skillCatalogQueryService;
+        this.inputs = inputs;
         this.planQueryService = planQueryService;
-        this.learningGoalQueryService = learningGoalQueryService;
         this.studyBudgetService = studyBudgetService;
         this.replanEventRecorder = replanEventRecorder;
-        this.secretMasker = secretMasker;
         this.clock = clock;
     }
 
     /** replan 확정 (docs/05 §7.8). */
     @Transactional
     public ReplanResult replan(CurrentUser user, UUID planId, ReplanCommand request) {
-        ReplanCommand command = masked(user.userId(), request);
+        ReplanCommand command = inputs.masked(user.userId(), request);
         LearningPlan previous = activePlan(user.userId(), planId, command.version());
         Instant now = clock.instant();
         LocalDate today = PlanDayCalculator.planDate(now, user.zoneId(), user.dayStartHour());
@@ -146,7 +134,7 @@ public class ReplanService {
      */
     @Transactional(readOnly = true)
     public ReplanPreviewResult preview(CurrentUser user, UUID planId, ReplanCommand request) {
-        ReplanCommand command = masked(user.userId(), request);
+        ReplanCommand command = inputs.masked(user.userId(), request);
         LearningPlan plan = activePlan(user.userId(), planId, command.version());
         LocalDate today =
                 PlanDayCalculator.planDate(clock.instant(), user.zoneId(), user.dayStartHour());
@@ -160,33 +148,6 @@ public class ReplanService {
                 new ReplanSuggestionPolicy(studyBudgetService.riskEvaluator())
                         .suggest(evaluation.items(), evaluation.budget().effectiveMinutes());
         return toPreview(plan.getId(), today, evaluation, suggestions);
-    }
-
-    /** 자유 텍스트 마스킹 (docs/05 §1.11). private key가 있으면 422, 아무것도 읽거나 바꾸기 전이다. */
-    private ReplanCommand masked(UUID userId, ReplanCommand command) {
-        List<ReplanCommand.MilestoneInput> milestones = new ArrayList<>();
-        for (ReplanCommand.MilestoneInput input : command.milestones()) {
-            milestones.add(
-                    new ReplanCommand.MilestoneInput(
-                            input.id(),
-                            secretMasker.maskOrReject(userId, MASKING_SOURCE, input.title()),
-                            secretMasker.maskOrRejectNullable(
-                                    userId, MASKING_SOURCE, input.description()),
-                            input.startDate(),
-                            input.endDate(),
-                            input.priority(),
-                            input.status(),
-                            input.sortOrder(),
-                            input.skillCodes()));
-        }
-        return new ReplanCommand(
-                secretMasker.maskOrRejectNullable(userId, MASKING_SOURCE, command.reason()),
-                command.version(),
-                milestones,
-                command.acceptedDeferrals(),
-                command.acceptedTargetReductions(),
-                command.restoredDeferrals(),
-                command.acceptedTargetRaises());
     }
 
     private LearningPlan activePlan(UUID userId, UUID planId, long version) {
@@ -213,7 +174,7 @@ public class ReplanService {
         codes.addAll(command.restoredDeferrals());
         command.acceptedTargetReductions().forEach(change -> codes.add(change.skillCode()));
         command.acceptedTargetRaises().forEach(change -> codes.add(change.skillCode()));
-        Map<String, SkillRef> skills = skillCatalogQueryService.findActiveByCodes(codes);
+        Map<String, SkillRef> skills = inputs.findActiveByCodes(codes);
         validateMilestones(previous, command, today, skills, errors);
         Map<UUID, PlanSkillTarget> current =
                 previous.getSkillTargets().stream()
@@ -305,12 +266,11 @@ public class ReplanService {
                     adjusted.deferred(),
                     adjusted.adjustment());
         }
-        TargetRole targetRole =
-                learningGoalQueryService.findTargetRole(next.getUserId()).orElse(null);
+        TargetRole targetRole = inputs.targetRole(next.getUserId());
         if (targetRole == null) {
             return;
         }
-        for (RoleSkillTargetView role : skillCatalogQueryService.roleTargets(targetRole)) {
+        for (RoleSkillTargetView role : inputs.roleTargets(targetRole)) {
             if (!copied.contains(role.skillId())) {
                 next.addSkillTarget(
                         role.skillId(),
@@ -336,7 +296,7 @@ public class ReplanService {
     private ReplanPreviewResult toPreview(
             UUID planId, LocalDate today, Evaluation evaluation, Suggestions suggestions) {
         Map<String, SkillRef> refs =
-                skillCatalogQueryService.activeSkillDetails().values().stream()
+                inputs.activeSkillDetails().values().stream()
                         .collect(Collectors.toMap(detail -> detail.code(), detail -> detail.ref()));
         RiskEstimate risk = evaluation.risk();
         return new ReplanPreviewResult(
