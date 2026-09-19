@@ -58,6 +58,27 @@ final class ApiClient {
     ),
   );
 
+  /// [postJson] for endpoints whose success status carries meaning (`POST /review-items`: 201
+  /// created, 200 an existing card of the same concept).
+  Future<({int status, Map<String, Object?> body})> postJsonWithStatus(
+    String path, {
+    required Map<String, Object?> body,
+    required IdempotencyKey idempotencyKey,
+  }) async {
+    final response = await _send(
+      () => _dio.post<Object?>(
+        path,
+        data: body,
+        options: Options(extra: {IdempotencyKeyInterceptor.extraKey: idempotencyKey.value}),
+      ),
+    );
+    final data = response.data;
+    if (data is Map<String, Object?>) {
+      return (status: response.statusCode ?? 200, body: data);
+    }
+    throw ApiException(code: ApiErrorCode.internalError, status: response.statusCode);
+  }
+
   /// Authenticated POST outside docs/05 §1.7: `…/replan/preview` (nothing is stored) and
   /// `…/abandon` (an idempotent state transition). No `Idempotency-Key` header is sent.
   Future<Map<String, Object?>> postWithoutIdempotencyKey(

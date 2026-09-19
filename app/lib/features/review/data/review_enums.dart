@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+part 'review_enums.g.dart';
+
 // Review module enums (docs/04 §3). Every enum ends with `unknown`; requests never send it.
 
 enum ReviewType {
@@ -11,7 +13,10 @@ enum ReviewType {
   explain,
   @JsonValue('CHOICE')
   choice,
-  unknown,
+  unknown;
+
+  /// Types a manual card can have (docs/02 SCR-REVIEW-ITEM-EDIT: 떠올리기 · 설명 · 버그 찾기).
+  static const manual = [recall, explain, bugSpot];
 }
 
 /// Ordered `AGAIN(0) < HARD(1) < GOOD(2) < EASY(3)` (docs/06 §6.1).
@@ -77,6 +82,7 @@ enum EvaluatedOutcome {
   unknown,
 }
 
+@JsonEnum(alwaysCreate: true)
 enum ReviewItemStatus {
   @JsonValue('ACTIVE')
   active,
@@ -84,5 +90,45 @@ enum ReviewItemStatus {
   suspended,
   @JsonValue('ARCHIVED')
   archived,
+  unknown;
+
+  /// The three filter segments of SCR-REVIEW-ITEMS, without [unknown].
+  static const known = [active, suspended, archived];
+
+  /// Wire value for `GET /review-items?status=` and the route query.
+  String get wireName => _$ReviewItemStatusEnumMap[this]!;
+
+  static ReviewItemStatus? fromWire(String? value) =>
+      known.where((status) => status.wireName == value).firstOrNull;
+}
+
+/// Where a review card came from (docs/04 §3).
+enum ReviewItemSourceType {
+  @JsonValue('SEED_CARD')
+  seedCard,
+  @JsonValue('MANUAL')
+  manual,
+  @JsonValue('CHALLENGE_ATTEMPT')
+  challengeAttempt,
+  @JsonValue('COACH_FINDING')
+  coachFinding,
+  @JsonValue('EVIDENCE')
+  evidence,
+  @JsonValue('RUBBER_DUCK')
+  rubberDuck,
+  unknown,
+}
+
+enum VariantStatus {
+  @JsonValue('NONE')
+  none,
+  @JsonValue('PENDING')
+  pending,
+  @JsonValue('RUNNING')
+  running,
+  @JsonValue('READY')
+  ready,
+  @JsonValue('FAILED')
+  failed,
   unknown,
 }

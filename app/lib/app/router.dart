@@ -112,7 +112,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: todaySubRoutes(),
           ),
           GoRoute(path: AppRoutes.dashboard, builder: (context, state) => const DashboardScreen()),
-          GoRoute(path: AppRoutes.review, builder: (context, state) => const ReviewHomeScreen()),
+          GoRoute(
+            path: AppRoutes.review,
+            builder: (context, state) => const ReviewHomeScreen(),
+            routes: reviewSubRoutes(),
+          ),
           GoRoute(
             path: AppRoutes.plan,
             builder: (context, state) => const PlanScreen(),

@@ -14,8 +14,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// SCR-REVIEW-HOME: today's due cards and "복습 시작" (docs/02 §3.6). Card management and manual
-/// cards (`/review/items`) ship with S3, so their links are not shown yet.
+/// SCR-REVIEW-HOME: today's due cards, "복습 시작", card management and manual cards
+/// (docs/02 §3.6).
 class ReviewHomeScreen extends ConsumerStatefulWidget {
   const ReviewHomeScreen({super.key});
 
@@ -49,15 +49,23 @@ class _ReviewHomeScreenState extends ConsumerState<ReviewHomeScreen> {
           child: ErrorView(error: error, onRetry: () => ref.invalidate(dueReviewsProvider)),
         ),
         data: (response) => ScreenBody(
-          child: response.items.isEmpty
-              ? EmptyState(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (response.items.isEmpty)
+                EmptyState(
                   icon: Icons.style,
                   message: l10n.reviewHomeEmpty,
-                  actionLabel: l10n.reviewSummaryToToday,
-                  actionKey: const Key('review.home.todayButton'),
-                  onAction: () => context.go(AppRoutes.today),
+                  actionLabel: l10n.reviewHomeAdd,
+                  actionKey: const Key('review.home.emptyAddButton'),
+                  onAction: () => context.go(AppRoutes.reviewItemsNew),
                 )
-              : _DueSummaryCard(items: response.items),
+              else
+                _DueSummaryCard(items: response.items),
+              const SizedBox(height: AppSpacing.lg),
+              _CardLinks(showAdd: response.items.isNotEmpty),
+            ],
+          ),
         ),
       ),
     );
@@ -114,6 +122,38 @@ class _DueSummaryCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// "카드 관리" and "카드 직접 추가". The empty state already offers adding, so the second row is
+/// left out there (one accessible name per action).
+class _CardLinks extends StatelessWidget {
+  const _CardLinks({required this.showAdd});
+
+  final bool showAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Column(
+      children: [
+        ListTile(
+          key: const Key('review.home.manageLink'),
+          contentPadding: EdgeInsets.zero,
+          title: Text(l10n.reviewHomeManage),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.go(AppRoutes.reviewItems),
+        ),
+        if (showAdd)
+          ListTile(
+            key: const Key('review.home.addLink'),
+            contentPadding: EdgeInsets.zero,
+            title: Text(l10n.reviewHomeAdd),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.go(AppRoutes.reviewItemsNew),
+          ),
+      ],
     );
   }
 }

@@ -45,13 +45,14 @@ void main() {
     expect(backend.reviewRepository.fetchCount, 1);
   });
 
-  testWidgets('shouldShowEmptyHomeWithWayBackToToday', (tester) async {
+  testWidgets('shouldShowEmptyHomeWithTheManualCardAction', (tester) async {
     backend.reviewRepository.due = testDueReviews(count: 0);
     await pumpApp(tester, backend: backend, at: '/review');
 
     expect(find.text('오늘 복습할 카드가 없어요. 학습을 하면 복습 카드가 자동으로 생겨요.'), findsOneWidget);
-    await tapKey(tester, 'review.home.todayButton');
-    expect(locationOf(tester), '/today');
+    expect(find.byKey(const Key('review.home.addLink')), findsNothing);
+    await tapKey(tester, 'review.home.emptyAddButton');
+    expect(locationOf(tester), '/review/items/new');
   });
 
   testWidgets('shouldHideAnswerUntilRevealAndSendSelfExplain', (tester) async {

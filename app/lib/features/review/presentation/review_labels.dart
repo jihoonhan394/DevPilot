@@ -34,3 +34,25 @@ extension RatingAdjustmentText on RatingAdjustment {
     RatingAdjustment.unknown => l10n.enumUnknown,
   };
 }
+
+extension ReviewItemStatusLabel on ReviewItemStatus {
+  String label(AppLocalizations l10n) => switch (this) {
+    ReviewItemStatus.active => l10n.enumReviewItemStatusActive,
+    ReviewItemStatus.suspended => l10n.enumReviewItemStatusSuspended,
+    ReviewItemStatus.archived => l10n.enumReviewItemStatusArchived,
+    ReviewItemStatus.unknown => l10n.enumUnknown,
+  };
+}
+
+/// "출처 라벨" of SCR-REVIEW-ITEMS.
+extension ReviewItemSourceLabel on ReviewItemSourceType {
+  String label(AppLocalizations l10n) => switch (this) {
+    ReviewItemSourceType.seedCard => l10n.reviewItemsSourceSeedCard,
+    ReviewItemSourceType.manual => l10n.reviewItemsSourceManual,
+    ReviewItemSourceType.challengeAttempt => l10n.reviewItemsSourceChallengeAttempt,
+    ReviewItemSourceType.coachFinding => l10n.reviewItemsSourceCoachFinding,
+    ReviewItemSourceType.evidence => l10n.reviewItemsSourceEvidence,
+    ReviewItemSourceType.rubberDuck => l10n.reviewItemsSourceRubberDuck,
+    ReviewItemSourceType.unknown => l10n.enumUnknown,
+  };
+}
