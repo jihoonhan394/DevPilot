@@ -1,3 +1,4 @@
+import 'package:devpilot_app/app/explain_with_duck_button.dart';
 import 'package:devpilot_app/app/routes.dart';
 import 'package:devpilot_app/core/l10n/display_format.dart';
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
@@ -247,15 +248,16 @@ class _ResultLinks extends ConsumerWidget {
         if (aiAvailable && !data.closed)
           TextButton(
             key: const Key('attempt.explainButton'),
-            onPressed: () => context.go(
-              AppRoutes.rubberDuckStart(
-                targetType: RubberDuckTargetType.challenge.wireName,
+            onPressed: () => openRubberDuck(
+              context,
+              RubberDuckLaunch(
+                targetType: RubberDuckTargetType.challenge,
                 targetId: data.attempt.id,
                 taskId: task,
-              ),
-              extra: RubberDuckTargetPreview(
-                title: data.challenge.title ?? data.attempt.challengeTitle,
-                summary: data.challenge.prompt,
+                preview: RubberDuckTargetPreview(
+                  title: data.challenge.title ?? data.attempt.challengeTitle,
+                  summary: data.challenge.prompt,
+                ),
               ),
             ),
             child: Text(l10n.trainingEvalExplainWithDuck),

@@ -27,6 +27,9 @@ import 'package:devpilot_app/features/plan/presentation/replan_screen.dart';
 import 'package:devpilot_app/features/project/presentation/projects_screen.dart';
 import 'package:devpilot_app/features/review/presentation/review_home_screen.dart';
 import 'package:devpilot_app/features/review/presentation/review_session_screen.dart';
+import 'package:devpilot_app/features/rubber_duck/data/rubber_duck_enums.dart';
+import 'package:devpilot_app/features/rubber_duck/presentation/rubber_duck_input_guard.dart';
+import 'package:devpilot_app/features/rubber_duck/presentation/rubber_duck_screen.dart';
 import 'package:devpilot_app/features/settings/data/me_provider.dart';
 import 'package:devpilot_app/features/settings/presentation/settings_controller.dart';
 import 'package:devpilot_app/features/settings/presentation/settings_screen.dart';
@@ -109,6 +112,30 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
         builder: (context, state) =>
             ReviewSessionScreen(taskId: state.uri.queryParameters[AppRoutes.taskIdParameter]),
+      ),
+      // SCR-RUBBER-DUCK is a focus screen too (docs/02 §2.2).
+      GoRoute(
+        path: AppRoutes.rubberDuckNew,
+        onExit: (context, state) => _confirmLeave(context, rubberDuckInputGuardProvider),
+        builder: (context, state) => _rubberDuckStart(state),
+      ),
+      GoRoute(
+        path: '${AppRoutes.rubberDuck}/:sessionId',
+        onExit: (context, state) => _confirmLeave(context, rubberDuckInputGuardProvider),
+        builder: (context, state) => _withUuid(
+          state,
+          'sessionId',
+          (sessionId) => RubberDuckScreen(
+            route: (
+              sessionId: sessionId,
+              targetType: RubberDuckTargetType.unknown,
+              targetId: null,
+              conceptKey: null,
+              skillCode: null,
+            ),
+            taskId: _uuidOrNull(state.uri.queryParameters[AppRoutes.taskIdParameter]),
+          ),
+        ),
       ),
       ShellRoute(
         builder: (context, state, child) => AppShell(location: state.uri.path, child: child),
@@ -219,6 +246,31 @@ final routerProvider = Provider<GoRouter>((ref) {
   });
   return router;
 });
+
+/// `/rubber-duck/new?targetType=&targetId=|conceptKey=&skillCode=&taskId=` (docs/02 §2.3). A
+/// missing or unknown target type, or a target that does not fit it, is SCR-NOT-FOUND.
+Widget _rubberDuckStart(GoRouterState state) {
+  final query = state.uri.queryParameters;
+  final type = RubberDuckTargetType.fromWire(query[AppRoutes.targetTypeParameter]);
+  final targetId = _uuidOrNull(query[AppRoutes.targetIdParameter]);
+  final conceptKey = query[AppRoutes.conceptKeyParameter];
+  final concept = type == RubberDuckTargetType.concept;
+  if (type == null || (concept ? conceptKey == null : targetId == null)) {
+    return const NotFoundScreen();
+  }
+  final extra = state.extra;
+  return RubberDuckScreen(
+    route: (
+      sessionId: null,
+      targetType: type,
+      targetId: concept ? null : targetId,
+      conceptKey: concept ? conceptKey : null,
+      skillCode: query[AppRoutes.skillCodeParameter],
+    ),
+    taskId: _uuidOrNull(query[AppRoutes.taskIdParameter]),
+    preview: extra is RubberDuckTargetPreview ? extra : null,
+  );
+}
 
 /// A query value that must be a UUID (`taskId`, `skillId`); anything else is ignored.
 String? _uuidOrNull(String? value) => value != null && _uuidPattern.hasMatch(value) ? value : null;

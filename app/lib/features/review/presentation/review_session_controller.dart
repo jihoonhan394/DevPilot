@@ -111,10 +111,12 @@ final class ReviewSessionController extends AsyncNotifier<ReviewSessionState> {
         // The next visit of Review reads the list again.
         ref.invalidate(dueReviewsProvider);
       }
+      final struggled = finalRating == ReviewRating.again || finalRating == ReviewRating.hard;
       return current.copyWith(
         index: nextIndex,
         current: () => next == null ? null : ReviewCardProgress(item: next, shownAt: _now()),
         finalRatings: [...current.finalRatings, ?finalRating],
+        struggled: struggled ? [...current.struggled, current.cards[current.index]] : null,
         submitting: false,
       );
     });

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:devpilot_app/app/app.dart';
 import 'package:devpilot_app/app/router.dart';
 import 'package:devpilot_app/core/auth/auth_repository.dart';
@@ -13,6 +15,7 @@ import 'package:devpilot_app/features/plan/data/learning_goal_repository.dart';
 import 'package:devpilot_app/features/plan/data/plan_repository.dart';
 import 'package:devpilot_app/features/project/data/side_project_repository.dart';
 import 'package:devpilot_app/features/review/data/review_repository.dart';
+import 'package:devpilot_app/features/rubber_duck/data/rubber_duck_repository.dart';
 import 'package:devpilot_app/features/settings/data/me_repository.dart';
 import 'package:devpilot_app/features/skill/data/skill_repository.dart';
 import 'package:devpilot_app/features/today/data/learning_session_repository.dart';
@@ -34,6 +37,18 @@ const submitButtonKey = Key('login.submitButton');
 
 /// Token of a signed-in test user. Not a JWT, so the onboarding draft is kept in memory only.
 const storedToken = 'stored-access-token';
+
+/// A token with a readable `sub` for features that store per-user records in `localStorage`
+/// (the rubber duck, skipped diagnostics). Built at runtime; the signature part is not real.
+String tokenWithSubject(String subject) {
+  String segment(Map<String, Object?> json) =>
+      base64Url.encode(utf8.encode(jsonEncode(json))).replaceAll('=', '');
+  return [
+    segment({'alg': 'none'}),
+    segment({'sub': subject}),
+    'unsigned',
+  ].join('.');
+}
 
 /// The whole app with in-memory session storage. Repositories come from [backend] (or are
 /// replaced through [overrides]); nothing reaches the network.
@@ -61,6 +76,7 @@ Widget buildTestApp({
       dashboardRepositoryProvider.overrideWithValue(fakes.dashboardRepository),
       trainingRepositoryProvider.overrideWithValue(fakes.trainingRepository),
       diagnosticRepositoryProvider.overrideWithValue(fakes.diagnosticRepository),
+      rubberDuckRepositoryProvider.overrideWithValue(fakes.rubberDuckRepository),
       clockProvider.overrideWithValue(() => fakes.clock.now),
       ...overrides,
     ],
@@ -78,10 +94,11 @@ Future<void> pumpApp(
   KeyValueStore? keyValueStore,
   List<Override> overrides = const [],
   String? at,
+  String accessToken = storedToken,
 }) async {
   await tester.pumpWidget(
     buildTestApp(
-      tokenStore: MemoryTokenStore(signedIn ? storedToken : null),
+      tokenStore: MemoryTokenStore(signedIn ? accessToken : null),
       backend: backend,
       keyValueStore: keyValueStore,
       overrides: overrides,

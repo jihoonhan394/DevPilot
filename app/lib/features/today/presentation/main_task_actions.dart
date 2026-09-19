@@ -6,12 +6,14 @@ import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/time/clock.dart';
 import 'package:devpilot_app/core/time/session_time_rules.dart';
 import 'package:devpilot_app/features/today/data/today_models.dart';
+import 'package:devpilot_app/features/today/presentation/task_type_links.dart';
 import 'package:devpilot_app/features/today/presentation/today_actions.dart';
 import 'package:devpilot_app/features/today/presentation/today_controller.dart';
 import 'package:devpilot_app/features/today/presentation/today_state.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 /// Footer of the main task card for each status (docs/02 SCR-TODAY table
 /// "main task 상태별 카드 하단"). One filled button at most (U-1).
@@ -70,11 +72,18 @@ class MainTaskActions extends ConsumerWidget {
         unawaited(regenerateToday(context, ref, mainStatus: task.status));
       });
 
+  /// "시작", then the task's own screen for CHALLENGE and READ_CODE.
   Future<void> _start(BuildContext context, WidgetRef ref) async {
     final outcome = await ref.read(todayControllerProvider.notifier).start();
-    if (context.mounted) {
-      await presentTodayOutcome(context, ref, outcome);
+    if (!context.mounted) {
+      return;
     }
+    final location = startLocationOf(task);
+    if (outcome is TodayActionDone && location != null) {
+      context.go(location);
+      return;
+    }
+    await presentTodayOutcome(context, ref, outcome);
   }
 }
 
@@ -118,6 +127,7 @@ class _InProgressFooter extends ConsumerWidget {
             }),
             enabled: enabled,
           ),
+        if (data.mainTask case final task?) TaskTypeLinks(task: task, enabled: enabled),
       ],
     );
   }

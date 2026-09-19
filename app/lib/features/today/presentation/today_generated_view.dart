@@ -7,6 +7,7 @@ import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/widgets/badges.dart';
 import 'package:devpilot_app/core/widgets/screen_body.dart';
 import 'package:devpilot_app/features/today/data/today_models.dart';
+import 'package:devpilot_app/features/today/presentation/active_rubber_duck_tile.dart';
 import 'package:devpilot_app/features/today/presentation/main_task_card.dart';
 import 'package:devpilot_app/features/today/presentation/today_actions.dart';
 import 'package:devpilot_app/features/today/presentation/today_state.dart';
@@ -42,6 +43,8 @@ class TodayGeneratedView extends StatelessWidget {
         const SizedBox(height: AppSpacing.sm),
         if (main == null) const _NoCandidate() else MainTaskCard(task: main, data: data),
         if (today.earlierMainTasks.isNotEmpty) _EarlierTasks(tasks: today.earlierMainTasks),
+        const SizedBox(height: AppSpacing.md),
+        const ActiveRubberDuckTile(),
         if (review != null) ...[
           const SizedBox(height: AppSpacing.md),
           _ReviewTaskTile(task: review),

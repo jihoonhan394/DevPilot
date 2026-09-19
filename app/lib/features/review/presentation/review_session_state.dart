@@ -13,6 +13,7 @@ final class ReviewSessionState {
     required this.current,
     this.index = 0,
     this.finalRatings = const [],
+    this.struggled = const [],
     this.submitting = false,
     this.sessionId,
     this.sessionStartedAt,
@@ -32,6 +33,10 @@ final class ReviewSessionState {
 
   /// Final rating of every answered card, in answer order.
   final List<ReviewRating> finalRatings;
+
+  /// Cards whose final rating was AGAIN or HARD, in answer order: the summary offers to explain
+  /// them with the rubber duck (docs/02 SCR-REVIEW-SESSION ④, U-9).
+  final List<DueReviewItemView> struggled;
   final bool submitting;
 
   /// The learning session this screen started, or the running one of its Today task.
@@ -58,6 +63,7 @@ final class ReviewSessionState {
     int? index,
     ReviewCardProgress? Function()? current,
     List<ReviewRating>? finalRatings,
+    List<DueReviewItemView>? struggled,
     bool? submitting,
     String? Function()? sessionId,
     DateTime? Function()? sessionStartedAt,
@@ -68,6 +74,7 @@ final class ReviewSessionState {
     index: index ?? this.index,
     current: current == null ? this.current : current(),
     finalRatings: finalRatings ?? this.finalRatings,
+    struggled: struggled ?? this.struggled,
     submitting: submitting ?? this.submitting,
     sessionId: sessionId == null ? this.sessionId : sessionId(),
     sessionStartedAt: sessionStartedAt == null ? this.sessionStartedAt : sessionStartedAt(),

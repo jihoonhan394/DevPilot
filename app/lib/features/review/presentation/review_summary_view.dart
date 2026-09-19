@@ -3,6 +3,7 @@ import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/time/clock.dart';
 import 'package:devpilot_app/core/time/session_time_rules.dart';
 import 'package:devpilot_app/core/widgets/complete_session_sheet.dart';
+import 'package:devpilot_app/features/review/presentation/review_explain_list.dart';
 import 'package:devpilot_app/features/review/presentation/review_labels.dart';
 import 'package:devpilot_app/features/review/presentation/review_session_controller.dart';
 import 'package:devpilot_app/features/review/presentation/review_session_state.dart';
@@ -38,7 +39,9 @@ class ReviewSummaryView extends ConsumerWidget {
         const SizedBox(height: AppSpacing.md),
         for (final entry in state.ratingCounts.entries)
           Text(l10n.reviewSummaryRatingCount(entry.key.label(l10n), entry.value)),
-        const SizedBox(height: AppSpacing.xl),
+        const SizedBox(height: AppSpacing.lg),
+        ReviewExplainList(cards: state.struggled),
+        const SizedBox(height: AppSpacing.lg),
         if (canRecord)
           FilledButton(
             key: const Key('review.summary.completeButton'),

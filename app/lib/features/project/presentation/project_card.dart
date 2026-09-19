@@ -1,3 +1,5 @@
+import 'package:devpilot_app/app/explain_with_duck_button.dart';
+import 'package:devpilot_app/app/routes.dart';
 import 'package:devpilot_app/core/api/api_enums.dart';
 import 'package:devpilot_app/core/l10n/display_format.dart';
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
@@ -12,6 +14,7 @@ import 'package:devpilot_app/features/project/data/side_project_models.dart';
 import 'package:devpilot_app/features/project/domain/project_form.dart';
 import 'package:devpilot_app/features/project/presentation/project_sheet_launcher.dart';
 import 'package:devpilot_app/features/project/presentation/projects_controller.dart';
+import 'package:devpilot_app/features/rubber_duck/data/rubber_duck_enums.dart';
 import 'package:devpilot_app/features/settings/data/me_provider.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -20,7 +23,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 enum _MenuAction { edit, pause, activate, done, delete }
 
-/// `ProjectCard` of SCR-PROJECTS (docs/02 §3.16). The rubber-duck button arrives with S3.
+/// `ProjectCard` of SCR-PROJECTS (docs/02 §3.16), with "이 프로젝트 작업 설명하기" (rubber duck
+/// `PROJECT_WORK`).
 class ProjectCard extends ConsumerWidget {
   const ProjectCard({
     super.key,
@@ -132,11 +136,40 @@ class ProjectCard extends ConsumerWidget {
                   if (repoUrl != null && repoUrl.isNotEmpty) _RepoLink(url: repoUrl),
                   const SizedBox(height: AppSpacing.xs),
                   Text(l10n.projectsUpdatedAt(updated), style: textTheme.bodySmall),
+                  _ExplainProjectButton(project: project),
                 ],
               ),
             ),
             _ProjectMenu(project: project, onSelected: (action) => _onMenu(context, ref, action)),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "이 프로젝트 작업 설명하기": the rubber duck on this project (docs/02 SCR-PROJECTS). Disabled
+/// with its reason while the AI is off; this screen has no AI banner.
+class _ExplainProjectButton extends StatelessWidget {
+  const _ExplainProjectButton({required this.project});
+
+  final SideProjectView project;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: IntrinsicWidth(
+        child: ExplainWithDuckButton(
+          buttonKey: Key('projects.explain.${project.id}'),
+          label: l10n.projectsExplain,
+          semanticsLabel: l10n.projectsExplainNamed(project.name),
+          launch: RubberDuckLaunch(
+            targetType: RubberDuckTargetType.projectWork,
+            targetId: project.id,
+            preview: RubberDuckTargetPreview(title: project.name, summary: project.description),
+          ),
         ),
       ),
     );
