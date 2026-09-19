@@ -1,12 +1,12 @@
 # 20. Decisions & Risks
 
-> Status: Accepted (v2) · Last updated: 2026-09-18 · Related: `14-adrs.md`, `11-development-roadmap.md`, `13-product-backlog.md`, `16-definition-of-ready-done.md` §4
+> Status: Accepted (v2) · Last updated: 2026-09-19 · Related: `14-adrs.md`, `11-development-roadmap.md`, `13-product-backlog.md`, `16-definition-of-ready-done.md` §4
 >
 > 적용된 기본 결정(DEC), 구현 시 다시 확인할 외부 사실과 문서 정합성 항목, 리스크 레지스터, 이번 주 할 일을 모은다. 결정 이유의 상세는 ADR에 있다. 이 문서는 단계 종료마다 갱신한다(`16-definition-of-ready-done.md` §4 S-7).
 
 ---
 
-## 1. 적용된 결정 (DEC-01 ~ DEC-26)
+## 1. 적용된 결정 (DEC-01 ~ DEC-28)
 
 모든 DEC는 기본값으로 **이미 적용되었다**. 바꾸려면 §2 절차를 따른다.
 
@@ -38,6 +38,8 @@
 | DEC-24 | **학습 루프 v3**: 읽는다(큐레이션 오픈소스 `READ_CODE`) → 만든다(사이드 프로젝트, 기본 "주문 시스템") → 러버덕으로 설명한다(AI는 질문만, `NoAnswerGuard`) → 반복한다(gaps → 복습 카드, 교차 학습). 계획 템플릿은 주문 시스템을 만드는 순서 9개 milestone(1~6 MUST, 7~9 SHOULD), 기한 역산 양방향(확장 제안), 온보딩 진단 우선 (2026-09-18 사용자 확인) | 기존 루프(개념 → 연습문제 → 복습) 유지 · AI가 GitHub 저장소를 실시간 검색 · DevPilot 자체를 사이드 프로젝트로 | 큐레이션 저장소 교체는 `content/curated-repos.yaml` + `catalogVersion` 증가(`19` §8.4). 러버덕 턴 상한 등은 `devpilot.rubberduck.*` | ADR-036 |
 | DEC-25 | **날짜 없는 단계**: S0~S7은 구현 순서 ID(기간 없음), M1 = S0~S3(S3 완료 = 실사용 시작), M2 = S4~S7. budget·risk·replan 제안 S5 → S2, ICS 캘린더·AI 문제 생성 S3 → S5, CSP 강제 S3 → S4, evals v1 S4 → S3, 진단 P1 → P0 (2026-09-18) | 날짜 고정 스프린트 유지 · ID를 M1/M2로 전면 교체 | M2 단계 순서는 실사용 데이터를 보고 바꾼다(여기에 기록) | ADR-037 |
 | DEC-26 | 러버덕 설명 증거의 coverage는 **고정 7000**(`devpilot.rubberduck.evidence-coverage-bp`) — gaps 0·턴 ≥ 3인 세션만, E2·E3에 쓰이고 E4에는 닿지 않는다. 독립은 `hintDisclosed = false`일 때 (2026-09-18) | AI가 coverage를 매김(AI가 레벨 입력을 직접 결정 — `AGENTS.md` 금지) · 8000(E4 가능 — 전이 증거 없이 E4가 되어 과대평가) | 4주 사용 후 레벨이 실제 설명력과 어긋나면 설정값만 바꾼다 | ADR-036 |
+| DEC-27 | **학습 목표 = 무엇을, 언제까지**: 학습 트랙(`targetRole`)과 **목표일**(`targetCompletionDate`) 하나. 목표일은 내일 ~ 오늘+3년. budget·risk horizon은 목표일이고(`06` §3.1), 계획 템플릿 배치는 창 하나 `[today, 목표일]`에 PREPARATION milestone을 앞에, CONSOLIDATION("설명과 정리")을 목표일 바로 앞에 `weightBp`로 배분한다(`19` §5, vector V1~V8). 사용자 프로필은 표시 이름·timezone·하루 시작 시각·학습 시간만 받는다. 온보딩 1단계는 "무엇을, 언제까지 공부할지 정해요"(표시 이름·학습 트랙·목표일, 빠른 선택 3개월 후·6개월 후·1년 후·직접 선택). 화면의 날짜 표시는 "목표일 {date}" 하나다. S7 기능 이름은 **로드맵 비교**: 공개 학습 로드맵이나 기술 목록을 붙여넣으면 항목별 READY/STRETCH/LATER(식별자 `radar`·`requirement_*`·`REQUIREMENT_EXTRACT`는 그대로) (2026-09-19 사용자 결정) | 필수 항목용 날짜를 따로 두어 창·horizon을 둘로 나누기 · 개발 경험 프로필로 시작 수준을 조정하기 | 목표일 값은 사용자가 설정에서 언제든 바꾼다(`replan_recommended`). 날짜 모델·배치 규칙을 바꾸려면 ADR | ADR-039 |
+| DEC-28 | **소스 점검과 읽기 평가**: `READ_CODE` 저장소·읽기 단위는 사람이 주기적으로 점검한다(`19` §8.5) — 첫 점검은 S3 구현 시작 직전, 이후 단계 회고마다와 사용자 요청 시. 입력은 빈틈 목록(낮은 레벨·막히는 복습·읽을 단위가 없는 skill), 읽기 평가, 저장소의 라이선스·유지 상태. 후보 기준은 OSI 라이선스(Apache-2.0·MIT 우선, 라이선스 없는 저장소부터 교체)·활발한 유지·가까운 스택·다룰 만한 크기·테스트·읽기 쉬운 도메인이고, 큰 실제 프로젝트의 부분 읽기를 허용한다. 결과는 사용자와 정한 추가·교체·은퇴이며 `pinnedCommit` 고정·경로·줄 재확인·검증기·`catalogVersion` +1로 반영한다. 은퇴한 단위는 지난 과제를 위해 계속 조회된다. 자동 실행과 서버의 저장소·코드 조회는 없다. `READ_CODE`를 완료할 때 선택 평가 "도움 됐어요·어려웠어요·지루했어요"(`readingFeedback`, `learning_task.reading_feedback`)를 받고, 어떤 규칙의 입력으로도 쓰지 않는다(`BL-CNT-16`) (2026-09-19 사용자 결정) | 저장소 자동 추천·수집(URL fetch 금지와 충돌) · 평가를 planner·레벨 규칙 입력으로 쓰기(자기 신고라 흔들린다) | 점검 시점·기준은 `19` §8.5를 고친다. 평가를 규칙 입력으로 쓰려면 ADR | ADR-036 |
 
 ## 2. 결정 변경 절차
 
@@ -119,7 +121,7 @@ canonical 문서끼리 또는 canonical과 다른 v2 문서 사이에서 발견�
 
 | ID | 리스크 | P | I | 대응 | 조기 신호 · 트리거 | 소유자 | 상태 |
 |---|---|---|---|---|---|---|---|
-| RISK-01 | DevPilot 개발이 실제 학습 시간을 잠식해 목표일까지의 학습이 늦어진다 | H | H | **DevPilot 구현은 전부 에이전트에 위임한다**(2026-09-18: DevPilot은 학습 도구이지 그 자체가 학습 과제나 사이드 프로젝트가 아니므로 직접 구현할 이유가 없다 — RISK-09 취소). 날짜 없는 단계와 M1 우선(ADR-037), S2가 끝나면 AI 없는 Today·Review를 먼저 써도 된다, 사용자 작업은 결정·리뷰·계정 설정으로 한정, S1·S2·S3 단계 회고(`11` §2.2) | 사용자 투입 > 4h/주, 단계 재작업률 > 30%. **실사용 시작 + 14 plan-day stop-loss 판정 불충족 시 Coach·Evidence·요구 역량 비교를 Later로 이동**(`11-development-roadmap.md` §6) | 사용자 | 감시 |
+| RISK-01 | DevPilot 개발이 실제 학습 시간을 잠식해 목표일까지의 학습이 늦어진다 | H | H | **DevPilot 구현은 전부 에이전트에 위임한다**(2026-09-18: DevPilot은 학습 도구이지 그 자체가 학습 과제나 사이드 프로젝트가 아니므로 직접 구현할 이유가 없다 — RISK-09 취소). 날짜 없는 단계와 M1 우선(ADR-037), S2가 끝나면 AI 없는 Today·Review를 먼저 써도 된다, 사용자 작업은 결정·리뷰·계정 설정으로 한정, S1·S2·S3 단계 회고(`11` §2.2) | 사용자 투입 > 4h/주, 단계 재작업률 > 30%. **실사용 시작 + 14 plan-day stop-loss 판정 불충족 시 Coach·Evidence·로드맵 비교를 Later로 이동**(`11-development-roadmap.md` §6) | 사용자 | 감시 |
 | RISK-02 | AI 비용이 예산을 넘는다 | L | M | 서비스 전체 월 USD 3 가드, 일일 60회·동시 2개, 피크 ×2 보수 계산, 선불 잔액 소액 유지, seed hint·캐시, `BL-AIP-14` 실측 후 thinking·effort 조정 | 주간 비용 > USD 0.9(월 예산 30%), `BUDGET_WARNING`이 월 20일 이전 발생 | 사용자 | 감시 |
 | RISK-03 | AI 코드 리뷰 품질 문제(오탐, 누락, 잘못된 사실) | M | H | eval v1(오탐 함정·injection 포함), 검증 배지와 강등 가드, `VERIFIED` 제한, 질문형 finding, DISMISSED 기록 | 최근 finding 20개 중 DISMISSED > 30%, eval recall < 기준 | 사용자 | 감시 |
 | RISK-04 | **단일 서버 SPOF** — 정전·ISP 장애·하드웨어 고장·Proxmox 호스트 문제로 서비스와 DB가 함께 멈춘다 | M | H | 상태를 서버 밖(GHCR 이미지 + 로컬 백업)에도 둔다, `prepare-server.sh`로 재구축, healthchecks.io 알림, 오프라인이어도 학습 자체는 가능(종이·IDE) | healthping 실패 알림, 서버 재부팅 로그 | 사용자 | 감시 |
@@ -134,7 +136,7 @@ canonical 문서끼리 또는 canonical과 다른 v2 문서 사이에서 발견�
 | RISK-17 | **모델 은퇴** — DeepSeek 모델 수명이 짧다(`deepseek-chat`·`reasoner`가 2026-07 종료) | M | M | 모델 ID는 설정값, eval로 교체 검증(`BL-AIP-13`), 공지 확인을 §3.1 분기 점검에 포함 | 공급자 공지, 400 `model not found` | 사용자 | 감시 |
 | RISK-18 | **Tailscale 의존** — tailnet 장애·계정 문제·인증서 갱신 실패 시 전체 접근 불가(모바일 복습 포함) | L | H | `tailscale serve`가 인증서를 자동 갱신, 서버는 LAN에서도 접근 가능, 장애 시 로컬 실행으로 학습 지속 | Tailscale 상태 페이지, `tailscale status` 실패, HTTPS 인증서 오류 | 사용자 | 감시 |
 | RISK-12 | 계정 탈취(GitHub, DeepSeek, Tailscale, healthchecks.io, 서버 SSH) | L | H | 2FA/passkey(지원하는 서비스), API key 최소 범위, 선불 잔액 소액 유지, 서버는 키 인증 전환, 키 유출 runbook | 알 수 없는 로그인 알림, 잔액 급감, 서버 auth 로그 | 사용자 | 감시 |
-| RISK-13 | 외부 요구사항 문서(팀 문서·공개 로드맵) 수집의 약관·저작권 문제 | L | M | 자동 수집 없음, 사용자가 붙여넣기, 서버 URL fetch 금지, 요구사항 원문 180일 purge | 공개 요구사항 소스 가져오기(`BL-REQ-05`) 요구 발생(Later에서 약관 검토 선행) | 사용자 | 감시 |
+| RISK-13 | 외부 로드맵·기술 목록과 큐레이션 저장소 수집의 약관·저작권 문제 | L | M | 자동 수집 없음, 사용자가 붙여넣기, 서버 URL fetch 금지, 로드맵 비교 원문 180일 purge. 큐레이션 저장소는 소스 점검(`19` §8.5)에서 라이선스를 확인하고 라이선스 없는 저장소는 코드를 옮겨 적지 않는다 | 공개 로드맵 가져오기(`BL-REQ-05`) 요구 발생(Later에서 약관 검토 선행) | 사용자 | 감시 |
 | RISK-14 | 1인 운영 피로·장애 대응 부담 | M | M | 관리형 서비스 우선, 자동 백업·롤백, runbook, 알림 최소화(uptime·백업 실패만) | 운영 작업이 주 1시간 초과, 같은 수동 작업 월 3회 이상 | 사용자 | 감시 |
 | RISK-15 | 무료 플랜·모델 단가·SDK·지원 일정이 문서 작성 후 바뀐다 | M | M | §3.1 분기별 재확인, 설정 기반 단가·모델, 검증된 버전 표, 4.2 업그레이드 판단(S5) | 공급자 공지, 단가 변경, Boot 4.1 patch 중단 공지 | 사용자 | 감시 |
 

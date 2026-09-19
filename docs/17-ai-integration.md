@@ -1,6 +1,6 @@
 # 17. AI Integration
 
-> Status: Accepted (v2) · Last updated: 2026-09-18 · Related: DEC-05, DEC-06, DEC-16, ADR-032(ADR-011 대체), ADR-035(ADR-029 보완), ADR-012, ADR-013, `03-system-architecture.md` §3.3 · §5.3 · §9, `04-domain-model-and-db.md` §3 · §5, `06-learning-engine-rules.md` §8 · §9 · §10
+> Status: Accepted (v2) · Last updated: 2026-09-19 · Related: DEC-05, DEC-06, DEC-16, ADR-032(ADR-011 대체), ADR-035(ADR-029 보완), ADR-012, ADR-013, `03-system-architecture.md` §3.3 · §5.3 · §9, `04-domain-model-and-db.md` §3 · §5, `06-learning-engine-rules.md` §8 · §9 · §10
 >
 > 이 문서는 AI 호출의 **입력 변수, 출력 스키마(규범), 호출 파이프라인, 출력 가드, secret masking, 예산·잔액, 프롬프트 관리, 비용, 테스트·eval**을 정의한다. operation 목록·mode·timeout·thinking·reasoning-effort 값은 `03` §9 설정이 기준이고, 이 문서는 그 값을 바꾸지 않는다.
 >
@@ -12,7 +12,7 @@
 
 | 구분 | 내용 |
 |---|---|
-| AI가 하는 일 | 코드 학습 포인트 후보 제안(`COACH_REVIEW`), 응답에 대한 짧은 피드백, hint 문장 생성, challenge 초안 생성, rubric 항목별 충족 판정, 복습 변형 문항 생성, 복습 답변 rubric 판정, evidence STAR 초안, 요구사항 목록 추출 |
+| AI가 하는 일 | 코드 학습 포인트 후보 제안(`COACH_REVIEW`), 응답에 대한 짧은 피드백, hint 문장 생성, challenge 초안 생성, rubric 항목별 충족 판정, 복습 변형 문항 생성, 복습 답변 rubric 판정, evidence STAR 초안, 로드맵·기술 목록의 항목 추출 |
 | AI가 하지 않는 일 | skill 레벨, 점수·coverage·outcome, 복습 간격·due, plan·risk·budget, Today 선택, `discovered_by` 확정, `VERIFIED` 부여, requirement fit 분류. 모두 `06-learning-engine-rules.md`의 결정적 규칙이 계산한다 |
 | Source of truth | AI 출력은 **제안**이다. 서버가 스키마 검증·가드를 통과시킨 값만 저장하고, 저장된 값도 규칙 계산의 입력(예: rubric `met`)으로만 쓴다 |
 | 대화 | 모든 호출은 단발(single-turn)이다. 대화 이력을 저장하거나 다음 호출에 넘기지 않는다 (`03` §11) |
@@ -110,7 +110,7 @@ operation별로 다른 모델을 쓰는 설정은 MVP에 없다. 필요하면 `0
 | 종류 | 설명 | 렌더링 |
 |---|---|---|
 | variable | 서버가 만든 값(enum, 카탈로그, 계산값, AI가 과거에 만든 저장값) | 문자열로 치환. 태그 escape(§9.3)만 적용 |
-| user content | 사용자가 입력한 원문(코드, 답변, 설명, 요구사항 목록). 저장 전에 `SecretMasker`를 이미 거친 값 | `<user_content>` 블록으로 감싼다(§9.3). kind가 `CODE`, `DIFF`, `LOG`이면 줄 번호를 붙인다 |
+| user content | 사용자가 입력한 원문(코드, 답변, 설명, 로드맵·기술 목록). 저장 전에 `SecretMasker`를 이미 거친 값 | `<user_content>` 블록으로 감싼다(§9.3). kind가 `CODE`, `DIFF`, `LOG`이면 줄 번호를 붙인다 |
 
 줄 번호 형식: `String.format("%4d| %s", lineNo, line)`. `firstLineNumber`를 지정하면 그 번호부터 센다(발췌 코드).
 
@@ -395,6 +395,8 @@ while est > op.input-token-budget:
 
 ### 3.9 `REQUIREMENT_EXTRACT`
 
+로드맵 비교(FR-19)에서 사용자가 붙여넣은 공개 학습 로드맵이나 기술 목록의 항목을 뽑는다. 항목마다 원문 인용(`rawText`), 필수/권장(`requirementType`), catalog skill 후보(`suggestedSkillCode`)만 낸다 — 준비 상태 분류는 서버의 `RequirementFitClassifier`가 한다.
+
 | 항목 | 값 |
 |---|---|
 | mode / timeout / retries | ASYNC / 120s / 1 |
@@ -410,9 +412,9 @@ while est > op.input-token-budget:
 | `skillCatalog` | 줄 목록 `code · name · category` | active `skill`. `role_skill_target(JAVA_BACKEND)` skill 먼저(priority MUST→SHOULD→LATER, code), 나머지 code 순 | | 1, `ITEMS_FROM_END`, 60개 |
 | `sourceText` | TEXT | `requirement_doc.source_text` (마스킹 후) | ✔ | 2, `TAIL_CHARS`, 2000자 |
 
-**후처리** (`RequirementAnalysisTask` tx): `requirement_item` INSERT(`sort_order` = 출력 순서, `skill_id` = 가드 후 `suggestedSkillCode`), `RequirementFitClassifier` → `fit_category`(skill이 연결되지 않은 요구사항은 null), `matched_evidence_ids`. `analysis_status=COMPLETED`, `analyzed_at`, `ai_call_id`. 확률·점수는 만들지 않는다 (FR-19).
+**후처리** (`RequirementAnalysisTask` tx): `requirement_item` INSERT(`sort_order` = 출력 순서, `skill_id` = 가드 후 `suggestedSkillCode`), `RequirementFitClassifier` → `fit_category`(skill이 연결되지 않은 항목은 null), `matched_evidence_ids`. `analysis_status=COMPLETED`, `analyzed_at`, `ai_call_id`. 확률·점수는 만들지 않는다 (FR-19).
 
-**가드**: Enum, SkillCode(`suggestedSkillCode`), Language(`rawText` 제외 — 요구사항 원문 인용이므로).
+**가드**: Enum, SkillCode(`suggestedSkillCode`), Language(`rawText` 제외 — 로드맵 원문 인용이므로).
 
 ### 3.11 `RUBBER_DUCK`
 
@@ -476,7 +478,7 @@ while est > op.input-token-budget:
 | 복습 답변 평가 | `NOT_EVALUATED` + `evaluationSkippedReason` | 같음 | 자기평가 기반 스케줄 전체 |
 | 복습 variant (Later) | `variant_status=FAILED` → 원문항 | `NONE` 유지 → 원문항 | due·스케줄 (MVP는 항상 원문항) |
 | Evidence 초안 | 503 / `FAILED` | 429 | `POST /evidence` 수동 작성, accept, export |
-| 요구 역량 비교 | 503 / `FAILED` | 429 | 기존 분석 조회·삭제 |
+| 로드맵 비교 | 503 / `FAILED` | 429 | 기존 분석 조회·삭제 |
 | 러버덕 턴 | 503, 턴 저장 안 함(클라이언트가 설명 유지) | 429, 저장 안 함 | 기존 세션·턴 조회 |
 | 러버덕 정리 | `status=COMPLETED` + `summarySkippedReason`, 복습 카드·이벤트 없음 | 같음 | **대화 기록은 남는다** |
 | 코드 읽기 | planner가 `READ_CODE`를 **제안하지 않는다**(완료 조건이 러버덕이므로, `06` §5.3) | 같음 | 이미 만들어진 `READ_CODE` task는 읽기 안내까지 동작 |
@@ -1398,7 +1400,7 @@ trusted(ref):
 | `REVIEW_VARIANT` | `prompt`, `expectedAnswer`, `rubric[].criterion` |
 | `REVIEW_EVALUATE` | `feedback` |
 | `EVIDENCE_DRAFT` | `title`, `problem`, `analysis`, `action`, `result` |
-| `REQUIREMENT_EXTRACT` | 없음 (`rawText`는 요구사항 원문 인용) |
+| `REQUIREMENT_EXTRACT` | 없음 (`rawText`는 로드맵 원문 인용) |
 
 **알고리즘**
 

@@ -1,6 +1,6 @@
 # 09. Test & Quality
 
-> Status: Accepted (v2) · Last updated: 2026-09-18 (v3: 러버덕 · 코드 읽기 · 사이드 프로젝트 · 교차 학습 · 확장 제안) · Related: ADR-019, NFR-02, NFR-07, AC-02, AC-05, AC-07, AC-08, AC-12, AC-13, AC-14, AC-15, AC-18, AC-20, AC-23, AC-24, AC-26, AC-27, AC-28, AC-29, AC-30, `06-learning-engine-rules.md`, `08-coding-conventions.md`, `19-content-spec.md`
+> Status: Accepted (v2) · Last updated: 2026-09-19 (v3: 러버덕 · 코드 읽기 · 사이드 프로젝트 · 교차 학습 · 확장 제안 · 읽기 평가) · Related: ADR-019, NFR-02, NFR-07, AC-02, AC-05, AC-07, AC-08, AC-12, AC-13, AC-14, AC-15, AC-18, AC-20, AC-23, AC-24, AC-26, AC-27, AC-28, AC-29, AC-30, `06-learning-engine-rules.md`, `08-coding-conventions.md`, `19-content-spec.md`
 >
 > 이 문서는 **테스트 계층, 도구, 명명, fixture, test vector 적용 방법, 인증·격리·AI·E2E 테스트 목록, 품질 게이트 순서와 실패 기준**을 정의한다. 보안 테스트 목록은 `07-security-and-privacy.md` §16, AI eval은 `17-ai-integration.md` §12, 완료 기준은 `16-definition-of-ready-done.md`가 기준이다.
 
@@ -226,7 +226,7 @@ V10,10,GOOD,CORRECT,SELF_EXPLAIN,GOOD,,5,4
 | §9.5 RD-1~RD-7, RC-1~RC-4 | — (이 문서 §10.6·§10.7의 케이스 표) | `RubberDuckPolicyTest` 외 (§10.6.1 매핑표) | unit / integration |
 | §10 | `06-10-verification-guard.csv` (7행) | `VerificationGuardTest` | unit |
 | §11.2 | — (절차 1~9, `restoredDeferrals`, `acceptedDeferrals`와 중복 시 400, `acceptedTargetRaises` 검증 RX-1~RX-8 — §5.3) | `ReplanServiceIntegrationTest` | integration |
-| `19` §5.4 (계획 템플릿 배치) | `19-05-plan-template-placement.yaml` (V1~V7. **milestone 9개** — `JAVA_BACKEND_DEFAULT`의 PREPARATION 8개 + CONSOLIDATION 1개) | `PlanTemplatePlacementTest` | unit |
+| `19` §5.4 (계획 템플릿 배치) | `19-05-plan-template-placement.yaml` (V1~V8. 입력은 `today`·`targetCompletionDate`뿐이고 창은 하나 `[today, targetCompletionDate]`. **milestone 9개** — `JAVA_BACKEND_DEFAULT`의 PREPARATION 8개 뒤에 CONSOLIDATION 1개. V6(62일, COMPRESSED)·V8(63일, SEQUENTIAL)은 모드 경계) | `PlanTemplatePlacementTest` | unit |
 | §12 | `06-12-metrics.yaml` | `MetricsCalculatorTest` | unit |
 | §13 | `06-13-requirement-fit.csv` (4행 + skill 없음 → null, target fallback 순서) | `RequirementFitClassifierTest` | unit |
 
@@ -429,6 +429,7 @@ DB 제약 자체는 `InvariantConstraintIntegrationTest`에서 JDBC로 직접 �
 | I-15 타 사용자 접근 불가 | — | `AuthorizationIsolationTest` (§9) | 404 |
 | I-16 러버덕 `turn_no` 유일 | 같은 `session_id`·`turn_no` 2행 → 23505. `turn_no = 0` → 23514 | `RubberDuckServiceIntegrationTest` (§10.6.2): 턴 3개 제출 후 `turn_no` = 1, 2, 3. 같은 세션에 턴 2개를 동시에 제출(`blockUntilReleased`) | 연속 번호. 동시 제출은 1개 201, 1개 409 `CONCURRENT_MODIFICATION`, 턴 행 1개 추가 |
 | I-17 `reading_key` ↔ `READ_CODE` (CHECK `learning_task_reading_key_type`) | `task_type = 'READ_CODE'` + `reading_key = null` → 23514. `task_type = 'EXPLAIN'` + `reading_key = 'READ.TESTREPO.X.001'` → 23514. `READ_CODE` + 값 있음 / `EXPLAIN` + null → 성공 | `TodayPlanServiceIntegrationTest`: READ_CODE main task의 `reading_key`가 제안된 reading의 key와 같고, 다른 유형 task는 null | 제약 이름이 `learning_task_reading_key_type`인지도 `pg_constraint`로 확인 |
+| I-19 `reading_feedback`은 `READ_CODE`에만 (CHECK `learning_task_reading_feedback_type` + 값 CHECK) | `task_type = 'EXPLAIN'` + `reading_feedback = 'HELPFUL'` → 23514. `READ_CODE` + `reading_feedback = 'GREAT'` → 23514. `READ_CODE` + `HELPFUL`·`TOO_HARD`·`BORING`·null → 성공 | `TodayPlanServiceIntegrationTest`(아래 RC-1 행) | 제약 이름을 `pg_constraint`로 확인 |
 
 ### 8.3 Repository (JPA slice)
 
@@ -446,7 +447,7 @@ DB 제약 자체는 `InvariantConstraintIntegrationTest`에서 JDBC로 직접 �
 
 - `AuthorizationIsolationTest`(`@ApiFlowTest`)는 **endpoint catalog 하나를 입력으로 하는 파라미터화 테스트**다.
 - catalog: `com.devpilot.security.UserOwnedEndpoints` — `record EndpointCase(String id, HttpMethod method, String pathTemplate, Kind kind, BiFunction<Owner, TestApi, Map<String, String>> pathVariables, Function<Owner, Object> body, String expectedNotFoundCode)`.
-- `@BeforeAll`: 사용자 A(`TestUsers.owner()`)가 모든 리소스를 가진 상태를 API로 만든다(온보딩(사이드 프로젝트 포함), today(READ_CODE task 1개 포함), 세션, seed review 답변, 수동 카드, 러버덕 세션 2개(`COMPLETED` 1개, 턴 1개가 있는 `IN_PROGRESS` 1개), AI 생성 challenge + attempt + 제출 평가 완료, coach review 완료 + finding, evidence, weekly review, 요구사항 문서 — 해당 endpoint가 생기는 단계 전에는(예: 요구 역량 비교는 S7) case를 catalog에 넣지 않는다).
+- `@BeforeAll`: 사용자 A(`TestUsers.owner()`)가 모든 리소스를 가진 상태를 API로 만든다(온보딩(사이드 프로젝트 포함), today(READ_CODE task 1개 포함), 세션, seed review 답변, 수동 카드, 러버덕 세션 2개(`COMPLETED` 1개, 턴 1개가 있는 `IN_PROGRESS` 1개), AI 생성 challenge + attempt + 제출 평가 완료, coach review 완료 + finding, evidence, weekly review, 요구사항 문서 — 해당 endpoint가 생기는 단계 전에는(예: 로드맵 비교는 S7) case를 catalog에 넣지 않는다).
 - 사용자 B(`TestUsers.invited()`)는 온보딩만 한다. 사용자 C는 `TestUsers.stranger()`.
 
 | 검증 | 대상 | 기대 |
@@ -714,13 +715,13 @@ DB 제약 자체는 `InvariantConstraintIntegrationTest`에서 JDBC로 직접 �
 
 | 테스트 | 계층 | 확인 |
 |---|---|---|
-| `ContentValidatorTest` | unit | `19` §4.1 CV-80~CV-87 각각 1케이스 이상. 오류 주입 목록은 `19` §4.3 표(`repo` 미실재 → CV-84, `path`의 `..`·내림차순 `lines` → CV-85 2건, 양수 아닌 `lines` → CV-85, 없는 skill code·40자 미만 `question` → CV-86, key 중복 → CV-83, `pinnedCommit: null` → CV-82 WARN) |
-| `CuratedReadingRegistryTest` | unit | 테스트 콘텐츠 적재, key 조회, 없는 key → empty, 비활성 skill code는 `skills`에서 뺀다(`05` §19.7) |
+| `ContentValidatorTest` | unit | `19` §4.1 CV-80~CV-87 각각 1케이스 이상. 오류 주입 목록은 `19` §4.3 표(`repo` 미실재 → CV-84, `path`의 `..`·내림차순 `lines` → CV-85 2건, 양수 아닌 `lines` → CV-85, 없는 skill code·40자 미만 `question` → CV-86, key 중복 → CV-83, `pinnedCommit: null` → CV-82 WARN). 은퇴 규칙(`19` §8.2): `retired: true`인데 key가 `retired.readingKeys`에 없음 → CV-83, `retired.readingKeys`에 있는데 reading이 지워짐 → CV-83, 은퇴하지 않은 reading의 key가 `retired.readingKeys`에 있음 → CV-83. 은퇴한 reading만 남은 저장소는 CV-87 WARN 없음 |
+| `CuratedReadingRegistryTest` | unit | 테스트 콘텐츠 적재, key 조회, 없는 key → empty, 비활성 skill code는 `skills`에서 뺀다(`05` §19.7). `retired: true` reading도 key로 조회되고 `retired = true`다. 제안 후보 목록에는 없다(`06` §5.3) |
 | `ReadingControllerTest` | web slice | `readingKey` 패턴 위반 → 400 `VALIDATION_FAILED`(field `readingKey`, `Pattern`), 형식은 맞지만 없는 key → 404 `RESOURCE_NOT_FOUND`, 토큰 없음 → 401. **응답 JSON의 필드 집합이 `CuratedReadingView`·`CuratedRepoView` 정의와 정확히 같다 — 코드 본문을 담을 필드가 없다.** `startLine ≤ endLine`, `pinnedCommit`·`cloneHint` 포함 |
 | `NoOutboundFetchTest` | integration (`@ApiFlowTest`) | `OutboundRequestRecorder`(§4.1)를 설치한 상태에서 `GET /readings/{key}`, `POST /side-projects`·`PATCH /side-projects/{id}`(`repoUrl = https://repo.example.invalid/…`), `POST /onboarding`(`sideProject.repoUrl` 포함), `CODE_READING` 러버덕 시작 + 턴 1개를 호출 → `nonLoopbackRequests()`가 **0건**. 정적 보장은 ArchUnit ARCH-19(HTTP 클라이언트는 `integration.ai.deepseek`에만) |
 | `SideProjectServiceIntegrationTest` | integration | 아래 SP 표 |
 | `OnboardingServiceIntegrationTest` (AC-11 확장) | integration | `sideProject` 있음 → `side_project` 1행 `ACTIVE` + 응답 `sideProject` / `null` → 행 없음·응답 `null`, 이후 `POST /today/generate`에서 PROJECT_TASK 없음(SP-1) / `sideProject.repoUrl` 형식 오류 → 400 `URL`, 온보딩 전체 롤백(`onboarding_completed_at` null 유지) / `runDiagnostic = true` + `selfAssessments` 비어 있지 않음 → 400 `MUTUALLY_EXCLUSIVE` / `runDiagnostic = false` + 빈 목록 → 400 `ONE_OF_REQUIRED` / `runDiagnostic = true` → 모든 `self_assessed_level = null`, `suggestedDiagnostics` ≤ 5개(category당 1개) |
-| `TodayPlanServiceIntegrationTest` (RC-1) | integration | READ_CODE task `IN_PROGRESS → COMPLETED`: 그 task를 대상으로 한 러버덕 세션이 없음 → 409 `INVALID_STATE_TRANSITION` / `ABANDONED` 세션만 있음 → 409 / 다른 task 대상 `COMPLETED` 세션만 있음 → 409 / `COMPLETED` 세션 1개(정리 실패로 `summarySkippedReason`이 있어도) → 200. 다른 task 유형의 완료는 러버덕과 무관 |
+| `TodayPlanServiceIntegrationTest` (RC-1) | integration | READ_CODE task `IN_PROGRESS → COMPLETED`: 그 task를 대상으로 한 러버덕 세션이 없음 → 409 `INVALID_STATE_TRANSITION` / `ABANDONED` 세션만 있음 → 409 / 다른 task 대상 `COMPLETED` 세션만 있음 → 409 / `COMPLETED` 세션 1개(정리 실패로 `summarySkippedReason`이 있어도) → 200. 다른 task 유형의 완료는 러버덕과 무관. `CODE_READING` 세션 `complete`만으로는 task 상태가 바뀌지 않는다(`05` §9.8 7번). **읽기 평가** `readingFeedback`(`05` §8.4): READ_CODE `COMPLETED` + `HELPFUL` → 200, `reading_feedback = 'HELPFUL'` / 생략 → 200, `reading_feedback = null` / `status = DEFERRED` + `readingFeedback` → 400 `VALIDATION_FAILED`(`VALUE_NOT_ALLOWED`, field `readingFeedback`), 상태 변화 없음 / `EXPLAIN` task `COMPLETED` + `readingFeedback` → 400 같은 코드 / `readingFeedback = "GREAT"` → 400 `UNKNOWN_ENUM_VALUE` / RC-1 미충족 + `readingFeedback` → 409 `INVALID_STATE_TRANSITION`(평가 저장 없음). 평가 저장 전후로 skill state·learning event·planner 입력(`score_breakdown`)이 같다 |
 
 `SideProjectServiceIntegrationTest` (`05` §19.2~§19.6):
 
@@ -907,7 +908,7 @@ fixture `coach-review/two-findings`: F1(`RESOURCE_LIFECYCLE`, `BUG`, `mentionedB
 | 5 | `PATCH /today/tasks/{T}` `{status: COMPLETED, version}` | 409 `INVALID_STATE_TRANSITION` — 완료된 러버덕이 없다(RC-1) |
 | 6 | `POST /rubber-duck` `{targetType: CODE_READING, targetId: T}` (`skillCode` 생략) | 201, `skill` = S(task의 skill), `readingKey` = 2번 key, `targetTitle` 있음 |
 | 7 | 턴 3회(`default`) → `complete`(`default`) | 턴 201 × 3, `receivedRequests(RUBBER_DUCK)`의 `targetSummary`에 저장소·경로·줄 범위·`question`. 정리 200 `COMPLETED` |
-| 8 | `PATCH /today/tasks/{T}` `{status: COMPLETED, version}` | 200, `completed_at` 설정 |
+| 8 | `PATCH /today/tasks/{T}` `{status: COMPLETED, readingFeedback: "HELPFUL", version}` | 200, `completed_at` 설정, DB `learning_task.reading_feedback = 'HELPFUL'`. `GET /me/export`의 `dailyPlans[].tasks[]` 해당 행에 `readingFeedback = "HELPFUL"` |
 | 9 | 1~8 동안 `OutboundRequestRecorder.nonLoopbackRequests()` | 0건 — `repoUrl`과 저장소 `url`을 서버가 요청하지 않는다 |
 
 ---
@@ -1084,7 +1085,7 @@ export const options = {
 | 규칙 | 내용 |
 |---|---|
 | 코드 | 업무 코드·고객 데이터·실제 운영 코드를 fixture, vector, eval case, 스크린샷에 쓰지 않는다. 모든 코드 예시는 직접 작성한 합성 코드 |
-| 요구사항 목록 | 실제 팀·프로젝트의 요구사항 문서를 붙여넣지 않는다. 가상 이름(`Example Team`, `Sample Project`)과 직접 작성한 합성 요구사항만 |
+| 로드맵·기술 목록 | 실제 로드맵 문서를 그대로 붙여넣지 않는다. 가상 이름(`Sample Roadmap`)과 직접 작성한 합성 항목만 |
 | 코드 읽기 · 러버덕 | 테스트 reading은 가상 저장소(`repo.example.invalid`)와 합성 경로만 쓴다. 큐레이션 저장소(`content/curated-repos.yaml`)의 실제 코드를 fixture·eval case에 복사하지 않는다(라이선스가 명시되지 않은 저장소가 있다 — 읽기만, `19` §3.8). 러버덕 설명·질문 fixture도 직접 쓴 합성 문장이다 |
 | 사람 정보 | 실명, 실제 이메일, 실제 GitHub 계정 금지. 이메일은 `*@devpilot.test`, 표시 이름은 `Test Owner`, `Test Invited` |
 | Secret | 실제 키 금지. fake secret은 런타임 문자열 조합(`07` §11.3) |

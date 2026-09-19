@@ -1,6 +1,6 @@
 # 04. Domain Model & Database
 
-> Status: Accepted (v2) · Last updated: 2026-09-18 · Related: ADR-001, ADR-014, `database/schema.sql`, `06-learning-engine-rules.md`
+> Status: Accepted (v2) · Last updated: 2026-09-19 · Related: ADR-001, ADR-014, ADR-038, ADR-039, `database/schema.sql`, `06-learning-engine-rules.md`
 >
 > 컬럼 수준의 기준은 `database/schema.sql`이다. 이 문서는 **aggregate와 소유 관계, enum 레지스트리, 상태 전이, JSON 컬럼 스키마, 이벤트 payload, 불변식, migration 계획**을 정의한다.
 
@@ -68,7 +68,6 @@
 | Enum (Java 위치) | 값 | 사용처 |
 |---|---|---|
 | `TargetRole` (goal.domain) | `JAVA_BACKEND` | learning_goal, role_skill_target |
-| `ExperienceProfile` (user.domain) | `WORKING_DEVELOPER`, `DEVELOPER_STARTER`, `OTHER` | app_user |
 | `UserRole` (common.security) | `USER`, `ADMIN` | app_user |
 | `UserStatus` (user.domain) | `ACTIVE`, `DELETION_REQUESTED` | app_user |
 | `AiProvider` 값 (설정 문자열, Java enum 아님) | `deepseek`, `anthropic`(대안), `fake`, `disabled` — **소문자**. `devpilot.ai.provider` 설정값이 그대로 `ai_call_log.provider`에 들어가므로 이 표의 다른 enum과 달리 소문자다 | ai_call_log |
@@ -113,6 +112,7 @@
 | `ExpansionKind` (plan.domain) | `RESTORE_DEFERRED`, `RAISE_TARGET` | replan preview 응답 `expansionSuggestions[].kind` (저장 안 함, `06` §4.4 6단계) |
 | `TaskType` (today.domain) | `RECALL`, `REVIEW`, `CHALLENGE`, `PROJECT_TASK`, `COACH_REVIEW`, `READING`, `READ_CODE`, `EXPLAIN` | learning_task — `READ_CODE`는 큐레이션 저장소 읽기(`06` §5, RC-1~4) |
 | `TaskStatus` (today.domain) | `PLANNED`, `IN_PROGRESS`, `COMPLETED`, `SKIPPED`, `DEFERRED` | learning_task |
+| `ReadingFeedback` (today.domain) | `HELPFUL`, `TOO_HARD`, `BORING` | learning_task.reading_feedback — `READ_CODE` 완료 때 사용자가 고르는 읽기 평가(선택, `05` §8.4). 규칙 입력이 아니다(`06` §5.3). 소스 점검(`19` §8.5)의 입력 |
 | `ReasonCode` (today.domain) | §5.1 | learning_task.reason_codes |
 | `SessionStatus` (learning.domain) | `IN_PROGRESS`, `COMPLETED`, `ABANDONED` | learning_session |
 | `RubberDuckTargetType` (rubberduck.domain) | `CODE_READING`, `CHALLENGE`, `REVIEW_ITEM`, `CONCEPT`, `PROJECT_WORK` | rubber_duck_session.target_type — `CONCEPT`이면 `target_id` 대신 `concept_key`, `PROJECT_WORK`이면 `target_id`가 `side_project.id` |
@@ -141,7 +141,7 @@
 |---|---|---|
 | `PLANNED → IN_PROGRESS` | `PATCH /today/tasks/{id}` status=IN_PROGRESS, 또는 `POST /learning-sessions`가 이 task를 참조할 때 자동 전이(`05` §9.1) | 재생성이 PLANNED task를 삭제해도 진행 중 세션의 task가 사라지지 않게 |
 | `PLANNED → SKIPPED` | PATCH | — |
-| `IN_PROGRESS → COMPLETED` | PATCH | `completed_at` |
+| `IN_PROGRESS → COMPLETED` | PATCH (`READ_CODE`는 RC-1 조건 + 선택 `readingFeedback`, `05` §8.4) | `completed_at`, `READ_CODE`이고 평가가 있으면 `reading_feedback` |
 | `IN_PROGRESS → DEFERRED` | PATCH, 또는 `POST /today/generate force=true` | 다음날 planner 이어하기 보너스 대상 |
 | `PLANNED → (삭제)` | `POST /today/generate` 재생성 | 같은 daily_plan의 PLANNED task 모두 삭제 후 flush → 새 task INSERT |
 | `SKIPPED → PLANNED` | PATCH (되돌리기) | 같은 날 활성 main이 없을 때만 |
@@ -409,6 +409,7 @@ coverage 계산은 서버가 한다(`06` §8.1).
 | I-16 | 러버덕 세션 안에서 `turn_no`는 유일하다 (1부터 1씩 증가) | `rubber_duck_turn` `unique (session_id, turn_no)` + `RubberDuckService` (턴 상한은 `devpilot.rubberduck.max-turns`) |
 | I-17 | `READ_CODE` 과제에만 `reading_key`가 있고, `READ_CODE` 과제에는 반드시 있다 | CHECK `learning_task_reading_key_type` + `TaskProposalPolicy`(`06` §5.3). 값은 `content/curated-repos.yaml`의 reading `key`이고 FK가 없다 — 콘텐츠에서 reading이 은퇴해도 과제 행은 남는다(`19` §8.2) |
 | I-18 | 사용자당 `IN_PROGRESS` 러버덕 세션은 1개다 | partial unique index `uq_rubber_duck_session_one_in_progress` + `RubberDuckService`(시작 시 이전 세션 `ABANDONED` → flush → INSERT, 동시 시작 위반은 409 `CONCURRENT_MODIFICATION`, `05` §9.6). I-05(학습 세션)와 같은 방식 |
+| I-19 | `reading_feedback`은 `READ_CODE` 과제에만 있을 수 있고(nullable), 값은 `ReadingFeedback`이다 | CHECK `learning_task_reading_feedback_type`(`reading_feedback is null or task_type = 'READ_CODE'`) + 값 CHECK + `TodayPlanService`(`status = COMPLETED` PATCH에서만 받는다, 그 외 400 `VALUE_NOT_ALLOWED`, `05` §8.4) |
 
 - `rubber_duck_turn`에는 `user_id`가 없다. 소유자 검증은 `coach_finding`과 같이 부모(`rubber_duck_session.user_id`)로 한다(I-15).
 
@@ -452,14 +453,14 @@ coverage 계산은 서버가 한다(`06` §8.1).
 | Migration | Sprint | 내용 |
 |---|---|---|
 | `V1__baseline.sql` | S0 | `create schema if not exists devpilot`(Flyway `create-schemas=true`와 공존), Supabase hardening DO 블록(순수 PostgreSQL에서는 no-op — 현재 운영 DB) |
-| `V2__user_goal_skill.sql` | S1 | `app_user`, `learning_goal`, `skill`, `skill_prerequisite`, `role_skill_target`, `learning_goal_focus_skill`, `user_skill_state`, `skill_state_change`, `idempotency_record` |
+| `V2__user_goal_skill.sql` | S1 | `app_user`, `learning_goal`(학습 트랙 `target_role` + 목표일 `target_completion_date` — 날짜는 하나, ADR-039), `skill`, `skill_prerequisite`, `role_skill_target`, `learning_goal_focus_skill`, `user_skill_state`, `skill_state_change`, `idempotency_record` |
 | `V3__plan.sql` | S1 | `learning_plan`, `plan_milestone`, `milestone_skill`, `plan_skill_target`, `plan_progress_snapshot` |
 | `V4__learning_today_review.sql` | S2 | `learning_session`, `learning_event`, `ai_call_log`(challenge·review FK 대상), `daily_plan`, `challenge`(seed 참조용), `learning_task`, FK 추가, `review_item`, `review_answer` |
 | `V5__training.sql` | S3 | `hint_disclosure`, `challenge_skill`, `challenge_attempt`, `challenge_submission` |
 | `V6__coach.sql` | S4 | `coach_review`, `coach_finding`, `thinking_pattern_observation` |
 | `V7__evidence_weekly.sql` | S5–S6 | `evidence_candidate`, `weekly_review` |
 | `V8__requirement_radar.sql` | S7 | `requirement_doc`, `requirement_item` |
-| `V9__rubberduck_project.sql` | S1(`side_project`) · S3(러버덕) | `side_project`, `rubber_duck_session`, `rubber_duck_turn`, `learning_task.side_project_id`·`reading_key`(+ CHECK `learning_task_reading_key_type`)·`coach_review.side_project_id` 추가 |
+| `V9__rubberduck_project.sql` | S1(`side_project`) · S3(러버덕, 읽기 평가) | `side_project`, `rubber_duck_session`, `rubber_duck_turn`, `learning_task.side_project_id`·`reading_key`(+ CHECK `learning_task_reading_key_type`)·`reading_feedback`(`varchar(20)` null, 값 CHECK `HELPFUL`/`TOO_HARD`/`BORING` + CHECK `learning_task_reading_feedback_type`)·`coach_review.side_project_id` 추가 |
 
 규칙:
 - **적용된 migration 파일은 수정하지 않는다.** 변경은 새 `V{n}`으로 한다. 이 규칙은 **첫 배포 시점부터** 발효한다 — `V1`~`V9`는 아직 어떤 환경에도 적용된 적이 없으므로(백엔드 코드가 없다) v3 설계로 늘어난 enum 값(`learning_event.event_type`·`source_type`, `learning_task.task_type`, `ai_call_log.operation`)은 `V9`의 `alter ... drop/add constraint`가 아니라 `V4`를 직접 고쳐 반영했다.

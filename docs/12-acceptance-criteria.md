@@ -1,6 +1,6 @@
 # 12. Acceptance Criteria
 
-> Status: Accepted (v2) · Last updated: 2026-09-18 · Related: `01-product-requirements.md`, `05-api-spec.md`, `06-learning-engine-rules.md`, `09-test-and-quality.md`, `11-development-roadmap.md`, `13-product-backlog.md`
+> Status: Accepted (v2) · Last updated: 2026-09-19 · Related: `01-product-requirements.md`, `05-api-spec.md`, `06-learning-engine-rules.md`, `09-test-and-quality.md`, `11-development-roadmap.md`, `13-product-backlog.md`
 >
 > 2026-09-18 v3 반영: AC-26 러버덕, AC-27 사이드 프로젝트, AC-28 코드 읽기, AC-29 교차 학습, AC-30 기한 역산 확장 제안을 추가했다. AC-11에 진단 우선(`runDiagnostic`)·사이드 프로젝트(`sideProject`), AC-03을 S5 → S2로 옮겼다(budget·risk가 Today와 같은 단계). Sprint 열은 날짜 없는 단계 ID다(M1 = S0~S3, S3 완료 = 실사용 시작 / M2 = S4~S7, `13-product-backlog.md` §2).
 >
@@ -19,7 +19,7 @@
 | 검증 수준 | `unit`(순수 Java, vector) · `integration`(Spring + Testcontainers, 서비스·리포지토리) · `API E2E`(실행 중인 앱 + HTTP) · `UI`(Flutter widget / integration_test) · `manual ops`(prod 환경에서 사람이 확인) |
 | 테스트 클래스 | `09-test-and-quality.md` §3.1 명명을 따른다: 단위 `<ProductionClass>Test`, 통합 `<ProductionClass>IntegrationTest`, E2E `<Flow>FlowTest`, 아키텍처 `<Topic>ArchTest`, 모듈을 가로지르는 보안 테스트는 `07-security-and-privacy.md` §16 이름. 모든 클래스 이름은 `Test`로 끝나고 단위·통합 구분은 JUnit 태그로 한다(`*IT` 접미사 없음). 두 문서에 이름이 없는 테스트는 `<Feature><Scenario>Test`. Flutter는 `*_test.dart`. 추적은 테스트 메서드 이름 또는 `@DisplayName`에 `AC-xx Sn`을 넣는다 |
 | Sprint | 해당 AC를 처음 통과시켜야 하는 단계(`S0`~`S7` — 기간·날짜가 없는 구현 순서 ID, `13-product-backlog.md` §2). 이후 단계에서 회귀 테스트로 유지한다. **M1 = S0~S3**(S3 완료 = 실사용 시작), **M2 = S4~S7** |
-| 예시 날짜 | Given의 날짜(AC-01 S1의 `checkpointDate`, AC-03의 D 등)는 계산을 확인하기 위한 **예시 입력값**이다. 실제 학습 목표일과 중간 점검일은 사용자가 설정창에 등록한다(`learning_goal.target_completion_date`·`checkpoint_date`) |
+| 예시 날짜 | Given의 날짜(AC-01 S1의 `targetCompletionDate`, AC-03의 D 등)는 계산을 확인하기 위한 **예시 입력값**이다. 실제 목표일은 사용자가 설정창에 등록한다(`learning_goal.target_completion_date`) |
 
 ## 1. 요약
 
@@ -40,7 +40,7 @@
 | AC-11 | 온보딩·진단 제안 | FR-02, FR-15, FR-26 | S1 (사이드 프로젝트 포함, seed 카드·snapshot S2, 진단 S3) | M1 |
 | AC-12 | AI 불가 시 동작 | NFR-03, FR-22 | S3 (러버덕·코드 읽기 포함), S4 재검증 (challenge 생성 S5) | M1 → M2 |
 | AC-13 | AI 예산 가드 | FR-22, NFR-01 | S3 | M1 |
-| AC-14 | Secret masking | FR-12, NFR-05 | S3 (training·review·session·사이드 프로젝트·러버덕), S4 (coach), S7 (요구사항 문서) | M1 → M2 |
+| AC-14 | Secret masking | FR-12, NFR-05 | S3 (training·review·session·사이드 프로젝트·러버덕), S4 (coach), S7 (로드맵 비교) | M1 → M2 |
 | AC-15 | Export·계정 삭제 | FR-23, NFR-05 | S6 | M2 |
 | AC-16 | Hint Ladder 정책 | FR-10 | S3 (challenge), S4 (coach) | M1 → M2 |
 | AC-17 | 날짜 경계 | FR-07, FR-24, NFR-09 | S2 | M1 |
@@ -48,7 +48,7 @@
 | AC-19 | Coach self-review·thinking pattern | FR-12, FR-13 | S4 (추세 S5) | M2 |
 | AC-20 | Data API 비노출 | NFR-04 | S0 (S1·S6 재확인) | M1 → M2 |
 | AC-21 | Evidence·Weekly | FR-17, FR-18 | S5 (weekly), S6 (evidence) | M2 |
-| AC-22 | 요구 역량 비교 | FR-19 | S7 | M2 |
+| AC-22 | 로드맵 비교 | FR-19 | S7 | M2 |
 | AC-23 | Idempotency | NFR-01, NFR-04 | S3 (헤더 검사 S1), S4·S5 재검증 | M1 → M2 |
 | AC-24 | Plan 일관성(동시 replan) | FR-04 | S1 | M1 |
 | AC-25 | devtoken 인증 | FR-01, NFR-04 | S0 | M1 |
@@ -70,9 +70,10 @@
 | 테스트 클래스 | `LearningGoalServiceIntegrationTest`, `ReplanServiceIntegrationTest`, `ReplanFlowTest` |
 
 **S1. 저장 후 재조회**
-- Given A가 온보딩에서 `checkpointDate = 2027-01-05`, `targetCompletionDate = 2027-04-01`, `useTemplate = true`로 plan v1을 만들었다
+- Given A가 온보딩에서 `targetRole = JAVA_BACKEND`, `targetCompletionDate = 2027-04-01`, `useTemplate = true`로 plan v1을 만들었다
 - When A가 새 토큰으로 `GET /learning-goal`, `GET /plans/active`를 호출한다
-- Then `GET /learning-goal`의 두 날짜·focus skill이 온보딩 요청값과 같고, milestone 목록(title, startDate, endDate, priority, status, skillCodes)이 온보딩 직후 첫 `GET /plans/active` 응답과 필드 단위로 같다(온보딩 응답의 `PlanSummaryView`에는 milestone이 없다). `planVersion = 1`, `status = ACTIVE`
+- Then `GET /learning-goal`의 `targetRole`·`targetCompletionDate`(목표일)·focus skill이 온보딩 요청값과 같고(날짜 필드는 목표일 하나다), milestone 목록(title, startDate, endDate, priority, status, skillCodes)이 온보딩 직후 첫 `GET /plans/active` 응답과 필드 단위로 같다(온보딩 응답의 `PlanSummaryView`에는 milestone이 없다). `planVersion = 1`, `status = ACTIVE`
+- And milestone 날짜는 `19-content-spec.md` §5의 창 하나 `[D, targetCompletionDate]` 배치와 같다: 9개가 템플릿 순서이고 마지막 milestone "설명과 정리"(`CONSOLIDATION`)가 맨 뒤다. D가 목표일보다 63일 이상 앞이면(SEQUENTIAL) 첫 milestone `startDate = D`, 마지막 milestone `endDate = targetCompletionDate`, 빈 날·겹침이 없다(`19` §5.4 V1·V2·V5·V8과 같은 규칙)
 
 **S2. in-place 수정은 새 버전을 만들지 않는다**
 - When `PATCH /plans/{v1}/milestones/{m1}` `{ "status": "IN_PROGRESS", "version": 0 }`
@@ -94,7 +95,8 @@
 **S5. 목표 수정과 동시성**
 - When `PUT /learning-goal`에 이전 `version`을 보낸다 → 409 `CONCURRENT_MODIFICATION`, 값 변경 없음
 - When `targetCompletionDate`를 바꾼 `PUT /learning-goal`(최신 version) → 200, 활성 plan `replanRecommended = true`, `planVersion` 변화 없음
-- When `checkpointDate > targetCompletionDate` → 400 `VALIDATION_FAILED`, `errors[].code = DATE_ORDER_INVALID`
+- When `targetCompletionDate = D`(오늘) 또는 `D + 3년 + 1일` → 400 `VALIDATION_FAILED`, `errors[].code = DATE_OUT_OF_RANGE`(field `targetCompletionDate`), 값 변경 없음. `D + 1일`과 `D + 3년`은 200(경계 포함)
+- When 요청 body에 `LearningGoalUpdateRequest`에 없는 속성이 있다 → 400 `MALFORMED_REQUEST`
 
 ---
 
@@ -184,7 +186,7 @@
 - `06` §3.3 7행, §4.2 3행, §4.3 8행, §4.4 vector 1·2(축소)가 모두 통과한다. §4.4 vector 3·4(확장)는 AC-30
 
 **S2. Budget 조회**
-- Given 평일 45분·주말 240분, D = 2026-12-07(월), `checkpointDate = 2026-12-14`, 최근 28 plan-day `daily_plan` 없음
+- Given 평일 45분·주말 240분, D = 2026-12-07(월), `targetCompletionDate = 2026-12-14`(목표일, fixture로 저장), 최근 28 plan-day `daily_plan` 없음
 - When `GET /plans/active/budget`
 - Then `horizonDate = 2026-12-14`, `nominalBudgetMinutes = 705`(5 × 45 + 2 × 240), `completionRateBp = 7000`, `effectiveBudgetMinutes = 493`
 - And DB 저장 없음(`plan_progress_snapshot` 행 수 변화 0)
@@ -580,6 +582,7 @@
 - `focusSkillCodes`에 없는 code → 400 `VALIDATION_FAILED`(`SKILL_CODE_UNKNOWN`), `learning_goal`·`learning_plan`·`user_skill_state` 0행, `onboarding_completed_at` null
 - 같은 category 2번 → 400 `VALIDATION_FAILED`(`DUPLICATE_VALUE`)
 - `selfAssessments` 14개 → 400 `VALIDATION_FAILED`
+- `learningGoal.targetCompletionDate = D`(오늘) 또는 `D + 3년 + 1일` → 400 `VALIDATION_FAILED`(`DATE_OUT_OF_RANGE`, field `learningGoal.targetCompletionDate`), 전체 롤백
 
 **S3. 중복 온보딩**
 - 완료 후 재호출 → 409 `ONBOARDING_ALREADY_COMPLETED`
@@ -754,7 +757,7 @@
 | 항목 | 값 |
 |---|---|
 | 관련 요구사항 | FR-12, NFR-05 |
-| Sprint | S3 (`SecretMasker`, training·review·session endpoint, S1~S2에 먼저 생긴 사이드 프로젝트·온보딩 `sideProject`, 러버덕 턴), S4 (coach), S7 (요구사항 문서) |
+| Sprint | S3 (`SecretMasker`, training·review·session endpoint, S1~S2에 먼저 생긴 사이드 프로젝트·온보딩 `sideProject`, 러버덕 턴), S4 (coach), S7 (로드맵 비교 원문) |
 | 검증 수준 | unit(vector), API E2E |
 | 테스트 클래스 | `SecretMaskerTest`, `SecretMaskerPerformanceTest`, `CoachReviewMaskingOrderTest`, `SecretMaskingEndpointsTest` |
 
@@ -781,7 +784,7 @@
 - `content`에 `-----BEGIN RSA PRIVATE KEY-----` 블록 → 422 `SECRET_DETECTED_BLOCKED`, `coach_review` 0행, `ai_call_log` 0행, 감사 로그 `SECRET_BLOCKED`(개수·type만) <!-- gitleaks:allow -->
 - finding 응답 `text`에 private key → 422, finding 상태·`user_response` 변경 없음
 
-**S4. 다른 사용자 입력 endpoint (S3, 요구사항 문서는 S7)**
+**S4. 다른 사용자 입력 endpoint (S3, 로드맵 비교는 S7)**
 - `05-api-spec.md` §1.11 표와 `17-ai-integration.md` 적용 위치 표의 endpoint·필드마다: private key → 422이고 행 저장 없음 / `AKIA…` 키 → 저장값과 AI 입력에서 마스킹
 - 포함: `POST /rubber-duck/{sessionId}/turns` `explanation`(AC-26 S10), `POST /side-projects`·`PATCH /side-projects/{sideProjectId}`·`POST /onboarding` `sideProject`의 `name`·`description`·`stack`(`05` §19.2 — `repoUrl`은 URL 필드라 대상 아님, AC-27 S9)
 
@@ -1050,7 +1053,7 @@
 
 ---
 
-## AC-22 요구 역량 비교
+## AC-22 로드맵 비교
 
 | 항목 | 값 |
 |---|---|
@@ -1072,8 +1075,8 @@
 - self-assessment 값이 높아도 evidence level만 사용한다(self 5, evidence (0,0,0,0) → LATER)
 
 **S2. 분석 흐름**
-- When `POST /requirement-docs` `{ title, sourceUrl: "https://docs.example.com/team-stack", sourceText }` → 202
-- Then `GET /requirement-docs/{id}`: `analysisStatus = COMPLETED`, `requirements[]`마다 `requirementType ∈ {REQUIRED, PREFERRED}`, AI가 catalog에 없는 skill code를 제안한 requirement는 `skill = null`, `fitCategory = null`
+- When `POST /requirement-docs` `{ title: "Sample Roadmap", sourceUrl: "https://roadmap.example.com/backend", sourceText: <합성 로드맵 — 기술 항목 목록> }` → 202
+- Then `GET /requirement-docs/{id}`: `analysisStatus = COMPLETED`, `requirements[]`(로드맵 항목)마다 `requirementType ∈ {REQUIRED, PREFERRED}`, AI가 catalog에 없는 skill code를 제안한 requirement는 `skill = null`, `fitCategory = null`
 - And `requirements[].matchedEvidence[]` ≤ 3개, 모두 A의 `status = ACCEPTED` evidence(accepted_at 내림차순), `fitCounts`는 개수만 담는다
 
 **S3. 확률·점수 없음**
@@ -1463,13 +1466,24 @@
 - And `repo.url`을 요청 기록 stub 서버(WireMock) 주소로 바꾼 fixture 콘텐츠로 기동·조회 → 수신 요청 0건. `ai_call_log` 새 행 0
 - `GET /readings/read.petclinic.x` → 400 `VALIDATION_FAILED`(`Pattern`, field `readingKey`) / `GET /readings/READ.NOPE.TOPIC.001` → 404 `RESOURCE_NOT_FOUND` / 토큰 없음 → 401
 - B가 같은 key로 조회 → A와 같은 응답(사용자 소유 리소스가 아니다, AC-08 S2)
+- 은퇴한 테스트 reading(`retired: true`, key는 `retired.readingKeys`에도 있음) → 200, `retired = true`, 좌표·질문이 그대로다(`19` §8.2). 은퇴하지 않은 reading은 `retired = false`
+- 같은 skill에 은퇴한 reading만 있으면 `READ_CODE`를 제안하지 않는다(`06` §5.3 → READING 등으로 내려감)
 
 **S5. 완료 조건 (RC-1)**
 - Given `READ_CODE` task `T`가 `IN_PROGRESS`
 - When 러버덕 세션 없이 `PATCH /today/tasks/{T}` `{ status: "COMPLETED", version }` → 409 `INVALID_STATE_TRANSITION`, 상태 변화 없음
 - When `targetType = CODE_READING`, `targetId = T`인 세션이 `ABANDONED`뿐 → 409 `INVALID_STATE_TRANSITION`
-- When 그 세션에 턴 1개 이상 후 `complete` → `COMPLETED`(정리 AI 실패로 `summarySkippedReason`이 있어도 `COMPLETED`) → 같은 PATCH → 200, `completed_at` 설정
+- When 그 세션에 턴 1개 이상 후 `complete` → 세션 `COMPLETED`(정리 AI 실패로 `summarySkippedReason`이 있어도 `COMPLETED`). 이 시점에 T는 여전히 `IN_PROGRESS`다(정리는 과제 상태를 바꾸지 않는다, `05` §9.8) → 같은 PATCH → 200, `completed_at` 설정
 - `IN_PROGRESS → DEFERRED`, `PLANNED → SKIPPED`는 러버덕 세션 없이 허용
+
+**S5a. 읽기 평가 `readingFeedback` (선택, `05` §8.4)**
+- Given S5처럼 T에 `COMPLETED` 러버덕 세션이 있다
+- When `PATCH /today/tasks/{T}` `{ status: "COMPLETED", readingFeedback: "TOO_HARD", version }` → 200, `learning_task.reading_feedback = 'TOO_HARD'`
+- When `readingFeedback` 없이 완료 → 200, `reading_feedback = null`
+- When `{ status: "DEFERRED", readingFeedback: "BORING" }` 또는 `READ_CODE`가 아닌 task의 완료에 `readingFeedback` → 400 `VALIDATION_FAILED`(`errors[].code = VALUE_NOT_ALLOWED`, field `readingFeedback`), 상태·평가 변화 없음
+- When `readingFeedback = "GREAT"` → 400 `UNKNOWN_ENUM_VALUE`
+- And 평가를 저장해도 `user_skill_state`, `learning_event`, 다음 `POST /today/generate`의 후보·점수가 평가가 없을 때와 같다(규칙 입력이 아니다, `06` §5.3)
+- And `GET /me/export`의 `dailyPlans[].tasks[]`에서 T 행의 `readingFeedback`이 저장값과 같다(소스 점검 입력, `19` §8.5)
 
 **S6. AI 불가 시 제안하지 않는다 (`17` §3.10)**
 - `aiStatus = DISABLED`(T-3) 또는 `BALANCE_EXHAUSTED` → `READ_CODE` task를 만들지 않는다
@@ -1487,6 +1501,8 @@
 | `question` 7자 | CV-86 ERROR |
 | reading key 중복 | CV-83 ERROR |
 | `pinnedCommit: null` | CV-82 WARN |
+| reading `retired: true`인데 key가 `retired.readingKeys`에 없음 | CV-83 ERROR |
+| `retired.readingKeys`에 있는 key의 reading을 파일에서 지움 | CV-83 ERROR |
 
 - ERROR가 있으면 CI `content` job 실패, 백엔드는 기동 실패
 
@@ -1494,6 +1510,7 @@
 - `cloneHint`(복사 버튼)·`pinnedCommit`이 경로·질문보다 먼저 보이고, 코드 본문 위젯이 없다
 - `license = UNSPECIFIED`인 저장소(`restbucks`)는 읽기만 하라는 안내를 보인다
 - "러버덕으로 설명하기" → `POST /rubber-duck` `{ targetType: CODE_READING, targetId: T }` → SCR-RUBBER-DUCK. 완료 버튼은 409를 받으면 러버덕을 먼저 하라는 안내를 보인다(widget test)
+- `READ_CODE` 완료 시트에 읽기 평가 칩 3개(도움 됐어요 · 어려웠어요 · 지루했어요)가 있고, 아무것도 고르지 않아도 "완료 기록"이 활성이다. 고른 칩은 요청 body `readingFeedback`에 들어가고, 고르지 않으면 필드가 없다. 다른 task 유형과 "여기까지 기록" 시트에는 칩이 없다(widget test)
 
 ---
 

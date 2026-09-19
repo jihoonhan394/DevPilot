@@ -1,6 +1,6 @@
 # 16. Definition of Ready / Done
 
-> Status: Accepted (v2) · Last updated: 2026-09-18 · Related: `11-development-roadmap.md` §7, `12-acceptance-criteria.md`, `13-product-backlog.md`, `08-coding-conventions.md`, `09-test-and-quality.md`
+> Status: Accepted (v2) · Last updated: 2026-09-19 · Related: `11-development-roadmap.md` §7, `12-acceptance-criteria.md`, `13-product-backlog.md`, `08-coding-conventions.md`, `09-test-and-quality.md`
 >
 > BL 작업을 시작해도 되는 조건(DoR)과 끝났다고 말할 수 있는 조건(DoD)의 **유일한 기준**이다. 다른 문서의 체크리스트는 이 문서를 참조한다. 사람과 에이전트에 똑같이 적용한다.
 
@@ -26,6 +26,7 @@
 | R-12 | 화면 작업이면 SCR ID, 상태(loading/empty/error/AI unavailable), 문구가 `02-user-scenarios-and-ux.md`에 있다 | 해당 화면 |
 | R-13 | 규칙 클래스(`06`의 test vector가 있는 것)를 만드는 작업이면, vector를 옮긴 `@ParameterizedTest`가 같은 PR에 있거나 먼저 merge되었다 | PR |
 | R-14 | 작업 크기: 에이전트 지시 1회에 BL 최대 3개, 변경 파일 예상 30개 이하. 넘으면 BL을 나눈다 | 계획 |
+| R-15 | `READ_CODE` 콘텐츠를 적재·제안하는 BL(`BL-CNT-15`, `BL-TDY-16`, `BL-CNT-16`)이면, S3 구현 시작 전 첫 소스 점검(`19-content-spec.md` §8.5)을 마쳤고 사용자가 고른 추가·교체·은퇴가 `content/curated-repos.yaml`에 반영되어 있다(바꿀 것이 없다는 결정도 기록) | 소스 점검 기록(콘텐츠 PR 설명) |
 
 ---
 
@@ -143,6 +144,6 @@ Known limitations:
 | S-5 | 새로 생긴 운영 작업·장애 대응이 runbook에 있다. 기존 runbook은 이번 변경으로 틀린 곳이 없다 | runbook diff |
 | S-6 | Spike·결정 결과가 ADR에 반영되었다. `Proposed` ADR이 남아 있으면 다음 단계에 착수하기 전에 결정한다 | ADR 목록 |
 | S-7 | 리스크 레지스터(`20-decisions-and-risks.md` §4)의 조기 신호를 점검하고 상태를 갱신했다 | 갱신 커밋 |
-| S-8 | 회고 3줄(잘된 점, 문제, 다음 Sprint 바꿀 것)과 사용자 실제 투입 시간을 기록했다. S1·S3 종료 시 재추정(`11-development-roadmap.md` §2.2)을 했다 | 회고 기록 |
+| S-8 | 회고 3줄(잘된 점, 문제, 다음 Sprint 바꿀 것)과 사용자 실제 투입 시간을 기록했다. S1·S3 종료 시 재추정(`11-development-roadmap.md` §2.2)을 했다. S3 이후에는 소스 점검(`19-content-spec.md` §8.5)을 했고 결정(추가·교체·은퇴 또는 변경 없음)을 기록했다 | 회고 기록 |
 | S-9 | 백업: S2 이후 일일 자동 백업이 그 단계를 진행하는 동안 실패 없이 실행되었고(실패 시 조치 기록), S6 이후에는 월 1회 복구 리허설 기록이 있다 | 백업 로그, 리허설 기록표 |
 | S-10 | AI 비용(S3 이후): 이번 Sprint 비용 합계와 월 예산 대비 비율을 기록했다 | `GET /me` aiUsage 또는 `ai_call_log` 집계 |

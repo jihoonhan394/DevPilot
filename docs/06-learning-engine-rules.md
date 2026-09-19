@@ -1,6 +1,6 @@
 # 06. Learning Engine Rules
 
-> Status: Accepted (v3) · Last updated: 2026-09-18 · Related: ADR-008, ADR-009, ADR-017, ADR-018, `04-domain-model-and-db.md`, `19-content-spec.md`
+> Status: Accepted (v3) · Last updated: 2026-09-19 · Related: ADR-008, ADR-009, ADR-017, ADR-018, ADR-039, `04-domain-model-and-db.md`, `19-content-spec.md`
 >
 > Planner, study budget, deadline risk(축소·확장 양방향), 복습 스케줄(교차 학습 포함), skill 레벨 갱신, attempt 판정, Hint Ladder, 러버덕·코드 읽기, verification guard, 계획 버전, 지표의 **결정적 규칙**이다. 이 문서의 모든 규칙은 AI 없이 동작한다 — 단, 러버덕(§9.5)과 `READ_CODE` 제안(§5.3)은 AI가 있어야 하므로 `aiStatus`가 불가하면 제안하지 않는다.
 >
@@ -53,9 +53,10 @@ DST vector (`America/New_York`, dayStartHour=4, 2026-03-08 02:00 EST→03:00 EDT
 ### 3.1 Horizon
 
 ```text
-horizonDate = (checkpointDate != null && checkpointDate > today) ? checkpointDate
-                                                                  : targetCompletionDate
+horizonDate = targetCompletionDate        # 학습 목표의 목표일 (learning_goal.target_completion_date)
 ```
+
+학습 목표의 날짜는 목표일 하나다(ADR-039). 계획 템플릿 배치의 창 끝도 같은 날이다(`19` §5.2).
 
 ### 3.2 Nominal budget
 
@@ -98,7 +99,7 @@ effectiveMinutes = floorDiv(nominalMinutes × completionRateBp, 10_000)
 ### 4.1 대상
 
 - 활성 plan의 `plan_skill_target` 중 `deferred=false`이고 skill이 `active=true`인 항목
-- milestone의 단계(준비/정리)와 무관하게 모든 MUST 항목을 horizon(중간 점검일, 없으면 학습 완료 목표일)까지의 필요 시간으로 계산한다. 중간 점검일에는 핵심 항목의 증거가 이미 있어야 하고, 그 뒤 정리 단계는 만든 것을 설명하고 CS 기초를 채우는 시간이라는 원칙 때문이다.
+- milestone의 단계(`PREPARATION`/`CONSOLIDATION`)와 무관하게 모든 MUST 항목을 horizon(목표일)까지의 필요 시간으로 계산한다. "설명과 정리" milestone에 들어 있는 MUST skill도 목표일까지 끝내야 하는 목표이기 때문이다.
 - `requiredMust`: priority=MUST 합계, `requiredShould`: priority=SHOULD 합계. LATER는 계산하지 않는다.
 
 ### 4.2 Skill별 필요 시간
@@ -269,12 +270,15 @@ if comebackMode: d = min(d, 2)
 
 ```text
 후보: content/curated-repos.yaml의 readings 중
+      - retired가 true가 아니고 (은퇴한 단위는 조회만 된다, 19 §8.2)
       - skillCodes에 해당 skill code가 들어 있고
       - 그 사용자가 COMPLETED한 READ_CODE task의 reading key가 아니고
       - 최근 14 plan-day 안에 제안된 적이 없는 것
 정렬: reading.key ASC              # repo key는 reading.key 안에 들어 있다
 선택: 첫 번째. 후보가 비면 READ_CODE를 제안하지 않고 3번으로 내려간다
 ```
+
+`READ_CODE` 완료 때 사용자가 고르는 평가(`learning_task.reading_feedback` — `HELPFUL`/`TOO_HARD`/`BORING`, 선택, `05` §8.4)는 **이 선택 규칙을 포함해 어떤 레벨·planner·budget 규칙의 입력도 아니다.** 저장만 하고, 사람이 하는 소스 점검(`19` §8.5)에서만 읽는다.
 
 `estimatedMinutes`는 **콘텐츠의 `reading.estimatedMinutes`를 그대로 쓴다**(서버가 다시 계산하지 않는다). difficulty는 2로 고정한다 — 범위가 고정되어 있어 §5.5의 `LOW_ENERGY_DEEP_TASK`(difficulty ≥ 4)에도, `HIGH_ENERGY_HARD_TASK`(difficulty ≥ 3)에도 걸리지 않는다.
 
@@ -882,7 +886,7 @@ AI 출력 파싱 직후 finding마다 순서대로 적용한다.
 |---|---|
 | milestone `status`, `description`, `sortOrder` | in-place PATCH (`version` 필수) |
 | milestone 추가·삭제, 날짜·priority·skill 구성 변경, skill target defer/축소 | **새 plan version** (`POST /plans/{id}/replan`) |
-| 학습 목표 날짜 변경 | 학습 목표 즉시 저장 + 활성 plan `replan_recommended = true` |
+| 목표일 변경 | 학습 목표 즉시 저장 + 활성 plan `replan_recommended = true` |
 
 ### 11.2 Replan 절차 (한 트랜잭션)
 
@@ -931,13 +935,13 @@ AI 출력 파싱 직후 finding마다 순서대로 적용한다.
 | `completedRubberDuckSessions` | status = COMPLETED `rubber_duck_session` 수 (기간 내 `completed_at`의 plan-day). skill 유무와 무관하다 — 이벤트가 아니라 세션 행으로 센다(RD-7) | 개 |
 | `riskLevel`, `ratioBp` | 기간 마지막 snapshot | — |
 | `weakThinkingAxes` | axis별 `MISSED` 비율(`MISSED / 전체 observation`) 상위 3개, observation 3개 이상인 axis만 | 목록 |
-| `requirementCoverageBp` | 최근 분석한 요구사항 문서 5개의 REQUIRED 중 fit = READY 비율 | bp |
+| `requirementCoverageBp` | 최근 분석한 요구사항 문서(로드맵 비교에 붙여넣은 로드맵·기술 목록) 5개의 REQUIRED 항목 중 fit = READY 비율 | bp |
 
 ---
 
-## 13. 요구 역량 분류 (`RequirementFitClassifier`)
+## 13. 로드맵 항목 분류 (`RequirementFitClassifier`)
 
-요구사항 문서의 requirement item마다 적용한다. 자기평가가 아니라 **증거 레벨**(evidence level)로 판단한다.
+로드맵 비교(FR-19)에서 요구사항 문서의 requirement item(로드맵·기술 목록에서 뽑은 항목)마다 적용한다. 자기평가가 아니라 **증거 레벨**(evidence level)로 판단한다.
 
 ```text
 if requirement.skill_id == null → fitCategory = null (UI: "분류 불가")

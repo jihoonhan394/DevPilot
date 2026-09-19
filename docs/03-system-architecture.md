@@ -1,6 +1,6 @@
 # 03. System Architecture
 
-> Status: Accepted (v2) · Last updated: 2026-09-18 · Related: ADR-002, ADR-005, ADR-011, ADR-012, ADR-014, ADR-019
+> Status: Accepted (v2) · Last updated: 2026-09-19 · Related: ADR-002, ADR-005, ADR-011, ADR-012, ADR-014, ADR-019
 >
 > 이 문서는 **모듈 경계, 패키지와 핵심 클래스 이름, 요청 처리 순서, 트랜잭션/비동기 규칙, 설정값 전체 목록**을 정의한다. 여기 적힌 이름은 구현에서 그대로 쓴다. 이름을 바꿀 때는 이 문서도 함께 수정한다.
 
@@ -62,7 +62,7 @@ Base package: `com.devpilot`
 |---|---|---|
 | `common` | 오류 처리, 보안 설정, 웹 필터, 시간, 설정 바인딩, JPA 기반 클래스, idempotency, 비동기 실행기 | `idempotency_record` |
 | `user` | 사용자 식별·프로비저닝, 프로필, 계정 삭제, 캘린더 피드 (export는 `account`) | `app_user` |
-| `goal` | 학습 목표(학습 완료 목표일·중간 점검일), 집중 skill | `learning_goal`, `learning_goal_focus_skill` |
+| `goal` | 학습 목표(학습 트랙·목표일), 집중 skill | `learning_goal`, `learning_goal_focus_skill` |
 | `skill` | skill catalog 조회, 사용자 skill state, **skill 레벨 갱신 규칙** | `skill`, `skill_prerequisite`, `role_skill_target`, `user_skill_state`, `skill_state_change` |
 | `learning` | 학습 세션, **학습 이벤트 기록**, **Hint Ladder** | `learning_session`, `learning_event`, `hint_disclosure` |
 | `plan` | 계획·milestone·버전, 계획별 skill 목표, **study budget, deadline risk**, replan, 진행 스냅샷 | `learning_plan`, `plan_milestone`, `milestone_skill`, `plan_skill_target`, `plan_progress_snapshot` |
@@ -71,7 +71,7 @@ Base package: `com.devpilot`
 | `training` | challenge 생성·검증·조회, attempt, 제출·평가, outcome 계산, 진단 challenge | `challenge`, `challenge_skill`, `challenge_attempt`, `challenge_submission` |
 | `coach` | 코드 리뷰 요청, 분석, finding 응답, thinking pattern 기록, 원문 purge | `coach_review`, `coach_finding`, `thinking_pattern_observation` |
 | `evidence` | evidence 후보·승인·export, 주간 리뷰 | `evidence_candidate`, `weekly_review` |
-| `radar` | 요구 역량 비교: 요구사항 문서 분석, 요구사항 항목 매칭 | `requirement_doc`, `requirement_item` |
+| `radar` | 로드맵 비교: 붙여넣은 로드맵·기술 목록(요구사항 문서) 분석, 항목 매칭 | `requirement_doc`, `requirement_item` |
 | `onboarding` | 온보딩 일괄 처리 (user, goal, plan, skill 조합) | (없음) |
 | `dashboard` | 읽기 전용 집계 | (없음) |
 | `account` | 사용자 데이터 export (전 모듈 읽기 집계) | (없음) |

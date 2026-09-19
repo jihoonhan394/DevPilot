@@ -1,6 +1,6 @@
 # 14. Architecture Decision Records
 
-> Status: Accepted (v3) · Last updated: 2026-09-18 · Related: `20-decisions-and-risks.md`, `03-system-architecture.md`, `11-development-roadmap.md` §4
+> Status: Accepted (v3) · Last updated: 2026-09-19 · Related: `20-decisions-and-risks.md`, `03-system-architecture.md`, `11-development-roadmap.md` §4
 >
 > 되돌리기 비용이 큰 결정과 그 이유를 기록한다. 결정을 바꿀 때는 기존 ADR을 고치지 않고 `Superseded by ADR-xxx`로 표시한 뒤 새 ADR을 추가한다. 적용된 기본값(DEC)은 `20-decisions-and-risks.md` §1, 확인할 외부 사실은 같은 문서 §3이 기준이다.
 
@@ -10,7 +10,7 @@
 
 | 항목 | 규칙 |
 |---|---|
-| 새 ADR | 다음 번호(ADR-039~)로 추가. 필드: Status, Date, Context, Decision, Alternatives considered, Consequences, Related DEC |
+| 새 ADR | 다음 번호(ADR-040~)로 추가. 필드: Status, Date, Context, Decision, Alternatives considered, Consequences, Related DEC |
 | Status 값 | `Proposed`(에이전트 초안, 사용자 승인 전) · `Accepted` · `Superseded by ADR-xxx` |
 | 에이전트 | 문서 모순·미정 결정을 발견하면 구현을 멈추고 `Proposed` ADR 초안을 PR로 올린다(`11-development-roadmap.md` §7). `Accepted`로 바꾸는 것은 사용자만 한다 |
 | Spike 결과 | SP-1~SP-5 결과는 해당 ADR의 Consequences에 "SP-n 결과 (날짜)" 줄로 추가한다 |
@@ -58,6 +58,7 @@
 | ADR-036 | 학습 루프: 읽는다 → 만든다 → 러버덕으로 설명한다 → 반복한다 | Accepted | DEC-24, DEC-26 |
 | ADR-037 | 날짜 없는 단계(M1/M2) | Accepted | DEC-25 |
 | ADR-038 | 첫 릴리스 전 migration 확정, 이후 불변 | Accepted | — |
+| ADR-039 | 학습 목표 = 학습 트랙 + 목표일 하나 | Accepted | DEC-27 |
 
 ---
 
@@ -605,7 +606,7 @@
 
 - **Status**: Accepted · **Date**: 2026-09-18 · **Related DEC**: DEC-25
 
-**Context** — v2 로드맵은 2주 스프린트 8개를 날짜로 고정했고(S0 2026-09-17 ~ S7 2027-01-25), "2026-10-26 실사용 시작", "2027-01-05 중간 점검", "2026-11-09 stop-loss" 같은 날짜를 문서 곳곳에 썼다. 이 날짜들은 사용자가 정한 적이 없다. 사용자는 "최대한 빠르게 만들고 공부할 때 쓴다"고 했고, 학습 목표일은 사용자가 설정창에 등록하는 값이다. 구현은 전부 에이전트가 하므로 "사람이 저녁에 짬 내서 만드는" 전제의 날짜 고정 스프린트가 맞지 않는다. 한편 S0~S7 ID는 문서 전체에 1,200곳 넘게 참조되어 있다.
+**Context** — v2 로드맵은 2주 스프린트 8개를 날짜로 고정했고(S0 2026-09-17 ~ S7 2027-01-25), "2026-10-26 실사용 시작", "2026-11-09 stop-loss" 같은 날짜를 문서 곳곳에 썼다. 이 날짜들은 사용자가 정한 적이 없다. 사용자는 "최대한 빠르게 만들고 공부할 때 쓴다"고 했고, 목표일은 사용자가 설정창에 등록하는 값이다. 구현은 전부 에이전트가 하므로 "사람이 저녁에 짬 내서 만드는" 전제의 날짜 고정 스프린트가 맞지 않는다. 한편 S0~S7 ID는 문서 전체에 1,200곳 넘게 참조되어 있다.
 
 **Decision** — (1) **S0~S7 ID는 유지하되 의미를 "구현 순서 단계"로 바꾼다.** 기간·날짜가 없고 exit criteria를 통과하면 끝난다. (2) **M1 = S0~S3**(쓸 수 있는 최소, S3 완료 = 실사용 시작), **M2 = S4~S7**(M1을 쓰면서 필요한 순서로, 잠정). (3) budget·risk·replan 제안은 S5 → **S2**(기한 역산은 MUST이고 planner 입력이다), ICS 캘린더·AI 문제 생성은 S3 → S5, CSP 강제는 S3 → S4, evals v1은 S4 → S3. (4) stop-loss는 날짜 대신 "실사용 시작 + 14 plan-day"로 판정한다(`11` §6). (5) 문서의 지어낸 날짜를 지운다. 알고리즘 예시 입력 날짜(`19` §5.4, `05` JSON 예시 등)는 예시임이 분명하면 둔다. 기존 ADR 본문의 날짜 표현(ADR-024·031·033)은 결정 내용을 바꾸지 않고 단계 표현으로만 고쳤다.
 
@@ -624,3 +625,20 @@
 **Alternatives considered** — 지금부터 보정 migration을 쌓기(운영 데이터가 없는데 이력만 길어진다).
 
 **Consequences** — 개발 DB는 확정된 V1~V9로 다시 만든다. 첫 릴리스 이후에는 `AGENTS.md`의 "적용된 Flyway migration 수정 금지"가 예외 없이 적용된다.
+
+## ADR-039 학습 목표 = 학습 트랙 + 목표일 하나
+
+- **Status**: Accepted · **Date**: 2026-09-19 · **Related DEC**: DEC-27
+
+**Context** — 계획과 기한 역산에 필요한 사용자 입력은 **무엇을**(학습 트랙)과 **언제까지**(목표일)다. 날짜가 하나면 budget horizon(`06` §3.1)과 계획 템플릿 배치 창(`19` §5)의 끝이 같은 날이 되어 규칙이 한 갈래로 정해지고, 온보딩 첫 단계가 짧아진다. 현재 실력은 자기 신고가 아니라 짧은 진단(FR-02)과 증거 레벨(FR-06)로 잰다.
+
+**Decision** —
+1. 학습 목표(`learning_goal`)는 학습 트랙(`target_role`, 화면 "학습 트랙")과 **목표일**(`target_completion_date`, 화면 "목표일") 두 값이다. 목표일은 내일(plan-day + 1)부터 오늘 + 3년까지다.
+2. budget·risk horizon은 항상 목표일이다: `horizonDate = targetCompletionDate`(`06` §3.1).
+3. 계획 템플릿 배치는 창 하나 `[today, targetCompletionDate]`에 모든 milestone을 템플릿 순서대로 `weightBp`에 따라 배분한다. `PREPARATION` milestone이 앞에, `CONSOLIDATION`("설명과 정리")이 목표일 바로 앞에 온다(CV-33). test vector는 `19` §5.4 V1~V8이다.
+4. 사용자 프로필(`app_user`)은 계획·날짜 계산에 쓰는 값(표시 이름, timezone, 하루 시작 시각, 평일·주말 학습 시간)만 받는다. 개발 경험 같은 자기 신고 값은 받지 않는다.
+5. 온보딩 1단계 제목은 "무엇을, 언제까지 공부할지 정해요"이고, 입력은 표시 이름·학습 트랙·목표일(빠른 선택 "3개월 후"·"6개월 후"·"1년 후"·"직접 선택")이다(`02` SCR-ONBOARDING).
+
+**Alternatives considered** — 필수(MUST) 항목용 날짜를 따로 받아 배치 창과 horizon을 둘로 나누기(규칙이 두 갈래가 되고 사용자가 정할 값이 는다. "설명과 정리"의 위치는 템플릿 순서만으로 정해진다) · 개발 경험 프로필로 시작 수준이나 AI 맥락을 조정하기(자기 신고라 부정확하다. 진단과 증거 레벨이 같은 일을 더 정확하게 한다).
+
+**Consequences** — API: `LearningGoalView`·`LearningGoalUpdateRequest`·`LearningGoalInput`의 날짜 필드는 `targetCompletionDate` 하나이고, `OnboardingRequest`·`MeResponse`·`UpdateMeRequest`는 프로필 필드로 표시 이름·timezone·하루 시작 시각·학습 시간만 갖는다(`05` §3·§4·§5). DB: `learning_goal`의 날짜 컬럼은 `target_completion_date` 하나다(V2, ADR-038에 따라 첫 릴리스 전 확정). 목표일을 바꾸면 horizon과 배치 창이 함께 바뀌므로 활성 plan에 `replan_recommended = true`를 둔다(`06` §11.1). 화면에는 날짜 표시가 목표일 하나다(계획 헤더·설정 요약 "목표일 {date}", 타임라인의 목표일 표시).

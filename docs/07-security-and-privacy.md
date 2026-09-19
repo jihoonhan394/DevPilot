@@ -1,6 +1,6 @@
 # 07. Security & Privacy
 
-> Status: Accepted (v2) · Last updated: 2026-09-18 (v3: 러버덕 · 사이드 프로젝트 · 코드 읽기) · Related: ADR-013, ADR-014, DEC-01, DEC-04, DEC-06, DEC-08, DEC-11, DEC-13, DEC-15, DEC-16, NFR-04, NFR-05, AC-07, AC-08, AC-13, AC-14, AC-15, AC-18, AC-20, AC-23, AC-25, AC-26, AC-27, AC-28, ADR-030~035, DEC-05~23
+> Status: Accepted (v2) · Last updated: 2026-09-19 (v3: 러버덕 · 사이드 프로젝트 · 코드 읽기) · Related: ADR-013, ADR-014, DEC-01, DEC-04, DEC-06, DEC-08, DEC-11, DEC-13, DEC-15, DEC-16, NFR-04, NFR-05, AC-07, AC-08, AC-13, AC-14, AC-15, AC-18, AC-20, AC-23, AC-25, AC-26, AC-27, AC-28, ADR-030~035, DEC-05~23
 >
 > 이 문서는 DevPilot의 **보안 통제, 위협 모델, 감사 이벤트, secret 목록, 개인정보 처리, 보안 테스트 목록**을 정의한다. 인증·필터·트랜잭션 구조는 `03-system-architecture.md`, 오류 코드는 `05-api-spec.md` §1.3, AI 가드와 마스킹 패턴은 `17-ai-integration.md`, 배포·runbook은 `10-deployment-and-operations.md`가 기준이다. 이 문서의 규칙과 충돌하는 구현은 허용하지 않는다.
 >
@@ -330,7 +330,7 @@ backend에는 로그아웃 endpoint가 없다.
 | `evidence_candidate.reference_links[]` | 사용자 | scheme `https`만. 서버는 요청하지 않는다 |
 | `coach_finding.source_reference` | AI 출력 | 저장 전 `VerificationGuard`가 호스트 문자열만 검사(`06-learning-engine-rules.md` §10). 서버는 요청하지 않는다 |
 | `side_project.repo_url` | 사용자 (`POST`·`PATCH /side-projects`, 온보딩 `sideProject`) | `java.net.URI` 파싱 성공, scheme `http`/`https`, host 존재, 500자(`05` §19.2). **저장만 한다 — 서버는 이 URL을 요청하지 않고 저장소 내용을 가져오지 않는다.** 마스킹 대상이 아니다(URL 필드, `05` §1.11) |
-| `content/curated-repos.yaml`의 `repos[].url`·`cloneHint` | 콘텐츠 (운영자가 PR로 관리, `19` §3.8) | https만(CV-81). **서버는 저장소를 fetch하지 않는다.** 코드 읽기(`READ_CODE`)는 사용자가 `cloneHint`로 **로컬에 clone해 IDE로** 읽고, 서버는 "무엇을 왜 읽는지"(경로·줄 범위·질문)만 준다. `GET /readings/{readingKey}` 응답에는 코드 본문이 없다(`05` §19.7) |
+| `content/curated-repos.yaml`의 `repos[].url`·`cloneHint` | 콘텐츠 (운영자가 PR로 관리, `19` §3.8) | https만(CV-81). **서버는 저장소를 fetch하지 않는다.** 코드 읽기(`READ_CODE`)는 사용자가 `cloneHint`로 **로컬에 clone해 IDE로** 읽고, 서버는 "무엇을 왜 읽는지"(경로·줄 범위·질문)만 준다. `GET /readings/{readingKey}` 응답에는 코드 본문이 없다(`05` §19.7). 저장소·단위를 고르고 바꾸는 소스 점검(`19` §8.5)도 사람이 브라우저와 로컬 clone으로 하고, 서버·배치 작업은 저장소를 조회하지 않는다 |
 
 클라이언트는 `https` URL만 탭 가능한 링크로 렌더링하고, 링크 옆에 host를 그대로 표시한다(§9.5). `http` URL은 텍스트로만 보인다. 이 규칙은 `repoUrl`과 reading의 저장소 `url`에도 같다.
 
@@ -484,7 +484,7 @@ DeepSeek에는 workspace도 콘솔 지출 한도도 없다. 상한은 두 겹뿐
 | 기능 | 동의 방식 |
 |---|---|
 | Project Coach | 요청마다 `confidentialConsent: true` 필수(아니면 400, DB CHECK로 이중 방어). 체크박스 문구(`02` SCR-COACH-NEW): "회사 코드나 비밀정보가 아닌 개인 프로젝트 코드예요" + 바로 아래 고지 **"코드는 AI 공급자 DeepSeek(중국)으로 전송돼요. 입력을 학습에 쓰지 않는다는 약정은 없어요."** + "원문은 30일 뒤 자동으로 지워져요." |
-| Challenge 제출 평가, 복습 AI 평가, 응답 피드백, hint, 러버덕(턴·정리), 요구사항 분석, evidence 초안 | 기능 첫 사용 시 1회 안내 다이얼로그: **"입력 내용이 AI 공급자 DeepSeek(중국)으로 전송돼요. 입력을 학습에 쓰지 않는다는 약정은 없어요."** 동의 상태는 기기 로컬 저장. 서버 저장 없음 |
+| Challenge 제출 평가, 복습 AI 평가, 응답 피드백, hint, 러버덕(턴·정리), 로드맵 비교 분석, evidence 초안 | 기능 첫 사용 시 1회 안내 다이얼로그: **"입력 내용이 AI 공급자 DeepSeek(중국)으로 전송돼요. 입력을 학습에 쓰지 않는다는 약정은 없어요."** 동의 상태는 기기 로컬 저장. 서버 저장 없음 |
 | 초대 사용자 | §14.3 개인정보 안내에 AI 공급자 전송을 포함 |
 
 ### 8.2 전송 전 처리 순서
@@ -847,7 +847,7 @@ S0에서는 공급망 통제를 **gitleaks + Action SHA 고정 + Dependabot(grad
 
 - 계정 식별은 JWT의 `sub`로 한다. DevPilot DB는 이메일을 저장하지 않는다(`app_user`에 email 컬럼 없음, allowlist는 환경변수). `devtoken` 모드의 `sub`는 이메일에서 유도한 UUID v5다.
 - **나이, 생년월일, 성별, 전화번호, 주소, 실명, 소속은 수집하지 않는다.**
-- 입력 화면에 "회사 코드·고객 정보·개인정보를 넣지 마세요" 안내를 둔다(Coach, 러버덕, 사이드 프로젝트, 요구 역량 비교, Evidence).
+- 입력 화면에 "회사 코드·고객 정보·개인정보를 넣지 마세요" 안내를 둔다(Coach, 러버덕, 사이드 프로젝트, 로드맵 비교, Evidence).
 
 ### 14.2 수집 항목
 
@@ -856,14 +856,15 @@ S0에서는 공급망 통제를 **gitleaks + Action SHA 고정 + Dependabot(grad
 | 이메일 | 서버 `api.env`의 allowlist와 발급된 JWT의 `email` claim(저장하지 않음). `devtoken` 모드에서는 **로그인 IP·GitHub 프로필을 수집하지 않는다** | 로그인, 접근 제어 | allowlist에서 제거할 때까지 |
 | (Later) GitHub 사용자 ID·이름·아바타 URL, 로그인 시각·IP | Supabase Auth | 로그인 | Supabase 도입 시 §13.2 |
 | 허용 이메일 목록 | 서버 `/opt/devpilot/api.env` | 접근 제어 | 사용자 제외 시 삭제 |
-| 표시 이름, timezone, 하루 시작 시각, 학습 가능 시간, 개발 경험 프로필(`experienceProfile`), 개발 시작일 | `app_user` | 계획·날짜 계산 | 계정 유지 기간 |
-| 학습 목표 날짜(학습 완료 목표일·중간 점검일), 집중 skill | `learning_goal` | 계획 | 계정 유지 기간 |
+| 표시 이름, timezone, 하루 시작 시각, 학습 가능 시간 | `app_user` | 계획·날짜 계산 | 계정 유지 기간 |
+| 학습 목표(학습 트랙·목표일), 집중 skill | `learning_goal` | 계획 | 계정 유지 기간 |
 | 학습 기록 (세션, 이벤트, 복습 답변, 자기설명, 회고, skill 상태) | 각 테이블 | 학습 코칭 | 계정 유지 기간 |
 | 러버덕 설명(마스킹본)·AI 질문·정리 | `rubber_duck_session`, `rubber_duck_turn` | 설명 대화, 복습 카드 생성 | 계정 유지 기간 (원문은 저장하지 않음, §8.3) |
 | 사이드 프로젝트 이름·설명·저장소 URL·스택 | `side_project` | 과제 제안(PROJECT_TASK), 코치 리뷰·러버덕 대상 | 사용자가 삭제할 때까지 또는 계정 삭제까지 |
 | 코드·로그 원문 (마스킹본) | `coach_review.content` | 코드 리뷰 | 30일 |
 | 제출 코드·답안 (마스킹본) | `challenge_submission` | 평가 | 계정 유지 기간 |
-| 요구사항 문서 원문 (마스킹본) | `requirement_doc.source_text` | 요구사항 분석 | 180일 |
+| 코드 읽기 평가(`HELPFUL`/`TOO_HARD`/`BORING`, 선택) | `learning_task.reading_feedback` | 소스 점검(`19` §8.5) — 사용자가 export로 내려받아 사람이 읽는다. 규칙 입력 아님 | 계정 유지 기간 |
+| 로드맵 비교 원문 (마스킹본) | `requirement_doc.source_text` | 로드맵 비교 분석 | 180일 |
 | AI 호출 메타데이터 | `ai_call_log` | 비용 통제 | 180일 |
 | 캘린더 토큰 해시 | `app_user` | 캘린더 구독 | 재발급·계정 삭제까지 |
 | `userRef`, `traceId` | 컨테이너 로그 | 장애 분석, 감사 | 로테이션 (§6.4) |

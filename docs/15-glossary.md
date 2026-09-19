@@ -1,6 +1,6 @@
 # 15. Glossary
 
-> Status: Accepted (v2) · Last updated: 2026-09-18 (v3: 러버덕 · 코드 읽기 · 사이드 프로젝트 · 교차 학습 · 확장 제안 · 단계) · Related: `04-domain-model-and-db.md` §3, `05-api-spec.md`, `06-learning-engine-rules.md`, `08-coding-conventions.md`, `11-development-roadmap.md`, ADR-010
+> Status: Accepted (v2) · Last updated: 2026-09-19 (v3: 러버덕 · 코드 읽기 · 사이드 프로젝트 · 교차 학습 · 확장 제안 · 단계 · 소스 점검) · Related: `04-domain-model-and-db.md` §3, `05-api-spec.md`, `06-learning-engine-rules.md`, `08-coding-conventions.md`, `11-development-roadmap.md`, ADR-010
 >
 > 용어 정의와 **한국어 → 영어 식별자 명명 사전**이다. 코드·DB·API·Dart의 이름은 §6을 따른다. 사전에 없는 도메인 용어가 필요하면 구현 전에 이 문서에 먼저 추가한다(`16-definition-of-ready-done.md` §1).
 
@@ -10,9 +10,9 @@
 
 | 용어 | 정의 |
 |---|---|
-| Learning goal (학습 목표) | 학습 트랙(`JAVA_BACKEND`)과 학습 목표일, 선택 항목인 중간 점검일(MUST 항목을 끝낼 날). 사용자당 1개 |
-| Checkpoint date (중간 점검일) | 학습 목표일보다 앞서 핵심(MUST) 항목을 끝내기로 정한 날(`checkpointDate`, 선택). 있으면 budget horizon이 되고, 그 뒤는 정리 단계다 |
-| Consolidation phase (정리 단계) | 중간 점검일부터 학습 목표일까지의 구간(계획 템플릿 milestone phase `CONSOLIDATION`, `19` §5). 만든 것을 설명으로 정리하고 CS 기초의 빈틈을 채운다(milestone "설명과 정리", `EXPLAIN_AND_CONSOLIDATE`) |
+| Learning goal (학습 목표) | **무엇을, 언제까지** — 학습 트랙(`JAVA_BACKEND`)과 목표일 하나. 사용자당 1개(ADR-039) |
+| Target date (목표일) | 사용자가 정한 학습 목표 날짜(`targetCompletionDate`) 하나. budget horizon이자 계획 템플릿 배치 창의 끝이다(`06` §3.1, `19` §5). 내일 ~ 오늘 + 3년 |
+| Consolidation phase (정리 단계) | 계획 템플릿의 마지막 milestone phase `CONSOLIDATION`("설명과 정리", `EXPLAIN_AND_CONSOLIDATE`, `19` §5). 한 창 안에서 목표일 바로 앞에 놓인다. 만든 것을 설명으로 정리하고 CS 기초의 빈틈을 채운다 |
 | Learning plan (학습 계획) | 목표까지의 milestone과 skill 목표 묶음. 구조가 바뀌면 새 plan version이 생긴다 |
 | Plan version (계획 버전) | 불변 계획 스냅샷 번호(`planVersion`). 사용자당 `ACTIVE` 1개, 이전 버전은 `SUPERSEDED` |
 | Milestone | 기간(시작·종료일)과 priority, skill 목록을 가진 계획 단위 |
@@ -30,7 +30,7 @@
 | Thinking pattern (사고 패턴) | 코드에서 사용자가 스스로 고려하는 관점(10개 축)의 누적 관찰 |
 | Evidence (증거) | 사용자가 직접 해결하고 설명한 학습·문제 해결 사실. 후보 → 사용자 승인(`ACCEPTED`). 승인한 증거는 STAR(상황-과제-행동-결과) 형식의 **학습 기록 정리**(Markdown export)로 내보낼 수 있다 |
 | Weekly review (주간 리뷰) | 지난 plan-day 주의 지표 스냅샷과 사용자 회고 |
-| Requirement Radar (요구 역량 비교) | 기술 요구사항 목록(팀 기술 스택 문서, 프로젝트 명세, 학습 로드맵 등)을 붙여넣어 요구사항별 준비 상태(READY/STRETCH/LATER)를 보는 기능. 점수·확률 없음, 서버는 URL을 가져오지 않는다 |
+| Roadmap compare (로드맵 비교) | 공개된 학습 로드맵이나 기술 목록을 붙여넣어 항목별 준비 상태(READY/STRETCH/LATER)를 보는 기능(FR-19, 모듈 `radar`). 점수·확률 없음, 서버는 URL을 가져오지 않는다 |
 | Comeback mode (복귀 모드) | 최근 3 plan-day 학습이 없다가 돌아온 날 부담을 줄이는 planner 보정 |
 | Calendar feed (캘린더 구독) | 토큰 URL로 제공하는 ICS 일정. 학습 시작 알림을 캘린더 앱에 맡긴다 |
 | Onboarding (온보딩) | 목표·시간·시작 수준(짧은 진단 또는 카테고리 자기평가 13개, `runDiagnostic`)·계획 템플릿·사이드 프로젝트(`sideProject`, 건너뛰기 가능)를 한 번에 저장하는 첫 설정 |
@@ -42,6 +42,9 @@
 | Code reading (코드 읽기) | 검증된 오픈소스의 **파일 1개·줄 범위 1개**를 읽고 러버덕으로 설명하는 과제(`TaskType.READ_CODE`). 서버는 코드를 가져오지 않고 사용자가 로컬에 clone해 읽는다. 완료 조건은 러버덕 세션 1개 완료(RC-1) |
 | Reading (읽기 범위) | 코드 읽기 과제 하나가 가리키는 콘텐츠 항목: 저장소·경로·줄 범위·질문·볼 지점(`content/curated-repos.yaml`의 `readings[]`, key `READ.<REPO>.<TOPIC>.NNN`) |
 | Curated repo (큐레이션 저장소) | 코드 읽기 대상으로 검증해 등록한 오픈소스 저장소(`repos[]`). 근거 ID인 curated source(§3)와 다르다 |
+| Retired reading (은퇴한 읽기 범위) | 새로 제안하지 않지만 지난 과제를 위해 계속 조회되는 reading(`retired: true`, key는 `retired.readingKeys`에도 있다, `19` §8.2) |
+| Reading feedback (읽기 평가) | `READ_CODE` 완료 때 사용자가 고를 수 있는 평가 하나: 도움 됐어요(`HELPFUL`)·어려웠어요(`TOO_HARD`)·지루했어요(`BORING`). 선택이고 규칙 입력이 아니다 |
+| Source review (소스 점검) | `READ_CODE` 저장소·읽기 범위를 사람이 주기적으로 다시 보고 추가·교체·은퇴를 정하는 수동 절차. 첫 점검은 S3 시작 전, 이후 단계 회고마다(`19` §8.5) |
 | Pinned commit (기준 커밋) | reading의 줄 번호가 맞는 저장소 커밋 SHA(`pinnedCommit`, 40자 hex). 저장소가 바뀌어도 줄 번호가 틀어지지 않게 `cloneHint`가 이 커밋을 체크아웃한다(`19` §8.4) |
 | Side project (사이드 프로젝트) | 학습한 것을 적용해 **직접 만드는** 사용자 프로젝트(기본 예: "주문 시스템", `SideProject`). `PROJECT_TASK` 과제와 코치 리뷰·러버덕(`PROJECT_WORK`)의 대상이다. DevPilot 자체는 사이드 프로젝트가 아니다 |
 
@@ -51,7 +54,7 @@
 |---|---|
 | Plan-day | 사용자 timezone과 하루 시작 시각 기준의 "하루". 모든 "오늘"은 plan-day다(`06` §2) |
 | Day start hour (하루 시작 시각) | plan-day가 바뀌는 로컬 시각(0~6, 기본 4) |
-| Horizon | budget 계산의 마감일. 미래의 중간 점검일, 없으면 학습 목표일 |
+| Horizon | budget 계산의 마감일 = 목표일(`targetCompletionDate`, `06` §3.1) |
 | Nominal budget | horizon까지 설정된 평일·주말 학습 가능 시간의 합(분) |
 | Completion rate (완료율) | 최근 28 plan-day의 실제 학습 시간 / 가능 시간(bp, 3000~10000, 기록 부족 시 7000) |
 | Effective budget | nominal × completion rate. 실제로 쓸 수 있을 것으로 보는 시간 |
@@ -62,7 +65,7 @@
 | Interleaving (교차 학습) | 같은 skill 복습 카드가 3장 연속 나오지 않게 출제 순서만 바꾸는 결정적 재배치(`RV-INTERLEAVE`, `06` §6.5). 무엇을 낼지(정렬·cap)는 바꾸지 않는다 |
 | Don't-know turn ("모르겠다" 턴) | 러버덕에서 학습자 답이 "모르겠다"류인 턴. **서버가 문구·길이 규칙으로 판정한다**(AI 판정 아님). 2턴 연속이면 `CHALLENGE` 대상은 Hint Ladder로 넘길 수 있다(RD-3, `learner_stuck`, `suggestHint`) |
 | Defer (미루기) | plan skill target을 계산·후보에서 제외(`deferred = true`) |
-| Priority | `MUST`(중간 점검일 전 필수) / `SHOULD`(가능하면) / `LATER`(나중에) |
+| Priority | `MUST`(목표일 전 필수) / `SHOULD`(가능하면) / `LATER`(나중에) |
 | Practical importance (실무 중요도) | 학습 트랙에서 skill의 실무 중요도(0~1, planner에서는 micro) |
 | Factor · Modifier | planner 점수의 6개 요소와 조건부 곱셈 보정 |
 | Reason code | main task가 선택된 이유 코드. 템플릿 문구로 1~3개 표시 |
@@ -130,7 +133,7 @@
 | 단계 (S0~S7) | **구현 순서를 나타내는 단계 ID.** 기간·날짜·일수가 없고 exit criteria를 통과하면 끝난다(`11` §3). BL의 `Sprint` 열 값(`S0`~`S7`, `Later`, `공개 배포 전`)도 이 단계 ID다. "Sprint"라는 열 이름은 남아 있지만 2주 주기를 뜻하지 않는다 |
 | M1 | 쓸 수 있는 최소 = S0·S1·S2·S3. **S3 완료 = 실사용 시작**(매일 쓰기 시작). S2가 끝나면 AI 없이 Today·Review만 먼저 쓸 수도 있다(선택) |
 | M2 | S4·S5·S6·S7. M1을 쓰면서 필요한 순서로 진행한다(단계 순서는 잠정) |
-| 실사용 시작 | M1 완료(= S3 완료) 시점. 날짜로 쓰지 않는다. 학습 목표일·중간 점검일은 사용자가 설정에 등록하는 값(`learning_goal.target_completion_date`·`checkpoint_date`)이다 |
+| 실사용 시작 | M1 완료(= S3 완료) 시점. 날짜로 쓰지 않는다. 목표일은 사용자가 설정에 등록하는 값(`learning_goal.target_completion_date`)이다 |
 | Test vector | 규칙 입력과 기대 출력 표. `@ParameterizedTest`로 그대로 옮긴다 |
 | bp (basis point) | 비율 정수 표현. 1.0 = 10,000 |
 | micro | 점수·비용 정수 표현. 1.0 = 1,000,000 (`costMicroUsd`) |
@@ -166,7 +169,6 @@
 | 외부 인증 ID | `externalAuthId` | `external_auth_id` | (노출 안 함) | JWT `sub` |
 | 현재 사용자 | `CurrentUser` | — | — | 컨트롤러 파라미터 |
 | 허용 목록 | `allowedEmails`, `allowedSubjects` | — | — | 설정 `devpilot.security.allowed-*` |
-| 개발 경험 프로필 | `ExperienceProfile experienceProfile` | `experience_profile` | `experienceProfile` | 값 `WORKING_DEVELOPER`(현업 개발자) · `DEVELOPER_STARTER`(개발 입문) · `OTHER`(기타) |
 | 온보딩 완료 | `onboardingCompletedAt` | `onboarding_completed_at` | `onboardingCompleted`(boolean) | |
 | 시간대 | `timezone` (`ZoneId zoneId`) | `timezone` | `timezone` | IANA ID 문자열 |
 | 하루 시작 시각 | `dayStartHour` | `day_start_hour` | `dayStartHour` | `dayStartTime`, `resetHour` 금지 |
@@ -176,8 +178,7 @@
 | plan-day 시작 시각 | `planDayStart` | — | — | |
 | 학습 목표 | `LearningGoal`, 모듈 `com.devpilot.goal` | `learning_goal` | `/learning-goal`, `learningGoal` | |
 | 학습 트랙 | `TargetRole targetRole` | `target_role` | `targetRole` | |
-| 중간 점검일 | `checkpointDate` | `checkpoint_date` | `checkpointDate` | |
-| 학습 목표일(학습 완료 목표일) | `targetCompletionDate` | `target_completion_date` | `targetCompletionDate` | `deadline` 단독 사용 금지 |
+| 목표일 | `targetCompletionDate` | `target_completion_date` | `targetCompletionDate` | 학습 목표의 날짜는 이것 하나다. `deadline` 단독 사용 금지 |
 | 집중 skill | `LearningGoalFocusSkill` | `learning_goal_focus_skill` | `focusSkillCodes` | |
 | 학습 계획 | `LearningPlan` | `learning_plan` | `/plans`, `plan` | 일일 계획(`DailyPlan`)과 구분 |
 | 계획 버전 | `planVersion` | `plan_version` | `planVersion` | JPA `version`과 다른 필드 |
@@ -203,7 +204,7 @@
 | 필요 시간(MUST/SHOULD) | `requiredMustMinutes`, `requiredShouldMinutes` | `required_must_minutes` | `requiredMustMinutes` | |
 | 마감 위험 | `RiskLevel riskLevel` | `risk_level`, `deadline_risk` | `riskLevel`, `deadlineRisk` | |
 | 위험 비율 | `ratioBp` | `ratio_bp` | `ratioBp` | `ratio`(double) 금지 |
-| 마감 기준일 | `horizonDate` | `horizon_date` | `horizonDate` | |
+| 마감 기준일 | `horizonDate` | `horizon_date` | `horizonDate` | 값은 목표일과 같다(`06` §3.1) |
 | 일일 계획 | `DailyPlan` | `daily_plan` | `/today` | |
 | 가능 시간 | `availableMinutes` | `available_minutes` | `availableMinutes` | |
 | 컨디션 | `EnergyLevel energyLevel` | `energy_level` | `energyLevel` | `condition`, `mood` 금지 |
@@ -212,6 +213,9 @@
 | 과제 유형 | `TaskType taskType` | `task_type` | `taskType` | |
 | 코드 읽기 과제 | `TaskType.READ_CODE` | `task_type = 'READ_CODE'` | `taskType` | 개념 읽기 과제 `READING`과 다르다. 러버덕 대상 값은 `CODE_READING`이다(아래) — 두 이름을 섞지 않는다 |
 | 읽기 범위 (reading) | `CuratedReadingView`, `CuratedReadingRegistry`, `readingKey` | `reading_key` (FK 없음, CHECK `learning_task_reading_key_type`) | `/readings/{readingKey}`, `readingKey` | key 형식 `READ.<REPO>.<TOPIC>.NNN`. `Lesson`, `Snippet`, `CodeSample` 금지 |
+| 읽기 평가 | `ReadingFeedback readingFeedback` | `reading_feedback` | `readingFeedback` | 값 `HELPFUL`(도움 됐어요) · `TOO_HARD`(어려웠어요) · `BORING`(지루했어요). `READ_CODE` 완료 요청에서만, 선택. `rating`(복습 등급 `ReviewRating`)과 섞지 않는다 |
+| 은퇴한 reading | `retired` (`CuratedReadingView.retired`) | — (`curated-repos.yaml`의 `readings[].retired`, `catalog.yaml`의 `retired.readingKeys`) | `retired` | 삭제가 아니다. 조회는 되고 제안만 안 된다 |
+| 소스 점검 | — (수동 절차, 코드 없음) | — | — | `19` §8.5. 자동 job 이름으로 쓰지 않는다 |
 | 큐레이션 저장소 | `CuratedRepoView` (`repo.key`) | — (`content/curated-repos.yaml`의 `repos[]`) | `repo` | 근거 ID인 curated source(`curated-sources.yaml`)와 구분 |
 | 기준 커밋 · clone 안내 | `pinnedCommit`, `cloneHint` | — | `pinnedCommit`, `cloneHint` | `pinnedCommit`은 40자 소문자 hex SHA. `commitHash`, `revision` 금지 |
 | 사이드 프로젝트 | `SideProject`, `SideProjectService`, `SideProjectQueryService`, 모듈 `com.devpilot.project` | `side_project`, `side_project_id` | `/side-projects`, `sideProjectId`, `sideProject`(온보딩) | `Project` 단독 클래스, `sideproject`·`Sideproject`(한 단어), `PersonalProject` 금지. 코치의 `CoachProjectType`·과제 `PROJECT_TASK`와 구분 |
@@ -299,8 +303,8 @@
 | 주간 리뷰 | `WeeklyReview`, `weekStartDate` | `weekly_review`, `week_start_date` | `/weekly-reviews/{weekStartDate}` | |
 | 주간 회고 | `reflection` | `reflection` | `/reflection` | |
 | 지표 | `MetricsCalculator`, `metrics` | `metrics_json` | `metrics` | |
-| 요구사항 문서 | `RequirementDoc`, 모듈 `com.devpilot.radar` | `requirement_doc`, `source_text` | `/requirement-docs`, `requirementDocId`, `sourceText` | 붙여넣은 요구사항 목록 원문 1건. 추출된 항목(`RequirementItem`)과 구분 |
-| 요구사항 항목 | `RequirementItem`, `RequirementType` | `requirement_item` | `requirements[]` | |
+| 요구사항 문서 (로드맵 비교) | `RequirementDoc`, 모듈 `com.devpilot.radar` | `requirement_doc`, `source_text` | `/requirement-docs`, `requirementDocId`, `sourceText` | 로드맵 비교에 붙여넣은 로드맵·기술 목록 원문 1건. 추출된 항목(`RequirementItem`)과 구분. 화면 이름은 "로드맵 비교" |
+| 요구사항 항목 (로드맵 항목) | `RequirementItem`, `RequirementType` | `requirement_item` | `requirements[]` | 화면에서는 "항목" |
 | 준비 상태 분류 | `RequirementFitCategory fitCategory`, `RequirementFitClassifier` | `fit_category` | `fitCategory` | `score`, `matchRate` 금지 |
 | AI 호출 기록 | `AiCallLog` | `ai_call_log` | (비노출) | |
 | AI 작업 종류 | `AiOperation operation` | `operation` | — | |

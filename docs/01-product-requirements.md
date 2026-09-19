@@ -1,10 +1,10 @@
 # 01. Product Requirements (PRD)
 
-> Status: Accepted (v3) · Last updated: 2026-09-18 · Related: DEC-01, DEC-05, DEC-06, DEC-16, DEC-18, `02-user-scenarios-and-ux.md`, `04-domain-model-and-db.md`, `06-learning-engine-rules.md`, `11-development-roadmap.md`, `12-acceptance-criteria.md`
+> Status: Accepted (v3) · Last updated: 2026-09-19 · Related: DEC-01, DEC-05, DEC-06, DEC-16, DEC-18, DEC-27, DEC-28, ADR-039, `02-user-scenarios-and-ux.md`, `04-domain-model-and-db.md`, `06-learning-engine-rules.md`, `11-development-roadmap.md`, `12-acceptance-criteria.md`
 >
 > 이 문서는 **무엇을, 왜, 어느 단계(S0~S7)에** 만드는지 정의한다. 알고리즘 수치는 `06-learning-engine-rules.md`, enum·상태 전이는 `04-domain-model-and-db.md`, 요청·응답 DTO는 `05-api-spec.md`, 화면은 `02-user-scenarios-and-ux.md`가 기준이다. 여기서 ID(FR, NFR)를 정의하고 다른 문서는 이 ID로 참조한다.
 >
-> **v3 (2026-09-18)** — DevPilot은 **학습 도구**다. 핵심 루프를 "읽는다 → 만든다 → 설명한다 → 반복한다 → 증거가 된다"로 다시 세웠고(§1.2, §5), 러버덕(FR-25)·사이드 프로젝트(FR-26)·코드 읽기(FR-27)를 더했다. 문서에 고정 날짜를 두지 않는다 — 학습 목표일은 사용자가 설정에 등록하는 값이고, S0~S7은 기간이 없는 구현 단계다(§7).
+> **v3 (2026-09-18)** — DevPilot은 **학습 도구**다. 핵심 루프를 "읽는다 → 만든다 → 설명한다 → 반복한다 → 증거가 된다"로 다시 세웠고(§1.2, §5), 러버덕(FR-25)·사이드 프로젝트(FR-26)·코드 읽기(FR-27)를 더했다. 문서에 고정 날짜를 두지 않는다 — 목표일은 사용자가 설정에 등록하는 값이고, S0~S7은 기간이 없는 구현 단계다(§7).
 
 ---
 
@@ -12,7 +12,7 @@
 
 ### 1.1 한 줄 정의
 
-DevPilot은 **사용자가 스스로 정한 학습 목표일까지 실무에 쓰이는 개발 실력을 올리도록, 검증된 오픈소스를 읽고 → 같은 패턴을 사이드 프로젝트에 만들고 → AI에게 설명(러버덕)하고 → 막힌 곳을 반복하게 하는 개인용 개발 학습 코치**다. 남은 시간·현재 실력·학습 기억·프로젝트 경험을 계속 다시 계산해 매일 가장 가치 높은 학습 1개를 안내한다.
+DevPilot은 **사용자가 스스로 정한 목표일까지 실무에 쓰이는 개발 실력을 올리도록, 검증된 오픈소스를 읽고 → 같은 패턴을 사이드 프로젝트에 만들고 → AI에게 설명(러버덕)하고 → 막힌 곳을 반복하게 하는 개인용 개발 학습 코치**다. 남은 시간·현재 실력·학습 기억·프로젝트 경험을 계속 다시 계산해 매일 가장 가치 높은 학습 1개를 안내한다.
 
 | 항목 | 내용 |
 |---|---|
@@ -20,7 +20,7 @@ DevPilot은 **사용자가 스스로 정한 학습 목표일까지 실무에 쓰
 | 성격 | **학습 도구.** DevPilot 자체는 사용자의 사이드 프로젝트가 아니다. 학습의 결과물은 사용자의 사이드 프로젝트(기본: 주문 시스템, FR-26)이고, 그것이 실력이 늘었다는 근거가 된다 |
 | 무엇을 공부하나 | 실무 시스템이 공통으로 갖는 것 — 회원가입·로그인·상품 CRUD·주문·취소·트랜잭션·조회 성능. 학습 순서는 과목이 아니라 **주문 시스템을 만드는 순서**다(계획 템플릿 9개 milestone, FR-04) |
 | 공부 방식의 중심 | **AI와의 러버덕 코딩**(FR-25). AI는 답을 주지 않고 되묻는다 |
-| 학습 목표일 | 사용자가 설정의 "학습 목표"에 직접 등록한다(FR-03). 학습 완료 목표일(`targetCompletionDate`)은 필수이고, 그보다 앞서 핵심(MUST) 항목을 끝내 둘 **중간 점검일**(`checkpointDate`)은 선택이다. 이 날짜로 역산해 촉박하면 필수 위주로, 여유 있으면 깊이 있게 안내한다(FR-05) |
+| 학습 목표 | **무엇을, 언제까지** — 학습 트랙(`targetRole`)과 **목표일**(`targetCompletionDate`) 하나다. 사용자가 설정의 "학습 목표"에 직접 등록한다(FR-03). 목표일로 남은 시간을 역산해 촉박하면 필수 위주로, 여유 있으면 깊이 있게 안내한다(FR-05) |
 | 형태 | 웹 우선 Flutter PWA + Spring Boot backend + AI 코칭 (Android 앱은 Later, DEC-18) |
 | 학습 트랙 | Java 백엔드 (`TargetRole.JAVA_BACKEND`만 지원. 다른 트랙은 값 추가 + 콘텐츠 작업, C-7) |
 | 사용자 | 소유자 1명 + 초대 최대 2명 (DEC-01) |
@@ -37,7 +37,7 @@ DevPilot은 **사용자가 스스로 정한 학습 목표일까지 실무에 쓰
 | P-3 | 학습 내용을 빠르게 잊는다. 같은 기술을 몰아서 복습하면 그 자리에서만 쉽게 느껴진다 | spaced review + 교차 학습(FR-11, RV-INTERLEAVE) |
 | P-4 | AI에게 코드를 맡기면서 원리 이해와 독립 해결력이 약해질 수 있다 | **러버덕 — AI가 답 대신 되묻는다**(FR-25), self-explain 선행, Hint Ladder(FR-09, FR-10) |
 | P-5 | 자원 관리, 예외, null, 보안, 로그, 트랜잭션, 성능 문제를 스스로 인지하기 어렵다 | self-review 선행 Project Coach, thinking pattern(FR-12, FR-13) |
-| P-6 | 현재 실력이 목표로 삼은 기술 요구사항과 얼마나 맞는지 판단하기 어렵다. 자기평가("Java 3점")는 부정확하다 | 온보딩 짧은 진단(FR-02, FR-15), 증거 기반 skill state(FR-06), 요구 역량 비교(FR-19) |
+| P-6 | 현재 실력이 공부하려는 로드맵·기술 목록과 얼마나 맞는지 판단하기 어렵다. 자기평가("Java 3점")는 부정확하다 | 온보딩 짧은 진단(FR-02, FR-15), 증거 기반 skill state(FR-06), 로드맵 비교(FR-19) |
 | P-7 | 스스로 정한 목표일이 있어 모든 기술을 완벽히 공부할 수 없다. 반대로 여유가 있을 때는 무엇을 더 깊이 할지 모른다 | 기한 역산 양방향 — 촉박하면 필수 위주 축소, 여유 있으면 깊이 확장 제안(FR-05) |
 | P-8 | 공부한 내용이 내 말로 설명할 수 있는 형태로 남지 않아, 무엇을 왜 그렇게 했는지 나중에 되짚기 어렵다 | 사이드 프로젝트 결과물(FR-26), 러버덕으로 설명해 본 기록(FR-25), 학습 기록 정리 (STAR) export(FR-18) |
 | P-9 | 교재 예제는 너무 간단해서 **실무 코드가 어떻게 생겼는지** 모른다 | 검증된 오픈소스의 파일 1개·줄 범위 1개 읽기(FR-27) |
@@ -47,7 +47,7 @@ v2까지의 학습 루프는 **개념 → 연습문제 → 복습**이었다. �
 
 ### 1.3 제품 목표 문장
 
-사용자가 등록한 학습 목표일과 현재 실력을 바탕으로 학습 계획을 재편하고, 매일 가장 가치 높은 학습을 제시하며, 검증된 오픈소스 읽기·사이드 프로젝트 구현·러버덕 설명·반복 회상을 통해 **AI 도움 없이 문제를 인지하고 해결하고 설명하는 능력**을 높인다.
+사용자가 등록한 목표일과 현재 실력을 바탕으로 학습 계획을 재편하고, 매일 가장 가치 높은 학습을 제시하며, 검증된 오픈소스 읽기·사이드 프로젝트 구현·러버덕 설명·반복 회상을 통해 **AI 도움 없이 문제를 인지하고 해결하고 설명하는 능력**을 높인다.
 
 ---
 
@@ -61,8 +61,8 @@ v2까지의 학습 루프는 **개념 → 연습문제 → 복습**이었다. �
 | G-2 | M1 완료(S3 완료 = 실사용 시작) 후 실제 학습에 매일 사용한다 | S3 완료 시 배포 환경에서 AC-02, AC-05, AC-10, AC-11, AC-26, AC-28 통과 |
 | G-3 | 학습 결과가 자기평가가 아니라 **증거**로 skill state에 반영된다. 시작점도 자기평가보다 진단이 우선이다 | AC-09, AC-11, `06` §7 test vectors |
 | G-4 | 도움(hint) 사용량이 줄고 스스로 발견한 위험이 늘어나는 추세를 사용자가 확인한다 | §6 지표 |
-| G-5 | 사용자가 등록한 학습 목표일로 역산한 위험을 숫자 근거와 함께 보고, 촉박하면 무엇을 미룰지, 여유 있으면 무엇을 더 깊이 할지 고른다 | AC-03, AC-30 |
-| G-6 | 사용자가 등록한 중간 점검일(없으면 학습 완료 목표일) 전에 직접 해결한 문제를 STAR 형식 학습 기록으로 정리해 Markdown으로 내보낸다 | AC-21 |
+| G-5 | 사용자가 등록한 목표일로 역산한 위험을 숫자 근거와 함께 보고, 촉박하면 무엇을 미룰지, 여유 있으면 무엇을 더 깊이 할지 고른다 | AC-03, AC-30 |
+| G-6 | 사용자가 등록한 목표일 전에 직접 해결한 문제를 STAR 형식 학습 기록으로 정리해 Markdown으로 내보낸다 | AC-21 |
 | G-7 | AI 비용을 월 USD 3 이하로 통제하고, AI가 없어도 핵심 학습(계획·Today·복습·기록)은 계속된다 | AC-12, AC-13 |
 | G-8 | 매주 검증된 오픈소스를 읽고, 같은 패턴을 사이드 프로젝트에 만들고, 그것을 AI에게 설명한다. 설명하다 막힌 곳은 복습 카드가 된다 | AC-26, AC-27, AC-28, §6 러버덕 지표 |
 
@@ -75,15 +75,15 @@ v2까지의 학습 루프는 **개념 → 연습문제 → 복습**이었다. �
 | NG-3 | 상용 LMS, 기업용 source code ingestion platform | 개인용 제품 |
 | NG-4 | 실시간 pair programming | 범위 밖 |
 | NG-5 | 첫 버전에서 Kafka/Kubernetes/MSA 학습 플랫폼 구현 | 범위 밖 |
-| NG-6 | **달성 확률, 적합도 점수, 퍼센트 매칭 제공** | 근거 없는 수치가 결정을 왜곡함. 요구 역량 비교는 `READY/STRETCH/LATER`만 (FR-19) |
+| NG-6 | **달성 확률, 적합도 점수, 퍼센트 매칭 제공** | 근거 없는 수치가 결정을 왜곡함. 로드맵 비교는 `READY/STRETCH/LATER`만 (FR-19) |
 | NG-7 | **MVP에서 사용자 코드 실행**(compiler/test runner). `VERIFIED`는 curated source만 가능 | `06` §10. code runner는 Later |
-| NG-8 | **외부 문서 자동 수집·크롤링, URL 본문 fetch** (요구사항 문서 `sourceUrl`, 사이드 프로젝트 `repoUrl`, 큐레이션 저장소 포함) | 서버는 외부 URL을 가져오지 않는다. 요구사항 목록은 사용자가 본문을 붙여넣고(FR-19), 오픈소스 코드는 사용자가 로컬에 clone해 IDE로 읽는다(FR-26, FR-27) |
+| NG-8 | **외부 문서 자동 수집·크롤링, URL 본문 fetch** (로드맵 비교의 `sourceUrl`, 사이드 프로젝트 `repoUrl`, 큐레이션 저장소 포함) | 서버는 외부 URL을 가져오지 않는다. 로드맵·기술 목록은 사용자가 본문을 붙여넣고(FR-19), 오픈소스 코드는 사용자가 로컬에 clone해 IDE로 읽는다(FR-26, FR-27) |
 | NG-9 | 팀·다중 사용자 협업, 사용자 간 데이터 공유 | DEC-01 |
 | NG-10 | 공개 가입, 불특정 다수 서비스 | allowlist (FR-01) |
 | NG-11 | 연속 학습일(streak), 순위, 배지 수집 같은 게임화 | 원칙 "guilt UI 금지" (`02` §1) |
 | NG-12 | 이메일·Web Push 알림 (MVP) | 캘린더 구독으로 대체 (FR-20) |
 | NG-13 | 네이티브 Android/iOS 앱 (MVP) | DEC-18 |
-| NG-14 | 나이·성별 등 개인 속성을 계산에 사용 | §3.4 |
+| NG-14 | 나이·성별 등 개인 속성을 계산에 사용 | §3.3 |
 | NG-15 | **사이드 프로젝트를 대신 만들어 주기, 사이드 프로젝트 코드의 저장·빌드·호스팅** | DevPilot은 학습 도구다. 결과물은 사용자의 사이드 프로젝트이고 DevPilot은 그 이름·설명·저장소 주소만 기록한다(FR-26). DevPilot 구현 자체는 학습 과제도 증거도 아니다 |
 | NG-16 | **AI가 정답·해설·수정 코드를 먼저 주는 튜터** | 러버덕에서 AI는 되묻기만 한다(FR-25, 원칙 3). 답에 가까운 도움은 사용자가 요청한 만큼만 Hint Ladder로 준다(FR-10) |
 
@@ -97,29 +97,20 @@ v2까지의 학습 루프는 **개념 → 연습문제 → 복습**이었다. �
 - 사용자 간 데이터 공유, 조회, 비교 기능은 없다. 모든 데이터는 `user_id`로 격리한다(I-15).
 - `UserRole.ADMIN`은 운영 작업용이다. MVP에 ADMIN 전용 화면은 없다.
 
-### 3.2 Persona A — Working Developer (`ExperienceProfile.WORKING_DEVELOPER`)
+### 3.2 Persona — 목표일을 정해 스스로 공부하는 개발자
 
 | 항목 | 내용 |
 |---|---|
-| 배경 | 2020년부터 개발·운영 업무를 해 온 현업 개발자. Java/Android/Spring legacy, 운영, 사용자 대응 경험 |
-| 부족한 증거 | 현대 Java, Spring Boot, JPA, 테스트, DB 설계, Docker/Cloud |
-| 목표 | 설정에 등록한 학습 완료 목표일(예: 2027-04-01)까지 현대 Java 백엔드(Spring Boot·JPA·테스트·DB 설계)를 실무 수준으로 다룬다 |
-| 주 사용 패턴 | 평일 퇴근 후 30~60분(데스크톱: 코드 읽기·러버덕), 출퇴근 5분 복습(모바일 PWA), 주말 사이드 프로젝트(주문 시스템) 구현·코드 리뷰 |
-| 제품에 기대하는 것 | 이미 아는 기초를 반복하지 않기(온보딩 진단 FR-02·FR-15), 기한 대비 무엇을 버리고 무엇을 더할지 결정(FR-05), 실무 코드를 읽고 설명하는 힘(FR-27, FR-25), 실무 문제 인지력의 증거(FR-12, FR-18) |
+| 배경 | 스스로 방향을 정해 공부하는 개발자. Java를 다뤄 본 적은 있지만 현대 Java 백엔드(Spring Boot·JPA·테스트·DB 설계)를 실무 수준으로 다뤄 본 증거는 부족하다. 아는 영역과 모르는 영역이 섞여 있다 |
+| 목표 | 설정에 등록한 목표일(예: 2027-04-01)까지 Java 백엔드 학습 트랙의 필수 역량을 실무 수준으로 끌어올린다 |
+| 제약 | 주당 학습 시간이 한정되어 있다(평일은 짧게, 주말은 길게). 매일 무엇을 할지 고르는 데 시간을 쓰고 싶지 않다 |
+| 주 사용 패턴 | 평일 저녁 30~60분(데스크톱: 코드 읽기·러버덕), 짬 시간 5분 복습(모바일 PWA), 주말 사이드 프로젝트(주문 시스템) 구현·코드 리뷰 |
+| 제품에 기대하는 것 | 매일 할 일 1개(FR-07), 이미 아는 기초를 반복하지 않기(온보딩 진단 FR-02·FR-15), 목표일까지 남은 시간으로 무엇을 미루고 무엇을 더할지 결정(FR-05), 막혔을 때 답이 아니라 되묻는 질문과 단계적 힌트(FR-25, FR-10), 실무 코드를 읽고 설명하는 힘(FR-27, FR-25), 기초 개념의 반복 회상(FR-11), 따라 만들 수 있는 정석 프로젝트(FR-26), 실무 문제 인지력의 증거(FR-12, FR-18) |
 
-### 3.3 Persona B — Developer Starter (`ExperienceProfile.DEVELOPER_STARTER`)
+### 3.3 속성 사용 규칙
 
-| 항목 | 내용 |
-|---|---|
-| 배경 | 2025년부터 사용자 대응 위주로 일했다. 실제 개발 경험 부족 |
-| 목표 | Java/Web/DB/Spring 기초에서 실무 개발을 스스로 해낼 수 있는 수준으로 성장 |
-| 주 사용 패턴 | 짧고 자주. 모바일 복습 비중이 높음 |
-| 제품에 기대하는 것 | 매일 할 일 1개(FR-07), 막혔을 때 답이 아니라 되묻는 질문과 단계적 힌트(FR-25, FR-10), 기초 개념의 반복 회상(FR-11), 따라 만들 수 있는 정석 프로젝트(FR-26) |
-
-### 3.4 속성 사용 규칙
-
-- **나이는 수집하지 않고, skill 계산·planner·요구 역량 비교 어디에도 쓰지 않는다.**
-- `experienceProfile`, `experienceStartDate`는 AI 프롬프트 맥락과 표시용으로만 쓴다. 결정적 규칙(`06`)의 입력이 아니다.
+- **나이는 수집하지 않고, skill 계산·planner·로드맵 비교 어디에도 쓰지 않는다.**
+- 현재 실력은 자기 신고 프로필이 아니라 짧은 진단(FR-02, FR-15)과 증거 레벨(FR-06)로 잰다. 학습 목표는 학습 트랙과 목표일뿐이다(FR-03).
 - 이메일은 allowlist 비교에만 쓰고 DB에 저장하지 않는다(`app_user`에 email 컬럼 없음).
 
 ---
@@ -130,7 +121,7 @@ v2까지의 학습 루프는 **개념 → 연습문제 → 복습**이었다. �
 
 | # | 원칙 | 의미 | 강제 지점 |
 |---|---|---|---|
-| 1 | **Deadline first** | 사용자가 등록한 학습 목표일이 학습 완성도보다 우선한다. 촉박하면 중요한 것 위주로, 여유 있으면 깊이 있게 | budget/risk(`06` §3~4), risk ≥ HIGH면 LATER 제외·MUST 가중(`06` §5.2, §5.5), 양방향 replan 제안(`06` §4.4 축소·확장, FR-05) |
+| 1 | **Deadline first** | 사용자가 등록한 목표일이 학습 완성도보다 우선한다. 촉박하면 중요한 것 위주로, 여유 있으면 깊이 있게 | budget/risk(`06` §3~4), risk ≥ HIGH면 LATER 제외·MUST 가중(`06` §5.2, §5.5), 양방향 replan 제안(`06` §4.4 축소·확장, FR-05) |
 | 2 | **One important thing today** | 하루 화면은 핵심 과업 하나를 중심으로 구성한다 | 활성 main task 1개(I-04), Today 첫 화면(`02` §1) |
 | 3 | **Do not replace thinking** | AI는 답을 대신 쓰지 않고 사용자가 먼저 생각하게 한다. 러버덕이 이 원칙의 가장 직접적인 구현이다 | 러버덕 질문만(RD-1, `NoAnswerGuard` — FR-25), self-explanation 선행(HL-2), coach self-review 선행(FR-12), finding에 수정 코드 없음(AC-06), 코드 노출 가드(HL-8) |
 | 4 | **Evidence over self-rating** | 실력은 자기평가보다 풀이·설명·코드·재현 가능한 결과로 갱신한다 | 온보딩 진단 우선(FR-02), 자기평가 상한 3·planning level 분리(`06` §7.5), 레벨 변경은 규칙 엔진만(I-12) |
@@ -160,13 +151,13 @@ v2까지의 학습 루프는 **개념 → 연습문제 → 복습**이었다. �
 ```
 
 - 학습 순서는 과목이 아니라 **주문 시스템을 만드는 순서**다: 기반 다지기 → 회원과 인증 → 상품과 CRUD → 주문 생성 → 취소와 환불 → 조회 성능(1~6 MUST) → 구조 정리 → 배포와 운영 → 설명과 정리(7~9 SHOULD). 기한이 촉박하면 7~9부터 미루거나 줄인다(FR-04, FR-05).
-- 이 루프를 **얼마나 깊이** 돌릴지는 사용자가 등록한 학습 목표일로 역산한다(FR-05): 촉박하면 필수(MUST) 위주로 줄이는 안, 여유 있으면 미룬 항목 복원·목표 상향 안을 제안한다.
+- 이 루프를 **얼마나 깊이** 돌릴지는 사용자가 등록한 목표일로 역산한다(FR-05): 촉박하면 필수(MUST) 위주로 줄이는 안, 여유 있으면 미룬 항목 복원·목표 상향 안을 제안한다.
 - 인증/로그인, 동시성·재고 차감, 대용량 조회·인덱스처럼 큐레이션 저장소가 다루지 않는 영역은 "읽는다"를 건너뛰고 직접 구현과 문제로 채운다(FR-27).
 
 **시스템 루프** — 위 루프가 어떤 데이터로 이어지는지 보여 준다.
 
 ```text
- Learning Goal · 학습 목표일 (사용자가 설정에 등록, FR-03)
+ Learning Goal · 학습 트랙 + 목표일 (사용자가 설정에 등록, FR-03)
         │
         ▼
  Plan version · Skill target (FR-04) ◀──────────────────────┐
@@ -205,7 +196,7 @@ v2까지의 학습 루프는 **개념 → 연습문제 → 복습**이었다. �
 
 | 단계 | 사용자가 하는 일 | 시스템이 하는 일 | AI 필요 |
 |---|---|---|---|
-| 목표·계획 | 학습 목표일·시간 입력, 짧은 진단(또는 자기평가), 사이드 프로젝트 등록 | 템플릿 plan(9개 milestone), seed 카드 배정, 진단 문제 제안 | 진단 답안 평가만 |
+| 목표·계획 | 학습 트랙·목표일·시간 입력, 짧은 진단(또는 자기평가), 사이드 프로젝트 등록 | 템플릿 plan(9개 milestone), seed 카드 배정, 진단 문제 제안 | 진단 답안 평가만 |
 | Today | 가능 시간·컨디션 선택 | planner 점수, 이유 템플릿 | 없음 |
 | 코드 읽기 | 로컬에 clone한 저장소에서 파일 1개·줄 범위를 IDE로 읽는다 | reading 선택(결정적), 읽는 이유·질문·볼 지점 제시. 코드 본문은 다루지 않는다 | 없음 (완료 조건인 설명은 러버덕) |
 | 프로젝트 과제 | 같은 패턴을 사이드 프로젝트에 구현하고 이유를 적는다 | 프로젝트 이름을 넣은 과제 제안 | 없음 |
@@ -236,9 +227,9 @@ v2까지의 학습 루프는 **개념 → 연습문제 → 복습**이었다. �
 | 주간 완료 러버덕 세션 수 | 계산 출처: `rubber_duck_session`(`04`) 중 `status = COMPLETED`이고 `completed_at`의 plan-day(`06` §2)가 그 ISO week에 속하는 행 수. `COMPLETED`는 턴이 1개 이상일 때만 생기고(턴 0개 종료는 `ABANDONED`, `05` §9.8), 정리 AI가 실패한 세션(`summary_json = null`)도 센다 — 대화 자체가 학습이므로. `RUBBER_DUCK_COMPLETED` 이벤트 수는 쓰지 않는다(skill이 없는 세션은 이벤트가 없다, RD-7). `06` §12·`04` §5.7에 `completedRubberDuckSessions`로 추가해야 한다 | 1주차 | **주 3회 이상**을 8주 중 6주 이상 |
 | 스스로 발견한 위험 | `selfFoundRiskCount` | S4(Project Coach) 완료 다음 주 | 2주마다 **1개 이상** |
 | Deadline risk | `riskLevel`, `ratioBp` (주 마지막 snapshot) | 1주차 (budget·risk는 S2부터 계산) | 매주 **MEDIUM 이하** 또는 replan으로 MEDIUM 이하 복귀 |
-| 승인된 evidence | `acceptedEvidenceCount` | S6 완료 다음 주 | 사용자가 등록한 중간 점검일(`learning_goal.checkpoint_date`, 없으면 학습 완료 목표일)까지 누적 **3개 이상** (8주 범위 밖일 수 있음, 추적만) |
+| 승인된 evidence | `acceptedEvidenceCount` | S6 완료 다음 주 | 사용자가 등록한 목표일(`learning_goal.target_completion_date`)까지 누적 **3개 이상** (8주 범위 밖일 수 있음, 추적만) |
 | 약한 thinking 축 | `weakThinkingAxes` | S4 완료 다음 주 | 목표 없음. 상위 3개 축이 Today/Coach 맥락에 반영되는지 확인 |
-| 요구사항 준비 비율 | `requirementCoverageBp` | S7 완료 다음 주 | 목표 없음. **사용자 화면에 퍼센트로 표시하지 않는다**(NG-6). 내부 추적만 |
+| 로드맵 항목 준비 비율 | `requirementCoverageBp` | S7 완료 다음 주 | 목표 없음. **사용자 화면에 퍼센트로 표시하지 않는다**(NG-6). 내부 추적만 |
 
 제품 건강 확인(지표 외):
 - Today를 생성한 plan-day 수 ≥ 주 5일 (`daily_plan` 수)
@@ -251,8 +242,8 @@ v2까지의 학습 루프는 **개념 → 연습문제 → 복습**이었다. �
 S0~S7은 **구현 순서를 나타내는 단계 ID**다. 기간·날짜·일수가 없고, 단계는 exit criteria(`11-development-roadmap.md` §3)를 통과하면 끝난다. 단계는 두 묶음이다.
 
 - **M1 — 쓸 수 있는 최소 (S0 · S1 · S2 · S3)**: 온보딩(진단·사이드 프로젝트 등록) · 학습 계획 · 기한 역산 · 오늘 할 일 · 코드 읽기 · 러버덕 · 복습(교차 학습) · 레벨 갱신 · 로그인 · 배포. **S3 완료 = M1 완료 = 실사용 시작(매일 쓰기 시작).** S2가 끝나면 AI 없이 Today·Review만 먼저 써도 된다(선택).
-- **M2 — M1을 쓰면서 필요한 순서로 (S4 · S5 · S6 · S7)**: Coach 코드 리뷰, 주간 리뷰·Dashboard 완성, 캘린더, AI 문제 자동 생성, 증거·export, 요구 역량 비교. 단계 순서는 잠정이다.
-- 학습 목표일은 사용자가 설정에 등록하는 값(`learning_goal`)이고 단계 진행과 무관하다. 문서에 학습 목표일·실사용 시작 날짜를 상수로 쓰지 않는다.
+- **M2 — M1을 쓰면서 필요한 순서로 (S4 · S5 · S6 · S7)**: Coach 코드 리뷰, 주간 리뷰·Dashboard 완성, 캘린더, AI 문제 자동 생성, 증거·export, 로드맵 비교. 단계 순서는 잠정이다.
+- 목표일은 사용자가 설정에 등록하는 값(`learning_goal`)이고 단계 진행과 무관하다. 문서에 목표일·실사용 시작 날짜를 상수로 쓰지 않는다.
 
 | 묶음 | 단계 | 목표 | FR (해당 단계에 완성 또는 시작하는 부분) | 주요 AC |
 |---|---|---|---|---|
@@ -263,10 +254,10 @@ S0~S7은 **구현 순서를 나타내는 단계 ID**다. 기간·날짜·일수�
 | M2 | S4 | Project Coach · evals v1 | FR-10(coach finding), FR-12(사이드 프로젝트 연결 포함), FR-13(기록), FR-14(finding 배지) | AC-06, AC-07, AC-14, AC-19, AC-12·AC-23 재검증 |
 | M2 | S5 | Weekly review · Dashboard 완성 · **캘린더 구독** · **AI 문제 자동 생성** | FR-09(AI 문제 생성), FR-13(추세), FR-16(완성), FR-17, FR-20 | AC-21(weekly) |
 | M2 | S6 | Evidence · Export · 계정 삭제 · 백업 · 하드닝 | FR-18, FR-23 | AC-08 재검증, AC-15, AC-20, AC-21(evidence) |
-| M2 | S7 | 요구 역량 비교 | FR-19 | AC-22 |
+| M2 | S7 | 로드맵 비교 | FR-19 | AC-22 |
 | — | Later | 확장 | Android 앱, FSRS, code runner, IDE plugin, 데모 모드, 공휴일 반영, 다크 모드, 이메일·Push 알림, 다른 학습 트랙(값 추가 + 콘텐츠 작업, C-7) | — |
 
-v3에서 옮긴 것(`11` §3, `13` §2): Budget·Risk·Replan 제안은 S5 → **S2**(학습 목표일 역산은 MUST이고 risk는 planner 입력 `DEADLINE_RISK_MUST`이므로 Today와 같은 단계다 — 이제 S2부터 `deadline_risk`가 계산된다), 캘린더 구독·AI 문제 자동 생성은 S2·S3 → **S5**(M1에 필요 없다), 진단 제안은 S3 안에서 필수(P0)로 올렸다.
+v3에서 옮긴 것(`11` §3, `13` §2): Budget·Risk·Replan 제안은 S5 → **S2**(목표일 역산은 MUST이고 risk는 planner 입력 `DEADLINE_RISK_MUST`이므로 Today와 같은 단계다 — 이제 S2부터 `deadline_risk`가 계산된다), 캘린더 구독·AI 문제 자동 생성은 S2·S3 → **S5**(M1에 필요 없다), 진단 제안은 S3 안에서 필수(P0)로 올렸다.
 
 규칙:
 - 각 단계 끝에 **배포된 환경에서** 해당 AC를 확인한다.
@@ -309,7 +300,7 @@ v3에서 옮긴 것(`11` §3, `13` §2): Budget·Risk·Replan 제안은 S5 → *
 
 ### FR-02 온보딩 (목표, 시간, 짧은 진단 우선·자기평가 대체, 사이드 프로젝트 등록, 계획 템플릿, seed 카드 배정)
 
-**설명** — 최초 로그인 사용자가 5단계, 5분 안팎으로 목표(학습 목표일)·시간·현재 수준 확인 방식·사이드 프로젝트를 정하면 한 번의 요청으로 학습 목표, 활성 plan v1, skill 시작 상태, 사이드 프로젝트, seed 복습 카드를 만든다. 현재 수준은 **짧은 진단이 기본**이다 — 실력을 키우려는 사람에게 자기평가("Java 3점")는 정확하기 어렵기 때문이다(원칙 4). 진단은 새 기능이 아니라 FR-15 진단 challenge를 온보딩 앞으로 당긴 것이다.
+**설명** — 최초 로그인 사용자가 5단계, 5분 안팎으로 목표(학습 트랙·목표일)·시간·현재 수준 확인 방식·사이드 프로젝트를 정하면 한 번의 요청으로 학습 목표, 활성 plan v1, skill 시작 상태, 사이드 프로젝트, seed 복습 카드를 만든다. 현재 수준은 **짧은 진단이 기본**이다 — 실력을 키우려는 사람에게 자기평가("Java 3점")는 정확하기 어렵기 때문이다(원칙 4). 진단은 새 기능이 아니라 FR-15 진단 challenge를 온보딩 앞으로 당긴 것이다.
 
 **사용자 스토리** — As a 처음 온 사용자, I want 몇 가지만 답하고 짧은 문제 몇 개로 지금 수준을 확인한 뒤 바로 계획과 오늘 할 일을 받고 싶다, so that 첫날부터 설정에 시간을 쓰지 않고 내 수준에 맞는 학습을 시작한다.
 
@@ -322,12 +313,9 @@ v3에서 옮긴 것(`11` §3, `13` §2): Budget·Risk·Replan 제안은 S5 → *
 
 | 단계 | 필드 | 필수 | 제약 |
 |---|---|---|---|
-| ① | `experienceProfile` | Y | `WORKING_DEVELOPER`, `DEVELOPER_STARTER`, `OTHER` |
 | ① | `displayName` | Y | 1~100자, 기본값 = `GET /me`의 `displayName` |
-| ① | `experienceStartDate` | N | 1970-01-01 ~ 오늘 |
-| ① | `learningGoal.targetRole` | Y | `JAVA_BACKEND` 고정 |
-| ① | `learningGoal.checkpointDate` | N | 오늘 − 1년 ~ `targetCompletionDate` |
-| ① | `learningGoal.targetCompletionDate` | Y | 오늘(plan-day) 다음 날 ~ 3년 이내 |
+| ① | `learningGoal.targetRole` | Y | `JAVA_BACKEND` 고정 (화면 "학습 트랙") |
+| ① | `learningGoal.targetCompletionDate` | Y | 목표일. 오늘(plan-day) 다음 날 ~ 3년 이내 (화면 빠른 선택: 3개월 후·6개월 후·1년 후·직접 선택) |
 | ② | `weekdayStudyMinutes`, `weekendStudyMinutes` | Y | 0~720, 기본 45 / 240 |
 | ② | `dayStartHour` | Y | 0~6, 기본 4 |
 | ② | `timezone` | Y | IANA ID, 기본 브라우저 값(없으면 `Asia/Seoul`) |
@@ -350,17 +338,17 @@ v3에서 옮긴 것(`11` §3, `13` §2): Budget·Risk·Replan 제안은 S5 → *
 
 ### FR-03 학습 목표 관리
 
-**설명** — 사용자는 학습 트랙, 중간 점검일, 학습 완료 목표일, 집중 skill을 조회·수정한다. **학습 목표일은 사용자가 직접 등록하는 값**이고(온보딩 ①, 설정의 "학습 목표"), DevPilot은 이 날짜로 남은 시간을 역산한다(FR-05). 중간 점검일은 핵심(MUST) 항목을 끝내 두려는 더 이른 날짜이고, 그 뒤는 만든 것을 설명하고 CS 기초를 채우는 **정리 단계**다. 제품·문서에 학습 목표일을 상수로 두지 않는다.
+**설명** — 학습 목표는 **무엇을(학습 트랙), 언제까지(목표일)** 두 가지다. 사용자는 학습 트랙, 목표일, 집중 skill을 조회·수정한다. **목표일은 사용자가 직접 등록하는 날짜 하나**이고(온보딩 ①, 설정의 "학습 목표"), DevPilot은 이 날짜로 남은 시간을 역산한다(FR-05). 계획의 마지막 milestone "설명과 정리"(만든 것을 설명으로 정리하고 CS 기초를 채우는 정리 단계)는 목표일 바로 앞에 놓인다(FR-04, `19` §5). 제품·문서에 목표일을 상수로 두지 않는다.
 
 **사용자 스토리** — As a 목표일을 정해 공부하는 사용자, I want 사정이 바뀌면 목표 날짜를 고치고 싶다, so that 계획과 위험 계산이 현실을 따라간다.
 
 **규칙**
 - 사용자당 학습 목표는 1개다(I-01). `GET /learning-goal`에서 없으면 `404 LEARNING_GOAL_NOT_FOUND`(온보딩 완료 사용자에게는 발생하지 않는다).
 - `PUT /learning-goal`은 전체 교체이며 `version`이 필수다. 불일치면 `409 CONCURRENT_MODIFICATION`.
-- 검증: `targetRole=JAVA_BACKEND`, `targetCompletionDate`는 오늘(plan-day)+1일 ~ +3년, `checkpointDate`는 null 또는 오늘−1년 ~ `targetCompletionDate`(DB CHECK), `focusSkillCodes` 최대 10개·중복 없음·활성 catalog code.
+- 검증: `targetRole=JAVA_BACKEND`, `targetCompletionDate`는 오늘(plan-day)+1일 ~ +3년(`DATE_OUT_OF_RANGE`), `focusSkillCodes` 최대 10개·중복 없음·활성 catalog code.
 - `PUT`은 기존 목표만 교체한다. 목표가 없으면 `404 LEARNING_GOAL_NOT_FOUND`이고 새로 만들지 않는다(생성은 온보딩).
 - 날짜가 바뀌면 goal은 즉시 저장하고 활성 plan의 `replan_recommended=true`로 표시한다. **자동으로 replan하지 않는다**(`06` §11.1).
-- budget horizon은 `checkpointDate`가 오늘 이후면 그 날짜, 아니면 `targetCompletionDate`다(`06` §3.1).
+- budget horizon은 `targetCompletionDate`다(`06` §3.1). 계획 템플릿 배치의 창도 오늘 ~ 목표일 하나다(`19` §5).
 - focus skill은 planner의 `projectNeed` factor다(`06` §5.4).
 
 **관련 API** — `GET /learning-goal`, `PUT /learning-goal`
@@ -392,12 +380,12 @@ v3에서 옮긴 것(`11` §3, `13` §2): Budget·Risk·Replan 제안은 S5 → *
 
 ### FR-05 기한 역산 양방향 (budget, risk, 축소·defer 제안, 확장 제안)
 
-**설명** — 사용자가 등록한 학습 목표일(FR-03)까지 남은 가능 시간(study budget)과 MUST 목표에 필요한 시간을 비교해 deadline risk를 계산한다. 계획을 바꿀 때 **촉박하면 중요한 것 위주로 줄이는 안**(SHOULD defer, MUST 목표 축소)을, **여유가 있으면 깊이를 더하는 안**(미뤄 둔 SHOULD/LATER 복원, MUST 목표 +1)을 **제안**한다. 두 방향은 배타적이다. 적용은 사용자가 고른다. 이 역산은 MUST다 — risk는 planner 입력(`DEADLINE_RISK_MUST`)이라 Today와 같은 단계(S2)에서 동작한다.
+**설명** — 사용자가 등록한 목표일(FR-03)까지 남은 가능 시간(study budget)과 MUST 목표에 필요한 시간을 비교해 deadline risk를 계산한다. 계획을 바꿀 때 **촉박하면 중요한 것 위주로 줄이는 안**(SHOULD defer, MUST 목표 축소)을, **여유가 있으면 깊이를 더하는 안**(미뤄 둔 SHOULD/LATER 복원, MUST 목표 +1)을 **제안**한다. 두 방향은 배타적이다. 적용은 사용자가 고른다. 이 역산은 MUST다 — risk는 planner 입력(`DEADLINE_RISK_MUST`)이라 Today와 같은 단계(S2)에서 동작한다.
 
-**사용자 스토리** — As a 학습 목표일을 정해 둔 사용자, I want 지금 속도로 그날까지 무엇이 가능한지, 빠듯하면 무엇을 미뤄야 하고 여유가 있으면 무엇을 더 깊이 할 수 있는지 알고 싶다, so that 모든 것을 하려다 전부 놓치지도, 남는 시간을 흘려보내지도 않는다.
+**사용자 스토리** — As a 목표일을 정해 둔 사용자, I want 지금 속도로 그날까지 무엇이 가능한지, 빠듯하면 무엇을 미뤄야 하고 여유가 있으면 무엇을 더 깊이 할 수 있는지 알고 싶다, so that 모든 것을 하려다 전부 놓치지도, 남는 시간을 흘려보내지도 않는다.
 
 **규칙**
-- budget: nominal → 28일 완료율 → effective (`06` §3). 완료율 기록이 14일 미만이면 7000bp. horizon은 중간 점검일이 오늘 이후면 그 날짜, 아니면 학습 완료 목표일이다(`06` §3.1).
+- budget: nominal → 28일 완료율 → effective (`06` §3). 완료율 기록이 14일 미만이면 7000bp. horizon은 목표일이다(`06` §3.1).
 - required minutes와 risk 4단계(`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`)는 `06` §4.2~4.3. `deferred=true`인 target과 `LATER`는 제외한다.
 - 제안 규칙은 `06` §4.4다. 방향은 **한쪽뿐**이다 — 한 응답에 축소·defer 제안과 확장 제안이 동시에 들어 있지 않다.
 
@@ -634,7 +622,7 @@ v3에서 옮긴 것(`11` §3, `13` §2): Budget·Risk·Replan 제안은 S5 → *
 
 **설명** — 짧은 진단 문제를 카테고리당 1개 제안한다. v3부터 온보딩 3단계의 기본 경로다(FR-02 진단 모드): 진단 모드면 카테고리마다(최대 5개), 자기평가 모드면 자기평가 3 이상인 카테고리마다 제안한다. 통과하면 evidence level을 올려 이미 아는 사용자가 기초 과제만 반복하지 않게 한다.
 
-**사용자 스토리** — As a 현업 개발자, I want 이미 아는 영역은 짧은 문제로 증명하고 넘어가고 싶다, so that planner가 내 수준에 맞는 과제를 준다.
+**사용자 스토리** — As a 기초 일부를 이미 아는 사용자, I want 이미 아는 영역은 짧은 문제로 증명하고 넘어가고 싶다, so that planner가 내 수준에 맞는 과제를 준다.
 
 **규칙**
 - `GET /diagnostics/suggestions`: `purpose=DIAGNOSTIC`인 seed `VALIDATED` challenge를 카테고리당 1개, **최대 5개** 제안한다(선택 규칙 `05-api-spec.md` §4.2). 대상 카테고리 — 진단 모드(모든 `self_assessed_level`이 `null`): 자기평가가 활성인 행이 있는 카테고리 전부 / 자기평가 모드: 자기평가가 활성이고 값이 3 이상인 카테고리. 진단 attempt를 한 번이라도 시작한 카테고리(상태 무관)는 제외한다.
@@ -704,19 +692,19 @@ v3에서 옮긴 것(`11` §3, `13` §2): Budget·Risk·Replan 제안은 S5 → *
 **관련 화면** — SCR-EVIDENCE-LIST, SCR-EVIDENCE-DETAIL, SCR-TRAINING-ATTEMPT(초안 진입), SCR-COACH-DETAIL(초안 진입)
 **AC** — AC-21 · **Sprint** — S6 · **우선순위** — SHOULD
 
-### FR-19 요구 역량 비교 (Requirement Radar — 요구사항 목록 붙여넣기 분석, 확률·점수 없음)
+### FR-19 로드맵 비교 (Roadmap compare — 공개 로드맵·기술 목록 붙여넣기 분석, 확률·점수 없음)
 
-**설명** — 사용자가 기술 요구사항 목록(예: 팀의 기술 스택 문서, 프로젝트 명세, 학습 로드맵)을 붙여넣으면 AI가 요구사항을 추출하고, 서버가 catalog skill과 현재 skill state·accepted evidence로 요구사항마다 `READY`(준비됨) / `STRETCH`(도전) / `LATER`(나중에)로 분류한다.
+**설명** — 사용자가 공개된 학습 로드맵이나 기술 목록을 붙여넣으면 AI가 항목을 추출하고, 서버가 catalog skill과 현재 skill state·accepted evidence로 항목마다 `READY`(준비됨) / `STRETCH`(도전) / `LATER`(나중에)로 분류한다. 식별자는 `radar` 모듈·`requirement_doc`/`requirement_item`·`REQUIREMENT_EXTRACT`·`/requirement-docs`다.
 
-**사용자 스토리** — As a 목표로 삼은 기술 요구사항이 있는 사용자, I want 그 요구사항 중 무엇이 준비됐고 무엇을 보완해야 하는지 알고 싶다, so that 남은 시간에 공부할 것을 고른다.
+**사용자 스토리** — As a 공개 로드맵을 참고해 공부하는 사용자, I want 로드맵 항목 중 무엇이 준비됐고 무엇을 보완해야 하는지 알고 싶다, so that 남은 시간에 공부할 것을 고른다.
 
 **규칙**
 - 입력: `title` 1~200자(필수), `sourceUrl` ≤ 2000자(http/https URL, 선택), `sourceText`(필수, UTF-8 20000 bytes 이하 — 초과 시 `413 CONTENT_TOO_LARGE`).
 - **서버는 `sourceUrl`을 fetch하지 않는다.** 기록용 링크일 뿐이다(NG-8, AC-22). 외부 사이트 자동 수집·크롤링은 없다.
-- `POST /requirement-docs`는 `202`, `REQUIREMENT_EXTRACT` 비동기다. 요구사항마다 `rawText`, `requirementType`(`REQUIRED|PREFERRED`), catalog에 있는 `skillCode`(없으면 null)를 저장한다.
-- `fitCategory`(`READY|STRETCH|LATER`)와 연결 evidence는 **서버의 `RequirementFitClassifier`가 evidence level로 계산**한다(`06` §13). AI가 정하지 않는다. skill이 매칭되지 않은 요구사항은 `fitCategory=null`("분류 불가")이다. 분류는 분석 시점에 고정된다.
+- `POST /requirement-docs`는 `202`, `REQUIREMENT_EXTRACT` 비동기다. 항목마다 `rawText`, `requirementType`(`REQUIRED|PREFERRED`), catalog에 있는 `skillCode`(없으면 null)를 저장한다.
+- `fitCategory`(`READY|STRETCH|LATER`)와 연결 evidence는 **서버의 `RequirementFitClassifier`가 evidence level로 계산**한다(`06` §13). AI가 정하지 않는다. skill이 매칭되지 않은 항목은 `fitCategory=null`("분류 불가")이다. 분류는 분석 시점에 고정된다.
 - **응답과 화면 어디에도 달성 확률, 점수, 퍼센트, 순위가 없다**(NG-6). 화면은 분류별 개수와 목록만 보여준다.
-- 붙여넣은 원문(`sourceText`)은 180일 후 purge(`04` §8). 요구사항 분석 결과는 남는다. `DELETE /requirement-docs/{requirementDocId}`로 전체 삭제한다.
+- 붙여넣은 원문(`sourceText`)은 180일 후 purge(`04` §8). 분석 결과(항목·분류)는 남는다. `DELETE /requirement-docs/{requirementDocId}`로 전체 삭제한다.
 
 **관련 API** — `POST /requirement-docs`, `GET /requirement-docs/{requirementDocId}`, `GET /requirement-docs?cursor=`, `DELETE /requirement-docs/{requirementDocId}`
 **관련 화면** — SCR-REQUIREMENTS-LIST, SCR-REQUIREMENT-NEW, SCR-REQUIREMENT-DETAIL
@@ -791,7 +779,7 @@ v3에서 옮긴 것(`11` §3, `13` §2): Budget·Risk·Replan 제안은 S5 → *
 **사용자 스토리** — As a 사용자, I want 내 기록을 가져가거나 완전히 지울 수 있기를 원한다, so that 내 데이터를 내가 통제한다.
 
 **규칙**
-- `GET /me/export`: 사용자 소유 데이터 전체를 JSON 1개로 반환한다 — 프로필, 학습 목표, 모든 plan version(milestone, skill target, snapshot), skill state·변경 이력, 세션, learning event, daily plan·task, 소유 challenge·attempt·submission, hint disclosure, review item·answer, coach review(purge 전 content 포함)·finding·observation, evidence, weekly review, 요구사항 문서(purge 전 원문 포함)·요구사항 항목, 사이드 프로젝트, 러버덕 세션·턴(마스킹본).
+- `GET /me/export`: 사용자 소유 데이터 전체를 JSON 1개로 반환한다 — 프로필, 학습 목표, 모든 plan version(milestone, skill target, snapshot), skill state·변경 이력, 세션, learning event, daily plan·task, 소유 challenge·attempt·submission, hint disclosure, review item·answer, coach review(purge 전 content 포함)·finding·observation, evidence, weekly review, 로드맵 비교의 요구사항 문서(purge 전 원문 포함)·요구사항 항목, 사이드 프로젝트, 러버덕 세션·턴(마스킹본).
 - export 제외: `ai_call_log`, `idempotency_record`, `calendar_token_hash`, seed catalog, 다른 사용자 데이터. 감사 이벤트 `DATA_EXPORTED`를 남긴다. 형식·정렬은 `05-api-spec.md` §3.3이다.
 - `DELETE /me`: 최근 인증 시각 `authTime` = JWT `amr[].timestamp` 최댓값(`amr`이 없을 때만 `iat`)이 **5분 이내**여야 한다(`devpilot.security.account-deletion-max-token-age`, `03` §4.2, `05-api-spec.md` §3.4). 아니면 `403 RECENT_LOGIN_REQUIRED`. 클라이언트 카운트다운도 같은 기준을 쓴다.
 - 성공 시 `202`. `status=DELETION_REQUESTED`가 되고 캘린더 토큰이 지워진다. 이후 `GET /me`, `DELETE /me` 외 API는 `403 FORBIDDEN`이다. `AccountDeletionJob`(5분 주기)이 `app_user`를 삭제해 cascade로 지우고 `ai_call_log.user_id`는 null이 된다(`04` §8, `03` §6).
@@ -810,7 +798,7 @@ v3에서 옮긴 것(`11` §3, `13` §2): Budget·Risk·Replan 제안은 S5 → *
 **사용자 스토리** — As a 자정 넘어 공부하는 사용자, I want 새벽 공부가 전날 기록으로 남기를 원한다, so that 하루 계획과 기록이 내 생활 리듬과 맞는다.
 
 **규칙**
-- `PATCH /me`: `displayName` 1~100자, `timezone` IANA ID(서버가 `ZoneId`로 검증), `dayStartHour` 0~6, `weekdayStudyMinutes`/`weekendStudyMinutes` 0~720, `version` 필수. null 필드는 변경하지 않는다. `experienceProfile`, `experienceStartDate`는 이 API로 바꾸지 않는다.
+- `PATCH /me`: `displayName` 1~100자, `timezone` IANA ID(서버가 `ZoneId`로 검증), `dayStartHour` 0~6, `weekdayStudyMinutes`/`weekendStudyMinutes` 0~720, `version` 필수. null 필드는 변경하지 않는다.
 - plan-day 계산은 `06` §2. 변경은 **다음 요청부터 즉시** 적용된다. 이미 저장된 `daily_plan`, 세션, 이벤트의 `plan_date`는 다시 계산하지 않는다.
 - timezone·dayStartHour를 바꾸면 "오늘"이 앞뒤로 이동할 수 있다. 화면에서 변경 전에 이 점을 알린다.
 - 학습 시간 변경은 다음 budget 계산(snapshot, preview)부터 반영된다.
@@ -893,12 +881,14 @@ v3에서 옮긴 것(`11` §3, `13` §2): Budget·Risk·Replan 제안은 S5 → *
 - 라이선스가 명시되지 않은 저장소(`UNSPECIFIED`, 현재 restbucks)는 **읽기만** 한다. 화면은 "코드 복사 금지"를 함께 보여주고, 콘텐츠·문서에 그 코드를 옮겨 적지 않는다(`19` §3.8).
 - AI가 불가하면 planner가 `READ_CODE`를 제안하지 않는다. 이미 만들어진 `READ_CODE` 과제의 읽기 안내는 동작하지만 완료 조건인 러버덕은 막힌다(`17` §3.10).
 - 세 저장소가 다루지 않는 영역(인증/로그인, 동시성·재고 차감, 대용량 조회·인덱스 튜닝)은 읽기 없이 직접 구현(PROJECT_TASK)과 문제(FR-09)로 채운다.
+- **읽기 평가(선택)**: 과제를 완료할 때(`PATCH /today/tasks/{taskId}` `status = COMPLETED`) 이 읽기가 어땠는지 하나를 고를 수 있다 — 도움 됐어요(`HELPFUL`) / 어려웠어요(`TOO_HARD`) / 지루했어요(`BORING`). 고르지 않아도 된다. 과제에 저장만 하고(`learning_task.reading_feedback`, `readingFeedback`), 레벨·planner·budget 규칙의 입력이 아니다(`06` §5.3). 사람이 하는 소스 점검의 입력이다.
+- **소스 점검**(`19` §8.5): 저장소·읽기 단위는 사람이 주기적으로 다시 본다 — 첫 점검은 S3 구현 시작 직전, 이후 단계 회고마다 또는 사용자가 요청할 때. 입력은 빈틈 목록(낮은 레벨·막히는 복습·읽을 단위가 없는 skill), 읽기 평가, 저장소의 라이선스·유지 상태다. 추가·교체·은퇴는 사용자와 정한 뒤 `content/curated-repos.yaml`에 반영하고(`pinnedCommit` 고정, 경로·줄 재확인, 검증기, `catalogVersion` +1), 은퇴한 단위도 지난 과제를 위해 계속 조회된다. 자동으로 도는 것은 없고 서버는 저장소를 가져오지 않는다.
 
-**관련 API** — `GET /today`(`MainTaskView.readingKey`), `GET /readings/{readingKey}`, `PATCH /today/tasks/{taskId}`, `POST /rubber-duck`(`targetType = CODE_READING`)
+**관련 API** — `GET /today`(`MainTaskView.readingKey`), `GET /readings/{readingKey}`, `PATCH /today/tasks/{taskId}`(완료 + 선택 `readingFeedback`), `POST /rubber-duck`(`targetType = CODE_READING`)
 **관련 화면** — SCR-TODAY(READ_CODE 카드), SCR-READ-CODE, SCR-RUBBER-DUCK
 **관련 규칙** — RC-1~RC-4(`06` §9.5), `06` §5.3 READ_CODE 분기·reading 선택, `06` §5.8 `READ_REAL_CODE`
 **AC** — AC-28 · **Sprint** — S3 · **우선순위** — MUST
-**범위 밖** — 서버가 저장소를 clone·fetch하거나 코드 본문을 저장·표시·검색하는 것, 사용자가 임의 저장소·reading을 등록하는 것(큐레이션만), 여러 파일을 묶은 과제, 코드 실행(NG-7), 저장소 최신 커밋 자동 추적(`pinnedCommit` 갱신은 콘텐츠 작업), IDE 플러그인(NG-1).
+**범위 밖** — 서버가 저장소를 clone·fetch하거나 코드 본문을 저장·표시·검색하는 것, 사용자가 임의 저장소·reading을 등록하는 것(큐레이션만), 여러 파일을 묶은 과제, 코드 실행(NG-7), 저장소 최신 커밋 자동 추적(`pinnedCommit` 갱신은 콘텐츠 작업), 평가로 저장소·단위를 자동 교체하는 것(소스 점검은 사람이 한다), IDE 플러그인(NG-1).
 
 ---
 
@@ -910,7 +900,7 @@ v3에서 옮긴 것(`11` §3, `13` §2): Budget·Risk·Replan 제안은 S5 → *
 | NFR-02 | **성능** | ① AI를 호출하지 않는 API의 서버 p95 < 1000ms (사용자 1명 기준 데이터: 이벤트 5,000행, 복습 카드 500장에서 k6 50 req) ② 동기 AI(`HINT_GENERATE`, `REVIEW_EVALUATE`, `COACH_RESPONSE_FEEDBACK`, `RUBBER_DUCK`) 서버 타임아웃 20s, `RUBBER_DUCK_SUMMARY` 30s ③ 비동기 AI 작업 요청~완료 ≤ 180s(operation 타임아웃) ④ 캐시된 재방문 시 Today 데이터 표시 ≤ 3s (Chrome Android, Lighthouse "Fast 4G" 프로필) | Micrometer 지표, k6 스크립트(S2), Lighthouse(S2) | — |
 | NFR-03 | **가용성**: 단일 인스턴스 best effort, AI 장애 시 핵심 기능 유지 | ① SLA 없음. 외부 uptime monitor 5분 간격, 월 가용성 ≥ 99%를 추적 목표로 둔다 ② AI provider `disabled`/5xx에서 Today 생성, 복습 답변, 계획 조회·수정, 이력 조회가 모두 2xx ③ RPO ≤ 24h(일간 백업), RTO ≤ 4h(VM 재구축) | provider=disabled 통합 테스트, `10-deployment-and-operations.md` runbook | AC-12 |
 | NFR-04 | **보안**: OWASP Top 10 대응, 사용자 격리 | ① 모든 사용자 소유 리소스 API에서 타 사용자 토큰 → 404 (endpoint 목록 기반 파라미터화 테스트 100% 통과) ② allowlist 밖 사용자 403, row 미생성 ③ 오류 응답에 stack trace·SQL·클래스명 0건 ④ 요청 body > 64KB는 413 ⑤ 서비스는 tailnet 안에서만 접근 가능하고 공개 인터넷에 노출하지 않는다(ADR-031). Supabase 도입 시 Data API로 `devpilot` 스키마 조회 불가(DEC-15) ⑥ 저장소 secret·서버 주소·이메일 0건(gitleaks — DEC-04) ⑦ 인증 POST에 `Idempotency-Key` 없으면 400 | Security 테스트, CI 스캔, `07-security-and-privacy.md` | AC-08, AC-18, AC-20, AC-23 |
-| NFR-05 | **개인정보**: 최소 수집, 보존기간, export/삭제, 마스킹 | ① 수집 항목에 나이·성별·이메일 원문 저장 없음 ② coach content 30일, 요구사항 원문 180일, ai_call_log 180일, idempotency 24h 후 삭제(`04` §8) ③ 저장·AI 전송 전 secret masking, private key 차단(I-14) ④ export에 타 사용자 데이터 0건, 삭제 후 사용자 row 0건 ⑤ 로그에 코드·프롬프트·응답 원문·이메일·Authorization 0건 | purge job 테스트, AC-14/15 테스트, 로그 필드 검사 | AC-14, AC-15 |
+| NFR-05 | **개인정보**: 최소 수집, 보존기간, export/삭제, 마스킹 | ① 수집 항목에 나이·성별·이메일 원문 저장 없음 ② coach content 30일, 로드맵 비교 원문 180일, ai_call_log 180일, idempotency 24h 후 삭제(`04` §8) ③ 저장·AI 전송 전 secret masking, private key 차단(I-14) ④ export에 타 사용자 데이터 0건, 삭제 후 사용자 row 0건 ⑤ 로그에 코드·프롬프트·응답 원문·이메일·Authorization 0건 | purge job 테스트, AC-14/15 테스트, 로그 필드 검사 | AC-14, AC-15 |
 | NFR-06 | **관측성**: structured log, traceId, 감사 이벤트 | ① prod 로그 100% JSON, 모든 요청 로그에 `traceId`, 인증 요청에 `userRef` ② 모든 응답에 `X-Trace-Id` 헤더 ③ 감사 이벤트(`07-security-and-privacy.md` §6.3) 누락 0건 ④ 스케줄 job마다 시작·건수·소요시간 INFO 1줄, 실패 시 `JOB_FAILED` WARN ⑤ 화면 오류 상세에 `traceId` 표시 | `03` §8, 통합 테스트, `02` §3.3 | — |
 | NFR-07 | **유지보수성**: 자동 품질 게이트, 문서·코드 일치, 결정적 규칙 | ① PR마다 format, Checkstyle, PMD, SpotBugs, ArchUnit, 테스트, `flutter analyze`, `flutter test` 통과 전 merge 불가 ② `06`의 test vector 100% `@ParameterizedTest`로 통과 ③ 규칙 계산에 부동소수점 0건(N-1) ④ enum 이름은 `04` §3과 1:1 ⑤ 가중치·임계값 하드코딩 0건(`03` §9) ⑥ API·DB·규칙 변경 PR은 관련 문서를 같은 PR에서 갱신 | CI, ArchUnit, 코드 리뷰 체크리스트 | — |
 | NFR-08 | **접근성·반응형**: 360px~, 터치 44px, 색 외 표시 | ① 폭 360px에서 가로 스크롤 없음(모든 SCR) ② 터치 대상 ≥ 44×44 CSS px ③ 텍스트 대비 ≥ 4.5:1, 아이콘·경계 ≥ 3:1 (WCAG 2.1 AA) ④ 상태·등급·배지는 텍스트 라벨 포함(색만으로 구분 0건) ⑤ 데스크톱 복습은 키보드만으로 완료 가능 ⑥ 글자 크기 200%에서 핵심 버튼 가려짐 없음 ⑦ 한국어 IME 조합 입력·붙여넣기 정상(스파이크 SP-1, `11` §4) | widget test, 수동 점검 체크리스트(`02` §7) | AC-10 |
@@ -967,3 +957,5 @@ v3에서 새로 쓰는 말의 요약이다(정의는 `15`가 기준이다):
 | M1 / M2 | M1 = S0~S3(쓸 수 있는 최소), M2 = S4~S7 (§7) |
 | 실사용 시작 | M1 완료(= S3 완료). 성공 지표 8주의 기준점 (§6) |
 | 확장 제안 | 여유가 있을 때 미뤄 둔 항목 복원·MUST 목표 +1을 제안하는 것. 축소 제안과 배타 (FR-05) |
+| 학습 목표 · 목표일 | 학습 목표 = 학습 트랙 + 목표일(날짜 하나). budget horizon이자 계획 배치의 끝 (FR-03) |
+| 소스 점검 | `READ_CODE` 저장소·읽기 단위를 사람이 주기적으로 다시 보는 절차 (FR-27, `19` §8.5) |

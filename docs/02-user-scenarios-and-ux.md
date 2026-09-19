@@ -1,6 +1,6 @@
 # 02. User Scenarios & UX
 
-> Status: Accepted (v3) · Last updated: 2026-09-18 · Related: DEC-10, DEC-12, DEC-18, `01-product-requirements.md`, `05-api-spec.md`, `06-learning-engine-rules.md`, `17-ai-integration.md`
+> Status: Accepted (v3) · Last updated: 2026-09-19 · Related: DEC-10, DEC-12, DEC-18, DEC-27, DEC-28, `01-product-requirements.md`, `05-api-spec.md`, `06-learning-engine-rules.md`, `17-ai-integration.md`
 >
 > 이 문서는 Flutter 클라이언트의 **화면 ID(SCR), 라우트, 화면별 레이아웃·데이터·상태·검증·문구, 핵심 흐름, 오류 코드별 UI 처리, 공통 컴포넌트, 접근성, PWA, 테마 토큰**을 정의한다. 기능 규칙은 `01`의 FR, 요청·응답 필드는 `05-api-spec.md`가 기준이다. API는 base `/api/v1`을 생략하고 `METHOD path`로 적는다.
 >
@@ -162,7 +162,7 @@ go_router `redirect`는 아래 순서로 평가하고 처음 해당하는 규칙
 **화면 명세 항목**: 목적 · 진입 경로 · 레이아웃(모바일 기준, 폭 360) · 컴포넌트 · 데이터 · 상태 · 사용자 행동과 검증 · 주요 문구. 상태 칸에 "공통"이라고 쓴 것은 §3.3 기본 동작을 그대로 쓴다는 뜻이다.
 
 - **Sprint** 칸의 S0~S7은 구현 단계 ID다(`01` §7). 기간·날짜가 없다. M1 = S0~S3(S3 완료 = 실사용 시작), M2 = S4~S7.
-- 와이어프레임 안의 날짜·이름·숫자는 모두 **예시**다. 학습 완료 목표일·중간 점검일은 사용자가 등록한 값이 들어간다.
+- 와이어프레임 안의 날짜·이름·숫자는 모두 **예시**다. 목표일은 사용자가 등록한 값이 들어간다.
 
 **문구 key와 l10n**
 - 파일: `lib/l10n/app_ko.arb` 하나(한국어만, `01` §10.1 C-3). `flutter gen-l10n`을 쓴다.
@@ -211,7 +211,7 @@ go_router `redirect`는 아래 순서로 평가하고 처음 해당하는 규칙
 | `SkillAxis` | KNOWLEDGE 지식 · IMPLEMENTATION 구현 · EXPLANATION 설명 · DEBUGGING 문제 인지 |
 | `SkillLevel` | 0 모름 · 1 본 적 있음 · 2 도움받아 가능 · 3 혼자 기본 가능 · 4 실무 적용 · 5 응용·전이 |
 | `SkillCategory` | JAVA Java · SPRING Spring · DATABASE 데이터베이스·JPA · WEB_HTTP 웹·HTTP · NETWORK 네트워크 · CS CS 기초 · ALGORITHM 알고리즘·문제 풀이 · TESTING 테스트 · DEVOPS DevOps·배포 · SECURITY 보안 · PRACTICAL_ENGINEERING 실무 엔지니어링 · SYSTEM_DESIGN 시스템 설계 · EXPLANATION 기술 설명 |
-| `ExperienceProfile` | WORKING_DEVELOPER 현업 개발자 · DEVELOPER_STARTER 개발 입문 · OTHER 기타 |
+| `ReadingFeedback` | HELPFUL 도움 됐어요 · TOO_HARD 어려웠어요 · BORING 지루했어요 |
 | `CoachContentType` | CODE 코드 · DIFF Diff · LOG 로그 |
 | `EvidenceStatus` | CANDIDATE 후보 · ACCEPTED 승인 · REJECTED 거절 |
 | `RequirementType` | REQUIRED 필수 · PREFERRED 권장 |
@@ -230,9 +230,7 @@ go_router `redirect`는 아래 순서로 평가하고 처음 해당하는 규칙
 | `dayStartHour` | SCR-ONBOARDING, SCR-SETTINGS | 0~6 선택 | — |
 | `weekdayStudyMinutes`, `weekendStudyMinutes` | SCR-ONBOARDING, SCR-SETTINGS | 정수 0~720 | `validation.range` |
 | `availableMinutes` | SCR-TODAY | 정수 5~720 | `validation.range` |
-| `targetCompletionDate` | SCR-ONBOARDING, SCR-LEARNING-GOAL | 필수, 오늘(plan-day) < 값 ≤ 오늘+3년 | `validation.dateFuture`, `validation.dateTooFar` |
-| `checkpointDate` | 같음 | 선택, 오늘−1년 ≤ 값 ≤ `targetCompletionDate` | `validation.checkpointAfterCompletion` |
-| `experienceStartDate` | SCR-ONBOARDING | 선택, 1970-01-01 ≤ 값 ≤ 오늘 | `validation.datePast` |
+| `targetCompletionDate` (목표일) | SCR-ONBOARDING, SCR-LEARNING-GOAL | 필수, 내일(plan-day + 1) ≤ 값 ≤ 오늘+3년. 날짜 선택기도 이 범위만 연다 | `validation.dateFuture`, `validation.dateTooFar` |
 | `focusSkillCodes` | SCR-ONBOARDING, SCR-LEARNING-GOAL | 0~10개 | `validation.maxItems` |
 | 카테고리 자기평가 | SCR-ONBOARDING | 자기평가를 고른 경우에만. 13개 모두 0~4 (기본 0). 짧은 진단을 고르면 보내지 않는다(`[]`) | — |
 | 사이드 프로젝트 `name` | SCR-ONBOARDING, SCR-PROJECTS | 앞뒤 공백 제거 후 1~100자 (온보딩 기본값 "주문 시스템") | `validation.required`, `validation.maxLength` |
@@ -267,9 +265,9 @@ go_router `redirect`는 아래 순서로 평가하고 처음 해당하는 규칙
 | evidence `referenceLinks` | 같음 | 0~10개, `https://`로 시작, 각 ≤ 500자 | `validation.httpsUrl` |
 | evidence `explanationTopics` | 같음 | 0~10개, 각 1~200자 | `validation.maxItems` |
 | weekly `reflection` | SCR-WEEKLY-DETAIL | 0~5000자 | `validation.maxLength` |
-| 요구사항 문서 `title` | SCR-REQUIREMENT-NEW | 1~200자 | `validation.required` |
-| 요구사항 문서 `sourceUrl` | SCR-REQUIREMENT-NEW | 선택, `http://` 또는 `https://`, ≤ 2000자 | `validation.url` |
-| 요구사항 문서 `sourceText` | SCR-REQUIREMENT-NEW | 공백 아닌 문자 1개 이상, UTF-8 20000 bytes 이하 | `radar.new.validation.tooLarge` |
+| 로드맵 비교 `title` | SCR-REQUIREMENT-NEW | 1~200자 | `validation.required` |
+| 로드맵 비교 `sourceUrl` | SCR-REQUIREMENT-NEW | 선택, `http://` 또는 `https://`, ≤ 2000자 | `validation.url` |
+| 로드맵 비교 `sourceText` | SCR-REQUIREMENT-NEW | 공백 아닌 문자 1개 이상, UTF-8 20000 bytes 이하 | `radar.new.validation.tooLarge` |
 | 계정 삭제 확인 문구 | SCR-ACCOUNT-DELETE | 정확히 `삭제합니다` | — (버튼 비활성) |
 
 private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYPTED|PGP) )?PRIVATE KEY( BLOCK)?-----`
@@ -311,9 +309,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `validation.maxItems` | 최대 {max}개까지 고를 수 있어요 |
 | `validation.dateFuture` | 오늘 이후 날짜를 골라 주세요 |
 | `validation.dateTooFar` | 3년 이내 날짜를 골라 주세요 |
-| `validation.datePast` | 오늘 이전 날짜를 골라 주세요 |
 | `validation.dateRange` | 시작일이 종료일보다 늦어요 |
-| `validation.checkpointAfterCompletion` | 중간 점검일은 학습 완료 목표일 이전이어야 해요 |
 | `validation.milestoneCount` | milestone은 1~24개여야 해요 |
 | `validation.httpsUrl` | https:// 로 시작하는 주소를 입력해 주세요 |
 | `validation.url` | http:// 또는 https:// 로 시작하는 주소를 입력해 주세요 |
@@ -396,7 +392,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 #### SCR-ONBOARDING
 
-- **목적**: 5단계로 목표(학습 목표일)·시간·현재 수준 확인 방식·사이드 프로젝트를 받고 계획 v1을 만든다(FR-02, FR-26 SP-1). 현재 수준은 **짧은 진단이 기본**이고, 건너뛰면 자기평가로 대체한다. **진입**: `onboardingCompleted=false` redirect. **Sprint**: S1 (3단계 "짧은 진단" 선택지는 `diagnostics` flag가 켜지는 S3).
+- **목적**: 5단계로 목표(무엇을·언제까지 — 학습 트랙과 목표일)·시간·현재 수준 확인 방식·사이드 프로젝트를 받고 계획 v1을 만든다(FR-02, FR-26 SP-1). 현재 수준은 **짧은 진단이 기본**이고, 건너뛰면 자기평가로 대체한다. **진입**: `onboardingCompleted=false` redirect. **Sprint**: S1 (3단계 "짧은 진단" 선택지는 `diagnostics` flag가 켜지는 S3).
 - **공통 레이아웃**: 상단 진행 막대 + `n / 5`, 제목, 본문(스크롤), 하단 고정 버튼 영역(좌 "이전" `TextButton`, 우 "다음" `FilledButton`). 1단계에는 "이전"이 없다. 5단계에는 "이전"이 없다(이미 저장됨). 데스크톱은 폭 560 카드 가운데 정렬.
 - **입력 보관**: ①~④ 입력은 `onboardingDraftProvider`에 두고, 새로고침 대비로 `localStorage` key `devpilot.onboarding.draft.<externalAuthId>`에 저장한다(읽기·쓰기 모두 try/catch, 실패해도 동작). 제출 성공 시 삭제한다.
 
@@ -405,40 +401,33 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 ```text
 ┌────────────────────────────────┐
 │ ━━━━━───────────────────── 1/5 │
-│ 목표를 알려 주세요              │
+│ 무엇을, 언제까지 공부할지 정해요  │
+│                                │
+│ 표시 이름 *                      │
+│ [MT                          ]  │
 │                                │
 │ 학습 트랙                       │
 │ ┌────────────────────────────┐ │
 │ │ Java 백엔드                 │ │  읽기 전용
 │ └────────────────────────────┘ │
-│ 지금 나에게 가까운 것            │
-│ (●) 현업 개발자                 │
-│     개발·운영 실무 경험이 있어요 │
-│ ( ) 개발 입문                   │
-│     실제 개발 경험이 적어요      │
-│ ( ) 기타                        │
 │                                │
-│ 개발 시작일 (선택) [2020년 2월 ▾]│
-│                                │
-│ 학습 완료 목표일 *               │
-│ [3개월 후] [6개월 후] [직접 선택] │
+│ 목표일 *                         │
+│ [3개월 후] [6개월 후] [1년 후]    │
+│ [직접 선택]                      │
 │ 2027년 4월 1일 (목)             │
-│ 이 날짜로 남은 시간을 거꾸로      │
-│ 계산해 무엇을 먼저 할지 정해요.   │
-│                                │
-│ 중간 점검일 (선택)               │
-│ [완료일 3개월 전] [직접] [없음]   │
-│ 2027년 1월 1일 (금)             │
+│ 목표일까지 남은 시간으로 무엇을   │
+│ 먼저 할지 정해요.                │
 │ ────────────────────────────── │
 │                      [  다음  ] │
 └────────────────────────────────┘
 ```
 
-- 기본값: `experienceProfile` 선택 없음(필수), 목표일 없음(필수), 중간 점검일 "없음". 날짜는 사용자가 고른 값이다(와이어프레임의 날짜는 예시).
-- 학습 트랙 위에 "표시 이름" 입력(1~100자, 기본값 `GET /me.displayName`)을 둔다.
-- "3개월 후" = 오늘+3개월, "완료일 3개월 전" = 완료일−3개월(오늘 이전이 되면 칩 비활성).
-- 목표일 아래에 `onboarding.goal.completion.help`를 둔다. 이 날짜는 나중에 설정 > 학습 목표(SCR-LEARNING-GOAL)에서 바꿀 수 있다. 중간 점검일은 필수(MUST) 항목을 먼저 끝내 둘 날짜이고, 그 뒤는 만든 것을 설명하고 CS 기초를 채우는 정리 단계다(`01` FR-03).
-- "다음" 활성 조건: `experienceProfile` 선택 + `displayName` 유효 + `targetCompletionDate` 유효(§3.2).
+- 필드는 셋이다: 표시 이름(1~100자, 기본값 `GET /me.displayName`), 학습 트랙(읽기 전용 "Java 백엔드" = `targetRole: JAVA_BACKEND`), 목표일(`targetCompletionDate`, 필수). 학습 목표는 무엇을(학습 트랙)·언제까지(목표일) 두 가지뿐이다(`01` FR-03).
+- 기본값: 목표일 없음(필수). 날짜는 사용자가 고른 값이다(와이어프레임의 날짜는 예시).
+- 빠른 선택 칩: "3개월 후" = 오늘(plan-day) + 3개월, "6개월 후" = + 6개월, "1년 후" = + 1년, "직접 선택" = 날짜 선택기(범위 내일 ~ 오늘+3년). 칩을 누르면 계산한 날짜를 칩 아래에 보이고, 선택한 칩은 선택 상태로 둔다. 날짜를 직접 고르면 "직접 선택"이 선택 상태가 된다.
+- 목표일 아래에 `onboarding.goal.completion.help`를 둔다. 이 날짜는 나중에 설정 > 학습 목표(SCR-LEARNING-GOAL)에서 바꿀 수 있다.
+- 검증: 목표일은 내일(plan-day + 1)부터 오늘+3년까지(§3.2, 서버 `DATE_OUT_OF_RANGE`).
+- "다음" 활성 조건: `displayName` 유효 + `targetCompletionDate` 유효(§3.2).
 
 **2단계 — 시간** (`/onboarding/time`)
 
@@ -543,7 +532,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 - 이름 기본값 "주문 시스템"은 **클라이언트가 채운다**(서버는 기본값을 만들지 않는다, `05` §4.1 10단계). 온보딩에서는 이름만 바꿀 수 있다(SP-1). `description`은 고정 문구 `onboarding.project.defaultDescription`을 보내고 `repoUrl`, `stack`은 보내지 않는다(`null`). 나머지는 SCR-PROJECTS에서 고친다.
 - 안내 카드(`ReferenceProjectCard`)는 계획 템플릿 milestone 순서를 요약한 고정 문구다. 사용자가 이름을 바꿔도 그대로 둔다.
 - "건너뛰기" → 대화상자 `onboarding.project.skip.*`(건너뛰면 Today가 프로젝트 과제를 제안하지 않는다는 사실 + 나중에 만들 수 있음) → "건너뛰고 계획 만들기"를 누르면 `sideProject: null`로 바로 제출한다.
-- "계획 만들기" → `POST /onboarding` `{displayName, timezone, dayStartHour, weekdayStudyMinutes, weekendStudyMinutes, experienceProfile, experienceStartDate, learningGoal: {targetRole, checkpointDate, targetCompletionDate, focusSkillCodes}, runDiagnostic, selfAssessments, sideProject: {name, description} 또는 null, useTemplate: true}`(IK, 버튼 로딩, 이전·뒤로가기 비활성). 성공 → `meProvider` 갱신 → `/onboarding/plan`.
+- "계획 만들기" → `POST /onboarding` `{displayName, timezone, dayStartHour, weekdayStudyMinutes, weekendStudyMinutes, learningGoal: {targetRole, targetCompletionDate, focusSkillCodes}, runDiagnostic, selfAssessments, sideProject: {name, description} 또는 null, useTemplate: true}`(IK, 버튼 로딩, 이전·뒤로가기 비활성). 성공 → `meProvider` 갱신 → `/onboarding/plan`.
 - "계획 만들기" 활성 조건: 이름 1~100자(§3.2).
 
 **5단계 — 계획 확인** (`/onboarding/plan`)
@@ -595,20 +584,15 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `onboarding.progress` | {step} / 5 |
 | `onboarding.next` | 다음 |
 | `onboarding.back` | 이전 |
-| `onboarding.goal.title` | 목표를 알려 주세요 |
+| `onboarding.goal.title` | 무엇을, 언제까지 공부할지 정해요 |
+| `onboarding.goal.displayName` | 표시 이름 |
 | `onboarding.goal.role` | 학습 트랙 |
-| `onboarding.goal.profile` | 지금 나에게 가까운 것 |
-| `onboarding.goal.profile.working.desc` | 개발·운영 실무 경험이 있어요 |
-| `onboarding.goal.profile.starter.desc` | 실제 개발 경험이 적어요 |
-| `onboarding.goal.experienceStart` | 개발 시작일 (선택) |
-| `onboarding.goal.completion` | 학습 완료 목표일 |
-| `onboarding.goal.completion.help` | 이 날짜로 남은 시간을 거꾸로 계산해 무엇을 먼저 할지 정해요. |
-| `onboarding.goal.checkpoint` | 중간 점검일 (선택) |
+| `onboarding.goal.completion` | 목표일 |
+| `onboarding.goal.completion.help` | 목표일까지 남은 시간으로 무엇을 먼저 할지 정해요. |
 | `onboarding.goal.quick.3m` | 3개월 후 |
 | `onboarding.goal.quick.6m` | 6개월 후 |
+| `onboarding.goal.quick.1y` | 1년 후 |
 | `onboarding.goal.quick.custom` | 직접 선택 |
-| `onboarding.goal.quick.before3m` | 완료일 3개월 전 |
-| `onboarding.goal.quick.none` | 없음 |
 | `onboarding.time.title` | 공부할 수 있는 시간은? |
 | `onboarding.time.weekday` | 평일 하루 |
 | `onboarding.time.weekend` | 주말 하루 |
@@ -797,9 +781,15 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
   - 시간 기본값 = 세션 시작부터 경과 분(반올림, 최소 1). 최댓값 = `min(720, ⌈경과 분 × 1.5⌉)`(`05-api-spec.md` §9.2). `−`/`+`는 5분 단위.
   - "여기까지 기록"도 같은 시트를 제목 `today.partial.title`로 연다. 0분으로 기록하면 세션을 abandon한다.
+  - **`READ_CODE` 읽기 평가 (S3)**: 완료할 task가 `READ_CODE`이면 "완료 기록" 시트의 회고 아래에 `today.readCode.feedback.title`과 칩 3개(`ReadingFeedback` 라벨: 도움 됐어요 · 어려웠어요 · 지루했어요)를 둔다. **선택 사항이다** — 아무것도 고르지 않아도 되고, 고른 칩을 다시 누르면 선택이 풀린다. 고른 값은 완료 `PATCH /today/tasks/{taskId}` `{status: COMPLETED, readingFeedback, version}`에 넣는다(`05` §8.4). 고르지 않으면 `readingFeedback`을 보내지 않는다. "여기까지 기록"(`DEFERRED`) 시트와 다른 task 유형에는 칩이 없다. 평가는 계획·레벨에 영향이 없고 저장소·단위를 고르는 소스 점검(`19` §8.5)에만 쓰인다.
+
+```text
+│ 이 코드 읽기는 어땠나요? (선택)   │
+│ [도움 됐어요] [어려웠어요] [지루했어요]│
+```
 
 - **진행 중 러버덕 줄** (`ActiveRubberDuckTile`, S3): 기기에 저장한 진행 중 세션(`localStorage` `devpilot.rubberduck.active.<externalAuthId>` = `{sessionId, taskId}`, try/catch)이 있고 `GET /rubber-duck/{sessionId}`가 `IN_PROGRESS`이면 복습 줄 위에 `today.duck.continue` + "이어서 설명하기"(→ `/rubber-duck/{sessionId}`)를 한 줄로 보인다. `IN_PROGRESS`가 아니거나 404면 저장값을 지우고 숨긴다. 세션 목록 API가 없어서 다른 기기에서 시작한 세션은 보이지 않는다(`05` §9.10).
-- **`READ_CODE` 완료 확인**: 서버가 한다. `CODE_READING` 러버덕 세션이 `COMPLETED`가 되면 서버가 같은 트랜잭션에서 그 `READ_CODE` 과제를 `COMPLETED`로 바꾼다(`05` §9.8 7번, RC-1). 클라이언트는 러버덕 정리 화면에서 Today로 돌아오면 `GET /today`를 다시 읽어 과제 상태로 "완료"를 보인다(기기와 무관). 과제가 아직 `PLANNED`·`IN_PROGRESS`이면 "코드 읽기로 돌아가기"와 "설명하기"를 보인다. 읽기만 하고 완료 버튼을 누르면 서버가 `409 INVALID_STATE_TRANSITION`을 주고 토스트 `today.readCode.needDuck`.
+- **`READ_CODE` 완료 확인**: 완료 조건(RC-1)은 서버가 검사한다 — 그 task를 대상으로 한 `COMPLETED` 러버덕 세션이 있어야 `PATCH /today/tasks/{taskId}` `{status: COMPLETED}`가 성공한다(`05` §8.4). 러버덕 정리는 과제 상태를 바꾸지 않는다(`05` §9.8). 클라이언트는 러버덕 정리 화면의 "Today로 돌아가 완료하기"(`/today?complete={taskId}`)로 돌아오면 완료 시트(읽기 평가 칩 포함)를 연다. 그 밖의 진입에서는 기기에 저장한 기록(`devpilot.rubberduck.task.<taskId>`)의 세션이 `COMPLETED`이면 "완료"를, 아니면 "코드 읽기로 돌아가기"와 "설명하기"를 보인다. 러버덕 없이 완료를 누르면 서버가 `409 INVALID_STATE_TRANSITION`을 주고 토스트 `today.readCode.needDuck`.
 - **컴포넌트**: `MinutesChips`, `EnergySegmented`, `MainTaskCard`(유형별 변형: `READ_CODE`·`PROJECT_TASK` 위 와이어프레임), `ReasonList`, `RiskBadge`(§6.1), `ComebackBanner`, `ActiveRubberDuckTile`, `ReviewTaskTile`, `DiagnosticSuggestionCard`, `CompleteSessionSheet`, `RegenerateSheet`(시간·컨디션 재입력).
 - **데이터**
 
@@ -813,7 +803,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | "시작" | `PATCH /today/tasks/{taskId}` `{status: IN_PROGRESS, version}` → 진행 중 세션이 없거나 그 `learningTaskId`가 이 task가 아니면 `POST /learning-sessions` `{learningTaskId}`(서버가 기존 세션을 ABANDONED로 닫음) |
 | "오늘은 건너뛰기" | `PATCH /today/tasks/{taskId}` `{status: SKIPPED, version}` |
 | "되돌리기" | `PATCH /today/tasks/{taskId}` `{status: PLANNED, version}` |
-| "완료 기록" | `POST /learning-sessions/{sessionId}/complete` `{actualMinutes, selfReflection}` → `PATCH /today/tasks/{taskId}` `{status: COMPLETED, version}` |
+| "완료 기록" | `POST /learning-sessions/{sessionId}/complete` `{actualMinutes, selfReflection}` → `PATCH /today/tasks/{taskId}` `{status: COMPLETED, version}` (`READ_CODE`이고 평가를 골랐으면 `readingFeedback` 추가) |
 | "여기까지 기록" (> 0분) | `POST /learning-sessions/{sessionId}/complete` → `PATCH … {status: DEFERRED}` |
 | "여기까지 기록" (0분) | `POST /learning-sessions/{sessionId}/abandon` → `PATCH … {status: DEFERRED}` |
 
@@ -899,6 +889,10 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `today.readCode.local` | 코드는 내 컴퓨터에서 읽어요. |
 | `today.readCode.back` | 코드 읽기로 돌아가기 |
 | `today.readCode.needDuck` | 러버덕으로 설명을 마쳐야 완료할 수 있어요. |
+| `today.readCode.feedback.title` | 이 코드 읽기는 어땠나요? (선택) |
+| `enum.ReadingFeedback.HELPFUL` | 도움 됐어요 |
+| `enum.ReadingFeedback.TOO_HARD` | 어려웠어요 |
+| `enum.ReadingFeedback.BORING` | 지루했어요 |
 | `today.explainWithDuck` | 러버덕으로 설명하기 |
 | `today.duck.continue` | 설명하던 러버덕이 있어요. |
 | `today.duck.continueButton` | 이어서 설명하기 |
@@ -1859,8 +1853,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 ┌────────────────────────────────┐
 │ 계획                   버전 기록 │
 │ Java 백엔드 성장 계획 · v3        │
-│ 완료 목표 2027년 4월 1일           │
-│ 중간 점검 2027년 1월 5일  [목표 수정]│
+│ 목표일 2027년 4월 1일  [목표 수정] │
 │ ┌────────────────────────────┐ │  replanRecommended=true
 │ │ ⓘ 목표 날짜가 바뀌었어요.       │ │
 │ │   계획을 다시 맞춰 보세요.      │ │
@@ -1868,8 +1861,8 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ └────────────────────────────┘ │
 │ ┌────────────────────────────┐ │  S2
 │ │ 마감 위험 [빠듯함]              │ │
-│ │ 1월 5일까지 가능  약 82시간     │ │
-│ │ 필수 목표에 필요  약 98시간     │ │
+│ │ 4월 1일까지 가능  약 200시간    │ │
+│ │ 필수 목표에 필요  약 240시간    │ │
 │ │ 필요 ÷ 가능 120%                │ │
 │ │ 최근 실제 완료율 70% 반영        │ │
 │ └────────────────────────────┘ │
@@ -1896,8 +1889,8 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 └────────────────────────────────┘
 ```
 
-- **타임라인**: 모바일은 milestone 카드 목록에 "오늘" 구분선을 날짜 위치에 끼워 넣는다. Tablet·Desktop은 목록 위에 가로 막대 타임라인(월 눈금, milestone 구간 막대 + 제목 라벨, 오늘 세로선, 목표일·중간 점검일 표시)을 추가한다. 막대의 priority는 막대 안 텍스트 라벨(`필수`/`권장`/`나중`)로 표시한다.
-- **budget 카드 표시 규칙(S2)**: 분은 시간 단위로 반올림(`약 {h}시간`). `ratioBp=null`이면 "필요 ÷ 가능" 줄 대신 `plan.budget.noTime`. 완료율 줄은 `completionRateBp`를 쓴다. 기준일은 사용자가 등록한 중간 점검일(오늘 이후일 때) 또는 학습 완료 목표일이다(`horizonDate`). risk ≥ HIGH면 카드 아래 `plan.budget.tight` + "계획 조정"(보조 버튼), risk = LOW면 `plan.budget.roomy` + "계획 조정"(보조 텍스트 버튼), MEDIUM이면 "계획 조정" 텍스트 버튼만 둔다. 문구는 안내일 뿐이고, 실제 제안 여부는 SCR-REPLAN 미리보기가 정한다(`06` §4.4).
+- **타임라인**: 모바일은 milestone 카드 목록에 "오늘" 구분선을 날짜 위치에 끼워 넣는다. Tablet·Desktop은 목록 위에 가로 막대 타임라인(월 눈금, milestone 구간 막대 + 제목 라벨, 오늘 세로선, 목표일 표시 하나)을 추가한다. 날짜 표시는 목표일 하나뿐이다 — 마지막 milestone "설명과 정리"가 그 앞에서 끝난다. 막대의 priority는 막대 안 텍스트 라벨(`필수`/`권장`/`나중`)로 표시한다.
+- **budget 카드 표시 규칙(S2)**: 분은 시간 단위로 반올림(`약 {h}시간`). `ratioBp=null`이면 "필요 ÷ 가능" 줄 대신 `plan.budget.noTime`. 완료율 줄은 `completionRateBp`를 쓴다. 기준일은 사용자가 등록한 목표일이다(`horizonDate` = `targetCompletionDate`, `06` §3.1). risk ≥ HIGH면 카드 아래 `plan.budget.tight` + "계획 조정"(보조 버튼), risk = LOW면 `plan.budget.roomy` + "계획 조정"(보조 텍스트 버튼), MEDIUM이면 "계획 조정" 텍스트 버튼만 둔다. 문구는 안내일 뿐이고, 실제 제안 여부는 SCR-REPLAN 미리보기가 정한다(`06` §4.4).
 - **컴포넌트**: `PlanHeader`, `ReplanRecommendedBanner`, `BudgetRiskCard`, `PlanTimelineBar`(≥ 600), `MilestoneCard`(`MilestoneStatusDropdown`, `SortButtons`, `DescriptionEditor`), `TodayDivider`.
 - **데이터**
 
@@ -1917,8 +1910,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `plan.title` | 계획 |
 | `plan.versions` | 버전 기록 |
 | `plan.header` | {title} · v{version} |
-| `plan.goal.completion` | 완료 목표 {date} |
-| `plan.goal.checkpoint` | 중간 점검 {date} |
+| `plan.goal.completion` | 목표일 {date} |
 | `plan.goal.edit` | 목표 수정 |
 | `plan.replanRecommended` | 목표 날짜가 바뀌었어요. 계획을 다시 맞춰 보세요. |
 | `plan.replan.button` | 계획 조정 |
@@ -1942,7 +1934,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 #### SCR-REPLAN
 
-- **목적**: milestone 추가·삭제·기간·우선순위·기술 구성을 바꿔 새 계획 버전을 만든다. S2부터는 저장 전에 마감 위험과 제안을 미리 보고 적용할 제안을 고른다 — 사용자가 등록한 학습 목표일까지 **빠듯하면 필수 위주로 줄이는 안**(defer·목표 낮춤), **여유가 있으면 깊이를 더하는 안**(미뤄 둔 항목 복원·목표 올림)이다. 두 종류는 동시에 나오지 않는다(FR-04, FR-05, AC-03, AC-30). **진입**: SCR-PLAN "계획 구조 바꾸기"·"계획 조정", SCR-LEARNING-GOAL 저장 후(`?from=goal`). **Sprint**: S1(편집 → 저장), S2(편집 → 미리보기 → 저장).
+- **목적**: milestone 추가·삭제·기간·우선순위·기술 구성을 바꿔 새 계획 버전을 만든다. S2부터는 저장 전에 마감 위험과 제안을 미리 보고 적용할 제안을 고른다 — 사용자가 등록한 목표일까지 **빠듯하면 필수 위주로 줄이는 안**(defer·목표 낮춤), **여유가 있으면 깊이를 더하는 안**(미뤄 둔 항목 복원·목표 올림)이다. 두 종류는 동시에 나오지 않는다(FR-04, FR-05, AC-03, AC-30). **진입**: SCR-PLAN "계획 구조 바꾸기"·"계획 조정", SCR-LEARNING-GOAL 저장 후(`?from=goal`). **Sprint**: S1(편집 → 저장), S2(편집 → 미리보기 → 저장).
 - **레이아웃 ① 편집**
 
 ```text
@@ -2102,9 +2094,9 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 #### SCR-LEARNING-GOAL
 
-- **목적**: 학습 목표일(학습 완료 목표일·중간 점검일)과 집중 기술을 등록·수정한다(FR-03). **학습 목표일은 사용자가 여기서 직접 정하는 값**이고, DevPilot은 이 날짜로 남은 시간을 역산해 빠듯하면 필수 위주로, 여유 있으면 깊이 있게 안내한다(FR-05). **진입**: SCR-SETTINGS "목표"(주 진입점), SCR-PLAN "목표 수정". **Sprint**: S1.
-- **레이아웃**: 학습 트랙(읽기 전용 "Java 백엔드") → 학습 완료 목표일(필수, 날짜 선택기) → 중간 점검일(선택, "없음" 스위치 — 필수 항목을 먼저 끝내 둘 날짜) → 집중 기술(칩 목록 + "기술 선택", 최대 10) → 안내 `goal.help` → primary "저장".
-- **데이터**: 진입 `GET /learning-goal`. 저장 `PUT /learning-goal` `{targetRole, checkpointDate, targetCompletionDate, focusSkillCodes, version}`.
+- **목적**: 학습 목표(무엇을·언제까지 — 학습 트랙과 목표일)와 집중 기술을 등록·수정한다(FR-03). **목표일은 사용자가 여기서 직접 정하는 날짜 하나**이고, DevPilot은 이 날짜로 남은 시간을 역산해 빠듯하면 필수 위주로, 여유 있으면 깊이 있게 안내한다(FR-05). **진입**: SCR-SETTINGS "목표"(주 진입점), SCR-PLAN "목표 수정". **Sprint**: S1.
+- **레이아웃**: 학습 트랙(읽기 전용 "Java 백엔드", 라벨 `onboarding.goal.role`) → 목표일(필수, 라벨 `onboarding.goal.completion`, SCR-ONBOARDING 1단계와 같은 빠른 선택 칩 `onboarding.goal.quick.*`과 날짜 선택기) → 집중 기술(칩 목록 + "기술 선택", 최대 10) → 안내 `goal.help` → primary "저장".
+- **데이터**: 진입 `GET /learning-goal`. 저장 `PUT /learning-goal` `{targetRole, targetCompletionDate, focusSkillCodes, version}`.
 - **상태**: Loading — 폼 skeleton. Error — `404 LEARNING_GOAL_NOT_FOUND`는 `ErrorView`(온보딩 이후 정상 흐름에서는 발생하지 않고, PUT은 목표를 새로 만들지 않는다). `409 CONCURRENT_MODIFICATION`은 최신 목표로 폼을 다시 채운다. 그 외 공통·§5. Offline — 공통.
 - **행동·검증**: §3.2. 저장 성공 시 날짜가 바뀌었으면 대화상자 `goal.saved.datesChanged`("지금 조정" → `/plan/replan?from=goal`, "나중에" → `/plan`). 날짜가 그대로면 토스트 후 뒤로.
 - **문구**
@@ -2113,7 +2105,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 |---|---|
 | `goal.title` | 목표 |
 | `goal.focus` | 집중 기술 (최대 10개) |
-| `goal.help` | 이 날짜로 남은 시간을 거꾸로 계산해요. 빠듯하면 필수 위주로, 여유가 있으면 더 깊이 안내해요. 날짜를 바꿔도 계획은 자동으로 바뀌지 않아요. 저장 후 계획 조정을 권해 드려요. |
+| `goal.help` | 목표일까지 남은 시간을 거꾸로 계산해요. 빠듯하면 필수 위주로, 여유가 있으면 더 깊이 안내해요. 날짜를 바꿔도 계획은 자동으로 바뀌지 않아요. 저장 후 계획 조정을 권해 드려요. |
 | `goal.save` | 저장 |
 | `goal.saved` | 목표를 저장했어요. |
 | `goal.saved.datesChanged.title` | 목표 날짜가 바뀌었어요 |
@@ -2170,7 +2162,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 #### SCR-SKILL-DETAIL
 
-- **목적**: 한 기술의 축별 레벨이 왜 그 값인지 근거 이력과 함께 보고, 관련 학습으로 이동한다(FR-06, AC-09). **진입**: SCR-SKILL-TREE 행, SCR-REQUIREMENT-DETAIL 요구사항. **Sprint**: S1(레벨), S3(이력).
+- **목적**: 한 기술의 축별 레벨이 왜 그 값인지 근거 이력과 함께 보고, 관련 학습으로 이동한다(FR-06, AC-09). **진입**: SCR-SKILL-TREE 행, SCR-REQUIREMENT-DETAIL 항목. **Sprint**: S1(레벨), S3(이력).
 - **레이아웃**: 헤더(기술 이름, 카테고리, priority, 설명) → 축 표(`축 | 증거 레벨 | 계획용 레벨 | 목표`, 레벨은 숫자 + `SkillLevel` 라벨) → 자기평가 줄(`self_assessed_level`, `self_assessment_active=false`면 `skill.detail.selfInactive`) → 버튼 행 "복습 카드"(`/review/items?skillId=`), "문제 풀기"(`/training?skillId=`, S3), "개념 설명하기"(S3, `rubber_duck` flag, AI 가능할 때 — `/rubber-duck/new?targetType=CONCEPT&conceptKey={skill.code}&skillCode={skill.code}`, 러버덕 `CONCEPT` 대상) → "레벨 변경 기록"(S3) 목록: `{날짜} · {축} {from} → {to}` + 규칙 문구 + `근거 기록 {n}개`(펼치면 `evidenceEvents`의 유형·날짜 목록. S6부터 `CHALLENGE_EVALUATED`·`COACH_FINDING_CLOSED`·`COACH_REVIEW_COMPLETED` 행에 "증거 초안 만들기" → `POST /evidence/drafts` `{sourceLearningEventId}` → `/evidence/{id}`).
 - **데이터**: `GET /skills/tree?role=JAVA_BACKEND`·`GET /skills/me`(캐시 재사용), S3 `GET /skills/{skillId}/history?cursor=` + 페이지네이션.
 - **상태**: Loading — 표 skeleton. 이력 Empty — `skill.detail.historyEmpty`. Error·Offline — 공통(이력만 실패하면 이력 영역만 인라인 오류).
@@ -2237,7 +2229,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ 지금 [빠듯함] · 필요 ÷ 가능 120%     │
 │ 계획 v3                            │
 │ ━[Java 기본기]━┃━[Spring·JPA]━━━    │
-│        오늘 10/13      기준일 1/5   │
+│        오늘 10/13      목표일 4/1   │
 │ 분야별 수준 (평균 / 목표)            │
 │ Java     ■■■■□□□  2.1 / 3.4        │
 │ Spring   ■■□□□□□  1.2 / 3.8        │
@@ -2247,7 +2239,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 └────────────────────────────────┘
 ```
 
-- **차트 규칙**: `fl_chart` 사용. 위험 추세는 `risk.trend`(최대 8점, `snapshotDate` ASC)를 계단형 선(단색 `color.textPrimary`)으로 그리고 y축은 4단계 텍스트 라벨이다. milestone 타임라인은 `milestoneTimeline.milestones` 구간 막대 + 막대 안 제목·priority 텍스트, 오늘(`todayMarker`) 세로선, `horizonDate` 표시다. 분야별 수준은 `skillCategories`의 `avgPlanningLevelMilli`·`avgTargetLevelMilli`를 `milli / 1000` 소수 1자리로 보여주는 가로 막대(채움 = planning, 숫자 = 목표)다. 모든 차트는 같은 내용을 문장으로 함께 제공하고 `Semantics(label:)`에 넣는다.
+- **차트 규칙**: `fl_chart` 사용. 위험 추세는 `risk.trend`(최대 8점, `snapshotDate` ASC)를 계단형 선(단색 `color.textPrimary`)으로 그리고 y축은 4단계 텍스트 라벨이다. milestone 타임라인은 `milestoneTimeline.milestones` 구간 막대 + 막대 안 제목·priority 텍스트, 오늘(`todayMarker`) 세로선, 목표일(`horizonDate` = `targetCompletionDate`) 표시 하나다. 분야별 수준은 `skillCategories`의 `avgPlanningLevelMilli`·`avgTargetLevelMilli`를 `milli / 1000` 소수 1자리로 보여주는 가로 막대(채움 = planning, 숫자 = 목표)다. 모든 차트는 같은 내용을 문장으로 함께 제공하고 `Semantics(label:)`에 넣는다.
 - **데이터**: 진입·화면 복귀 시 `GET /dashboard` 1회. S5 이전에는 `risk`, `milestoneTimeline`이 `null`, `skillCategories`, `weakThinkingAxes`가 `[]`이며 해당 섹션을 숨긴다.
 - **상태**
   - Loading: 섹션별 skeleton.
@@ -2257,7 +2249,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
   - `replanRecommended=true`: 상단 안내(레이아웃 참고) → `/plan/replan?from=goal`.
   - Error·Offline: 공통. AI 상태는 표시하지 않는다(AI 진입 화면이 아니다).
 - **표시 금지**: 연속 학습일, 쉰 날 수, 목표 대비 부족 퍼센트(U-3).
-- **문구**: `dashboard.title` = "진행 현황", `dashboard.replanRecommended` = "목표 날짜가 바뀌었어요.", `dashboard.today` = "오늘", `dashboard.today.none` = "아직 오늘 계획을 만들지 않았어요.", `dashboard.today.reviewLeft` = "복습 {count}장 남음", `dashboard.week` = "이번 주 ({date} 월요일부터)", `dashboard.week.summary` = "{sessions}회 · {duration}", `dashboard.risk` = "마감 위험 (최근 기록 {count}개)", `dashboard.risk.now` = "지금 {risk} · 필요 ÷ 가능 {percent}%", `dashboard.plan` = "계획 v{version}", `dashboard.plan.today` = "오늘 {date}", `dashboard.plan.horizon` = "기준일 {date}", `dashboard.skills` = "분야별 수준 (평균 / 목표)", `dashboard.skills.value` = "{planning} / {target}", `dashboard.weakAxes` = "자주 놓치는 관점 (최근 28일)", `dashboard.weakAxes.none` = "관찰 기록이 더 쌓이면 보여 드려요.", `dashboard.weeklyLink` = "주간 리뷰 보기"
+- **문구**: `dashboard.title` = "진행 현황", `dashboard.replanRecommended` = "목표 날짜가 바뀌었어요.", `dashboard.today` = "오늘", `dashboard.today.none` = "아직 오늘 계획을 만들지 않았어요.", `dashboard.today.reviewLeft` = "복습 {count}장 남음", `dashboard.week` = "이번 주 ({date} 월요일부터)", `dashboard.week.summary` = "{sessions}회 · {duration}", `dashboard.risk` = "마감 위험 (최근 기록 {count}개)", `dashboard.risk.now` = "지금 {risk} · 필요 ÷ 가능 {percent}%", `dashboard.plan` = "계획 v{version}", `dashboard.plan.today` = "오늘 {date}", `dashboard.plan.horizon` = "목표일 {date}", `dashboard.skills` = "분야별 수준 (평균 / 목표)", `dashboard.skills.value` = "{planning} / {target}", `dashboard.weakAxes` = "자주 놓치는 관점 (최근 28일)", `dashboard.weakAxes.none` = "관찰 기록이 더 쌓이면 보여 드려요.", `dashboard.weeklyLink` = "주간 리뷰 보기"
 
 #### SCR-WEEKLY-LIST
 
@@ -2306,38 +2298,38 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 - **행동·검증**: §3.2. "승인" 활성 조건: 제목·상황·행동·결과가 비어 있지 않음. 승인 확인 대화상자 `evidence.accept.confirm`. 거절 확인 대화상자 `evidence.reject.confirm`. 입력 중 이탈 → §6.8.
 - **문구**: `evidence.detail.titleNew` = "증거 작성", `evidence.detail.title` = "증거", `evidence.detail.showAiDraft` = "AI 초안 보기", `evidence.detail.aiDraftNote` = "AI가 만든 원본이에요. 편집해도 원본은 바뀌지 않아요.", `evidence.field.title` = "제목", `evidence.field.skill` = "관련 기술 (선택)", `evidence.field.problem` = "상황·문제", `evidence.field.problem.hint` = "어떤 상황에서 어떤 문제가 있었나요?", `evidence.field.analysis` = "분석", `evidence.field.analysis.hint` = "원인을 어떻게 찾고 무엇을 판단했나요?", `evidence.field.action` = "행동", `evidence.field.action.hint` = "무엇을 바꿨나요? 왜 그 방법을 골랐나요?", `evidence.field.result` = "결과", `evidence.field.result.hint` = "무엇이 나아졌나요? 확인한 방법은?", `evidence.field.links` = "참고 링크 (커밋, PR 등)", `evidence.field.topics` = "설명 주제", `evidence.save` = "저장", `evidence.accept` = "승인", `evidence.reject` = "거절", `evidence.accept.validation.incomplete` = "제목, 상황·문제, 행동, 결과를 채우면 승인할 수 있어요", `evidence.accept.confirm` = "승인하면 내보내기에 포함되고 되돌릴 수 없어요. 승인 후에도 내용은 고칠 수 있어요.", `evidence.reject.confirm` = "이 후보를 거절할까요?", `evidence.detail.rejected` = "거절한 증거예요.", `evidence.detail.drafting` = "AI가 초안을 쓰고 있어요.", `evidence.detail.retryDraft` = "다시 만들기", `evidence.detail.writeManually` = "직접 작성으로 계속", `evidence.accepted` = "승인했어요.", `evidence.restore` = "후보로 되돌리기"
 
-### 3.13 요구 역량 비교 (Requirement Radar)
+### 3.13 로드맵 비교 (Roadmap compare)
 
 #### SCR-REQUIREMENTS-LIST
 
-- **목적**: 분석한 요구사항 문서 목록을 보고 새 요구사항 목록을 분석한다(FR-19). 요구사항 목록은 사용자가 목표로 삼은 기술 요구사항이다(예: 팀의 기술 스택 문서, 프로젝트 명세, 학습 로드맵). **진입**: rail Radar, More > 요구 역량 비교. **Sprint**: S7.
-- **레이아웃**: 앱 바 "요구 역량 비교" → primary "요구사항 분석하기" → 목록 행: 제목, 분석일, 상태(분석 중/완료/실패), 완료 시 `요구사항 {requirementCount}개`. 행 스와이프·메뉴 "삭제".
+- **목적**: 비교한 로드맵 목록을 보고 새 로드맵·기술 목록을 붙여넣어 비교한다(FR-19). 붙여넣는 것은 공개된 학습 로드맵이나 기술 목록이다. 항목마다 지금 레벨 기준으로 준비됨·도전·나중에로 나눈다. **진입**: rail Radar, More > 로드맵 비교. **Sprint**: S7.
+- **레이아웃**: 앱 바 "로드맵 비교" → primary "로드맵 비교하기" → 목록 행: 제목, 분석일, 상태(분석 중/완료/실패), 완료 시 `항목 {requirementCount}개`. 행 스와이프·메뉴 "삭제".
 - **데이터**: `GET /requirement-docs?cursor=` + 페이지네이션. 삭제 → 확인 대화상자 → `DELETE /requirement-docs/{requirementDocId}`.
-- **상태**: Loading — 행 skeleton. Empty — `radar.list.empty` + "요구사항 분석하기". AI unavailable — 배너, 분석 버튼 비활성. Budget warning — 버튼 아래 경고. Error·Offline — 공통.
-- **문구**: `radar.list.title` = "요구 역량 비교", `radar.list.new` = "요구사항 분석하기", `radar.list.counts` = "요구사항 {count}개", `radar.list.delete` = "삭제", `radar.list.delete.confirm` = "이 요구사항 문서와 분석 결과를 삭제할까요?", `radar.list.empty` = "분석한 요구사항 목록이 없어요. 목표로 삼은 기술 요구사항을 붙여넣으면 항목별 준비 상태를 정리해 드려요."
+- **상태**: Loading — 행 skeleton. Empty — `radar.list.empty` + "로드맵 비교하기". AI unavailable — 배너, 분석 버튼 비활성. Budget warning — 버튼 아래 경고. Error·Offline — 공통.
+- **문구**: `radar.list.title` = "로드맵 비교", `radar.list.new` = "로드맵 비교하기", `radar.list.counts` = "항목 {count}개", `radar.list.delete` = "삭제", `radar.list.delete.confirm` = "이 로드맵과 비교 결과를 삭제할까요?", `radar.list.empty` = "비교한 로드맵이 없어요. 공개 학습 로드맵이나 기술 목록을 붙여넣으면 항목별 준비 상태를 정리해 드려요."
 
 #### SCR-REQUIREMENT-NEW
 
-- **목적**: 기술 요구사항 목록을 붙여넣어 분석을 요청한다(FR-19). **진입**: SCR-REQUIREMENTS-LIST. **Sprint**: S7.
-- **레이아웃**: 제목(필수) → 출처 링크(선택, 안내 `radar.new.urlNote`) → 요구사항 본문(여러 줄, 크기 `{kb}KB / 20KB`) → 안내 `radar.new.retention` → primary "분석 요청".
+- **목적**: 공개 학습 로드맵이나 기술 목록을 붙여넣어 비교를 요청한다(FR-19). **진입**: SCR-REQUIREMENTS-LIST. **Sprint**: S7.
+- **레이아웃**: 제목(필수) → 출처 링크(선택, 안내 `radar.new.urlNote`) → 로드맵 본문(여러 줄, 크기 `{kb}KB / 20KB`) → 안내 `radar.new.retention` → primary "비교 요청".
 - **데이터**: `POST /requirement-docs` `{title, sourceUrl, sourceText}` → `202 {id}` → `/radar/{id}`.
 - **상태**: 전송 중 — 버튼 로딩. AI unavailable — 배너 + 버튼 비활성. Error — `413`은 본문 필드 아래 `radar.new.validation.tooLarge`, 그 외 §5. Offline — 공통.
 - **행동·검증**: §3.2(본문 UTF-8 20000 bytes 이하, 링크 http/https). 입력 중 이탈 → §6.8.
-- **문구**: `radar.new.title` = "요구사항 분석", `radar.new.docTitle` = "제목 (예: 팀 기술 스택)", `radar.new.url` = "출처 링크 (선택)", `radar.new.urlNote` = "링크는 기록용이에요. DevPilot은 링크의 내용을 가져오지 않아요.", `radar.new.sourceText` = "요구사항 본문", `radar.new.sourceText.hint` = "필요한 기술과 권장 기술이 적힌 목록을 붙여넣어 주세요. 기술 스택 문서, 프로젝트 명세, 학습 로드맵 등.", `radar.new.retention` = "본문은 180일 뒤 자동으로 지워지고 분석 결과는 남아요.", `radar.new.submit` = "분석 요청", `radar.new.validation.tooLarge` = "본문이 너무 길어요. 필요한 기술과 권장 기술 위주로 줄여 주세요."
+- **문구**: `radar.new.title` = "로드맵 붙여넣기", `radar.new.docTitle` = "제목 (예: 백엔드 개발자 로드맵)", `radar.new.url` = "출처 링크 (선택)", `radar.new.urlNote` = "링크는 기록용이에요. DevPilot은 링크의 내용을 가져오지 않아요.", `radar.new.sourceText` = "로드맵 본문", `radar.new.sourceText.hint` = "공개 학습 로드맵이나 기술 목록을 붙여넣어 주세요. 필수와 선택이 나뉘어 있으면 그대로 두세요.", `radar.new.retention` = "본문은 180일 뒤 자동으로 지워지고 비교 결과는 남아요.", `radar.new.submit` = "비교 요청", `radar.new.validation.tooLarge` = "본문이 너무 길어요. 기술 항목 위주로 줄여 주세요."
 
 #### SCR-REQUIREMENT-DETAIL
 
-- **목적**: 요구사항별 준비 상태와 연결된 증거를 보고 보완할 기술로 이동한다. **확률·점수·퍼센트는 표시하지 않는다**(FR-19, AC-22). **진입**: SCR-REQUIREMENTS-LIST, SCR-REQUIREMENT-NEW 요청 직후. **Sprint**: S7.
-- **레이아웃**: 헤더(제목, 분석일, 링크가 있으면 `출처 링크 ↗`) → 요약 줄: 필수·권장별 `fitCounts`(`준비됨 {n} · 도전 {n} · 나중에 {n} · 분류 불가 {n}`) → "필수" 섹션 → "권장" 섹션. 요구사항 행: `rawText`, 매칭 기술 이름(탭 → `/skills/{skillId}`) 또는 `radar.detail.noSkill`, `RequirementFitBadge`, 연결된 증거 링크(→ `/evidence/{id}`). 본문 purge 후에는 헤더에 `radar.detail.purged`.
+- **목적**: 로드맵 항목별 준비 상태와 연결된 증거를 보고 보완할 기술로 이동한다. **확률·점수·퍼센트는 표시하지 않는다**(FR-19, AC-22). **진입**: SCR-REQUIREMENTS-LIST, SCR-REQUIREMENT-NEW 요청 직후. **Sprint**: S7.
+- **레이아웃**: 헤더(제목, 분석일, 링크가 있으면 `출처 링크 ↗`) → 요약 줄: 필수·권장별 `fitCounts`(`준비됨 {n} · 도전 {n} · 나중에 {n} · 분류 불가 {n}`) → "필수" 섹션 → "권장" 섹션. 항목 행: `rawText`, 매칭 기술 이름(탭 → `/skills/{skillId}`) 또는 `radar.detail.noSkill`, `RequirementFitBadge`, 연결된 증거 링크(→ `/evidence/{id}`). 본문 purge 후에는 헤더에 `radar.detail.purged`.
 - **데이터**: `GET /requirement-docs/{requirementDocId}`. `analysisStatus ∈ {PENDING, RUNNING}`이면 2초 polling, 최대 3분. `FAILED`면 `failureCode` 문구 + "다시 요청"(입력 화면으로 이동해 제목·링크를 채움. purge 전이면 본문도 `sourceText`로 채운다).
-- **상태**: Loading — skeleton. Async pending — `AsyncStatusIndicator` + `radar.detail.analyzing`. Empty — 요구사항 0개 → `radar.detail.noRequirements`. Error·Offline — 공통.
-- **문구**: `radar.detail.summary` = "준비됨 {ready} · 도전 {stretch} · 나중에 {later} · 분류 불가 {unknown}", `radar.detail.required` = "필수", `radar.detail.preferred` = "권장", `radar.detail.noSkill` = "기술 목록에 없는 요구사항", `radar.detail.evidence` = "연결된 증거", `radar.detail.source` = "출처 링크", `radar.detail.analyzing` = "요구사항을 정리하고 있어요.", `radar.detail.purged` = "요구사항 본문은 보관 기간이 지나 삭제됐어요.", `radar.detail.noRequirements` = "요구사항을 찾지 못했어요. 기술 요구사항이 적힌 본문으로 다시 요청해 주세요.", `radar.detail.retry` = "다시 요청", `radar.detail.fitHelp` = "준비됨·도전·나중에는 지금 기술 레벨과 증거로 나눈 분류예요. 점수나 달성 가능성을 뜻하지 않아요."
+- **상태**: Loading — skeleton. Async pending — `AsyncStatusIndicator` + `radar.detail.analyzing`. Empty — 항목 0개 → `radar.detail.noRequirements`. Error·Offline — 공통.
+- **문구**: `radar.detail.summary` = "준비됨 {ready} · 도전 {stretch} · 나중에 {later} · 분류 불가 {unknown}", `radar.detail.required` = "필수", `radar.detail.preferred` = "권장", `radar.detail.noSkill` = "기술 목록에 없는 항목", `radar.detail.evidence` = "연결된 증거", `radar.detail.source` = "출처 링크", `radar.detail.analyzing` = "로드맵 항목을 정리하고 있어요.", `radar.detail.purged` = "로드맵 본문은 보관 기간이 지나 삭제됐어요.", `radar.detail.noRequirements` = "기술 항목을 찾지 못했어요. 기술 항목이 적힌 로드맵으로 다시 요청해 주세요.", `radar.detail.retry` = "다시 요청", `radar.detail.fitHelp` = "준비됨·도전·나중에는 지금 기술 레벨과 증거로 나눈 분류예요. 점수나 달성 가능성을 뜻하지 않아요."
 
 ### 3.14 Settings · 계정
 
 #### SCR-SETTINGS
 
-- **목적**: 프로필·**학습 목표일**·학습 시간·하루 경계를 고치고, AI 사용량을 확인하고, 캘린더 구독·앱 설치·데이터 내려받기·계정 삭제·로그아웃을 한다(FR-03, FR-20, FR-22, FR-23, FR-24). 학습 목표일은 사용자가 여기("학습 목표" → SCR-LEARNING-GOAL)에서 직접 등록하고 바꾼다. **진입**: rail Settings, More > 설정. **Sprint**: S1(프로필·학습 목표·시간), S2(설치 안내), S3(AI 사용량), S5(캘린더), S6(데이터·삭제).
+- **목적**: 프로필·**학습 목표(학습 트랙·목표일)**·학습 시간·하루 경계를 고치고, AI 사용량을 확인하고, 캘린더 구독·앱 설치·데이터 내려받기·계정 삭제·로그아웃을 한다(FR-03, FR-20, FR-22, FR-23, FR-24). 목표일은 사용자가 여기("학습 목표" → SCR-LEARNING-GOAL)에서 직접 등록하고 바꾼다. **진입**: rail Settings, More > 설정. **Sprint**: S1(프로필·학습 목표·시간), S2(설치 안내), S3(AI 사용량), S5(캘린더), S6(데이터·삭제).
 - **레이아웃**
 
 ```text
@@ -2346,7 +2338,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ 프로필                            │
 │ 표시 이름 [mt                   ] │
 │ 학습 목표                       >  │
-│ 완료 2027년 4월 1일 · 점검 1월 5일  │  사용자가 등록한 값 (예시)
+│ 목표일 2027년 4월 1일              │  사용자가 등록한 값 (예시)
 │ 학습 시간                          │
 │ 평일 [45분 ▾]    주말 [240분 ▾]    │
 │ 하루 시작 시각 [새벽 4시 ▾]         │
@@ -2430,8 +2422,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `settings.profile` | 프로필 |
 | `settings.displayName` | 표시 이름 |
 | `settings.goal` | 학습 목표 |
-| `settings.goal.summary` | 완료 {completion} · 점검 {checkpoint} |
-| `settings.goal.summaryNoCheckpoint` | 완료 {completion} |
+| `settings.goal.summary` | 목표일 {date} |
 | `settings.study` | 학습 시간 |
 | `settings.weekday` | 평일 |
 | `settings.weekend` | 주말 |
@@ -2484,7 +2475,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ 지워지는 것                        │
 │ • 목표, 계획, 기술 레벨, 학습 기록   │
 │ • 복습 카드, 문제 풀이, 코드 리뷰    │
-│ • 증거, 주간 리뷰, 요구 역량 비교    │
+│ • 증거, 주간 리뷰, 로드맵 비교       │
 │ 알아 둘 것                          │
 │ • 요청 후 몇 분 안에 지워져요.        │
 │ • 백업에 남은 데이터는 보관 기간     │
@@ -2509,16 +2500,16 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 - **재로그인 판정**: 현재 access token의 JWT payload(base64 디코드, 서명 검증 없음)에서 `authTime` = `amr[].timestamp` 최댓값(`amr`이 없을 때만 `iat`)을 구한다(서버와 같은 기준, `05-api-spec.md` §3.4). `authTime`이 지금으로부터 4분 30초 이내면 "확인됐어요" + 남은 시간 카운트다운(5분 − 30초 여유). 0이 되면 다시 "GitHub로 다시 로그인"을 보여준다.
 - **상태**: 삭제 중 — 버튼 로딩, 화면 잠금. Error — `403 RECENT_LOGIN_REQUIRED` → 확인 표시를 지우고 인라인 `account.delete.reauthAgain`. 그 외 §5. Offline — 공통.
 - **행동·검증**: "계정 삭제" 활성 조건 = 재로그인 확인 유효 + 입력값이 정확히 `삭제합니다` + 온라인. 추가 확인 대화상자는 없다(두 단계 확인으로 충분).
-- **문구**: `account.delete.title` = "계정 삭제", `account.delete.headline` = "삭제하면 되돌릴 수 없어요", `account.delete.what` = "지워지는 것", `account.delete.what.items` = "목표, 계획, 기술 레벨, 학습 기록\n복습 카드, 문제 풀이, 코드 리뷰\n증거, 주간 리뷰, 요구 역량 비교", `account.delete.notes` = "알아 둘 것", `account.delete.notes.items` = "요청 후 몇 분 안에 지워져요.\n백업에 남은 데이터는 보관 기간(최대 6개월)이 지나면 사라져요.\nGitHub 로그인 연결 정보는 운영자가 따로 삭제해요.", `account.delete.exportFirst` = "내 데이터 먼저 내려받기", `account.delete.step1` = "1. 본인 확인", `account.delete.reauth` = "GitHub로 다시 로그인", `account.delete.reauthOk` = "확인됐어요 · {remaining} 안에 삭제하세요", `account.delete.reauthAgain` = "본인 확인 시간이 지났어요. 다시 로그인해 주세요.", `account.delete.step2` = "2. 확인 문구 입력", `account.delete.typeHint` = "'삭제합니다'를 입력하세요", `account.delete.phrase` = "삭제합니다", `account.delete.button` = "계정 삭제"
+- **문구**: `account.delete.title` = "계정 삭제", `account.delete.headline` = "삭제하면 되돌릴 수 없어요", `account.delete.what` = "지워지는 것", `account.delete.what.items` = "목표, 계획, 기술 레벨, 학습 기록\n복습 카드, 문제 풀이, 코드 리뷰\n증거, 주간 리뷰, 로드맵 비교", `account.delete.notes` = "알아 둘 것", `account.delete.notes.items` = "요청 후 몇 분 안에 지워져요.\n백업에 남은 데이터는 보관 기간(최대 6개월)이 지나면 사라져요.\nGitHub 로그인 연결 정보는 운영자가 따로 삭제해요.", `account.delete.exportFirst` = "내 데이터 먼저 내려받기", `account.delete.step1` = "1. 본인 확인", `account.delete.reauth` = "GitHub로 다시 로그인", `account.delete.reauthOk` = "확인됐어요 · {remaining} 안에 삭제하세요", `account.delete.reauthAgain` = "본인 확인 시간이 지났어요. 다시 로그인해 주세요.", `account.delete.step2` = "2. 확인 문구 입력", `account.delete.typeHint` = "'삭제합니다'를 입력하세요", `account.delete.phrase` = "삭제합니다", `account.delete.button` = "계정 삭제"
 
 ### 3.15 기타
 
 #### SCR-MORE
 
 - **목적**: 모바일에서 하단 탭에 없는 목적지로 이동한다. **진입**: 하단 탭 More(폭 < 600만). **Sprint**: S2.
-- **레이아웃**: `ListTile` 목록(아이콘 + 라벨 + `>`), flag가 켜진 항목만: 사이드 프로젝트(`/projects`), 문제 풀이(`/training`), 코드 리뷰(`/coach`), 기술(`/skills`), 진행 현황(`/dashboard`), 주간 리뷰(`/weekly`), 증거(`/evidence`), 요구 역량 비교(`/radar`), 설정(`/settings`). AI 상태가 `DISABLED`/`BALANCE_EXHAUSTED`/`BUDGET_WARNING`이면 목록 위에 §6.5 배너.
+- **레이아웃**: `ListTile` 목록(아이콘 + 라벨 + `>`), flag가 켜진 항목만: 사이드 프로젝트(`/projects`), 문제 풀이(`/training`), 코드 리뷰(`/coach`), 기술(`/skills`), 진행 현황(`/dashboard`), 주간 리뷰(`/weekly`), 증거(`/evidence`), 로드맵 비교(`/radar`), 설정(`/settings`). AI 상태가 `DISABLED`/`BALANCE_EXHAUSTED`/`BUDGET_WARNING`이면 목록 위에 §6.5 배너.
 - **데이터**: `meProvider`(캐시). **상태**: 없음.
-- **문구**: `more.title` = "더보기", `more.projects` = "사이드 프로젝트", `more.training` = "문제 풀이", `more.coach` = "코드 리뷰", `more.skills` = "기술", `more.dashboard` = "진행 현황", `more.weekly` = "주간 리뷰", `more.evidence` = "증거", `more.radar` = "요구 역량 비교", `more.settings` = "설정"
+- **문구**: `more.title` = "더보기", `more.projects` = "사이드 프로젝트", `more.training` = "문제 풀이", `more.coach` = "코드 리뷰", `more.skills` = "기술", `more.dashboard` = "진행 현황", `more.weekly` = "주간 리뷰", `more.evidence` = "증거", `more.radar` = "로드맵 비교", `more.settings` = "설정"
 
 #### SCR-NOT-FOUND
 
@@ -2837,11 +2828,12 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | "읽었으면 설명하기" | `/rubber-duck/new?targetType=CODE_READING&targetId={taskId}&skillCode={skills[0].code}&taskId={taskId}` + `extra`(저장소 이름, 파일 이름, 줄 범위, `question`) |
 | "여기까지 기록" | Today와 같은 `CompleteSessionSheet`(`today.partial.title`) → 세션 complete(0분이면 abandon) → `PATCH /today/tasks/{taskId}` `{status: DEFERRED, version}`. RC-1 조건이 없는 전이다 |
 
-  - 과제 완료는 이 화면에서 하지 않는다. 러버덕 정리 화면의 "Today로 돌아가 완료하기"로 간다(RC-1 — 읽었다는 체크만으로는 완료가 아니다).
+  - 과제 완료는 이 화면에서 하지 않는다. 러버덕 정리 화면의 "Today로 돌아가 완료하기"로 간다(RC-1 — 읽었다는 체크만으로는 완료가 아니다). 완료 시트에서 이 읽기의 평가(도움 됐어요 · 어려웠어요 · 지루했어요)를 **골라도 되고 안 골라도 된다**(SCR-TODAY 완료 시트, `readingFeedback`). 평가는 사람이 하는 소스 점검(`19` §8.5)의 입력이다.
 - **상태**
   - Loading: 헤더·단계 블록 skeleton.
   - Empty: 해당 없음.
-  - Error: `404 RESOURCE_NOT_FOUND`(콘텐츠에서 은퇴한 reading) → 전체 영역 `readCode.retired` + "Today로"(과제는 "여기까지 기록" 또는 Today에서 건너뛰기로 정리). `400 VALIDATION_FAILED`(key 형식) → SCR-NOT-FOUND. 그 외 공통.
+  - 은퇴한 단위(`retired = true`, `19` §8.2): 안내 ①~③은 그대로 보이고(좌표는 `pinnedCommit` 기준이라 여전히 맞다) 제목 아래에 `readCode.retired`를 둔다. 설명·완료도 그대로 할 수 있다. 새로 제안되지는 않는다.
+  - Error: `404 RESOURCE_NOT_FOUND`(콘텐츠에 없는 key) → SCR-NOT-FOUND. `400 VALIDATION_FAILED`(key 형식) → SCR-NOT-FOUND. 그 외 공통.
   - `taskId`가 없거나 UUID가 아님: 읽기 안내는 그대로 보이고 "읽었으면 설명하기"·"여기까지 기록"을 숨긴 뒤 `readCode.noTask`.
   - **AI 불가**: 읽기 안내(①~③)는 모두 동작한다(`17` §3.10). 상단 `AiUnavailableBanner`, "읽었으면 설명하기" 비활성 + 버튼 아래 `ai.disabledReason`/`ai.balanceExhaustedReason`과 `readCode.aiOff`.
   - Budget warning: 버튼 아래 `ai.budgetWarning.note`.
@@ -2871,7 +2863,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `readCode.readOnly.badge` | 읽기만 · 복사 금지 |
 | `readCode.readOnly.note` | 라이선스가 명시되지 않은 저장소예요. 읽기만 하고 코드를 가져다 쓰지 마세요. |
 | `readCode.noCodeNote` | 코드는 DevPilot이 아니라 내 컴퓨터에서 봐요. |
-| `readCode.retired` | 더 이상 제공하지 않는 읽기 과제예요. Today에서 과제를 정리해 주세요. |
+| `readCode.retired` | 더 이상 새로 제안하지 않는 읽기예요. 이 과제는 그대로 읽고 설명할 수 있어요. |
 | `readCode.noTask` | Today의 코드 읽기 과제에서 열면 설명하고 완료할 수 있어요. |
 | `readCode.aiOff` | 설명(러버덕)은 AI가 필요해 지금은 할 수 없어요. 읽기는 계속할 수 있어요. |
 
@@ -3010,7 +3002,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | 2 | 이메일 입력 → "로그인" | SCR-LOGIN | `POST /api/v1/dev/token {email}` | allowlist 확인 → 서명 토큰 발급 (`supabase` 모드면 GitHub OAuth) |
 | 3 | — | SCR-AUTH-CALLBACK | `GET /me` | JIT: allowlist 통과 → `app_user` INSERT(기본값). 실패 시 403 → SCR-NOT-ALLOWED |
 | 4 | — | → `/onboarding/goal` | `onboardingCompleted=false` | — |
-| 5 | 목표(학습 완료 목표일·중간 점검일) 입력 → 다음 | 1단계 | draft 저장 | — |
+| 5 | 표시 이름·목표일 입력(학습 트랙은 Java 백엔드 고정) → 다음 | 1단계 | draft 저장 | — |
 | 6 | 시간 입력 → 다음 | 2단계 | draft 저장 | — |
 | 7 | "짧은 진단으로 시작"(기본) 그대로 → 다음 | 3단계 | draft 저장(`runDiagnostic=true`) | — |
 | 8 | 이름 "주문 시스템" 그대로 → "계획 만들기" | 4단계 | `POST /onboarding` (IK) `{…, runDiagnostic: true, selfAssessments: [], sideProject: {name: "주문 시스템", description}}` | 한 트랜잭션: learning_goal, `user_skill_state`(진단 모드 — `self_assessed_level` 모두 null), plan v1(ACTIVE, 9개 milestone)·plan_skill_target, seed review_item 복사(하루 5장 분산), `side_project`(ACTIVE), `onboarding_completed_at`, 오늘 snapshot → 커밋 후 `suggestedDiagnostics`(카테고리당 1개, 최대 5개) |
@@ -3188,16 +3180,16 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 - AI 불가이거나 `evidenceSourceEventId`가 null이면: `/evidence/new`(제목·기술 채움) → `POST /evidence` (IK) → 3부터 같다.
 
-### 4.11 요구 역량 비교 (Requirement Radar)
+### 4.11 로드맵 비교 (Roadmap compare)
 
 | # | 사용자 | API | [서버] |
 |---|---|---|---|
-| 1 | Radar → "요구사항 분석하기" | SCR-REQUIREMENT-NEW | — |
-| 2 | 제목·출처 링크(기록용)·요구사항 본문 붙여넣기 → "분석 요청" | `POST /requirement-docs` (IK) → `202 {id}` | requirement_doc PENDING. **sourceUrl fetch 없음** → 비동기 `REQUIREMENT_EXTRACT` → requirement_item(rawText, type, skill 매칭) → `RequirementFitClassifier`가 fit·증거 연결(`06` §13) → COMPLETED |
+| 1 | Radar → "로드맵 비교하기" | SCR-REQUIREMENT-NEW | — |
+| 2 | 제목·출처 링크(기록용)·공개 로드맵이나 기술 목록 본문 붙여넣기 → "비교 요청" | `POST /requirement-docs` (IK) → `202 {id}` | requirement_doc PENDING. **sourceUrl fetch 없음** → 비동기 `REQUIREMENT_EXTRACT` → requirement_item(rawText, type, skill 매칭) → `RequirementFitClassifier`가 fit·증거 연결(`06` §13) → COMPLETED |
 | 3 | 기다림 | `GET /requirement-docs/{id}` polling ≤ 3분 | — |
 | 4 | 필수·권장별 준비됨/도전/나중에 확인 | — | — |
-| 5 | "도전" 요구사항의 기술 탭 → 기술 상세 → "문제 풀기" 또는 Plan에서 조정 | `/skills/{skillId}` | — |
-| 6 | (선택) 요구사항 문서 삭제 | `DELETE /requirement-docs/{id}` | cascade 삭제 |
+| 5 | "도전" 항목의 기술 탭 → 기술 상세 → "문제 풀기" 또는 Plan에서 조정 | `/skills/{skillId}` | — |
+| 6 | (선택) 비교한 로드맵 삭제 | `DELETE /requirement-docs/{id}` | cascade 삭제 |
 
 ### 4.12 캘린더 구독 설정
 
@@ -3251,8 +3243,8 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | 5 | 설명 작성 → "설명 보내기" | ① → ② | `POST /rubber-duck` `{targetType: CODE_READING, targetId: taskId, skillCode}` (IK) → `POST /rubber-duck/{id}/turns` `{explanation}` (IK) | 세션 `IN_PROGRESS`(`learning_session_id` = 1의 세션) → `SecretMasker` → 예산 확인 → `RUBBER_DUCK`(가드 CodeLeak·Language·NoAnswer) → turn 1 저장 |
 | 6 | 질문에 답 → "보내기" (2~4번) | ② | `POST …/turns` (IK) | turn n 저장. 2턴 연속 "모르겠다"면 `suggestHint=true` → 이 대상은 정리로 안내 |
 | 7 | "정리하고 끝내기"(또는 5턴 도달 → "정리하기") | ③ | `POST /rubber-duck/{id}/complete` (IK) | `RUBBER_DUCK_SUMMARY` → `summary_json`, `COMPLETED`. gap마다 복습 카드(`source_type = RUBBER_DUCK`, `EXPLAIN`, 첫 due 다음 plan-day — 같은 개념 카드가 있으면 due만 당김). skill이 있으면 `RUBBER_DUCK_COMPLETED` |
-| 8 | 정리 확인 | ④ | 서버가 `READ_CODE` 과제를 `COMPLETED`로 바꾼다(`05` §9.8) | Today로 돌아오면 과제가 "완료" |
-| 9 | "Today로 돌아가 완료하기" → 시간·회고 → "완료 기록" | SCR-TODAY 완료 시트 | `POST /learning-sessions/{id}/complete` (IK) → `PATCH /today/tasks/{taskId}` `{status: COMPLETED}` | RC-1 확인: 이 task를 대상으로 한 `COMPLETED` 러버덕 있음 → task `COMPLETED` |
+| 8 | 정리 확인 | ④ | — | 세션 `COMPLETED` → RC-1 조건 충족. 과제 상태는 그대로(`05` §9.8) |
+| 9 | "Today로 돌아가 완료하기" → 시간·회고·(선택) 읽기 평가 → "완료 기록" | SCR-TODAY 완료 시트 | `POST /learning-sessions/{id}/complete` (IK) → `PATCH /today/tasks/{taskId}` `{status: COMPLETED, readingFeedback?}` | RC-1 확인: 이 task를 대상으로 한 `COMPLETED` 러버덕 있음 → task `COMPLETED`, 평가를 골랐으면 `reading_feedback` 저장 |
 
 분기:
 - AI 불가(`DISABLED`·`BALANCE_EXHAUSTED`): planner가 새 `READ_CODE`를 내지 않는다. 이미 있는 task는 1~3까지 되고 4의 버튼이 막힌다 → "여기까지 기록"(`DEFERRED`) 또는 Today "오늘은 건너뛰기".
@@ -3263,14 +3255,14 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 ### 4.16 v3 핵심 루프 하루 — 읽는다 → 설명한다 → 만든다 → 반복한다
 
-전제(예시): 사용자는 온보딩에서 학습 완료 목표일을 등록했고(예: 2027-04-01), 사이드 프로젝트 "주문 시스템"을 만들었다. 짧은 진단으로 Spring MVC REST API의 planning KNOWLEDGE가 3이 됐고 이 기술을 집중 기술로 골랐다(`projectNeed`). 현재 milestone은 "기반 다지기"이고 petclinic은 아직 받아 두지 않았다. 과제 유형은 planner가 정한다(`06` §5.3) — 아래는 그 규칙대로 나온 하루의 예다.
+전제(예시): 사용자는 온보딩에서 목표일을 등록했고(예: 2027-04-01), 사이드 프로젝트 "주문 시스템"을 만들었다. 짧은 진단으로 Spring MVC REST API의 planning KNOWLEDGE가 3이 됐고 이 기술을 집중 기술로 골랐다(`projectNeed`). 현재 milestone은 "기반 다지기"이고 petclinic은 아직 받아 두지 않았다. 과제 유형은 planner가 정한다(`06` §5.3) — 아래는 그 규칙대로 나온 하루의 예다.
 
 | 시점 | 사용자 | 화면 | DevPilot이 하는 일 |
 |---|---|---|---|
 | 아침 ① (2분) | Today 열기 → 45분·보통 → "오늘 계획 만들기" | SCR-TODAY | Spring MVC REST API가 1순위. 풀 challenge가 없고 KNOWLEDGE ≥ 1이며 reading이 있어 **`READ_CODE`**: "Spring PetClinic 읽기 — OwnerController.java 48~122줄", 약 15분. 이유 "Spring PetClinic에서 같은 문제를 어떻게 풀었는지 먼저 봅니다", "기반 다지기 milestone 핵심 항목". 복습 6장 줄 |
 | 아침 ② 읽는다 (15분) | "시작" → `cloneHint` 복사 → 터미널에서 clone·checkout → 로컬 IDE에서 petclinic `OwnerController.java` 48~122줄을 읽으며 볼 지점 3개 확인 | SCR-READ-CODE, 내 IDE | 무엇을·왜·어디를 읽는지만 안내한다. 코드는 사용자 컴퓨터에만 있다 |
 | 아침 ③ 설명한다 (10분) | "읽었으면 설명하기" → "이 컨트롤러는 조회만 해서 Service가 필요 없다"고 설명 → AI "조회만 한다고 하셨는데, 폼 제출을 처리하는 메서드는 어디에 규칙을 두고 있나요?" → 답 → AI "그 저장이 실패하면 어디까지 되돌려지나요?" → "잘 모르겠어요" → … 4턴 → "정리하고 끝내기" | SCR-RUBBER-DUCK | AI는 정답·"맞아요"를 말하지 않고 되묻기만 한다(RD-1). 정리: 막힌 곳 1개(조회·저장의 트랜잭션 경계) → **복습 카드 1장**(내일 due), 잘 설명한 것 1개 |
-| 아침 ④ | "Today로 돌아가 완료하기" → 25분 기록 | SCR-TODAY | 설명을 마쳤으므로 `READ_CODE` 완료(RC-1) |
+| 아침 ④ | "Today로 돌아가 완료하기" → 25분 기록, 읽기 평가 "도움 됐어요"(선택) | SCR-TODAY | 설명을 마쳤으므로 `READ_CODE` 완료(RC-1). 평가는 과제에 저장만 한다 |
 | 출근길 (5분) | 복습 6장 | SCR-REVIEW-SESSION | 교차 학습 순서로 출제 — 같은 기술 카드가 3장 연속 나오지 않는다(RV-INTERLEAVE) |
 | 저녁 ① 만든다 | "하나 더 하기" → 40분·보통 | SCR-TODAY | 아침에 완료한 reading은 후보에서 빠지고(`06` §5.3), KNOWLEDGE ≥ 2 + `projectNeed` + 컨디션 보통 + `ACTIVE` 프로젝트가 있어 **`PROJECT_TASK`**: "주문 시스템에 Spring MVC REST API 적용하기"(SP-2) |
 | 저녁 ② (30분) | "시작" → 내 IDE에서 주문 시스템에 petclinic과 같은 계층 구조로 상품 조회 API를 만든다 | 내 IDE | — |
@@ -3287,7 +3279,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 | # | 사용자 | 화면 | API | [서버] |
 |---|---|---|---|---|
-| 1 | 설정 > 학습 목표에서 학습 완료 목표일을 3개월 앞당김 → 저장 → "지금 조정" | SCR-SETTINGS → SCR-LEARNING-GOAL | `PUT /learning-goal` | goal 저장, `replan_recommended = true`(자동 replan 없음) |
+| 1 | 설정 > 학습 목표에서 목표일을 3개월 앞당김 → 저장 → "지금 조정" | SCR-SETTINGS → SCR-LEARNING-GOAL | `PUT /learning-goal` | goal 저장, `replan_recommended = true`(자동 replan 없음) |
 | 2 | 권장 milestone(템플릿 7~9: 구조 정리·배포와 운영·설명과 정리) 기간을 줄이고 이유 입력 → "변경 미리보기" | SCR-REPLAN ①→② | `POST …/replan/preview` (IK 없음) | risk **HIGH** → 축소 제안: MUST 목표 1단계 낮춤(3 미만으로는 제안 안 함) → SHOULD 기술 defer(중요도 낮은 것부터). 제안은 skill 목표 단위다(`06` §4.4) |
 | 3 | 제안 몇 개 체크 → "선택 반영해 다시 계산" → "새 버전으로 저장" | SCR-REPLAN ② | preview → `POST …/replan` `{acceptedDeferrals, acceptedTargetReductions}` (IK) | 새 plan version, snapshot |
 | 4 | 다음 날 Today | SCR-TODAY | `POST /today/generate` | risk ≥ HIGH면 MUST 가중·LATER 제외, 이유 "마감 위험이 높아 필수 항목 우선" |
@@ -3362,7 +3354,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 ### 5.2 비동기 작업 `failureCode` (`AsyncFailureCode`)
 
-challenge 생성, 제출 평가, coach 분석, evidence 초안, 요구사항 분석의 `FAILED` 상태와 러버덕 정리 실패(`summarySkippedReason`, SCR-RUBBER-DUCK ④)에 표시한다. 문구 key `asyncFailure.<CODE>`.
+challenge 생성, 제출 평가, coach 분석, evidence 초안, 로드맵 비교 분석의 `FAILED` 상태와 러버덕 정리 실패(`summarySkippedReason`, SCR-RUBBER-DUCK ④)에 표시한다. 문구 key `asyncFailure.<CODE>`.
 
 | failureCode | 문구 | 재시도 버튼 |
 |---|---|---|
@@ -3376,7 +3368,7 @@ challenge 생성, 제출 평가, coach 분석, evidence 초안, 요구사항 분
 | `INTERRUPTED` | 서버가 다시 시작되어 작업이 중단됐어요. | 표시 |
 | `INTERNAL_ERROR` | 문제가 생겨 완료하지 못했어요. | 표시 |
 
-재시도 API: 제출 평가 `POST …/submissions/{submissionNo}/retry`, coach `POST /coach/reviews/{reviewId}/retry`. 러버덕 정리는 재시도가 없어 재시도 버튼을 숨긴다(대화는 남는다). challenge 생성·evidence 초안·요구사항 분석은 retry API가 없으므로 "다시 만들기/다시 요청"(새 요청)으로 처리한다. 재시도 버튼은 리소스의 `retryable=true`일 때만 보인다.
+재시도 API: 제출 평가 `POST …/submissions/{submissionNo}/retry`, coach `POST /coach/reviews/{reviewId}/retry`. 러버덕 정리는 재시도가 없어 재시도 버튼을 숨긴다(대화는 남는다). challenge 생성·evidence 초안·로드맵 비교 분석은 retry API가 없으므로 "다시 만들기/다시 요청"(새 요청)으로 처리한다. 재시도 버튼은 리소스의 `retryable=true`일 때만 보인다.
 
 ---
 

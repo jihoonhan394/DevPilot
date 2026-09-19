@@ -1,6 +1,6 @@
 # 19. Content Spec (Seed 콘텐츠)
 
-> Status: Accepted (v3) · Last updated: 2026-09-18 · Related: DEC-14, `03-system-architecture.md` §2.2·§9, `04-domain-model-and-db.md` §3·§5·§9, `05-api-spec.md` §4.2, `06-learning-engine-rules.md` §4·§5·§6.3·§7·§8·§9·§10·§11, `17-ai-integration.md` §6, `database/schema.sql`
+> Status: Accepted (v3) · Last updated: 2026-09-19 · Related: DEC-14, DEC-27, DEC-28, ADR-039, `03-system-architecture.md` §2.2·§9, `04-domain-model-and-db.md` §3·§5·§9, `05-api-spec.md` §4.2, `06-learning-engine-rules.md` §4·§5·§6.3·§7·§8·§9·§10·§11, `17-ai-integration.md` §6, `database/schema.sql`
 >
 > 저장소 `content/`의 **seed 파일 형식, 검증 규칙(CV-xx), 적재·은퇴 규칙, plan template 날짜 배치 알고리즘, 작성 가이드, 현재 인벤토리**를 정의한다. 초기 파일은 문서 세트의 `repo-seed/content/`에 있다.
 
@@ -20,7 +20,7 @@ DevPilot의 결정적 규칙은 seed 값이 없으면 동작하지 않는다. se
 | curated source | `VerificationGuard`의 `CURATED_SOURCE` 근거 ID (`06` §10) |
 | curated repo · reading | `READ_CODE` task 제안과 estimatedMinutes (`06` §5.3), 러버덕 시작 질문 (`06` §9.5 RD-2) |
 
-이 문서가 정하는 것: 파일 스키마와 DB 매핑(§3 — `curated-repos.yaml`은 §3.8), 검증 규칙(§4), 날짜 배치(§5), 난이도(§6), 작성 가이드(§7), 버전·은퇴와 줄 번호 관리(§8 — pinnedCommit은 §8.4), 자기평가 전파 계약(§9), 우선순위 조정(§10), 체크리스트(§11), 인벤토리(§12), 기준 문서 반영 기록(§13).
+이 문서가 정하는 것: 파일 스키마와 DB 매핑(§3 — `curated-repos.yaml`은 §3.8), 검증 규칙(§4), 날짜 배치(§5), 난이도(§6), 작성 가이드(§7), 버전·은퇴와 줄 번호 관리(§8 — pinnedCommit은 §8.4), 소스 점검(§8.5), 자기평가 전파 계약(§9), 우선순위 조정(§10), 체크리스트(§11), 인벤토리(§12), 기준 문서 반영 기록(§13).
 
 ---
 
@@ -88,7 +88,7 @@ content/
 | `retired.challengeSeedKeys` | string[] | Y | | 은퇴한 challenge seedKey |
 | `retired.conceptKeys` | string[] | Y | | 은퇴한 review card conceptKey |
 | `retired.curatedSourceIds` | string[] | Y | | 은퇴한 curated source ID |
-| `retired.readingKeys` | string[] | Y | | 은퇴한 reading key (§3.8). 재사용 금지 |
+| `retired.readingKeys` | string[] | Y | | 은퇴한 reading key (§3.8). 재사용 금지. 은퇴한 reading의 정의는 `curated-repos.yaml`에 `retired: true`로 남는다(§8.2) |
 
 ### 3.2 `skill-tree/*.yaml`
 
@@ -157,7 +157,7 @@ DB 테이블이 없다. `ContentSeeder`가 검증한 템플릿을 plan 모듈 ap
 | `milestones[].description` | string | N | 1~2000자 | `plan_milestone.description` |
 | `milestones[].priority` | Priority | Y | enum | `plan_milestone.priority` |
 | `milestones[].weightBp` | int | Y | 100~10000, 템플릿 전체 합 = 10000 | §5 기간 배분 |
-| `milestones[].phase` | enum | Y | `PREPARATION` \| `CONSOLIDATION`. PREPARATION이 모두 앞에 오고, 단계마다 1개 이상 | §5 창(window) 선택 |
+| `milestones[].phase` | enum | Y | `PREPARATION` \| `CONSOLIDATION`. PREPARATION이 모두 앞에 오고, 단계마다 1개 이상 | §5 배치 순서(창은 하나이고 `CONSOLIDATION`이 목표일 바로 앞에 온다) |
 | `milestones[].skillCodes` | string[] | Y | 1~24개, role target이 있는 skill, 한 skill은 템플릿 전체에서 최대 1개 milestone, 모든 MUST skill은 반드시 포함 | `milestone_skill` |
 | — | | | | `plan_milestone.start_date`/`end_date` = §5, `status = PLANNED`, `sort_order` = milestone index |
 
@@ -266,6 +266,7 @@ cards:
 | `estimatedMinutes` | int | Y | 5~60 | `learning_task.estimated_minutes`에 **그대로** 들어간다 |
 | `question` | string | Y | **40~300자.** 답을 유도하지 않는 열린 질문 | 러버덕 세션의 시작점 (RD-2) |
 | `lookFor` | string[] | Y | 1~5개, 항목 5~200자 | 무엇을 눈여겨볼지. 정답이 아니라 관점이다 |
+| `retired` | bool | N (기본 false) | `true`면 key가 `retired.readingKeys`에 있어야 한다(CV-83) | 은퇴한 단위. planner가 제안하지 않지만(`06` §5.3) `GET /readings/{key}`는 계속 돌려준다 — 지난 과제·러버덕 세션이 가리키는 단위를 잃지 않게(§8.2) |
 
 ```yaml
 repos:
@@ -301,7 +302,8 @@ readings:
 | 질문 | 답이 이미 들어 있는 질문("왜 EAGER가 N+1을 일으킬까요?")을 쓰지 않는다. 사용자가 코드를 보고 스스로 판단할 여지를 남긴다. 40자 미만은 CV-86 오류다 |
 | 저장소당 개수 | 3~5개. 벗어나면 CV-87 WARN |
 | 라이선스 | `license`가 `UNSPECIFIED`인 저장소는 **경로·줄 번호·질문만** 적는다. 코드를 이 파일이나 문서에 옮겨 적지 않는다 |
-| 커버되지 않는 것 | 인증/로그인, 동시성·재고 차감, 대용량 조회 튜닝은 세 저장소로 덮이지 않는다. 읽기가 아니라 **직접 구현**과 기존 challenge 콘텐츠로 채운다(plan template의 milestone 2·6이 "읽기 없음"인 이유) |
+| 커버되지 않는 것 | 인증/로그인, 동시성·재고 차감, 대용량 조회 튜닝은 세 저장소로 덮이지 않는다. 읽기가 아니라 **직접 구현**과 기존 challenge 콘텐츠로 채운다(plan template의 milestone 2·6이 "읽기 없음"인 이유). 빈 곳을 채울 저장소·단위는 소스 점검(§8.5)에서 찾는다 |
+| 저장소·단위 교체 | 추가·교체·은퇴는 소스 점검(§8.5)에서 사용자와 정한 뒤에만 한다 |
 
 ### 3.9 적재 순서 (`ContentSeeder`, 한 트랜잭션)
 
@@ -409,7 +411,7 @@ Severity `ERROR`는 기동 실패와 CI 실패, `WARN`은 로그만 남긴다. J
 | CV-58 | ERROR | `transferTargets`가 role target이 있는 skill이고 `skills`와 겹치지 않는다. `isTransfer = true`면 difficulty ≥ 3 |
 | CV-59 | ERROR | DIAGNOSTIC은 difficulty 3, estimatedMinutes ≤ 15, isTransfer false, skills가 한 category이고 모두 role target priority `MUST`·importance ≥ 0.70. `diagnosticCategories`의 각 category에 DIAGNOSTIC이 1개 이상 |
 | CV-60 | WARN | PRACTICE estimatedMinutes가 난이도별 상한 초과: L1 20, L2 30, L3 40, L4 60, L5 90 (§6) |
-| CV-61 | ERROR | 템플릿 배치 smoke test: 고정 입력 4개(목표일 = 오늘, 10일, 중간 점검일 있는 31일, 211일)에서 §5 결과가 모두 `today ≤ start ≤ end ≤ targetCompletionDate` |
+| CV-61 | ERROR | 템플릿 배치 smoke test: 고정 입력 4개(창 길이 1일(목표일 = 오늘), 10일, 31일, 211일)에서 §5 결과가 모두 `today ≤ start ≤ end ≤ targetCompletionDate` |
 
 **Curated source**
 
@@ -426,11 +428,11 @@ Severity `ERROR`는 기동 실패와 CI 실패, `WARN`은 로그만 남긴다. J
 | CV-80 | ERROR | `curated-repos.yaml`의 최상위 키가 정확히 `repos`, `readings`이고 둘 다 비어 있지 않은 목록이다 |
 | CV-81 | ERROR | `repos[].key`가 `^[a-z][a-z0-9-]{1,29}$`이고 파일 안에서 **유일**하다. `url`이 https다. `subPath`가 상대 경로이고 `..` 세그먼트·선행 `/`가 없다. `name` 1~200, `license` 1~50, `stack` 1~200, `why` 10~500, `cloneHint` 10~500자 |
 | CV-82 | ERROR | `repos[].pinnedCommit`이 40자 소문자 hex SHA이거나 null(필드 생략 포함)이다. **null이면 WARN**을 함께 낸다 — 줄 번호가 고정되어 있지 않다는 뜻이다 (§8.4) |
-| CV-83 | ERROR | `readings[].key`가 `^READ\.<REPO>\.<TOPIC>\.NNN$` 패턴·≤ 100자이고 파일 전체에서 **중복이 없으며** `retired.readingKeys`에 없다 |
+| CV-83 | ERROR | `readings[].key`가 `^READ\.<REPO>\.<TOPIC>\.NNN$` 패턴·≤ 100자이고 파일 전체에서 **중복이 없다**. `retired: true`가 아닌 reading의 key는 `retired.readingKeys`에 없고, `retired: true`인 reading의 key는 `retired.readingKeys`에 **있다**. `retired.readingKeys`의 모든 key는 `retired: true` reading으로 남아 있다(은퇴 단위도 조회된다, §8.2) |
 | CV-84 | ERROR | `readings[].repo`가 `repos[].key`에 **실재**한다 |
 | CV-85 | ERROR | `readings[].path`가 1~300자 상대 POSIX 경로이고 `..` 세그먼트·선행 `/`·`\`가 **없다**. `lines`가 정수 2개 `[시작, 끝]`이고 **둘 다 양수, 시작 ≤ 끝(오름차순)**이다 |
 | CV-86 | ERROR | `readings[].skillCodes`가 1~4개·중복 없음이고 **모두 role target이 있는 skill로 실재**한다. `estimatedMinutes` 5~60. `question` **40~300자**. `lookFor` 1~5개, 항목 5~200자 |
-| CV-87 | WARN | 한 저장소의 reading 수가 3~5개 범위를 벗어난다 |
+| CV-87 | WARN | 한 저장소의 `retired: true`가 아닌 reading 수가 3~5개 범위를 벗어난다. 은퇴하지 않은 reading이 0개인 저장소는 WARN 대상이 아니다(은퇴 단위를 위해서만 남은 저장소) |
 
 **Seeder (DB 비교, `ContentSeeder`에서만 검사)**
 
@@ -507,27 +509,21 @@ Java 구현 전에는 이 스크립트가 기준이다. Java `ContentValidator`�
 | 입력 | 값 |
 |---|---|
 | `today` | 요청 시점의 plan-day (`06` §2) |
-| `checkpointDate` | 학습 목표(`learning_goal`), nullable — 중간 점검일 |
-| `targetCompletionDate` | 학습 목표(`learning_goal`), not null — 학습 목표일 |
+| `targetCompletionDate` | 학습 목표(`learning_goal`), not null — 목표일 |
 | `milestones` | 템플릿 순서 그대로 (`weightBp`, `phase`) |
 | `minDays` | `placement.minMilestoneDays` |
 
 - 전제: `today ≤ targetCompletionDate`. 아니면 배치를 호출하지 않고 `400 VALIDATION_FAILED`(field `targetCompletionDate`)로 거절한다.
-- `checkpointDate ≤ targetCompletionDate`는 DB CHECK가 보장한다.
 
 ### 5.2 창(window) 결정
 
 ```text
-if checkpointDate != null && today < checkpointDate:
-    # 06 §3.1 horizonDate = checkpointDate 와 같은 조건
-    PREPARATION milestones → allocate([today, checkpointDate − 1], weights = 해당 milestone들의 weightBp)
-    CONSOLIDATION milestones → allocate([checkpointDate, targetCompletionDate], weights = 해당 milestone들의 weightBp)
-else:
-    # 중간 점검일 없음, 또는 이미 정리 단계
-    모든 milestone (단계 무관, 템플릿 순서) → allocate([today, targetCompletionDate], weights = 전체 weightBp)
+# 창은 하나다. 06 §3.1 horizonDate = targetCompletionDate 와 같은 끝
+모든 milestone (템플릿 순서) → allocate([today, targetCompletionDate], weights = 전체 weightBp)
 ```
 
-단계 안에서는 그 단계 weight 합을 분모로 쓴다(전체 합 10000이 아니다).
+- 템플릿 순서는 CV-33이 보장한다: `PREPARATION` milestone이 모두 앞에, `CONSOLIDATION`("설명과 정리")이 맨 뒤에 온다. 그래서 한 창 안에서 앞부분은 만드는 milestone, 목표일 바로 앞은 설명과 정리 milestone이 된다.
+- 분모는 템플릿 전체 weight 합(현재 10000)이다. `phase`는 배치 순서만 정하고 창을 나누지 않는다.
 
 ### 5.3 `allocate(windowStart, windowEnd, w[0..n−1], minDays)`
 
@@ -560,28 +556,29 @@ else:
 성질 (테스트로 확인):
 - 모든 milestone에 대해 `windowStart ≤ start ≤ end ≤ windowEnd`.
 - SEQUENTIAL: 빈 날·겹침 없이 창 전체를 덮고, 각 길이 ≥ `minDays`.
-- COMPRESSED: `start`가 단조 증가하고 각 길이 = `min(minDays, D)`. 짧은 기간(현재 템플릿은 단일 창이면 9 × 7 = 63일 미만, PREPARATION 창이면 8 × 7 = 56일 미만)이나 중간 점검일까지 남은 기간이 짧으면 이 모드가 된다. `D < minDays`면 모든 milestone이 창 전체를 공유한다.
+- COMPRESSED: `start`가 단조 증가하고 각 길이 = `min(minDays, D)`. 목표일까지 남은 기간이 짧으면(현재 템플릿은 9 × 7 = 63일 미만) 이 모드가 된다. 구간이 겹칠 수 있고, `slack`이 크면 구간 사이에 빈 날이 생길 수도 있다(V6). `D < minDays`면 모든 milestone이 창 전체를 공유한다.
+- 두 모드의 경계: `D = n × minDays`(현재 63일)는 SEQUENTIAL이고 모든 milestone이 정확히 `minDays`일이다(V8). 하루 짧은 62일은 COMPRESSED다(V6).
 - 곱셈은 `Math.multiplyExact` (`06` §1 N-7).
 
 ### 5.4 Test vectors
 
-템플릿 `JAVA_BACKEND_DEFAULT` (PREPARATION weightBp: 1200, 1200, 1500, 1500, 1200, 1100, 700, 800 / CONSOLIDATION 800, `minDays` 7). `python content/tools/validate_content.py --placement-vectors`로 재생성한다. 날짜는 알고리즘 검증용 **예시 입력**이다(사용자의 학습 목표일과 무관).
+템플릿 `JAVA_BACKEND_DEFAULT` (weightBp 템플릿 순서: 1200, 1200, 1500, 1500, 1200, 1100, 700, 800 (PREPARATION 8개) / 800 (CONSOLIDATION 1개), W = 10000, n = 9, `minDays` 7). 모든 vector는 창 하나 `[today, targetCompletionDate]`다. `python content/tools/validate_content.py --placement-vectors`로 재생성한다. 날짜는 알고리즘 검증용 **예시 입력**이다(사용자의 목표일과 무관).
 
-**V1** today 2026-10-01, checkpointDate 2027-03-01, target 2027-04-30 (PREPARATION D=151, n=8 → SEQUENTIAL, extra 95, W 9200, base = 12, 12, 15, 15, 12, 11, 7, 8 → Σbase 92, left 3 → rem 4500인 #3·#4, rem 3600 중 index가 가장 작은 #1에 +1)
+**V1** today 2026-10-01, target 2027-04-30 (D=212 ≥ 63 → SEQUENTIAL, extra 149, base = 17, 17, 22, 22, 17, 16, 10, 11, 11 → Σbase 143, left 6 → rem 9200인 #8·#9, rem 8800인 #1·#2·#5, 그다음 rem 4300인 #7에 +1. rem 3900인 #6과 3500인 #3·#4는 +1 없음)
 
 | milestone | start | end | 일수 |
 |---|---|---|---|
-| FOUNDATION_SETUP | 2026-10-01 | 2026-10-20 | 20 |
-| MEMBER_AND_AUTH | 2026-10-21 | 2026-11-08 | 19 |
-| CATALOG_AND_CRUD | 2026-11-09 | 2026-12-01 | 23 |
-| ORDER_CREATION | 2026-12-02 | 2026-12-24 | 23 |
-| CANCEL_AND_REFUND | 2026-12-25 | 2027-01-12 | 19 |
-| QUERY_PERFORMANCE | 2027-01-13 | 2027-01-30 | 18 |
-| STRUCTURE_CLEANUP | 2027-01-31 | 2027-02-13 | 14 |
-| DEPLOY_AND_OPERATE | 2027-02-14 | 2027-02-28 | 15 |
-| EXPLAIN_AND_CONSOLIDATE | 2027-03-01 | 2027-04-30 | 61 |
+| FOUNDATION_SETUP | 2026-10-01 | 2026-10-25 | 25 |
+| MEMBER_AND_AUTH | 2026-10-26 | 2026-11-19 | 25 |
+| CATALOG_AND_CRUD | 2026-11-20 | 2026-12-18 | 29 |
+| ORDER_CREATION | 2026-12-19 | 2027-01-16 | 29 |
+| CANCEL_AND_REFUND | 2027-01-17 | 2027-02-10 | 25 |
+| QUERY_PERFORMANCE | 2027-02-11 | 2027-03-05 | 23 |
+| STRUCTURE_CLEANUP | 2027-03-06 | 2027-03-23 | 18 |
+| DEPLOY_AND_OPERATE | 2027-03-24 | 2027-04-11 | 19 |
+| EXPLAIN_AND_CONSOLIDATE | 2027-04-12 | 2027-04-30 | 19 |
 
-**V2** today 2026-10-01, checkpointDate null, target 2027-03-31 (단일 창 D=182, n=9 SEQUENTIAL)
+**V2** today 2026-10-01, target 2027-03-31 (D=182 → SEQUENTIAL, extra 119, base = 14, 14, 17, 17, 14, 13, 8, 9, 9 → Σbase 115, left 4 → rem 8500인 #3·#4, rem 5200인 #8·#9에 +1)
 
 | milestone | start | end | 일수 |
 |---|---|---|---|
@@ -595,7 +592,7 @@ else:
 | DEPLOY_AND_OPERATE | 2027-02-26 | 2027-03-14 | 17 |
 | EXPLAIN_AND_CONSOLIDATE | 2027-03-15 | 2027-03-31 | 17 |
 
-**V3** today 2026-10-01, checkpointDate null, target 2026-10-20 (D=20 < 9 × 7 = 63 → COMPRESSED, span 7, slack 13, C = 0, 1200, 2400, 3900, 5400, 6600, 7700, 8400, 9200)
+**V3** today 2026-10-01, target 2026-10-20 (D=20 < 9 × 7 = 63 → COMPRESSED, span 7, slack 13, C = 0, 1200, 2400, 3900, 5400, 6600, 7700, 8400, 9200, C[n−1] = 9200 → offset = 0, 1, 3, 5, 7, 9, 10, 11, 13)
 
 | milestone | start | end |
 |---|---|---|
@@ -609,9 +606,9 @@ else:
 | DEPLOY_AND_OPERATE | 2026-10-12 | 2026-10-18 |
 | EXPLAIN_AND_CONSOLIDATE | 2026-10-14 | 2026-10-20 |
 
-**V4** today 2026-10-01, null, target 2026-10-05 (D=5 < minDays → 9개 모두 2026-10-01 ~ 2026-10-05)
+**V4** today 2026-10-01, target 2026-10-05 (D=5 < minDays → COMPRESSED, span 5, slack 0 → 9개 모두 2026-10-01 ~ 2026-10-05)
 
-**V5** today 2026-10-01, checkpointDate 2026-09-20(이미 지남), target 2026-12-31 (단일 창 D=92 SEQUENTIAL)
+**V5** today 2026-10-01, target 2026-12-31 (D=92 → SEQUENTIAL, extra 29, base = 3, 3, 4, 4, 3, 3, 2, 2, 2 → Σbase 26, left 3 → rem 4800인 #1·#2·#5에 +1)
 
 | milestone | start | end | 일수 |
 |---|---|---|---|
@@ -625,21 +622,35 @@ else:
 | DEPLOY_AND_OPERATE | 2026-12-14 | 2026-12-22 | 9 |
 | EXPLAIN_AND_CONSOLIDATE | 2026-12-23 | 2026-12-31 | 9 |
 
-**V6** today 2026-10-01, checkpointDate 2026-10-11, target 2026-11-30 (PREPARATION D=10 < 8 × 7 → COMPRESSED span 7 slack 3, CONSOLIDATION D=51)
+**V6** today 2026-10-01, target 2026-12-01 (D=62 < 63 → COMPRESSED 경계 바로 아래, span 7, slack 55, offset = floorDiv(C[i] × 55, 9200) = 0, 7, 14, 23, 32, 39, 46, 50, 55. 구간 사이에 빈 날이 생긴다: 10-22~10-23, 10-31~11-01)
 
 | milestone | start | end |
 |---|---|---|
 | FOUNDATION_SETUP | 2026-10-01 | 2026-10-07 |
-| MEMBER_AND_AUTH | 2026-10-01 | 2026-10-07 |
-| CATALOG_AND_CRUD | 2026-10-01 | 2026-10-07 |
-| ORDER_CREATION | 2026-10-02 | 2026-10-08 |
-| CANCEL_AND_REFUND | 2026-10-02 | 2026-10-08 |
-| QUERY_PERFORMANCE | 2026-10-03 | 2026-10-09 |
-| STRUCTURE_CLEANUP | 2026-10-03 | 2026-10-09 |
-| DEPLOY_AND_OPERATE | 2026-10-04 | 2026-10-10 |
-| EXPLAIN_AND_CONSOLIDATE | 2026-10-11 | 2026-11-30 |
+| MEMBER_AND_AUTH | 2026-10-08 | 2026-10-14 |
+| CATALOG_AND_CRUD | 2026-10-15 | 2026-10-21 |
+| ORDER_CREATION | 2026-10-24 | 2026-10-30 |
+| CANCEL_AND_REFUND | 2026-11-02 | 2026-11-08 |
+| QUERY_PERFORMANCE | 2026-11-09 | 2026-11-15 |
+| STRUCTURE_CLEANUP | 2026-11-16 | 2026-11-22 |
+| DEPLOY_AND_OPERATE | 2026-11-20 | 2026-11-26 |
+| EXPLAIN_AND_CONSOLIDATE | 2026-11-25 | 2026-12-01 |
 
-**V7** today 2026-10-01, null, target 2026-10-01 (D=1 → 9개 모두 2026-10-01 하루)
+**V7** today 2026-10-01, target 2026-10-01 (D=1 → COMPRESSED, span 1, slack 0 → 9개 모두 2026-10-01 하루)
+
+**V8** today 2026-10-01, target 2026-12-02 (D=63 = 9 × 7 → SEQUENTIAL 경계, extra 0, base·rem·left 모두 0 → 9개 모두 7일, 빈 날·겹침 없음)
+
+| milestone | start | end | 일수 |
+|---|---|---|---|
+| FOUNDATION_SETUP | 2026-10-01 | 2026-10-07 | 7 |
+| MEMBER_AND_AUTH | 2026-10-08 | 2026-10-14 | 7 |
+| CATALOG_AND_CRUD | 2026-10-15 | 2026-10-21 | 7 |
+| ORDER_CREATION | 2026-10-22 | 2026-10-28 | 7 |
+| CANCEL_AND_REFUND | 2026-10-29 | 2026-11-04 | 7 |
+| QUERY_PERFORMANCE | 2026-11-05 | 2026-11-11 | 7 |
+| STRUCTURE_CLEANUP | 2026-11-12 | 2026-11-18 | 7 |
+| DEPLOY_AND_OPERATE | 2026-11-19 | 2026-11-25 | 7 |
+| EXPLAIN_AND_CONSOLIDATE | 2026-11-26 | 2026-12-02 | 7 |
 
 ---
 
@@ -769,7 +780,7 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 | challenge | challenge 파일에서 제거 + `retired.challengeSeedKeys` | `status = RETIRED` | attempt·submission 유지. RETIRED는 목록·task 제안에서 제외 |
 | review card | 카드 파일에서 제거 + `retired.conceptKeys` | 없음 | 기존 `review_item` 유지. 새 사용자에게 복사하지 않음 |
 | curated source | 파일에서 제거 + `retired.curatedSourceIds` | 없음 | 저장된 finding 유지. 이후 AI 출력의 해당 ID는 `DOWNGRADED_UNKNOWN_CURATED` |
-| reading | `curated-repos.yaml`에서 제거 + `retired.readingKeys` | 없음 | 완료한 `READ_CODE` task와 러버덕 세션은 그대로 남는다. 새로 제안되지 않는다 |
+| reading | `curated-repos.yaml`에서 **지우지 않고** `retired: true`로 표시 + `retired.readingKeys`에 추가. 그 저장소 항목(`repos[]`)도 남긴다(CV-84) | 없음 | 완료한 `READ_CODE` task와 러버덕 세션은 그대로 남고, `GET /readings/{key}`가 은퇴한 단위를 계속 돌려준다(`retired = true`, `05` §19.7). 새로 제안되지 않는다(`06` §5.3). 좌표는 `pinnedCommit` 기준이라 은퇴 뒤에도 같은 코드를 가리킨다 |
 
 ### 8.3 식별자 재사용 금지
 
@@ -787,7 +798,7 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 | LN-2 | `cloneHint`는 **그 커밋을 체크아웃하게** 쓴다. `--depth 1`은 특정 커밋을 못 집으므로 `git clone … && git checkout <sha>` 형태로 적는다 |
 | LN-3 | `pinnedCommit`을 올리면 **그 저장소의 모든 reading의 `path`와 `lines`를 다시 확인한다.** 바뀐 것만 고치는 것이 아니라 전부 눈으로 본다. 이건 자동화할 수 없고 콘텐츠 작업이다 |
 | LN-4 | `pinnedCommit`을 못 구했으면 `null`로 두되, 이는 임시 상태다. CV-82가 WARN을 내고, WARN이 남아 있는 동안은 줄 번호를 신뢰할 수 없다고 본다 |
-| LN-5 | 저장소가 사라지거나 재작성되면 해당 reading들을 §8.3대로 은퇴시키고(`retired.readingKeys`) 대체 reading을 새 key로 만든다. **같은 key의 `lines`만 고쳐서 다른 코드를 가리키게 하지 않는다** |
+| LN-5 | 저장소가 사라지거나 재작성되면 해당 reading들을 §8.2대로 은퇴시키고(`retired: true` + `retired.readingKeys`) 대체 reading을 새 key로 만든다. **같은 key의 `lines`만 고쳐서 다른 코드를 가리키게 하지 않는다** |
 
 갱신 절차 (콘텐츠 작업):
 
@@ -810,6 +821,58 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 | `modulith` | `e9e003a6363e2793a0e5eebe320cb02816ed1e0c` | reading 4개의 path·lines를 체크아웃 사본에서 확인 |
 | `petclinic` | `818c4136ea971c21674525f9053de0d9c7ad8cfe` | reading 4개 확인 |
 | `restbucks` | `ad97ad03c367a69ff1de70c660be2731cbe7bc3d` | reading 5개 확인. 라이선스 명시가 없어 **코드를 옮겨 적지 않았다** |
+
+### 8.5 소스 점검 (`READ_CODE` 저장소·읽기 단위의 주기적 수동 점검)
+
+`READ_CODE`가 가리키는 저장소(`repos[]`)와 읽기 단위(`readings[]`)가 지금의 사용자에게 맞는지 사람이 다시 본다. **자동으로 도는 것은 없다** — 스케줄 job도, 서버의 저장소·코드 조회도 없다(`07` §5.5). 콘텐츠 작업자(에이전트)가 입력을 모아 제안을 만들고, 무엇을 반영할지는 사용자가 정한다.
+
+**언제**
+
+| 시점 | 이유 |
+|---|---|
+| **S3 구현 시작 직전 (첫 점검)** | `READ_CODE`는 S3에서 처음 제안된다(`BL-TDY-16`). 첫 제안 전에 현재 저장소 3개·단위 13개를 한 번 검토한다(`11` §3.5, `16` R-15) |
+| 단계 회고마다 (`11` §2.2, `16` §4 S-8) | 쓰면서 쌓인 평가와 빈틈을 반영한다 |
+| 사용자가 요청할 때 | 예: 특정 기술의 읽을거리가 부족하다고 느낄 때 |
+
+**입력**
+
+| # | 입력 | 얻는 방법 |
+|---|---|---|
+| I-1 | 빈틈 목록 (DevPilot 데이터) | 사용자가 내려받은 `GET /me/export` JSON(`05` §3.3)에서 뽑는다. ① 레벨이 낮은 skill — `skillStates[]`의 증거 레벨이 활성 plan `skillTargets[]`의 목표보다 크게 낮은 MUST·SHOULD skill ② 복습에서 막히는 skill — `reviewAnswers[]`에서 최종 등급 `AGAIN`이 반복되는 카드의 skill, 러버덕 gap 카드(`reviewItems[]`의 `sourceType = RUBBER_DUCK`)가 있는 skill ③ 읽을 단위가 없는 skill — role target이 있는 skill 중 은퇴하지 않은 어떤 reading의 `skillCodes`에도 없는 skill(`curated-repos.yaml`과 role target 파일을 대조) |
+| I-2 | 완료한 `READ_CODE` 평가 | 같은 export의 `dailyPlans[].tasks[]` 중 `taskType = READ_CODE`인 행의 `readingKey`·`readingFeedback`(`HELPFUL`·`TOO_HARD`·`BORING`·null, `04` §3)을 단위·저장소별로 센다 |
+| I-3 | 현재 저장소의 라이선스·유지 상태 | 사람이 브라우저로 저장소 페이지를 열어 본다: 라이선스 파일, 보관(archived) 여부, 마지막 커밋 시기, Spring Boot·Java 버전 |
+
+평가 읽는 법(판단은 사람이 한다): `TOO_HARD`가 많은 단위는 범위를 줄이거나 앞에 둘 쉬운 단위를 찾는다. `BORING`이 많은 단위는 질문(`question`)을 바꾸거나 교체 후보로 둔다. `HELPFUL`이 많은 저장소는 같은 저장소에서 단위를 더 찾을 후보다. 평가는 이 점검의 입력일 뿐이고 레벨·planner 규칙의 입력이 아니다(`06` §5.3).
+
+**후보 기준**
+
+| 기준 | 내용 |
+|---|---|
+| 라이선스 | OSI 승인 라이선스. **Apache-2.0·MIT를 우선**한다. 라이선스가 없는 저장소(`UNSPECIFIED`, 현재 `restbucks`)가 **먼저 교체 대상**이다. 그 밖의 OSI 라이선스(예: GPL 계열)는 읽기만 하고 코드를 옮겨 적지 않는다(§3.8 라이선스 규칙과 같은 취급) |
+| 유지 | 활발히 유지된다: 보관(archived) 상태가 아니고 최근 커밋이 있다 |
+| 스택 | Spring Boot·Java 버전이 DevPilot이 가르치는 스택(Spring Boot 4, Java 25 — `18` §1.1)과 가깝다 |
+| 크기 | 다룰 만하다: 한 단위를 `estimatedMinutes`(5~60분) 안에 읽을 수 있고, 저장소 구조를 짧은 `why`로 설명할 수 있다 |
+| 테스트 | 테스트 코드가 있다 |
+| 도메인 | 설명 없이 이해되는 업무(주문·결제·회원 등)라 읽기 쉽다 |
+
+**큰 실제 프로젝트의 부분 읽기**는 허용한다. 저장소 전체를 읽지 않고 한 주제에 맞는 파일 하나·범위 하나만 단위로 삼는다(RC-2). 예:
+
+- 커넥션 풀 라이브러리의 커넥션 대여·반납 — 자원 수명(`JAVA.EXCEPTION.TRY_WITH_RESOURCES`, `PRACTICAL_ENGINEERING.RESOURCE_TIMEOUT`)
+- 프레임워크의 트랜잭션 프록시 코드(예: Spring Framework의 트랜잭션 인터셉터) — `SPRING.TRANSACTION`, `SPRING.AOP_PROXY`
+- JDK 동시성 클래스(예: `java.util.concurrent`) — `JAVA.CONCURRENCY`
+
+단위는 지금의 `readings[]` 형식 그대로 적는다: 저장소의 **`pinnedCommit` + `path` + `lines` + 열린 질문(`question`)**, 그리고 `skillCodes`·`estimatedMinutes`·`lookFor`. 큰 저장소는 `subPath`를 그 모듈로 두고, `cloneHint`는 부분 clone(예: `git clone --filter=blob:none …`)을 써도 되지만 반드시 그 커밋을 checkout한다(LN-2).
+
+**출력과 반영**
+
+1. 점검 결과는 저장소·단위별 **제안 목록**이다: 추가 / 교체 / 은퇴 / 유지. 제안마다 근거(I-1~I-3 중 무엇)를 붙인다.
+2. 사용자와 함께 검토해 받아들일 제안만 고른다. 고르지 않은 제안은 반영하지 않는다.
+3. 받아들인 제안을 콘텐츠 PR 하나로 `content/curated-repos.yaml`에 반영한다:
+   - 새 저장소·갱신한 저장소는 `pinnedCommit`을 고정하고 `cloneHint`가 그 커밋을 checkout하게 쓴다(LN-2)
+   - 그 커밋으로 체크아웃한 사본에서 해당 저장소의 **모든** `path`·`lines`를 눈으로 다시 확인한다(§8.4 LN-1·LN-3)
+   - 은퇴는 §8.2대로 한다(`retired: true` + `retired.readingKeys`). 은퇴한 단위는 지난 과제를 위해 계속 조회된다
+   - `python content/tools/validate_content.py` 통과, `catalogVersion` +1(§8.1), §11 체크리스트
+4. 점검 날짜, 입력 요약, 결정(받아들인 것과 받아들이지 않은 것)을 PR 설명에 적고, §8.4의 "확인한 커밋" 표를 갱신한다.
 
 ---
 
@@ -893,6 +956,7 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 - [ ] reading `question`이 답을 유도하지 않는 열린 질문이고 40자 이상이다 (CV-86)
 - [ ] `pinnedCommit`을 올렸다면 그 저장소의 **모든** reading을 다시 확인했다 (§8.4 LN-3)
 - [ ] 라이선스가 `UNSPECIFIED`인 저장소의 코드를 문서·콘텐츠에 옮겨 적지 않았다
+- [ ] 저장소·reading의 추가·교체·은퇴는 소스 점검(§8.5)에서 사용자가 고른 것만 반영했고, 은퇴한 reading은 지우지 않고 `retired: true`로 남겼다(§8.2)
 
 ---
 
@@ -989,7 +1053,7 @@ plan template milestone (2026-09-18 재작성 — "과목 순서"에서 "주문 
 | O-2 | `plan.application.PlanTemplateRegistry`(ContentSeeder가 기동 시 등록), `plan.domain.PlanTemplatePlacement`(§5 알고리즘), `plan.domain.PlanTemplate`(record) | `03-system-architecture.md` §3.2 |
 | O-3 | seed challenge 구조 필드 변경은 기동 실패, 텍스트 필드만 갱신 (SD-02와 같음) | `04-domain-model-and-db.md` §2, §9 |
 | O-4 | replan 시 이전 plan에 없는 role target skill은 기본값으로 자동 추가. priority 변경·target 상향은 Later | `06-learning-engine-rules.md` §11.2 |
-| O-5 | 현재 규칙 유지: 단계와 무관하게 모든 MUST는 중간 점검일까지의 budget에 포함 | `06-learning-engine-rules.md` §4.1 |
+| O-5 | milestone 단계(`phase`)와 무관하게 모든 MUST는 목표일까지의 budget에 포함 | `06-learning-engine-rules.md` §4.1 |
 | O-6 | `skill.active=false`인 skill은 budget, planner 후보, due 선택에서 제외 | `06-learning-engine-rules.md` §4.1, §5.2, §6.5 |
 | O-7 | DB 버전 = `max(skill.catalog_version)`(없으면 0), 작으면 seed 건너뜀 | `04-domain-model-and-db.md` §9 |
 | O-8 | conceptKey 패턴은 seed·수동 카드에만 적용, 시스템 생성 키는 예외 | `04-domain-model-and-db.md` §7 I-06 |

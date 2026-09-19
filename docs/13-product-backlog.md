@@ -1,6 +1,6 @@
 # 13. Product Backlog
 
-> Status: Accepted (v2) · Last updated: 2026-09-18 · Related: `11-development-roadmap.md`, `12-acceptance-criteria.md`, `16-definition-of-ready-done.md`, `03-system-architecture.md`, `06-learning-engine-rules.md`
+> Status: Accepted (v2) · Last updated: 2026-09-19 · Related: `11-development-roadmap.md`, `12-acceptance-criteria.md`, `16-definition-of-ready-done.md`, `03-system-architecture.md`, `06-learning-engine-rules.md`
 >
 > 2026-09-18 반영: 자체 서버 + Tailscale HTTPS, 서버 PostgreSQL 16, `devtoken` 운영 인증(BL-SEC-16), DeepSeek(BL-AIP-03·11·15·17), 수동 배포·`pg_dump` 백업(BL-OPS-07·11), git 전략(BL-OPS-21). Anthropic·도메인 항목은 `~~취소~~` 또는 Later로 옮겼다. Tailscale 전용·`devtoken`은 **임시 수단**이고 최종은 공개 배포다 — 공개 인증(`BL-SEC-18`)은 그 필수 선행이고 OCI Always Free(arm64)는 배포지 후보다(`11` §3.10). "(검토 제안, 미결정)" 표시 항목은 착수 전에 사용자 결정이 필요하다.
 >
@@ -30,7 +30,7 @@
   - **M1 = S0 · S1 · S2 · S3** — 쓸 수 있는 최소. **S3 완료 = 실사용 시작**(매일 쓰기 시작). S2가 끝나면 AI 없이 Today·Review만 먼저 써도 된다(선택).
   - **M2 = S4 · S5 · S6 · S7** — M1을 쓰면서 필요한 순서로 진행한다. 단계 순서는 잠정이다.
   - **Later** — M1·M2 밖. `공개 배포 전`은 단계가 아니라 공개 전환 게이트(`11-development-roadmap.md` §3.10)에 걸린 항목이다.
-  - 학습 목표일과 중간 점검일은 문서의 상수가 아니라 사용자가 설정창에 등록하는 값(`learning_goal.target_completion_date`·`checkpoint_date`)이다. 설명 안의 날짜는 이미 일어난 일의 기록(예: "2026-09-18 취소")뿐이다.
+  - 목표일은 문서의 상수가 아니라 사용자가 설정창에 등록하는 값(`learning_goal.target_completion_date`)이다. 설명 안의 날짜는 이미 일어난 일의 기록(예: "2026-09-18 취소")뿐이다.
 
 ## 3. Epic 목록
 
@@ -47,7 +47,7 @@
 | `TRN` | Training | challenge, attempt, self-explanation, Hint Ladder, 제출·평가, 진단 |
 | `COA` | Project Coach | 코드 리뷰, finding, 응답 피드백, thinking pattern, purge |
 | `EVD` | Evidence · Weekly | 지표, 주간 리뷰, thinking 추세, evidence, export |
-| `REQ` | Requirement Radar | 요구사항 목록 분석, requirement 분류 |
+| `REQ` | 로드맵 비교 (Roadmap compare) | 붙여넣은 공개 로드맵·기술 목록의 항목 추출과 분류(READY/STRETCH/LATER). 식별자는 `radar` 모듈·`requirement_doc`/`requirement_item` |
 | `AIP` | AI Platform | `integration.ai` 전체, 비동기 AI 공통, evals |
 | `CNT` | Content | seed YAML, curated repos, 검증기, seeder, prompt 파일 |
 | `PRJ` | Side Project | `project` 모듈: 사이드 프로젝트 등록·조회·수정·삭제. 학습이 적용될 대상(`PROJECT_TASK`·Coach·러버덕 `PROJECT_WORK`) |
@@ -172,7 +172,7 @@
 | BL-CLI-26 | Dashboard 완성·Weekly | SCR-DASHBOARD(risk 추세, skill 카테고리 요약, 약한 thinking 축 Top 3), SCR-WEEKLY-LIST, SCR-WEEKLY-DETAIL(지표, 회고 작성) | P1 | S5 | BL-TDY-12, BL-EVD-03, BL-EVD-04 | AC-19, AC-21 | FR-13, FR-16, FR-17 |
 | BL-CLI-27 | Evidence 화면 | SCR-EVIDENCE-LIST, SCR-EVIDENCE-DETAIL(수동 작성, AI 초안 polling, 편집, accept/reject, Markdown export 다운로드) | P1 | S6 | BL-EVD-05, BL-EVD-06, BL-EVD-07, BL-EVD-08 | AC-21 | FR-18 |
 | BL-CLI-28 | Export·계정 삭제 화면 | SCR-SETTINGS export 다운로드, SCR-ACCOUNT-DELETE(403 `RECENT_LOGIN_REQUIRED` → 재로그인(dev 모드: `/api/v1/dev/token` 재발급으로 새 `amr` timestamp) → 자동 재요청, 202 후 로그아웃) | P1 | S6 | BL-SEC-13, BL-SEC-14 | AC-15 | FR-23 |
-| BL-CLI-29 | 요구 역량 비교 화면 | SCR-REQUIREMENTS-LIST, SCR-REQUIREMENT-NEW, SCR-REQUIREMENT-DETAIL(분류별 개수·목록만, 확률·점수·퍼센트 없음) | P1 | S7 | BL-REQ-02, BL-REQ-03 | AC-22 | FR-19 |
+| BL-CLI-29 | 로드맵 비교 화면 | SCR-REQUIREMENTS-LIST, SCR-REQUIREMENT-NEW, SCR-REQUIREMENT-DETAIL(분류별 개수·목록만, 확률·점수·퍼센트 없음) | P1 | S7 | BL-REQ-02, BL-REQ-03 | AC-22 | FR-19 |
 | BL-CLI-30 | Android 앱 | Android 빌드·서명·배포 (DEC-18) | P3 | Later | — | — | — |
 | BL-CLI-31 | 세션 완료 화면 즉시 진전 표시 | (검토 제안, 미결정) 세션 완료 직후 오늘 학습 시간·연속 일수·이번 주 완료 세션 수를 완료 시트에 바로 표시. 사용자 결정 후 착수 | P3 | Later | BL-CLI-12 | — | FR-08, FR-16 |
 | BL-CLI-32 | 사이드 프로젝트 화면 | SCR-PROJECTS(목록·등록·수정 한 화면, `02-user-scenarios-and-ux.md`): `GET /side-projects?status=` 목록(`updatedAt` DESC, 상태 필터), 등록(name 필수, description·repoUrl·stack 선택, `URL` 오류 표시), 수정(상태 `ACTIVE`·`PAUSED`·`DONE` 포함, version, 409 `CONCURRENT_MODIFICATION` 새로고침 안내), 삭제 확인(과제·리뷰 기록은 남고 연결만 끊긴다). `repoUrl`은 텍스트 링크로만 보여 준다(서버는 fetch하지 않는다). `ACTIVE`가 여럿이면 planner는 가장 최근 수정한 하나를 쓴다는 안내(SP-3) | P1 | S1 | BL-PRJ-01, BL-CLI-04, BL-CLI-05, BL-CLI-06 | AC-27 | FR-26 |
@@ -190,7 +190,7 @@
 | BL-GOL-05 | Replan 최소판 | `ReplanService` + `POST /plans/{planId}/replan`: milestone 구조 변경, 기존 plan `SUPERSEDED` + **flush** 후 새 version INSERT, id mapping, `plan_skill_target` 복사. `acceptedDeferrals`/`acceptedTargetReductions`/`restoredDeferrals`/`acceptedTargetRaises`가 비어 있지 않으면 400 `VALIDATION_FAILED`(`VALUE_NOT_ALLOWED`, `05` §7.8). `PLAN_REPLANNED` 이벤트는 BL-GOL-07, snapshot은 BL-GOL-13 | P0 | S1 | BL-GOL-04 | AC-01, AC-24 | FR-04 |
 | BL-GOL-06 | 온보딩 API | `OnboardingService` + `POST /onboarding`(201, 한 트랜잭션, `05` §4.1 1~11단계): 프로필·timezone·dayStartHour·학습 시간, 학습 목표, `runDiagnostic`(true = 진단 모드: `selfAssessments`가 비어 있지 않으면 `MUTUALLY_EXCLUSIVE`, `self_assessed_level` 전부 null / false = 자기평가 모드: 비어 있으면 `ONE_OF_REQUIRED`), **`SelfAssessmentPropagation`**(카테고리 최대 13개 → 활성 skill 전체 `user_skill_state`), plan v1(템플릿, BL-GOL-03), `sideProject`(있으면 `side_project` `ACTIVE` INSERT — `SideProjectService`, `repoUrl` `URL` 검사·fetch 없음, 기본 이름은 클라이언트가 채운다 / null이면 만들지 않고 planner가 `PROJECT_TASK`를 제안하지 않는다 — SP-1), 응답 `sideProject`, 409 `ONBOARDING_ALREADY_COMPLETED`, `OnboardingRequiredInterceptor`(409 `ONBOARDING_REQUIRED`). **S1은 8·9·11단계 생략**: 응답 `assignedSeedCardCount = 0`, `latestRiskLevel = null`, `suggestedDiagnostics = []`. seed 카드 복사는 BL-MEM-08(S2, 기동 backfill), snapshot upsert는 BL-GOL-13(S2), 진단 제안은 BL-TRN-13(S3)에서 연결 | P0 | S1 | BL-GOL-01, BL-GOL-03, BL-SKL-02, BL-CNT-05, BL-PRJ-01 | AC-11, AC-27 | FR-02, FR-26 |
 | BL-GOL-07 | `PLAN_REPLANNED` 이벤트 연결 | V4 적용 후 replan에서 `LearningEventRecorder`로 `PLAN_REPLANNED` 기록 + 감사 로그 | P1 | S2 | BL-SKL-03, BL-GOL-05 | AC-01 | FR-04 |
-| BL-GOL-08 | **`StudyBudgetCalculator`** | horizon, nominal, completion rate, effective (`06` §3, test vector 전부). v3에서 S5 → S2 — 사용자가 등록한 학습 목표일의 역산이 첫 Today부터 우선순위에 반영된다 | P0 | S2 | BL-FND-09, BL-FND-10 | AC-03 | FR-05 |
+| BL-GOL-08 | **`StudyBudgetCalculator`** | horizon, nominal, completion rate, effective (`06` §3, test vector 전부). v3에서 S5 → S2 — 사용자가 등록한 목표일의 역산이 첫 Today부터 우선순위에 반영된다 | P0 | S2 | BL-FND-09, BL-FND-10 | AC-03 | FR-05 |
 | BL-GOL-09 | **`DeadlineRiskEvaluator`** | skill별 required minutes, risk level, `ratioBp` (`06` §4.1~4.3, test vector 전부). risk는 planner 입력(`RISK_HIGH_MUST`·`DEADLINE_RISK_MUST`)이라 Today와 같은 단계다. v3에서 S5 → S2 | P0 | S2 | BL-SKL-02 | AC-03 | FR-05 |
 | BL-GOL-10 | **`ReplanSuggestionPolicy`** | 방향 분기(`06` §4.4 표 — risk ≥ HIGH면 축소, LOW이고 `ratioBp ≤ 7000`이면 확장, 그 외·`ratioBp = null`이면 제안 없음)와 축소 쪽: MUST 목표 축소를 먼저 `requiredMust ≤ effective`까지 → 그다음 SHOULD defer, `riskAfterSuggestions` (`06` §4.4 1~5단계, test vector 1·2). 확장 쪽(6단계)은 BL-GOL-17. v3에서 S5 → S2 | P0 | S2 | BL-GOL-09 | AC-03 | FR-05 |
 | BL-GOL-11 | Budget API | `StudyBudgetService` + `GET /plans/active/budget`. completion 입력은 port `plan.application.StudyHistoryProvider`(plan 정의, `today` 모듈 구현: plan-day별 `available_minutes`와 COMPLETED 세션 `actual_minutes` 합)로 받는다. Today 생성(BL-TDY-07)도 같은 계산으로 요청 시점 risk를 구한다. v3에서 S5 → S2 | P0 | S2 | BL-GOL-08, BL-GOL-09, BL-TDY-10 | AC-03 | FR-05 |
@@ -324,15 +324,15 @@
 | BL-EVD-07 | Evidence 편집·승인 API | `PATCH /evidence/{evidenceId}`(version), `POST .../accept`(`EVIDENCE_ACCEPTED` → `evidence_count`), `POST .../reject`, REJECTED → CANDIDATE 복원, ACCEPTED 되돌림 409 | P1 | S6 | BL-EVD-05, BL-SKL-05 | AC-09, AC-21 | FR-18 |
 | BL-EVD-08 | 학습 기록(STAR) export | `EvidenceExportService` + `GET /evidence/export?format=markdown`(ACCEPTED만) | P1 | S6 | BL-EVD-07 | AC-21 | FR-18 |
 
-### 4.13 REQ — Requirement Radar
+### 4.13 REQ — 로드맵 비교 (Roadmap compare)
 
 | ID | 제목 | 설명 | P | Sprint | Depends on | AC | FR/NFR |
 |---|---|---|---|---|---|---|---|
 | BL-REQ-01 | **`RequirementFitClassifier`** | requirement skill의 축별 `gap = max(target − evidence level)` → `READY`(≤ 0), `STRETCH`(= 1), `LATER`(≥ 2), skill 없음 → null. `matchedEvidenceIds`. 확률·점수 없음 (`06-learning-engine-rules.md`) | P1 | S7 | BL-SKL-02, BL-EVD-07 | AC-22 | FR-19 |
-| BL-REQ-02 | 요구사항 문서 분석 요청 | `RequirementAnalysisService` + `POST /requirement-docs`(202, `sourceUrl` fetch 금지) + `RequirementAnalysisTask`(`REQUIREMENT_EXTRACT`, `SkillCodeGuard`). `AiPendingJobCounter` 구현(radar: 분석 중 요구사항 문서의 PENDING/RUNNING 수) | P1 | S7 | BL-REQ-01, BL-FND-19, BL-FND-23, BL-AIP-07, BL-CNT-13, BL-AIP-10 | AC-22, AC-23 | FR-19 |
-| BL-REQ-03 | 요구사항 문서 조회·삭제 API | `RequirementRadarController`: `GET /requirement-docs/{requirementDocId}`, `GET /requirement-docs?cursor=`, `DELETE /requirement-docs/{requirementDocId}` | P1 | S7 | BL-FND-19 | AC-08, AC-22 | FR-19 |
+| BL-REQ-02 | 로드맵 비교 요청 | `RequirementAnalysisService` + `POST /requirement-docs`(202, `sourceUrl` fetch 금지) + `RequirementAnalysisTask`(`REQUIREMENT_EXTRACT`, `SkillCodeGuard`). `AiPendingJobCounter` 구현(radar: 분석 중 요구사항 문서의 PENDING/RUNNING 수) | P1 | S7 | BL-REQ-01, BL-FND-19, BL-FND-23, BL-AIP-07, BL-CNT-13, BL-AIP-10 | AC-22, AC-23 | FR-19 |
+| BL-REQ-03 | 로드맵 비교 조회·삭제 API | `RequirementRadarController`: `GET /requirement-docs/{requirementDocId}`, `GET /requirement-docs?cursor=`, `DELETE /requirement-docs/{requirementDocId}` | P1 | S7 | BL-FND-19 | AC-08, AC-22 | FR-19 |
 | BL-REQ-04 | 원문 purge·지표 | `radar.application.RequirementDocPurgeService`(`common.job.RetentionCleanupTarget` 구현)로 `source_text` 180일 purge, `requirementCoverageBp` 지표. `RequirementCoverageProvider` 구현(최근 분석한 요구사항 문서 5개의 REQUIRED 수와 READY 수) | P2 | S7 | BL-FND-24, BL-EVD-01, BL-REQ-02 | AC-22 | NFR-05 |
-| BL-REQ-05 | 공개 요구사항 소스 가져오기 | 공개 학습 로드맵 등 외부 요구사항 목록을 약관 검토 후 공개 API로만 가져온다 (자동 크롤링 금지 유지) | P3 | Later | — | — | FR-19 |
+| BL-REQ-05 | 공개 로드맵 가져오기 | 공개 학습 로드맵을 약관 검토 후 공개 API로만 가져온다 (자동 크롤링 금지 유지) | P3 | Later | — | — | FR-19 |
 
 ### 4.14 CNT — Content
 
@@ -346,7 +346,7 @@
 | BL-CNT-02 | `ContentSeeder` | ApplicationRunner, 검증 실패 시 기동 실패, `catalog_version` 비교 upsert, 사라진 skill `active=false`·challenge `RETIRED`, 단일 트랜잭션(`04` §9) | P0 | S1 | BL-CNT-01 | AC-11 | FR-06 |
 | BL-CNT-03 | Skill tree v0 | `content/skill-tree/java-backend.yaml`: skill 60~90개, 13 카테고리, prerequisite, `minutesPerLevelStep` | P0 | S1 | BL-CNT-01 | AC-11 | FR-06 |
 | BL-CNT-04 | Role target | JAVA_BACKEND priority·practicalImportance·축별 목표 레벨. DEC-14: ALGORITHM SHOULD, EXPLANATION MUST | P0 | S1 | BL-CNT-03 | AC-03, AC-11 | FR-05, FR-06 |
-| BL-CNT-05 | Plan template | `content/plan-templates/java-backend.yaml`: JAVA_BACKEND milestone 9개를 **주문 시스템을 만드는 순서**로 재작성 — 1 기반 다지기 · 2 회원과 인증 · 3 상품과 CRUD · 4 주문 생성 · 5 취소와 환불 · 6 조회 성능(MUST), 7 구조 정리 · 8 배포와 운영 · 9 설명과 정리(SHOULD — 기한이 촉박하면 7~9부터 잘린다). milestone 안 순서는 읽기 → 개념 → 구현 → 러버덕 → 복습, `skillCodes`는 기존 카탈로그에서만 고른다. 배치는 오늘 ~ horizon(`19` §5, `PlanTemplatePlacement`), milestone skill | P0 | S1 | BL-CNT-03 | AC-01, AC-11 | FR-02, FR-04 |
+| BL-CNT-05 | Plan template | `content/plan-templates/java-backend.yaml`: JAVA_BACKEND milestone 9개를 **주문 시스템을 만드는 순서**로 재작성 — 1 기반 다지기 · 2 회원과 인증 · 3 상품과 CRUD · 4 주문 생성 · 5 취소와 환불 · 6 조회 성능(MUST), 7 구조 정리 · 8 배포와 운영 · 9 설명과 정리(SHOULD — 기한이 촉박하면 7~9부터 잘린다). milestone 안 순서는 읽기 → 개념 → 구현 → 러버덕 → 복습, `skillCodes`는 기존 카탈로그에서만 고른다. 배치는 창 하나 오늘 ~ 목표일(`19` §5, `PlanTemplatePlacement`), milestone skill | P0 | S1 | BL-CNT-03 | AC-01, AC-11 | FR-02, FR-04 |
 | BL-CNT-06 | Seed 복습 카드 | 50장 이상(JAVA·SPRING·DATABASE 중심), conceptKey·reviewType·rubric | P0 | S2 | BL-CNT-03 | AC-05, AC-10 | FR-11 |
 | BL-CNT-07 | Seed practice challenge | 20개(difficulty 1~4), hints 1~3단계, rubric weightBp 합 10000, expectedConcepts, transferTargets | P0 | S3 | BL-CNT-03 | AC-04, AC-12 | FR-09 |
 | BL-CNT-08 | Seed diagnostic challenge | `content/challenges/diagnostic.yaml`: `purpose=DIAGNOSTIC`, 카테고리별 1개 이상, 5~10분 분량. 온보딩 진단(카테고리당 1문제·최대 5문제)의 문제 은행이라 v3에서 P1 → P0 | P0 | S3 | BL-CNT-07 | AC-11 | FR-02, FR-15 |
@@ -357,6 +357,7 @@
 | BL-CNT-13 | Prompt v1 (S7) | `requirement.extract` | P1 | S7 | BL-AIP-05 | AC-22 | FR-19 |
 | BL-CNT-14 | 1차 튜닝 | 실사용 4주 데이터로 planner 가중치·budget 계수·seed 목표·카드 품질 조정. 변경값과 근거를 ADR 또는 변경 이력에 기록 | P2 | S5 | BL-GOL-14 | AC-02, AC-03 | FR-05, FR-07 |
 | BL-CNT-15 | Curated repos | `content/curated-repos.yaml`(`19` §3.8): 저장소 3개(`modulith`, `petclinic`, `restbucks` — `license: UNSPECIFIED`는 경로·줄 번호·질문만 적고 코드를 옮겨 적지 않는다)·reading 13개, `repos[].pinnedCommit` 40자 SHA + 그 커밋을 체크아웃하는 `cloneHint`(줄 번호 관리 `19` §8.4 — 줄 범위는 체크아웃한 사본에서 눈으로 확인, 추측 금지), `catalogVersion` 3. 검증 CV-80~CV-87(`ContentValidator` + `content/tools/validate_content.py`, 오류 fixture `19` §4.3). `CuratedReadingRegistry`(메모리, DB 테이블 없음 — `ContentSeeder`가 기동 시 등록, `SeedCardRegistry`와 같은 방식, `03` §3.2) | P0 | S3 | BL-CNT-01, BL-CNT-02, BL-CNT-03 | AC-28 | FR-27 |
+| BL-CNT-16 | READ_CODE 평가 수집과 소스 점검 절차 | **읽기 평가**: `ReadingFeedback`(`HELPFUL`·`TOO_HARD`·`BORING`, `04` §3), `learning_task.reading_feedback`(nullable `varchar(20)`, 값 CHECK + `learning_task_reading_feedback_type` — I-19, V9 + `database/schema.sql`), `PATCH /today/tasks/{taskId}`의 선택 필드 `readingFeedback`(`READ_CODE`를 `COMPLETED`로 바꿀 때만, 그 외 400 `VALUE_NOT_ALLOWED` — `05` §8.4), SCR-TODAY 완료 시트의 평가 칩 3개(선택, `02`), export `dailyPlans[].tasks[].readingFeedback`. 어떤 레벨·planner·budget 규칙의 입력도 아니다(`06` §5.3). **은퇴 단위 조회**: `curated-repos.yaml` `readings[].retired`(`19` §3.8·§8.2), CV-83·CV-87 은퇴 규칙(`ContentValidator` + `content/tools/validate_content.py`), `CuratedReadingRegistry`가 은퇴 reading도 보관하고 `GET /readings/{key}`가 `retired`를 돌려준다(`05` §19.7), `TaskProposalPolicy` 후보에서 은퇴 reading 제외, SCR-READ-CODE 은퇴 안내. **소스 점검 절차**(`19` §8.5): 사람이 하는 수동 점검 — 첫 점검은 S3 구현 시작 전(이 BL의 우선순위와 무관, `16` R-15), 이후 단계 회고마다·사용자 요청 시. 자동 실행·서버의 저장소 조회 없음 | P2 | S3 | BL-TDY-16, BL-CNT-15, BL-CLI-34 | AC-28 | FR-27 |
 
 ### 4.15 PRJ — Side Project
 
@@ -373,7 +374,7 @@
 | ID | 제목 | 설명 | P | Sprint | Depends on | AC | FR/NFR |
 |---|---|---|---|---|---|---|---|
 | BL-RDK-01 | 러버덕 도메인 | `rubberduck` 모듈(`03` §2.2·§3.2): `RubberDuckSession`·`RubberDuckTurn` 매핑(`rubber_duck_session`, `rubber_duck_turn`, V9), `RubberDuckTargetType`(`CODE_READING`, `CHALLENGE`, `REVIEW_ITEM`, `CONCEPT`, `PROJECT_WORK`), `RubberDuckStatus`(`IN_PROGRESS → COMPLETED \| ABANDONED`, 나가는 전이 없음 — `04` §4.8), I-16 `unique (session_id, turn_no)`. **`RubberDuckPolicy`**(`06` §9.5 RD-1~RD-7): 턴 상한(`devpilot.rubberduck.max-turns` 5, RD-4), RD-3 "모르겠다" 연속 `stuck-turns-before-hint`(2)턴 판정, RD-5 증거 조건(가드 전 `rawGapCount = 0`·`turns ≥ 3`, coverage 고정 `evidence-coverage-bp` 7000, 독립 = `hintDisclosed = false` — `06` §7.2), RD-7(skill 없으면 이벤트 없음). `devpilot.rubberduck.*` 설정 바인딩(`03` §9). `LearningEventType.RUBBER_DUCK_COMPLETED`·`EventSourceType.RUBBER_DUCK_SESSION`과 payload record `{ sessionId, turns, gapCount, targetType, hintDisclosed }`(`04` §6). RD-3 "모르겠다" 판정은 서버 결정적 규칙이다(`06` §9.5, `devpilot.rubberduck.dont-know-phrases`·`dont-know-max-chars` 30) — 결과를 `rubber_duck_turn.learner_stuck`에 저장하고 AI 출력에 의존하지 않는다. I-18 사용자당 `IN_PROGRESS` 1개(`uq_rubber_duck_session_one_in_progress`) | P0 | S3 | BL-FND-09, BL-FND-11, BL-SKL-03, BL-PRJ-01 | AC-26 | FR-25 |
-| BL-RDK-02 | 러버덕 API | `RubberDuckService` + `RubberDuckController`(`05` §9.5~§9.10): `POST /rubber-duck`(201, IK, AI 호출·예산 검사 없음 — targetType별 계약 표: `CONCEPT`이면 `conceptKey` 필수(`ONE_OF_REQUIRED`)·`targetId` 금지(`MUTUALLY_EXCLUSIVE`), 그 외는 반대 / 대상이 타인 소유·없음 → 400 `REFERENCE_NOT_FOUND` / `skillCode` 유도 / 이전 `IN_PROGRESS` → `ABANDONED` + `abandonedSessionId`), `POST /rubber-duck/{sessionId}/turns`(201, IK: 2000자 초과 413 `CONTENT_TOO_LARGE` → `SecretMasker`(private key 422 `SECRET_DETECTED_BLOCKED`) → tx1(비 `IN_PROGRESS`·턴 상한 409 `INVALID_STATE_TRANSITION`) → AI 차단 검사(429/503) → `AiGateway` `RUBBER_DUCK` → tx2(`rubber_duck_turn` INSERT, `turn_count + 1`), AI 실패·가드 위반 시 턴 미저장, `suggestHint`(RD-3)), `POST .../complete`(200: 턴 0 → AI 없이 `ABANDONED` / `RUBBER_DUCK_SUMMARY` 1회 → `COMPLETED`, `gaps[]` → `review_item`(`source_type = RUBBER_DUCK`, `origin = AI_GENERATED`, `review_type = EXPLAIN`, 첫 due `06` §6.3, 같은 `concept_key`면 due만 당김), `skill_id`가 있으면 `RUBBER_DUCK_COMPLETED`(dedupe `RUBBER_DUCK:{sessionId}:{skillId}`) / 정리 차단·실패 → `COMPLETED` + `summarySkippedReason`, 카드·이벤트 없음), `POST .../abandon`(200, IK 무시, AI 없음), `GET /rubber-duck/{sessionId}`(turns 전체, AI 불가여도 조회). 타인 세션 404 `RESOURCE_NOT_FOUND`, 격리 목록(BL-SEC-05)에 추가. 대상 조회(`learning_task`·`challenge_attempt`·`review_item`·`side_project`)는 `rubberduck` 모듈이 `today`·`training`·`review`·`project`에 직접 의존해 한다(`03` §2.2). gap 카드 필드(skill 유도 — 세션 skill이 없으면 `conceptKey` 접두사, 그래도 없으면 카드 없음 / `expected_answer` 두 줄 목록 / `rubric_json` 1개)는 `05` §9.8. `CODE_READING` 세션이 `COMPLETED`가 되면 같은 트랜잭션에서 대상 `READ_CODE` 과제를 `COMPLETED`로 바꾼다(RC-1). `summary_json.rawGapCount` 저장 | P0 | S3 | BL-RDK-01, BL-RDK-03, BL-AIP-07, BL-AIP-09, BL-AIP-10, BL-MEM-07, BL-SKL-03, BL-TDY-01, BL-TDY-10, BL-TRN-05 | AC-26, AC-08, AC-14, AC-23 | FR-25 |
+| BL-RDK-02 | 러버덕 API | `RubberDuckService` + `RubberDuckController`(`05` §9.5~§9.10): `POST /rubber-duck`(201, IK, AI 호출·예산 검사 없음 — targetType별 계약 표: `CONCEPT`이면 `conceptKey` 필수(`ONE_OF_REQUIRED`)·`targetId` 금지(`MUTUALLY_EXCLUSIVE`), 그 외는 반대 / 대상이 타인 소유·없음 → 400 `REFERENCE_NOT_FOUND` / `skillCode` 유도 / 이전 `IN_PROGRESS` → `ABANDONED` + `abandonedSessionId`), `POST /rubber-duck/{sessionId}/turns`(201, IK: 2000자 초과 413 `CONTENT_TOO_LARGE` → `SecretMasker`(private key 422 `SECRET_DETECTED_BLOCKED`) → tx1(비 `IN_PROGRESS`·턴 상한 409 `INVALID_STATE_TRANSITION`) → AI 차단 검사(429/503) → `AiGateway` `RUBBER_DUCK` → tx2(`rubber_duck_turn` INSERT, `turn_count + 1`), AI 실패·가드 위반 시 턴 미저장, `suggestHint`(RD-3)), `POST .../complete`(200: 턴 0 → AI 없이 `ABANDONED` / `RUBBER_DUCK_SUMMARY` 1회 → `COMPLETED`, `gaps[]` → `review_item`(`source_type = RUBBER_DUCK`, `origin = AI_GENERATED`, `review_type = EXPLAIN`, 첫 due `06` §6.3, 같은 `concept_key`면 due만 당김), `skill_id`가 있으면 `RUBBER_DUCK_COMPLETED`(dedupe `RUBBER_DUCK:{sessionId}:{skillId}`) / 정리 차단·실패 → `COMPLETED` + `summarySkippedReason`, 카드·이벤트 없음), `POST .../abandon`(200, IK 무시, AI 없음), `GET /rubber-duck/{sessionId}`(turns 전체, AI 불가여도 조회). 타인 세션 404 `RESOURCE_NOT_FOUND`, 격리 목록(BL-SEC-05)에 추가. 대상 조회(`learning_task`·`challenge_attempt`·`review_item`·`side_project`)는 `rubberduck` 모듈이 `today`·`training`·`review`·`project`에 직접 의존해 한다(`03` §2.2). gap 카드 필드(skill 유도 — 세션 skill이 없으면 `conceptKey` 접두사, 그래도 없으면 카드 없음 / `expected_answer` 두 줄 목록 / `rubric_json` 1개)는 `05` §9.8. `CODE_READING` 세션이 `COMPLETED`가 되면 대상 `READ_CODE` 과제의 RC-1 조건이 충족된다 — 과제 상태는 바꾸지 않고, 완료는 `PATCH /today/tasks/{taskId}`가 한다(BL-TDY-16, `05` §9.8 7번). `summary_json.rawGapCount` 저장 | P0 | S3 | BL-RDK-01, BL-RDK-03, BL-AIP-07, BL-AIP-09, BL-AIP-10, BL-MEM-07, BL-SKL-03, BL-TDY-01, BL-TDY-10, BL-TRN-05 | AC-26, AC-08, AC-14, AC-23 | FR-25 |
 | BL-RDK-03 | 러버덕 AI 계약 | prompt `rubber.duck/v1`·`rubber.duck.summary/v1`(`17` §3.11·§3.12 변수·절삭 표), operation 설정 `RUBBER_DUCK`(SYNC, thinking off, max-tokens 1500, timeout 20s, 재시도 0, input-token-budget 6000)·`RUBBER_DUCK_SUMMARY`(SYNC, thinking on·effort low, 4000, 30s, 0, 8000)(`03` §9), 출력 record `RubberDuckTurnOutput`(`question` 10~200자, `targetsGap`은 저장·응답·다음 프롬프트에 넣지 않음)·`RubberDuckSummaryOutput`(`gaps` ≤ 3, `confirmed` ≤ 5, `overallNote`)과 스키마 파일(`17` §4.10·§4.11, `OutputSchemaRegistry` 11종), **`NoAnswerGuard`**(`17` §6.8: NA-1 `question`이 `?`로 끝남, NA-2 정답 단정 표현 `devpilot.ai.guards.no-answer-phrases`, NA-3 코드 검출, NA-4 summary gap 제거 — 필드별 규칙 하나)를 `OutputGuardChain`(`CODE_LEAK` 다음, `LANGUAGE` 앞)에 추가하고 `GuardName.NO_ANSWER`, gap `conceptKey` 접두사 `SkillCodeGuard`(알 수 없으면 그 gap만 버림), `FakeAiProvider` fixture(정상·NA-1~NA-4 위반·timeout·gaps 0개/2개), eval case `rubber-duck`·`rubber-duck-summary`(`17` §12.3~§12.5, 러너 BL-AIP-13). prompt·가드를 바꾸면 eval 실행 | P0 | S3 | BL-AIP-05, BL-AIP-06, BL-AIP-08, BL-AIP-13 | AC-26 | FR-25, NFR-07 |
 | BL-RDK-04 | `StaleRubberDuckJob` | `rubberduck` 모듈 스케줄 job: `IN_PROGRESS`이고 `started_at < now − devpilot.rubberduck.stale-after`(24h)인 세션 → `ABANDONED`, `completed_at = now`(`idx_rubber_duck_session_in_progress`). 정리 AI 호출·복습 카드·학습 이벤트 없음, 턴 기록은 남는다(`05` §9.5). BL-FND-25 공통 규약(INFO 1줄, `JOB_FAILED` WARN, 사용자 단위 트랜잭션). 스케줄 `0 25 * * * *`(매시 25분, `03` §6) | P1 | S3 | BL-RDK-01, BL-FND-25 | AC-26 | FR-25 |
 
@@ -387,7 +388,7 @@
 
 `~~취소~~` 표시 6개(`BL-SEC-01`, `BL-SEC-02`, `BL-OPS-03`, `BL-OPS-08`, `BL-OPS-14`, `BL-AIP-04`)는 P·Sprint가 비어 있어 표에서 빠진다. `BL-SEC-18`(공개 인증 도입, P0)은 Sprint가 아니라 **공개 배포 게이트**에 걸려 있어 Sprint 열에 넣지 않는다(`11` §3.10).
 
-§4 본문 행 228개 − 취소 6개 − 게이트 1개(`BL-SEC-18`) = **표 합계 221개**(M1 161개 · M2 46개 · Later 14개).
+§4 본문 행 229개 − 취소 6개 − 게이트 1개(`BL-SEC-18`) = **표 합계 222개**(M1 162개 · M2 46개 · Later 14개).
 
 | Epic | S0 | S1 | S2 | S3 | **M1 계** | S4 | S5 | S6 | S7 | **M2 계** | Later | 합계 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -404,10 +405,10 @@
 | COA | — | — | — | — | — | 10 | — | — | — | 10 | 1 | 11 |
 | EVD | — | — | — | — | — | — | 4 | 4 | — | 8 | — | 8 |
 | REQ | — | — | — | — | — | — | — | — | 4 | 4 | 1 | 5 |
-| CNT | — | 5 | 1 | 5 | 11 | 1 | 1 | 1 | 1 | 4 | — | 15 |
+| CNT | — | 5 | 1 | 6 | 12 | 1 | 1 | 1 | 1 | 4 | — | 16 |
 | PRJ | — | 1 | — | — | 1 | — | — | — | — | — | — | 1 |
 | RDK | — | — | — | 4 | 4 | — | — | — | — | — | — | 4 |
-| **합계** | **25** | **37** | **45** | **54** | **161** | **14** | **13** | **12** | **7** | **46** | **14** | **221** |
+| **합계** | **25** | **37** | **45** | **55** | **162** | **14** | **13** | **12** | **7** | **46** | **14** | **222** |
 
 ### 5.2 Sprint × Priority 항목 수
 
@@ -416,17 +417,17 @@
 | S0 | 25 | — | — | — | 25 |
 | S1 | 34 | 3 | — | — | 37 |
 | S2 | 39 | 5 | 1 | — | 45 |
-| S3 | 45 | 8 | 1 | — | 54 |
-| **M1 계 (S0~S3)** | **143** | **16** | **2** | — | **161** |
+| S3 | 45 | 8 | 2 | — | 55 |
+| **M1 계 (S0~S3)** | **143** | **16** | **3** | — | **162** |
 | S4 | — | 14 | — | — | 14 |
 | S5 | — | 11 | 2 | — | 13 |
 | S6 | 1 | 11 | — | — | 12 |
 | S7 | — | 6 | 1 | — | 7 |
 | **M2 계 (S4~S7)** | **1** | **42** | **3** | — | **46** |
 | Later | — | — | — | 14 | 14 |
-| **합계** | **144** | **58** | **5** | **14** | **221** |
+| **합계** | **144** | **58** | **6** | **14** | **222** |
 
-- S3가 가장 무겁다(54개). S3 완료가 실사용 시작이므로 S3의 P0 45개는 이월하지 않는다. S3의 P1·P2 **9개**(P1 8 + P2 1) 중 `BL-AIP-13`(Evals v1)은 P0 `BL-RDK-03`의 선행이라 S3에 남기고, 나머지 8개는 S4로 1회 이월할 수 있다. 이월 순서는 `BL-FND-26` → `BL-CLI-22` → `BL-SKL-06` → `BL-CNT-09` → `BL-MEM-09` → 나머지(`BL-CLI-14`, `BL-FND-24`, `BL-RDK-04`)다. `BL-MEM-10`은 REVIEW_VARIANT 축소로 P3·Later라 대상이 아니다.
+- S3가 가장 무겁다(55개). S3 완료가 실사용 시작이므로 S3의 P0 45개는 이월하지 않는다. S3의 P1·P2 **10개**(P1 8 + P2 2) 중 `BL-AIP-13`(Evals v1)은 P0 `BL-RDK-03`의 선행이라 S3에 남기고, 나머지 9개는 S4로 1회 이월할 수 있다. 이월 순서는 `BL-FND-26` → `BL-CNT-16` → `BL-CLI-22` → `BL-SKL-06` → `BL-CNT-09` → `BL-MEM-09` → 나머지(`BL-CLI-14`, `BL-FND-24`, `BL-RDK-04`)다. `BL-CNT-16`을 이월해도 첫 소스 점검(`19` §8.5)은 S3 시작 전에 한다(`16` R-15) — 이월되는 것은 읽기 평가·은퇴 단위 조회 구현이다. `BL-MEM-10`은 REVIEW_VARIANT 축소로 P3·Later라 대상이 아니다.
 - S2가 끝나면 AI 없이 Today·Review·budget·risk·replan(축소·확장 제안)을 먼저 쓸 수 있다(선택, §2).
 - M2(S4~S7)의 단계 순서는 잠정이다. 순서를 바꾸면 이 표를 다시 센다.
 - 항목 수는 작업량이 아니다. 작업량 추정과 재추정 규칙은 `11-development-roadmap.md` §2.
@@ -460,7 +461,7 @@
 | plans | `GET /plans/active/budget` | BL-GOL-11 |
 | today | `POST /today/generate` | BL-TDY-07, BL-TDY-14, BL-TDY-16 |
 | today | `GET /today` | BL-TDY-08 |
-| today | `PATCH /today/tasks/{taskId}` | BL-TDY-09 (`READ_CODE` 완료 조건 RC-1 BL-TDY-16) |
+| today | `PATCH /today/tasks/{taskId}` | BL-TDY-09 (`READ_CODE` 완료 조건 RC-1 BL-TDY-16, 읽기 평가 `readingFeedback` BL-CNT-16) |
 | learning-sessions | `POST /learning-sessions`, `POST .../complete`, `POST .../abandon`, `GET /learning-sessions` | BL-TDY-10 |
 | rubber-duck | `POST /rubber-duck`, `POST /rubber-duck/{sessionId}/turns`, `POST /rubber-duck/{sessionId}/complete`, `POST /rubber-duck/{sessionId}/abandon`, `GET /rubber-duck/{sessionId}` | BL-RDK-02 (AI 계약 BL-RDK-03) |
 | challenges | `GET /challenges`, `GET /challenges/{challengeId}` | BL-TRN-02 |
@@ -492,7 +493,7 @@
 | requirement-docs | `POST /requirement-docs` | BL-REQ-02 |
 | requirement-docs | `GET /requirement-docs/{requirementDocId}`, `GET /requirement-docs`, `DELETE /requirement-docs/{requirementDocId}` | BL-REQ-03 |
 | side-projects | `POST /side-projects`, `GET /side-projects`, `GET /side-projects/{sideProjectId}`, `PATCH /side-projects/{sideProjectId}`, `DELETE /side-projects/{sideProjectId}` | BL-PRJ-01 |
-| readings | `GET /readings/{readingKey}` | BL-TDY-16 |
+| readings | `GET /readings/{readingKey}` | BL-TDY-16 (은퇴 단위 `retired` BL-CNT-16) |
 
 ### 6.2 스케줄 job · 비동기 task (`03-system-architecture.md` §5.3, §6)
 
