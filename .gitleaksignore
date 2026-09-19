@@ -1,0 +1,8 @@
+# Findings in the import commit fdada82 that are test fixtures or comments, fixed in the next commit.
+# One fingerprint per finding (no path allowlist, docs/07 §11.3).
+fdada82af6c23452176ff021d919f5635d5bc9e3:app/test/core/time_and_validation_test.dart:generic-api-key:112
+fdada82af6c23452176ff021d919f5635d5bc9e3:app/test/core/time_and_validation_test.dart:devpilot-private-key-pem:95
+fdada82af6c23452176ff021d919f5635d5bc9e3:app/test/core/time_and_validation_test.dart:devpilot-private-key-pem:96
+fdada82af6c23452176ff021d919f5635d5bc9e3:app/test/core/time_and_validation_test.dart:private-key:95
+fdada82af6c23452176ff021d919f5635d5bc9e3:backend/src/main/resources/application-test.yml:generic-api-key:36
+fdada82af6c23452176ff021d919f5635d5bc9e3:infra/scripts/host-check.sh:generic-api-key:10

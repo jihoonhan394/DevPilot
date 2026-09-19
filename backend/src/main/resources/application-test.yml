@@ -33,7 +33,7 @@ devpilot:
                                        # (CI가 APP_BASE_URL을 주지 않음) → devtoken 테스트(09 §6.4)용 고정값
     allowed-emails: owner@devpilot.test,invited@devpilot.test
     allowed-subjects: ""
-    log-hash-key: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef   # 테스트 고정값 (64 hex)
+    log-hash-key: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef   # 테스트 고정값 (64 hex) gitleaks:allow
   web:
     app-base-url: http://localhost:5173
   content:

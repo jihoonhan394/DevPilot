@@ -7,7 +7,7 @@
 # 입력: /opt/devpilot/ops.env 의 HEALTHCHECK_HOST_URL (선택, healthchecks.io check devpilot-host). 비어 있으면 출력만 한다
 # 검사 항목 (문제가 있으면 한 줄씩 출력, 종료 코드 1)
 #   - 루트 디스크 사용률 < 80%
-#   - devpilot-api-1, devpilot-caddy-1 running, 지난 실행 이후 재시작 없음 (state/<name>.restarts)
+#   - api·caddy 컨테이너가 running이고 지난 실행 이후 재시작 없음 (state/<name>.restarts)
 #   - http://127.0.0.1:18080/actuator/health "status":"UP"
 #   - tailscale Running, `tailscale serve status` 에 127.0.0.1:18080 (읽을 수 없으면 WARN)
 #   - tailnet 주소 443 인증서 만료 ≥ 14일 (127.0.0.1:443 은 tailscale serve가 듣지 않으므로 tailnet IP로 확인)

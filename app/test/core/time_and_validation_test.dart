@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:devpilot_app/core/auth/jwt_subject.dart';
 import 'package:devpilot_app/core/time/local_date.dart';
 import 'package:devpilot_app/core/time/time_zone_support_stub.dart';
@@ -92,8 +94,9 @@ void main() {
     });
 
     test('shouldDetectPrivateKeyBlocks', () {
-      expect(InputRules.containsPrivateKey('-----BEGIN RSA PRIVATE KEY-----'), isTrue);
-      expect(InputRules.containsPrivateKey('-----BEGIN PRIVATE KEY-----'), isTrue);
+      // Built at runtime so secret scanners don't flag the test (docs/07 §11.3).
+      expect(InputRules.containsPrivateKey('-----BEGIN RSA ' 'PRIVATE KEY-----'), isTrue);
+      expect(InputRules.containsPrivateKey('-----BEGIN ' 'PRIVATE KEY-----'), isTrue);
       expect(InputRules.containsPrivateKey('-----BEGIN PUBLIC KEY-----'), isFalse);
     });
   });
@@ -108,8 +111,10 @@ void main() {
   });
 
   test('shouldReadSubjectFromJwtPayloadOnly', () {
-    // Header and signature are irrelevant; the payload is {"sub":"5f1c3b1e","email":"x"}.
-    const token = 'eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiI1ZjFjM2IxZSIsImVtYWlsIjoieCJ9.c2ln';
+    // Header and signature are irrelevant. Assembled at runtime so secret scanners don't flag the
+    // test (docs/07 §11.3).
+    String segment(String json) => base64Url.encode(utf8.encode(json)).replaceAll('=', '');
+    final token = '${segment('{"alg":"ES256"}')}.${segment('{"sub":"5f1c3b1e","email":"x"}')}.c2ln';
 
     expect(jwtSubject(token), '5f1c3b1e');
     expect(jwtSubject('not-a-jwt'), isNull);
