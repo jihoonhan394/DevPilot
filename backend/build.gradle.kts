@@ -29,6 +29,10 @@ plugins {
 group = "com.devpilot"
 version = "0.0.1-SNAPSHOT"
 
+// Boot 4.1.1 manages Tomcat 11.0.24, which has fixed CRITICAL CVEs (CVE-2026-65182, CVE-2026-65905,
+// CVE-2026-68525; fixed in 11.0.25). Drop this override once a Boot release manages 11.0.25+.
+extra["tomcat.version"] = "11.0.26"
+
 java {
     toolchain {
         // DEC-02: Java 25. SP-4 실패 시 21로 내리고 ADR을 갱신한다
