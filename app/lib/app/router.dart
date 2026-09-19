@@ -23,11 +23,14 @@ import 'package:devpilot_app/features/plan/presentation/plan_version_screen.dart
 import 'package:devpilot_app/features/plan/presentation/replan_controller.dart';
 import 'package:devpilot_app/features/plan/presentation/replan_screen.dart';
 import 'package:devpilot_app/features/project/presentation/projects_screen.dart';
+import 'package:devpilot_app/features/review/presentation/review_home_screen.dart';
+import 'package:devpilot_app/features/review/presentation/review_session_screen.dart';
 import 'package:devpilot_app/features/settings/data/me_provider.dart';
 import 'package:devpilot_app/features/settings/presentation/settings_controller.dart';
 import 'package:devpilot_app/features/settings/presentation/settings_screen.dart';
 import 'package:devpilot_app/features/skill/presentation/skill_detail_screen.dart';
 import 'package:devpilot_app/features/skill/presentation/skill_tree_screen.dart';
+import 'package:devpilot_app/features/today/presentation/today_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
@@ -90,9 +93,26 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.onboardingPlan,
         builder: (context, state) => const OnboardingPlanScreen(),
       ),
+      // A focus screen without the navigation frame (docs/02 §2.2).
+      GoRoute(
+        path: AppRoutes.reviewSession,
+        onExit: (context, state) => confirmReviewSessionExit(
+          context,
+          state.uri.queryParameters[AppRoutes.taskIdParameter],
+        ),
+        builder: (context, state) =>
+            ReviewSessionScreen(taskId: state.uri.queryParameters[AppRoutes.taskIdParameter]),
+      ),
       ShellRoute(
         builder: (context, state, child) => AppShell(location: state.uri.path, child: child),
         routes: [
+          GoRoute(
+            path: AppRoutes.today,
+            builder: (context, state) => TodayScreen(
+              completeTaskId: state.uri.queryParameters[AppRoutes.completeParameter],
+            ),
+          ),
+          GoRoute(path: AppRoutes.review, builder: (context, state) => const ReviewHomeScreen()),
           GoRoute(
             path: AppRoutes.plan,
             builder: (context, state) => const PlanScreen(),

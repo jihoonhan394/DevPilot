@@ -32,7 +32,7 @@ void main() {
   setUp(() => backend = FakeBackend());
 
   testWidgets('shouldShowMilestonesGoalDatesAndTodayDivider', (tester) async {
-    await pumpApp(tester, backend: backend);
+    await pumpApp(tester, backend: backend, at: '/plan');
 
     expect(find.text('Java 백엔드 성장 계획 · v1'), findsOneWidget);
     expect(find.text('완료 목표 2027년 4월 1일'), findsOneWidget);
@@ -46,7 +46,7 @@ void main() {
   });
 
   testWidgets('shouldPatchStatusWithoutNewPlanVersion', (tester) async {
-    await pumpApp(tester, backend: backend);
+    await pumpApp(tester, backend: backend, at: '/plan');
 
     await selectDropdown(tester, 'plan.milestone.$milestoneFoundationId.status', '진행 중');
 
@@ -59,7 +59,7 @@ void main() {
 
   testWidgets('shouldReloadAndExplainWhenStatusChangeConflicts', (tester) async {
     backend.planRepository.patchFailures.add(conflict());
-    await pumpApp(tester, backend: backend);
+    await pumpApp(tester, backend: backend, at: '/plan');
     final fetchesBefore = backend.planRepository.activeFetchCount;
 
     await selectDropdown(tester, 'plan.milestone.$milestoneFoundationId.status', '완료');
@@ -80,7 +80,7 @@ void main() {
     backend.planRepository.patchFailures.add(
       const ApiException(code: ApiErrorCode.planNotActive, status: 409),
     );
-    await pumpApp(tester, backend: backend);
+    await pumpApp(tester, backend: backend, at: '/plan');
 
     await selectDropdown(tester, 'plan.milestone.$milestoneFoundationId.status', '완료');
 
@@ -88,7 +88,7 @@ void main() {
   });
 
   testWidgets('shouldSwapSortOrderWithTwoPatchesWhenMovedDown', (tester) async {
-    await pumpApp(tester, backend: backend);
+    await pumpApp(tester, backend: backend, at: '/plan');
 
     await tapKey(tester, 'plan.milestone.$milestoneFoundationId.moveDown');
 
@@ -104,7 +104,7 @@ void main() {
   });
 
   testWidgets('shouldSaveMemoWithInlineEditor', (tester) async {
-    await pumpApp(tester, backend: backend);
+    await pumpApp(tester, backend: backend, at: '/plan');
 
     await tapKey(tester, 'plan.milestone.$milestoneFoundationId.memoEdit');
     await enterTextByKey(tester, 'plan.milestone.$milestoneFoundationId.memoField', '주말에 복습');
@@ -119,7 +119,7 @@ void main() {
 
   testWidgets('shouldShowCreatePlanEmptyStateWhenNoActivePlan', (tester) async {
     backend.planRepository.activePlan = null;
-    await pumpApp(tester, backend: backend);
+    await pumpApp(tester, backend: backend, at: '/plan');
 
     expect(find.text('활성 계획이 없어요. 템플릿으로 새 계획을 만들어요.'), findsOneWidget);
     await tapKey(tester, 'plan.createButton');
@@ -129,7 +129,7 @@ void main() {
 
   testWidgets('shouldShowErrorWithReportInfoAndRetry', (tester) async {
     backend.planRepository.fetchFailures.add(internalError());
-    await pumpApp(tester, backend: backend);
+    await pumpApp(tester, backend: backend, at: '/plan');
 
     expect(find.text('문제가 생겼어요. 잠시 후 다시 시도해 주세요.'), findsOneWidget);
     await tapKey(tester, 'common.reportInfo');
@@ -148,6 +148,8 @@ void main() {
         backend: FakeBackend(planRepository: slow),
       ),
     );
+    await tester.pumpAndSettle();
+    routerOf(tester).go('/plan');
     await tester.pump();
     await tester.pump();
 
@@ -162,7 +164,7 @@ void main() {
 
   testWidgets('shouldShowReplanBannerWhenGoalDatesChanged', (tester) async {
     backend.planRepository.activePlan = testPlan(replanRecommended: true);
-    await pumpApp(tester, backend: backend);
+    await pumpApp(tester, backend: backend, at: '/plan');
 
     expect(find.text('목표 날짜가 바뀌었어요. 계획을 다시 맞춰 보세요.'), findsOneWidget);
     await tapKey(tester, 'plan.replanButton');
@@ -174,7 +176,7 @@ void main() {
       testPlanSummary(planVersion: 2, changeReason: '야근으로 2주 지연'),
       testPlanSummary(id: previousPlanId, status: PlanStatus.superseded),
     ];
-    await pumpApp(tester, backend: backend);
+    await pumpApp(tester, backend: backend, at: '/plan');
 
     await tapKey(tester, 'plan.versionsButton');
     expect(locationOf(tester), '/plan/versions');
@@ -190,7 +192,7 @@ void main() {
   });
 
   testWidgets('shouldShowNotFoundForMissingPlanVersion', (tester) async {
-    await pumpApp(tester, backend: backend);
+    await pumpApp(tester, backend: backend, at: '/plan');
 
     await goTo(tester, '/plan/versions/$previousPlanId');
 
@@ -200,7 +202,7 @@ void main() {
   testWidgets('shouldFitPlanIn360PixelWidthWithBottomTabs', (tester) async {
     usePhoneScreen(tester);
     addTearDown(() => resetScreenSize(tester));
-    await pumpApp(tester, backend: backend);
+    await pumpApp(tester, backend: backend, at: '/plan');
 
     expect(find.byKey(const Key('shell.bottomNavigation')), findsOneWidget);
     expect(find.byKey(const Key('plan.header')), findsOneWidget);

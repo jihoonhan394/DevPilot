@@ -6,9 +6,9 @@ import 'package:go_router/go_router.dart';
 
 /// Navigation frame of the signed-in screens (docs/02 §2.1, §2.2).
 ///
-/// Mobile (< 600) has a bottom bar; tablet has a rail with labels below the icons, desktop
-/// (≥ 1024) an extended rail. Only S1 destinations exist: on mobile Today and Review are not built
-/// yet, so the bar holds Plan and More, and More lists Projects, Skills and Settings.
+/// Mobile (< 600) has the bottom bar Today · Review · Plan · More; tablet has a rail with labels
+/// below the icons, desktop (≥ 1024) an extended rail. Only destinations of the shipped stages
+/// exist, so More lists Projects, Skills, Dashboard and Settings.
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.location, required this.child});
 
@@ -30,6 +30,8 @@ class AppShell extends StatelessWidget {
 }
 
 enum _Destination {
+  today(AppRoutes.today, Icons.today),
+  review(AppRoutes.review, Icons.style),
   plan(AppRoutes.plan, Icons.timeline),
   projects(AppRoutes.projects, Icons.code),
   skills(AppRoutes.skills, Icons.account_tree_outlined),
@@ -42,6 +44,8 @@ enum _Destination {
   final IconData icon;
 
   String label(AppLocalizations l10n) => switch (this) {
+    today => l10n.navToday,
+    review => l10n.navReview,
     plan => l10n.navPlan,
     projects => l10n.navProjects,
     skills => l10n.navSkills,
@@ -52,8 +56,11 @@ enum _Destination {
   bool matches(String location) => location == path || location.startsWith('$path/');
 
   /// The destination shown as selected for [location] (docs/02 §2.2: sub-routes select their
-  /// parent destination).
-  static _Destination? of(String location) {
+  /// parent destination; `/dashboard` selects More on mobile and Today elsewhere).
+  static _Destination? of(String location, {required bool mobile}) {
+    if (location == AppRoutes.dashboard || location.startsWith('${AppRoutes.dashboard}/')) {
+      return mobile ? more : today;
+    }
     for (final destination in values) {
       if (destination.matches(location)) {
         return destination;
@@ -66,7 +73,12 @@ enum _Destination {
 class _MobileShell extends StatelessWidget {
   const _MobileShell({required this.location, required this.child});
 
-  static const _tabs = [_Destination.plan, _Destination.more];
+  static const _tabs = [
+    _Destination.today,
+    _Destination.review,
+    _Destination.plan,
+    _Destination.more,
+  ];
 
   final String location;
   final Widget child;
@@ -74,9 +86,10 @@ class _MobileShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final current = _Destination.of(location);
-    // Projects, Skills and Settings live under More on mobile.
-    final selectedIndex = current == _Destination.plan ? 0 : 1;
+    final current = _Destination.of(location, mobile: true);
+    // Projects, Skills, Dashboard and Settings live under More on mobile.
+    final tabIndex = _tabs.indexOf(current ?? _Destination.more);
+    final selectedIndex = tabIndex < 0 ? _tabs.length - 1 : tabIndex;
     return Scaffold(
       body: child,
       bottomNavigationBar: NavigationBar(
@@ -99,7 +112,13 @@ class _MobileShell extends StatelessWidget {
 class _RailShell extends StatelessWidget {
   const _RailShell({required this.location, required this.extended, required this.child});
 
-  static const _railItems = [_Destination.plan, _Destination.projects, _Destination.skills];
+  static const _railItems = [
+    _Destination.today,
+    _Destination.review,
+    _Destination.plan,
+    _Destination.projects,
+    _Destination.skills,
+  ];
 
   final String location;
   final bool extended;
@@ -108,7 +127,7 @@ class _RailShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final current = _Destination.of(location);
+    final current = _Destination.of(location, mobile: false);
     final railIndex = _railItems.indexOf(current ?? _Destination.more);
     return Scaffold(
       body: Row(

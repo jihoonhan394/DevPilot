@@ -26,12 +26,12 @@ void main() {
 
   test('shouldUseServerDetailWhenCodeIsNotMapped', () {
     const error = ApiException(
-      code: 'TODAY_ALREADY_STARTED',
+      code: 'SUBMISSION_LIMIT_REACHED',
       status: 409,
-      detail: '오늘 과제를 이미 시작했습니다.',
+      detail: '이 풀이에서 제출 5회를 모두 사용했어요.',
     );
 
-    expect(messageFor(error, l10n), '오늘 과제를 이미 시작했습니다.');
+    expect(messageFor(error, l10n), '이 풀이에서 제출 5회를 모두 사용했어요.');
   });
 
   test('shouldUseGenericMessageWhenNeitherCodeNorDetailIsKnown', () {

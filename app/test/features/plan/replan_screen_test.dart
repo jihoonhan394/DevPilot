@@ -15,7 +15,7 @@ void main() {
   setUp(() => backend = FakeBackend());
 
   Future<void> openReplan(WidgetTester tester) async {
-    await pumpApp(tester, backend: backend);
+    await pumpApp(tester, backend: backend, at: '/plan');
     await tapKey(tester, 'plan.restructureButton');
     expect(locationOf(tester), '/plan/replan');
   }

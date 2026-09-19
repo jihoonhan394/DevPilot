@@ -41,14 +41,17 @@ void main() {
     expect(find.byKey(const Key('settings.goalTile')), findsNothing);
   });
 
-  testWidgets('shouldOpenPlanWhenOnboardedUserStarts', (tester) async {
+  // From S2 the start page is SCR-TODAY (docs/02 §2.3, U-1).
+  testWidgets('shouldOpenTodayWhenOnboardedUserStarts', (tester) async {
     await pumpApp(tester);
 
-    expect(locationOf(tester), '/plan');
-    expect(find.byKey(const Key('plan.header')), findsOneWidget);
+    expect(locationOf(tester), '/today');
+    expect(find.byKey(const Key('today.generateButton')), findsOneWidget);
 
     await goTo(tester, '/onboarding/goal');
-    expect(locationOf(tester), '/plan');
+    expect(locationOf(tester), '/today');
+    await goTo(tester, '/');
+    expect(locationOf(tester), '/today');
   });
 
   testWidgets('shouldShowNotAllowedScreenWhenProfileIsRejected', (tester) async {

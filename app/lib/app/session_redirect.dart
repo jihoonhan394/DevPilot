@@ -56,7 +56,7 @@ final class ProfileReady extends ProfileStatus {
 /// Rule 3 (profile loading) and a failed profile keep the location; the session gate shows the
 /// full-screen loading or error view meanwhile. Rule 5 (deletion requested) is a sign-out done by
 /// the router's profile listener, after which rule 1 applies. Rule 8 (feature flags) is not used:
-/// S1 registers only S1 routes.
+/// only the routes of shipped stages are registered.
 String? redirectFor({
   required AuthState auth,
   required ProfileStatus profile,

@@ -1,4 +1,4 @@
-/// Route paths of docs/02 §2.3 available in S1.
+/// Route paths of docs/02 §2.3 available up to S2.
 abstract final class AppRoutes {
   static const root = '/';
   static const login = '/login';
@@ -13,6 +13,10 @@ abstract final class AppRoutes {
   /// SCR-DIAGNOSTICS ships in S3; step 5 only links here when suggestions exist (S3+).
   static const diagnostics = '/today/diagnostics';
 
+  static const today = '/today';
+  static const dashboard = '/dashboard';
+  static const review = '/review';
+  static const reviewSession = '/review/session';
   static const plan = '/plan';
   static const replan = '/plan/replan';
   static const learningGoal = '/plan/goal';
@@ -22,11 +26,15 @@ abstract final class AppRoutes {
   static const settings = '/settings';
   static const more = '/more';
 
-  /// Where `/` and a finished login go. `/plan` until Today ships in S2 (docs/02 §2.3).
-  static const start = plan;
+  /// Where `/` and a finished login go (docs/02 §2.3, U-1).
+  static const start = today;
 
   /// `from=goal` query value of [replan] (docs/02 §2.3 query parameters).
   static const replanFromGoal = 'goal';
+
+  /// Query parameter names of docs/02 §2.3.
+  static const completeParameter = 'complete';
+  static const taskIdParameter = 'taskId';
 
   static String planVersion(String planId) => '$planVersions/$planId';
 
@@ -34,6 +42,14 @@ abstract final class AppRoutes {
 
   static String replanFrom(String source) =>
       Uri(path: replan, queryParameters: {'from': source}).toString();
+
+  /// SCR-REVIEW-SESSION started from the Today REVIEW task.
+  static String reviewSessionFor(String taskId) =>
+      Uri(path: reviewSession, queryParameters: {taskIdParameter: taskId}).toString();
+
+  /// SCR-TODAY with the completion sheet of [taskId] open.
+  static String todayComplete(String taskId) =>
+      Uri(path: today, queryParameters: {completeParameter: taskId}).toString();
 
   static const onboardingInputSteps = [
     onboardingGoal,
@@ -68,6 +84,10 @@ enum RouteAccess {
   static const _onboardedPaths = {
     AppRoutes.root,
     AppRoutes.onboardingPlan,
+    AppRoutes.today,
+    AppRoutes.dashboard,
+    AppRoutes.review,
+    AppRoutes.reviewSession,
     AppRoutes.plan,
     AppRoutes.replan,
     AppRoutes.learningGoal,

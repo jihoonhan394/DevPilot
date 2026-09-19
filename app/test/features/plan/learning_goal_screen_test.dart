@@ -12,7 +12,7 @@ void main() {
   setUp(() => backend = FakeBackend());
 
   testWidgets('shouldOfferReplanAfterGoalDateChange', (tester) async {
-    await pumpApp(tester, backend: backend);
+    await pumpApp(tester, backend: backend, at: '/plan');
     await tapKey(tester, 'plan.goalEditButton');
     expect(locationOf(tester), '/plan/goal');
     expect(isButtonEnabled(tester, 'goal.saveButton'), isFalse);
@@ -38,7 +38,7 @@ void main() {
 
   testWidgets('shouldRefillLatestGoalWhenSaveConflicts', (tester) async {
     backend.learningGoalRepository.updateFailures.add(conflict());
-    await pumpApp(tester, backend: backend);
+    await pumpApp(tester, backend: backend, at: '/plan');
     await goTo(tester, '/plan/goal');
 
     await tapKey(tester, 'goal.checkpointSwitch');

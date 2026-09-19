@@ -14,6 +14,8 @@ abstract final class InputRules {
   static const milestoneMaxSkills = 30;
   static const replanReasonMaxLength = 1000;
   static const focusSkillsMax = 10;
+  static const selfReflectionMaxLength = 5000;
+  static const reviewAnswerMaxLength = 5000;
 
   /// Same pattern as the server `SecretMasker` block rule (docs/02 §3.2).
   static final privateKeyPattern = RegExp(

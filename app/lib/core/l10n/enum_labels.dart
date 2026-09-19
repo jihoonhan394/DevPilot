@@ -1,4 +1,5 @@
 import 'package:devpilot_app/core/api/api_enums.dart';
+import 'package:devpilot_app/core/api/learning_enums.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 
 // Screen labels of API enums (docs/02 §3.1 "enum 라벨"). `unknown` shows `enum.unknown`.
@@ -103,6 +104,40 @@ extension SkillCategoryLabel on SkillCategory {
     SkillCategory.systemDesign => l10n.enumSkillCategorySystemDesign,
     SkillCategory.explanation => l10n.enumSkillCategoryExplanation,
     SkillCategory.unknown => l10n.enumUnknown,
+  };
+}
+
+extension EnergyLevelLabel on EnergyLevel {
+  String label(AppLocalizations l10n) => switch (this) {
+    EnergyLevel.low => l10n.enumEnergyLevelLow,
+    EnergyLevel.normal => l10n.enumEnergyLevelNormal,
+    EnergyLevel.high => l10n.enumEnergyLevelHigh,
+    EnergyLevel.unknown => l10n.enumUnknown,
+  };
+}
+
+extension TaskTypeLabel on TaskType {
+  String label(AppLocalizations l10n) => switch (this) {
+    TaskType.recall => l10n.enumTaskTypeRecall,
+    TaskType.review => l10n.enumTaskTypeReview,
+    TaskType.challenge => l10n.enumTaskTypeChallenge,
+    TaskType.projectTask => l10n.enumTaskTypeProjectTask,
+    TaskType.coachReview => l10n.enumTaskTypeCoachReview,
+    TaskType.reading => l10n.enumTaskTypeReading,
+    TaskType.readCode => l10n.enumTaskTypeReadCode,
+    TaskType.explain => l10n.enumTaskTypeExplain,
+    TaskType.unknown => l10n.enumUnknown,
+  };
+}
+
+extension TaskStatusLabel on TaskStatus {
+  String label(AppLocalizations l10n) => switch (this) {
+    TaskStatus.planned => l10n.enumTaskStatusPlanned,
+    TaskStatus.inProgress => l10n.enumTaskStatusInProgress,
+    TaskStatus.completed => l10n.enumTaskStatusCompleted,
+    TaskStatus.skipped => l10n.enumTaskStatusSkipped,
+    TaskStatus.deferred => l10n.enumTaskStatusDeferred,
+    TaskStatus.unknown => l10n.enumUnknown,
   };
 }
 

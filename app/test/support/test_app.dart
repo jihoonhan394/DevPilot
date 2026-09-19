@@ -5,12 +5,16 @@ import 'package:devpilot_app/core/auth/token_store.dart';
 import 'package:devpilot_app/core/auth/token_store_provider.dart';
 import 'package:devpilot_app/core/config/app_config.dart';
 import 'package:devpilot_app/core/storage/key_value_store.dart';
+import 'package:devpilot_app/core/time/clock.dart';
 import 'package:devpilot_app/features/onboarding/data/onboarding_repository.dart';
 import 'package:devpilot_app/features/plan/data/learning_goal_repository.dart';
 import 'package:devpilot_app/features/plan/data/plan_repository.dart';
 import 'package:devpilot_app/features/project/data/side_project_repository.dart';
+import 'package:devpilot_app/features/review/data/review_repository.dart';
 import 'package:devpilot_app/features/settings/data/me_repository.dart';
 import 'package:devpilot_app/features/skill/data/skill_repository.dart';
+import 'package:devpilot_app/features/today/data/learning_session_repository.dart';
+import 'package:devpilot_app/features/today/data/today_repository.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
@@ -48,6 +52,10 @@ Widget buildTestApp({
       learningGoalRepositoryProvider.overrideWithValue(fakes.learningGoalRepository),
       skillRepositoryProvider.overrideWithValue(fakes.skillRepository),
       sideProjectRepositoryProvider.overrideWithValue(fakes.sideProjectRepository),
+      todayRepositoryProvider.overrideWithValue(fakes.todayRepository),
+      learningSessionRepositoryProvider.overrideWithValue(fakes.sessionRepository),
+      reviewRepositoryProvider.overrideWithValue(fakes.reviewRepository),
+      clockProvider.overrideWithValue(() => fakes.clock.now),
       ...overrides,
     ],
     retry: (retryCount, error) => null,
@@ -55,13 +63,15 @@ Widget buildTestApp({
   );
 }
 
-/// Pumps the app signed in (or out) and settles.
+/// Pumps the app signed in (or out) and settles. [at] then opens that location (the start page is
+/// `/today`).
 Future<void> pumpApp(
   WidgetTester tester, {
   FakeBackend? backend,
   bool signedIn = true,
   KeyValueStore? keyValueStore,
   List<Override> overrides = const [],
+  String? at,
 }) async {
   await tester.pumpWidget(
     buildTestApp(
@@ -72,6 +82,9 @@ Future<void> pumpApp(
     ),
   );
   await tester.pumpAndSettle();
+  if (at != null) {
+    await goTo(tester, at);
+  }
 }
 
 /// The app's router, for `go` and the current location.

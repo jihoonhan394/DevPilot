@@ -14,10 +14,13 @@ abstract final class ApiErrorCode {
   static const resourceNotFound = 'RESOURCE_NOT_FOUND';
   static const learningGoalNotFound = 'LEARNING_GOAL_NOT_FOUND';
   static const planNotFound = 'PLAN_NOT_FOUND';
+  static const todayNotGenerated = 'TODAY_NOT_GENERATED';
   static const onboardingRequired = 'ONBOARDING_REQUIRED';
   static const onboardingAlreadyCompleted = 'ONBOARDING_ALREADY_COMPLETED';
   static const activePlanExists = 'ACTIVE_PLAN_EXISTS';
   static const planNotActive = 'PLAN_NOT_ACTIVE';
+  static const todayAlreadyStarted = 'TODAY_ALREADY_STARTED';
+  static const todayAlreadyCompleted = 'TODAY_ALREADY_COMPLETED';
   static const invalidStateTransition = 'INVALID_STATE_TRANSITION';
   static const concurrentModification = 'CONCURRENT_MODIFICATION';
   static const idempotencyInProgress = 'IDEMPOTENCY_IN_PROGRESS';
@@ -35,6 +38,7 @@ abstract final class ApiErrorCode {
 abstract final class ApiFieldErrorCode {
   static const url = 'URL';
   static const notBlankIfPresent = 'NOT_BLANK_IF_PRESENT';
+  static const actualMinutesExceedsElapsed = 'ACTUAL_MINUTES_EXCEEDS_ELAPSED';
 }
 
 /// One entry of the Problem Details `errors` array (docs/05 §1.2.1 `FieldError`).

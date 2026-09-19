@@ -5,25 +5,38 @@ import 'package:flutter_test/flutter_test.dart';
 import '../support/test_app.dart';
 import '../support/widget_actions.dart';
 
-/// Responsive navigation of docs/02 §2.1–2.2 (BL-CLI-04).
+/// Responsive navigation of docs/02 §2.1–2.2 (BL-CLI-04, BL-CLI-16).
 void main() {
-  testWidgets('shouldUseBottomTabsWithPlanAndMoreOnMobile', (tester) async {
+  NavigationBar bottomBar(WidgetTester tester) =>
+      tester.widget<NavigationBar>(find.byKey(const Key('shell.bottomNavigation')));
+
+  NavigationRail rail(WidgetTester tester) =>
+      tester.widget<NavigationRail>(find.byKey(const Key('shell.navigationRail')));
+
+  testWidgets('shouldUseBottomTabsTodayReviewPlanMoreOnMobile', (tester) async {
     usePhoneScreen(tester);
     addTearDown(() => resetScreenSize(tester));
     await pumpApp(tester);
 
-    expect(find.byKey(const Key('shell.bottomNavigation')), findsOneWidget);
     expect(find.byKey(const Key('shell.navigationRail')), findsNothing);
-    expect(find.text('Plan'), findsOneWidget);
-    expect(find.text('More'), findsOneWidget);
+    final labels = bottomBar(tester).destinations.map(
+      (destination) => (destination as NavigationDestination).label,
+    );
+    expect(labels, ['Today', 'Review', 'Plan', 'More']);
+    expect(bottomBar(tester).selectedIndex, 0);
+
+    await tapKey(tester, 'shell.nav.review');
+    expect(locationOf(tester), '/review');
+    expect(bottomBar(tester).selectedIndex, 1);
+    await tapKey(tester, 'shell.nav.plan');
+    expect(locationOf(tester), '/plan');
 
     await tapKey(tester, 'shell.nav.more');
     expect(find.byKey(const Key('more.skills')), findsOneWidget);
     await tapKey(tester, 'more.settings');
     expect(locationOf(tester), '/settings');
     // Settings lives under More on mobile.
-    final bar = tester.widget<NavigationBar>(find.byKey(const Key('shell.bottomNavigation')));
-    expect(bar.selectedIndex, 1);
+    expect(bottomBar(tester).selectedIndex, 3);
   });
 
   testWidgets('shouldUseRailWithSettingsAtBottomOnTablet', (tester) async {
@@ -31,26 +44,29 @@ void main() {
     addTearDown(() => resetScreenSize(tester));
     await pumpApp(tester);
 
-    final rail = tester.widget<NavigationRail>(find.byKey(const Key('shell.navigationRail')));
-    expect(rail.extended, isFalse);
+    expect(rail(tester).extended, isFalse);
+    expect(rail(tester).destinations, hasLength(5));
+    expect(rail(tester).selectedIndex, 0);
     expect(find.byKey(const Key('shell.bottomNavigation')), findsNothing);
 
+    await tapKey(tester, 'shell.nav.review');
+    expect(locationOf(tester), '/review');
     await tapKey(tester, 'shell.nav.skills');
     expect(locationOf(tester), '/skills');
     await tapKey(tester, 'shell.nav.settings');
     expect(locationOf(tester), '/settings');
+    expect(rail(tester).selectedIndex, isNull);
   });
 
-  testWidgets('shouldExtendRailOnDesktopAndLeaveMoreForStartPage', (tester) async {
+  testWidgets('shouldExtendRailOnDesktopAndLeaveMoreForToday', (tester) async {
     useDesktopScreen(tester);
     addTearDown(() => resetScreenSize(tester));
-    await pumpApp(tester);
+    await pumpApp(tester, at: '/plan');
 
-    final rail = tester.widget<NavigationRail>(find.byKey(const Key('shell.navigationRail')));
-    expect(rail.extended, isTrue);
+    expect(rail(tester).extended, isTrue);
 
     await goTo(tester, '/more');
-    expect(locationOf(tester), '/plan');
+    expect(locationOf(tester), '/today');
   });
 
   // docs/02 A-6: screen reader and keyboard users navigate through the same destinations.
@@ -60,7 +76,7 @@ void main() {
     addTearDown(() => resetScreenSize(tester));
     await pumpApp(tester);
 
-    for (final label in ['Plan', 'Projects', 'Skill', 'Settings']) {
+    for (final label in ['Today', 'Review', 'Plan', 'Projects', 'Skill', 'Settings']) {
       expect(find.bySemanticsLabel(RegExp('^$label')), findsOneWidget, reason: label);
     }
     semantics.dispose();
@@ -71,7 +87,7 @@ void main() {
   testWidgets('shouldKeepRailSettingsTappableWhileToastIsShownOnDesktop', (tester) async {
     useDesktopScreen(tester);
     addTearDown(() => resetScreenSize(tester));
-    await pumpApp(tester);
+    await pumpApp(tester, at: '/plan');
 
     showToast(tester.element(find.byKey(const Key('plan.versionsButton'))), 'saved');
     await tester.pump();
@@ -89,8 +105,7 @@ void main() {
 
     await goTo(tester, '/plan/versions');
 
-    final rail = tester.widget<NavigationRail>(find.byKey(const Key('shell.navigationRail')));
-    expect(rail.selectedIndex, 0);
+    expect(rail(tester).selectedIndex, 2);
     expect(find.byType(BackButton), findsOneWidget);
   });
 }

@@ -15,8 +15,12 @@ import 'package:devpilot_app/features/settings/data/me_response.dart';
 import 'package:devpilot_app/features/settings/data/update_me_request.dart';
 import 'package:devpilot_app/features/skill/data/skill_models.dart';
 import 'package:devpilot_app/features/skill/data/skill_repository.dart';
+import 'package:devpilot_app/features/today/data/today_models.dart';
 
 import 'fixtures.dart';
+import 'learning_fakes.dart';
+
+export 'learning_fakes.dart';
 
 /// Takes the next queued failure, if any.
 ApiException? _next(List<ApiException> failures) => failures.isEmpty ? null : failures.removeAt(0);
@@ -360,10 +364,14 @@ final class FakeBackend {
     PlanView? activePlan,
     List<SideProjectView>? projects,
     FakePlanRepository? planRepository,
+    TodayView? today,
+    FakeTodayRepository? todayRepository,
   }) : meRepository = FakeMeRepository(me ?? testMe()),
        planRepository = planRepository ?? FakePlanRepository(activePlan: activePlan),
-       sideProjectRepository = FakeSideProjectRepository(projects: projects) {
+       sideProjectRepository = FakeSideProjectRepository(projects: projects),
+       todayRepository = todayRepository ?? FakeTodayRepository(today: today) {
     onboardingRepository = FakeOnboardingRepository(meRepository);
+    sessionRepository = FakeLearningSessionRepository(this.todayRepository, clock);
   }
 
   final FakeMeRepository meRepository;
@@ -372,4 +380,8 @@ final class FakeBackend {
   final learningGoalRepository = FakeLearningGoalRepository();
   final skillRepository = FakeSkillRepository();
   final FakeSideProjectRepository sideProjectRepository;
+  final clock = TestClock();
+  final FakeTodayRepository todayRepository;
+  late final FakeLearningSessionRepository sessionRepository;
+  final reviewRepository = FakeReviewRepository();
 }

@@ -165,6 +165,38 @@ enum SkillAxis {
   static const known = [knowledge, implementation, explanation, debugging];
 }
 
+/// Why an asynchronous AI step did not finish (`failure_code`, `evaluationSkippedReason`).
+enum AsyncFailureCode {
+  @JsonValue('AI_UNAVAILABLE')
+  aiUnavailable,
+  @JsonValue('AI_TIMEOUT')
+  aiTimeout,
+  @JsonValue('AI_REFUSED')
+  aiRefused,
+  @JsonValue('AI_OUTPUT_INVALID')
+  aiOutputInvalid,
+  @JsonValue('AI_BUDGET_EXCEEDED')
+  aiBudgetExceeded,
+  @JsonValue('AI_RATE_LIMITED')
+  aiRateLimited,
+  @JsonValue('CONFIDENTIAL_SUSPECTED')
+  confidentialSuspected,
+  @JsonValue('INTERRUPTED')
+  interrupted,
+  @JsonValue('INTERNAL_ERROR')
+  internalError,
+  unknown,
+}
+
+/// `expansionSuggestions[].kind` of the replan preview (docs/05 §7.7).
+enum ExpansionKind {
+  @JsonValue('RESTORE_DEFERRED')
+  restoreDeferred,
+  @JsonValue('RAISE_TARGET')
+  raiseTarget,
+  unknown,
+}
+
 @JsonEnum(alwaysCreate: true)
 enum SideProjectStatus {
   @JsonValue('ACTIVE')

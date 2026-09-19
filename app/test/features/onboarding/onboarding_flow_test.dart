@@ -66,7 +66,7 @@ void main() {
     expect(find.text('지금 풀 수 있는 진단 문제가 없어요. 모든 분야를 처음부터 시작해요.'), findsOneWidget);
 
     await tapKey(tester, 'onboarding.plan.startButton');
-    expect(locationOf(tester), '/plan');
+    expect(locationOf(tester), '/today');
   });
 
   testWidgets('shouldSendThirteenSelfAssessmentsAndNoProjectWhenDiagnosticAndProjectAreSkipped', (
@@ -208,7 +208,7 @@ void main() {
 
     await tapKey(tester, 'onboarding.submitButton');
 
-    expect(locationOf(tester), '/plan');
+    expect(locationOf(tester), '/today');
     expect(find.text('이미 시작 설정을 마쳤어요.'), findsOneWidget);
   });
 

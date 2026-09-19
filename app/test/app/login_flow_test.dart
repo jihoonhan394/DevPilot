@@ -13,7 +13,7 @@ import '../support/test_app.dart';
 void main() {
   const email = 'learner@example.com';
 
-  testWidgets('shouldOpenPlanWhenOnboardedUserLogsIn', (tester) async {
+  testWidgets('shouldOpenTodayWhenOnboardedUserLogsIn', (tester) async {
     final tokenStore = MemoryTokenStore();
     final authRepository = MockAuthRepository();
     when(() => authRepository.issueDevToken(email)).thenAnswer(
@@ -37,8 +37,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(emailFieldKey), findsNothing);
-    expect(locationOf(tester), '/plan');
-    expect(find.byKey(const Key('plan.header')), findsOneWidget);
+    expect(locationOf(tester), '/today');
+    expect(find.byKey(const Key('today.generateButton')), findsOneWidget);
     expect(tokenStore.read(), 'test-access-token');
   });
 
@@ -63,9 +63,9 @@ void main() {
     await goTo(tester, '/does-not-exist');
     expect(find.text('페이지를 찾을 수 없어요'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Plan으로'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Today로'));
     await tester.pumpAndSettle();
-    expect(locationOf(tester), '/plan');
+    expect(locationOf(tester), '/today');
   });
 
   testWidgets('shouldShowNotFoundWhenPathParameterIsNotUuid', (tester) async {
@@ -87,7 +87,7 @@ void main() {
     await tester.tap(find.byKey(const Key('common.retryButton')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('plan.header')), findsOneWidget);
+    expect(find.byKey(const Key('today.generateButton')), findsOneWidget);
     expect(backend.meRepository.fetchCount, 2);
   });
 

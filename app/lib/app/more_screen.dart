@@ -4,8 +4,9 @@ import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-/// SCR-MORE: mobile entry to destinations without a bottom tab (docs/02 §3.15). Only S1
-/// destinations are listed. From 600 px the rail shows them, so the route goes to the start page.
+/// SCR-MORE: mobile entry to destinations without a bottom tab (docs/02 §3.15), in the spec's
+/// order and only for shipped stages. From 600 px the rail shows them, so the route goes to
+/// `/today`.
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
 
@@ -15,7 +16,7 @@ class MoreScreen extends StatelessWidget {
     if (MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (context.mounted) {
-          context.go(AppRoutes.start);
+          context.go(AppRoutes.today);
         }
       });
     }

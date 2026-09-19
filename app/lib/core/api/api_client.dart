@@ -47,6 +47,19 @@ final class ApiClient {
     ),
   );
 
+  /// Authenticated POST outside docs/05 §1.7: `…/replan/preview` (nothing is stored) and
+  /// `…/abandon` (an idempotent state transition). No `Idempotency-Key` header is sent.
+  Future<Map<String, Object?>> postWithoutIdempotencyKey(
+    String path, {
+    Map<String, Object?>? body,
+  }) => _sendJson(
+    () => _dio.post<Object?>(
+      path,
+      data: body,
+      options: Options(extra: {IdempotencyKeyInterceptor.exemptKey: true}),
+    ),
+  );
+
   /// POST outside authentication (`POST /dev/token`): no Bearer token, no Idempotency-Key.
   Future<Map<String, Object?>> postWithoutSession(
     String path, {
