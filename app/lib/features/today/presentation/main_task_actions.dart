@@ -6,9 +6,9 @@ import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/time/clock.dart';
 import 'package:devpilot_app/core/time/session_time_rules.dart';
 import 'package:devpilot_app/features/today/data/today_models.dart';
+import 'package:devpilot_app/features/today/presentation/reading_duck_record.dart';
 import 'package:devpilot_app/features/today/presentation/task_type_links.dart';
 import 'package:devpilot_app/features/today/presentation/today_actions.dart';
-import 'package:devpilot_app/features/today/presentation/today_controller.dart';
 import 'package:devpilot_app/features/today/presentation/today_state.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -72,19 +72,7 @@ class MainTaskActions extends ConsumerWidget {
         unawaited(regenerateToday(context, ref, mainStatus: task.status));
       });
 
-  /// "시작", then the task's own screen for CHALLENGE and READ_CODE.
-  Future<void> _start(BuildContext context, WidgetRef ref) async {
-    final outcome = await ref.read(todayControllerProvider.notifier).start();
-    if (!context.mounted) {
-      return;
-    }
-    final location = startLocationOf(task);
-    if (outcome is TodayActionDone && location != null) {
-      context.go(location);
-      return;
-    }
-    await presentTodayOutcome(context, ref, outcome);
-  }
+  Future<void> _start(BuildContext context, WidgetRef ref) => startTodayMain(context, ref, task);
 }
 
 /// "진행 중 · {n}분째" + "완료" / "여기까지 기록". Without a running session of this task the
@@ -99,6 +87,7 @@ class _InProgressFooter extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final session = data.mainSession;
+    final task = data.mainTask!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -109,11 +98,23 @@ class _InProgressFooter extends ConsumerWidget {
         const SizedBox(height: AppSpacing.md),
         if (session == null)
           _Buttons(
-            primary: _Action('today.startButton', l10n.todayStartButton, () async {
-              final outcome = await ref.read(todayControllerProvider.notifier).start();
-              if (context.mounted) {
-                await presentTodayOutcome(context, ref, outcome);
+            primary: _Action('today.startButton', l10n.todayStartButton, () {
+              unawaited(startTodayMain(context, ref, task));
+            }),
+            enabled: enabled,
+          )
+        else if (task.taskType == TaskType.readCode &&
+            !(ref.watch(readingDuckDoneProvider(task.id)).value ?? false))
+          // RC-1: no finished rubber duck seen for this reading yet, so no "완료".
+          _Buttons(
+            primary: _Action('today.readCodeBackButton', l10n.todayReadCodeBack, () {
+              final location = startLocationOf(task);
+              if (location != null) {
+                context.go(location);
               }
+            }),
+            secondary: _Action('today.partialButton', l10n.todayPartialButton, () {
+              unawaited(openCompleteSheet(context, ref, partial: true));
             }),
             enabled: enabled,
           )
@@ -127,7 +128,7 @@ class _InProgressFooter extends ConsumerWidget {
             }),
             enabled: enabled,
           ),
-        if (data.mainTask case final task?) TaskTypeLinks(task: task, enabled: enabled),
+        TaskTypeLinks(task: task, enabled: enabled),
       ],
     );
   }

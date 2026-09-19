@@ -38,6 +38,12 @@ class MainTaskCard extends StatelessWidget {
                 expanded: task.status == TaskStatus.inProgress,
               ),
             ],
+            if (task.taskType == TaskType.readCode)
+              Text(
+                AppLocalizations.of(context).todayReadCodeLocal,
+                key: const Key('today.readCodeLocal'),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             if (planned && task.reasons.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.md),
               _ReasonList(reasons: task.reasons),

@@ -83,6 +83,12 @@ final class TodayStatusRetryNeeded extends TodayOutcome {
   final Object error;
 }
 
+/// `409 INVALID_STATE_TRANSITION` on completing READ_CODE: the rubber duck explanation is the
+/// completion condition (RC-1). Toast `today.readCode.needDuck`.
+final class TodayReadingNeedsDuck extends TodayOutcome {
+  const TodayReadingNeedsDuck();
+}
+
 final class TodayActionFailed extends TodayOutcome {
   const TodayActionFailed(this.error);
 

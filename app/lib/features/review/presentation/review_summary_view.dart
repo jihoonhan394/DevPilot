@@ -82,7 +82,7 @@ Future<bool> openReviewRecordSheet(
       title: partial ? l10n.todayPartialTitle : l10n.todayCompleteSheetTitle,
       initialMinutes: SessionTimeRules.defaultActualMinutes(startedAt, now),
       maxMinutes: SessionTimeRules.maxActualMinutes(startedAt, now),
-      onSubmit: (minutes, reflection) => container
+      onSubmit: (minutes, reflection, _) => container
           .read(provider.notifier)
           .record(actualMinutes: minutes, reflection: reflection, partial: partial),
     );

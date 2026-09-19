@@ -21,10 +21,12 @@ import 'package:devpilot_app/features/today/data/today_models.dart';
 import 'fixtures.dart';
 import 'learning_fakes.dart';
 import 'learning_fixtures.dart';
+import 'reading_fakes.dart';
 import 'rubber_duck_fakes.dart';
 import 'training_fakes.dart';
 
 export 'learning_fakes.dart';
+export 'reading_fakes.dart';
 export 'rubber_duck_fakes.dart';
 export 'training_fakes.dart';
 
@@ -421,4 +423,5 @@ final class FakeBackend {
   final trainingRepository = FakeTrainingRepository();
   final diagnosticRepository = FakeDiagnosticRepository();
   final rubberDuckRepository = FakeRubberDuckRepository();
+  final readingRepository = FakeReadingRepository();
 }

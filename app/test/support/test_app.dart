@@ -19,6 +19,7 @@ import 'package:devpilot_app/features/rubber_duck/data/rubber_duck_repository.da
 import 'package:devpilot_app/features/settings/data/me_repository.dart';
 import 'package:devpilot_app/features/skill/data/skill_repository.dart';
 import 'package:devpilot_app/features/today/data/learning_session_repository.dart';
+import 'package:devpilot_app/features/today/data/reading_repository.dart';
 import 'package:devpilot_app/features/today/data/today_repository.dart';
 import 'package:devpilot_app/features/training/data/training_repository.dart';
 import 'package:flutter/widgets.dart';
@@ -77,6 +78,7 @@ Widget buildTestApp({
       trainingRepositoryProvider.overrideWithValue(fakes.trainingRepository),
       diagnosticRepositoryProvider.overrideWithValue(fakes.diagnosticRepository),
       rubberDuckRepositoryProvider.overrideWithValue(fakes.rubberDuckRepository),
+      readingRepositoryProvider.overrideWithValue(fakes.readingRepository),
       clockProvider.overrideWithValue(() => fakes.clock.now),
       ...overrides,
     ],

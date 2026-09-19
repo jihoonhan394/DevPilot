@@ -19,7 +19,7 @@ final class TodayController extends AsyncNotifier<TodayScreenData> {
   final _createPlanKeys = IdempotencyKeyCache();
 
   /// A status change still owed after its session was finished (docs/02 §4.2).
-  ({String taskId, TaskStatus target})? _pendingStatus;
+  ({String taskId, TaskStatus target, ReadingFeedback? feedback})? _pendingStatus;
 
   TodayRepository get _today => ref.read(todayRepositoryProvider);
 
@@ -134,6 +134,7 @@ final class TodayController extends AsyncNotifier<TodayScreenData> {
     required int actualMinutes,
     required String reflection,
     required bool partial,
+    ReadingFeedback? readingFeedback,
   }) async {
     final data = state.value;
     final main = data?.mainTask;
@@ -158,6 +159,8 @@ final class TodayController extends AsyncNotifier<TodayScreenData> {
     _pendingStatus = (
       taskId: main.id,
       target: partial ? TaskStatus.deferred : TaskStatus.completed,
+      // READ_CODE completion only (docs/05 §8.4); any other request with it is a 400.
+      feedback: partial || main.taskType != TaskType.readCode ? null : readingFeedback,
     );
     return _sendPendingStatus(knownVersion: main.version);
   }
@@ -176,22 +179,42 @@ final class TodayController extends AsyncNotifier<TodayScreenData> {
     }
     try {
       try {
-        await _statusUpdater.update(pending.taskId, pending.target, knownVersion: knownVersion);
-      } on ApiException {
-        if (knownVersion == null) {
+        await _statusUpdater.update(
+          pending.taskId,
+          pending.target,
+          knownVersion: knownVersion,
+          readingFeedback: pending.feedback,
+        );
+      } on ApiException catch (error) {
+        if (knownVersion == null || _isReadingWithoutDuck(pending.target, error)) {
           rethrow;
         }
         // One more try with the version read again (docs/02 §4.2).
-        await _statusUpdater.update(pending.taskId, pending.target);
+        await _statusUpdater.update(
+          pending.taskId,
+          pending.target,
+          readingFeedback: pending.feedback,
+        );
       }
       _pendingStatus = null;
       await _reloadData();
       return const TodayActionDone();
     } on ApiException catch (error) {
       _setBusy(false);
+      if (_isReadingWithoutDuck(pending.target, error)) {
+        // RC-1: no COMPLETED rubber duck for this code reading. Retrying cannot help.
+        _pendingStatus = null;
+        reload();
+        return const TodayReadingNeedsDuck();
+      }
       return TodayStatusRetryNeeded(error);
     }
   }
+
+  bool _isReadingWithoutDuck(TaskStatus target, ApiException error) =>
+      target == TaskStatus.completed &&
+      error.code == ApiErrorCode.invalidStateTransition &&
+      state.value?.mainTask?.taskType == TaskType.readCode;
 
   Future<void> _startSession(String taskId) async {
     final idempotencyKey = _startKeys.keyFor({'learningTaskId': taskId});

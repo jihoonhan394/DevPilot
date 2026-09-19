@@ -1888,5 +1888,86 @@
   "@reviewSummaryExplainNumbered": {
     "description": "Screen reader name of the explain button.",
     "placeholders": {"number": {"type": "int"}}
+  },
+
+  "enumReadingFeedbackHelpful": "도움 됐어요",
+  "@enumReadingFeedbackHelpful": {"description": "ReadingFeedback HELPFUL."},
+  "enumReadingFeedbackTooHard": "어려웠어요",
+  "@enumReadingFeedbackTooHard": {"description": "ReadingFeedback TOO_HARD."},
+  "enumReadingFeedbackBoring": "지루했어요",
+  "@enumReadingFeedbackBoring": {"description": "ReadingFeedback BORING."},
+  "todayReadCodeFeedbackTitle": "이 코드 읽기는 어땠나요? (선택)",
+  "@todayReadCodeFeedbackTitle": {"description": "Completion sheet of a READ_CODE task: optional reading feedback."},
+  "todayReadCodeLocal": "코드는 내 컴퓨터에서 읽어요.",
+  "@todayReadCodeLocal": {"description": "SCR-TODAY READ_CODE card: the code is read locally."},
+  "todayReadCodeBack": "코드 읽기로 돌아가기",
+  "@todayReadCodeBack": {"description": "SCR-TODAY: back to SCR-READ-CODE while no explanation was finished."},
+  "todayReadCodeNeedDuck": "러버덕으로 설명을 마쳐야 완료할 수 있어요.",
+  "@todayReadCodeNeedDuck": {"description": "Toast: completing READ_CODE needs a finished rubber duck (RC-1)."},
+
+  "readCodeTitle": "코드 읽기",
+  "@readCodeTitle": {"description": "SCR-READ-CODE: title."},
+  "readCodeWhy": "왜 이 저장소?",
+  "@readCodeWhy": {"description": "SCR-READ-CODE: why this repository."},
+  "readCodeOpenRepo": "저장소 열기",
+  "@readCodeOpenRepo": {"description": "SCR-READ-CODE: open the repository in a new browser tab."},
+  "readCodeStepClone": "① 내 컴퓨터로 가져오기",
+  "@readCodeStepClone": {"description": "SCR-READ-CODE: step 1 heading."},
+  "readCodeStepOpen": "② 이 파일을 여세요",
+  "@readCodeStepOpen": {"description": "SCR-READ-CODE: step 2 heading."},
+  "readCodeStepThink": "③ 읽으면서 생각할 질문",
+  "@readCodeStepThink": {"description": "SCR-READ-CODE: step 3 heading."},
+  "readCodeCopy": "복사",
+  "@readCodeCopy": {"description": "SCR-READ-CODE: copy the clone command."},
+  "readCodeCopyPath": "경로 복사",
+  "@readCodeCopyPath": {"description": "SCR-READ-CODE: copy the file path."},
+  "readCodePinnedCommit": "기준 커밋 {shortSha}",
+  "@readCodePinnedCommit": {
+    "description": "SCR-READ-CODE: the commit the line numbers refer to.",
+    "placeholders": {"shortSha": {"type": "String"}}
+  },
+  "readCodePinnedCommitCopy": "전체 복사",
+  "@readCodePinnedCommitCopy": {"description": "SCR-READ-CODE: copy the full commit SHA."},
+  "readCodePinnedCommitNote": "줄 번호는 이 커밋 기준이에요. 이미 받아 두었다면 같은 커밋인지 확인하세요.",
+  "@readCodePinnedCommitNote": {"description": "SCR-READ-CODE: pinned commit note."},
+  "readCodeSubPathNote": "경로는 저장소 안 {subPath} 폴더 기준이에요. 위 명령이 그 폴더로 이동해요.",
+  "@readCodeSubPathNote": {
+    "description": "SCR-READ-CODE: sub-folder note.",
+    "placeholders": {"subPath": {"type": "String"}}
+  },
+  "readCodeRange": "{start}~{end}줄 · 약 {minutes}",
+  "@readCodeRange": {
+    "description": "SCR-READ-CODE: line range and time.",
+    "placeholders": {"start": {"type": "int"}, "end": {"type": "int"}, "minutes": {"type": "String"}}
+  },
+  "readCodeRangeOnly": "{start}~{end}줄",
+  "@readCodeRangeOnly": {
+    "description": "SCR-READ-CODE: line range without a time.",
+    "placeholders": {"start": {"type": "int"}, "end": {"type": "int"}}
+  },
+  "readCodeLookFor": "볼 지점",
+  "@readCodeLookFor": {"description": "SCR-READ-CODE: points to look for."},
+  "readCodeExplain": "읽었으면 설명하기",
+  "@readCodeExplain": {"description": "SCR-READ-CODE: open the rubber duck on this reading."},
+  "readCodeExplainNote": "러버덕으로 설명을 마치면 완료예요.",
+  "@readCodeExplainNote": {"description": "SCR-READ-CODE: completion condition (RC-1)."},
+  "readCodePartial": "여기까지 기록",
+  "@readCodePartial": {"description": "SCR-READ-CODE: record the session so far (DEFERRED)."},
+  "readCodeReadOnlyBadge": "읽기만 · 복사 금지",
+  "@readCodeReadOnlyBadge": {"description": "SCR-READ-CODE: badge for a repository without a license."},
+  "readCodeReadOnlyNote": "라이선스가 명시되지 않은 저장소예요. 읽기만 하고 코드를 가져다 쓰지 마세요.",
+  "@readCodeReadOnlyNote": {"description": "SCR-READ-CODE: note for a repository without a license."},
+  "readCodeNoCodeNote": "코드는 DevPilot이 아니라 내 컴퓨터에서 봐요.",
+  "@readCodeNoCodeNote": {"description": "SCR-READ-CODE: the app shows no code."},
+  "readCodeRetired": "더 이상 새로 제안하지 않는 읽기예요. 이 과제는 그대로 읽고 설명할 수 있어요.",
+  "@readCodeRetired": {"description": "SCR-READ-CODE: retired reading."},
+  "readCodeNoTask": "Today의 코드 읽기 과제에서 열면 설명하고 완료할 수 있어요.",
+  "@readCodeNoTask": {"description": "SCR-READ-CODE: opened without a Today task."},
+  "readCodeAiOff": "설명(러버덕)은 AI가 필요해 지금은 할 수 없어요. 읽기는 계속할 수 있어요.",
+  "@readCodeAiOff": {"description": "SCR-READ-CODE: reason while the AI is off."},
+  "readCodeDuckTitle": "{repo} · {file} {start}~{end}줄",
+  "@readCodeDuckTitle": {
+    "description": "Rubber duck target card title for a code reading.",
+    "placeholders": {"repo": {"type": "String"}, "file": {"type": "String"}, "start": {"type": "int"}, "end": {"type": "int"}}
   }
 }

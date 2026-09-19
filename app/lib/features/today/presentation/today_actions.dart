@@ -8,13 +8,16 @@ import 'package:devpilot_app/core/widgets/app_toast.dart';
 import 'package:devpilot_app/core/widgets/complete_session_sheet.dart';
 import 'package:devpilot_app/core/widgets/confirm_dialog.dart';
 import 'package:devpilot_app/core/widgets/form_modal.dart';
+import 'package:devpilot_app/features/today/data/today_models.dart';
 import 'package:devpilot_app/features/today/presentation/regenerate_sheet.dart';
+import 'package:devpilot_app/features/today/presentation/task_type_links.dart';
 import 'package:devpilot_app/features/today/presentation/today_controller.dart';
 import 'package:devpilot_app/features/today/presentation/today_input_controller.dart';
 import 'package:devpilot_app/features/today/presentation/today_state.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 // User flows of SCR-TODAY (docs/02 SCR-TODAY "행동·검증", §4.2). Widgets call these; the
 // controller does the API work and returns a [TodayOutcome].
@@ -99,6 +102,21 @@ Future<bool> _confirmForce(BuildContext context, String code) {
   );
 }
 
+/// "시작": the task goes IN_PROGRESS with a session, then CHALLENGE and READ_CODE continue on
+/// their own screens (docs/02 SCR-TODAY "행동·검증"); other tasks stay on Today.
+Future<void> startTodayMain(BuildContext context, WidgetRef ref, MainTaskView task) async {
+  final outcome = await ref.read(todayControllerProvider.notifier).start();
+  if (!context.mounted) {
+    return;
+  }
+  final location = startLocationOf(task);
+  if (outcome is TodayActionDone && location != null) {
+    context.go(location);
+    return;
+  }
+  await presentTodayOutcome(context, ref, outcome);
+}
+
 /// "오늘은 건너뛰기" with the "되돌리기" toast, and "되돌리기" of the SKIPPED card.
 Future<void> changeTodayMainStatus(
   BuildContext context,
@@ -138,18 +156,25 @@ Future<void> openCompleteSheet(BuildContext context, WidgetRef ref, {required bo
     title: partial ? l10n.todayPartialTitle : l10n.todayCompleteSheetTitle,
     initialMinutes: SessionTimeRules.defaultActualMinutes(session.startedAt, now),
     maxMinutes: SessionTimeRules.maxActualMinutes(session.startedAt, now),
-    onSubmit: (minutes, reflection) async {
+    askReadingFeedback: !partial && data?.mainTask?.taskType == TaskType.readCode,
+    onSubmit: (minutes, reflection, feedback) async {
       final result = await ref
           .read(todayControllerProvider.notifier)
-          .finish(actualMinutes: minutes, reflection: reflection, partial: partial);
+          .finish(
+            actualMinutes: minutes,
+            reflection: reflection,
+            partial: partial,
+            readingFeedback: feedback,
+          );
       outcome = result;
       return result is TodayActionFailed ? result.error : null;
     },
   );
   // A failed session call was shown inside the sheet; only the owed status change needs a toast.
   final finished = outcome;
-  if (finished is TodayStatusRetryNeeded && context.mounted) {
-    await presentTodayOutcome(context, ref, finished);
+  if ((finished is TodayStatusRetryNeeded || finished is TodayReadingNeedsDuck) &&
+      context.mounted) {
+    await presentTodayOutcome(context, ref, finished!);
   }
 }
 
@@ -162,6 +187,8 @@ Future<void> presentTodayOutcome(
   switch (outcome) {
     case TodayActionDone() || TodayNeedsForce():
       return;
+    case TodayReadingNeedsDuck():
+      showToast(context, AppLocalizations.of(context).todayReadCodeNeedDuck);
     case TodayStatusRetryNeeded(:final error):
       final controller = ref.read(todayControllerProvider.notifier);
       showToast(

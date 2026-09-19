@@ -112,11 +112,15 @@ abstract class TodayGenerateRequest with _$TodayGenerateRequest {
       _$TodayGenerateRequestFromJson(json);
 }
 
-/// `TaskStatusPatchRequest` (docs/05 §8.4).
+/// `TaskStatusPatchRequest` (docs/05 §8.4). [readingFeedback] is sent only when chosen, only when
+/// a READ_CODE task is completed; otherwise the field is left out of the body.
 @freezed
 abstract class TaskStatusPatchRequest with _$TaskStatusPatchRequest {
-  const factory TaskStatusPatchRequest({required TaskStatus status, required int version}) =
-      _TaskStatusPatchRequest;
+  const factory TaskStatusPatchRequest({
+    required TaskStatus status,
+    @JsonKey(includeIfNull: false) ReadingFeedback? readingFeedback,
+    required int version,
+  }) = _TaskStatusPatchRequest;
 
   factory TaskStatusPatchRequest.fromJson(Map<String, Object?> json) =>
       _$TaskStatusPatchRequestFromJson(json);

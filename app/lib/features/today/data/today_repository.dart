@@ -44,7 +44,10 @@ final class ApiTodayRepository implements TodayRepository {
 
   @override
   Future<TaskStatusView> updateTaskStatus(String taskId, TaskStatusPatchRequest request) async {
-    assert(request.status != TaskStatus.unknown, 'unknown is never sent');
+    assert(
+      request.status != TaskStatus.unknown && request.readingFeedback != ReadingFeedback.unknown,
+      'unknown is never sent',
+    );
     return TaskStatusView.fromJson(
       await _apiClient.patchJson('/today/tasks/$taskId', body: request.toJson()),
     );

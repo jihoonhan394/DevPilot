@@ -132,6 +132,15 @@ extension TaskStatusLabel on TaskStatus {
   };
 }
 
+extension ReadingFeedbackLabel on ReadingFeedback {
+  String label(AppLocalizations l10n) => switch (this) {
+    ReadingFeedback.helpful => l10n.enumReadingFeedbackHelpful,
+    ReadingFeedback.tooHard => l10n.enumReadingFeedbackTooHard,
+    ReadingFeedback.boring => l10n.enumReadingFeedbackBoring,
+    ReadingFeedback.unknown => l10n.enumUnknown,
+  };
+}
+
 /// `SkillLevel` label for an ordinal 0~5 (docs/04 §3, docs/02 §3.1).
 String skillLevelLabel(int level, AppLocalizations l10n) => switch (level) {
   0 => l10n.enumSkillLevel0,

@@ -1,15 +1,22 @@
 import 'package:devpilot_app/core/api/api_exception.dart';
 import 'package:devpilot_app/core/api/error_message_mapper.dart';
+import 'package:devpilot_app/core/api/learning_enums.dart';
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/validation/input_rules.dart';
 import 'package:devpilot_app/core/widgets/form_modal.dart';
 import 'package:devpilot_app/core/widgets/inline_error.dart';
+import 'package:devpilot_app/core/widgets/reading_feedback_chips.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 /// Sends the sheet values. Returns null when the sheet may close, otherwise the failure to show
-/// inside it (the input stays).
-typedef CompleteSessionSubmit = Future<Object?> Function(int actualMinutes, String reflection);
+/// inside it (the input stays). [readingFeedback] is null unless the reading chips were shown and
+/// one was chosen.
+typedef CompleteSessionSubmit = Future<Object?> Function(
+  int actualMinutes,
+  String reflection,
+  ReadingFeedback? readingFeedback,
+);
 
 /// `CompleteSessionSheet` of SCR-TODAY and SCR-REVIEW-SESSION (docs/02 SCR-TODAY 완료 시트):
 /// actual minutes with a 5-minute stepper (0..[maxMinutes]) and an optional one-line reflection.
@@ -19,6 +26,7 @@ Future<void> showCompleteSessionSheet(
   required int initialMinutes,
   required int maxMinutes,
   required CompleteSessionSubmit onSubmit,
+  bool askReadingFeedback = false,
 }) => showFormModal<void>(
   context,
   builder: (_) => CompleteSessionSheet(
@@ -26,6 +34,7 @@ Future<void> showCompleteSessionSheet(
     initialMinutes: initialMinutes,
     maxMinutes: maxMinutes,
     onSubmit: onSubmit,
+    askReadingFeedback: askReadingFeedback,
   ),
 );
 
@@ -36,9 +45,13 @@ class CompleteSessionSheet extends StatefulWidget {
     required this.initialMinutes,
     required this.maxMinutes,
     required this.onSubmit,
+    this.askReadingFeedback = false,
   });
 
   static const step = 5;
+
+  /// Completing a READ_CODE task: the optional reading feedback chips (not for "여기까지 기록").
+  final bool askReadingFeedback;
 
   final String title;
   final int initialMinutes;
@@ -52,6 +65,7 @@ class CompleteSessionSheet extends StatefulWidget {
 class _CompleteSessionSheetState extends State<CompleteSessionSheet> {
   late int _minutes = widget.initialMinutes.clamp(0, widget.maxMinutes);
   final _reflection = TextEditingController();
+  ReadingFeedback? _feedback;
   var _submitting = false;
   Object? _error;
 
@@ -70,7 +84,7 @@ class _CompleteSessionSheetState extends State<CompleteSessionSheet> {
       _submitting = true;
       _error = null;
     });
-    final error = await widget.onSubmit(_minutes, _reflection.text);
+    final error = await widget.onSubmit(_minutes, _reflection.text, _feedback);
     if (!mounted) {
       return;
     }
@@ -123,6 +137,14 @@ class _CompleteSessionSheetState extends State<CompleteSessionSheet> {
             enabled: !_submitting,
             serverError: reflectionError,
           ),
+          if (widget.askReadingFeedback) ...[
+            const SizedBox(height: AppSpacing.lg),
+            ReadingFeedbackChips(
+              selected: _feedback,
+              enabled: !_submitting,
+              onChanged: (feedback) => setState(() => _feedback = feedback),
+            ),
+          ],
           if (generalError != null) InlineError(message: generalError),
           const SizedBox(height: AppSpacing.xl),
           _SubmitButton(reflection: _reflection, submitting: _submitting, onSubmit: _submit),
