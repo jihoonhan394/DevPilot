@@ -53,7 +53,7 @@ TRUSTED_SOURCE_HOSTS = [
     "owasp.org", "cheatsheetseries.owasp.org", "www.kisa.or.kr", "supabase.com", "dart.dev",
     "docs.flutter.dev", "api.flutter.dev", "pmd.github.io", "spotbugs.readthedocs.io",
     "checkstyle.org", "junit.org", "hibernate.org", "docs.jboss.org",
-    "developer.mozilla.org", "www.rfc-editor.org",
+    "developer.mozilla.org", "www.rfc-editor.org", "git-scm.com",
 ]
 
 # docs/06-learning-engine-rules.md §4.2
