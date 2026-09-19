@@ -10,8 +10,9 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@code POST /onboarding} 201 응답 (docs/05 §4.1). S1 빌드: {@code assignedSeedCardCount = 0}, {@code
- * activePlan.latestRiskLevel}·{@code latestRatioBp = null}, {@code suggestedDiagnostics = []}.
+ * {@code POST /onboarding} 201 응답 (docs/05 §4.1). {@code assignedSeedCardCount}는 복사한 seed 카드 수,
+ * {@code activePlan.latestRiskLevel}·{@code latestRatioBp}는 온보딩이 만든 오늘 snapshot 값이다. 진단 제안은
+ * S3(BL-TRN-13)라 {@code suggestedDiagnostics = []}다.
  *
  * @param sideProject 건너뛰었으면 null
  */

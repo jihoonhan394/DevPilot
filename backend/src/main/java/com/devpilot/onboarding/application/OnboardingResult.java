@@ -8,9 +8,9 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 /**
- * 온보딩 결과 (docs/05 §4.1 {@code OnboardingResponse}). S1 빌드는 8·9·11단계를 생략한다: {@code
- * assignedSeedCardCount = 0}, {@code activePlan.latestRiskLevel = null}, {@code
- * suggestedDiagnostics = []}.
+ * 온보딩 결과 (docs/05 §4.1 {@code OnboardingResponse}). {@code assignedSeedCardCount}는 8단계에서 복사한 seed
+ * 카드 수, {@code activePlan.latestRiskLevel}·{@code latestRatioBp}는 9단계 오늘 snapshot 값이다. 진단 제안(11단계)은
+ * S3라 {@code suggestedDiagnostics = []}다.
  */
 public record OnboardingResult(
         MeResponse user,

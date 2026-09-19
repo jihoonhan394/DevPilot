@@ -10,8 +10,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * CV-40 ~ CV-49 (review card, docs/19 §4.1). 카드 적재(review_item 복사)는 S2(BL-CNT-06, BL-MEM-08)이고 S1은
- * 검증만 한다.
+ * CV-40 ~ CV-49 (review card, docs/19 §4.1). 검증을 통과한 카드는 {@code ContentSeeder}가 {@code
+ * SeedCardRegistry}에 올리고 사용자별 {@code review_item}으로 복사한다(BL-CNT-06, BL-MEM-08).
  */
 final class ReviewCardChecks {
 

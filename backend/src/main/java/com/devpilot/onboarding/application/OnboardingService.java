@@ -8,8 +8,6 @@ import com.devpilot.common.web.validation.InputRules;
 import com.devpilot.goal.application.LearningGoalService;
 import com.devpilot.goal.application.LearningGoalView;
 import com.devpilot.onboarding.domain.SelfAssessmentPropagation;
-import com.devpilot.plan.application.PlanCommandService;
-import com.devpilot.plan.application.PlanSummaryView;
 import com.devpilot.project.application.SideProjectService;
 import com.devpilot.project.application.SideProjectView;
 import com.devpilot.skill.application.SkillCatalogQueryService;
@@ -34,7 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
  * 프로젝트를 만든다. 실패하면 아무것도 남지 않는다(AC-11 S2). 같은 사용자의 동시 온보딩은 사용자 행 잠금으로 줄을 세워 뒤의 요청이 409 {@code
  * ONBOARDING_ALREADY_COMPLETED}가 된다.
  *
- * <p>S1은 8·9·11단계를 생략한다: seed 카드 배정(BL-MEM-08, S2), snapshot(BL-GOL-13, S2), 진단 제안(BL-TRN-13, S3).
+ * <p>8단계 seed 카드 배정(BL-MEM-08)과 9단계 오늘 snapshot(BL-GOL-13)은 plan 생성 뒤 같은 트랜잭션에서 한다. 11단계 진단 제안은
+ * S3(BL-TRN-13)라 {@code suggestedDiagnostics = []}다.
  */
 @Service
 public class OnboardingService {
@@ -43,25 +42,25 @@ public class OnboardingService {
     private final LearningGoalService learningGoalService;
     private final SkillCatalogQueryService skillCatalogQueryService;
     private final SkillStateUpdater skillStateUpdater;
-    private final PlanCommandService planCommandService;
+    private final OnboardingPlanSetup onboardingPlanSetup;
     private final SideProjectService sideProjectService;
     private final SelfAssessmentPropagation selfAssessmentPropagation =
             new SelfAssessmentPropagation();
     private final Clock clock;
 
-    public OnboardingService(
+    OnboardingService(
             ProfileService profileService,
             LearningGoalService learningGoalService,
             SkillCatalogQueryService skillCatalogQueryService,
             SkillStateUpdater skillStateUpdater,
-            PlanCommandService planCommandService,
+            OnboardingPlanSetup onboardingPlanSetup,
             SideProjectService sideProjectService,
             Clock clock) {
         this.profileService = profileService;
         this.learningGoalService = learningGoalService;
         this.skillCatalogQueryService = skillCatalogQueryService;
         this.skillStateUpdater = skillStateUpdater;
-        this.planCommandService = planCommandService;
+        this.onboardingPlanSetup = onboardingPlanSetup;
         this.sideProjectService = sideProjectService;
         this.clock = clock;
     }
@@ -85,19 +84,18 @@ public class OnboardingService {
         LearningGoalView learningGoal =
                 learningGoalService.createForOnboarding(userId, command.learningGoal());
         initializeSkillStates(userId, command);
-        PlanSummaryView plan =
-                planCommandService.createFromTemplate(
-                        userId,
-                        new PlanCommandService.NewPlanCommand(
-                                learningGoal.id(),
-                                command.learningGoal().targetRole(),
-                                command.learningGoal().targetCompletionDate(),
-                                today,
-                                command.useTemplate()));
+        OnboardingPlanSetup.Result plan =
+                onboardingPlanSetup.setUp(userId, command, learningGoal, today);
         SideProjectService.NewSideProjectCommand newSideProject = command.sideProject();
         SideProjectView sideProject =
                 newSideProject == null ? null : sideProjectService.create(userId, newSideProject);
-        return new OnboardingResult(user, learningGoal, plan, sideProject, 0, List.of());
+        return new OnboardingResult(
+                user,
+                learningGoal,
+                plan.activePlan(),
+                sideProject,
+                plan.assignedSeedCards(),
+                List.of());
     }
 
     /** docs/05 §4.1 도메인 검사 표. 모든 오류를 모아 한 번에 돌려준다. */

@@ -54,12 +54,33 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
                                 .andExpect(jsonPath("$.activePlan.planVersion").value(1))
                                 .andExpect(jsonPath("$.activePlan.status").value("ACTIVE"))
                                 .andExpect(jsonPath("$.activePlan.milestoneCount").value(3))
-                                .andExpect(jsonPath("$.activePlan.latestRiskLevel").doesNotExist())
-                                .andExpect(jsonPath("$.activePlan.latestRatioBp").doesNotExist())
+                                .andExpect(jsonPath("$.activePlan.latestRiskLevel").value("LOW"))
                                 .andExpect(jsonPath("$.sideProject").doesNotExist())
-                                .andExpect(jsonPath("$.assignedSeedCardCount").value(0))
+                                .andExpect(jsonPath("$.assignedSeedCardCount").value(10))
                                 .andExpect(jsonPath("$.suggestedDiagnostics").isEmpty()));
         UUID userId = userId(user);
+
+        // 9단계: 오늘 snapshot 1행, 응답 latestRatioBp는 그 값이다 (AC-11 S1 S2 빌드)
+        Map<String, Object> snapshot =
+                jdbc.queryForMap(
+                        "select s.snapshot_date::text as snapshot_date, s.ratio_bp, s.risk_level"
+                                + " from devpilot.plan_progress_snapshot s join"
+                                + " devpilot.learning_plan p on p.id = s.plan_id where p.user_id ="
+                                + " ?",
+                        userId);
+        assertThat(snapshot)
+                .containsEntry("snapshot_date", "2026-10-05")
+                .containsEntry("risk_level", "LOW");
+        assertThat(body.path("activePlan").path("latestRatioBp").asInt())
+                .isEqualTo(((Number) snapshot.get("ratio_bp")).intValue());
+        assertThat(
+                        count(
+                                "select count(*) from devpilot.review_item where user_id = ? and"
+                                        + " source_type = 'SEED_CARD' and origin = 'SEED'",
+                                userId))
+                .isEqualTo(10);
+        assertThat(count("select count(*) from devpilot.learning_event where user_id = ?", userId))
+                .isZero();
 
         assertThat(body.path("user").path("onboardingCompletedAt").asString())
                 .isEqualTo("2026-10-05T10:00:00Z");
@@ -437,6 +458,14 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
                                 userId))
                 .isZero();
         assertThat(count("select count(*) from devpilot.side_project where user_id = ?", userId))
+                .isZero();
+        assertThat(count("select count(*) from devpilot.review_item where user_id = ?", userId))
+                .isZero();
+        assertThat(
+                        count(
+                                "select count(*) from devpilot.plan_progress_snapshot where"
+                                        + " user_id = ?",
+                                userId))
                 .isZero();
         assertThat(
                         count(

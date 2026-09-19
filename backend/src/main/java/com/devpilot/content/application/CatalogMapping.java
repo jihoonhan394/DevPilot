@@ -3,6 +3,9 @@ package com.devpilot.content.application;
 import com.devpilot.common.web.AxisLevels;
 import com.devpilot.plan.domain.MilestonePhase;
 import com.devpilot.plan.domain.PlanTemplate;
+import com.devpilot.review.domain.ReviewType;
+import com.devpilot.review.domain.RubricItem;
+import com.devpilot.review.domain.SeedCard;
 import com.devpilot.skill.application.SkillCatalogSeedService;
 import com.devpilot.skill.domain.Priority;
 import com.devpilot.skill.domain.SkillCategory;
@@ -100,6 +103,33 @@ final class CatalogMapping {
                 (String) document.get("planTitle"),
                 Math.toIntExact(RawYaml.longValue(placement.get("minMilestoneDays"))),
                 milestones);
+    }
+
+    /** review card 파일들을 catalog 순서대로 이어 붙인다 (docs/19 §3.5). */
+    static List<SeedCard> reviewCards(List<Map<String, Object>> documents) {
+        List<SeedCard> cards = new ArrayList<>();
+        for (Map<String, Object> document : documents) {
+            for (Object value : RawYaml.asList(document.get("cards"))) {
+                Map<String, Object> card = RawYaml.asMap(value);
+                List<RubricItem> rubric = new ArrayList<>();
+                for (Object item : RawYaml.asList(card.get("rubric"))) {
+                    Map<String, Object> criterion = RawYaml.asMap(item);
+                    rubric.add(
+                            new RubricItem(
+                                    (String) criterion.get("id"),
+                                    (String) criterion.get("criterion")));
+                }
+                cards.add(
+                        new SeedCard(
+                                (String) card.get("conceptKey"),
+                                (String) card.get("skill"),
+                                ReviewType.valueOf((String) card.get("reviewType")),
+                                (String) card.get("prompt"),
+                                (String) card.get("expectedAnswer"),
+                                rubric));
+            }
+        }
+        return cards;
     }
 
     /** YAML 원문 문자열 → {@code numeric(3,2)} (docs/19 §3.0: double을 거치지 않는다). */

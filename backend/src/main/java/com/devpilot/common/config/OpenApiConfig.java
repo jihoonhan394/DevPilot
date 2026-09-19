@@ -37,7 +37,7 @@ public class OpenApiConfig {
     private static final String PROBLEM_DETAIL = "ProblemDetail";
     private static final String FIELD_ERROR = "FieldError";
     private static final String PROBLEM_JSON = "application/problem+json";
-    private static final Set<String> RESPONSE_RECORDS = Set.of("SkillRef", "AxisLevels");
+    private static final Set<String> RESPONSE_RECORDS = Set.of("SkillRef", "AxisLevels", "AiMeta");
 
     static {
         // 컨트롤러 파라미터 CurrentUser는 UserContextFilter가 채운다. 요청 파라미터로 문서화하지 않는다
@@ -92,7 +92,8 @@ public class OpenApiConfig {
 
     /**
      * 응답 필드는 null 포함 항상 존재한다 (docs/05 §18 nullable). 응답 schema = 이름이 {@code Response}·{@code View}로
-     * 끝나거나 {@code CursorPage}로 시작하는 것, 그리고 공통 응답 record {@code SkillRef}·{@code AxisLevels}.
+     * 끝나거나 {@code CursorPage}로 시작하는 것, 그리고 공통 응답 record {@code SkillRef}·{@code AxisLevels}·{@code
+     * AiMeta}.
      */
     private static void markResponseFieldsRequired(OpenAPI openApi) {
         for (String name : openApi.getComponents().getSchemas().keySet()) {

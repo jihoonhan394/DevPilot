@@ -27,7 +27,11 @@ class PlanQueryServiceIntegrationTest extends ApiTestSupport {
         assertThat(plan.path("status").asString()).isEqualTo("ACTIVE");
         assertThat(plan.path("title").asString()).isEqualTo("테스트 백엔드 계획");
         assertThat(plan.path("supersedesPlanId").isNull()).isTrue();
-        assertThat(plan.path("latestSnapshot").isNull()).isTrue();
+        // 온보딩 9단계 snapshot (BL-GOL-13)
+        assertThat(plan.path("latestSnapshot").path("snapshotDate").asString())
+                .isEqualTo("2026-10-05");
+        assertThat(plan.path("latestSnapshot").path("horizonDate").asString())
+                .isEqualTo("2027-04-01");
         JsonNode milestones = plan.path("milestones");
         assertThat(milestones).hasSize(3);
         // 창 하나 [2026-10-05, 2027-04-01] = 179일, weight 4000·4000·2000 → 70·70·39일 (docs/19 §5.3)
@@ -67,7 +71,12 @@ class PlanQueryServiceIntegrationTest extends ApiTestSupport {
         UUID userId = userId(user);
         UUID planId = UUID.fromString(activePlan(user).path("id").asString());
         insertSnapshot(userId, planId, "2026-10-04", "LOW", 7_000);
-        insertSnapshot(userId, planId, "2026-10-05", "HIGH", 11_000);
+        // 온보딩이 만든 2026-10-05 snapshot을 HIGH로 바꾼다
+        jdbc.update(
+                "update devpilot.plan_progress_snapshot set risk_level = 'HIGH', ratio_bp = 11000,"
+                        + " completion_rate_bp = 7000 where plan_id = ? and snapshot_date ="
+                        + " date '2026-10-05'",
+                planId);
 
         JsonNode snapshot = activePlan(user).path("latestSnapshot");
 
