@@ -5,23 +5,31 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Objects;
 import java.util.UUID;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import org.springframework.data.domain.Persistable;
 
 /**
  * plan-day별 budget·risk 스냅샷 (docs/04 §2 {@code plan_progress_snapshot}). {@code
- * ProgressSnapshotJob}·replan·온보딩이 upsert한다 — S2(BL-GOL-13)부터이고 S1은 읽기만 한다({@code latestSnapshot},
- * {@code latestRiskLevel}이 null).
+ * ProgressSnapshotJob}·replan·온보딩이 {@code (plan_id, snapshot_date)} 단위로
+ * upsert한다(BL-GOL-13·BL-GOL-14). 온보딩·replan 응답의 {@code latestRiskLevel}과 Dashboard 추세(S5)가 읽는다.
+ * Today의 {@code deadline_risk}는 요청 시점 계산이라 이 행을 쓰지 않는다.
  */
 @Entity
 @Table(name = "plan_progress_snapshot")
-public class PlanProgressSnapshot {
+public class PlanProgressSnapshot implements Persistable<UUID> {
 
     @Id private UUID id;
+
+    @Transient private boolean newEntity = true;
 
     @Column(name = "user_id", nullable = false, updatable = false)
     private UUID userId;
@@ -62,6 +70,51 @@ public class PlanProgressSnapshot {
 
     protected PlanProgressSnapshot() {
         // JPA 전용
+    }
+
+    /** 새 스냅샷. */
+    public static PlanProgressSnapshot create(
+            UUID userId, UUID planId, LocalDate snapshotDate, Values values, Instant now) {
+        PlanProgressSnapshot snapshot = new PlanProgressSnapshot();
+        snapshot.id = UUID.randomUUID();
+        snapshot.userId = Objects.requireNonNull(userId, "userId");
+        snapshot.planId = Objects.requireNonNull(planId, "planId");
+        snapshot.snapshotDate = Objects.requireNonNull(snapshotDate, "snapshotDate");
+        snapshot.apply(values, now);
+        return snapshot;
+    }
+
+    /** 같은 plan-day 스냅샷을 새 계산값으로 바꾼다(upsert). */
+    public void apply(Values values, Instant now) {
+        this.horizonDate = Objects.requireNonNull(values.horizonDate(), "horizonDate");
+        this.nominalBudgetMinutes = values.nominalBudgetMinutes();
+        this.completionRateBp = values.completionRateBp();
+        this.effectiveBudgetMinutes = values.effectiveBudgetMinutes();
+        this.requiredMustMinutes = values.requiredMustMinutes();
+        this.requiredShouldMinutes = values.requiredShouldMinutes();
+        this.ratioBp = values.ratioBp();
+        this.riskLevel = Objects.requireNonNull(values.riskLevel(), "riskLevel");
+        this.generatedAt = Objects.requireNonNull(now, "now");
+    }
+
+    @Override
+    public @NonNull UUID getId() {
+        return id;
+    }
+
+    @Override
+    public boolean isNew() {
+        return newEntity;
+    }
+
+    @PostLoad
+    @PostPersist
+    void markPersisted() {
+        this.newEntity = false;
+    }
+
+    public UUID getUserId() {
+        return userId;
     }
 
     public UUID getPlanId() {
@@ -119,4 +172,15 @@ public class PlanProgressSnapshot {
     public int hashCode() {
         return Objects.hashCode(id);
     }
+
+    /** 스냅샷 계산값 (docs/05 §7.1 {@code SnapshotView}의 값 부분). */
+    public record Values(
+            LocalDate horizonDate,
+            int nominalBudgetMinutes,
+            int completionRateBp,
+            int effectiveBudgetMinutes,
+            int requiredMustMinutes,
+            int requiredShouldMinutes,
+            @Nullable Integer ratioBp,
+            RiskLevel riskLevel) {}
 }

@@ -118,31 +118,203 @@ class ReplanServiceIntegrationTest extends ApiTestSupport {
     }
 
     @Test
-    void shouldRejectTargetAdjustmentsInS1() throws Exception {
+    void shouldApplyDeferralAndReductionAndRecordReplannedEvent() throws Exception {
         TestUser user = onboardedOwner();
         JsonNode v1 = activePlan(user);
         Map<String, Object> request = replanRequest(v1, "목표 조정");
         request.put("acceptedDeferrals", List.of("SYSTEM_DESIGN.CACHING"));
-        request.put(
-                "acceptedTargetReductions",
-                List.of(
-                        Map.of(
-                                "skillCode",
-                                "DATABASE.INDEX",
-                                "axis",
-                                "DEBUGGING",
-                                "newTarget",
-                                1)));
+        request.put("acceptedTargetReductions", List.of(change("DATABASE.INDEX", "DEBUGGING", 1)));
+
+        api.post(user, REPLAN, request, id(v1)).andExpect(status().isCreated());
+
+        JsonNode v2 = activePlan(user);
+        JsonNode caching = target(v2, "SYSTEM_DESIGN.CACHING");
+        assertThat(caching.path("deferred").asBoolean()).isTrue();
+        assertThat(caching.path("adjustment").asString()).isEqualTo("DEFERRED");
+        JsonNode index = target(v2, "DATABASE.INDEX");
+        assertThat(index.path("targets").path("debugging").asInt()).isEqualTo(1);
+        assertThat(index.path("targets").path("knowledge").asInt()).isEqualTo(4);
+        assertThat(index.path("adjustment").asString()).isEqualTo("TARGET_REDUCED");
+        assertThat(target(v2, "JAVA.EXCEPTION").path("adjustment").asString())
+                .isEqualTo("ROLE_DEFAULT");
+
+        UUID userId = userId(user);
+        Map<String, Object> event =
+                jdbc.queryForMap(
+                        "select source_id::text as source_id, plan_date::text as plan_date,"
+                            + " payload->>'fromVersion' as from_version, payload->>'toVersion' as"
+                            + " to_version, payload->'deferredSkillCodes' ->> 0 as deferred,"
+                            + " payload->'reducedSkillCodes' ->> 0 as reduced from"
+                            + " devpilot.learning_event where user_id = ? and event_type ="
+                            + " 'PLAN_REPLANNED'",
+                        userId);
+        assertThat(event)
+                .containsEntry("source_id", id(v2))
+                .containsEntry("plan_date", "2026-10-05")
+                .containsEntry("from_version", "1")
+                .containsEntry("to_version", "2")
+                .containsEntry("deferred", "SYSTEM_DESIGN.CACHING")
+                .containsEntry("reduced", "DATABASE.INDEX");
+        // 새 plan 기준 오늘 snapshot (docs/05 §7.8, BL-GOL-13)
+        assertThat(
+                        count(
+                                "select count(*) from devpilot.plan_progress_snapshot where plan_id"
+                                        + " = ?::uuid and snapshot_date = date '2026-10-05'",
+                                id(v2)))
+                .isEqualTo(1);
+        assertThat(v2.path("latestSnapshot").path("snapshotDate").asString())
+                .isEqualTo("2026-10-05");
+    }
+
+    @Test
+    void shouldRestoreDeferredSkillAsUserEdited() throws Exception {
+        TestUser user = onboardedOwner();
+        JsonNode v1 = activePlan(user);
+        Map<String, Object> defer = replanRequest(v1, "미루기");
+        defer.put("acceptedDeferrals", List.of("SYSTEM_DESIGN.CACHING"));
+        api.post(user, REPLAN, defer, id(v1)).andExpect(status().isCreated());
+        JsonNode v2 = activePlan(user);
+
+        Map<String, Object> restore = replanRequest(v2, "되돌리기");
+        restore.put("restoredDeferrals", List.of("SYSTEM_DESIGN.CACHING"));
+        api.post(user, REPLAN, restore, id(v2)).andExpect(status().isCreated());
+
+        JsonNode caching = target(activePlan(user), "SYSTEM_DESIGN.CACHING");
+        assertThat(caching.path("deferred").asBoolean()).isFalse();
+        assertThat(caching.path("adjustment").asString()).isEqualTo("USER_EDITED");
+    }
+
+    @Test
+    void shouldRejectSameSkillInDeferralsAndRestorations() throws Exception {
+        TestUser user = onboardedOwner();
+        JsonNode v1 = activePlan(user);
+        Map<String, Object> request = replanRequest(v1, "동시 요청");
+        request.put("acceptedDeferrals", List.of("SYSTEM_DESIGN.CACHING"));
+        request.put("restoredDeferrals", List.of("SYSTEM_DESIGN.CACHING"));
 
         api.post(user, REPLAN, request, id(v1))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(
-                        jsonPath("$.errors[?(@.field == 'acceptedDeferrals')].code")
-                                .value("VALUE_NOT_ALLOWED"))
+                        jsonPath("$.errors[?(@.field == 'restoredDeferrals[0]')].code")
+                                .value("MUTUALLY_EXCLUSIVE"));
+        assertThat(activePlan(user).path("planVersion").asInt()).isEqualTo(1);
+    }
+
+    @Test
+    void shouldRejectReductionThatDoesNotLowerTarget() throws Exception {
+        TestUser user = onboardedOwner();
+        JsonNode v1 = activePlan(user);
+        Map<String, Object> request = replanRequest(v1, "축소 아님");
+        request.put("acceptedTargetReductions", List.of(change("DATABASE.INDEX", "DEBUGGING", 2)));
+
+        api.post(user, REPLAN, request, id(v1))
+                .andExpect(status().isBadRequest())
                 .andExpect(
-                        jsonPath("$.errors[?(@.field == 'acceptedTargetReductions')].code")
-                                .value("VALUE_NOT_ALLOWED"));
+                        jsonPath(
+                                        "$.errors[?(@.field =="
+                                                + " 'acceptedTargetReductions[0].newTarget')].code")
+                                .value("TARGET_NOT_REDUCED"));
+    }
+
+    @Test
+    void shouldRaiseTargetAsUserEdited() throws Exception {
+        // RX-7
+        TestUser user = onboardedOwner();
+        JsonNode v1 = activePlan(user);
+        Map<String, Object> request = replanRequest(v1, "목표 상향");
+        request.put("acceptedTargetRaises", List.of(change("TESTING.JUNIT", "KNOWLEDGE", 4)));
+
+        api.post(user, REPLAN, request, id(v1)).andExpect(status().isCreated());
+
+        JsonNode v2 = activePlan(user);
+        JsonNode junit = target(v2, "TESTING.JUNIT");
+        assertThat(junit.path("targets").path("knowledge").asInt()).isEqualTo(4);
+        assertThat(junit.path("targets").path("implementation").asInt()).isEqualTo(4);
+        assertThat(junit.path("adjustment").asString()).isEqualTo("USER_EDITED");
+        assertThat(target(v2, "DATABASE.INDEX").path("targets"))
+                .isEqualTo(target(v1, "DATABASE.INDEX").path("targets"));
+    }
+
+    @Test
+    void shouldApplyReductionAndRaiseOnDifferentAxesAsReduced() throws Exception {
+        // RX-8
+        TestUser user = onboardedOwner();
+        JsonNode v1 = activePlan(user);
+        Map<String, Object> request = replanRequest(v1, "축소와 상향");
+        request.put("acceptedTargetReductions", List.of(change("DATABASE.INDEX", "DEBUGGING", 1)));
+        request.put("acceptedTargetRaises", List.of(change("DATABASE.INDEX", "KNOWLEDGE", 5)));
+
+        api.post(user, REPLAN, request, id(v1)).andExpect(status().isCreated());
+
+        JsonNode index = target(activePlan(user), "DATABASE.INDEX");
+        assertThat(index.path("targets").path("debugging").asInt()).isEqualTo(1);
+        assertThat(index.path("targets").path("knowledge").asInt()).isEqualTo(5);
+        assertThat(index.path("adjustment").asString()).isEqualTo("TARGET_REDUCED");
+    }
+
+    @Test
+    void shouldRejectInvalidTargetRaises() throws Exception {
+        // RX-1, RX-3~RX-6. RX-2(newTarget 6)는 shouldRejectRaiseAboveFive
+        TestUser user = onboardedOwner();
+        JsonNode v1 = activePlan(user);
+        Map<String, Object> request = replanRequest(v1, "잘못된 상향");
+        request.put("acceptedDeferrals", List.of("DEVOPS.DOCKER"));
+        request.put("acceptedTargetReductions", List.of(change("DATABASE.INDEX", "DEBUGGING", 1)));
+        request.put(
+                "acceptedTargetRaises",
+                List.of(
+                        change("TESTING.JUNIT", "KNOWLEDGE", 3),
+                        change("DATABASE.INDEX", "DEBUGGING", 3),
+                        change("DEVOPS.DOCKER", "KNOWLEDGE", 4),
+                        change("JAVA.EXCEPTION", "DEBUGGING", 4),
+                        change("JAVA.EXCEPTION", "DEBUGGING", 5),
+                        change("JAVA", "KNOWLEDGE", 4),
+                        change("NO.SUCH_SKILL", "KNOWLEDGE", 4)));
+
+        api.post(user, REPLAN, request, id(v1))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(
+                        jsonPath("$.errors[?(@.field == 'acceptedTargetRaises[0].newTarget')].code")
+                                .value("TARGET_NOT_RAISED"))
+                .andExpect(
+                        jsonPath("$.errors[?(@.field == 'acceptedTargetRaises[1].axis')].code")
+                                .value("MUTUALLY_EXCLUSIVE"))
+                .andExpect(
+                        jsonPath("$.errors[?(@.field == 'acceptedTargetRaises[2].skillCode')].code")
+                                .value("MUTUALLY_EXCLUSIVE"))
+                .andExpect(
+                        jsonPath("$.errors[?(@.field == 'acceptedTargetRaises[4].axis')].code")
+                                .value("DUPLICATE_VALUE"))
+                .andExpect(
+                        jsonPath("$.errors[?(@.field == 'acceptedTargetRaises[5].skillCode')].code")
+                                .value("SKILL_NOT_IN_PLAN"))
+                .andExpect(
+                        jsonPath("$.errors[?(@.field == 'acceptedTargetRaises[6].skillCode')].code")
+                                .value("SKILL_CODE_UNKNOWN"));
+        assertThat(
+                        count(
+                                "select count(*) from devpilot.learning_plan where user_id = ?",
+                                userId(user)))
+                .isEqualTo(1);
+        assertThat(target(activePlan(user), "DEVOPS.DOCKER").path("deferred").asBoolean())
+                .isFalse();
+    }
+
+    @Test
+    void shouldRejectRaiseAboveFive() throws Exception {
+        // RX-2: @Max(5) (docs/05 §7.8 TargetRaiseInput)
+        TestUser user = onboardedOwner();
+        JsonNode v1 = activePlan(user);
+        Map<String, Object> request = replanRequest(v1, "상한 초과");
+        request.put("acceptedTargetRaises", List.of(change("TESTING.JUNIT", "KNOWLEDGE", 6)));
+
+        api.post(user, REPLAN, request, id(v1))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(
+                        jsonPath("$.errors[0].field").value("acceptedTargetRaises[0].newTarget"));
         assertThat(activePlan(user).path("planVersion").asInt()).isEqualTo(1);
     }
 
@@ -287,6 +459,19 @@ class ReplanServiceIntegrationTest extends ApiTestSupport {
 
     private static String id(JsonNode node) {
         return node.path("id").asString();
+    }
+
+    private static Map<String, Object> change(String skillCode, String axis, int newTarget) {
+        return Map.of("skillCode", skillCode, "axis", axis, "newTarget", newTarget);
+    }
+
+    private static JsonNode target(JsonNode plan, String skillCode) {
+        for (JsonNode target : plan.path("skillTargets")) {
+            if (skillCode.equals(target.path("skill").path("code").asString())) {
+                return target;
+            }
+        }
+        throw new AssertionError("no target for " + skillCode);
     }
 
     private static int indexOf(List<String> statements, String prefix, String table) {

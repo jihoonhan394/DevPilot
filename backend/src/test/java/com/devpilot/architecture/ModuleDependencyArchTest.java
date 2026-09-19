@@ -35,7 +35,7 @@ class ModuleDependencyArchTest {
                     Map.entry("learning", Set.of("common", "integration.ai")),
                     Map.entry("skill", Set.of("common", "learning")),
                     Map.entry("goal", Set.of("common", "skill")),
-                    Map.entry("plan", Set.of("common", "goal", "skill")),
+                    Map.entry("plan", Set.of("common", "goal", "skill", "learning")),
                     Map.entry(
                             "review",
                             Set.of(

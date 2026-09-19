@@ -11,7 +11,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @param milestones sortOrder ASC → startDate ASC → id ASC
  * @param skillTargets priority(MUST, SHOULD, LATER) → practicalImportanceBp DESC → skill.code ASC
- * @param latestSnapshot 이 plan의 {@code snapshot_date} 최댓값 행. 없으면 null (S1은 항상 null)
+ * @param latestSnapshot 이 plan의 {@code snapshot_date} 최댓값 행. 없으면 null
  */
 public record PlanView(
         UUID id,

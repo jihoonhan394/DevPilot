@@ -21,6 +21,12 @@ public interface LearningPlanRepository extends JpaRepository<LearningPlan, UUID
     @Query("select coalesce(max(p.planVersion), 0) from LearningPlan p where p.userId = :userId")
     int findMaxPlanVersion(@Param("userId") UUID userId);
 
+    /** 활성 plan이 있는 사용자 (job·seed backfill 대상, 온보딩을 마친 사용자). id ASC. */
+    @Query(
+            "select p.userId from LearningPlan p where p.status ="
+                    + " com.devpilot.plan.domain.PlanStatus.ACTIVE order by p.userId")
+    List<UUID> findUserIdsWithActivePlan();
+
     /** {@code GET /plans} 첫 페이지: {@code planVersion} DESC, {@code id} DESC (docs/05 §7.3). */
     @Query(
             "select p from LearningPlan p where p.userId = :userId order by p.planVersion desc,"

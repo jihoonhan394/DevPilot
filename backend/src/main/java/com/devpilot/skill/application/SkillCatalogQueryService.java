@@ -8,6 +8,7 @@ import com.devpilot.skill.domain.TargetRole;
 import com.devpilot.skill.infrastructure.RoleSkillTargetRepository;
 import com.devpilot.skill.infrastructure.SkillPrerequisiteRepository;
 import com.devpilot.skill.infrastructure.SkillRepository;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -122,6 +123,41 @@ public class SkillCatalogQueryService {
                                 CATALOG_ORDER))
                 .map(target -> toRoleSkillTargetView(target, active.get(target.getId().skillId())))
                 .toList();
+    }
+
+    /**
+     * 활성 non-root skill의 계산용 정보 (id → 정보). 비활성 skill은 map에 없다 — 규칙은 비활성 skill을 계산에서 뺀다(docs/06
+     * §4.1, §5.2).
+     */
+    public Map<UUID, SkillDetailView> activeSkillDetails() {
+        Map<UUID, Skill> active =
+                skillRepository.findByActiveTrue().stream()
+                        .filter(skill -> skill.getParentId() != null)
+                        .collect(Collectors.toMap(Skill::getId, Function.identity()));
+        Map<UUID, List<UUID>> prerequisites = new HashMap<>();
+        for (SkillPrerequisite prerequisite : prerequisiteRepository.findAll()) {
+            UUID required = prerequisite.getId().prerequisiteSkillId();
+            if (active.containsKey(required)) {
+                prerequisites
+                        .computeIfAbsent(prerequisite.getId().skillId(), id -> new ArrayList<>())
+                        .add(required);
+            }
+        }
+        Map<UUID, SkillDetailView> details = new HashMap<>();
+        for (Skill skill : active.values()) {
+            String description = skill.getDescription();
+            details.put(
+                    skill.getId(),
+                    new SkillDetailView(
+                            skill.getId(),
+                            skill.getCode(),
+                            skill.getName(),
+                            skill.getCategory(),
+                            description == null ? "" : description,
+                            skill.getMinutesPerLevelStep(),
+                            prerequisites.getOrDefault(skill.getId(), List.of())));
+        }
+        return details;
     }
 
     /** 활성 skill 전체 (catalog 순서). */

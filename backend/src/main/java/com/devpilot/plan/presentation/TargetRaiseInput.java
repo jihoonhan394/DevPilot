@@ -8,7 +8,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /**
- * replan의 확장 제안(RAISE_TARGET) 수락 (docs/05 §7.8). S1은 받지 않는다(비어 있지 않으면 {@code VALUE_NOT_ALLOWED}).
+ * replan의 확장 제안(RAISE_TARGET) 수락 (docs/05 §7.8, docs/06 §4.4 6단계). {@code newTarget}은 현재 target보다
+ * 높고 5 이하여야 한다.
  */
 public record TargetRaiseInput(
         @NotBlank @Size(max = 100) String skillCode,

@@ -41,6 +41,11 @@ public class LearningGoalQueryService {
                         .orElseThrow(LearningGoalQueryService::notFound));
     }
 
+    /** 학습 목표. 없으면 empty (plan·review·today의 horizon·집중 skill 입력, docs/06 §3.1·§5.4). */
+    public Optional<LearningGoalView> find(UUID userId) {
+        return learningGoalRepository.findByUserId(userId).map(this::toView);
+    }
+
     /** 목표 역할. 목표가 없으면 empty (plan 모듈의 role target 조회용). */
     public Optional<TargetRole> findTargetRole(UUID userId) {
         return learningGoalRepository.findByUserId(userId).map(LearningGoal::getTargetRole);
