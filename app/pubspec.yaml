@@ -31,6 +31,9 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  # Onboarding → Today flow in Chrome (docs/09 §12, BL-CLI-19).
+  integration_test:
+    sdk: flutter
   flutter_lints: ^6.0.0
   build_runner: ^2.16.1
   freezed: ^4.0.1
