@@ -24,6 +24,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -36,6 +37,9 @@ import tools.jackson.databind.JsonNode;
  */
 @IntegrationTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+// catalog 하나로 모든 case를 도는 테스트라 사용자 A·B가 고정이다. 시계가 멈춰 있어 토큰 버킷이 다시 차지 않으므로
+// 분당 한도만 넉넉히 둔다 — 한도 자체는 RateLimitIntegrationTest가 본다(docs/09 §9.1).
+@TestPropertySource(properties = "devpilot.security.rate-limit.requests-per-minute=100000")
 class AuthorizationIsolationTest extends ApiTestSupport {
 
     private @Nullable State state;
@@ -89,6 +93,24 @@ class AuthorizationIsolationTest extends ApiTestSupport {
         return text(api.get(current.owner(), "/api/v1/today").andReturn())
                 + text(api.get(current.owner(), "/api/v1/learning-sessions").andReturn())
                 + text(api.get(current.owner(), "/api/v1/reviews/due").andReturn());
+    }
+
+    /** ISO-1b: body에 A의 id를 넣으면 없는 id와 같은 400 {@code REFERENCE_NOT_FOUND}다(docs/09 §9.1). */
+    @ParameterizedTest(name = "[{index}] {0}")
+    @MethodSource("bodyReferences")
+    void shouldRejectOwnersIdInRequestBody(EndpointCase endpoint) throws Exception {
+        State current = state();
+        int before = rubberDuckSessionCount(current.invited());
+
+        MvcResult result = perform(endpoint, current.invited(), current.fixture());
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(400);
+        JsonNode body = api.body(result);
+        assertThat(body.path("code").asString()).isEqualTo("VALIDATION_FAILED");
+        assertThat(body.path("errors").get(0).path("field").asString()).isEqualTo("targetId");
+        assertThat(body.path("errors").get(0).path("code").asString())
+                .isEqualTo("REFERENCE_NOT_FOUND");
+        assertThat(rubberDuckSessionCount(current.invited())).isEqualTo(before);
     }
 
     @ParameterizedTest(name = "[{index}] {0}")
@@ -185,6 +207,10 @@ class AuthorizationIsolationTest extends ApiTestSupport {
         return cases(Kind.OWNED_RESOURCE);
     }
 
+    Stream<EndpointCase> bodyReferences() {
+        return cases(Kind.BODY_REFERENCE);
+    }
+
     Stream<EndpointCase> scopedCollections() {
         return cases(Kind.SCOPED_COLLECTION);
     }
@@ -225,6 +251,13 @@ class AuthorizationIsolationTest extends ApiTestSupport {
         return builder;
     }
 
+    private int rubberDuckSessionCount(TestUser user) {
+        return count(
+                "select count(*) from devpilot.rubber_duck_session s join devpilot.app_user u"
+                        + " on u.id = s.user_id where u.external_auth_id = ?",
+                user.sub());
+    }
+
     private State state() throws Exception {
         if (state == null) {
             state = createState();
@@ -247,6 +280,17 @@ class AuthorizationIsolationTest extends ApiTestSupport {
         JsonNode due = api.body(api.get(owner, "/api/v1/reviews/due"));
         // B도 오늘 계획이 있어야 GET /today가 200이다 (SCOPED_COLLECTION)
         api.generateToday(invited, 30, "NORMAL");
+        // A의 러버덕 세션 (IN_PROGRESS, 턴 1개) — 러버덕 case의 대상이다
+        Map<String, Object> startRequest = new LinkedHashMap<>();
+        startRequest.put("targetType", "CONCEPT");
+        startRequest.put("conceptKey", "SPRING.TRANSACTION.BOUNDARY");
+        JsonNode duck = api.body(api.post(owner, "/api/v1/rubber-duck", startRequest));
+        String duckSessionId = duck.path("session").path("id").asString();
+        api.post(
+                owner,
+                "/api/v1/rubber-duck/{sessionId}/turns",
+                Map.of("explanation", "트랜잭션 경계는 서비스 메서드에서 시작한다고 생각합니다."),
+                duckSessionId);
         Map<String, Object> learningGoalBody = new LinkedHashMap<>();
         learningGoalBody.put("targetRole", "JAVA_BACKEND");
         learningGoalBody.put("targetCompletionDate", "2027-04-01");
@@ -261,6 +305,8 @@ class AuthorizationIsolationTest extends ApiTestSupport {
                         today.path("mainTask").path("id").asString(),
                         session.path("id").asString(),
                         due.path("items").get(0).path("reviewItemId").asString(),
+                        duckSessionId,
+                        today.path("mainTask").path("id").asString(),
                         replanRequest(plan, "격리 확인"),
                         TestApi.onboardingRequest(),
                         TestApi.sideProjectRequest("새 프로젝트"),
@@ -275,6 +321,7 @@ class AuthorizationIsolationTest extends ApiTestSupport {
         ownerIds.add(fixture.taskId());
         ownerIds.add(today.path("reviewTask").path("id").asString());
         ownerIds.add(fixture.sessionId());
+        ownerIds.add(fixture.rubberDuckSessionId());
         due.path("items").forEach(item -> ownerIds.add(item.path("reviewItemId").asString()));
         return new State(owner, invited, fixture, ownerIds);
     }

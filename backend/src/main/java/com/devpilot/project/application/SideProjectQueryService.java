@@ -39,6 +39,13 @@ public class SideProjectQueryService {
         return toView(load(sideProjectRepository, userId, sideProjectId));
     }
 
+    /** 러버덕 {@code PROJECT_WORK} 대상 확인 (docs/05 §9.5 표). 타 사용자·없는 프로젝트는 빈 값. */
+    public Optional<SideProjectView> find(UUID userId, UUID sideProjectId) {
+        return sideProjectRepository
+                .findByIdAndUserId(sideProjectId, userId)
+                .map(SideProjectQueryService::toView);
+    }
+
     /** {@code updatedAt} DESC, {@code id} DESC. 잘못된 cursor는 400 {@code INVALID_CURSOR}. */
     public CursorPage<SideProjectView> list(
             UUID userId, @Nullable SideProjectStatus status, int limit, @Nullable String cursor) {

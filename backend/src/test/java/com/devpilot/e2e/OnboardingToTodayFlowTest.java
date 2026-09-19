@@ -146,9 +146,10 @@ class OnboardingToTodayFlowTest extends ApiTestSupport {
                                 userId))
                 .isEqualTo(1);
 
-        // 12. main 완료
-        long version =
-                api.body(api.get(user, "/api/v1/today")).path("mainTask").path("version").asLong();
+        // 12. main 완료 (READ_CODE면 러버덕을 먼저 마친다 — RC-1)
+        JsonNode mainTask = api.body(api.get(user, "/api/v1/today")).path("mainTask");
+        satisfyCodeReadingCondition(user, mainTask);
+        long version = mainTask.path("version").asLong();
         api.patch(
                         user,
                         "/api/v1/today/tasks/{taskId}",

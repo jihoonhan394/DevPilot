@@ -1,0 +1,30 @@
+id: rubber-duck-summary/code-reading-gap-002
+operation: RUBBER_DUCK_SUMMARY
+title: "코드 읽기 대화에서 계층·검증 빈틈을 정리한다"
+tags: [code-reading, layering]
+trap: false
+input:
+  variables:
+    targetType: CODE_READING
+    targetSummary: |
+      Spring PetClinic · src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java 48~122줄
+      이 컨트롤러는 Repository를 직접 주입받고 Service 계층이 없습니다. 이렇게 두어도 괜찮은 경우와 곤란해지는 경우를 나눠서 설명해 보세요.
+    skillSummary: "SPRING.MVC_REST (Spring MVC REST) K2 I2 E1 D1"
+    availableSkillCodes: "SPRING.MVC_REST, SPRING.TRANSACTION"
+  userContent:
+    conversation:
+      kind: TEXT
+      text: |
+        나: 조회만 하니까 Repository를 직접 써도 괜찮다고 봤습니다.
+        질문: 폼 제출을 처리하는 메서드는 어디에 규칙을 두고 있나요?
+        나: 저장만 하니까 규칙이랄 게 없습니다. 검증은 @Valid가 다 해 줍니다.
+        질문: 저장이 두 번 필요한 요청이 생기면 그 둘은 어떻게 묶이나요?
+        나: 그건 생각해 보지 않았습니다.
+expect:
+  expectedGapPrefixes:
+    - SPRING
+  cleanExplanation: false
+  mustNotContainAny:
+    - "서비스 계층을 만들어야 합니다"
+    - "정답은"
+    - "@Transactional을 붙이세요"

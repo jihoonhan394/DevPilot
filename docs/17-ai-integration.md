@@ -458,7 +458,7 @@ while est > op.input-token-budget:
 | `availableSkillCodes` | 쉼표 목록 | 세션 skill + 그 prerequisite의 `skill.code` | | — |
 | `conversation` | 줄 목록 | 이 세션의 **전체** 턴 | ✔ | 1, `ITEMS_FROM_START`, 3턴 |
 
-**후처리** (tx2): `summary_json` 저장, `status=COMPLETED`, `completed_at`. `gaps[]`마다 `review_item`을 만든다(`source_type=RUBBER_DUCK`, `concept_key`=gap의 `conceptKey`, `prompt`=`reviewQuestion`, `review_type=EXPLAIN`, 첫 due는 `06` §6.3 "challenge 실패 / coach finding / 수동 생성" 행과 같다). 같은 `concept_key`가 이미 있으면 새로 만들지 않고 due를 당긴다(같은 절). 카드 필드(skill 유도, `expected_answer`, `rubric_json`)와 카드를 만들지 않는 경우는 `05` §9.8이다. `summary_json.rawGapCount`(가드 전 gap 수)를 저장하고, 세션 `skill_id`가 있을 때만 `RUBBER_DUCK_COMPLETED` 이벤트를 남긴다(RD-5·RD-7). 대상이 `CODE_READING`이면 그 `READ_CODE` 과제를 `COMPLETED`로 바꾼다(RC-1).
+**후처리** (tx2): `summary_json` 저장, `status=COMPLETED`, `completed_at`. `gaps[]`마다 `review_item`을 만든다(`source_type=RUBBER_DUCK`, `concept_key`=gap의 `conceptKey`, `prompt`=`reviewQuestion`, `review_type=EXPLAIN`, 첫 due는 `06` §6.3 "challenge 실패 / coach finding / 수동 생성" 행과 같다). 같은 `concept_key`가 이미 있으면 새로 만들지 않고 due를 당긴다(같은 절). 카드 필드(skill 유도, `expected_answer`, `rubric_json`)와 카드를 만들지 않는 경우는 `05` §9.8이다. `summary_json.rawGapCount`(가드 전 gap 수)를 저장하고, 세션 `skill_id`가 있을 때만 `RUBBER_DUCK_COMPLETED` 이벤트를 남긴다(RD-5·RD-7). 대상이 `CODE_READING`이면 이 세션이 `COMPLETED`가 된 것만으로 그 `READ_CODE` 과제의 완료 조건(RC-1)이 충족된다 — **과제 상태는 바꾸지 않는다**(`05` §9.8 7, §8.4).
 
 **실패**: `status=COMPLETED`로 바꾸되 `summary_json`은 null, 복습 카드·이벤트 없음, 응답에 `summarySkippedReason`. **대화 자체는 이미 학습이므로 세션을 실패로 만들지 않는다.**
 

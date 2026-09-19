@@ -236,7 +236,7 @@ val integrationTest =
     }
 
 // 옵션 의미·기본값: evals/README.md, docs/17-ai-integration.md §12.3
-//   -PevalSuite=<coach-review|hint-generate|challenge-evaluate|all> (필수)
+//   -PevalSuite=<coach-review|hint-generate|challenge-evaluate|rubber-duck|rubber-duck-summary|all> (필수)
 //   -PevalCase=<case id glob>  -PevalRepeat=<n, 기본 3>  -PevalModel=<model, 기본 devpilot.ai.model>
 //   -PevalMaxCostUsd=<USD, 기본 0.5 = 결정 E 1회 상한 (prod와 같은 DeepSeek 잔액)>  -PevalUpdateBaseline=<true|false>
 // 환경변수: DEEPSEEK_API_KEY (필수). provider는 deepseek으로 고정한다

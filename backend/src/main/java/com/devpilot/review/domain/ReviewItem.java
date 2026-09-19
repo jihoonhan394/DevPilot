@@ -135,6 +135,48 @@ public class ReviewItem implements Persistable<UUID> {
         return item;
     }
 
+    /**
+     * AI 출처 카드 (러버덕 gap, docs/05 §9.8): {@code origin = AI_GENERATED}, {@code review_type =
+     * EXPLAIN}, {@code interval_days = 1}, {@code status = ACTIVE}. 가드를 통과한 값만 넣는다.
+     */
+    public static ReviewItem fromGap(GapValues values, Instant dueAt, Instant now) {
+        ReviewItem item = new ReviewItem();
+        item.id = UUID.randomUUID();
+        item.userId = Objects.requireNonNull(values.userId(), "userId");
+        item.skillId = Objects.requireNonNull(values.skillId(), "skillId");
+        item.origin = ContentOrigin.AI_GENERATED;
+        item.sourceType = Objects.requireNonNull(values.sourceType(), "sourceType");
+        item.sourceId = values.sourceId();
+        item.conceptKey = Objects.requireNonNull(values.conceptKey(), "conceptKey");
+        item.reviewType = ReviewType.EXPLAIN;
+        item.prompt = Objects.requireNonNull(values.prompt(), "prompt");
+        item.expectedAnswer = Objects.requireNonNull(values.expectedAnswer(), "expectedAnswer");
+        item.rubric = List.copyOf(values.rubric());
+        item.dueAt = Objects.requireNonNull(dueAt, "dueAt");
+        item.intervalDays = 1;
+        item.variantStatus = VariantStatus.NONE;
+        item.status = ReviewItemStatus.ACTIVE;
+        item.createdAt = Objects.requireNonNull(now, "now");
+        return item;
+    }
+
+    /**
+     * 같은 {@code concept_key} 카드가 이미 있을 때 (docs/06 §6.3 마지막 행): {@code status = ACTIVE}, {@code
+     * due_at = min(기존, dueAt)}. 바뀐 게 있으면 true.
+     */
+    public boolean pullDueForward(Instant dueAt) {
+        boolean changed = false;
+        if (status != ReviewItemStatus.ACTIVE) {
+            this.status = ReviewItemStatus.ACTIVE;
+            changed = true;
+        }
+        if (dueAt.isBefore(this.dueAt)) {
+            this.dueAt = dueAt;
+            changed = true;
+        }
+        return changed;
+    }
+
     /** 답변은 {@code ACTIVE} 카드에만 받는다(docs/05 §11.3 2단계). */
     public void requireAnswerable() {
         if (status != ReviewItemStatus.ACTIVE) {
@@ -164,6 +206,22 @@ public class ReviewItem implements Persistable<UUID> {
         }
         this.status = ReviewItemStatus.SUSPENDED;
         return true;
+    }
+
+    /** AI 출처 카드 값 (docs/05 §9.8). */
+    public record GapValues(
+            UUID userId,
+            UUID skillId,
+            ReviewItemSourceType sourceType,
+            @Nullable UUID sourceId,
+            String conceptKey,
+            String prompt,
+            String expectedAnswer,
+            List<RubricItem> rubric) {
+
+        public GapValues {
+            rubric = List.copyOf(rubric);
+        }
     }
 
     /** 출제 문항이 변형인지 (variant는 Later라 항상 false). */

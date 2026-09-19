@@ -43,7 +43,8 @@ class DomainPurityArchTest {
                     "com.devpilot.learning.domain.ComebackModePolicy",
                     "com.devpilot.review.domain.FinalRatingPolicy",
                     "com.devpilot.review.domain.RuleBasedV1Scheduler",
-                    "com.devpilot.review.domain.DueReviewSelector");
+                    "com.devpilot.review.domain.DueReviewSelector",
+                    "com.devpilot.rubberduck.domain.RubberDuckPolicy");
 
     private static final Set<String> FLOATING_TYPES =
             Set.of("double", "float", "java.lang.Double", "java.lang.Float");

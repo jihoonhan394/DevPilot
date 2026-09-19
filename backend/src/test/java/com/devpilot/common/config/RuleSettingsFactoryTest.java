@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.devpilot.plan.application.PlanRuleSettings;
 import com.devpilot.review.application.ReviewRuleSettings;
+import com.devpilot.rubberduck.application.RubberDuckRuleSettings;
+import com.devpilot.rubberduck.domain.RubberDuckPolicy;
 import com.devpilot.testsupport.TestProperties;
 import com.devpilot.testsupport.TestRuleSettings;
 import com.devpilot.testsupport.UnitTest;
@@ -25,6 +27,13 @@ class RuleSettingsFactoryTest {
     void shouldConvertBudgetAndRiskSettings() {
         assertThat(PlanRuleSettings.budget(properties)).isEqualTo(TestRuleSettings.budget());
         assertThat(PlanRuleSettings.risk(properties)).isEqualTo(TestRuleSettings.risk());
+    }
+
+    @Test
+    void shouldConvertRubberDuckSettings() {
+        assertThat(RubberDuckRuleSettings.policy(properties))
+                .usingRecursiveComparison()
+                .isEqualTo(new RubberDuckPolicy(TestRuleSettings.rubberDuck()));
     }
 
     @Test

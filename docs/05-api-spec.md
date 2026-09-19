@@ -2139,6 +2139,7 @@ public record RubberDuckCompleteResponse(
 - `userText`는 마스킹본이다. 원문은 저장하지 않으므로 복원할 수 없다.
 - AI가 불가한 상태에서도 조회는 된다(`17-ai-integration.md` §3.10).
 - 목록 endpoint는 두지 않는다. 진행 중 세션은 시작 응답(§9.6)과 클라이언트 로컬 상태로 추적하고, 지난 세션은 `GET /learning-sessions`(§9.4)와 복습 카드로 이어진다.
+- **`summarySkippedReason`은 이 응답에서 항상 `null`이다.** 실패 사유는 저장하지 않으므로(`04` §5.9 `summary_json`은 실패 시 null) §9.8 응답에만 있다. 조회에서는 `status = COMPLETED`인데 `summary`가 없으면 정리를 못 한 세션이다.
 
 ---
 

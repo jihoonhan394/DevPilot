@@ -2,6 +2,7 @@ package com.devpilot.learning.application;
 
 import com.devpilot.learning.domain.LearningEventType;
 import com.devpilot.learning.infrastructure.LearningEventRepository;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Set;
 import java.util.UUID;
@@ -17,6 +18,12 @@ public class LearningEventQueryService {
 
     public LearningEventQueryService(LearningEventRepository learningEventRepository) {
         this.learningEventRepository = learningEventRepository;
+    }
+
+    /** 그 대상에 {@code since} 이후 이 종류 이벤트가 있는가 (러버덕 {@code hintDisclosed}, docs/05 §9.8). */
+    public boolean hasEventForSourceSince(
+            UUID userId, LearningEventType eventType, UUID sourceId, Instant since) {
+        return learningEventRepository.existsForSourceSince(userId, eventType, sourceId, since);
     }
 
     /** {@code plan_date ≥ from}에 이 종류 이벤트가 있는 skill (예: 최근 1 plan-day의 {@code LEECH_DETECTED}). */

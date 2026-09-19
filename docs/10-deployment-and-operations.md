@@ -1049,6 +1049,7 @@ NFR-01 기준: prod 앱 AI 예산 USD 3/월(DEC-06, 앱 가드). eval 실행은 
 
 1. **즉시 폐기 (5분 안)** — 새 값을 만들기 전에 이전 값을 끊는다
    - DeepSeek: platform.deepseek.com → API keys → 해당 key **Delete** (앱 AI 기능은 `AI_UNAVAILABLE`/`BALANCE_EXHAUSTED`로 동작하고 비-AI 기능은 유지된다, NFR-03)
+   - 서버가 폐기한 키로 계속 호출하지 않게 같이 끈다: `api.env`에 `DEVPILOT_AI_PROVIDER=disabled` → `dc up -d --force-recreate api`. 그러면 `GET /me`의 `aiStatus = DISABLED`이고 AI endpoint는 503 `AI_UNAVAILABLE`이며 `ai_call_log`에 행이 남지 않는다(`17` §3.10). 새 키를 넣은 뒤 `deepseek`으로 되돌린다
    - DB 비밀번호: §13.3.1-2
    - devtoken 키: §13.3.3
 2. **새 값 발급·적용**: §13.3의 해당 절차
@@ -1058,7 +1059,8 @@ NFR-01 기준: prod 앱 AI 예산 USD 3/월(DEC-06, 앱 가드). eval 실행은 
      select date_trunc('day', created_at) as day, count(*), round(sum(cost_micro_usd) / 1e6, 3) as usd
      from devpilot.ai_call_log where created_at > '<노출 추정 시각>' group by 1 order by 1;
      ```
-     콘솔 비용이 `ai_call_log`보다 크면 외부 사용이 있었던 것이다 → 잔액이 소액이라 피해는 그 범위로 제한된다
+     콘솔 비용이 `ai_call_log`보다 크면 외부 사용이 있었던 것이다 → 잔액이 소액이라 피해는 그 범위로 제한된다. `ai_call_log`에는 프롬프트·응답 원문이 없으므로(`17` §8.2) 노출된 것은 키뿐이다
+   - 잔액: 감사 로그 `AI_BALANCE_LOW`(`17` §8.7)와 platform.deepseek.com의 잔액을 같이 본다. 외부 사용으로 잔액이 비면 `aiStatus = BALANCE_EXHAUSTED`가 되고 다음 정상 조회(`AiBalanceCheckJob`, 매시 15분)에서 풀린다
    - DB: PostgreSQL 컨테이너 로그(`docker logs <pg-container> --since <시각>`)에서 낯선 연결을 확인한다. 5432는 tailnet·LAN에서만 열려 있다. 데이터 변조가 의심되면 §13.2.2
 4. **노출 경로 찾기**
    ```bash
@@ -1069,6 +1071,7 @@ NFR-01 기준: prod 앱 AI 예산 USD 3/월(DEC-06, 앱 가드). eval 실행은 
 5. **git 이력 처리**: key는 이미 폐기됐으므로 **이력 재작성은 하지 않는다**(public 저장소는 fork·캐시에 이미 복제됐을 수 있어 재작성해도 회수되지 않는다). HEAD에서 값을 제거하는 커밋만 만든다. 개인정보·서버 주소 등 폐기할 수 없는 데이터가 함께 노출된 경우에만 `git filter-repo --replace-text`로 재작성하고 GitHub Support에 cached view 삭제를 요청한다.
 6. **재발 방지**: 원인에 맞게 gitleaks 규칙(DeepSeek 키 패턴 `sk-` + hex 32자, 07 §11.3), push protection 우회 여부, `.gitignore`(`.env`, `DevPilot-ops/`), 로그 마스킹(`07-security-and-privacy.md`)을 보강한다.
 7. **기록**: `docs/ops/ops-log.md`에 노출 시각, 발견 시각, 폐기 시각, 비용 영향, 원인, 조치를 남긴다.
+8. **복귀 확인**: 새 키 + `DEVPILOT_AI_PROVIDER=deepseek`으로 재기동 → `GET /me`의 `aiStatus = ENABLED` → 동기 AI 1회(러버덕 턴 또는 hint) 성공 → `select status, error_code, created_at from devpilot.ai_call_log order by created_at desc limit 3;`가 `SUCCESS`.
 
 ### 13.5 db-or-server-down (구 supabase-paused)
 

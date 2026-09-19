@@ -8,12 +8,14 @@ import com.devpilot.common.web.CursorCodec;
 import com.devpilot.common.web.CursorPage;
 import com.devpilot.learning.domain.ComebackModePolicy;
 import com.devpilot.learning.domain.LearningSession;
+import com.devpilot.learning.domain.SessionStatus;
 import com.devpilot.learning.infrastructure.LearningSessionRepository;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Limit;
@@ -46,6 +48,13 @@ public class LearningSessionQueryService {
         this.cursorCodec = cursorCodec;
         this.comebackModePolicy =
                 new ComebackModePolicy(properties.planner().comebackInactiveDays());
+    }
+
+    /** 지금 {@code IN_PROGRESS}인 학습 세션 id (러버덕 세션 시작 시 연결, docs/05 §9.6 5단계). */
+    public Optional<UUID> findInProgressId(UUID userId) {
+        return learningSessionRepository
+                .findByUserIdAndStatus(userId, SessionStatus.IN_PROGRESS)
+                .map(LearningSession::getId);
     }
 
     /**

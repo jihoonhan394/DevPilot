@@ -75,6 +75,22 @@ public class TodayQueryService {
         return toView(plan, user.zoneId(), user.dayStartHour());
     }
 
+    /**
+     * 러버덕 {@code CODE_READING} 대상 확인 (docs/05 §9.5 표). {@code READ_CODE}가 아니거나 타 사용자·없는 과제는 빈 값.
+     */
+    public Optional<ReadCodeTaskRef> findReadCodeTask(UUID userId, UUID learningTaskId) {
+        return learningTaskRepository
+                .findByIdAndUserId(learningTaskId, userId)
+                .filter(task -> task.getTaskType() == TaskType.READ_CODE)
+                .map(
+                        task ->
+                                new ReadCodeTaskRef(
+                                        task.getId(),
+                                        task.getSkillId(),
+                                        task.getReadingKey(),
+                                        task.getTitle()));
+    }
+
     /** 오늘 요약 (dashboard, docs/05 §13.1 {@code todaySummary}). 오늘 계획이 없으면 empty. */
     public Optional<TodaySummary> summary(UUID userId, LocalDate today) {
         return dailyPlanRepository
@@ -201,6 +217,14 @@ public class TodayQueryService {
                 task.getCompletedAt(),
                 task.getVersion());
     }
+
+    /**
+     * 러버덕 {@code CODE_READING} 대상 (docs/05 §9.5).
+     *
+     * @param readingKey {@code READ_CODE} 과제에는 항상 있다 (I-17)
+     */
+    public record ReadCodeTaskRef(
+            UUID id, @Nullable UUID skillId, @Nullable String readingKey, String title) {}
 
     /**
      * 오늘 요약.

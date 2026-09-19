@@ -1,5 +1,6 @@
 package com.devpilot.security;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -17,10 +18,14 @@ public final class UserOwnedEndpoints {
     /** docs/09 §9.1 검증 종류. */
     public enum Kind {
         OWNED_RESOURCE,
+        BODY_REFERENCE,
         SCOPED_COLLECTION,
         SHARED_CONTENT,
         ACCOUNT_ACTION
     }
+
+    /** 공용 콘텐츠 조회에 쓰는 테스트 catalog reading key (docs/09 §9.2 SHARED_CONTENT). */
+    public static final String SHARED_READING_KEY = "READ.TESTREPO.ORDER_SERVICE.001";
 
     /**
      * @param pathVariables A(소유자)의 리소스로 path 변수를 채운다
@@ -48,6 +53,8 @@ public final class UserOwnedEndpoints {
      * @param taskId A의 오늘 main 과제
      * @param sessionId A의 {@code IN_PROGRESS} 학습 세션
      * @param reviewItemId A의 due 복습 카드
+     * @param rubberDuckSessionId A의 {@code IN_PROGRESS} 러버덕 세션 (턴 1개)
+     * @param readCodeTaskId A의 {@code READ_CODE} 과제 (러버덕 {@code CODE_READING} 대상)
      */
     public record IsolationFixture(
             long invitedMeVersion,
@@ -57,6 +64,8 @@ public final class UserOwnedEndpoints {
             String taskId,
             String sessionId,
             String reviewItemId,
+            String rubberDuckSessionId,
+            String readCodeTaskId,
             Map<String, Object> replanBody,
             Map<String, Object> onboardingBody,
             Map<String, Object> sideProjectBody,
@@ -168,6 +177,56 @@ public final class UserOwnedEndpoints {
                                         "evaluate",
                                         false),
                         "RESOURCE_NOT_FOUND"),
+                new EndpointCase(
+                        "E40",
+                        HttpMethod.GET,
+                        "/api/v1/rubber-duck/{sessionId}",
+                        Kind.OWNED_RESOURCE,
+                        fixture -> new Object[] {fixture.rubberDuckSessionId()},
+                        NO_BODY,
+                        "RESOURCE_NOT_FOUND"),
+                new EndpointCase(
+                        "E41",
+                        HttpMethod.POST,
+                        "/api/v1/rubber-duck/{sessionId}/turns",
+                        Kind.OWNED_RESOURCE,
+                        fixture -> new Object[] {fixture.rubberDuckSessionId()},
+                        fixture -> Map.of("explanation", "남의 세션에 끼어든 설명"),
+                        "RESOURCE_NOT_FOUND"),
+                new EndpointCase(
+                        "E42",
+                        HttpMethod.POST,
+                        "/api/v1/rubber-duck/{sessionId}/complete",
+                        Kind.OWNED_RESOURCE,
+                        fixture -> new Object[] {fixture.rubberDuckSessionId()},
+                        NO_BODY,
+                        "RESOURCE_NOT_FOUND"),
+                new EndpointCase(
+                        "E43",
+                        HttpMethod.POST,
+                        "/api/v1/rubber-duck/{sessionId}/abandon",
+                        Kind.OWNED_RESOURCE,
+                        fixture -> new Object[] {fixture.rubberDuckSessionId()},
+                        NO_BODY,
+                        "RESOURCE_NOT_FOUND"),
+                // BODY_REFERENCE (docs/09 §9.1 ISO-1b)
+                bodyReference(
+                        "E44",
+                        fixture ->
+                                rubberDuckBody(
+                                        "CODE_READING",
+                                        fixture.readCodeTaskId(),
+                                        "SPRING.TRANSACTION")),
+                bodyReference(
+                        "E45",
+                        fixture -> rubberDuckBody("REVIEW_ITEM", fixture.reviewItemId(), null)),
+                bodyReference(
+                        "E46",
+                        fixture ->
+                                rubberDuckBody(
+                                        "PROJECT_WORK",
+                                        fixture.sideProjectId(),
+                                        "SPRING.TRANSACTION")),
                 // SCOPED_COLLECTION
                 scoped("E10", HttpMethod.GET, "/api/v1/me"),
                 scoped("E11", HttpMethod.GET, "/api/v1/learning-goal"),
@@ -195,6 +254,14 @@ public final class UserOwnedEndpoints {
                         "/api/v1/skills/tree",
                         Kind.SHARED_CONTENT,
                         NO_VARIABLES,
+                        NO_BODY,
+                        null),
+                new EndpointCase(
+                        "E48",
+                        HttpMethod.GET,
+                        "/api/v1/readings/{readingKey}",
+                        Kind.SHARED_CONTENT,
+                        fixture -> new Object[] {SHARED_READING_KEY},
                         NO_BODY,
                         null),
                 // ACCOUNT_ACTION
@@ -226,7 +293,12 @@ public final class UserOwnedEndpoints {
                                         "NORMAL",
                                         "force",
                                         false)),
-                account("E35", HttpMethod.POST, "/api/v1/learning-sessions", fixture -> Map.of()));
+                account("E35", HttpMethod.POST, "/api/v1/learning-sessions", fixture -> Map.of()),
+                account(
+                        "E47",
+                        HttpMethod.POST,
+                        "/api/v1/rubber-duck",
+                        fixture -> rubberDuckBody("CONCEPT", null, null)));
     }
 
     /** 인증 없이 열리는 경로와 Bearer를 쓰지 않는 경로 (docs/07 §4.1, docs/09 §9.2 끝). */
@@ -235,6 +307,29 @@ public final class UserOwnedEndpoints {
                 "POST /api/v1/dev/token",
                 "GET /api/v1/dev/jwks.json",
                 "GET /api/v1/calendar/{token}.ics");
+    }
+
+    /** body에 A의 id를 넣는 case (ISO-1b). 400 + field error {@code REFERENCE_NOT_FOUND}다. */
+    private static EndpointCase bodyReference(
+            String id, Function<IsolationFixture, @Nullable Object> body) {
+        return new EndpointCase(
+                id,
+                HttpMethod.POST,
+                "/api/v1/rubber-duck",
+                Kind.BODY_REFERENCE,
+                NO_VARIABLES,
+                body,
+                null);
+    }
+
+    private static Map<String, Object> rubberDuckBody(
+            String targetType, @Nullable String targetId, @Nullable String skillCode) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("targetType", targetType);
+        body.put("targetId", targetId);
+        body.put("conceptKey", "CONCEPT".equals(targetType) ? "SPRING.TRANSACTION.BOUNDARY" : null);
+        body.put("skillCode", skillCode);
+        return body;
     }
 
     private static EndpointCase scoped(String id, HttpMethod method, String path) {

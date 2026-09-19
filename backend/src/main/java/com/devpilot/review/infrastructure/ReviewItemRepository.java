@@ -29,6 +29,9 @@ public interface ReviewItemRepository extends JpaRepository<ReviewItem, UUID> {
     List<ReviewItem> findActiveDueBefore(
             @Param("userId") UUID userId, @Param("boundary") Instant boundary);
 
+    /** 개념당 1개다(I-06). 러버덕 gap 카드 upsert가 쓴다(docs/06 §6.3). */
+    Optional<ReviewItem> findByUserIdAndConceptKey(UUID userId, String conceptKey);
+
     /** 사용자의 모든 concept key (seed 카드 중복 복사 방지, I-06). */
     @Query("select i.conceptKey from ReviewItem i where i.userId = :userId")
     List<String> findConceptKeys(@Param("userId") UUID userId);

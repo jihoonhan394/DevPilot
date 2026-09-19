@@ -73,6 +73,30 @@ public abstract class ApiTestSupport {
         return user;
     }
 
+    /**
+     * {@code READ_CODE} 과제의 완료 조건(RC-1)을 만든다: 그 과제를 대상으로 러버덕 세션을 시작해 턴 1개를 내고 정리까지 마친다. 다른 과제 유형이면
+     * 아무것도 하지 않는다.
+     */
+    protected void satisfyCodeReadingCondition(TestUser user, JsonNode task) throws Exception {
+        if (!"READ_CODE".equals(task.path("taskType").asString())) {
+            return;
+        }
+        Map<String, Object> start = new LinkedHashMap<>();
+        start.put("targetType", "CODE_READING");
+        start.put("targetId", task.path("id").asString());
+        String sessionId =
+                api.body(api.post(user, "/api/v1/rubber-duck", start))
+                        .path("session")
+                        .path("id")
+                        .asString();
+        api.post(
+                user,
+                "/api/v1/rubber-duck/{sessionId}/turns",
+                Map.of("explanation", "이 코드에서 트랜잭션 경계는 서비스 메서드에서 시작한다고 읽었습니다."),
+                sessionId);
+        api.post(user, "/api/v1/rubber-duck/{sessionId}/complete", null, sessionId);
+    }
+
     protected JsonNode activePlan(TestUser user) throws Exception {
         return api.body(api.get(user, "/api/v1/plans/active"));
     }

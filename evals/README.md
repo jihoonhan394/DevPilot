@@ -11,9 +11,11 @@
 evals/
 ├── README.md
 ├── cases/
-│   ├── coach-review/*.yaml        # COACH_REVIEW (16)
-│   ├── hint-generate/*.yaml       # HINT_GENERATE (3)
-│   └── challenge-evaluate/*.yaml  # CHALLENGE_EVALUATE (3)
+│   ├── coach-review/*.yaml          # COACH_REVIEW (16)
+│   ├── hint-generate/*.yaml         # HINT_GENERATE (3)
+│   ├── challenge-evaluate/*.yaml    # CHALLENGE_EVALUATE (3)
+│   ├── rubber-duck/*.yaml           # RUBBER_DUCK (3, S3)
+│   └── rubber-duck-summary/*.yaml   # RUBBER_DUCK_SUMMARY (3, S3)
 └── baselines/<suite>@<promptVersion>__<model>.json
 
 backend/build/reports/ai-eval/     # 실행 결과: <timestamp>-<suite>.json, summary.md (커밋하지 않음)
@@ -31,7 +33,7 @@ export DEEPSEEK_API_KEY=...         # prod와 같은 선불 잔액을 쓴다 (�
 
 | 옵션 | 기본 | 설명 |
 |---|---|---|
-| `evalSuite` | (필수) | `coach-review` \| `hint-generate` \| `challenge-evaluate` \| `all` |
+| `evalSuite` | (필수) | `coach-review` \| `hint-generate` \| `challenge-evaluate` \| `rubber-duck` \| `rubber-duck-summary` \| `all` |
 | `evalModel` | `devpilot.ai.model` | 모델 교체 검증 시 지정 |
 | `evalRepeat` | 3 | case당 반복 횟수 |
 | `evalCase` | 전체 | case id glob |

@@ -495,6 +495,31 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - plan
+  /api/v1/readings/{readingKey}:
+    get:
+      operationId: todayGetReading
+      parameters:
+      - in: path
+        name: readingKey
+        required: true
+        schema:
+          type: string
+          pattern: "^[A-Z0-9][A-Z0-9_.]{2,149}$"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CuratedReadingView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
   /api/v1/reviews/due:
     get:
       operationId: reviewGetDue
@@ -558,6 +583,152 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - review
+  /api/v1/rubber-duck:
+    post:
+      operationId: learningStartRubberDuck
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RubberDuckStartRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RubberDuckStartResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - rubber-duck
+  /api/v1/rubber-duck/{sessionId}:
+    get:
+      operationId: learningGetRubberDuck
+      parameters:
+      - in: path
+        name: sessionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RubberDuckSessionView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - rubber-duck
+  /api/v1/rubber-duck/{sessionId}/abandon:
+    post:
+      operationId: learningAbandonRubberDuck
+      parameters:
+      - in: path
+        name: sessionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RubberDuckSessionView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - rubber-duck
+  /api/v1/rubber-duck/{sessionId}/complete:
+    post:
+      operationId: learningCompleteRubberDuck
+      parameters:
+      - in: path
+        name: sessionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RubberDuckCompleteResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - rubber-duck
+  /api/v1/rubber-duck/{sessionId}/turns:
+    post:
+      operationId: learningSubmitRubberDuckTurn
+      parameters:
+      - in: path
+        name: sessionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RubberDuckTurnRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RubberDuckTurnResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - rubber-duck
   /api/v1/side-projects:
     get:
       operationId: projectList
@@ -947,6 +1118,81 @@ components:
       - requiredShouldMinutes
       - riskLevel
       - today
+    CuratedReadingView:
+      type: object
+      properties:
+        endLine:
+          type: integer
+          format: int32
+        estimatedMinutes:
+          type: integer
+          format: int32
+        key:
+          type: string
+        lookFor:
+          type: array
+          items:
+            type: string
+        path:
+          type: string
+        question:
+          type: string
+        repo:
+          $ref: "#/components/schemas/CuratedRepoView"
+        retired:
+          type: boolean
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillRef"
+        startLine:
+          type: integer
+          format: int32
+      required:
+      - endLine
+      - estimatedMinutes
+      - key
+      - lookFor
+      - path
+      - question
+      - repo
+      - retired
+      - skills
+      - startLine
+    CuratedRepoView:
+      type: object
+      properties:
+        cloneHint:
+          type: string
+        key:
+          type: string
+        license:
+          type: string
+        licenseNote:
+          type: string
+        name:
+          type: string
+        pinnedCommit:
+          type: string
+        stack:
+          type: string
+        subPath:
+          type: string
+        url:
+          type: string
+        why:
+          type: string
+      required:
+      - cloneHint
+      - key
+      - license
+      - licenseNote
+      - name
+      - pinnedCommit
+      - stack
+      - subPath
+      - url
+      - why
     CursorPagePlanSummaryView:
       type: object
       properties:
@@ -2314,6 +2560,276 @@ components:
       - practicalImportanceBp
       - priority
       - targets
+    RubberDuckCompleteResponse:
+      type: object
+      properties:
+        aiMeta:
+          $ref: "#/components/schemas/AiMeta"
+        confirmed:
+          type: array
+          items:
+            type: string
+        createdReviewItemCount:
+          type: integer
+          format: int32
+        gaps:
+          type: array
+          items:
+            $ref: "#/components/schemas/RubberDuckGapView"
+        overallNote:
+          type: string
+        sessionId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - IN_PROGRESS
+          - COMPLETED
+          - ABANDONED
+        summarySkippedReason:
+          type: string
+          enum:
+          - AI_UNAVAILABLE
+          - AI_TIMEOUT
+          - AI_REFUSED
+          - AI_OUTPUT_INVALID
+          - AI_BUDGET_EXCEEDED
+          - AI_RATE_LIMITED
+          - CONFIDENTIAL_SUSPECTED
+          - INTERRUPTED
+          - INTERNAL_ERROR
+        version:
+          type: integer
+          format: int64
+      required:
+      - aiMeta
+      - confirmed
+      - createdReviewItemCount
+      - gaps
+      - overallNote
+      - sessionId
+      - status
+      - summarySkippedReason
+      - version
+    RubberDuckGapView:
+      type: object
+      properties:
+        conceptKey:
+          type: string
+        reviewItemId:
+          type: string
+          format: uuid
+        reviewQuestion:
+          type: string
+        whatWasMissed:
+          type: string
+        whyItMatters:
+          type: string
+      required:
+      - conceptKey
+      - reviewItemId
+      - reviewQuestion
+      - whatWasMissed
+      - whyItMatters
+    RubberDuckSessionView:
+      type: object
+      properties:
+        completedAt:
+          type: string
+          format: date-time
+        conceptKey:
+          type: string
+        id:
+          type: string
+          format: uuid
+        learningSessionId:
+          type: string
+          format: uuid
+        maxTurns:
+          type: integer
+          format: int32
+        readingKey:
+          type: string
+        skill:
+          $ref: "#/components/schemas/SkillRef"
+        startedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+          - IN_PROGRESS
+          - COMPLETED
+          - ABANDONED
+        suggestHint:
+          type: boolean
+        summary:
+          $ref: "#/components/schemas/RubberDuckSummaryView"
+        summarySkippedReason:
+          type: string
+          enum:
+          - AI_UNAVAILABLE
+          - AI_TIMEOUT
+          - AI_REFUSED
+          - AI_OUTPUT_INVALID
+          - AI_BUDGET_EXCEEDED
+          - AI_RATE_LIMITED
+          - CONFIDENTIAL_SUSPECTED
+          - INTERRUPTED
+          - INTERNAL_ERROR
+        targetId:
+          type: string
+          format: uuid
+        targetTitle:
+          type: string
+        targetType:
+          type: string
+          enum:
+          - CODE_READING
+          - CHALLENGE
+          - REVIEW_ITEM
+          - CONCEPT
+          - PROJECT_WORK
+        turnCount:
+          type: integer
+          format: int32
+        turns:
+          type: array
+          items:
+            $ref: "#/components/schemas/RubberDuckTurnView"
+        version:
+          type: integer
+          format: int64
+      required:
+      - completedAt
+      - conceptKey
+      - id
+      - learningSessionId
+      - maxTurns
+      - readingKey
+      - skill
+      - startedAt
+      - status
+      - suggestHint
+      - summary
+      - summarySkippedReason
+      - targetId
+      - targetTitle
+      - targetType
+      - turnCount
+      - turns
+      - version
+    RubberDuckStartRequest:
+      type: object
+      properties:
+        conceptKey:
+          type: string
+          maxLength: 120
+          minLength: 0
+          pattern: "^[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)+$"
+        skillCode:
+          type: string
+          maxLength: 100
+          minLength: 0
+        targetId:
+          type: string
+          format: uuid
+        targetType:
+          type: string
+          enum:
+          - CODE_READING
+          - CHALLENGE
+          - REVIEW_ITEM
+          - CONCEPT
+          - PROJECT_WORK
+      required:
+      - targetType
+    RubberDuckStartResponse:
+      type: object
+      properties:
+        abandonedSessionId:
+          type: string
+          format: uuid
+        session:
+          $ref: "#/components/schemas/RubberDuckSessionView"
+      required:
+      - abandonedSessionId
+      - session
+    RubberDuckSummaryView:
+      type: object
+      properties:
+        confirmed:
+          type: array
+          items:
+            type: string
+        gaps:
+          type: array
+          items:
+            $ref: "#/components/schemas/RubberDuckGapView"
+        overallNote:
+          type: string
+      required:
+      - confirmed
+      - gaps
+      - overallNote
+    RubberDuckTurnRequest:
+      type: object
+      properties:
+        explanation:
+          type: string
+          minLength: 1
+      required:
+      - explanation
+    RubberDuckTurnResponse:
+      type: object
+      properties:
+        aiMeta:
+          $ref: "#/components/schemas/AiMeta"
+        question:
+          type: string
+        remainingTurns:
+          type: integer
+          format: int32
+        suggestHint:
+          type: boolean
+        turnNo:
+          type: integer
+          format: int32
+        version:
+          type: integer
+          format: int64
+      required:
+      - aiMeta
+      - question
+      - remainingTurns
+      - suggestHint
+      - turnNo
+      - version
+    RubberDuckTurnView:
+      type: object
+      properties:
+        aiMeta:
+          $ref: "#/components/schemas/AiMeta"
+        createdAt:
+          type: string
+          format: date-time
+        learnerStuck:
+          type: boolean
+        question:
+          type: string
+        turnNo:
+          type: integer
+          format: int32
+        userText:
+          type: string
+      required:
+      - aiMeta
+      - createdAt
+      - learnerStuck
+      - question
+      - turnNo
+      - userText
     SelfAssessmentInput:
       type: object
       properties:
@@ -2817,6 +3333,12 @@ components:
     TaskStatusPatchRequest:
       type: object
       properties:
+        readingFeedback:
+          type: string
+          enum:
+          - HELPFUL
+          - TOO_HARD
+          - BORING
         status:
           type: string
           enum:

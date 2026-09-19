@@ -2,6 +2,7 @@ package com.devpilot.learning.infrastructure;
 
 import com.devpilot.learning.domain.LearningEvent;
 import com.devpilot.learning.domain.LearningEventType;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +28,19 @@ public interface LearningEventRepository extends JpaRepository<LearningEvent, UU
             @Param("userId") UUID userId,
             @Param("eventType") LearningEventType eventType,
             @Param("from") LocalDate from);
+
+    /** 이 대상에 대해 {@code since} 이후 이 종류 이벤트가 있는가 (러버덕 {@code hintDisclosed}, docs/04 §6). */
+    @Query(
+            """
+            select count(e) > 0 from LearningEvent e
+             where e.userId = :userId and e.eventType = :eventType and e.sourceId = :sourceId
+               and e.occurredAt >= :since and e.invalidatedAt is null
+            """)
+    boolean existsForSourceSince(
+            @Param("userId") UUID userId,
+            @Param("eventType") LearningEventType eventType,
+            @Param("sourceId") UUID sourceId,
+            @Param("since") Instant since);
 
     /** 사용자의 이벤트 (occurred_at DESC). 테스트·집계용. */
     List<LearningEvent> findByUserIdAndEventTypeOrderByOccurredAtDesc(

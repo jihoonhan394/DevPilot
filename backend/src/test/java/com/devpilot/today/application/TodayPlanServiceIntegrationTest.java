@@ -210,9 +210,11 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
     void shouldRejectRegenerationAfterCompletionUnlessForced() throws Exception {
         // docs/06 §5.9 4·5행
         TestUser user = onboardedOwner();
-        String mainId =
-                api.generateToday(user, 30, "NORMAL").path("mainTask").path("id").asString();
+        JsonNode main = api.generateToday(user, 30, "NORMAL").path("mainTask");
+        String mainId = main.path("id").asString();
         patch(user, mainId, "IN_PROGRESS", 0).andExpect(status().isOk());
+        // READ_CODE면 러버덕을 마쳐야 완료할 수 있다 (RC-1, docs/06 §9.5)
+        satisfyCodeReadingCondition(user, main);
         patch(user, mainId, "COMPLETED", 1)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("COMPLETED"))

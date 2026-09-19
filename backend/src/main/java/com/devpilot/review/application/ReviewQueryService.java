@@ -23,6 +23,7 @@ import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -117,6 +118,13 @@ public class ReviewQueryService {
         return new DueSummary(due.size(), maxOverdue);
     }
 
+    /** 러버덕 {@code REVIEW_ITEM} 대상 확인 (docs/05 §9.5 표). 타 사용자·없는 카드는 빈 값. */
+    public Optional<ReviewItemRef> findItemRef(UUID userId, UUID reviewItemId) {
+        return reviewItemRepository
+                .findByIdAndUserId(reviewItemId, userId)
+                .map(item -> new ReviewItemRef(item.getId(), item.getSkillId(), item.getPrompt()));
+    }
+
     /** 복습 상한 (docs/06 §5.6 첫 줄). */
     public int cap(boolean comebackMode) {
         return comebackMode ? comebackMaxPerDay : maxPerDay;
@@ -188,6 +196,9 @@ public class ReviewQueryService {
     static Instant nextPlanDayStart(LocalDate today, ZoneId zone, int dayStartHour) {
         return PlanDayCalculator.planDayStart(today.plusDays(1), zone, dayStartHour);
     }
+
+    /** 러버덕 대상 요약 (docs/05 §9.5). */
+    public record ReviewItemRef(UUID id, UUID skillId, String prompt) {}
 
     /**
      * 오늘 due 집계.

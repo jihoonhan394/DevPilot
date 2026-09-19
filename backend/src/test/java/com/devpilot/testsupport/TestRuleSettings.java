@@ -4,9 +4,11 @@ import com.devpilot.learning.domain.ComebackModePolicy;
 import com.devpilot.plan.domain.DeadlineRiskEvaluator;
 import com.devpilot.plan.domain.StudyBudgetCalculator;
 import com.devpilot.review.domain.RuleBasedV1Scheduler;
+import com.devpilot.rubberduck.domain.RubberDuckPolicy;
 import com.devpilot.today.domain.PlannerScoring;
 import com.devpilot.today.domain.ReasonTemplates;
 import com.devpilot.today.domain.TimeAllocator;
+import java.util.List;
 
 /**
  * 규칙 클래스 생성자에 넘기는 설정 (docs/09 §5.2 끝). {@code docs/03 §9} 기본값을 bp/micro 정수로 바꾼 값이다. 운영 설정 변환과 같은지는
@@ -49,5 +51,14 @@ public final class TestRuleSettings {
 
     public static ComebackModePolicy comeback() {
         return new ComebackModePolicy(3);
+    }
+
+    /** docs/06 §9.5 기본값 (RD-3·RD-4). */
+    public static RubberDuckPolicy.Settings rubberDuck() {
+        return new RubberDuckPolicy.Settings(
+                5,
+                2,
+                30,
+                List.of("모르겠", "모름", "잘 모르", "생각 안", "idk", "no idea", "don't know", "dont know"));
     }
 }

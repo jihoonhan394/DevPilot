@@ -1,0 +1,28 @@
+id: rubber-duck-summary/transaction-gap-001
+operation: RUBBER_DUCK_SUMMARY
+title: "대화에서 드러난 트랜잭션 경계·전파 빈틈을 정리한다"
+tags: [spring, transaction]
+trap: false
+input:
+  variables:
+    targetType: CONCEPT
+    targetSummary: SPRING.TRANSACTION.BOUNDARY
+    skillSummary: "SPRING.TRANSACTION (스프링 트랜잭션) K2 I1 E1 D1"
+    availableSkillCodes: "SPRING.TRANSACTION, DATABASE.TRANSACTION"
+  userContent:
+    conversation:
+      kind: TEXT
+      text: |
+        나: @Transactional을 서비스 메서드에 붙이면 그 안의 DB 작업이 하나로 묶입니다.
+        질문: 그 묶음은 정확히 언제 시작해서 언제 끝나나요?
+        나: 메서드가 시작할 때 열리고 끝날 때 닫힙니다. 커밋 시점은 잘 모르겠습니다.
+        질문: 같은 클래스의 다른 메서드를 호출하면 그 묶음은 어떻게 되나요?
+        나: 같은 클래스니까 그대로 이어진다고 생각합니다.
+expect:
+  expectedGapPrefixes:
+    - SPRING.TRANSACTION
+  cleanExplanation: false
+  mustNotContainAny:
+    - "프록시를 거치지 않기 때문입니다"
+    - "정답은"
+    - "@Transactional(propagation = Propagation.REQUIRES_NEW)"

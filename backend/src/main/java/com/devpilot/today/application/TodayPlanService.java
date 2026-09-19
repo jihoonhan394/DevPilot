@@ -1,7 +1,10 @@
 package com.devpilot.today.application;
 
+import com.devpilot.common.error.ApiFieldError;
+import com.devpilot.common.error.BusinessValidationException;
 import com.devpilot.common.error.ConflictException;
 import com.devpilot.common.error.ErrorCode;
+import com.devpilot.common.error.FieldErrorCodes;
 import com.devpilot.common.error.NotFoundException;
 import com.devpilot.common.security.CurrentUser;
 import com.devpilot.common.time.PlanDayCalculator;
@@ -9,6 +12,7 @@ import com.devpilot.today.application.DailyPlanComposer.Composition;
 import com.devpilot.today.domain.DailyPlan;
 import com.devpilot.today.domain.EnergyLevel;
 import com.devpilot.today.domain.LearningTask;
+import com.devpilot.today.domain.ReadingFeedback;
 import com.devpilot.today.domain.TaskProposalPolicy;
 import com.devpilot.today.domain.TaskStatus;
 import com.devpilot.today.domain.TaskType;
@@ -21,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +43,7 @@ public class TodayPlanService {
     private final LearningTaskRepository learningTaskRepository;
     private final DailyPlanComposer dailyPlanComposer;
     private final TodayQueryService todayQueryService;
+    private final CodeReadingCompletionProvider codeReadingCompletionProvider;
     private final Clock clock;
 
     public TodayPlanService(
@@ -45,11 +51,13 @@ public class TodayPlanService {
             LearningTaskRepository learningTaskRepository,
             DailyPlanComposer dailyPlanComposer,
             TodayQueryService todayQueryService,
+            CodeReadingCompletionProvider codeReadingCompletionProvider,
             Clock clock) {
         this.dailyPlanRepository = dailyPlanRepository;
         this.learningTaskRepository = learningTaskRepository;
         this.dailyPlanComposer = dailyPlanComposer;
         this.todayQueryService = todayQueryService;
+        this.codeReadingCompletionProvider = codeReadingCompletionProvider;
         this.clock = clock;
     }
 
@@ -95,13 +103,19 @@ public class TodayPlanService {
     }
 
     /**
-     * {@code PATCH /today/tasks/{taskId}} (docs/05 §8.4). 404 → version 불일치 409 {@code
-     * CONCURRENT_MODIFICATION} → 전이표 밖 409 {@code INVALID_STATE_TRANSITION}. {@code SKIPPED →
-     * PLANNED} main은 같은 daily plan에 활성 main이 없을 때만 된다.
+     * {@code PATCH /today/tasks/{taskId}} (docs/05 §8.4). 검사 순서: 404 → version 불일치 409 {@code
+     * CONCURRENT_MODIFICATION} → 전이표 밖·RC-1 미충족 409 {@code INVALID_STATE_TRANSITION} → {@code
+     * readingFeedback} 허용 여부 400 {@code VALUE_NOT_ALLOWED}. {@code SKIPPED → PLANNED} main은 같은
+     * daily plan에 활성 main이 없을 때만 된다. {@code READ_CODE}의 {@code IN_PROGRESS → COMPLETED}는 그 과제를 대상으로
+     * 한 {@code COMPLETED} 러버덕 세션이 있어야 한다(RC-1, docs/06 §9.5).
      */
     @Transactional
     public TaskStatusView updateTaskStatus(
-            UUID userId, UUID taskId, TaskStatus status, long version) {
+            UUID userId,
+            UUID taskId,
+            TaskStatus status,
+            @Nullable ReadingFeedback readingFeedback,
+            long version) {
         LearningTask task =
                 learningTaskRepository
                         .findByIdAndUserId(taskId, userId)
@@ -126,7 +140,23 @@ public class TodayPlanService {
                         ErrorCode.INVALID_STATE_TRANSITION, "another main task is active");
             }
         }
+        boolean readCodeCompletion =
+                task.getTaskType() == TaskType.READ_CODE && status == TaskStatus.COMPLETED;
+        if (readCodeCompletion
+                && !codeReadingCompletionProvider.hasCompletedRubberDuck(userId, taskId)) {
+            throw new ConflictException(
+                    ErrorCode.INVALID_STATE_TRANSITION,
+                    "code reading needs a completed rubber duck session");
+        }
         task.changeStatus(status, clock.instant());
+        if (readingFeedback != null && !readCodeCompletion) {
+            throw new BusinessValidationException(
+                    "reading feedback is not allowed for this task",
+                    List.of(
+                            ApiFieldError.of(
+                                    "readingFeedback", FieldErrorCodes.VALUE_NOT_ALLOWED)));
+        }
+        task.recordReadingFeedback(readingFeedback);
         try {
             learningTaskRepository.flush();
         } catch (DataIntegrityViolationException exception) {
