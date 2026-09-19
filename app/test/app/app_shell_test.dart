@@ -59,7 +59,8 @@ void main() {
     await pumpApp(tester);
 
     expect(rail(tester).extended, isFalse);
-    expect(rail(tester).destinations, hasLength(5));
+    // Today, Review, Training, Plan, Projects, Skill (Settings is pinned below).
+    expect(rail(tester).destinations, hasLength(6));
     expect(rail(tester).selectedIndex, 0);
     expect(find.byKey(const Key('shell.bottomNavigation')), findsNothing);
 
@@ -130,7 +131,7 @@ void main() {
 
     await goTo(tester, '/plan/versions');
 
-    expect(rail(tester).selectedIndex, 2);
+    expect(rail(tester).selectedIndex, 3);
     expect(find.byType(BackButton), findsOneWidget);
   });
 }

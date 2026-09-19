@@ -8,7 +8,7 @@ import 'package:go_router/go_router.dart';
 ///
 /// Mobile (< 600) has the bottom bar Today · Review · Plan · More; tablet has a rail with labels
 /// below the icons, desktop (≥ 1024) an extended rail. Only destinations of the shipped stages
-/// exist, so More lists Projects, Skills, Dashboard and Settings.
+/// exist, so More lists Projects, Training, Skills, Dashboard and Settings.
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.location, required this.child});
 
@@ -32,6 +32,7 @@ class AppShell extends StatelessWidget {
 enum _Destination {
   today(AppRoutes.today, Icons.today),
   review(AppRoutes.review, Icons.style),
+  training(AppRoutes.training, Icons.fitness_center),
   plan(AppRoutes.plan, Icons.timeline),
   projects(AppRoutes.projects, Icons.code),
   skills(AppRoutes.skills, Icons.account_tree_outlined),
@@ -46,6 +47,7 @@ enum _Destination {
   String label(AppLocalizations l10n) => switch (this) {
     today => l10n.navToday,
     review => l10n.navReview,
+    training => l10n.navTraining,
     plan => l10n.navPlan,
     projects => l10n.navProjects,
     skills => l10n.navSkills,
@@ -87,7 +89,7 @@ class _MobileShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final current = _Destination.of(location, mobile: true);
-    // Projects, Skills, Dashboard and Settings live under More on mobile.
+    // Projects, Training, Skills, Dashboard and Settings live under More on mobile.
     final tabIndex = _tabs.indexOf(current ?? _Destination.more);
     final selectedIndex = tabIndex < 0 ? _tabs.length - 1 : tabIndex;
     return Scaffold(
@@ -115,6 +117,7 @@ class _RailShell extends StatelessWidget {
   static const _railItems = [
     _Destination.today,
     _Destination.review,
+    _Destination.training,
     _Destination.plan,
     _Destination.projects,
     _Destination.skills,

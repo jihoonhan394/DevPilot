@@ -40,6 +40,12 @@ class MoreScreen extends ConsumerWidget {
             path: AppRoutes.projects,
           ),
           _MoreTile(
+            tileKey: const Key('more.training'),
+            icon: Icons.fitness_center,
+            label: l10n.moreTraining,
+            path: AppRoutes.training,
+          ),
+          _MoreTile(
             tileKey: const Key('more.skills'),
             icon: Icons.account_tree_outlined,
             label: l10n.moreSkills,

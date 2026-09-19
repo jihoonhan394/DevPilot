@@ -21,8 +21,10 @@ import 'package:devpilot_app/features/today/data/today_models.dart';
 import 'fixtures.dart';
 import 'learning_fakes.dart';
 import 'learning_fixtures.dart';
+import 'training_fakes.dart';
 
 export 'learning_fakes.dart';
+export 'training_fakes.dart';
 
 /// Takes the next queued failure, if any.
 ApiException? _next(List<ApiException> failures) => failures.isEmpty ? null : failures.removeAt(0);
@@ -414,4 +416,5 @@ final class FakeBackend {
   late final FakeLearningSessionRepository sessionRepository;
   final reviewRepository = FakeReviewRepository();
   final dashboardRepository = FakeDashboardRepository();
+  final trainingRepository = FakeTrainingRepository();
 }

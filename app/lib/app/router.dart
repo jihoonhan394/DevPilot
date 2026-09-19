@@ -33,6 +33,10 @@ import 'package:devpilot_app/features/settings/presentation/settings_screen.dart
 import 'package:devpilot_app/features/skill/presentation/skill_detail_screen.dart';
 import 'package:devpilot_app/features/skill/presentation/skill_tree_screen.dart';
 import 'package:devpilot_app/features/today/presentation/today_screen.dart';
+import 'package:devpilot_app/features/training/presentation/attempt_input_guard.dart';
+import 'package:devpilot_app/features/training/presentation/attempt_screen.dart';
+import 'package:devpilot_app/features/training/presentation/challenge_detail_screen.dart';
+import 'package:devpilot_app/features/training/presentation/training_list_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
@@ -158,6 +162,38 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
+          GoRoute(
+            path: AppRoutes.training,
+            builder: (context, state) => TrainingListScreen(
+              skillId: _uuidOrNull(state.uri.queryParameters[AppRoutes.skillIdParameter]),
+            ),
+            routes: [
+              GoRoute(
+                path: 'challenges/:challengeId',
+                builder: (context, state) => _withUuid(
+                  state,
+                  'challengeId',
+                  (challengeId) => ChallengeDetailScreen(
+                    challengeId: challengeId,
+                    taskId: _uuidOrNull(state.uri.queryParameters[AppRoutes.taskIdParameter]),
+                  ),
+                ),
+              ),
+              GoRoute(
+                path: 'attempts/:attemptId',
+                onExit: (context, state) => _confirmLeave(context, attemptHasUnsavedInputProvider),
+                builder: (context, state) => _withUuid(
+                  state,
+                  'attemptId',
+                  (attemptId) => AttemptScreen(
+                    attemptId: attemptId,
+                    taskId: _uuidOrNull(state.uri.queryParameters[AppRoutes.taskIdParameter]),
+                    focusHints: state.uri.fragment == AppRoutes.hintsFragment,
+                  ),
+                ),
+              ),
+            ],
+          ),
           GoRoute(path: AppRoutes.projects, builder: (context, state) => const ProjectsScreen()),
           GoRoute(
             path: AppRoutes.settings,
@@ -176,6 +212,9 @@ final routerProvider = Provider<GoRouter>((ref) {
   });
   return router;
 });
+
+/// A query value that must be a UUID (`taskId`, `skillId`); anything else is ignored.
+String? _uuidOrNull(String? value) => value != null && _uuidPattern.hasMatch(value) ? value : null;
 
 Widget _withUuid(GoRouterState state, String name, Widget Function(String id) build) {
   final value = state.pathParameters[name];
