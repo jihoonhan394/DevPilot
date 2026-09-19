@@ -1,5 +1,6 @@
 import 'package:devpilot_app/core/api/api_enums.dart';
 import 'package:devpilot_app/core/api/learning_enums.dart';
+import 'package:devpilot_app/features/dashboard/data/dashboard_models.dart';
 import 'package:devpilot_app/features/review/data/review_enums.dart';
 import 'package:devpilot_app/features/review/data/review_models.dart';
 import 'package:devpilot_app/features/today/data/learning_session_models.dart';
@@ -130,4 +131,29 @@ DueReviewsResponse testDueReviews({int count = 3}) => DueReviewsResponse(
         prompt: '복습 문항 $index',
       ),
   ],
+);
+
+DashboardView testDashboard({
+  bool generated = true,
+  String? mainTaskId = mainTaskId,
+  TaskStatus mainStatus = TaskStatus.inProgress,
+  int dueReviewCount = 6,
+  bool replanRecommended = false,
+}) => DashboardView(
+  today: testToday,
+  todaySummary: TodaySummaryView(
+    generated: generated,
+    mainTaskId: generated ? mainTaskId : null,
+    mainTaskTitle: generated && mainTaskId != null ? 'Spring Transaction 내 말로 설명하기' : null,
+    mainTaskType: generated && mainTaskId != null ? TaskType.explain : null,
+    mainTaskStatus: generated && mainTaskId != null ? mainStatus : null,
+    mainTaskEstimatedMinutes: generated && mainTaskId != null ? 15 : null,
+    reviewTaskStatus: generated ? TaskStatus.planned : null,
+  ),
+  dueReviewCount: dueReviewCount,
+  weekStartDate: '2026-09-14',
+  weekStudyMinutes: 190,
+  weekCompletedSessions: 4,
+  aiStatus: AiStatus.disabled,
+  replanRecommended: replanRecommended,
 );

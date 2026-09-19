@@ -2,6 +2,8 @@ import 'package:devpilot_app/core/api/api_exception.dart';
 import 'package:devpilot_app/core/api/cursor_page.dart';
 import 'package:devpilot_app/core/api/idempotency_key.dart';
 import 'package:devpilot_app/core/api/learning_enums.dart';
+import 'package:devpilot_app/features/dashboard/data/dashboard_models.dart';
+import 'package:devpilot_app/features/dashboard/data/dashboard_repository.dart';
 import 'package:devpilot_app/features/review/data/review_enums.dart';
 import 'package:devpilot_app/features/review/data/review_models.dart';
 import 'package:devpilot_app/features/review/data/review_repository.dart';
@@ -285,5 +287,19 @@ final class FakeReviewRepository implements ReviewRepository {
       status: ReviewItemStatus.active,
       leechDetected: false,
     );
+  }
+}
+
+final class FakeDashboardRepository implements DashboardRepository {
+  DashboardView dashboard = testDashboard();
+  final failures = <ApiException>[];
+
+  @override
+  Future<DashboardView> fetchDashboard() async {
+    final failure = _next(failures);
+    if (failure != null) {
+      throw failure;
+    }
+    return dashboard;
   }
 }

@@ -33,9 +33,23 @@ void main() {
 
     await tapKey(tester, 'shell.nav.more');
     expect(find.byKey(const Key('more.skills')), findsOneWidget);
+    expect(find.byKey(const Key('more.dashboard')), findsOneWidget);
     await tapKey(tester, 'more.settings');
     expect(locationOf(tester), '/settings');
     // Settings lives under More on mobile.
+    expect(bottomBar(tester).selectedIndex, 3);
+  });
+
+  testWidgets('shouldOpenDashboardFromMoreAndKeepMoreSelectedOnMobile', (tester) async {
+    usePhoneScreen(tester);
+    addTearDown(() => resetScreenSize(tester));
+    await pumpApp(tester);
+
+    await tapKey(tester, 'shell.nav.more');
+    await tapKey(tester, 'more.dashboard');
+
+    expect(locationOf(tester), '/dashboard');
+    expect(find.text('진행 현황'), findsWidgets);
     expect(bottomBar(tester).selectedIndex, 3);
   });
 
@@ -56,6 +70,17 @@ void main() {
     await tapKey(tester, 'shell.nav.settings');
     expect(locationOf(tester), '/settings');
     expect(rail(tester).selectedIndex, isNull);
+  });
+
+  testWidgets('shouldSelectTodayForDashboardOnWideScreens', (tester) async {
+    usePhoneScreen(tester, width: 800, height: 900);
+    addTearDown(() => resetScreenSize(tester));
+    await pumpApp(tester);
+
+    await tapKey(tester, 'today.dashboardLink');
+
+    expect(locationOf(tester), '/dashboard');
+    expect(rail(tester).selectedIndex, 0);
   });
 
   testWidgets('shouldExtendRailOnDesktopAndLeaveMoreForToday', (tester) async {

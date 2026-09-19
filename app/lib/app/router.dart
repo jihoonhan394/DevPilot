@@ -10,6 +10,7 @@ import 'package:devpilot_app/core/auth/auth_controller.dart';
 import 'package:devpilot_app/core/widgets/confirm_dialog.dart';
 import 'package:devpilot_app/features/auth/presentation/login_screen.dart';
 import 'package:devpilot_app/features/auth/presentation/not_allowed_screen.dart';
+import 'package:devpilot_app/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:devpilot_app/features/onboarding/presentation/onboarding_goal_screen.dart';
 import 'package:devpilot_app/features/onboarding/presentation/onboarding_level_screen.dart';
 import 'package:devpilot_app/features/onboarding/presentation/onboarding_plan_screen.dart';
@@ -112,6 +113,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               completeTaskId: state.uri.queryParameters[AppRoutes.completeParameter],
             ),
           ),
+          GoRoute(path: AppRoutes.dashboard, builder: (context, state) => const DashboardScreen()),
           GoRoute(path: AppRoutes.review, builder: (context, state) => const ReviewHomeScreen()),
           GoRoute(
             path: AppRoutes.plan,

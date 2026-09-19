@@ -384,4 +384,5 @@ final class FakeBackend {
   final FakeTodayRepository todayRepository;
   late final FakeLearningSessionRepository sessionRepository;
   final reviewRepository = FakeReviewRepository();
+  final dashboardRepository = FakeDashboardRepository();
 }

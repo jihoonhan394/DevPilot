@@ -1,5 +1,6 @@
 import 'package:devpilot_app/core/api/api_enums.dart';
 import 'package:devpilot_app/core/api/learning_enums.dart';
+import 'package:devpilot_app/features/dashboard/data/dashboard_models.dart';
 import 'package:devpilot_app/features/review/data/review_enums.dart';
 import 'package:devpilot_app/features/review/data/review_models.dart';
 import 'package:devpilot_app/features/today/data/learning_session_models.dart';
@@ -144,5 +145,35 @@ void main() {
     expect(answer.finalRating, ReviewRating.hard);
     expect(answer.adjustedBy, [RatingAdjustment.hintCapHard, RatingAdjustment.unknown]);
     expect(answer.evaluationSkippedReason, AsyncFailureCode.aiUnavailable);
+  });
+
+  test('shouldReadMinimalDashboardAndIgnoreLaterSections', () {
+    final dashboard = DashboardView.fromJson({
+      'today': '2026-10-13',
+      'todaySummary': {
+        'generated': true,
+        'mainTaskId': 't1',
+        'mainTaskTitle': '내 말로 설명하기',
+        'mainTaskType': 'EXPLAIN',
+        'mainTaskStatus': 'IN_PROGRESS',
+        'mainTaskEstimatedMinutes': 15,
+        'reviewTaskStatus': null,
+      },
+      'dueReviewCount': 6,
+      'weekStartDate': '2026-10-12',
+      'weekStudyMinutes': 190,
+      'weekCompletedSessions': 4,
+      'risk': null,
+      'milestoneTimeline': null,
+      'skillCategories': <Object?>[],
+      'weakThinkingAxes': <Object?>[],
+      'aiStatus': 'DISABLED',
+      'replanRecommended': false,
+    });
+
+    expect(dashboard.todaySummary.mainTaskStatus, TaskStatus.inProgress);
+    expect(dashboard.todaySummary.reviewTaskStatus, isNull);
+    expect(dashboard.weekStudyMinutes, 190);
+    expect(dashboard.aiStatus, AiStatus.disabled);
   });
 }

@@ -6,6 +6,7 @@ import 'package:devpilot_app/core/auth/token_store_provider.dart';
 import 'package:devpilot_app/core/config/app_config.dart';
 import 'package:devpilot_app/core/storage/key_value_store.dart';
 import 'package:devpilot_app/core/time/clock.dart';
+import 'package:devpilot_app/features/dashboard/data/dashboard_repository.dart';
 import 'package:devpilot_app/features/onboarding/data/onboarding_repository.dart';
 import 'package:devpilot_app/features/plan/data/learning_goal_repository.dart';
 import 'package:devpilot_app/features/plan/data/plan_repository.dart';
@@ -55,6 +56,7 @@ Widget buildTestApp({
       todayRepositoryProvider.overrideWithValue(fakes.todayRepository),
       learningSessionRepositoryProvider.overrideWithValue(fakes.sessionRepository),
       reviewRepositoryProvider.overrideWithValue(fakes.reviewRepository),
+      dashboardRepositoryProvider.overrideWithValue(fakes.dashboardRepository),
       clockProvider.overrideWithValue(() => fakes.clock.now),
       ...overrides,
     ],

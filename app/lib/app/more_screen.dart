@@ -37,6 +37,12 @@ class MoreScreen extends StatelessWidget {
             path: AppRoutes.skills,
           ),
           _MoreTile(
+            tileKey: const Key('more.dashboard'),
+            icon: Icons.insights_outlined,
+            label: l10n.moreDashboard,
+            path: AppRoutes.dashboard,
+          ),
+          _MoreTile(
             tileKey: const Key('more.settings'),
             icon: Icons.settings_outlined,
             label: l10n.moreSettings,

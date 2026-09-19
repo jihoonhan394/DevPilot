@@ -163,12 +163,16 @@ void main() {
     expect(find.text('오늘 앞서 한 과제 1개'), findsOneWidget);
   });
 
-  testWidgets('shouldLinkToReviewSession', (tester) async {
+  testWidgets('shouldLinkToDashboardAndReviewSession', (tester) async {
     backend.todayRepository.today = testTodayView();
     await pumpApp(tester, backend: backend);
 
     await tapKey(tester, 'today.reviewButton');
     expect(locationOf(tester), '/review/session?taskId=$reviewTaskId');
+
+    await goTo(tester, '/today');
+    await tapKey(tester, 'today.dashboardLink');
+    expect(locationOf(tester), '/dashboard');
   });
 
   testWidgets('shouldShowRiskLabelOnlyAsText', (tester) async {
