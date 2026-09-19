@@ -10,7 +10,7 @@ import com.devpilot.today.domain.TimeAllocator;
 
 /**
  * 규칙 클래스 생성자에 넘기는 설정 (docs/09 §5.2 끝). {@code docs/03 §9} 기본값을 bp/micro 정수로 바꾼 값이다. 운영 설정 변환과 같은지는
- * {@code RuleSettingsFactoryTest}가 확인한다.
+ * {@code RuleSettingsFactoryTest}(common.config)가 확인한다.
  */
 public final class TestRuleSettings {
 
