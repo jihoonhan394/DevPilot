@@ -136,19 +136,19 @@ public class ReviewItem implements Persistable<UUID> {
     }
 
     /**
-     * AI 출처 카드 (러버덕 gap, docs/05 §9.8): {@code origin = AI_GENERATED}, {@code review_type =
-     * EXPLAIN}, {@code interval_days = 1}, {@code status = ACTIVE}. 가드를 통과한 값만 넣는다.
+     * 생성 카드 (러버덕 gap docs/05 §9.8, challenge 실패 docs/06 §8.3, 수동 생성 docs/05 §11.5): {@code
+     * interval_days = 1}, {@code status = ACTIVE}, 첫 due는 호출자가 계산한다. 가드를 통과한 값만 넣는다.
      */
     public static ReviewItem fromGap(GapValues values, Instant dueAt, Instant now) {
         ReviewItem item = new ReviewItem();
         item.id = UUID.randomUUID();
         item.userId = Objects.requireNonNull(values.userId(), "userId");
         item.skillId = Objects.requireNonNull(values.skillId(), "skillId");
-        item.origin = ContentOrigin.AI_GENERATED;
+        item.origin = Objects.requireNonNull(values.origin(), "origin");
         item.sourceType = Objects.requireNonNull(values.sourceType(), "sourceType");
         item.sourceId = values.sourceId();
         item.conceptKey = Objects.requireNonNull(values.conceptKey(), "conceptKey");
-        item.reviewType = ReviewType.EXPLAIN;
+        item.reviewType = Objects.requireNonNull(values.reviewType(), "reviewType");
         item.prompt = Objects.requireNonNull(values.prompt(), "prompt");
         item.expectedAnswer = Objects.requireNonNull(values.expectedAnswer(), "expectedAnswer");
         item.rubric = List.copyOf(values.rubric());
@@ -208,13 +208,15 @@ public class ReviewItem implements Persistable<UUID> {
         return true;
     }
 
-    /** AI 출처 카드 값 (docs/05 §9.8). */
+    /** 생성 카드 값 (docs/05 §9.8, docs/06 §8.3, docs/05 §11.5). */
     public record GapValues(
             UUID userId,
             UUID skillId,
+            ContentOrigin origin,
             ReviewItemSourceType sourceType,
             @Nullable UUID sourceId,
             String conceptKey,
+            ReviewType reviewType,
             String prompt,
             String expectedAnswer,
             List<RubricItem> rubric) {
@@ -222,6 +224,61 @@ public class ReviewItem implements Persistable<UUID> {
         public GapValues {
             rubric = List.copyOf(rubric);
         }
+    }
+
+    /**
+     * 사용자 상태 전이 (docs/04 §4.5, docs/05 §11.6). 같은 값이면 no-op이고, 표에 없는 전이는 {@code
+     * INVALID_STATE_TRANSITION}이다.
+     *
+     * @param reactivatedDueAt {@code SUSPENDED → ACTIVE}에서 쓸 다음 plan-day 시작
+     */
+    public void changeStatus(ReviewItemStatus target, Instant reactivatedDueAt) {
+        if (status == target) {
+            return;
+        }
+        boolean allowed =
+                switch (target) {
+                    case SUSPENDED -> status == ReviewItemStatus.ACTIVE;
+                    case ACTIVE -> status == ReviewItemStatus.SUSPENDED;
+                    case ARCHIVED ->
+                            status == ReviewItemStatus.ACTIVE
+                                    || status == ReviewItemStatus.SUSPENDED;
+                };
+        if (!allowed) {
+            throw new ConflictException(
+                    ErrorCode.INVALID_STATE_TRANSITION,
+                    "review item cannot move from " + status + " to " + target);
+        }
+        if (target == ReviewItemStatus.ACTIVE) {
+            this.dueAt = Objects.requireNonNull(reactivatedDueAt, "reactivatedDueAt");
+            this.consecutiveFailures = 0;
+        }
+        this.status = target;
+    }
+
+    /**
+     * 문항 수정 (docs/05 §11.6). {@code ARCHIVED} 카드는 고칠 수 없고, variant가 만들어지는 중이면 거절한다. variant가
+     * 있으면 비운다.
+     */
+    public void editQuestion(@Nullable String prompt, @Nullable String expectedAnswer) {
+        if (prompt == null && expectedAnswer == null) {
+            return;
+        }
+        if (status == ReviewItemStatus.ARCHIVED) {
+            throw new ConflictException(
+                    ErrorCode.INVALID_STATE_TRANSITION, "an archived review item is read-only");
+        }
+        if (variantStatus == VariantStatus.PENDING || variantStatus == VariantStatus.RUNNING) {
+            throw new ConflictException(
+                    ErrorCode.INVALID_STATE_TRANSITION, "a variant is being generated");
+        }
+        if (prompt != null) {
+            this.prompt = prompt;
+        }
+        if (expectedAnswer != null) {
+            this.expectedAnswer = expectedAnswer;
+        }
+        this.variantStatus = VariantStatus.NONE;
     }
 
     /** 출제 문항이 변형인지 (variant는 Later라 항상 false). */

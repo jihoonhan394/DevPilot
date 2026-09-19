@@ -12,9 +12,14 @@ import com.devpilot.skill.domain.SkillCategory;
 import com.devpilot.skill.domain.TargetRole;
 import com.devpilot.today.domain.CuratedReading;
 import com.devpilot.today.domain.CuratedRepo;
+import com.devpilot.training.application.ChallengeSeedService;
+import com.devpilot.training.domain.ChallengePurpose;
+import com.devpilot.training.domain.ChallengeRubricItem;
+import com.devpilot.training.domain.RubricAxis;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -177,6 +182,53 @@ final class CatalogMapping {
                             Boolean.TRUE.equals(reading.get("retired"))));
         }
         return readings;
+    }
+
+    /** seed challenge (docs/19 §3.6). {@code hints}는 1~3단계만 있고 검증이 이미 끝났다. */
+    static List<ChallengeSeedService.ChallengeSeed> challenges(
+            List<Map<String, Object>> documents) {
+        List<ChallengeSeedService.ChallengeSeed> seeds = new ArrayList<>();
+        for (Map<String, Object> document : documents) {
+            for (Object value : RawYaml.asList(document.get("challenges"))) {
+                Map<String, Object> challenge = RawYaml.asMap(value);
+                seeds.add(challengeSeed(challenge));
+            }
+        }
+        return seeds;
+    }
+
+    private static ChallengeSeedService.ChallengeSeed challengeSeed(
+            Map<String, Object> challenge) {
+        List<ChallengeRubricItem> rubric = new ArrayList<>();
+        for (Object item : RawYaml.asList(challenge.get("rubric"))) {
+            Map<String, Object> criterion = RawYaml.asMap(item);
+            rubric.add(
+                    new ChallengeRubricItem(
+                            (String) criterion.get("id"),
+                            (String) criterion.get("criterion"),
+                            Math.toIntExact(RawYaml.longValue(criterion.get("weightBp"))),
+                            RubricAxis.valueOf((String) criterion.get("axis"))));
+        }
+        Map<String, Object> rawHints = RawYaml.asMap(challenge.get("hints"));
+        Map<String, String> hints = new LinkedHashMap<>();
+        rawHints.forEach((key, hint) -> hints.put(key, String.valueOf(hint)));
+        Object minutes = challenge.get("estimatedMinutes");
+        return new ChallengeSeedService.ChallengeSeed(
+                (String) challenge.get("seedKey"),
+                ChallengePurpose.valueOf((String) challenge.get("purpose")),
+                Math.toIntExact(RawYaml.longValue(challenge.get("difficulty"))),
+                Boolean.TRUE.equals(challenge.get("isTransfer")),
+                strings(challenge.get("skills")),
+                (String) challenge.get("title"),
+                minutes == null ? null : Math.toIntExact(RawYaml.longValue(minutes)),
+                (String) challenge.get("scenario"),
+                (String) challenge.get("prompt"),
+                strings(challenge.get("constraints")),
+                strings(challenge.get("expectedConcepts")),
+                rubric,
+                strings(challenge.get("commonMistakes")),
+                strings(challenge.get("transferTargets")),
+                hints);
     }
 
     private static List<String> strings(Object value) {

@@ -22,6 +22,23 @@ public interface RubberDuckSessionRepository extends JpaRepository<RubberDuckSes
     boolean existsByUserIdAndTargetTypeAndTargetIdAndStatus(
             UUID userId, RubberDuckTargetType targetType, UUID targetId, RubberDuckStatus status);
 
+    /**
+     * HL-2 예외 (docs/06 §9.5, docs/05 §10.8 3단계): 이 대상에 턴이 1개 이상인 세션이 있는가. 상태는 보지 않는다 — 턴 자체가
+     * 자기 설명이다.
+     */
+    @Query(
+            """
+            select count(s) > 0 from RubberDuckSession s
+             where s.userId = :userId
+               and s.targetType = :targetType
+               and s.targetId = :targetId
+               and s.turnCount > 0
+            """)
+    boolean existsWithTurns(
+            @Param("userId") UUID userId,
+            @Param("targetType") RubberDuckTargetType targetType,
+            @Param("targetId") UUID targetId);
+
     /** 방치 세션이 있는 사용자 (docs/03 §6 {@code StaleRubberDuckJob}). */
     @Query(
             """

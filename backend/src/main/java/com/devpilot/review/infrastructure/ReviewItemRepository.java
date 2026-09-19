@@ -2,10 +2,14 @@ package com.devpilot.review.infrastructure;
 
 import com.devpilot.review.domain.ReviewItem;
 import com.devpilot.review.domain.ReviewItemSourceType;
+import com.devpilot.review.domain.ReviewItemStatus;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -44,4 +48,43 @@ public interface ReviewItemRepository extends JpaRepository<ReviewItem, UUID> {
             @Param("userId") UUID userId, @Param("sourceType") ReviewItemSourceType sourceType);
 
     long countByUserId(UUID userId);
+
+    /** 여러 개념 키의 카드 (docs/05 §10.6 {@code reviewScheduled}). */
+    @Query(
+            "select i from ReviewItem i where i.userId = :userId and i.conceptKey in :conceptKeys")
+    List<ReviewItem> findByConceptKeys(
+            @Param("userId") UUID userId, @Param("conceptKeys") Collection<String> conceptKeys);
+
+    /** {@code GET /review-items} 첫 페이지: {@code dueAt} ASC, {@code id} ASC (docs/05 §11.4). */
+    @Query(
+            """
+            select i from ReviewItem i
+             where i.userId = :userId
+               and (:skillId is null or i.skillId = :skillId)
+               and (:status is null or i.status = :status)
+             order by i.dueAt asc, i.id asc
+            """)
+    List<ReviewItem> findItemPage(
+            @Param("userId") UUID userId,
+            @Param("skillId") @Nullable UUID skillId,
+            @Param("status") @Nullable ReviewItemStatus status,
+            Limit limit);
+
+    /** {@code GET /review-items} 다음 페이지 (cursor 이후). */
+    @Query(
+            """
+            select i from ReviewItem i
+             where i.userId = :userId
+               and (:skillId is null or i.skillId = :skillId)
+               and (:status is null or i.status = :status)
+               and (i.dueAt > :dueAt or (i.dueAt = :dueAt and i.id > :id))
+             order by i.dueAt asc, i.id asc
+            """)
+    List<ReviewItem> findItemPageAfter(
+            @Param("userId") UUID userId,
+            @Param("skillId") @Nullable UUID skillId,
+            @Param("status") @Nullable ReviewItemStatus status,
+            @Param("dueAt") Instant dueAt,
+            @Param("id") UUID id,
+            Limit limit);
 }

@@ -1,7 +1,10 @@
 package com.devpilot.review.application;
 
 import com.devpilot.common.config.DevPilotProperties;
+import com.devpilot.common.security.CurrentUser;
 import com.devpilot.common.time.PlanDayCalculator;
+import com.devpilot.common.web.CursorCodec;
+import com.devpilot.common.web.CursorPage;
 import com.devpilot.learning.application.LearningSessionQueryService;
 import com.devpilot.plan.application.PlanQueryService;
 import com.devpilot.review.application.DueReviewsView.DueReviewItemView;
@@ -10,25 +13,30 @@ import com.devpilot.review.domain.DueReviewSelector;
 import com.devpilot.review.domain.DueReviewSelector.Candidate;
 import com.devpilot.review.domain.DueReviewSelector.Selection;
 import com.devpilot.review.domain.ReviewItem;
+import com.devpilot.review.domain.ReviewItemStatus;
 import com.devpilot.review.domain.ReviewRating;
 import com.devpilot.review.infrastructure.ReviewAnswerRepository;
 import com.devpilot.review.infrastructure.ReviewItemRepository;
 import com.devpilot.skill.application.SkillCatalogQueryService;
 import com.devpilot.skill.application.SkillDetailView;
+import com.devpilot.skill.application.SkillRef;
 import com.devpilot.skill.application.SkillTargetView;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +53,7 @@ public class ReviewQueryService {
     private final SkillCatalogQueryService skillCatalogQueryService;
     private final PlanQueryService planQueryService;
     private final LearningSessionQueryService learningSessionQueryService;
+    private final CursorCodec cursorCodec;
     private final Clock clock;
     private final int maxPerDay;
     private final int comebackMaxPerDay;
@@ -56,6 +65,7 @@ public class ReviewQueryService {
             SkillCatalogQueryService skillCatalogQueryService,
             PlanQueryService planQueryService,
             LearningSessionQueryService learningSessionQueryService,
+            CursorCodec cursorCodec,
             Clock clock,
             DevPilotProperties properties) {
         this.reviewItemRepository = reviewItemRepository;
@@ -63,6 +73,7 @@ public class ReviewQueryService {
         this.skillCatalogQueryService = skillCatalogQueryService;
         this.planQueryService = planQueryService;
         this.learningSessionQueryService = learningSessionQueryService;
+        this.cursorCodec = cursorCodec;
         this.clock = clock;
         this.maxPerDay = properties.review().maxPerDay();
         this.comebackMaxPerDay = properties.review().comebackMaxPerDay();
@@ -123,6 +134,67 @@ public class ReviewQueryService {
         return reviewItemRepository
                 .findByIdAndUserId(reviewItemId, userId)
                 .map(item -> new ReviewItemRef(item.getId(), item.getSkillId(), item.getPrompt()));
+    }
+
+    /** {@code GET /review-items} (docs/05 §11.4): {@code dueAt} ASC, {@code id} ASC. */
+    public CursorPage<ReviewItemView> listItems(
+            CurrentUser user,
+            @Nullable UUID skillId,
+            @Nullable ReviewItemStatus status,
+            int limit,
+            @Nullable String cursor) {
+        UUID userId = user.userId();
+        CursorCodec.Position<Instant> position = cursorCodec.decodeInstant(cursor);
+        Limit fetch = Limit.of(limit + 1);
+        List<ReviewItem> items =
+                position == null
+                        ? reviewItemRepository.findItemPage(userId, skillId, status, fetch)
+                        : reviewItemRepository.findItemPageAfter(
+                                userId, skillId, status, position.sortKey(), position.id(), fetch);
+        boolean hasNext = items.size() > limit;
+        List<ReviewItem> page = hasNext ? items.subList(0, limit) : items;
+        String nextCursor = null;
+        if (hasNext && !page.isEmpty()) {
+            ReviewItem last = page.get(page.size() - 1);
+            nextCursor = cursorCodec.encode(last.getDueAt(), last.getId());
+        }
+        return new CursorPage<>(
+                page.stream()
+                        .map(item -> view(item, user.zoneId(), user.dayStartHour()))
+                        .toList(),
+                nextCursor);
+    }
+
+    /** 카드 1장의 응답 view (docs/05 §11.1). */
+    public ReviewItemView view(ReviewItem item, ZoneId zone, int dayStartHour) {
+        SkillRef skill =
+                skillCatalogQueryService
+                        .findRefs(List.of(item.getSkillId()))
+                        .get(item.getSkillId());
+        return ReviewItemView.of(
+                item,
+                Objects.requireNonNull(skill, "review item skill"),
+                PlanDayCalculator.planDate(item.getDueAt(), zone, dayStartHour));
+    }
+
+    /**
+     * 개념 키 → 카드 id·skill·due (docs/05 §10.6 {@code reviewScheduled}). 없는 키는 map에 없다.
+     */
+    public Map<String, ScheduledCardRef> findByConceptKeys(
+            UUID userId, Collection<String> conceptKeys, ZoneId zone, int dayStartHour) {
+        if (conceptKeys.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, ScheduledCardRef> refs = new HashMap<>();
+        for (ReviewItem item : reviewItemRepository.findByConceptKeys(userId, conceptKeys)) {
+            refs.put(
+                    item.getConceptKey(),
+                    new ScheduledCardRef(
+                            item.getId(),
+                            item.getSkillId(),
+                            PlanDayCalculator.planDate(item.getDueAt(), zone, dayStartHour)));
+        }
+        return Map.copyOf(refs);
     }
 
     /** 복습 상한 (docs/06 §5.6 첫 줄). */
@@ -199,6 +271,9 @@ public class ReviewQueryService {
 
     /** 러버덕 대상 요약 (docs/05 §9.5). */
     public record ReviewItemRef(UUID id, UUID skillId, String prompt) {}
+
+    /** challenge 평가로 만들어진 카드 (docs/06 §8.3, docs/05 §10.6). */
+    public record ScheduledCardRef(UUID reviewItemId, UUID skillId, LocalDate dueDate) {}
 
     /**
      * 오늘 due 집계.

@@ -1,6 +1,7 @@
 package com.devpilot.testsupport;
 
 import com.devpilot.learning.domain.ComebackModePolicy;
+import com.devpilot.learning.domain.RubricScorer;
 import com.devpilot.plan.domain.DeadlineRiskEvaluator;
 import com.devpilot.plan.domain.StudyBudgetCalculator;
 import com.devpilot.review.domain.RuleBasedV1Scheduler;
@@ -43,6 +44,11 @@ public final class TestRuleSettings {
 
     public static ReasonTemplates.Settings reasons() {
         return new ReasonTemplates.Settings(700_000, 400_000);
+    }
+
+    /** docs/06 §8.1 coverage 경계 (CORRECT 8000bp, PARTIAL 4000bp). */
+    public static RubricScorer.Settings rubricScorer() {
+        return new RubricScorer.Settings(8_000, 4_000);
     }
 
     public static RuleBasedV1Scheduler.Settings review() {

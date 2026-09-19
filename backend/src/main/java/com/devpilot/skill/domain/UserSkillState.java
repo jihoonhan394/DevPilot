@@ -11,6 +11,8 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import jakarta.persistence.Version;
 import java.time.Instant;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import org.jspecify.annotations.NonNull;
@@ -56,6 +58,18 @@ public class UserSkillState implements Persistable<UUID> {
     @Column(name = "self_assessment_active", nullable = false)
     private boolean selfAssessmentActive;
 
+    @Column(name = "knowledge_changed_at")
+    private @Nullable Instant knowledgeChangedAt;
+
+    @Column(name = "implementation_changed_at")
+    private @Nullable Instant implementationChangedAt;
+
+    @Column(name = "explanation_changed_at")
+    private @Nullable Instant explanationChangedAt;
+
+    @Column(name = "debugging_changed_at")
+    private @Nullable Instant debuggingChangedAt;
+
     @Column(name = "evidence_count", nullable = false)
     private int evidenceCount;
 
@@ -91,6 +105,75 @@ public class UserSkillState implements Persistable<UUID> {
         state.selfAssessedLevel = selfAssessedLevel == null ? null : selfAssessedLevel.shortValue();
         state.selfAssessmentActive = true;
         return state;
+    }
+
+    /**
+     * 규칙이 만드는 빈 행 (docs/06 §7.1 끝): 레벨 (0,0,0,0), 자기평가 없음, {@code self_assessment_active = true}.
+     */
+    public static UserSkillState forRules(UUID userId, UUID skillId) {
+        UserSkillState state = new UserSkillState(userId, skillId);
+        state.selfAssessmentActive = true;
+        return state;
+    }
+
+    /**
+     * 레벨 변경 (I-12: {@code SkillStateUpdater}만 부른다, ARCH-11). {@code *_changed_at}을 함께 갱신해 축별
+     * cooldown의 기준으로 쓴다(docs/06 §7.1 4단계).
+     */
+    public void applyLevelChange(SkillAxis axis, int toLevel, Instant changedAt) {
+        if (toLevel < 0 || toLevel > 5) {
+            throw new IllegalArgumentException("level must be 0..5");
+        }
+        short level = (short) toLevel;
+        switch (axis) {
+            case KNOWLEDGE -> {
+                this.knowledgeLevel = level;
+                this.knowledgeChangedAt = changedAt;
+            }
+            case IMPLEMENTATION -> {
+                this.implementationLevel = level;
+                this.implementationChangedAt = changedAt;
+            }
+            case EXPLANATION -> {
+                this.explanationLevel = level;
+                this.explanationChangedAt = changedAt;
+            }
+            case DEBUGGING -> {
+                this.debuggingLevel = level;
+                this.debuggingChangedAt = changedAt;
+            }
+        }
+    }
+
+    /** 부정적 증거가 나오면 자기평가를 더 쓰지 않는다 (docs/06 §7.3·§7.4·§7.5). */
+    public void deactivateSelfAssessment() {
+        this.selfAssessmentActive = false;
+    }
+
+    /** 규칙 실행마다 갱신하는 집계 (docs/06 §7.1). */
+    public void refreshEvidence(@Nullable Instant lastPracticedAt, int evidenceCount) {
+        if (lastPracticedAt != null
+                && (this.lastPracticedAt == null || lastPracticedAt.isAfter(this.lastPracticedAt))) {
+            this.lastPracticedAt = lastPracticedAt;
+        }
+        this.evidenceCount = evidenceCount;
+    }
+
+    /** 축별 마지막 변경 시각 (cooldown 입력). 값이 없는 축은 map에 없다. */
+    public Map<SkillAxis, Instant> changedAtByAxis() {
+        Map<SkillAxis, Instant> changed = new EnumMap<>(SkillAxis.class);
+        putIfPresent(changed, SkillAxis.KNOWLEDGE, knowledgeChangedAt);
+        putIfPresent(changed, SkillAxis.IMPLEMENTATION, implementationChangedAt);
+        putIfPresent(changed, SkillAxis.EXPLANATION, explanationChangedAt);
+        putIfPresent(changed, SkillAxis.DEBUGGING, debuggingChangedAt);
+        return Map.copyOf(changed);
+    }
+
+    private static void putIfPresent(
+            Map<SkillAxis, Instant> target, SkillAxis axis, @Nullable Instant value) {
+        if (value != null) {
+            target.put(axis, value);
+        }
     }
 
     @Override

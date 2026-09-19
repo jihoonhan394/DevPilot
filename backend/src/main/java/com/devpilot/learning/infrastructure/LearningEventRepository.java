@@ -4,9 +4,11 @@ import com.devpilot.learning.domain.LearningEvent;
 import com.devpilot.learning.domain.LearningEventType;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -45,4 +47,39 @@ public interface LearningEventRepository extends JpaRepository<LearningEvent, UU
     /** 사용자의 이벤트 (occurred_at DESC). 테스트·집계용. */
     List<LearningEvent> findByUserIdAndEventTypeOrderByOccurredAtDesc(
             UUID userId, LearningEventType eventType);
+
+    /**
+     * skill 레벨 규칙 입력 (docs/06 §7.1): 사용자·skill의 최근 {@code rule-window-days} 이벤트 중 무효화되지 않은 것
+     * ({@code idx_learning_event_user_skill_time}). 최신순.
+     */
+    @Query(
+            """
+            select e from LearningEvent e
+             where e.userId = :userId and e.skillId = :skillId
+               and e.occurredAt >= :since and e.invalidatedAt is null
+             order by e.occurredAt desc, e.id desc
+            """)
+    List<LearningEvent> findRecentForSkill(
+            @Param("userId") UUID userId,
+            @Param("skillId") UUID skillId,
+            @Param("since") Instant since);
+
+    /** 이 대상의 가장 최근 이벤트 id (docs/05 §10.6 {@code evidenceSourceEventId}). */
+    @Query(
+            """
+            select e.id from LearningEvent e
+             where e.userId = :userId and e.eventType = :eventType and e.sourceId = :sourceId
+               and e.invalidatedAt is null
+             order by e.occurredAt desc, e.id desc
+            """)
+    List<UUID> findEventIdsForSource(
+            @Param("userId") UUID userId,
+            @Param("eventType") LearningEventType eventType,
+            @Param("sourceId") UUID sourceId,
+            Limit limit);
+
+    /** 근거 이벤트 요약 (docs/05 §6.3). 순서는 호출자가 맞춘다. */
+    @Query("select e from LearningEvent e where e.userId = :userId and e.id in :ids")
+    List<LearningEvent> findAllForUser(
+            @Param("userId") UUID userId, @Param("ids") Collection<UUID> ids);
 }

@@ -189,6 +189,8 @@ devpilot:
     default-target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }   # 06 §13 target 없을 때
   training:
     max-submissions-per-attempt: 5
+    correct-coverage: 0.80         # 06 §8.1 evaluatedOutcome CORRECT 경계 (8000bp)
+    partial-coverage: 0.40         # 06 §8.1 evaluatedOutcome PARTIAL 경계 (4000bp)
   coach:
     max-content-bytes: 30000
     max-content-lines: 1000
@@ -200,7 +202,7 @@ devpilot:
     idempotency-ttl: 24h
   content:
     seed-on-startup: true
-    seed-challenges: false         # S1~S2 빌드는 false (challenge upsert는 S3 training 모듈부터, docs/04 §9)
+    seed-challenges: true          # seed challenge upsert (docs/04 §9 5단계)
     location: classpath:content/
   ai:
     provider: ${DEVPILOT_AI_PROVIDER:deepseek}          # deepseek | fake | disabled

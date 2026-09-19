@@ -1,5 +1,6 @@
 package com.devpilot.rubberduck.application;
 
+import com.devpilot.common.domain.ContentOrigin;
 import com.devpilot.integration.ai.api.output.RubberDuckGap;
 import com.devpilot.integration.ai.api.output.RubberDuckSummaryOutput;
 import com.devpilot.learning.application.LearningEventQueryService;
@@ -12,6 +13,7 @@ import com.devpilot.review.application.ReviewItemService;
 import com.devpilot.review.application.ReviewItemService.NewReviewItem;
 import com.devpilot.review.application.ReviewItemService.UpsertResult;
 import com.devpilot.review.domain.ReviewItemSourceType;
+import com.devpilot.review.domain.ReviewType;
 import com.devpilot.review.domain.RubricItem;
 import com.devpilot.rubberduck.domain.RubberDuckSession;
 import com.devpilot.rubberduck.domain.RubberDuckSummary;
@@ -91,9 +93,11 @@ class RubberDuckSummaryApplier {
                         new NewReviewItem(
                                 session.getUserId(),
                                 skillId,
+                                ContentOrigin.AI_GENERATED,
                                 ReviewItemSourceType.RUBBER_DUCK,
                                 session.getId(),
                                 gap.conceptKey(),
+                                ReviewType.EXPLAIN,
                                 gap.reviewQuestion(),
                                 expectedAnswer(gap),
                                 List.of(new RubricItem(RUBRIC_ID, gap.whatWasMissed())))));

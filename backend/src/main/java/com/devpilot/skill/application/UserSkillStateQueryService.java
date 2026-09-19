@@ -6,6 +6,7 @@ import com.devpilot.skill.domain.PlanningLevelPolicy;
 import com.devpilot.skill.domain.UserSkillState;
 import com.devpilot.skill.infrastructure.UserSkillStateRepository;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -65,6 +66,20 @@ public class UserSkillStateQueryService {
                                                         state.getSelfAssessedLevel(),
                                                         state.isSelfAssessmentActive()),
                                                 state.getLastPracticedAt())));
+    }
+
+    /**
+     * skill id → 자기평가 레벨 (docs/06 §7.4 {@code claimedLevel}). 자기평가가 없는 skill은 map에 없다.
+     */
+    public Map<UUID, Integer> selfAssessedLevels(UUID userId) {
+        Map<UUID, Integer> levels = new HashMap<>();
+        for (UserSkillState state : userSkillStateRepository.findByUserId(userId)) {
+            Integer level = state.getSelfAssessedLevel();
+            if (level != null) {
+                levels.put(state.getSkillId(), level);
+            }
+        }
+        return Map.copyOf(levels);
     }
 
     /**

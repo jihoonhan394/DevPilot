@@ -40,7 +40,36 @@ public record DevPilotProperties(
         @Valid @NotNull Content content,
         @Valid @NotNull Ai ai,
         @Valid @NotNull Rubberduck rubberduck,
+        @Valid @NotNull Training training,
         @Valid @NotNull Coach coach) {
+
+    /**
+     * training 설정 (docs/03 §9 {@code training}). coverage 경계는 docs/06 §8.1이고 기동 시 bp 정수로 바뀐다(N-6).
+     */
+    public record Training(
+            @Positive int maxSubmissionsPerAttempt,
+            @NotNull BigDecimal correctCoverage,
+            @NotNull BigDecimal partialCoverage) {
+
+        public Training {
+            int correct = requireBasisPoints(correctCoverage, "training.correct-coverage");
+            int partial = requireBasisPoints(partialCoverage, "training.partial-coverage");
+            if (partial > correct) {
+                throw new IllegalArgumentException(
+                        "devpilot.training.partial-coverage must not exceed correct-coverage");
+            }
+        }
+
+        /** CORRECT 경계 bp (docs/06 §8.1). */
+        public int correctCoverageBp() {
+            return FixedPointMath.toBasisPoints(correctCoverage);
+        }
+
+        /** PARTIAL 경계 bp (docs/06 §8.1). */
+        public int partialCoverageBp() {
+            return FixedPointMath.toBasisPoints(partialCoverage);
+        }
+    }
 
     /**
      * coach 입력 한도와 finding 수 상한 (docs/03 §9 {@code coach}). {@code maxFindings}는 {@code

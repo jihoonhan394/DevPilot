@@ -5,6 +5,7 @@ import com.devpilot.content.domain.RawContent;
 import com.devpilot.content.infrastructure.YamlContentReader;
 import com.devpilot.review.application.SeedCardAssignmentService;
 import com.devpilot.skill.application.SkillCatalogSeedService;
+import com.devpilot.training.application.ChallengeSeedService;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +22,8 @@ import org.springframework.stereotype.Component;
  *       로그.
  *   <li>{@code catalogVersion < DB 버전}이면 적재하지 않고 WARN, 메모리 등록만 한다(이전 이미지로 롤백한 경우).
  *   <li>skill·prerequisite·role target upsert(한 트랜잭션). 사라진 skill은 {@code active = false}.
- *   <li>challenge upsert는 S3(training 모듈)부터다. 이 빌드는 {@code seed-challenges}와 무관하게 건너뛴다.
+ *   <li>{@code seed-challenges = true}면 seed challenge를 upsert한다({@link ChallengeSeedService}).
+ *       구조가 바뀐 seed는 기동 실패다.
  *   <li>{@link ContentRegistration}이 plan template·review card·curated reading(은퇴한 것 포함)을 메모리
  *       registry에 등록한다.
  *   <li>새 seed card를 기존 온보딩 완료 사용자에게 추가한다({@link SeedCardAssignmentService#backfillAll()},
@@ -38,6 +40,7 @@ public class ContentSeeder implements ApplicationRunner {
     private final SkillCatalogSeedService skillCatalogSeedService;
     private final ContentRegistration contentRegistration;
     private final SeedCardAssignmentService seedCardAssignmentService;
+    private final ChallengeSeedService challengeSeedService;
     private final DevPilotProperties.Content settings;
 
     ContentSeeder(
@@ -46,12 +49,14 @@ public class ContentSeeder implements ApplicationRunner {
             SkillCatalogSeedService skillCatalogSeedService,
             ContentRegistration contentRegistration,
             SeedCardAssignmentService seedCardAssignmentService,
+            ChallengeSeedService challengeSeedService,
             DevPilotProperties properties) {
         this.yamlContentReader = yamlContentReader;
         this.contentValidator = contentValidator;
         this.skillCatalogSeedService = skillCatalogSeedService;
         this.contentRegistration = contentRegistration;
         this.seedCardAssignmentService = seedCardAssignmentService;
+        this.challengeSeedService = challengeSeedService;
         this.settings = properties.content();
     }
 
@@ -100,10 +105,7 @@ public class ContentSeeder implements ApplicationRunner {
         } else {
             upsertCatalog(content, catalog, catalogVersion);
         }
-        log.info(
-                "CONTENT_CHALLENGE_SEED_SKIPPED challenge upsert starts with the training module"
-                        + " (S3), seedChallenges={}",
-                settings.seedChallenges());
+        seedChallenges(content, catalog);
         ContentRegistration.Registered registered = contentRegistration.register(content, catalog);
         int backfilled = seedCardAssignmentService.backfillAll();
         log.info(
@@ -116,6 +118,29 @@ public class ContentSeeder implements ApplicationRunner {
                 registered.readings(),
                 backfilled,
                 (System.nanoTime() - started) / 1_000_000);
+    }
+
+    /** challenge upsert (docs/04 §9 5단계). 꺼져 있으면 YAML을 검증만 한다. */
+    private void seedChallenges(RawContent content, Map<String, Object> catalog) {
+        if (!settings.seedChallenges()) {
+            log.info("CONTENT_CHALLENGE_SEED_SKIPPED devpilot.content.seed-challenges=false");
+            return;
+        }
+        ChallengeSeedService.SeedOutcome outcome =
+                challengeSeedService.upsert(
+                        CatalogMapping.challenges(
+                                ContentRegistration.documents(content, catalog, "challenges")));
+        if (outcome.rejected() > 0) {
+            challengeSeedService
+                    .rejectedSeedKeys()
+                    .forEach(key -> log.warn("CONTENT_CHALLENGE_REJECTED seedKey={}", key));
+        }
+        log.info(
+                "content challenges upserted created={} updated={} rejected={} retired={}",
+                outcome.created(),
+                outcome.updated(),
+                outcome.rejected(),
+                outcome.retired());
     }
 
     private void upsertCatalog(

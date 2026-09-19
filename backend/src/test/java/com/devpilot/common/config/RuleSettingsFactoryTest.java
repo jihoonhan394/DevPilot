@@ -10,6 +10,7 @@ import com.devpilot.testsupport.TestProperties;
 import com.devpilot.testsupport.TestRuleSettings;
 import com.devpilot.testsupport.UnitTest;
 import com.devpilot.today.application.TodayRuleSettings;
+import com.devpilot.training.application.TrainingRuleSettings;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -47,6 +48,12 @@ class RuleSettingsFactoryTest {
     @Test
     void shouldConvertReviewSchedulerSettings() {
         assertThat(ReviewRuleSettings.scheduler(properties)).isEqualTo(TestRuleSettings.review());
+    }
+
+    @Test
+    void shouldConvertRubricScorerSettings() {
+        assertThat(TrainingRuleSettings.rubricScorer(properties))
+                .isEqualTo(TestRuleSettings.rubricScorer());
     }
 
     @Test

@@ -24,6 +24,9 @@ public final class FieldErrorCodes {
     public static final String ACTUAL_MINUTES_EXCEEDS_ELAPSED = "ACTUAL_MINUTES_EXCEEDS_ELAPSED";
     public static final String DATE_RANGE_TOO_LONG = "DATE_RANGE_TOO_LONG";
 
+    /** 코드를 보냈는데 언어가 없다 (docs/05 §10.9 1단계). */
+    public static final String LANGUAGE_REQUIRED = "LANGUAGE_REQUIRED";
+
     /** Hibernate Validator {@code @URL}과 같은 code. URL 필드 도메인 검사(docs/07 §5.5)가 쓴다. */
     public static final String URL = "URL";
 

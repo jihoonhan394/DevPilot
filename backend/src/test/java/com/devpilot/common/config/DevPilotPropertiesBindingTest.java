@@ -36,7 +36,8 @@ class DevPilotPropertiesBindingTest {
                 .isEqualTo(Duration.ofMinutes(5));
         assertThat(properties.ai().provider()).isEqualTo("deepseek");
         assertThat(properties.ai().monthlyBudgetMicroUsd()).isEqualTo(3_000_000L);
-        assertThat(properties.content().seedChallenges()).isFalse();
+        assertThat(properties.content().seedChallenges()).isTrue();
+        assertThat(properties.training().maxSubmissionsPerAttempt()).isEqualTo(5);
         assertThat(
                         FixedPointMath.toBasisPoints(
                                 properties.planner().weights().practicalImportance()))
