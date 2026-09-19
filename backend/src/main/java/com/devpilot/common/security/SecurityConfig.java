@@ -4,7 +4,11 @@ import com.devpilot.common.config.DevPilotProperties;
 import com.devpilot.common.error.ErrorCode;
 import com.devpilot.common.error.ProblemResponseWriter;
 import com.devpilot.common.logging.UserRefCalculator;
+import com.devpilot.common.web.RateLimitFilter;
+import com.devpilot.common.web.TokenBucketRateLimiter;
 import jakarta.servlet.DispatcherType;
+import java.time.Clock;
+import java.time.Duration;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -42,7 +46,8 @@ public class SecurityConfig {
             Environment environment,
             ProblemResponseWriter problemResponseWriter,
             AuthenticatedUserResolver authenticatedUserResolver,
-            UserRefCalculator userRefCalculator) {
+            UserRefCalculator userRefCalculator,
+            Clock clock) {
         boolean devtoken = properties.security().authMode() == DevPilotProperties.AuthMode.DEVTOKEN;
         boolean local = environment.acceptsProfiles(Profiles.of("local"));
         AuthenticationEntryPoint entryPoint =
@@ -93,12 +98,26 @@ public class SecurityConfig {
                                         .authenticationEntryPoint(entryPoint)
                                         .accessDeniedHandler(accessDeniedHandler));
 
-        // 3-4 UserContextFilter: JWT 인증 직후 (docs/03 §4.1). RateLimitFilter(3-3)는 S2(BL-SEC-11)에 이
-        // 앞에 들어온다
+        // 3-3 RateLimitFilter → 3-4 UserContextFilter: JWT 인증 직후 (docs/03 §4.1, docs/07 §12.3)
+        DevPilotProperties.RateLimit rateLimit = properties.security().rateLimit();
+        http.addFilterAfter(
+                new RateLimitFilter(
+                        problemResponseWriter,
+                        new TokenBucketRateLimiter(
+                                rateLimit.requestsPerMinute(),
+                                Duration.ofMinutes(1),
+                                clock,
+                                TokenBucketRateLimiter.Limits.DEFAULT),
+                        new TokenBucketRateLimiter(
+                                rateLimit.devTokenPerHourPerIp(),
+                                Duration.ofHours(1),
+                                clock,
+                                TokenBucketRateLimiter.Limits.DEFAULT)),
+                BearerTokenAuthenticationFilter.class);
         http.addFilterAfter(
                 new UserContextFilter(
                         authenticatedUserResolver, problemResponseWriter, userRefCalculator),
-                BearerTokenAuthenticationFilter.class);
+                RateLimitFilter.class);
 
         List<String> origins = properties.web().corsAllowedOrigins();
         if (origins.isEmpty()) {

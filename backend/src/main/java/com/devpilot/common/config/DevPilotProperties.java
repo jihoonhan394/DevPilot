@@ -33,6 +33,7 @@ public record DevPilotProperties(
         @Valid @NotNull Time time,
         @Valid @NotNull Planner planner,
         @Valid @NotNull Budget budget,
+        @Valid @NotNull Review review,
         @Valid @NotNull Skill skill,
         @Valid @NotNull Privacy privacy,
         @Valid @NotNull Content content,
@@ -51,7 +52,8 @@ public record DevPilotProperties(
             List<String> allowedSubjects,
             @Positive int maxRequestBodyBytes,
             @NotNull Duration accountDeletionMaxTokenAge,
-            @Nullable String logHashKey) {
+            @Nullable String logHashKey,
+            @Valid @NotNull RateLimit rateLimit) {
 
         public Security {
             allowedEmails = normalize(allowedEmails, true);
@@ -69,6 +71,18 @@ public record DevPilotProperties(
                     .toList();
         }
     }
+
+    /**
+     * 요청 한도 (docs/07 §12.3, BL-SEC-11). 캘린더 피드 두 값은 피드 endpoint가 생기는 S5에 쓰고, 지금은 바인딩·검증만 한다.
+     *
+     * @param requestsPerMinute JWT {@code sub}당 (용량 = 이 값, 초당 보충 = 이 값 / 60)
+     * @param devTokenPerHourPerIp {@code POST /api/v1/dev/token} IP당 (docs/05 §1.4.5)
+     */
+    public record RateLimit(
+            @Positive int requestsPerMinute,
+            @Positive int calendarFeedPerHour,
+            @Positive int calendarInvalidTokenPerHourPerIp,
+            @Positive int devTokenPerHourPerIp) {}
 
     /** devtoken 모드 설정. {@code privateKeyPem}이 비면 기동 시 키를 만든다(prod는 필수). */
     public record Devtoken(
@@ -91,8 +105,8 @@ public record DevPilotProperties(
     public record Time(@NotNull ZoneId defaultZone, @Min(0) @Max(6) int defaultDayStartHour) {}
 
     /**
-     * planner 설정 (docs/06 §5). 규칙 클래스는 S2에 붙고, S1은 바인딩·검증만 한다: 가중치 합 = 10_000bp, 모든 소수 값이 bp/micro
-     * 정수로 떨어진다.
+     * planner 설정 (docs/06 §5). 가중치 합 = 10_000bp, 모든 소수 값이 bp/micro 정수로 떨어진다. 규칙 클래스용 정수 변환은 각 모듈의
+     * {@code *RuleSettings}가 한다.
      */
     public record Planner(
             @Valid @NotNull Weights weights,
@@ -230,6 +244,42 @@ public record DevPilotProperties(
                 throw new IllegalArgumentException(
                         "devpilot.budget.risk-thresholds must satisfy low-max < medium-max <"
                                 + " high-max");
+            }
+        }
+    }
+
+    /** 복습 간격을 늘리는 방식 (docs/06 §6.2 HARD 행). */
+    public enum HardStrategy {
+        MULTIPLY,
+        FIXED_2
+    }
+
+    /**
+     * 복습 설정 (docs/06 §6). 배율은 bp 정수로 떨어져야 하고, 간격 경계는 {@code minIntervalDays ≤ maxIntervalDays}다.
+     *
+     * @param variantAfterFailures {@code REVIEW_VARIANT}(Later)용. 바인딩만 한다
+     */
+    public record Review(
+            @Positive int maxPerDay,
+            @Positive int comebackMaxPerDay,
+            @Positive int minIntervalDays,
+            @Positive @Max(365) int maxIntervalDays,
+            @NotNull HardStrategy hardStrategy,
+            @NotNull BigDecimal hardMultiplier,
+            @NotNull BigDecimal goodMultiplier,
+            @NotNull BigDecimal easyMultiplier,
+            @Positive int goodMinDays,
+            @Positive int easyMinDays,
+            @Positive int variantAfterFailures,
+            @Positive int suspendAfterFailures) {
+
+        public Review {
+            requireBasisPoints(hardMultiplier, "review.hard-multiplier");
+            requireBasisPoints(goodMultiplier, "review.good-multiplier");
+            requireBasisPoints(easyMultiplier, "review.easy-multiplier");
+            if (minIntervalDays > maxIntervalDays) {
+                throw new IllegalArgumentException(
+                        "devpilot.review.min-interval-days must not exceed max-interval-days");
             }
         }
     }

@@ -49,6 +49,7 @@ public final class TestProperties {
                 base.time(),
                 base.planner(),
                 base.budget(),
+                base.review(),
                 base.skill(),
                 base.privacy(),
                 base.content(),

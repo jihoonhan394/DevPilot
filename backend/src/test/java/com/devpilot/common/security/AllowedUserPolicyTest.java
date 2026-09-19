@@ -23,7 +23,8 @@ class AllowedUserPolicyTest {
                                     List.of("00000000-0000-0000-0000-000000000009"),
                                     65536,
                                     Duration.ofMinutes(5),
-                                    null)));
+                                    null,
+                                    new DevPilotProperties.RateLimit(120, 60, 30, 30))));
 
     @Test
     void shouldAllowEmailCaseInsensitivelyWhenInAllowlist() {
