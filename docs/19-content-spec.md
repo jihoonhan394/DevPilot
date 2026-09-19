@@ -41,8 +41,8 @@ content/
 ├── challenges/
 │   ├── java.yaml  spring.yaml  database.yaml  testing-security.yaml   # PRACTICE 18개
 │   └── diagnostic.yaml                                                # DIAGNOSTIC 5개
-├── curated-sources.yaml             # curated source 10개
-├── curated-repos.yaml               # READ_CODE 저장소 3개 + reading 13개 (§3.8)
+├── curated-sources.yaml             # curated source 19개
+├── curated-repos.yaml               # READ_CODE 저장소 9개 + reading 41개(활성 36, 은퇴 5) (§3.8)
 └── tools/
     └── validate_content.py          # 구현 전 기준 검증기 (§4.3). 런타임에 복사하지 않는다
 ```
@@ -302,7 +302,7 @@ readings:
 | 질문 | 답이 이미 들어 있는 질문("왜 EAGER가 N+1을 일으킬까요?")을 쓰지 않는다. 사용자가 코드를 보고 스스로 판단할 여지를 남긴다. 40자 미만은 CV-86 오류다 |
 | 저장소당 개수 | 3~5개. 벗어나면 CV-87 WARN |
 | 라이선스 | `license`가 `UNSPECIFIED`인 저장소는 **경로·줄 번호·질문만** 적는다. 코드를 이 파일이나 문서에 옮겨 적지 않는다 |
-| 커버되지 않는 것 | 인증/로그인, 동시성·재고 차감, 대용량 조회 튜닝은 세 저장소로 덮이지 않는다. 읽기가 아니라 **직접 구현**과 기존 challenge 콘텐츠로 채운다(plan template의 milestone 2·6이 "읽기 없음"인 이유). 빈 곳을 채울 저장소·단위는 소스 점검(§8.5)에서 찾는다 |
+| 커버되지 않는 것 | 2026-09-19 점검 기준으로 조회 튜닝(인덱스·실행 계획), 오류 응답 설계(ProblemDetail), REST API 설계, Git 협업, EXPLANATION 카테고리는 reading이 없다. 읽기가 아니라 **직접 구현**, 기존 challenge 콘텐츠, 개념 읽기(curated source)로 채운다(milestone 6이 측정을 근거로 삼는 이유). 빈 곳을 채울 저장소·단위는 소스 점검(§8.5)에서 찾는다 |
 | 저장소·단위 교체 | 추가·교체·은퇴는 소스 점검(§8.5)에서 사용자와 정한 뒤에만 한다 |
 
 ### 3.9 적재 순서 (`ContentSeeder`, 한 트랜잭션)
@@ -479,6 +479,8 @@ Java 구현 전에는 이 스크립트가 기준이다. Java `ContentValidator`�
 
 2026-09-18 실행 결과 (catalogVersion 3): `skills=88 roleTargets=75 templates=1 cards=82 challenges=23 curatedSources=10 curatedRepos=3 readings=13 catalogVersion=3` / `result: PASS (errors=0, warnings=0)`. 결함을 넣은 복사본으로 검증기 자체를 확인했다.
 
+2026-09-19 실행 결과 (catalogVersion 5, 첫 소스 점검 반영 — §8.5 점검 기록): `skills=88 roleTargets=75 templates=1 cards=82 challenges=23 curatedSources=19 curatedRepos=9 readings=41 catalogVersion=5` / `result: PASS (errors=0, warnings=2)`. `readings`는 은퇴 단위 5개를 포함한다. WARN 2건은 CV-87(`petclinic` 활성 8개, `modular-monolith` 활성 7개)이고 사용자가 고른 단위 수가 권장 범위를 넘어서 난다.
+
 | 넣은 결함 | 보고된 규칙 |
 |---|---|
 | `JAVA.OOP`와 `JAVA.EXCEPTION` 상호 prerequisite | CV-17 (순환 경로 출력) |
@@ -497,6 +499,10 @@ Java 구현 전에는 이 스크립트가 기준이다. Java `ContentValidator`�
 | reading `question`을 7자로 줄임 | CV-86 |
 | reading key 중복 | CV-83 |
 | `pinnedCommit: null` | CV-82 (WARN) |
+| `retired: true` reading의 key를 `retired.readingKeys`에서 뺌 (2026-09-19) | CV-83 (1건) |
+| `retired.readingKeys`에 있는 key의 reading을 파일에서 지움 (2026-09-19) | CV-83 (1건, 위치 `catalog.yaml#retired.readingKeys`) |
+| `retired.readingKeys`에 있는 key의 reading에서 `retired: true`를 뺌 (2026-09-19) | CV-83 (1건) + 그 저장소 활성 수에 따른 CV-87 WARN |
+| 한 저장소의 활성 reading을 2개로 줄임 (2026-09-19) | CV-87 (WARN). 활성 0개인 `restbucks`는 WARN 없음 |
 
 ---
 
@@ -814,13 +820,21 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 5. catalogVersion +1 (§8.1), validate_content.py 실행, §11 체크리스트
 ```
 
-2026-09-18 확인한 커밋:
+확인한 커밋 (2026-09-19 첫 소스 점검 기준, §8.5 점검 기록):
 
-| repo | pinnedCommit | 확인 |
-|---|---|---|
-| `modulith` | `e9e003a6363e2793a0e5eebe320cb02816ed1e0c` | reading 4개의 path·lines를 체크아웃 사본에서 확인 |
-| `petclinic` | `818c4136ea971c21674525f9053de0d9c7ad8cfe` | reading 4개 확인 |
-| `restbucks` | `ad97ad03c367a69ff1de70c660be2731cbe7bc3d` | reading 5개 확인. 라이선스 명시가 없어 **코드를 옮겨 적지 않았다** |
+| repo | pinnedCommit | 기준 | 라이선스 | 확인 |
+|---|---|---|---|---|
+| `modulith` | `e9e003a6363e2793a0e5eebe320cb02816ed1e0c` | 2026-09-18 main | Apache-2.0 | reading 4개. 2026-09-19에 그 커밋의 파일로 path·lines를 다시 확인 |
+| `petclinic` | `818c4136ea971c21674525f9053de0d9c7ad8cfe` | main (2026-09-19에도 HEAD) | Apache-2.0 | 기존 reading 4개 + 새 4개. 고정 커밋을 올리지 않았다 |
+| `restbucks` | `ad97ad03c367a69ff1de70c660be2731cbe7bc3d` | 2026-09-18 main | UNSPECIFIED | reading 5개 모두 **은퇴**(2026-09-19). 좌표는 그대로 남고 조회만 된다. 라이선스 명시가 없어 코드를 옮겨 적지 않았다 |
+| `modular-monolith` | `2933f5f14481615e214ee7c35166b957cac4c6cc` | main HEAD | Apache-2.0 (LICENSE) | reading 7개 |
+| `jdk25` | `7b65d74bcbd7c3a0b4c1f5c5bd85e64aa2e51b4a` | 태그 `jdk-25.0.4.1+1` | GPL-2.0 + Classpath Exception | reading 5개. 파일 5개가 Temurin 25.0.4.1+1 설치본의 `lib/src.zip`과 같고, `jdk-25.0.4+1` 태그와도 같다 |
+| `spring-framework` | `82a6b40b9366ec181ededdad282b307ee5381a52` | 태그 `v7.0.9` (backend `gradle.lockfile`의 spring-tx·spring-aop) | Apache-2.0 | reading 3개. 파일 3개가 Maven Central sources jar와 같다 |
+| `hikaricp` | `80c46aee46a000af61d700a2bd144c9a3ff777af` | 태그 `HikariCP-7.0.2` (backend `gradle.lockfile`) | Apache-2.0 | reading 3개. 파일 3개가 Maven Central sources jar와 같다 |
+| `security-samples` | `2e3f349b9a33b1b4e3d212398ef14d6383c447db` | main HEAD | Apache-2.0 (LICENSE 파일 없음, 파일별 헤더) | reading 3개 |
+| `webgoat` | `872d6149d4ef29e4929c2f4eda279f7fbedc52e8` | main HEAD | GPL-2.0-or-later | reading 3개. 코드를 옮겨 적지 않았다 |
+
+모든 reading의 path·lines는 그 커밋의 파일을 받아 범위의 첫 줄과 끝 줄을 눈으로 확인했다(LN-1). JDK·Spring Framework·HikariCP는 IDE에서 의존성 소스(src.zip, sources jar)를 열어도 같은 줄이 보이므로 `cloneHint`가 IDE를 먼저 안내하고 clone은 대안으로 적는다(clone 명령도 그 커밋을 checkout한다, LN-2).
 
 ### 8.5 소스 점검 (`READ_CODE` 저장소·읽기 단위의 주기적 수동 점검)
 
@@ -830,7 +844,7 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 
 | 시점 | 이유 |
 |---|---|
-| **S3 구현 시작 직전 (첫 점검)** | `READ_CODE`는 S3에서 처음 제안된다(`BL-TDY-16`). 첫 제안 전에 현재 저장소 3개·단위 13개를 한 번 검토한다(`11` §3.5, `16` R-15) |
+| **S3 구현 시작 직전 (첫 점검)** | `READ_CODE`는 S3에서 처음 제안된다(`BL-TDY-16`). 첫 제안 전에 그때의 저장소 3개·단위 13개를 한 번 검토한다(`11` §3.5, `16` R-15). 2026-09-19에 했다(아래 점검 기록) |
 | 단계 회고마다 (`11` §2.2, `16` §4 S-8) | 쓰면서 쌓인 평가와 빈틈을 반영한다 |
 | 사용자가 요청할 때 | 예: 특정 기술의 읽을거리가 부족하다고 느낄 때 |
 
@@ -848,7 +862,7 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 
 | 기준 | 내용 |
 |---|---|
-| 라이선스 | OSI 승인 라이선스. **Apache-2.0·MIT를 우선**한다. 라이선스가 없는 저장소(`UNSPECIFIED`, 현재 `restbucks`)가 **먼저 교체 대상**이다. 그 밖의 OSI 라이선스(예: GPL 계열)는 읽기만 하고 코드를 옮겨 적지 않는다(§3.8 라이선스 규칙과 같은 취급) |
+| 라이선스 | OSI 승인 라이선스. **Apache-2.0·MIT를 우선**한다. 라이선스가 없는 저장소(`UNSPECIFIED`, 예: 2026-09-19에 교체한 `restbucks`)가 **먼저 교체 대상**이다. 그 밖의 OSI 라이선스(예: GPL 계열)는 읽기만 하고 코드를 옮겨 적지 않는다(§3.8 라이선스 규칙과 같은 취급) |
 | 유지 | 활발히 유지된다: 보관(archived) 상태가 아니고 최근 커밋이 있다 |
 | 스택 | Spring Boot·Java 버전이 DevPilot이 가르치는 스택(Spring Boot 4, Java 25 — `18` §1.1)과 가깝다 |
 | 크기 | 다룰 만하다: 한 단위를 `estimatedMinutes`(5~60분) 안에 읽을 수 있고, 저장소 구조를 짧은 `why`로 설명할 수 있다 |
@@ -872,7 +886,26 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
    - 그 커밋으로 체크아웃한 사본에서 해당 저장소의 **모든** `path`·`lines`를 눈으로 다시 확인한다(§8.4 LN-1·LN-3)
    - 은퇴는 §8.2대로 한다(`retired: true` + `retired.readingKeys`). 은퇴한 단위는 지난 과제를 위해 계속 조회된다
    - `python content/tools/validate_content.py` 통과, `catalogVersion` +1(§8.1), §11 체크리스트
-4. 점검 날짜, 입력 요약, 결정(받아들인 것과 받아들이지 않은 것)을 PR 설명에 적고, §8.4의 "확인한 커밋" 표를 갱신한다.
+4. 점검 날짜, 입력 요약, 결정(받아들인 것과 받아들이지 않은 것)을 PR 설명에 적고, §8.4의 "확인한 커밋" 표를 갱신한다. 같은 내용을 아래 **점검 기록**에 한 항목으로 남긴다.
+
+**점검 기록**
+
+2026-09-19 — 첫 점검 (S3 구현 시작 전, catalogVersion 4 → 5)
+
+| 항목 | 내용 |
+|---|---|
+| 입력 I-1 (빈틈) | 실사용 전이라 export가 없어 ③ "읽을 단위가 없는 skill"만 썼다. 점검 전 MUST 43개 중 reading이 있는 skill 17개, role target 75개 중 20개. 비어 있던 영역: 인증·세션, 보안(OWASP), 컬렉션·스트림·자원 해제, 트랜잭션·프록시 내부, 커넥션 풀 타임아웃, CI·Docker, 설정·로깅·null 처리 |
+| 입력 I-2 (평가) | 완료한 `READ_CODE`가 없다(S3 전) |
+| 입력 I-3 (저장소 상태) | 후보 저장소마다 라이선스 파일, 보관 여부, 마지막 커밋, Spring Boot·Java 버전, 테스트 유무를 확인했다. `restbucks`는 라이선스 명시가 없다 |
+| 결정 A (교체) | `restbucks` → `modular-monolith`(sivaprasadreddy/spring-modular-monolith, Apache-2.0, Boot 4.1, Java 25, 모듈 catalog·orders·inventory·users·notifications·config, Testcontainers·ArchitectureTests·ModularityTests·`compose.yml`·GitHub Actions 있음). reading 7개: 장바구니→주문 흐름, 재고 차감, 모듈 API 경계, 보안 설정, 구조 테스트, Testcontainers 설정, compose와 CI. `restbucks` reading 5개는 은퇴(`retired: true` + `retired.readingKeys`), 저장소 항목은 지난 과제 조회를 위해 남긴다 |
+| 결정 B (보안) | `security-samples`(spring-projects/spring-security-samples, Apache-2.0 — LICENSE 파일 없이 파일별 헤더): JWT 로그인(토큰 발급 + resource server), 메서드 보안, 세션 수 제한 3개. `webgoat`(WebGoat/WebGoat, GPL-2.0-or-later, Boot 4.1.1): SQL 인젝션(이어 붙인 조회 vs 바인딩), 반사형 XSS, 기능 수준 접근 제어 3개. cloneHint는 커밋 하나만 얕게 받고 lessons 폴더만 꺼낸다 |
+| 결정 C (큰 코드의 부분 읽기) | IDE에서 clone 없이 연다. `jdk25`(openjdk/jdk25u 태그 `jdk-25.0.4.1+1` — 사용자 JDK가 Temurin 25.0.4.1+1): HashMap put·resize/treeify, ArrayList grow, Collectors.groupingBy, Files.lines의 onClose 5개. `spring-framework`(v7.0.9 = backend lockfile): TransactionAspectSupport.invokeWithinTransaction, JdkDynamicAopProxy.invoke, CglibAopProxy의 DynamicAdvisedInterceptor 3개. `hikaricp`(7.0.2 = backend lockfile): HikariPool.getConnection, ProxyConnection.close, ConcurrentBag borrow/requite 3개(대기 타임아웃과 반납이 실제로 일어나는 곳이라 두 주제를 이어서 읽도록 셋으로 나눴다) |
+| 결정 D (petclinic 추가) | 고정 커밋 유지(main이 그대로). reading 4개: OwnerControllerTests의 검색 테스트, ClinicServiceTests의 제약 테스트, `maven-build.yml`(CI와 `docker-compose.yml`을 함께 따라감), `application.properties`와 프로필 파일 |
+| 개념 읽기 (curated source) | 9개 추가, 1개 재확인: SQL(PostgreSQL 16 외부 조인, WHERE와 HAVING), 인덱스(PostgreSQL 16 인덱스 쓰기 비용, 복합 인덱스 재확인), HTTP(RFC 9110 안전·멱등 메서드, MDN 상태 코드 분류), 로깅(Spring Boot 4.1 Logging), null 처리(`Optional`·`Objects` Java SE 25 API, JEP 358) |
+| 받아들이지 않음 | buckpal — 라이선스 없음. eventuate-tram 예제 — 라이선스가 분명하지 않고 인프라 부담이 크다. ddd-example-ecommerce — 2023년 이후 갱신이 없다. dddsample — 다음 점검 후보로 보류. OWASP WrongSecrets — 선택 항목이라 이번에는 건너뜀. Pro Git(`DEVOPS.GIT` 개념 읽기) — 호스트 `git-scm.com`이 `devpilot.ai.trusted-source-hosts`에 없어 CV-71을 통과하지 못한다. 넣으려면 `03` §9의 허용 목록을 먼저 바꿔야 한다 |
+| 결과 | 저장소 9개(활성 reading이 있는 저장소 8개), reading 41개(활성 36개, 은퇴 5개, 활성 합계 547분). reading이 있는 skill: MUST **17 → 34**/43, role target 전체 20 → 43/75. reading이 없는 MUST는 `DATABASE.SQL_BASICS`, `DATABASE.INDEX`, `SPRING.EXCEPTION_HANDLING`, `WEB_HTTP.REST_API_DESIGN`, `DEVOPS.GIT`, EXPLANATION 4개 — 앞의 셋은 개념 읽기(curated source)로 보완한다 |
+| 검증 | `python content/tools/validate_content.py` → ERROR 0, WARN 2(CV-87: `petclinic` 8개, `modular-monolith` 7개). 고른 단위 수가 권장 3~5를 넘은 것이라 받아들였고, 다음 점검에서 평가(`TOO_HARD`·`BORING`)를 보고 줄일 단위를 고른다 |
+| 다음 점검 후보 | 오류 응답(`modular-monolith`의 `OrdersExceptionHandler` — 예외 메시지를 그대로 보여 주는 500 처리), REST API 설계를 보여 줄 공개 예제, dddsample |
 
 ---
 
@@ -960,11 +993,11 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 
 ---
 
-## 12. 콘텐츠 인벤토리 (catalogVersion 3)
+## 12. 콘텐츠 인벤토리 (catalogVersion 5)
 
 ### 12.1 카테고리별 수량
 
-`--report` 출력(2026-09-18, catalogVersion 3). skills는 root 포함. challenge는 첫 번째 skill의 category로 센다. skill tree·role target·review card·challenge는 catalogVersion 2에서 바뀌지 않았고, **plan template과 curated repo/reading이 바뀌었다.**
+`--report` 출력(2026-09-19, catalogVersion 5). skills는 root 포함. challenge는 첫 번째 skill의 category로 센다. 아래 카테고리별 수량은 catalogVersion 2 이후 같다. catalogVersion 5(첫 소스 점검, §8.5 점검 기록)에서는 **curated source, curated repo/reading, plan template milestone 설명 문구**가 바뀌었다.
 
 | category | skills | MUST | SHOULD | LATER | cards | PRACTICE | DIAGNOSTIC |
 |---|---|---|---|---|---|---|---|
@@ -989,29 +1022,29 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 | review card 유형 | RECALL 41, EXPLAIN 22, BUG_SPOT 16, CHOICE 3 |
 | PRACTICE 난이도 | L1 2, L2 8, L3 6, L4 2 (isTransfer 2: `PRACTICE.SPRING.TRANSACTION.L4.001`, `PRACTICE.SECURITY.AUTHN_AUTHZ.L4.001`) |
 | plan template | `JAVA_BACKEND_DEFAULT`: milestone **9개** — PREPARATION 8 (weight 9200), CONSOLIDATION 1 (800). priority는 1~6 MUST / 7~9 SHOULD. 75개 non-root skill 전부가 정확히 한 milestone에 들어간다 (CV-35·CV-36) |
-| curated source | 10 (Oracle 2, Spring 4, PostgreSQL 2, OWASP 2) |
-| curated repo | **3** (`modulith`, `petclinic`, `restbucks`) — 셋 다 `pinnedCommit` 있음 (§8.4) |
-| reading | **13** (modulith 4, petclinic 4, restbucks 5), 합계 198분, 서로 다른 skill **20개**를 덮는다 |
+| curated source | 19 (Oracle 4, Spring 5, PostgreSQL 5, OWASP 2, IETF 1, MDN 1, OpenJDK 1) |
+| curated repo | **9** (`modulith`, `petclinic`, `restbucks`(은퇴 단위만), `modular-monolith`, `jdk25`, `spring-framework`, `hikaricp`, `security-samples`, `webgoat`) — 모두 `pinnedCommit` 있음 (§8.4) |
+| reading | **41** — 활성 36 (modulith 4, petclinic 8, modular-monolith 7, jdk25 5, spring-framework 3, hikaricp 3, security-samples 3, webgoat 3, 합계 547분), 은퇴 5 (restbucks). 활성 reading이 서로 다른 skill **43개**(MUST 34/43)를 덮는다 |
 | 온보딩 카드 분산 | 82장 ÷ 하루 5장 = 17 plan-day (`06` §6.3) |
 
 plan template milestone (2026-09-18 재작성 — "과목 순서"에서 "주문 시스템을 만드는 순서"로):
 
 | # | milestone | priority | phase | weightBp | skills | 읽기 |
 |---|---|---|---|---|---|---|
-| 1 | 기반 다지기 | MUST | PREPARATION | 1200 | 12 | `petclinic` 구조·테스트 |
-| 2 | 회원과 인증 | MUST | PREPARATION | 1200 | 9 | 없음 (직접 구현) |
-| 3 | 상품과 CRUD | MUST | PREPARATION | 1500 | 13 | `petclinic` Owner/Pet/Visit |
-| 4 | 주문 생성 | MUST | PREPARATION | 1500 | 7 | `restbucks` Order |
-| 5 | 취소와 환불 | MUST | PREPARATION | 1200 | 5 | `restbucks` payment |
-| 6 | 조회 성능 | MUST | PREPARATION | 1100 | 5 | 없음 (직접 측정) |
-| 7 | 구조 정리 | SHOULD | PREPARATION | 700 | 3 | `modulith` 전체 |
-| 8 | 배포와 운영 | SHOULD | PREPARATION | 800 | 6 | 없음 |
+| 1 | 기반 다지기 | MUST | PREPARATION | 1200 | 12 | `petclinic` 구조·테스트·설정, `modular-monolith` 모듈 API |
+| 2 | 회원과 인증 | MUST | PREPARATION | 1200 | 9 | `security-samples` 로그인·세션, `webgoat` 취약 코드, `modular-monolith` 보안 설정 |
+| 3 | 상품과 CRUD | MUST | PREPARATION | 1500 | 13 | `petclinic` Owner/Pet/Visit, `jdk25` 컬렉션 |
+| 4 | 주문 생성 | MUST | PREPARATION | 1500 | 7 | `modular-monolith` 재고 차감, `spring-framework` 트랜잭션·프록시, `modulith` 이벤트 |
+| 5 | 취소와 환불 | MUST | PREPARATION | 1200 | 5 | `hikaricp` 커넥션 대여·반납, `jdk25` 자원 해제, `modular-monolith` Testcontainers |
+| 6 | 조회 성능 | MUST | PREPARATION | 1100 | 5 | 직접 측정이 중심 (`petclinic` 로딩 설정, `jdk25` groupingBy) |
+| 7 | 구조 정리 | SHOULD | PREPARATION | 700 | 3 | `modulith` 전체, `modular-monolith` 구조 테스트 |
+| 8 | 배포와 운영 | SHOULD | PREPARATION | 800 | 6 | `petclinic`·`modular-monolith` CI·compose, `hikaricp` 타임아웃 |
 | 9 | 설명과 정리 | SHOULD | CONSOLIDATION | 800 | 15 | — |
 
 - 모든 MUST skill에 seed card가 1장 이상 있다(CV-48 WARN 0).
 - ALGORITHM, SYSTEM_DESIGN에는 seed card·challenge가 없다. 이 skill들의 task 제안은 READING/EXPLAIN으로 대체된다(`06` §5.3).
 - milestone priority(잘라내는 순서)와 skill priority(role target)는 **다른 축**이다. SHOULD milestone 8에도 MUST skill(`DEVOPS.DOCKER`, `DEVOPS.CI_GITHUB_ACTIONS`, `PRACTICAL_ENGINEERING.LOGGING`)이 들어 있다. risk 계산은 `plan_skill_target.priority`를 쓰므로(`06` §4.1) 모순이 아니다. 1~6을 MUST로 둔 것은 기한이 촉박할 때 7~9부터 잘라내기 위해서다.
-- reading이 덮는 skill은 20개(non-root 75개 중)다. 나머지 skill의 task 제안은 READ_CODE 후보가 비어 READING/PROJECT_TASK/EXPLAIN으로 내려간다(`06` §5.3). 인증·동시성·조회 튜닝은 읽을 공개 예제가 마땅치 않아 의도적으로 비워 둔 영역이다(§3.8 "커버되지 않는 것").
+- 활성 reading이 덮는 skill은 43개(non-root 75개 중, MUST 34/43)다. 나머지 skill의 task 제안은 READ_CODE 후보가 비어 READING/PROJECT_TASK/EXPLAIN으로 내려간다(`06` §5.3). 조회 튜닝(인덱스·실행 계획), 오류 응답, REST API 설계, Git, EXPLANATION은 reading이 없는 영역이다(§3.8 "커버되지 않는 것").
 
 ### 12.2 Budget 점검 (`06` §3·§4)
 
@@ -1026,7 +1059,7 @@ plan template milestone (2026-09-18 재작성 — "과목 순서"에서 "주문 
 
 해석: 자기평가 2(도움받아 가능) 수준의 사용자가 6개월을 잡으면 MEDIUM, 3개월이면 CRITICAL이 나와 SHOULD defer와 MUST 축소 제안(`06` §4.4)이 동작한다. 4주 사용 후 실제 학습 기록으로 step 값을 조정한다.
 
-### 12.3 Curated source 목록 (2026-09-17 확인)
+### 12.3 Curated source 목록 (2026-09-17 확인, 2026-09-19 추가)
 
 | id | 문서 |
 |---|---|
@@ -1037,9 +1070,18 @@ plan template milestone (2026-09-18 재작성 — "과목 순서"에서 "주문 
 | `CS-SPRING-TX-REQUIRES-NEW` | Spring Framework 7.0 Transaction Propagation |
 | `CS-SPRING-MVC-PROBLEM-DETAIL` | Spring Framework 7.0 Error Responses |
 | `CS-POSTGRESQL-TRANSACTION-ISOLATION` | PostgreSQL 16 §13.2 |
-| `CS-POSTGRESQL-MULTICOLUMN-INDEX` | PostgreSQL 16 §11.3 |
+| `CS-POSTGRESQL-MULTICOLUMN-INDEX` | PostgreSQL 16 §11.3 (2026-09-19 재확인) |
 | `CS-OWASP-SQL-INJECTION-PREVENTION` | OWASP SQL Injection Prevention Cheat Sheet |
 | `CS-OWASP-LOGGING-SENSITIVE-DATA` | OWASP Logging Cheat Sheet |
+| `CS-POSTGRESQL-OUTER-JOIN` | PostgreSQL 16 §7.2 Joined Tables (`DATABASE.SQL_BASICS`) |
+| `CS-POSTGRESQL-WHERE-VS-HAVING` | PostgreSQL 16 §2.7 Aggregate Functions (`DATABASE.SQL_BASICS`) |
+| `CS-POSTGRESQL-INDEX-WRITE-COST` | PostgreSQL 16 §11.1 Indexes Introduction (`DATABASE.INDEX`) |
+| `CS-RFC9110-SAFE-IDEMPOTENT-METHODS` | RFC 9110 §9.2.1·§9.2.2 (`WEB_HTTP.HTTP_BASICS`) |
+| `CS-MDN-HTTP-STATUS-CLASSES` | MDN HTTP response status codes (`WEB_HTTP.HTTP_BASICS`) |
+| `CS-SPRING-BOOT-LOGGING-DEFAULTS` | Spring Boot 4.1 Logging (`PRACTICAL_ENGINEERING.LOGGING`) |
+| `CS-JAVA-OPTIONAL-RETURN-TYPE` | `java.util.Optional` Java SE 25 API (`PRACTICAL_ENGINEERING.NULL_BOUNDARY`) |
+| `CS-JAVA-OBJECTS-REQUIRE-NON-NULL` | `java.util.Objects` Java SE 25 API (`PRACTICAL_ENGINEERING.NULL_BOUNDARY`) |
+| `CS-OPENJDK-JEP358-HELPFUL-NPE` | JEP 358 Helpful NullPointerExceptions (`PRACTICAL_ENGINEERING.NULL_BOUNDARY`) |
 
 ---
 

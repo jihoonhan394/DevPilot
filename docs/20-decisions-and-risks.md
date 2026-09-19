@@ -167,3 +167,7 @@ canonical 문서끼리 또는 canonical과 다른 v2 문서 사이에서 발견�
 - [x] 문서 3회차 교차 검토(약 90건)와 반영
 - [x] §3.2 DOC-01~DOC-10 문서 정합성 항목 반영 완료(2026-09-17)
 - [x] v3 학습 루프 설계 반영(DEC-24~26, ADR-036·037): 러버덕·코드 읽기·사이드 프로젝트·교차 학습·확장 제안·진단 우선, 계획 템플릿 재작성, 큐레이션 저장소 3개·reading 13개, 날짜 없는 단계(M1/M2)
+
+**끝난 것 (2026-09-19)**
+
+- [x] 첫 소스 점검(DEC-28, `19` §8.5 점검 기록): 라이선스 명시가 없는 `restbucks`를 `modular-monolith`로 교체하고 reading 5개를 은퇴, 보안 예제(`security-samples`, `webgoat`)와 JDK 25·Spring Framework 7.0.9·HikariCP 7.0.2 부분 읽기, `petclinic` 추가 reading, curated source 9개. catalogVersion 5, reading이 있는 MUST skill 17 → 34/43
