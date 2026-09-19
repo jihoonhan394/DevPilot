@@ -1,0 +1,9 @@
+# source: 06 §3.3, rows: 7
+id,today,horizon,weekdayMinutes,weekendMinutes,nominalMinutes,historyDays,sumAvailable,sumActual,expectedNominal,expectedRate,expectedEffective
+V01,2026-10-05,2026-10-12,45,240,null,0,0,0,705,7000,493
+V02,null,null,null,null,90,0,0,0,90,7000,63
+V03,null,null,null,null,null,20,1500,600,null,4000,null
+V04,null,null,null,null,null,20,1500,1650,null,10000,null
+V05,null,null,null,null,null,20,1500,300,null,3000,null
+V06,null,null,null,null,null,13,1000,1000,null,7000,null
+V07,2026-10-05,2026-10-05,45,240,null,0,0,0,0,7000,0
