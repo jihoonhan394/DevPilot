@@ -1,6 +1,8 @@
 import 'package:devpilot_app/core/api/auth_token_interceptor.dart';
 import 'package:devpilot_app/core/api/idempotency_key_interceptor.dart';
 import 'package:devpilot_app/core/api/problem_details_interceptor.dart';
+import 'package:devpilot_app/core/api/rate_limit_pause.dart';
+import 'package:devpilot_app/core/api/service_signal_interceptor.dart';
 import 'package:devpilot_app/core/api/trace_id_interceptor.dart';
 import 'package:devpilot_app/core/auth/auth_controller.dart';
 import 'package:devpilot_app/core/auth/profile_refresh_signal.dart';
@@ -25,6 +27,10 @@ final dioProvider = Provider<Dio>((ref) {
       readAccessToken: () => ref.read(authStateProvider).accessToken,
       onSessionExpired: () => ref.read(authStateProvider.notifier).expireSession(),
       onUserStateChanged: () => ref.read(profileRefreshSignalProvider.notifier).request(),
+    ),
+    ServiceSignalInterceptor(
+      onAiStatusChanged: () => ref.read(profileRefreshSignalProvider.notifier).request(),
+      onRateLimited: (retryAfter) => ref.read(rateLimitPauseProvider.notifier).pauseFor(retryAfter),
     ),
     IdempotencyKeyInterceptor(),
     ProblemDetailsInterceptor(now: ref.watch(clockProvider)),

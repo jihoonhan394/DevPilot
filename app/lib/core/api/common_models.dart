@@ -42,3 +42,40 @@ abstract class AxisLevels with _$AxisLevels {
     SkillAxis.unknown => 0,
   };
 }
+
+/// `AiMeta` (docs/05 §2.4): which model and prompt made an AI result. Null when none was used.
+@freezed
+abstract class AiMeta with _$AiMeta {
+  const factory AiMeta({
+    required String model,
+    required String promptVersion,
+    @Default(<GuardActionView>[]) List<GuardActionView> guardActions,
+  }) = _AiMeta;
+
+  factory AiMeta.fromJson(Map<String, Object?> json) => _$AiMetaFromJson(json);
+}
+
+@freezed
+abstract class GuardActionView with _$GuardActionView {
+  const factory GuardActionView({required String guard, required String action, String? detail}) =
+      _GuardActionView;
+
+  factory GuardActionView.fromJson(Map<String, Object?> json) => _$GuardActionViewFromJson(json);
+}
+
+/// `AsyncStatusView`: the 202 body of every asynchronous start or retry (docs/05 §2.3). A replay
+/// is the first answer's snapshot, so the screen always reads the resource again afterwards.
+@freezed
+abstract class AsyncStatusView with _$AsyncStatusView {
+  const factory AsyncStatusView({
+    required String id,
+    int? submissionNo,
+    @JsonKey(unknownEnumValue: AsyncJobStatus.unknown) required AsyncJobStatus status,
+    @JsonKey(unknownEnumValue: AsyncFailureCode.unknown) AsyncFailureCode? failureCode,
+    required DateTime statusUpdatedAt,
+    required String pollPath,
+    int? maskedSecretCount,
+  }) = _AsyncStatusView;
+
+  factory AsyncStatusView.fromJson(Map<String, Object?> json) => _$AsyncStatusViewFromJson(json);
+}

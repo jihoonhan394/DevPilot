@@ -15,6 +15,7 @@ import 'package:devpilot_app/core/widgets/time_zone_picker.dart';
 import 'package:devpilot_app/features/plan/data/learning_goal_models.dart';
 import 'package:devpilot_app/features/plan/data/learning_goal_repository.dart';
 import 'package:devpilot_app/features/settings/data/me_provider.dart';
+import 'package:devpilot_app/features/settings/presentation/ai_usage_section.dart';
 import 'package:devpilot_app/features/settings/presentation/settings_controller.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -29,8 +30,8 @@ final settingsGoalProvider = FutureProvider.autoDispose<LearningGoalView>(
 const _minuteChoices = [0, 15, 30, 45, 60, 90, 120, 180, 240, 300, 360, 480, 600, 720];
 const _dayStartHours = [0, 1, 2, 3, 4, 5, 6];
 
-/// SCR-SETTINGS: display name, goal link, study time, day start and time zone, app install guide,
-/// sign-out (docs/02 §3.14). AI usage (S3), calendar (S5) and data/delete (S6) come later.
+/// SCR-SETTINGS: display name, goal link, study time, day start and time zone, AI usage, app
+/// install guide, sign-out (docs/02 §3.14). Calendar (S5) and data/delete (S6) come later.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -96,6 +97,10 @@ class SettingsScreen extends ConsumerWidget {
               child: Text(l10n.settingsSave),
             ),
             const SizedBox(height: AppSpacing.section),
+            const Divider(),
+            const SizedBox(height: AppSpacing.md),
+            const AiUsageSection(),
+            const SizedBox(height: AppSpacing.md),
             const Divider(),
             const InstallSettingsSection(),
             const Divider(),

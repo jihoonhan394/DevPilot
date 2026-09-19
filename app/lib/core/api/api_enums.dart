@@ -42,7 +42,11 @@ enum AiStatus {
   balanceExhausted,
   @JsonValue('DISABLED')
   disabled,
-  unknown,
+  unknown;
+
+  /// `aiAvailable` of docs/02 §6.2: AI buttons work unless the AI is off or out of balance.
+  /// `BALANCE_EXHAUSTED` behaves like `DISABLED` with its own reason text (docs/04 §3).
+  bool get allowsAi => this != disabled && this != balanceExhausted;
 }
 
 enum RiskLevel {
@@ -153,6 +157,33 @@ enum SkillAxis {
 
   /// The 4 real axes in `AxisLevels` order, without [unknown].
   static const known = [knowledge, implementation, explanation, debugging];
+}
+
+/// State of an asynchronous AI resource (docs/05 §1.8).
+enum AsyncJobStatus {
+  @JsonValue('PENDING')
+  pending,
+  @JsonValue('RUNNING')
+  running,
+  @JsonValue('COMPLETED')
+  completed,
+  @JsonValue('FAILED')
+  failed,
+  unknown;
+
+  /// Still being worked on: the screen keeps polling.
+  bool get isActive => this == pending || this == running;
+}
+
+/// Who made a challenge or a review card (docs/04 §3).
+enum ContentOrigin {
+  @JsonValue('SEED')
+  seed,
+  @JsonValue('MANUAL')
+  manual,
+  @JsonValue('AI_GENERATED')
+  aiGenerated,
+  unknown,
 }
 
 /// Why an asynchronous AI step did not finish (`failure_code`, `evaluationSkippedReason`).

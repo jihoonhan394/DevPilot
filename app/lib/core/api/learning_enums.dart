@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+part 'learning_enums.g.dart';
+
 // Today, learning session and task enums (docs/04 §3), shared by Today, Review and Dashboard.
 // Every enum ends with `unknown` for values the server adds later; requests never send it.
 
@@ -87,4 +89,48 @@ enum SessionStatus {
   @JsonValue('ABANDONED')
   abandoned,
   unknown,
+}
+
+/// The reader's optional rating of a finished `READ_CODE` task (docs/04 §3, docs/05 §8.4).
+enum ReadingFeedback {
+  @JsonValue('HELPFUL')
+  helpful,
+  @JsonValue('TOO_HARD')
+  tooHard,
+  @JsonValue('BORING')
+  boring,
+  unknown;
+
+  /// The three chips of the completion sheet, without [unknown].
+  static const known = [helpful, tooHard, boring];
+}
+
+/// Language of submitted code (docs/04 §3).
+@JsonEnum(alwaysCreate: true)
+enum CodeLanguage {
+  @JsonValue('JAVA')
+  java,
+  @JsonValue('KOTLIN')
+  kotlin,
+  @JsonValue('SQL')
+  sql,
+  @JsonValue('DART')
+  dart,
+  @JsonValue('YAML')
+  yaml,
+  @JsonValue('PROPERTIES')
+  properties,
+  @JsonValue('XML')
+  xml,
+  @JsonValue('SHELL')
+  shell,
+  @JsonValue('OTHER')
+  other,
+  unknown;
+
+  /// Choices of the language dropdown, without [unknown].
+  static const known = [java, kotlin, sql, dart, yaml, properties, xml, shell, other];
+
+  /// Wire value, also shown as the dropdown label (identifiers stay in English, docs/02 §9).
+  String get wireName => _$CodeLanguageEnumMap[this]!;
 }

@@ -24,6 +24,13 @@ MeResponse testMe({
   String timezone = 'Asia/Seoul',
   int dayStartHour = 4,
   int version = 3,
+  AiStatus aiStatus = AiStatus.disabled,
+  AiUsageView aiUsage = const AiUsageView(
+    todayCalls: 0,
+    dailyCallLimit: 60,
+    monthCostUsd: '0.00',
+    monthlyBudgetUsd: '25.00',
+  ),
 }) => MeResponse(
   id: '5a1d7c1e-3f4b-4f39-9a0b-6e9f4c2b8d10',
   displayName: displayName,
@@ -38,13 +45,8 @@ MeResponse testMe({
   today: testToday,
   calendarSubscribed: false,
   deletionRequestedAt: null,
-  aiStatus: AiStatus.disabled,
-  aiUsage: const AiUsageView(
-    todayCalls: 0,
-    dailyCallLimit: 60,
-    monthCostUsd: '0.00',
-    monthlyBudgetUsd: '25.00',
-  ),
+  aiStatus: aiStatus,
+  aiUsage: aiUsage,
   createdAt: testInstant,
   version: version,
 );

@@ -28,10 +28,32 @@ abstract final class ApiErrorCode {
   static const requestTooLarge = 'REQUEST_TOO_LARGE';
   static const idempotencyKeyReused = 'IDEMPOTENCY_KEY_REUSED';
   static const secretDetectedBlocked = 'SECRET_DETECTED_BLOCKED';
+  static const selfExplanationRequired = 'SELF_EXPLANATION_REQUIRED';
+  static const hintConfirmationRequired = 'HINT_CONFIRMATION_REQUIRED';
+  static const fullExampleNotAllowed = 'FULL_EXAMPLE_NOT_ALLOWED';
+  static const submissionLimitReached = 'SUBMISSION_LIMIT_REACHED';
+  static const evaluationInProgress = 'EVALUATION_IN_PROGRESS';
+  static const aiTaskNotRetryable = 'AI_TASK_NOT_RETRYABLE';
+  static const aiDailyLimitExceeded = 'AI_DAILY_LIMIT_EXCEEDED';
+  static const aiMonthlyBudgetExceeded = 'AI_MONTHLY_BUDGET_EXCEEDED';
+  static const aiConcurrencyLimit = 'AI_CONCURRENCY_LIMIT';
+  static const aiOutputInvalid = 'AI_OUTPUT_INVALID';
+  static const aiRefused = 'AI_REFUSED';
+  static const aiUnavailable = 'AI_UNAVAILABLE';
+  static const aiTimeout = 'AI_TIMEOUT';
   static const rateLimited = 'RATE_LIMITED';
   static const internalError = 'INTERNAL_ERROR';
   static const networkError = 'NETWORK_ERROR';
   static const clientTimeout = 'CLIENT_TIMEOUT';
+
+  /// AI answers that change `GET /me.aiStatus` or the usage numbers: the profile is read again
+  /// right after them (docs/02 §2.4, §6.5).
+  static const aiStatusCodes = {
+    aiDailyLimitExceeded,
+    aiMonthlyBudgetExceeded,
+    aiConcurrencyLimit,
+    aiUnavailable,
+  };
 }
 
 /// Field error codes of `errors[].code` that screens map to their own copy (docs/05 §1.2.3).
@@ -39,6 +61,7 @@ abstract final class ApiFieldErrorCode {
   static const url = 'URL';
   static const notBlankIfPresent = 'NOT_BLANK_IF_PRESENT';
   static const actualMinutesExceedsElapsed = 'ACTUAL_MINUTES_EXCEEDS_ELAPSED';
+  static const referenceNotFound = 'REFERENCE_NOT_FOUND';
 }
 
 /// One entry of the Problem Details `errors` array (docs/05 §1.2.1 `FieldError`).
@@ -66,6 +89,7 @@ final class ApiException implements Exception {
     this.traceId,
     this.fieldErrors = const [],
     this.occurredAt,
+    this.retryAfter,
   });
 
   final String code;
@@ -83,6 +107,9 @@ final class ApiException implements Exception {
 
   /// UTC time the client received the failure. Shown in the report section.
   final DateTime? occurredAt;
+
+  /// `Retry-After` of a 429 or 503 (docs/05 §1.9.3): how long to wait before the same call.
+  final Duration? retryAfter;
 
   /// True when the request never got a response: the same request may be sent again.
   bool get isNetworkFailure =>

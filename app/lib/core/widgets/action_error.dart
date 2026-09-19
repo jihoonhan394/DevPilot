@@ -22,7 +22,12 @@ Future<void> presentActionError(BuildContext context, WidgetRef ref, Object erro
         ApiErrorCode.malformedRequest ||
         ApiErrorCode.idempotencyKeyRequired:
       await _showReloadDialog(context, ref, error);
-    case ApiErrorCode.internalError || ApiErrorCode.forbidden:
+    case ApiErrorCode.internalError ||
+        ApiErrorCode.forbidden ||
+        ApiErrorCode.aiDailyLimitExceeded ||
+        ApiErrorCode.aiMonthlyBudgetExceeded:
+      // The AI limits are a dialog: the user has to know the feature is out for a while
+      // (docs/02 §5.1). The profile is re-read by the API layer.
       await _showErrorDialog(context, error);
     case ApiErrorCode.authenticationRequired || ApiErrorCode.userNotAllowed:
       // The router already leaves the screen (docs/02 §2.4); nothing to show here.

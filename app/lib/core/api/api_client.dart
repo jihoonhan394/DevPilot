@@ -34,16 +34,27 @@ final class ApiClient {
         () => _dio.get<Object?>(path, queryParameters: queryParameters),
       );
 
+  /// Receive timeout of synchronous AI calls (`…/hints`, rubber duck turns, docs/02 §6.6).
+  static const syncAiReceiveTimeout = Duration(seconds: 30);
+
+  /// Receive timeout of `POST /rubber-duck/{id}/complete` (the server waits up to 30 s).
+  static const summaryReceiveTimeout = Duration(seconds: 45);
+
   /// Authenticated POST that creates a resource: [idempotencyKey] is required (docs/05 §1.7).
+  /// [receiveTimeout] replaces the 15 s default for synchronous AI calls.
   Future<Map<String, Object?>> postJson(
     String path, {
     required Map<String, Object?> body,
     required IdempotencyKey idempotencyKey,
+    Duration? receiveTimeout,
   }) => _sendJson(
     () => _dio.post<Object?>(
       path,
       data: body,
-      options: Options(extra: {IdempotencyKeyInterceptor.extraKey: idempotencyKey.value}),
+      options: Options(
+        extra: {IdempotencyKeyInterceptor.extraKey: idempotencyKey.value},
+        receiveTimeout: receiveTimeout,
+      ),
     ),
   );
 

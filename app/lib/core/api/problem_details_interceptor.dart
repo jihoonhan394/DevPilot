@@ -45,6 +45,7 @@ final class ProblemDetailsInterceptor extends Interceptor {
       return ApiException(code: ApiErrorCode.networkError, occurredAt: occurredAt);
     }
     final headerTraceId = response.headers.value(TraceIdInterceptor.headerName);
+    final retryAfter = parseRetryAfter(response.headers.value('retry-after'));
     final body = response.data;
     if (body is Map<String, Object?>) {
       final code = body['code'];
@@ -56,6 +57,7 @@ final class ProblemDetailsInterceptor extends Interceptor {
           traceId: _nonEmptyString(body['traceId']) ?? headerTraceId,
           fieldErrors: _fieldErrors(body['errors']),
           occurredAt: occurredAt,
+          retryAfter: retryAfter,
         );
       }
     }
@@ -64,7 +66,15 @@ final class ProblemDetailsInterceptor extends Interceptor {
       status: response.statusCode,
       traceId: headerTraceId,
       occurredAt: occurredAt,
+      retryAfter: retryAfter,
     );
+  }
+
+  /// `Retry-After` in seconds (the only form the server sends, docs/05 §1.9.3). Anything else is
+  /// ignored.
+  static Duration? parseRetryAfter(String? value) {
+    final seconds = value == null ? null : int.tryParse(value.trim());
+    return seconds == null || seconds < 0 ? null : Duration(seconds: seconds);
   }
 
   static List<ApiFieldError> _fieldErrors(Object? errors) {
