@@ -19,6 +19,6 @@
   "prompts/review.variant/v1/user-template.md": "5d94dc6c7c8ea21ebb06b5905a1a83f2a84857feb9b10f5d3c984362ee5fb34f",
   "prompts/rubber.duck.summary/v1/system.md": "aa0d712f800ca6b51e3f9f0e2db20674ebc05d088534e2f13445873d43dd711f",
   "prompts/rubber.duck.summary/v1/user-template.md": "6a93b34728b3b5c1cb711131420d7756ea528ef9eaf3b06c43cb1ccb4cfedec0",
-  "prompts/rubber.duck/v1/system.md": "c34df7135df49b9b20e5f3041c8975eb39032ba14a7f4d94de5e947cbd8d377c",
+  "prompts/rubber.duck/v1/system.md": "88be1cc236e35fc1b7aa9091fa132b3a4de85bf6d9abd8b92f0929df784428c3",
   "prompts/rubber.duck/v1/user-template.md": "43f871f77d81cf631597e075630d858f76bdceb2e579ef633662853e964aa13d"
 }
