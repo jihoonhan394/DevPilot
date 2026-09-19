@@ -17,7 +17,7 @@ import java.util.Objects;
  * effective      = floorDiv(nominal × completionRate, 10_000)
  * </pre>
  *
- * <p>horizon은 학습 목표일 하나다. 중간 점검일은 budget 계산에 쓰지 않는다.
+ * <p>horizon은 목표일(targetCompletionDate)이다.
  */
 public final class StudyBudgetCalculator {
 

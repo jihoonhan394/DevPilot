@@ -165,7 +165,7 @@ public class ReviewService {
                 leech);
     }
 
-    /** 간격 상한 horizon = 학습 목표일 (budget과 같은 기준, 중간 점검일은 쓰지 않는다). 학습 목표가 없으면 null. */
+    /** 간격 상한 horizon = 목표일 (budget과 같은 기준). 학습 목표가 없으면 null. */
     private @Nullable LocalDate horizon(UUID userId) {
         return learningGoalQueryService
                 .find(userId)
