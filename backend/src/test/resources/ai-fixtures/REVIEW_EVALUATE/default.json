@@ -1,0 +1,27 @@
+{
+  "description": "정상",
+  "attempts": [
+    {
+      "finishReason": "completed",
+      "output": {
+        "rubric": [
+          {
+            "id": "R1",
+            "met": true
+          },
+          {
+            "id": "R2",
+            "met": false
+          }
+        ],
+        "feedback": "첫 번째 항목은 정확히 설명했습니다. 두 번째 항목은 다시 떠올려 보세요."
+      },
+      "usage": {
+        "inputTokens": 2400,
+        "cachedTokens": 0,
+        "outputTokens": 180,
+        "reasoningTokens": 0
+      }
+    }
+  ]
+}

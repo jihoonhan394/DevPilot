@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -37,7 +38,18 @@ public record DevPilotProperties(
         @Valid @NotNull Skill skill,
         @Valid @NotNull Privacy privacy,
         @Valid @NotNull Content content,
-        @Valid @NotNull Ai ai) {
+        @Valid @NotNull Ai ai,
+        @Valid @NotNull Rubberduck rubberduck,
+        @Valid @NotNull Coach coach) {
+
+    /**
+     * coach 입력 한도와 finding 수 상한 (docs/03 §9 {@code coach}). {@code maxFindings}는 {@code
+     * FindingCountGuard}가 쓴다(docs/17 §6.5).
+     */
+    public record Coach(
+            @Positive int maxContentBytes,
+            @Positive int maxContentLines,
+            @Positive int maxFindings) {}
 
     /** 인증 방식 (docs/03 §4.2). */
     public enum AuthMode {
@@ -303,18 +315,31 @@ public record DevPilotProperties(
             boolean seedOnStartup, boolean seedChallenges, @NotBlank String location) {}
 
     /**
-     * AI 설정 중 S1이 쓰는 부분 (BL-AIP-16, BL-CNT-01). 나머지 키(operations, pricing, guards …)는 S3에 추가한다.
-     * {@code provider}는 소문자 문자열이다(docs/04 §3).
+     * AI 설정 (docs/03 §9, docs/17 §2·§8, BL-AIP-02). {@code provider}는 소문자 문자열이다(docs/04 §3). 소수 값은
+     * 기동 시 bp·micro 정수로 바뀌어야 하고(N-6), {@code model}은 {@code pricing.models}에 단가가 있어야 한다 — 없으면 기동
+     * 실패다. operation 이름 → 설정 변환과 11개 operation이 모두 있는지는 {@code integration.ai}가 기동 시 확인한다({@code
+     * common}은 {@code AiOperation}을 모른다).
+     *
+     * @param operations operation 이름({@code COACH_REVIEW} …) → 호출 설정
+     * @param prompts prompt id({@code coach.review} …) → 활성 버전({@code v1})
      */
     public record Ai(
             @NotNull @Pattern(regexp = "deepseek|anthropic|fake|disabled") String provider,
             @NotBlank String model,
+            @Valid @NotNull Deepseek deepseek,
             @NotNull BigDecimal monthlyBudgetUsd,
             @NotNull BigDecimal budgetWarningRatio,
             @NotNull BigDecimal minBalanceUsd,
+            @NotBlank String balanceCheckCron,
             @Positive int dailyCallLimitPerUser,
             @Positive int maxConcurrentPerUser,
-            List<String> trustedSourceHosts) {
+            @Valid @NotNull Async async,
+            @NotNull Map<String, @Valid AiOperationSettings> operations,
+            List<String> trustedSourceHosts,
+            @NotBlank String curatedSourcesLocation,
+            @Valid @NotNull Pricing pricing,
+            @Valid @NotNull Guards guards,
+            @NotNull Map<String, String> prompts) {
 
         public Ai {
             requireMicros(monthlyBudgetUsd, "ai.monthly-budget-usd");
@@ -330,11 +355,155 @@ public record DevPilotProperties(
                                     .map(host -> host.trim().toLowerCase(Locale.ROOT))
                                     .filter(host -> !host.isEmpty())
                                     .toList();
+            operations = operations == null ? Map.of() : Map.copyOf(operations);
+            prompts = prompts == null ? Map.of() : Map.copyOf(prompts);
+            if (pricing != null && !pricing.models().containsKey(model)) {
+                throw new IllegalArgumentException(
+                        "devpilot.ai.pricing.models has no price for model " + model);
+            }
         }
 
         /** 월 예산 micro USD. */
         public long monthlyBudgetMicroUsd() {
             return FixedPointMath.toMicros(monthlyBudgetUsd);
+        }
+
+        /** 잔액 하한 micro USD (docs/17 §8.7). */
+        public long minBalanceMicroUsd() {
+            return FixedPointMath.toMicros(minBalanceUsd);
+        }
+
+        /** 경고 비율 bp (docs/17 §8.5, 기본 8000). */
+        public int budgetWarningBp() {
+            return FixedPointMath.toBasisPoints(budgetWarningRatio);
+        }
+    }
+
+    /**
+     * DeepSeek 호출 설정 (docs/17 §2.1).
+     *
+     * @param apiKey 비어 있으면 {@code provider = deepseek}로 기동할 수 없다(BL-AIP-15)
+     * @param retryAfterDefault 전송 오류 재시도 전 대기, {@code Retry-After}가 없을 때 (docs/17 §5.2)
+     */
+    public record Deepseek(
+            @NotBlank String baseUrl,
+            @Nullable String apiKey,
+            boolean store,
+            @NotNull Duration retryAfterDefault) {}
+
+    /** 비동기 AI 실행기와 고아 작업 정리 (docs/03 §3.1 {@code AsyncConfig}, §5.3). */
+    public record Async(
+            @Positive int corePoolSize,
+            @Positive int maxPoolSize,
+            @Min(0) int queueCapacity,
+            @NotNull Duration orphanTimeout) {
+
+        public Async {
+            if (maxPoolSize < corePoolSize) {
+                throw new IllegalArgumentException(
+                        "devpilot.ai.async.max-pool-size must be >= core-pool-size");
+            }
+        }
+    }
+
+    /** AI 호출 방식 (docs/03 §9 {@code mode}). */
+    public enum AiMode {
+        SYNC,
+        ASYNC
+    }
+
+    /**
+     * operation 하나의 호출 설정 (docs/03 §9 {@code operations}). {@code thinking = false}면 {@code
+     * reasoningEffort}는 무시하고 {@code ai_call_log.effort = 'off'}다.
+     *
+     * @param reasoningEffort {@code low} | {@code high} | {@code max}. thinking이 켜져 있으면 필수
+     * @param timeout 재시도를 포함한 전체 마감 시간이자 read timeout (docs/17 §5.2)
+     * @param maxRetries 네트워크 오류와 가드 위반 재시도를 합한 횟수 (SYNC 0, ASYNC 1)
+     */
+    public record AiOperationSettings(
+            @NotNull AiMode mode,
+            boolean thinking,
+            @Nullable String reasoningEffort,
+            @Positive int maxTokens,
+            @NotNull Duration timeout,
+            @Min(0) int maxRetries,
+            @Positive int inputTokenBudget) {
+
+        private static final List<String> EFFORTS = List.of("low", "high", "max");
+
+        public AiOperationSettings {
+            if (thinking && (reasoningEffort == null || !EFFORTS.contains(reasoningEffort))) {
+                throw new IllegalArgumentException(
+                        "reasoning-effort must be low|high|max when thinking is on");
+            }
+            if (timeout != null && (timeout.isNegative() || timeout.isZero())) {
+                throw new IllegalArgumentException("operation timeout must be positive");
+            }
+        }
+
+        /** {@code ai_call_log.effort}: thinking off면 {@code off}. */
+        public String effort() {
+            return thinking && reasoningEffort != null ? reasoningEffort : "off";
+        }
+    }
+
+    /**
+     * 모델 단가 (docs/17 §8.4). 결정 F: 피크 시간 판정 없이 {@code peakMultiplier}를 항상 곱한다.
+     *
+     * @param models 모델 ID → USD per 1M tokens
+     */
+    public record Pricing(@Positive int peakMultiplier, Map<String, @Valid ModelPrice> models) {
+
+        public Pricing {
+            models = models == null ? Map.of() : Map.copyOf(models);
+        }
+    }
+
+    /** 모델 하나의 단가. 세 값 모두 micro 정수로 바뀌어야 한다(N-6). */
+    public record ModelPrice(
+            @NotNull BigDecimal input, @NotNull BigDecimal cacheHit, @NotNull BigDecimal output) {
+
+        public ModelPrice {
+            requireMicros(input, "ai.pricing.models.*.input");
+            requireMicros(cacheHit, "ai.pricing.models.*.cache-hit");
+            requireMicros(output, "ai.pricing.models.*.output");
+        }
+    }
+
+    /**
+     * 출력 가드 임계값 (docs/17 §6.7·§6.8).
+     *
+     * @param noAnswerPhrases {@code NoAnswerGuard} NA-2 정답 단정 표현
+     */
+    public record Guards(
+            @Positive int languageMinLetters,
+            @Positive int languageHangulWeight,
+            @Min(0) @Max(10_000) int languageMinRatioBp,
+            List<String> noAnswerPhrases) {
+
+        public Guards {
+            noAnswerPhrases = noAnswerPhrases == null ? List.of() : List.copyOf(noAnswerPhrases);
+        }
+    }
+
+    /**
+     * 러버덕 규칙 설정 (docs/03 §9 {@code rubberduck}, docs/06 §9.5).
+     *
+     * @param dontKnowMaxChars RD-3: 공백을 뺀 길이가 이 값 미만일 때만 "모르겠다" 문구를 본다
+     * @param staleAfter {@code StaleRubberDuckJob} 기준 ({@code started_at < now − staleAfter})
+     * @param evidenceCoverageBp RD-5 설명 증거의 고정 coverage (docs/06 §7.2)
+     */
+    public record Rubberduck(
+            @Positive int maxTurns,
+            @Positive int stuckTurnsBeforeHint,
+            @Positive int dontKnowMaxChars,
+            List<String> dontKnowPhrases,
+            @NotNull Duration staleAfter,
+            @Positive int maxExplanationChars,
+            @Min(0) @Max(10_000) int evidenceCoverageBp) {
+
+        public Rubberduck {
+            dontKnowPhrases = dontKnowPhrases == null ? List.of() : List.copyOf(dontKnowPhrases);
         }
     }
 

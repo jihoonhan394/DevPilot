@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "devpilot/ai/CHALLENGE_EVALUATE.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "rubric",
+    "misconceptions",
+    "followUpQuestion"
+  ],
+  "properties": {
+    "rubric": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "met",
+          "evidenceQuote"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^R[1-6]$"
+          },
+          "met": {
+            "type": "boolean"
+          },
+          "evidenceQuote": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "misconceptions": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 300
+      }
+    },
+    "followUpQuestion": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

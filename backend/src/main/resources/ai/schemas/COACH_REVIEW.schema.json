@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "devpilot/ai/COACH_REVIEW.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "confidentialSuspected",
+    "selfReviewAxes",
+    "incorrectClaims",
+    "findings"
+  ],
+  "properties": {
+    "confidentialSuspected": {
+      "type": "boolean"
+    },
+    "selfReviewAxes": {
+      "type": "array",
+      "maxItems": 10,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/thinkingAxis"
+      }
+    },
+    "incorrectClaims": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "axis",
+          "claim"
+        ],
+        "properties": {
+          "axis": {
+            "$ref": "#/$defs/thinkingAxis"
+          },
+          "claim": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "maxItems": 7,
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    }
+  },
+  "$defs": {
+    "thinkingAxis": {
+      "type": "string",
+      "enum": [
+        "CORRECTNESS",
+        "NULL_BOUNDARY",
+        "RESOURCE_LIFECYCLE",
+        "EXCEPTION_STRATEGY",
+        "SECURITY",
+        "PERFORMANCE",
+        "CONCURRENCY",
+        "OBSERVABILITY",
+        "MAINTAINABILITY",
+        "TRANSACTION_DATA_CONSISTENCY"
+      ]
+    },
+    "skillCode": {
+      "type": "string",
+      "maxLength": 100,
+      "pattern": "^[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)+$"
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "findingType",
+        "category",
+        "summary",
+        "learningQuestion",
+        "startLine",
+        "endLine",
+        "verificationStatus",
+        "confidence",
+        "sourceType",
+        "sourceReference",
+        "relatedSkillCode",
+        "mentionedByUser"
+      ],
+      "properties": {
+        "findingType": {
+          "type": "string",
+          "enum": [
+            "BUG",
+            "RISK",
+            "LEARNING_POINT"
+          ]
+        },
+        "category": {
+          "$ref": "#/$defs/thinkingAxis"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "learningQuestion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "startLine": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "endLine": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "type": "string",
+          "enum": [
+            "SUPPORTED",
+            "AI_JUDGMENT",
+            "UNCERTAIN"
+          ]
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "HIGH",
+            "MEDIUM",
+            "LOW"
+          ]
+        },
+        "sourceType": {
+          "type": "string",
+          "enum": [
+            "OFFICIAL_DOC",
+            "SECURITY_GUIDE",
+            "AI_REASONING"
+          ]
+        },
+        "sourceReference": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "relatedSkillCode": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/skillCode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mentionedByUser": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "devpilot/ai/RUBBER_DUCK.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "question",
+    "targetsGap"
+  ],
+  "properties": {
+    "question": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 200
+    },
+    "targetsGap": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 60
+    }
+  }
+}

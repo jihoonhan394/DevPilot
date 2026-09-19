@@ -1,0 +1,8 @@
+{
+  "description": "timeout",
+  "attempts": [
+    {
+      "simulate": "TIMEOUT"
+    }
+  ]
+}

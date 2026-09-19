@@ -1,0 +1,8 @@
+{
+  "description": "공급자 5xx",
+  "attempts": [
+    {
+      "simulate": "PROVIDER_ERROR"
+    }
+  ]
+}

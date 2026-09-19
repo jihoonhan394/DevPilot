@@ -9,6 +9,7 @@ import com.devpilot.testsupport.ApiTestSupport;
 import com.devpilot.testsupport.IntegrationTest;
 import com.devpilot.testsupport.TestUser;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -34,14 +35,26 @@ class ProfileServiceIntegrationTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.onboardingCompleted").value(false))
                 .andExpect(jsonPath("$.today").value("2026-10-05"))
                 .andExpect(jsonPath("$.calendarSubscribed").value(false))
-                .andExpect(jsonPath("$.aiStatus").value("DISABLED"))
+                .andExpect(jsonPath("$.aiStatus").value("ENABLED"))
                 .andExpect(jsonPath("$.aiUsage.todayCalls").value(0))
                 .andExpect(jsonPath("$.aiUsage.dailyCallLimit").value(60))
-                .andExpect(jsonPath("$.aiUsage.monthCostUsd").value("0.00"))
+                .andExpect(jsonPath("$.aiUsage.monthCostUsd").value(monthCostUsd()))
                 .andExpect(jsonPath("$.aiUsage.monthlyBudgetUsd").value("25.00"))
                 .andExpect(jsonPath("$.version").value(0))
                 .andExpect(jsonPath("$.sub").doesNotExist())
                 .andExpect(jsonPath("$.email").doesNotExist());
+    }
+
+    /** 월 비용은 전체 사용자 합계다(docs/17 §8.1). 같은 컨테이너의 다른 테스트가 남긴 호출을 포함한다. */
+    private String monthCostUsd() {
+        Long micro =
+                jdbc.queryForObject(
+                        "select coalesce(sum(cost_micro_usd), 0) from devpilot.ai_call_log"
+                                + " where created_at >= ? and created_at < ?",
+                        Long.class,
+                        OffsetDateTime.parse("2026-10-01T00:00:00+09:00"),
+                        OffsetDateTime.parse("2026-11-01T00:00:00+09:00"));
+        return ProfileService.usd(micro == null ? 0 : micro);
     }
 
     @Test

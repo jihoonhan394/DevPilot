@@ -1,0 +1,27 @@
+{
+  "description": "Bean Validation 위반 (feedback 없음)",
+  "attempts": [
+    {
+      "finishReason": "completed",
+      "output": {
+        "rubric": [
+          {
+            "id": "R1",
+            "met": true
+          },
+          {
+            "id": "R2",
+            "met": true
+          }
+        ],
+        "feedback": ""
+      },
+      "usage": {
+        "inputTokens": 2400,
+        "cachedTokens": 0,
+        "outputTokens": 180,
+        "reasoningTokens": 0
+      }
+    }
+  ]
+}

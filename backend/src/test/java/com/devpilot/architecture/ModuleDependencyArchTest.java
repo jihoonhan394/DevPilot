@@ -21,8 +21,9 @@ import org.junit.jupiter.api.Test;
 
 /**
  * ARCH-01 모듈 의존 matrix, ARCH-02 다른 모듈 접근 범위, ARCH-03 integration.ai 공개 범위 (docs/08 §11.6, docs/03
- * §2.2). 표를 그대로 옮긴 상수이며 docs/03 §2.2를 바꾸는 PR은 이 상수를 같은 PR에서 바꾼다. ARCH-03은 S1에 있는 {@code
- * integration.ai.api}만 확인하고, {@code AiGateway}·masking·budget 공개 클래스는 S3에 추가한다.
+ * §2.2). 표를 그대로 옮긴 상수이며 docs/03 §2.2를 바꾸는 PR은 이 상수를 같은 PR에서 바꾼다. ARCH-03: 다른 모듈은 {@code
+ * integration.ai.api..}와 {@code AiGateway}, {@code SecretMasker}, {@code MaskingResult}, {@code
+ * AiBudgetGuard}만 쓴다.
  */
 @UnitTest
 class ModuleDependencyArchTest {
@@ -297,14 +298,25 @@ class ModuleDependencyArchTest {
         return false;
     }
 
+    /** ARCH-03: {@code integration.ai.api..} 밖에서 다른 모듈이 쓸 수 있는 클래스. */
+    private static final Set<String> INTEGRATION_AI_PUBLIC =
+            Set.of(
+                    ArchitectureClasses.ROOT + ".integration.ai.AiGateway",
+                    ArchitectureClasses.ROOT + ".integration.ai.masking.SecretMasker",
+                    ArchitectureClasses.ROOT + ".integration.ai.masking.MaskingResult",
+                    ArchitectureClasses.ROOT + ".integration.ai.budget.AiBudgetGuard");
+
     private static ArchCondition<JavaClass> onlyDependOnIntegrationAiApi() {
-        return new ArchCondition<>("only depend on integration.ai.api") {
+        return new ArchCondition<>(
+                "only depend on integration.ai.api and the public AI entry points") {
             @Override
             public void check(JavaClass javaClass, ConditionEvents events) {
                 String api = ArchitectureClasses.ROOT + ".integration.ai.api";
                 for (Dependency dependency : javaClass.getDirectDependenciesFromSelf()) {
                     String targetPackage = dependency.getTargetClass().getPackageName();
                     if (targetPackage.startsWith(ArchitectureClasses.ROOT + ".integration.ai")
+                            && !INTEGRATION_AI_PUBLIC.contains(
+                                    dependency.getTargetClass().getName())
                             && !(targetPackage.equals(api)
                                     || targetPackage.startsWith(api + "."))) {
                         events.add(

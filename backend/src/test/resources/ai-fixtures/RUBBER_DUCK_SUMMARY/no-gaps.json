@@ -1,0 +1,22 @@
+{
+  "description": "gaps 없음, confirmed 2 (RD-5)",
+  "attempts": [
+    {
+      "finishReason": "completed",
+      "output": {
+        "gaps": [],
+        "confirmed": [
+          "컨트롤러에 규칙이 없다는 점을 스스로 짚었다",
+          "트랜잭션이 커밋될 때 변경이 반영된다는 점을 설명했다"
+        ],
+        "overallNote": "계층의 목적은 잡았고, 트랜잭션 경계가 다음 차례다."
+      },
+      "usage": {
+        "inputTokens": 3500,
+        "cachedTokens": 0,
+        "outputTokens": 1200,
+        "reasoningTokens": 700
+      }
+    }
+  ]
+}

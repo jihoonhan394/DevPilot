@@ -38,11 +38,47 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * ARCH-06 · 07 · 08 · 15 · 17 · 18 · 19 (docs/08 §11.6). S0에 대상 클래스가 있는 규칙만 둔다. ARCH-05(Task·Job),
- * ARCH-10(AI 트랜잭션), ARCH-11~14·16(entity·규칙 클래스), ARCH-21(@Transactional)은 대상이 생기는 단계에 추가한다.
+ * ARCH-05 · 06 · 07 · 08 · 15 · 17 · 18 · 19 (docs/08 §11.6). ARCH-10·21은 {@code
+ * TransactionBoundaryArchTest}, ARCH-11~14·16은 대상이 생기는 단계에 추가한다.
  */
 @UnitTest
 class CodingRulesArchTest {
+
+    /**
+     * ARCH-05: {@code @Async}는 {@code ..infrastructure..*Task}에만,
+     * {@code @TransactionalEventListener}와 함께.
+     */
+    @Test
+    void shouldPlaceAsyncOnlyInInfrastructureTasksWithAfterCommitListener() {
+        com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods()
+                .that()
+                .areAnnotatedWith(org.springframework.scheduling.annotation.Async.class)
+                .should()
+                .beDeclaredInClassesThat()
+                .resideInAPackage("..infrastructure..")
+                .andShould()
+                .beDeclaredInClassesThat()
+                .haveSimpleNameEndingWith("Task")
+                .andShould()
+                .beAnnotatedWith(
+                        org.springframework.transaction.event.TransactionalEventListener.class)
+                .because("ARCH-05: docs/08 §4.3")
+                .allowEmptyShould(true)
+                .check(ArchitectureClasses.main());
+    }
+
+    /** ARCH-05: {@code @Scheduled}는 이름이 {@code Job}으로 끝나는 클래스에만. */
+    @Test
+    void shouldPlaceScheduledOnlyInJobs() {
+        com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods()
+                .that()
+                .areAnnotatedWith(org.springframework.scheduling.annotation.Scheduled.class)
+                .should()
+                .beDeclaredInClassesThat()
+                .haveSimpleNameEndingWith("Job")
+                .because("ARCH-05: docs/08 §4.3")
+                .check(ArchitectureClasses.main());
+    }
 
     private static final Set<Class<?>> TIME_TYPES =
             Set.of(

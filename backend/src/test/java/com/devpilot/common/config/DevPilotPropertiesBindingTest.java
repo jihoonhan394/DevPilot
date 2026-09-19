@@ -114,6 +114,87 @@ class DevPilotPropertiesBindingTest {
                 .hasStackTraceContaining("budget-warning-ratio must be <= 1.0");
     }
 
+    @Test
+    void shouldBindAiOperationsPromptsPricingAndGuardsWhenApplicationYamlIsLoaded() {
+        DevPilotProperties.Ai ai = TestProperties.defaults(REQUIRED).ai();
+
+        assertThat(ai.operations()).hasSize(11);
+        DevPilotProperties.AiOperationSettings coach = operation(ai, "COACH_REVIEW");
+        assertThat(coach.mode()).isEqualTo(DevPilotProperties.AiMode.ASYNC);
+        assertThat(coach.effort()).isEqualTo("high");
+        assertThat(coach.timeout()).isEqualTo(Duration.ofSeconds(180));
+        assertThat(coach.maxRetries()).isEqualTo(1);
+        DevPilotProperties.AiOperationSettings duck = operation(ai, "RUBBER_DUCK");
+        assertThat(duck.mode()).isEqualTo(DevPilotProperties.AiMode.SYNC);
+        assertThat(duck.effort()).isEqualTo("off");
+        assertThat(duck.inputTokenBudget()).isEqualTo(6_000);
+        assertThat(ai.prompts()).containsEntry("rubber.duck.summary", "v1").hasSize(11);
+        assertThat(ai.pricing().peakMultiplier()).isEqualTo(2);
+        assertThat(ai.pricing().models()).containsKeys("deepseek-flash", "deepseek-v4-pro");
+        assertThat(ai.deepseek().retryAfterDefault()).isEqualTo(Duration.ofSeconds(2));
+        assertThat(ai.deepseek().store()).isFalse();
+        assertThat(ai.async().orphanTimeout()).isEqualTo(Duration.ofMinutes(10));
+        assertThat(ai.guards().noAnswerPhrases()).contains("정답은", "을 쓰세요");
+        assertThat(ai.guards().languageMinRatioBp()).isEqualTo(4_000);
+        assertThat(ai.minBalanceMicroUsd()).isEqualTo(1_000_000L);
+        assertThat(ai.budgetWarningBp()).isEqualTo(8_000);
+    }
+
+    @Test
+    void shouldBindRubberDuckSettingsWhenApplicationYamlIsLoaded() {
+        DevPilotProperties.Rubberduck rubberduck = TestProperties.defaults(REQUIRED).rubberduck();
+
+        assertThat(rubberduck.maxTurns()).isEqualTo(5);
+        assertThat(rubberduck.stuckTurnsBeforeHint()).isEqualTo(2);
+        assertThat(rubberduck.dontKnowMaxChars()).isEqualTo(30);
+        assertThat(rubberduck.dontKnowPhrases()).contains("모르겠", "idk", "don't know");
+        assertThat(rubberduck.staleAfter()).isEqualTo(Duration.ofHours(24));
+        assertThat(rubberduck.maxExplanationChars()).isEqualTo(2_000);
+        assertThat(rubberduck.evidenceCoverageBp()).isEqualTo(7_000);
+    }
+
+    @Test
+    void shouldFailWhenModelHasNoPrice() {
+        assertThatThrownBy(
+                        () -> TestProperties.defaults(with("devpilot.ai.model", "unknown-model")))
+                .hasStackTraceContaining("no price for model unknown-model");
+    }
+
+    @Test
+    void shouldFailWhenModelPriceIsNotMicroConvertible() {
+        assertThatThrownBy(
+                        () ->
+                                TestProperties.defaults(
+                                        with(
+                                                "devpilot.ai.pricing.models.deepseek-flash.input",
+                                                "0.0000001")))
+                .hasStackTraceContaining("(N-6)");
+    }
+
+    @Test
+    void shouldFailWhenThinkingOperationHasNoReasoningEffort() {
+        assertThatThrownBy(
+                        () ->
+                                TestProperties.defaults(
+                                        with(
+                                                "devpilot.ai.operations.RUBBER_DUCK.thinking",
+                                                "true")))
+                .hasStackTraceContaining("reasoning-effort must be low|high|max");
+    }
+
+    private static DevPilotProperties.AiOperationSettings operation(
+            DevPilotProperties.Ai ai, String name) {
+        return ai.operations().entrySet().stream()
+                .filter(entry -> normalized(entry.getKey()).equals(normalized(name)))
+                .map(Map.Entry::getValue)
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private static String normalized(String key) {
+        return key.replaceAll("[^A-Za-z0-9]", "").toUpperCase(java.util.Locale.ROOT);
+    }
+
     private static Map<String, Object> with(String key, String value) {
         Map<String, Object> overrides = new HashMap<>(REQUIRED);
         overrides.put(key, value);

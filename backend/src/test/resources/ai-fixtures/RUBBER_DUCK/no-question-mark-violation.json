@@ -1,0 +1,18 @@
+{
+  "description": "NA-1: 마침표로 끝남",
+  "attempts": [
+    {
+      "finishReason": "completed",
+      "output": {
+        "question": "트랜잭션 경계가 어디에 생기는지 설명해 보세요.",
+        "targetsGap": "트랜잭션 경계 위치를 말하지 않음"
+      },
+      "usage": {
+        "inputTokens": 2400,
+        "cachedTokens": 0,
+        "outputTokens": 180,
+        "reasoningTokens": 0
+      }
+    }
+  ]
+}

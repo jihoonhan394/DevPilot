@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "devpilot/ai/REVIEW_VARIANT.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "prompt",
+    "expectedAnswer",
+    "rubric"
+  ],
+  "properties": {
+    "prompt": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "expectedAnswer": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "rubric": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "criterion"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^R[1-6]$"
+          },
+          "criterion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
+        }
+      }
+    }
+  }
+}

@@ -67,6 +67,32 @@ public class GlobalExceptionHandler {
         return respond(request, exception.errorCode(), exception.args(), exception.errors());
     }
 
+    /**
+     * AI 차단·실패 (docs/05 §1.9.3·§1.9.4). 429와 잔액 소진 503은 {@code Retry-After}를 붙인다(docs/05 §1.2.2).
+     */
+    @ExceptionHandler(AiFailureException.class)
+    public ResponseEntity<ProblemDetail> handleAiFailure(
+            AiFailureException exception, HttpServletRequest request) {
+        log.debug(
+                "ai request failed code={} reason={}",
+                exception.errorCode(),
+                exception.getMessage());
+        ResponseEntity.BodyBuilder builder =
+                ResponseEntity.status(exception.errorCode().status())
+                        .contentType(MediaType.APPLICATION_PROBLEM_JSON);
+        Long retryAfter = exception.retryAfterSeconds();
+        if (retryAfter != null) {
+            builder.header(HttpHeaders.RETRY_AFTER, String.valueOf(retryAfter));
+        }
+        ProblemDetail problem =
+                problemDetailFactory.create(request, exception.errorCode(), Map.of(), List.of());
+        String detailKey = exception.detailMessageKey();
+        if (detailKey != null) {
+            problem.setDetail(problemDetailFactory.message(detailKey, exception.errorCode()));
+        }
+        return builder.body(problem);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ProblemDetail> handleBodyValidation(
             MethodArgumentNotValidException exception, HttpServletRequest request) {

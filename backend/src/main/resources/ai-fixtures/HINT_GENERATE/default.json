@@ -1,0 +1,19 @@
+{
+  "description": "개념 힌트 (local·demo)",
+  "attempts": [
+    {
+      "finishReason": "completed",
+      "output": {
+        "level": "CONCEPT_HINT",
+        "content": "예외가 생길 때 자원을 누가 닫는지 순서대로 따라가 보세요.",
+        "containsCode": false
+      },
+      "usage": {
+        "inputTokens": 2400,
+        "cachedTokens": 0,
+        "outputTokens": 180,
+        "reasoningTokens": 0
+      }
+    }
+  ]
+}

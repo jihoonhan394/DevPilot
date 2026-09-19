@@ -1,0 +1,9 @@
+{
+  "description": "JSON 아님",
+  "attempts": [
+    {
+      "finishReason": "completed",
+      "outputRaw": "not json"
+    }
+  ]
+}

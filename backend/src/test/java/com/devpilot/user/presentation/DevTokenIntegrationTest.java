@@ -150,7 +150,7 @@ class DevTokenIntegrationTest {
                             .andExpect(status().isOk())
                             .andExpect(jsonPath("$.displayName").value("owner"))
                             .andExpect(jsonPath("$.onboardingCompleted").value(false))
-                            .andExpect(jsonPath("$.aiStatus").value("DISABLED"))
+                            .andExpect(jsonPath("$.aiStatus").value("ENABLED"))
                             .andReturn()
                             .getResponse()
                             .getContentAsString();

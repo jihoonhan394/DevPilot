@@ -1,0 +1,18 @@
+{
+  "description": "NA-2: 단정 표현",
+  "attempts": [
+    {
+      "finishReason": "completed",
+      "output": {
+        "question": "맞습니다. 그러면 폼 제출은 어디서 검증하나요?",
+        "targetsGap": "검증 위치를 설명하지 않음"
+      },
+      "usage": {
+        "inputTokens": 2400,
+        "cachedTokens": 0,
+        "outputTokens": 180,
+        "reasoningTokens": 0
+      }
+    }
+  ]
+}

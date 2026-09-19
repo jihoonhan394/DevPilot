@@ -53,7 +53,9 @@ public final class TestProperties {
                 base.skill(),
                 base.privacy(),
                 base.content(),
-                base.ai());
+                base.ai(),
+                base.rubberduck(),
+                base.coach());
     }
 
     private static DevPilotProperties bind(boolean testProfile, Map<String, Object> overrides) {

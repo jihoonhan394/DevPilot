@@ -1,0 +1,19 @@
+{
+  "description": "짧은 피드백 (local·demo)",
+  "attempts": [
+    {
+      "finishReason": "completed",
+      "output": {
+        "userIdentifiedIssue": true,
+        "feedback": "문제의 원인을 정확히 짚었습니다. 같은 패턴이 다른 곳에도 있는지 확인해 보세요.",
+        "followUpQuestion": "같은 자원을 여는 다른 메서드는 어떻게 닫고 있나요?"
+      },
+      "usage": {
+        "inputTokens": 2400,
+        "cachedTokens": 0,
+        "outputTokens": 180,
+        "reasoningTokens": 0
+      }
+    }
+  ]
+}

@@ -12,7 +12,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 /**
  * 통합 테스트 조합 (docs/09 §3.3). Spring context 캐시가 재사용되도록 설정을 이 애노테이션 하나로 고정한다. MockMvc를 여기서 켜서 모든 통합
- * 테스트가 같은 context를 쓴다. FakeAiConfig는 AI 기능이 생기는 S3에 추가한다.
+ * 테스트가 같은 context를 쓴다. AI provider는 test profile의 {@code fake}다(FakeAiProvider).
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)

@@ -1,0 +1,27 @@
+{
+  "description": "영어 피드백",
+  "attempts": [
+    {
+      "finishReason": "completed",
+      "output": {
+        "rubric": [
+          {
+            "id": "R1",
+            "met": true
+          },
+          {
+            "id": "R2",
+            "met": true
+          }
+        ],
+        "feedback": "You explained both points clearly. Next time also think about the failure cases here."
+      },
+      "usage": {
+        "inputTokens": 2400,
+        "cachedTokens": 0,
+        "outputTokens": 180,
+        "reasoningTokens": 0
+      }
+    }
+  ]
+}

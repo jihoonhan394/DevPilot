@@ -1,6 +1,5 @@
 package com.devpilot.user.application;
 
-import com.devpilot.common.config.DevPilotProperties;
 import com.devpilot.common.error.ApiFieldError;
 import com.devpilot.common.error.BusinessValidationException;
 import com.devpilot.common.error.ConflictException;
@@ -9,8 +8,8 @@ import com.devpilot.common.error.FieldErrorCodes;
 import com.devpilot.common.error.NotFoundException;
 import com.devpilot.common.time.PlanDayCalculator;
 import com.devpilot.common.web.validation.InputRules;
-import com.devpilot.integration.ai.api.AiStatus;
 import com.devpilot.integration.ai.api.AiUsageSnapshot;
+import com.devpilot.integration.ai.budget.AiBudgetGuard;
 import com.devpilot.user.domain.AppUser;
 import com.devpilot.user.infrastructure.AppUserRepository;
 import java.math.BigDecimal;
@@ -29,8 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 프로필 조회·설정 변경 (docs/05 §3.1·§3.2, BL-FND-21)과 온보딩의 프로필 단계(docs/05 §4.1 처리 1·3).
  *
- * <p>AI 상태·사용량(BL-AIP-16): S1~S2에는 AI 호출이 없으므로 {@code aiStatus = DISABLED}, 호출 수·월 비용 0, 한도·예산은
- * 설정값이다. 실제 계산은 S3의 {@code AiBudgetGuard}(BL-AIP-10)가 맡는다.
+ * <p>AI 상태·사용량(docs/05 §1.9.1)은 {@code AiBudgetGuard#usage}가 {@code ai_call_log}·설정·잔액 상태로 계산한다
+ * (BL-AIP-10).
  */
 @Service
 public class ProfileService {
@@ -40,13 +39,13 @@ public class ProfileService {
 
     private final AppUserRepository appUserRepository;
     private final Clock clock;
-    private final DevPilotProperties.Ai aiProperties;
+    private final AiBudgetGuard aiBudgetGuard;
 
     public ProfileService(
-            AppUserRepository appUserRepository, Clock clock, DevPilotProperties properties) {
+            AppUserRepository appUserRepository, Clock clock, AiBudgetGuard aiBudgetGuard) {
         this.appUserRepository = appUserRepository;
         this.clock = clock;
-        this.aiProperties = properties.ai();
+        this.aiBudgetGuard = aiBudgetGuard;
     }
 
     @Transactional(readOnly = true)
@@ -127,12 +126,7 @@ public class ProfileService {
 
     private MeResponse toResponse(AppUser user) {
         Instant now = clock.instant();
-        AiUsageSnapshot usage =
-                new AiUsageSnapshot(
-                        0,
-                        aiProperties.dailyCallLimitPerUser(),
-                        0L,
-                        aiProperties.monthlyBudgetMicroUsd());
+        AiUsageSnapshot usage = aiBudgetGuard.usage(user.getId());
         return new MeResponse(
                 user.getId(),
                 user.getDisplayName(),
@@ -147,7 +141,7 @@ public class ProfileService {
                 PlanDayCalculator.planDate(now, user.getZoneId(), user.getDayStartHour()),
                 user.isCalendarSubscribed(),
                 user.getDeletionRequestedAt(),
-                AiStatus.DISABLED,
+                usage.aiStatus(),
                 new AiUsageView(
                         usage.todayCalls(),
                         usage.dailyCallLimit(),

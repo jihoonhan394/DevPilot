@@ -1,11 +1,16 @@
 package com.devpilot.testsupport;
 
+import com.devpilot.integration.ai.api.AiBalance;
+import com.devpilot.integration.ai.budget.AiBalanceMonitor;
+import com.devpilot.integration.ai.fake.FakeAiProvider;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
@@ -24,12 +29,26 @@ public abstract class ApiTestSupport {
     @Autowired protected JsonMapper jsonMapper;
     @Autowired protected JdbcTemplate jdbc;
 
+    @Autowired protected ObjectProvider<FakeAiProvider> fakeAiProviders;
+    @Autowired protected AiBalanceMonitor aiBalanceMonitor;
+
     protected TestApi api;
 
     @BeforeEach
     void setUpApi() {
         clock.setInstant(TestClockConfig.DEFAULT_INSTANT);
         api = new TestApi(mockMvc, jwksServer, clock, jsonMapper);
+        FakeAiProvider fake = fakeAiProviders.getIfAvailable();
+        if (fake != null) {
+            fake.reset();
+        }
+        // 잔액 소진 상태는 context 전체가 공유한다 — 테스트마다 정상으로 되돌린다
+        aiBalanceMonitor.apply(AiBalance.of(true, new BigDecimal("100.00")));
+    }
+
+    /** test profile의 fake provider ({@code devpilot.ai.provider = fake}). */
+    protected FakeAiProvider fakeAi() {
+        return fakeAiProviders.getObject();
     }
 
     /** 사용자 행 id ({@code app_user.id}). 아직 없으면 null. */
