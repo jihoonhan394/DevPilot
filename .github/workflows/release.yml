@@ -1,0 +1,139 @@
+# DevPilot release — tag v0.<sprint>.<patch> push (main의 커밋만). 결정 D: Actions는 빌드·push까지만 하고 서버에 접근하지 않는다
+# 기준: docs/10-deployment-and-operations.md §7.2, §9.2 (2026-09-18)
+#
+# 산출물
+#   - GHCR 이미지 ghcr.io/<owner>/devpilot-api:<tag> (linux/amd64 + linux/arm64 멀티아치)
+#     amd64 = 현재 자체 서버(Rocky 9 x86_64), arm64 = 공개 전환 후보인 OCI Always Free Ampere A1 (docs/10 §1.4)
+#     arm64는 QEMU 에뮬레이션으로 빌드하므로 이 job이 amd64 단독일 때보다 몇 분 더 걸린다
+#   - GitHub Release <tag> 의 자산 web.zip (Flutter web, AUTH_MODE=dev, same-origin API)
+# 배포는 운영자가 서버에서: ssh <server> → sudo -u deploy /opt/devpilot/deploy.sh <tag>  (web.zip 다운로드 + GHCR pull)
+# GitHub environment·secret 없음 (GITHUB_TOKEN 만: packages write, contents write)
+name: release
+
+on:
+  push:
+    tags: ["v0.*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ github.ref_name }}
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  build-api:
+    needs: ci
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Validate tag format and main ancestry
+        run: |
+          [[ "$TAG" =~ ^v0\.[0-9]+\.[0-9]+$ ]] || { echo "invalid tag: $TAG (v0.<sprint>.<patch>)"; exit 1; }
+          git merge-base --is-ancestor "refs/tags/$TAG" origin/main || { echo "$TAG is not on main"; exit 1; }
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "25"
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - name: Build jar (tests already passed in ci job)
+        working-directory: backend
+        run: ./gradlew bootJar
+      - name: Image name (owner 소문자)
+        id: image
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/devpilot-api" >> "$GITHUB_OUTPUT"
+      # 멀티아치(arm64) 빌드에 필요하다: QEMU = 에뮬레이터, buildx = 다중 플랫폼을 다루는 builder
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push image (linux/amd64 + linux/arm64)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: backend
+          file: backend/Dockerfile
+          # amd64 = 현재 서버, arm64 = OCI Ampere A1 (공개 전환 후보, docs/10 §1.4)
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.image.outputs.name }}:${{ env.TAG }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ env.TAG }}
+
+  build-web:
+    needs: ci
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write # GitHub Release 생성·자산 업로드
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Validate tag format
+        run: '[[ "$TAG" =~ ^v0\.[0-9]+\.[0-9]+$ ]] || { echo "invalid tag: $TAG"; exit 1; }'
+      - name: Read Flutter version from .fvmrc
+        id: fvm
+        run: echo "version=$(jq -r '.flutter' app/.fvmrc)" >> "$GITHUB_OUTPUT"
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: ${{ steps.fvm.outputs.version }}
+          cache: true
+      - name: Build web (AUTH_MODE=dev, API_BASE_URL 비움 = same-origin → 앱이 /api/v1 을 붙인다. 호스트명은 저장소에 없다)
+        working-directory: app
+        run: |
+          flutter pub get --enforce-lockfile
+          flutter gen-l10n
+          dart run build_runner build --delete-conflicting-outputs
+          flutter build web --release --no-web-resources-cdn --csp \
+            --dart-define=AUTH_MODE=dev --dart-define=API_BASE_URL=
+      - name: Create web.zip (zip 루트에 index.html — deploy.sh가 /opt/devpilot/web 에 푼다)
+        run: |
+          [[ -f app/build/web/index.html ]] || { echo "index.html not found"; exit 1; }
+          (cd app/build/web && zip -qr "${GITHUB_WORKSPACE}/web.zip" .)
+          ls -l web.zip
+      - name: Upload web.zip to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TAG" --generate-notes
+          fi
+          gh release upload "$TAG" web.zip --repo "$GITHUB_REPOSITORY" --clobber
+
+  summary:
+    needs: [build-api, build-web]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Job summary
+        env:
+          API_RESULT: ${{ needs.build-api.result }}
+          WEB_RESULT: ${{ needs.build-web.result }}
+        run: |
+          {
+            echo "## Release ${TAG}"
+            echo ""
+            echo "| 항목 | 값 |"
+            echo "|---|---|"
+            echo "| api image (linux/amd64 + linux/arm64 → GHCR) | ${API_RESULT} |"
+            echo "| web.zip (GitHub Release 자산) | ${WEB_RESULT} |"
+            echo "| 배포 | 서버에서 \`sudo -u deploy /opt/devpilot/deploy.sh ${TAG}\` (docs/10 §9.2) |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          [[ "${API_RESULT}" == "success" && "${WEB_RESULT}" == "success" ]]

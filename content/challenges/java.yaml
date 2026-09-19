@@ -1,0 +1,311 @@
+# Seed challenges — JAVA (PRACTICE)
+# Spec: docs/19-content-spec.md §3.6 (schema), §6 (난이도), §7 (rubric·hint 작성 가이드)
+# 기준: Java 21+ / Java SE 25
+challenges:
+  - seedKey: PRACTICE.JAVA.EXCEPTION.TRY_WITH_RESOURCES.L1.001
+    purpose: PRACTICE
+    skills:
+      - JAVA.EXCEPTION.TRY_WITH_RESOURCES
+    difficulty: 1
+    estimatedMinutes: 15
+    isTransfer: false
+    title: 줄 수 세기 메서드의 파일 핸들 누수 고치기
+    scenario: |-
+      로그 파일의 줄 수를 세는 유틸리티를 배치 작업이 하루 수천 번 호출합니다. 잘못된 인코딩의 파일이 섞인
+      날에는 "Too many open files" 오류가 간헐적으로 발생합니다.
+      ```java
+      public long countLines(Path path) throws IOException {
+          BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8);
+          long count = 0;
+          while (reader.readLine() != null) {
+              count++;
+          }
+          reader.close();
+          return count;
+      }
+      ```
+    prompt: |-
+      1. 파일 핸들이 닫히지 않는 실행 경로를 찾아 설명하세요.
+      2. 메서드 시그니처를 유지한 채 모든 경로에서 자원이 닫히도록 고친 코드를 작성하세요.
+    constraints:
+      - 메서드 시그니처(반환 타입, throws 선언)를 유지한다
+      - JDK 표준 API만 사용한다
+    expectedConcepts:
+      - try-with-resources
+      - AutoCloseable
+      - 예외 경로의 자원 해제
+    rubric:
+      - id: R1
+        criterion: 정상 경로와 예외 경로 모두에서 reader가 닫히도록 try-with-resources로 선언한다
+        weightBp: 5000
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: readLine 도중 예외가 나면 기존 코드에서 close에 도달하지 못하는 경로를 설명한다
+        weightBp: 3000
+        axis: EXPLANATION
+      - id: R3
+        criterion: 예외를 삼키지 않고 호출자에게 그대로 전파한다
+        weightBp: 2000
+        axis: IMPLEMENTATION
+    commonMistakes:
+      - catch 블록에서만 close를 호출해 정상 경로나 다른 예외 경로를 놓침
+      - IOException을 잡고 0을 반환해 오류를 숨김
+      - finally에서 close를 호출하지만 close 자체의 예외가 원래 예외를 덮어씀
+    transferTargets:
+      - PRACTICAL_ENGINEERING.RESOURCE_TIMEOUT
+    hints:
+      QUESTION_ONLY: 반복문 안에서 읽기 도중 예외가 발생하면 그 아래에 있는 줄들은 실행될까요?
+      CONCEPT_HINT: 자원 선언과 해제를 언어가 함께 보장하는 try-with-resources 구문과 AutoCloseable 계약을 떠올려 보세요.
+      DIRECTION: 파일을 여는 부분을 자원 선언 위치로 옮기고, 직접 닫는 줄은 없애는 방향으로 구조를 바꿔 보세요. 예외는 잡지 말고 그대로 전파하세요.
+
+  - seedKey: PRACTICE.JAVA.LAMBDA_STREAM.L1.001
+    purpose: PRACTICE
+    skills:
+      - JAVA.LAMBDA_STREAM
+    difficulty: 1
+    estimatedMinutes: 15
+    isTransfer: false
+    title: 결제 완료 금액 합계를 Stream으로 다시 쓰기
+    scenario: |-
+      정산 화면에서 결제 완료 주문의 금액 합계를 구하는 코드입니다. 팀 코드 스타일에 맞춰 Stream API로 바꾸려고 합니다.
+      ```java
+      public record Order(String id, OrderStatus status, long amount) {}
+
+      public long paidTotal(List<Order> orders) {
+          long total = 0;
+          for (Order order : orders) {
+              if (order.status() == OrderStatus.PAID) {
+                  total += order.amount();
+              }
+          }
+          return total;
+      }
+      ```
+    prompt: |-
+      1. 같은 결과를 반환하도록 Stream API로 다시 작성하세요.
+      2. 사용한 중간 연산과 최종 연산을 구분해 설명하고, 합계 전에 기본형 스트림으로 바꾸는 이유를 설명하세요.
+    constraints:
+      - 빈 목록이면 0을 반환하는 동작을 유지한다
+      - 외부 변수에 값을 누적하지 않는다
+    expectedConcepts:
+      - filter 중간 연산
+      - mapToLong 기본형 스트림
+      - sum 최종 연산
+    rubric:
+      - id: R1
+        criterion: 결제 완료 주문만 거른 뒤 long 기본형 스트림으로 바꿔 합계를 구한다
+        weightBp: 5000
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 중간 연산과 최종 연산의 역할과 지연 실행을 구분해 설명한다
+        weightBp: 3000
+        axis: EXPLANATION
+      - id: R3
+        criterion: 박싱 없이 기본형으로 합산하고 빈 목록에서 0을 반환한다
+        weightBp: 2000
+        axis: IMPLEMENTATION
+    commonMistakes:
+      - Long으로 박싱한 뒤 초기값 없는 reduce를 써서 Optional 처리가 추가됨
+      - forEach 안에서 외부 지역 변수에 누적하려다 컴파일 오류가 남
+      - 리스트로 수집한 뒤 다시 반복문으로 합산함
+    transferTargets: []
+    hints:
+      QUESTION_ONLY: 반복문이 하는 일을 거르기, 값 꺼내기, 합치기로 나누면 각 단계에서 입력과 출력은 무엇인가요?
+      CONCEPT_HINT: 조건으로 요소를 거르는 중간 연산, long 값만 다루는 기본형 스트림, 합계를 내는 최종 연산을 찾아보세요.
+      DIRECTION: 컬렉션에서 스트림을 만든 뒤 상태 조건 거르기, 금액을 기본형 long 스트림으로 바꾸기, 합계 구하기 순서로 연결해 보세요.
+
+  - seedKey: PRACTICE.JAVA.EXCEPTION.L2.001
+    purpose: PRACTICE
+    skills:
+      - JAVA.EXCEPTION
+    difficulty: 2
+    estimatedMinutes: 20
+    isTransfer: false
+    title: 실패 원인을 삼키는 설정 로더 개선
+    scenario: |-
+      애플리케이션 시작 시 설정 파일을 읽는 코드입니다. 파일이 없거나 형식이 잘못되면 null이 반환되고, 한참 뒤
+      다른 곳에서 NullPointerException이 나서 원인을 찾는 데 오래 걸렸습니다.
+      ```java
+      public class ConfigLoader {
+          public Properties load(Path path) {
+              try (InputStream in = Files.newInputStream(path)) {
+                  Properties props = new Properties();
+                  props.load(in);
+                  return props;
+              } catch (Exception e) {
+                  return null;
+              }
+          }
+      }
+      ```
+    prompt: |-
+      1. 코드를 쓰기 전에, 어떤 예외를 어느 계층에서 처리해야 하는지와 checked/unchecked 중 무엇을 선택할지 이유를 설명하세요.
+      2. 호출자가 실패 원인(경로, 원래 예외)을 알 수 있도록 개선한 코드를 작성하세요.
+    constraints:
+      - 반환 타입은 Properties를 유지한다
+      - JDK 표준 API만 사용한다
+    expectedConcepts:
+      - exception translation
+      - cause 보존
+      - checked vs unchecked 선택
+      - null 반환 대신 예외
+    rubric:
+      - id: R1
+        criterion: 원인 예외(cause)와 파일 경로를 보존한 의미 있는 예외로 변환한다
+        weightBp: 4000
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 복구할 수 있는 계층에서만 처리하고 이 메서드에서는 전파하는 이유를 설명한다
+        weightBp: 3000
+        axis: EXPLANATION
+      - id: R3
+        criterion: null을 반환하지 않고 Exception 전체가 아닌 필요한 예외만 잡는다
+        weightBp: 2000
+        axis: IMPLEMENTATION
+      - id: R4
+        criterion: checked와 unchecked 중 선택한 타입의 근거를 호출자의 복구 가능성으로 설명한다
+        weightBp: 1000
+        axis: EXPLANATION
+    commonMistakes:
+      - 새 예외를 만들면서 원인 예외를 넘기지 않음
+      - RuntimeException으로 감싸기만 하고 경로 같은 문맥이 없음
+      - 여전히 Exception 전체를 잡아 프로그래밍 오류까지 같은 예외로 바꿈
+      - 로그만 남기고 null 반환을 유지함
+    transferTargets:
+      - SPRING.EXCEPTION_HANDLING
+    hints:
+      QUESTION_ONLY: 이 메서드를 호출한 쪽은 파일이 없을 때와 내용 형식이 잘못되었을 때 각각 무엇을 알고 싶을까요?
+      CONCEPT_HINT: 예외 변환(exception translation)과 원인 보존, 그리고 호출자가 복구할 수 있는지에 따른 예외 타입 선택을 떠올려 보세요.
+      DIRECTION: 입출력 실패만 좁게 잡아 설정 로딩 실패를 뜻하는 예외로 바꾸고, 그 예외에 원래 예외와 파일 경로를 함께 담아 던지는 방향을 검토해 보세요.
+
+  - seedKey: PRACTICE.JAVA.COLLECTION.L2.001
+    purpose: PRACTICE
+    skills:
+      - JAVA.COLLECTION
+    difficulty: 2
+    estimatedMinutes: 20
+    isTransfer: false
+    title: 중복 제거가 되지 않는 쿠폰 코드 Set 고치기
+    scenario: |-
+      발급한 쿠폰 코드를 HashSet에 담아 중복 발급을 막으려 했지만 같은 코드가 두 번 들어갑니다.
+      ```java
+      public class CouponCode {
+          private final String prefix;
+          private final int number;
+
+          public CouponCode(String prefix, int number) {
+              this.prefix = prefix;
+              this.number = number;
+          }
+
+          @Override
+          public boolean equals(Object o) {
+              if (!(o instanceof CouponCode other)) return false;
+              return prefix.equals(other.prefix) && number == other.number;
+          }
+      }
+
+      Set<CouponCode> issued = new HashSet<>();
+      issued.add(new CouponCode("WELCOME", 1));
+      issued.add(new CouponCode("WELCOME", 1));
+      System.out.println(issued.size()); // 2가 출력된다
+      ```
+    prompt: |-
+      1. 크기가 2가 되는 이유를 HashSet의 동작으로 설명하세요.
+      2. 같은 쿠폰 코드가 한 번만 저장되도록 고친 코드를 작성하세요.
+      3. 이 클래스를 해시 기반 컬렉션의 원소로 쓸 때 추가로 지켜야 할 조건을 설명하세요.
+    constraints:
+      - 외부 라이브러리를 사용하지 않는다
+    expectedConcepts:
+      - equals와 hashCode 계약
+      - 해시 기반 컬렉션의 버킷 탐색
+      - 저장 후 키 불변
+    rubric:
+      - id: R1
+        criterion: equals와 같은 필드로 hashCode를 재정의하거나 record로 바꾼다
+        weightBp: 4500
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: HashSet이 hashCode로 버킷을 찾은 뒤 equals로 비교해 중복을 판단한다고 설명한다
+        weightBp: 3500
+        axis: EXPLANATION
+      - id: R3
+        criterion: 저장 후 동등성 판단에 쓰는 필드가 바뀌면 안 된다는 조건을 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+    commonMistakes:
+      - hashCode에 equals에서 쓰지 않는 필드나 가변 필드를 사용함
+      - hashCode가 항상 같은 상수를 반환하게 해 성능을 떨어뜨림
+      - equals의 파라미터 타입을 CouponCode로 바꿔 재정의가 아닌 오버로딩을 만듦
+    transferTargets:
+      - DATABASE.JPA
+    hints:
+      QUESTION_ONLY: HashSet은 새 원소가 이미 들어 있는지 판단할 때 어떤 메서드들을 어떤 순서로 사용할까요?
+      CONCEPT_HINT: Object의 equals와 hashCode 일반 계약, 특히 동등한 두 객체는 해시 값도 같아야 한다는 조항을 확인해 보세요.
+      DIRECTION: 동등성 판단에 쓰는 두 필드로 해시 값도 계산하도록 맞추고, 그 필드들이 생성 후 바뀌지 않는지 확인해 보세요.
+
+  - seedKey: PRACTICE.JAVA.CONCURRENCY.L3.001
+    purpose: PRACTICE
+    skills:
+      - JAVA.CONCURRENCY
+    difficulty: 3
+    estimatedMinutes: 35
+    isTransfer: false
+    title: 동시 요청에서 틀어지는 API 호출 횟수 집계
+    scenario: |-
+      API 키별 호출 횟수를 메모리에서 집계하는 컴포넌트입니다. 부하 테스트에서 10,000번 호출했는데 합계가
+      10,000보다 작게 나오고, 가끔 스냅샷을 만들 때 ConcurrentModificationException이 로그에 남습니다.
+      record는 여러 요청 스레드가 동시에 호출하고 snapshot은 모니터링 스레드가 호출합니다.
+      ```java
+      public class UsageCounter {
+          private final Map<String, Integer> counts = new HashMap<>();
+
+          public void record(String apiKey) {
+              Integer current = counts.get(apiKey);
+              counts.put(apiKey, current == null ? 1 : current + 1);
+          }
+
+          public Map<String, Integer> snapshot() {
+              return new HashMap<>(counts);
+          }
+      }
+      ```
+    prompt: |-
+      1. 합계가 줄어드는 원인과 예외가 나는 원인을 각각 설명하세요.
+      2. 여러 스레드에서 안전하게 동작하도록 고친 코드를 작성하세요.
+      3. 선택한 방법을 메서드 전체에 synchronized를 붙이는 방법과 비교해 장단점을 한 가지 이상 설명하세요.
+    constraints:
+      - 외부 라이브러리 없이 JDK만 사용한다
+      - record와 snapshot의 공개 시그니처를 유지한다
+    expectedConcepts:
+      - 경쟁 조건(check-then-act)
+      - 원자적 복합 연산
+      - ConcurrentHashMap
+      - 스냅샷 일관성
+    rubric:
+      - id: R1
+        criterion: 조회 후 저장하는 복합 연산을 원자적으로 만든다(동시성 맵의 원자적 갱신 메서드 등)
+        weightBp: 4000
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 읽기와 쓰기 사이에 다른 스레드가 끼어들어 증가분이 사라진다고 설명한다
+        weightBp: 2500
+        axis: EXPLANATION
+      - id: R3
+        criterion: 동기화되지 않은 HashMap을 복사하는 동안 수정되어 예외가 날 수 있음을 진단한다
+        weightBp: 1500
+        axis: DEBUGGING
+      - id: R4
+        criterion: 선택한 방식과 전체 synchronized 방식의 처리량과 일관성 트레이드오프를 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+    commonMistakes:
+      - HashMap을 ConcurrentHashMap으로만 바꾸고 조회 후 저장 구조를 그대로 둠
+      - record에만 synchronized를 붙이고 snapshot은 동기화하지 않음
+      - 값을 AtomicInteger로 바꿨지만 새 키를 처음 등록할 때의 경쟁을 처리하지 않음
+    transferTargets:
+      - DATABASE.TRANSACTION.LOCKING
+    hints:
+      QUESTION_ONLY: 두 스레드가 같은 키로 거의 동시에 이 메서드를 실행하면, 값을 읽는 순간과 쓰는 순간 사이에 무슨 일이 일어날 수 있을까요?
+      CONCEPT_HINT: 확인 후 실행(check-then-act) 경쟁 조건과, 동시성 컬렉션이 제공하는 키 단위 원자적 갱신 연산을 살펴보세요.
+      DIRECTION: 읽기와 쓰기를 따로 호출하지 말고 키 하나의 값을 한 번의 원자적 연산으로 갱신하는 방법을 찾고, 스냅샷을 만드는 동안의 동시 수정에도 안전한 자료구조를 고르세요.

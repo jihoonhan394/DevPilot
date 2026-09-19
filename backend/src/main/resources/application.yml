@@ -1,0 +1,251 @@
+# DevPilot API — 공통 설정 (모든 profile)
+# 기준: docs/03-system-architecture.md §4.2, §9, §10 / docs/18-project-setup-and-local-dev.md §4.4 (2026-09-18)
+# property 이름은 Spring Boot 4.1 Application Properties 부록으로 2026-09-17 확인했다.
+#
+# datasource url/username/password 는 profile 파일이 정한다
+#   local: application-local.yml (.env 필수, 기본값 없음) / test: Testcontainers @ServiceConnection / prod: 환경변수 필수
+
+spring:
+  application:
+    name: devpilot-api
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 5000
+      max-lifetime: 1800000
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.default_schema: devpilot
+      hibernate.jdbc.time_zone: UTC
+      hibernate.default_batch_fetch_size: 50   # docs/08 §5.5 (N+1 완화)
+      hibernate.order_updates: true
+  flyway:
+    schemas: devpilot
+    default-schema: devpilot
+    create-schemas: true
+    locations: classpath:db/migration
+    validate-migration-naming: true
+    baseline-on-migrate: false
+    out-of-order: false
+    clean-disabled: true
+  security:
+    oauth2:
+      resourceserver:
+        # devpilot.security.auth-mode=supabase 일 때만 쓴다 (Later). devtoken 모드는 앱이 가진 공개키로
+        # JwtDecoder를 직접 구성하므로(NimbusJwtDecoder.withJwkSource) 이 값을 읽지 않는다 (docs/03 §4.2).
+        # 기본값을 비워 SUPABASE_URL 없이도 기동이 막히지 않게 한다.
+        jwt:
+          jwk-set-uri: ${SUPABASE_URL:}/auth/v1/.well-known/jwks.json
+          issuer-uri: ${SUPABASE_URL:}/auth/v1
+          audiences: authenticated
+          jws-algorithms: ${SUPABASE_JWT_ALGORITHM:ES256}
+  mvc:
+    problemdetails:
+      enabled: true
+  web:
+    error:
+      include-stacktrace: never
+  jackson:
+    time-zone: UTC
+    deserialization:
+      fail-on-unknown-properties: true
+      fail-on-null-for-primitives: true
+    datatype:
+      enum:
+        fail-on-numbers-for-enums: true   # 숫자 enum도 400 UNKNOWN_ENUM_VALUE (docs/07 §16 ST-17)
+  messages:
+    basename: messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+server:
+  port: 8080
+  shutdown: graceful
+  forward-headers-strategy: framework
+
+logging:
+  level:
+    org.hibernate.orm.jdbc.bind: "OFF"   # SQL 바인딩 값 로그 금지 (docs/07 §6.1 L-9)
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+      probes:
+        enabled: true
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+  default-produces-media-type: application/json      # docs/05 §1.1 (오류는 application/problem+json)
+  default-consumes-media-type: application/json
+
+# ---------------------------------------------------------------------------
+# devpilot.* — docs/03-system-architecture.md §9 원문 그대로 복사. 변경은 03 §9와 함께 한다
+# ---------------------------------------------------------------------------
+devpilot:
+  security:
+    auth-mode: ${DEVPILOT_AUTH_MODE:devtoken}           # devtoken | supabase (결정 A)
+    devtoken:
+      issuer: ${APP_BASE_URL}/dev
+      private-key-pem: ${DEVPILOT_DEV_JWT_KEY:}         # 비면 기동 시 EC P-256 생성(재기동 시 기존 토큰 무효). prod는 필수
+      token-ttl: 720h
+    allowed-emails: ${DEVPILOT_ALLOWED_EMAILS:}          # 쉼표 구분, 소문자 비교
+    allowed-subjects: ${DEVPILOT_ALLOWED_SUBJECTS:}      # 선택: JWT sub (devtoken은 uuid v5(email), supabase 모드는 user UUID)
+    max-request-body-bytes: 65536
+    account-deletion-max-token-age: 5m
+    log-hash-key: ${DEVPILOT_LOG_HASH_KEY:}              # prod 필수
+    rate-limit:
+      requests-per-minute: 120
+      calendar-feed-per-hour: 60
+      calendar-invalid-token-per-hour-per-ip: 30
+      dev-token-per-hour-per-ip: 30                      # POST /dev/token (05 §1.4.5)
+  web:
+    app-base-url: ${APP_BASE_URL}                        # 캘린더 피드 URL 생성 (prod 필수)
+    cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:}       # local만 사용
+  time:
+    default-zone: Asia/Seoul
+    default-day-start-hour: 4
+  planner:
+    weights: { practical-importance: 0.25, skill-gap: 0.20, review-urgency: 0.20, milestone-urgency: 0.15, project-need: 0.10, prerequisite-readiness: 0.10 }
+    modifiers:
+      risk-high-must: 1.20
+      risk-high-should: 0.80
+      low-energy-deep-task: 0.70
+      high-energy-hard-task: 1.10
+      fatigue-one-day: 0.80
+      fatigue-two-days: 0.60
+      continuation-bonus: 1.15
+      comeback-hard-task: 0.70             # 06 §5.5 COMEBACK_HARD_TASK (7_000bp)
+    low-energy-long-task-minutes: 30
+    min-prerequisite-readiness: 0.5
+    overrun-tolerance: 1.10
+    min-main-task-minutes: 10
+    min-available-minutes: 5
+    challenge-repeat-exclusion-days: 14
+    comeback-inactive-days: 3
+    review-minutes-per-card: 1.5
+    review-max-share: 0.25
+    default-practical-importance: 0.30
+    milestone-urgency-floor: 0.20          # 06 §5.4 진행 중 milestone 하한 (200_000 micro)
+    next-milestone-urgency: 0.10           # 06 §5.4 다음 milestone 고정값
+    review-urgency-base: 0.30              # 06 §5.4 due review 기저
+    review-urgency-per-overdue-day: 0.10   # 06 §5.4 연체 일당 가산
+    leech-review-urgency: 1.00             # 06 §6.4 LEECH_DETECTED 다음 plan-day
+    reason-high-threshold: 0.70            # 06 §5.8 HIGH_* reason 임계값
+    reason-medium-threshold: 0.40          # 06 §5.8 *_GAP reason 임계값
+  budget:
+    completion-window-days: 28
+    completion-min-history-days: 14
+    completion-default-rate: 0.70
+    completion-min-rate: 0.30
+    axis-cost: { knowledge: 0.5, implementation: 1.0, explanation: 0.4, debugging: 0.8 }
+    review-overhead: 1.15
+    risk-thresholds: { low-max: 0.80, medium-max: 1.00, high-max: 1.25 }
+    # 소수 설정값은 기동 시 bp(×10000)/micro(×1000000) 정수로 변환. 정수가 아니면 기동 실패 (06 §1 N-6)
+  review:
+    max-per-day: 20
+    comeback-max-per-day: 10
+    min-interval-days: 1
+    max-interval-days: 60
+    hard-strategy: MULTIPLY        # MULTIPLY(×1.2) | FIXED_2
+    hard-multiplier: 1.2
+    good-multiplier: 2.0
+    easy-multiplier: 3.0
+    good-min-days: 2
+    easy-min-days: 4
+    variant-after-failures: 2
+    suspend-after-failures: 4
+  rubberduck:
+    max-turns: 5                            # 06 §9.5 RD-4
+    stuck-turns-before-hint: 2             # RD-3
+    dont-know-max-chars: 30                # RD-3 판정: 공백 제거 길이 < 30 이고
+    dont-know-phrases: ["모르겠", "모름", "잘 모르", "생각 안", "idk", "no idea", "don't know", "dont know"]   # 06 §9.5
+    stale-after: 24h                       # StaleRubberDuckJob (§6)
+    max-explanation-chars: 2000
+    evidence-coverage-bp: 7000             # 06 §7.2 러버덕 설명 증거의 고정 coverage (E2·E3용, E4 미만)
+  skill:
+    rule-window-days: 60
+    axis-change-cooldown: 24h
+    self-assessment-cap: 3
+    diagnostic-max-level: 3                # 06 §7.4 min(claimedLevel, 3)
+  radar:
+    default-target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }   # 06 §13 target 없을 때
+  training:
+    max-submissions-per-attempt: 5
+  coach:
+    max-content-bytes: 30000
+    max-content-lines: 1000
+    max-findings: 7
+  privacy:
+    coach-content-retention-days: 30
+    source-text-retention-days: 180
+    ai-call-log-retention-days: 180
+    idempotency-ttl: 24h
+  content:
+    seed-on-startup: true
+    seed-challenges: false         # S1~S2 빌드는 false (challenge upsert는 S3 training 모듈부터, docs/04 §9)
+    location: classpath:content/
+  ai:
+    provider: ${DEVPILOT_AI_PROVIDER:deepseek}          # deepseek | fake | disabled
+    model: ${DEVPILOT_AI_MODEL:deepseek-flash}
+    deepseek: { base-url: https://api.deepseek.com, api-key: "${DEEPSEEK_API_KEY:}", store: false, retry-after-default: 2s }
+    monthly-budget-usd: ${DEVPILOT_AI_MONTHLY_BUDGET_USD:3}
+    budget-warning-ratio: 0.80
+    min-balance-usd: 1.00
+    balance-check-cron: "0 15 * * * *"
+    daily-call-limit-per-user: 60
+    max-concurrent-per-user: 2
+    async: { core-pool-size: 2, max-pool-size: 2, queue-capacity: 20, orphan-timeout: 10m }
+    operations:   # 17 §2. effort → thinking + reasoning-effort
+      COACH_REVIEW:            { mode: ASYNC, thinking: true,  reasoning-effort: high, max-tokens: 32000, timeout: 180s, max-retries: 1, input-token-budget: 14000 }
+      COACH_RESPONSE_FEEDBACK: { mode: SYNC,  thinking: false, max-tokens: 2000,  timeout: 20s,  max-retries: 0, input-token-budget: 6000 }
+      CHALLENGE_GENERATE:      { mode: ASYNC, thinking: true,  reasoning-effort: high, max-tokens: 32000, timeout: 180s, max-retries: 1, input-token-budget: 4000 }
+      CHALLENGE_EVALUATE:      { mode: ASYNC, thinking: true,  reasoning-effort: low,  max-tokens: 16000, timeout: 120s, max-retries: 1, input-token-budget: 8000 }
+      HINT_GENERATE:           { mode: SYNC,  thinking: false, max-tokens: 3000,  timeout: 20s,  max-retries: 0, input-token-budget: 6000 }
+      REVIEW_VARIANT:          { mode: ASYNC, thinking: false, max-tokens: 4000,  timeout: 60s,  max-retries: 1, input-token-budget: 3000 }   # Later
+      REVIEW_EVALUATE:         { mode: SYNC,  thinking: false, max-tokens: 2000,  timeout: 20s,  max-retries: 0, input-token-budget: 3000 }
+      EVIDENCE_DRAFT:          { mode: ASYNC, thinking: true,  reasoning-effort: low,  max-tokens: 16000, timeout: 120s, max-retries: 1, input-token-budget: 6000 }
+      REQUIREMENT_EXTRACT:     { mode: ASYNC, thinking: false, max-tokens: 8000,  timeout: 120s, max-retries: 1, input-token-budget: 8000 }
+      RUBBER_DUCK:             { mode: SYNC,  thinking: false, max-tokens: 1500,  timeout: 20s,  max-retries: 0, input-token-budget: 6000 }
+      RUBBER_DUCK_SUMMARY:     { mode: SYNC,  thinking: true,  reasoning-effort: low, max-tokens: 4000, timeout: 30s, max-retries: 0, input-token-budget: 8000 }
+    trusted-source-hosts: [docs.spring.io, spring.io, docs.oracle.com, openjdk.org, www.postgresql.org, owasp.org, cheatsheetseries.owasp.org, www.kisa.or.kr, supabase.com, dart.dev, docs.flutter.dev, api.flutter.dev, pmd.github.io, spotbugs.readthedocs.io, checkstyle.org, junit.org, hibernate.org, docs.jboss.org, developer.mozilla.org, www.rfc-editor.org]
+    curated-sources-location: classpath:content/curated-sources.yaml
+    pricing:                    # USD / 1M tokens, 2026-09-18 확인
+      peak-multiplier: 2        # 결정 F: 시각과 무관하게 항상 곱한다
+      models:
+        deepseek-flash:  { input: 0.15, cache-hit: 0.003, output: 0.60 }
+        deepseek-v4-pro: { input: 0.66, cache-hit: 0.66,  output: 1.98 }   # cache-hit 단가 미확인 → 입력 단가로 보수 계산
+    guards:
+      language-min-letters: 30
+      language-hangul-weight: 3
+      language-min-ratio-bp: 4000
+      no-answer-phrases: ["맞습니다", "틀렸습니다", "정답은", "사실은", "올바른 답은", "해야 합니다", "하면 됩니다", "를 쓰세요", "을 쓰세요"]   # NoAnswerGuard (17 §6.8)
+    prompts:                                             # 활성 prompt 버전
+      coach.review: v1
+      coach.response-feedback: v1
+      challenge.generate: v1
+      challenge.evaluate: v1
+      hint.generate: v1
+      review.variant: v1
+      review.evaluate: v1
+      evidence.draft: v1
+      requirement.extract: v1
+      rubber.duck: v1
+      rubber.duck.summary: v1

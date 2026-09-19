@@ -1,0 +1,68 @@
+# 테스트 challenge: PRACTICE 1 + DIAGNOSTIC 1 (JAVA). 합성 코드·문장이다
+challenges:
+  - seedKey: PRACTICE.SPRING.TRANSACTION.L2.001
+    purpose: PRACTICE
+    skills: [SPRING.TRANSACTION]
+    difficulty: 2
+    estimatedMinutes: 25
+    isTransfer: false
+    title: 주문 저장 트랜잭션 경계
+    scenario: |-
+      주문을 저장한 뒤 재고를 줄이는 서비스에서 재고 감소가 실패해도 주문이 남는다는 신고가 들어왔다.
+      두 작업은 같은 서비스 클래스의 서로 다른 메서드에서 실행된다.
+    prompt: |-
+      1. 주문이 남는 원인을 찾으세요.
+      2. 두 작업이 함께 커밋되거나 함께 롤백되도록 고치세요.
+      3. 왜 그렇게 고쳤는지 설명하세요.
+    constraints:
+      - 새 인프라를 추가하지 않는다
+    expectedConcepts:
+      - 트랜잭션 경계
+      - 프록시 내부 호출
+    rubric:
+      - id: R1
+        criterion: 두 작업을 한 트랜잭션 경계 안으로 옮긴다
+        weightBp: 5000
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 내부 호출이 프록시를 우회한다는 원인을 설명한다
+        weightBp: 5000
+        axis: EXPLANATION
+    commonMistakes:
+      - 내부 호출 메서드에만 애노테이션을 붙인다
+    transferTargets: []
+    hints:
+      QUESTION_ONLY: 재고 감소가 실패하는 순간 주문 저장은 어느 범위 안에서 실행되고 있을까요?
+      CONCEPT_HINT: 선언적 트랜잭션이 어디에서 시작되고 같은 클래스 안의 호출이 어떻게 처리되는지 떠올려 보세요.
+      DIRECTION: 트랜잭션이 시작되는 위치를 호출 흐름에서 찾고 두 작업이 그 범위 안에 들어오게 구조를 바꿔 보세요.
+  - seedKey: DIAGNOSTIC.JAVA.L3.001
+    purpose: DIAGNOSTIC
+    skills: [JAVA.EXCEPTION, JAVA.COLLECTION]
+    difficulty: 3
+    estimatedMinutes: 10
+    isTransfer: false
+    title: 설정 로더 진단
+    scenario: |-
+      설정 파일을 읽는 코드가 실패하면 원인을 알 수 없는 예외만 남고, 같은 키가 여러 번 들어간다는 보고가 있다.
+    prompt: |-
+      1. 원인 정보가 사라지는 지점을 찾으세요.
+      2. 같은 키가 중복되는 이유를 설명하세요.
+    expectedConcepts:
+      - 원인 보존
+      - equals와 hashCode
+    rubric:
+      - id: R1
+        criterion: 원인 예외를 새 예외에 넘기는 수정을 제시한다
+        weightBp: 5000
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 키 객체의 동등성 계약 문제를 설명한다
+        weightBp: 5000
+        axis: EXPLANATION
+    commonMistakes:
+      - 예외 메시지만 새로 쓰고 원래 예외를 버린다
+    transferTargets: []
+    hints:
+      QUESTION_ONLY: 실패했을 때 로그에 남는 정보와 실제로 실패한 지점 사이에 무엇이 빠져 있을까요?
+      CONCEPT_HINT: 예외를 감쌀 때의 정보 전달과 해시 기반 컬렉션의 동등성 판단을 떠올려 보세요.
+      DIRECTION: 예외를 다시 던지는 곳과 키 클래스의 비교 규칙을 차례로 확인해 보세요.

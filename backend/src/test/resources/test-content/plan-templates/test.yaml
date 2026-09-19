@@ -1,0 +1,36 @@
+# 테스트 plan template: milestone 3개 (PREPARATION 2, CONSOLIDATION 1)
+templateKey: TEST_BACKEND_DEFAULT
+targetRole: JAVA_BACKEND
+planTitle: 테스트 백엔드 계획
+placement:
+  minMilestoneDays: 7
+milestones:
+  - key: FOUNDATION
+    title: 기반 다지기
+    description: 예외와 컬렉션, HTTP 기초를 다지고 첫 테스트를 쓴다.
+    priority: MUST
+    weightBp: 4000
+    phase: PREPARATION
+    skillCodes:
+      - JAVA.EXCEPTION
+      - JAVA.COLLECTION
+      - WEB_HTTP.HTTP_BASICS
+      - TESTING.JUNIT
+  - key: ORDER_FLOW
+    title: 주문 흐름
+    priority: MUST
+    weightBp: 4000
+    phase: PREPARATION
+    skillCodes:
+      - SPRING.TRANSACTION
+      - DATABASE.INDEX
+      - DEVOPS.DOCKER
+  - key: EXPLAIN_AND_CONSOLIDATE
+    title: 설명과 정리
+    description: 만든 것을 설명하고 기초 알고리즘을 다시 본다.
+    priority: SHOULD
+    weightBp: 2000
+    phase: CONSOLIDATION
+    skillCodes:
+      - EXPLANATION.PROJECT_STORY
+      - ALGORITHM.SORT_SEARCH

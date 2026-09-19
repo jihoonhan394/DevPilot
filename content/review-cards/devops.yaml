@@ -1,0 +1,84 @@
+# Seed review cards — DEVOPS
+# Spec: docs/19-content-spec.md §3.5 (schema), §7.3 (작성 가이드)
+cards:
+  - conceptKey: DEVOPS.GIT.REBASE_SHARED_BRANCH
+    skill: DEVOPS.GIT
+    reviewType: EXPLAIN
+    prompt: >-
+      rebase는 무엇을 바꾸나요? 이미 동료가 받아 간 공유 브랜치를 rebase하고 force push하면 어떤 문제가
+      생기고, rebase는 언제 쓰나요?
+    expectedAnswer: >-
+      rebase는 커밋을 새 기준 커밋 위에 다시 만들어 커밋 해시가 바뀌는 이력 재작성이다. 공유 브랜치를
+      rebase하고 force push하면 동료의 로컬 이력과 어긋나 작업이 덮어써지거나 커밋이 중복된다. 아직 공유하지
+      않은 개인 작업 브랜치를 PR 전에 정리할 때 쓰고, 공유 브랜치에는 merge를 쓴다. force push가 꼭 필요하면
+      --force-with-lease를 쓴다.
+    rubric:
+      - id: R1
+        criterion: rebase는 커밋 해시를 바꾸는 이력 재작성이다
+      - id: R2
+        criterion: 공유 브랜치 force push가 동료 작업을 망가뜨린다
+      - id: R3
+        criterion: 개인 브랜치 정리에만 쓰고 공유 브랜치는 merge
+
+  - conceptKey: DEVOPS.DOCKER.CONTAINER_WRITABLE_LAYER
+    skill: DEVOPS.DOCKER
+    reviewType: RECALL
+    prompt: >-
+      Docker 이미지와 컨테이너의 차이는? PostgreSQL 컨테이너를 삭제 후 다시 만들었더니 데이터가 사라졌습니다.
+      이유와 해결 방법은?
+    expectedAnswer: >-
+      이미지는 읽기 전용 레이어로 이루어진 실행 템플릿이고, 컨테이너는 이미지 위에 쓰기 가능한 레이어를
+      더한 실행 인스턴스다. 컨테이너 안에서 쓴 데이터는 그 쓰기 레이어에 있어서 컨테이너를 삭제하면 함께
+      사라진다. DB 데이터 디렉터리는 named volume이나 bind mount로 컨테이너 밖에 보관한다.
+    rubric:
+      - id: R1
+        criterion: 이미지는 읽기 전용 템플릿, 컨테이너는 쓰기 레이어가 추가된 인스턴스
+      - id: R2
+        criterion: 컨테이너 삭제 시 쓰기 레이어 데이터가 사라진다
+      - id: R3
+        criterion: 볼륨으로 영속 데이터를 분리한다
+
+  - conceptKey: DEVOPS.DOCKER.LAYER_CACHE_ORDER
+    skill: DEVOPS.DOCKER
+    reviewType: BUG_SPOT
+    prompt: |-
+      소스 한 줄만 바꿔도 이미지 빌드가 매번 오래 걸립니다. 원인과 개선 방법은?
+      ```dockerfile
+      FROM eclipse-temurin:25-jdk
+      WORKDIR /app
+      COPY . .
+      RUN ./gradlew dependencies --no-daemon
+      RUN ./gradlew bootJar --no-daemon
+      CMD ["java", "-jar", "build/libs/app.jar"]
+      ```
+    expectedAnswer: >-
+      COPY . .가 먼저 나와서 소스가 조금만 바뀌어도 그 레이어 캐시가 무효화되고, 이후 의존성 다운로드와 빌드
+      단계도 매번 다시 실행된다. 빌드 스크립트와 Gradle wrapper 파일을 먼저 복사해 의존성을 받는 레이어를
+      만든 뒤 소스를 복사한다. 또한 멀티 스테이지 빌드로 빌드 결과 jar만 JRE 기반 실행 이미지에 복사해
+      이미지 크기를 줄인다.
+    rubric:
+      - id: R1
+        criterion: 레이어 캐시는 앞 단계가 바뀌면 이후 단계가 모두 다시 실행된다
+      - id: R2
+        criterion: 자주 바뀌지 않는 빌드 스크립트를 먼저 복사한다
+      - id: R3
+        criterion: 멀티 스테이지로 실행 이미지를 분리한다
+
+  - conceptKey: DEVOPS.CI_GITHUB_ACTIONS.FORK_PR_SECRETS
+    skill: DEVOPS.CI_GITHUB_ACTIONS
+    reviewType: RECALL
+    prompt: >-
+      public 저장소에 fork에서 PR이 올라왔습니다. 이 PR로 실행되는 GitHub Actions 워크플로에서 저장소 secret을
+      쓸 수 있나요? CI와 배포 워크플로를 어떻게 설계해야 하나요?
+    expectedAnswer: >-
+      GITHUB_TOKEN을 제외한 secret은 fork 저장소에서 트리거된 워크플로에 전달되지 않는다. 따라서 PR용 CI는
+      secret 없이 통과하도록 fake 설정이나 테스트 컨테이너로 구성하고, secret이 필요한 배포 job은 main 브랜치
+      push처럼 신뢰할 수 있는 이벤트에서만 실행한다. pull_request_target은 fork 코드를 secret이 있는 권한으로
+      실행할 위험이 있어 신중하게 쓴다.
+    rubric:
+      - id: R1
+        criterion: fork PR 워크플로에는 secret이 전달되지 않는다
+      - id: R2
+        criterion: PR CI는 secret 없이 통과하도록 구성한다
+      - id: R3
+        criterion: 배포는 신뢰할 수 있는 이벤트에서만 실행한다

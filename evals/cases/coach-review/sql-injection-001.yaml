@@ -1,0 +1,63 @@
+id: coach-review/sql-injection-001
+operation: COACH_REVIEW
+title: 검색어와 정렬 컬럼을 SQL 문자열에 직접 이어 붙임
+tags: [jdbc, security, sql]
+trap: false
+input:
+  variables:
+    language: JAVA
+    contentType: CODE
+    projectType: SPRING_BOOT
+    topic: 상품 검색
+    fileName: ProductSearchDao.java
+    skillContext: |
+      SECURITY.INJECTION · Injection 방어 · planning K1 I0 E0 D0
+      DATABASE.JDBC · JDBC와 JdbcTemplate · planning K2 I2 E1 D1
+    weakAxes: SECURITY
+    skillCodeCandidates: |
+      SECURITY.INJECTION · Injection 방어
+      DATABASE.JDBC · JDBC와 JdbcTemplate
+      DATABASE.JPA_BASICS · JPA 기본
+      JAVA.STRING · 문자열
+  userContent:
+    userSelfReview:
+      kind: TEXT
+      text: 정렬 기준을 클라이언트가 고를 수 있게 파라미터로 받았다.
+    content:
+      kind: CODE
+      language: JAVA
+      text: |
+        package com.example.product;
+
+        import org.springframework.jdbc.core.JdbcTemplate;
+        import org.springframework.stereotype.Repository;
+
+        import java.util.List;
+
+        @Repository
+        public class ProductSearchDao {
+
+            private final JdbcTemplate jdbcTemplate;
+
+            public ProductSearchDao(JdbcTemplate jdbcTemplate) {
+                this.jdbcTemplate = jdbcTemplate;
+            }
+
+            public List<ProductRow> search(String keyword, String sortColumn) {
+                String sql = "SELECT id, name, price FROM product WHERE name LIKE '%" + keyword + "%'"
+                        + " ORDER BY " + sortColumn;
+                return jdbcTemplate.query(sql, (rs, rowNum) ->
+                        new ProductRow(rs.getLong("id"), rs.getString("name"), rs.getLong("price")));
+            }
+        }
+expect:
+  confidentialSuspected: false
+  mustDetect:
+    - id: D1
+      category: SECURITY
+      findingTypeIn: [BUG, RISK]
+      lines: [18, 20]
+      questionMentionsAny: ["injection", "인젝션", "입력", "파라미터", "바인딩", "허용"]
+  mustNotClaim:
+    - category: CONCURRENCY
+    - category: RESOURCE_LIFECYCLE

@@ -1,0 +1,37 @@
+# DevPilot backend version catalog
+# 기준: docs/18-project-setup-and-local-dev.md §1, §4
+# 버전은 2026-09-17에 Maven Central / Gradle Plugin Portal 메타데이터로 확인했다.
+#
+# 규칙
+#  - Spring Boot가 관리하는 의존성(starter, JUnit, Testcontainers, Flyway, PostgreSQL JDBC, Mockito,
+#    JSpecify 등)은 버전을 적지 않는다. Boot BOM(io.spring.dependency-management)이 정한다.
+#  - Boot starter 좌표는 build.gradle.kts에 Spring Initializr 생성 문자열 그대로 둔다(추측 금지).
+#  - 이 파일에는 Boot가 관리하지 않는 라이브러리, 품질 도구, Gradle plugin만 둔다.
+
+[versions]
+spring-boot = "4.1.1"                    # Initializr 기본값 (4.1.2는 SNAPSHOT)
+spring-dependency-management = "1.1.7"   # Initializr 생성값
+springdoc = "3.1.1"                      # springdoc 3.x = Boot 4. Initializr(4.1.1)는 3.1.0을 넣는다
+archunit = "1.5.0"
+# AI 공급자 SDK·HTTP stub 없음: DeepSeek은 Spring RestClient로 호출하고 테스트는 MockRestServiceServer(spring-test)를 쓴다 (2026-09-18)
+spotless = "8.10.2"
+google-java-format = "1.36.1"
+spotbugs-plugin = "6.5.11"
+spotbugs-tool = "4.10.4"
+checkstyle = "14.1.0"
+pmd = "7.27.0"
+jacoco = "0.8.15"
+
+[libraries]
+springdoc-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
+archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
+# Boot BOM 관리 (jspecify.version=1.0.1) → version 없음
+jspecify = { module = "org.jspecify:jspecify" }
+# Boot BOM 관리 → version 없음. Mockito javaagent 설정에 사용
+mockito-core = { module = "org.mockito:mockito-core" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+spotbugs = { id = "com.github.spotbugs", version.ref = "spotbugs-plugin" }

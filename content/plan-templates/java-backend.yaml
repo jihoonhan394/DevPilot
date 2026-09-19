@@ -1,0 +1,158 @@
+# DevPilot plan template — JAVA_BACKEND
+# Spec: docs/19-content-spec.md §3.4 (schema), §5 (날짜 배치 알고리즘)
+# - milestones 순서 = plan_milestone.sort_order
+# - PREPARATION milestone이 모두 CONSOLIDATION milestone보다 앞에 온다
+# - weightBp 전체 합 = 10000. 단계(phase) 안에서는 해당 단계 합으로 다시 나눠 쓴다
+# - MUST role target skill은 정확히 한 milestone에 들어간다. 한 skill은 최대 한 milestone
+#
+# milestone은 과목 순서가 아니라 **주문 시스템을 만드는 순서**다. 한 달을 배워도 만들 것이 없는 커리큘럼을 피하기 위해서다.
+# milestone 안의 순환은 읽기 → 개념 → 구현 → 러버덕 → 복습이다.
+# milestone priority: 1~6 MUST, 7~9 SHOULD — 기한이 촉박할 때 7~9부터 잘라낸다.
+#   (milestone의 priority는 잘라내는 순서를 정하고, skill의 priority는 role target이 정한다.
+#    SHOULD milestone 안에도 MUST role target skill이 들어갈 수 있다. 위험도 계산은
+#    plan_skill_target.priority를 쓴다 — docs/06-learning-engine-rules.md §4.1)
+# readings 연결은 content/curated-repos.yaml이 skillCodes로 맺는다(06 §5.3 READ_CODE).
+templateKey: JAVA_BACKEND_DEFAULT
+targetRole: JAVA_BACKEND
+planTitle: Java 백엔드 성장 계획
+placement:
+  minMilestoneDays: 7
+milestones:
+  - key: FOUNDATION_SETUP
+    title: 기반 다지기
+    description: 프로젝트를 띄우고 계층을 나누고 첫 REST API를 만든다. 같은 자리에서 첫 테스트를 쓴다. petclinic의 구조와 테스트를 먼저 읽고 같은 모양으로 시작한다.
+    priority: MUST
+    weightBp: 1200
+    phase: PREPARATION
+    skillCodes:
+      - DEVOPS.GIT
+      - DEVOPS.BUILD_GRADLE
+      - JAVA.OOP
+      - JAVA.MODERN_SYNTAX
+      - SPRING.DI_IOC
+      - SPRING.BOOT_CONFIG
+      - SPRING.MVC_REST
+      - WEB_HTTP.HTTP_BASICS
+      - WEB_HTTP.REST_API_DESIGN
+      - TESTING.JUNIT
+      - TESTING.UNIT_TEST_DESIGN
+      - TESTING.SPRING_TEST
+  - key: MEMBER_AND_AUTH
+    title: 회원과 인증
+    description: 회원가입과 로그인을 직접 만든다. 비밀번호를 어떻게 저장하고 세션·토큰 중 무엇을 쓸지 스스로 정하고 근거를 남긴다. 읽을 만한 공개 예제가 마땅치 않은 영역이라 구현과 문제로 채운다.
+    priority: MUST
+    weightBp: 1200
+    phase: PREPARATION
+    skillCodes:
+      - WEB_HTTP.AUTH_SESSION_TOKEN
+      - WEB_HTTP.CORS
+      - SPRING.SECURITY
+      - SPRING.SECURITY.JWT_RESOURCE_SERVER
+      - SECURITY.AUTHN_AUTHZ
+      - SECURITY.OWASP_TOP10
+      - SECURITY.INPUT_VALIDATION
+      - SECURITY.SECRET_MANAGEMENT
+      - SECURITY.SENSITIVE_DATA_LOGGING
+  - key: CATALOG_AND_CRUD
+    title: 상품과 CRUD
+    description: 엔티티와 연관관계를 잡고 검증·예외 응답·DTO 경계를 만든다. petclinic의 Owner/Pet/Visit 매핑과 슬라이스 테스트를 읽고 같은 문제를 내 도메인에서 푼다.
+    priority: MUST
+    weightBp: 1500
+    phase: PREPARATION
+    skillCodes:
+      - DATABASE.SQL_BASICS
+      - DATABASE.MODELING
+      - DATABASE.JPA
+      - DATABASE.JPA.PERSISTENCE_CONTEXT
+      - SPRING.DATA_JPA
+      - SPRING.VALIDATION
+      - SPRING.EXCEPTION_HANDLING
+      - JAVA.EXCEPTION
+      - JAVA.COLLECTION
+      - JAVA.OPTIONAL
+      - JAVA.GENERICS
+      - PRACTICAL_ENGINEERING.NULL_BOUNDARY
+      - TESTING.TEST_DOUBLE
+  - key: ORDER_CREATION
+    title: 주문 생성
+    description: 트랜잭션 경계를 어디에 둘지 정하고 재고를 차감한다. 두 요청이 같은 재고를 건드릴 때 무엇이 깨지는지 직접 재현한다. restbucks의 Order 애그리거트를 읽는다.
+    priority: MUST
+    weightBp: 1500
+    phase: PREPARATION
+    skillCodes:
+      - SPRING.TRANSACTION
+      - SPRING.TRANSACTION.PROPAGATION
+      - SPRING.AOP_PROXY
+      - DATABASE.TRANSACTION
+      - DATABASE.TRANSACTION.LOCKING
+      - JAVA.CONCURRENCY
+      - JAVA.CONCURRENCY.VIRTUAL_THREAD
+  - key: CANCEL_AND_REFUND
+    title: 취소와 환불
+    description: 주문 상태 전이를 표로 정리하고 되돌리는 경로를 만든다. 같은 취소 요청이 두 번 와도 결과가 같게 만든다. restbucks의 payment 흐름을 읽는다.
+    priority: MUST
+    weightBp: 1200
+    phase: PREPARATION
+    skillCodes:
+      - WEB_HTTP.IDEMPOTENCY
+      - JAVA.EXCEPTION.TRY_WITH_RESOURCES
+      - PRACTICAL_ENGINEERING.RESOURCE_TIMEOUT
+      - DATABASE.MIGRATION
+      - TESTING.TESTCONTAINERS
+  - key: QUERY_PERFORMANCE
+    title: 조회 성능
+    description: 목록 API가 느려지는 지점을 직접 만들고 고친다. N+1을 재현하고 실행계획을 읽고 인덱스와 페이징을 넣는다. 읽을 코드 대신 내 코드의 측정값을 근거로 쓴다.
+    priority: MUST
+    weightBp: 1100
+    phase: PREPARATION
+    skillCodes:
+      - DATABASE.JPA.FETCH_STRATEGY
+      - DATABASE.INDEX
+      - DATABASE.INDEX.EXPLAIN_PLAN
+      - JAVA.LAMBDA_STREAM
+      - SYSTEM_DESIGN.CACHING
+  - key: STRUCTURE_CLEANUP
+    title: 구조 정리
+    description: 커진 코드의 모듈 경계를 다시 긋고 직접 호출을 이벤트로 바꿔 결합을 낮춘다. modulith 예제 전체(main 298줄)를 읽고 같은 검사를 내 프로젝트에 넣는다.
+    priority: SHOULD
+    weightBp: 700
+    phase: PREPARATION
+    skillCodes:
+      - PRACTICAL_ENGINEERING.CODE_REVIEW
+      - SYSTEM_DESIGN.MESSAGE_QUEUE
+      - SYSTEM_DESIGN.SCALABILITY
+  - key: DEPLOY_AND_OPERATE
+    title: 배포와 운영
+    description: 컨테이너로 띄우고 CI를 붙이고 로그와 지표를 남긴다. 장애가 났을 때 무엇을 보고 원인을 좁힐지 미리 정해 둔다.
+    priority: SHOULD
+    weightBp: 800
+    phase: PREPARATION
+    skillCodes:
+      - DEVOPS.DOCKER
+      - DEVOPS.CI_GITHUB_ACTIONS
+      - DEVOPS.LINUX_BASICS
+      - DEVOPS.CLOUD_DEPLOY
+      - PRACTICAL_ENGINEERING.LOGGING
+      - PRACTICAL_ENGINEERING.INCIDENT_ANALYSIS
+  - key: EXPLAIN_AND_CONSOLIDATE
+    title: 설명과 정리
+    description: 만든 것을 설명할 수 있는 형태로 정리하고, 빈 CS 기초를 골라 메운다.
+    priority: SHOULD
+    weightBp: 800
+    phase: CONSOLIDATION
+    skillCodes:
+      - EXPLANATION.PROJECT_STORY
+      - EXPLANATION.TECH_DECISION
+      - EXPLANATION.TROUBLESHOOTING_STORY
+      - EXPLANATION.LEARNING_RETROSPECTIVE
+      - JAVA.JVM_MEMORY_GC
+      - CS.OS_PROCESS_THREAD
+      - CS.DATA_STRUCTURE
+      - CS.IO_MODEL
+      - NETWORK.TCP_IP
+      - NETWORK.TLS
+      - NETWORK.DNS
+      - ALGORITHM.COMPLEXITY
+      - ALGORITHM.SORT_SEARCH
+      - ALGORITHM.GRAPH_SEARCH
+      - ALGORITHM.DP_GREEDY

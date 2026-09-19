@@ -1,0 +1,23 @@
+# DevPilot health ping: http://127.0.0.1:18080/actuator/health -> healthchecks.io (dead-man switch)
+# 기준: docs/10-deployment-and-operations.md §11.1, §11.2 (2026-09-18)
+# 설치: prepare-server.sh가 /etc/systemd/system/ 에 복사하고 timer를 켠다
+# 수동 실행: sudo systemctl start devpilot-healthping.service && journalctl -u devpilot-healthping.service -n 20
+
+[Unit]
+Description=DevPilot health ping to healthchecks.io
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+ExecStart=/opt/devpilot/healthping.sh
+TimeoutStartSec=2min
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true

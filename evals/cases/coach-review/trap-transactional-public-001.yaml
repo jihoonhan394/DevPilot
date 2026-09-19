@@ -1,0 +1,78 @@
+id: coach-review/trap-transactional-public-001
+operation: COACH_REVIEW
+title: "오탐 함정: 다른 bean에서 호출하는 public @Transactional 메서드와 변경 감지"
+tags: [trap, spring, transaction]
+trap: true
+input:
+  variables:
+    language: JAVA
+    contentType: CODE
+    projectType: SPRING_BOOT
+    topic: 만료 주문 취소
+    fileName: OrderCancelService.java
+    skillContext: |
+      SPRING.TRANSACTION · Spring 트랜잭션 · planning K3 I2 E2 D1
+      DATABASE.JPA_BASICS · JPA 기본 · planning K3 I3 E2 D2
+    weakAxes: TRANSACTION_DATA_CONSISTENCY
+    skillCodeCandidates: |
+      SPRING.TRANSACTION · Spring 트랜잭션
+      DATABASE.JPA_BASICS · JPA 기본
+      JAVA.EXCEPTION · 예외 처리
+      JAVA.OPTIONAL · Optional
+  userContent:
+    userSelfReview:
+      kind: TEXT
+      text: 취소는 별도 bean의 public 메서드에 트랜잭션을 걸어 주문 하나씩 커밋되게 했다. save는 변경 감지로 대신했다.
+    content:
+      kind: CODE
+      language: JAVA
+      text: |
+        package com.example.order;
+
+        import org.springframework.stereotype.Service;
+        import org.springframework.transaction.annotation.Transactional;
+
+        @Service
+        public class OrderCancelService {
+
+            private final OrderRepository orderRepository;
+
+            public OrderCancelService(OrderRepository orderRepository) {
+                this.orderRepository = orderRepository;
+            }
+
+            @Transactional
+            public void cancel(Long orderId) {
+                Order order = orderRepository.findById(orderId)
+                        .orElseThrow(() -> new OrderNotFoundException(orderId));
+                order.cancel();
+            }
+        }
+
+        @Service
+        class OrderExpirationJob {
+
+            private final OrderCancelService orderCancelService;
+            private final OrderQueryRepository orderQueryRepository;
+
+            OrderExpirationJob(OrderCancelService orderCancelService,
+                               OrderQueryRepository orderQueryRepository) {
+                this.orderCancelService = orderCancelService;
+                this.orderQueryRepository = orderQueryRepository;
+            }
+
+            void cancelExpired() {
+                for (Long orderId : orderQueryRepository.findExpiredOrderIds()) {
+                    orderCancelService.cancel(orderId);
+                }
+            }
+        }
+expect:
+  confidentialSuspected: false
+  mustDetect: []
+  mustNotClaim:
+    - category: TRANSACTION_DATA_CONSISTENCY
+      lines: [1, 21]
+    - category: NULL_BOUNDARY
+      lines: [16, 20]
+  expectSelfReviewAxesInclude: [TRANSACTION_DATA_CONSISTENCY]

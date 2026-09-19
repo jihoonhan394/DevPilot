@@ -1,0 +1,43 @@
+id: hint-generate/coach-finding-concept-001
+operation: HINT_GENERATE
+title: "coach finding CONCEPT_HINT: 예외 경로의 자원 해제를 개념으로만 안내"
+tags: [coach, resource, no-code]
+trap: false
+input:
+  variables:
+    targetType: COACH_FINDING
+    requestedLevel: CONCEPT_HINT
+    targetSummary: |
+      유형: RISK
+      사고 축: RESOURCE_LIFECYCLE
+      요약: readLine() 또는 빈 파일 검사에서 예외가 나면 BufferedReader가 닫히지 않는다.
+      학습 질문: 이 메서드가 정상 종료하지 않는 경로에서 reader는 누가, 언제 닫나요?
+    latestFeedback: (없음)
+    previousHints: |
+      QUESTION_ONLY: 예외가 발생해 메서드를 빠져나가는 경로를 하나씩 따라가 보면, reader.close()에 도달하나요?
+  userContent:
+    learnerExplanation:
+      kind: TEXT
+      text: 마지막에 reader.close()를 호출하니까 파일 핸들은 결국 닫힌다고 생각했습니다.
+    userAttempt:
+      kind: CODE
+      language: JAVA
+      firstLineNumber: 8
+      text: |
+        public class ConfigLoader {
+
+            public String readFirstLine(Path path) throws IOException {
+                BufferedReader reader = Files.newBufferedReader(path);
+                String line = reader.readLine();
+                if (line == null) {
+                    throw new IOException("empty config: " + path);
+                }
+                reader.close();
+                return line;
+            }
+        }
+expect:
+  level: CONCEPT_HINT
+  containsCode: false
+  mustNotContainAny: ["try (", "finally {", "```", "reader.close();"]
+  mentionsAny: ["예외", "경로", "자원", "AutoCloseable", "해제"]

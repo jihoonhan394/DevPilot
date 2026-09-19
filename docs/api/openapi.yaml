@@ -1,0 +1,1723 @@
+openapi: 3.1.0
+info:
+  title: DevPilot API
+  version: v1
+servers:
+- url: /
+security:
+- bearerAuth: []
+paths:
+  /api/v1/learning-goal:
+    get:
+      operationId: goalGetGoal
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningGoalView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - goal
+    put:
+      operationId: goalUpdateGoal
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LearningGoalUpdateRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningGoalView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - goal
+  /api/v1/me:
+    delete:
+      operationId: userDeleteMe
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountDeletionResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - user
+    get:
+      operationId: userGetMe
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - user
+    patch:
+      operationId: userUpdateMe
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMeRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - user
+  /api/v1/onboarding:
+    post:
+      operationId: onboardingComplete
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OnboardingRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OnboardingResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - onboarding
+  /api/v1/plans:
+    get:
+      operationId: planList
+      parameters:
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+          maxLength: 512
+          minLength: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CursorPagePlanSummaryView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - plan
+  /api/v1/plans/active:
+    get:
+      operationId: planGetActive
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - plan
+  /api/v1/plans/{planId}:
+    get:
+      operationId: planGet
+      parameters:
+      - in: path
+        name: planId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - plan
+  /api/v1/plans/{planId}/milestones/{milestoneId}:
+    patch:
+      operationId: planUpdateMilestone
+      parameters:
+      - in: path
+        name: planId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: milestoneId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MilestonePatchRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MilestoneView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - plan
+  /api/v1/plans/{planId}/replan:
+    post:
+      operationId: planReplan
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: planId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplanRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReplanCommitResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - plan
+  /api/v1/side-projects:
+    get:
+      operationId: projectList
+      parameters:
+      - in: query
+        name: status
+        required: false
+        schema:
+          type: string
+          enum:
+          - ACTIVE
+          - PAUSED
+          - DONE
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+          maxLength: 512
+          minLength: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CursorPageSideProjectView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - project
+    post:
+      operationId: projectCreate
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SideProjectCreateRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SideProjectView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - project
+  /api/v1/side-projects/{sideProjectId}:
+    delete:
+      operationId: projectDelete
+      parameters:
+      - in: path
+        name: sideProjectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - project
+    get:
+      operationId: projectGet
+      parameters:
+      - in: path
+        name: sideProjectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SideProjectView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - project
+    patch:
+      operationId: projectUpdate
+      parameters:
+      - in: path
+        name: sideProjectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SideProjectPatchRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SideProjectView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - project
+  /api/v1/skills/me:
+    get:
+      operationId: skillGetMyStates
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSkillStatesResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - skill
+  /api/v1/skills/tree:
+    get:
+      operationId: skillGetTree
+      parameters:
+      - in: query
+        name: role
+        required: false
+        schema:
+          type: string
+          default: JAVA_BACKEND
+          enum:
+          - JAVA_BACKEND
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillTreeResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - skill
+components:
+  schemas:
+    AccountDeletionResponse:
+      type: object
+      properties:
+        deletionRequestedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - DELETION_REQUESTED
+      required:
+      - deletionRequestedAt
+      - status
+    AiUsageView:
+      type: object
+      properties:
+        dailyCallLimit:
+          type: integer
+          format: int32
+        monthCostUsd:
+          type: string
+        monthlyBudgetUsd:
+          type: string
+        todayCalls:
+          type: integer
+          format: int32
+      required:
+      - dailyCallLimit
+      - monthCostUsd
+      - monthlyBudgetUsd
+      - todayCalls
+    AxisLevels:
+      type: object
+      properties:
+        debugging:
+          type: integer
+          format: int32
+        explanation:
+          type: integer
+          format: int32
+        implementation:
+          type: integer
+          format: int32
+        knowledge:
+          type: integer
+          format: int32
+      required:
+      - debugging
+      - explanation
+      - implementation
+      - knowledge
+    CursorPagePlanSummaryView:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanSummaryView"
+        nextCursor:
+          type: string
+      required:
+      - items
+      - nextCursor
+    CursorPageSideProjectView:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SideProjectView"
+        nextCursor:
+          type: string
+      required:
+      - items
+      - nextCursor
+    DiagnosticSuggestionView:
+      type: object
+      properties:
+        category:
+          type: string
+          enum:
+          - JAVA
+          - SPRING
+          - DATABASE
+          - WEB_HTTP
+          - NETWORK
+          - CS
+          - ALGORITHM
+          - TESTING
+          - DEVOPS
+          - SECURITY
+          - PRACTICAL_ENGINEERING
+          - SYSTEM_DESIGN
+          - EXPLANATION
+        challengeId:
+          type: string
+          format: uuid
+        difficulty:
+          type: integer
+          format: int32
+        estimatedMinutes:
+          type: integer
+          format: int32
+        selfAssessedLevel:
+          type: integer
+          format: int32
+        skill:
+          $ref: "#/components/schemas/SkillRef"
+        title:
+          type: string
+      required:
+      - category
+      - challengeId
+      - difficulty
+      - estimatedMinutes
+      - selfAssessedLevel
+      - skill
+      - title
+    FieldError:
+      type: object
+      properties:
+        code:
+          type: string
+        field:
+          type: string
+        message:
+          type: string
+      required:
+      - code
+      - field
+      - message
+    LearningGoalInput:
+      type: object
+      properties:
+        checkpointDate:
+          type: string
+          format: date
+        focusSkillCodes:
+          type: array
+          items:
+            type: string
+            maxLength: 100
+            minLength: 0
+          maxItems: 10
+          minItems: 0
+        targetCompletionDate:
+          type: string
+          format: date
+        targetRole:
+          type: string
+          enum:
+          - JAVA_BACKEND
+      required:
+      - focusSkillCodes
+      - targetCompletionDate
+      - targetRole
+    LearningGoalUpdateRequest:
+      type: object
+      properties:
+        checkpointDate:
+          type: string
+          format: date
+        focusSkillCodes:
+          type: array
+          items:
+            type: string
+            maxLength: 100
+            minLength: 0
+          maxItems: 10
+          minItems: 0
+        targetCompletionDate:
+          type: string
+          format: date
+        targetRole:
+          type: string
+          enum:
+          - JAVA_BACKEND
+        version:
+          type: integer
+          format: int64
+      required:
+      - focusSkillCodes
+      - targetCompletionDate
+      - targetRole
+      - version
+    LearningGoalView:
+      type: object
+      properties:
+        checkpointDate:
+          type: string
+          format: date
+        createdAt:
+          type: string
+          format: date-time
+        focusSkills:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillRef"
+        id:
+          type: string
+          format: uuid
+        replanRecommended:
+          type: boolean
+        targetCompletionDate:
+          type: string
+          format: date
+        targetRole:
+          type: string
+          enum:
+          - JAVA_BACKEND
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+      required:
+      - checkpointDate
+      - createdAt
+      - focusSkills
+      - id
+      - replanRecommended
+      - targetCompletionDate
+      - targetRole
+      - updatedAt
+      - version
+    MeResponse:
+      type: object
+      properties:
+        aiStatus:
+          type: string
+          enum:
+          - ENABLED
+          - BUDGET_WARNING
+          - BALANCE_EXHAUSTED
+          - DISABLED
+        aiUsage:
+          $ref: "#/components/schemas/AiUsageView"
+        calendarSubscribed:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        dayStartHour:
+          type: integer
+          format: int32
+        deletionRequestedAt:
+          type: string
+          format: date-time
+        displayName:
+          type: string
+        experienceProfile:
+          type: string
+          enum:
+          - WORKING_DEVELOPER
+          - DEVELOPER_STARTER
+          - OTHER
+        experienceStartDate:
+          type: string
+          format: date
+        id:
+          type: string
+          format: uuid
+        onboardingCompleted:
+          type: boolean
+        onboardingCompletedAt:
+          type: string
+          format: date-time
+        role:
+          type: string
+          enum:
+          - USER
+          - ADMIN
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - DELETION_REQUESTED
+        timezone:
+          type: string
+        today:
+          type: string
+          format: date
+        version:
+          type: integer
+          format: int64
+        weekdayStudyMinutes:
+          type: integer
+          format: int32
+        weekendStudyMinutes:
+          type: integer
+          format: int32
+      required:
+      - aiStatus
+      - aiUsage
+      - calendarSubscribed
+      - createdAt
+      - dayStartHour
+      - deletionRequestedAt
+      - displayName
+      - experienceProfile
+      - experienceStartDate
+      - id
+      - onboardingCompleted
+      - onboardingCompletedAt
+      - role
+      - status
+      - timezone
+      - today
+      - version
+      - weekdayStudyMinutes
+      - weekendStudyMinutes
+    MilestoneIdMappingView:
+      type: object
+      properties:
+        newId:
+          type: string
+          format: uuid
+        previousId:
+          type: string
+          format: uuid
+      required:
+      - newId
+      - previousId
+    MilestoneInput:
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 2000
+          minLength: 0
+        endDate:
+          type: string
+          format: date
+        id:
+          type: string
+          format: uuid
+        priority:
+          type: string
+          enum:
+          - MUST
+          - SHOULD
+          - LATER
+        skillCodes:
+          type: array
+          items:
+            type: string
+            maxLength: 100
+            minLength: 0
+          maxItems: 30
+          minItems: 0
+        sortOrder:
+          type: integer
+          format: int32
+          maximum: 10000
+          minimum: 0
+        startDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum:
+          - PLANNED
+          - IN_PROGRESS
+          - DONE
+          - DEFERRED
+          - DROPPED
+        title:
+          type: string
+          maxLength: 200
+          minLength: 0
+      required:
+      - endDate
+      - priority
+      - skillCodes
+      - sortOrder
+      - startDate
+      - status
+      - title
+    MilestonePatchRequest:
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 2000
+          minLength: 0
+        sortOrder:
+          type: integer
+          format: int32
+          maximum: 10000
+          minimum: 0
+        status:
+          type: string
+          enum:
+          - PLANNED
+          - IN_PROGRESS
+          - DONE
+          - DEFERRED
+          - DROPPED
+        version:
+          type: integer
+          format: int64
+      required:
+      - version
+    MilestoneView:
+      type: object
+      properties:
+        description:
+          type: string
+        endDate:
+          type: string
+          format: date
+        id:
+          type: string
+          format: uuid
+        priority:
+          type: string
+          enum:
+          - MUST
+          - SHOULD
+          - LATER
+        skillCodes:
+          type: array
+          items:
+            type: string
+        sortOrder:
+          type: integer
+          format: int32
+        startDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum:
+          - PLANNED
+          - IN_PROGRESS
+          - DONE
+          - DEFERRED
+          - DROPPED
+        title:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+      required:
+      - description
+      - endDate
+      - id
+      - priority
+      - skillCodes
+      - sortOrder
+      - startDate
+      - status
+      - title
+      - updatedAt
+      - version
+    OnboardingRequest:
+      type: object
+      properties:
+        dayStartHour:
+          type: integer
+          format: int32
+          maximum: 6
+          minimum: 0
+        displayName:
+          type: string
+          maxLength: 100
+          minLength: 0
+        experienceProfile:
+          type: string
+          enum:
+          - WORKING_DEVELOPER
+          - DEVELOPER_STARTER
+          - OTHER
+        experienceStartDate:
+          type: string
+          format: date
+        learningGoal:
+          $ref: "#/components/schemas/LearningGoalInput"
+        runDiagnostic:
+          type: boolean
+        selfAssessments:
+          type: array
+          items:
+            $ref: "#/components/schemas/SelfAssessmentInput"
+          maxItems: 13
+          minItems: 0
+        sideProject:
+          $ref: "#/components/schemas/SideProjectInput"
+        timezone:
+          type: string
+          maxLength: 50
+          minLength: 0
+        useTemplate:
+          type: boolean
+        weekdayStudyMinutes:
+          type: integer
+          format: int32
+          maximum: 720
+          minimum: 0
+        weekendStudyMinutes:
+          type: integer
+          format: int32
+          maximum: 720
+          minimum: 0
+      required:
+      - dayStartHour
+      - displayName
+      - experienceProfile
+      - learningGoal
+      - runDiagnostic
+      - selfAssessments
+      - timezone
+      - useTemplate
+      - weekdayStudyMinutes
+      - weekendStudyMinutes
+    OnboardingResponse:
+      type: object
+      properties:
+        activePlan:
+          $ref: "#/components/schemas/PlanSummaryView"
+        assignedSeedCardCount:
+          type: integer
+          format: int32
+        learningGoal:
+          $ref: "#/components/schemas/LearningGoalView"
+        sideProject:
+          $ref: "#/components/schemas/SideProjectView"
+        suggestedDiagnostics:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiagnosticSuggestionView"
+        user:
+          $ref: "#/components/schemas/MeResponse"
+      required:
+      - activePlan
+      - assignedSeedCardCount
+      - learningGoal
+      - sideProject
+      - suggestedDiagnostics
+      - user
+    PlanSkillTargetView:
+      type: object
+      properties:
+        adjustment:
+          type: string
+          enum:
+          - ROLE_DEFAULT
+          - DEFERRED
+          - TARGET_REDUCED
+          - USER_EDITED
+        deferred:
+          type: boolean
+        practicalImportanceBp:
+          type: integer
+          format: int32
+        priority:
+          type: string
+          enum:
+          - MUST
+          - SHOULD
+          - LATER
+        skill:
+          $ref: "#/components/schemas/SkillRef"
+        targets:
+          $ref: "#/components/schemas/AxisLevels"
+      required:
+      - adjustment
+      - deferred
+      - practicalImportanceBp
+      - priority
+      - skill
+      - targets
+    PlanSummaryView:
+      type: object
+      properties:
+        changeReason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        latestRatioBp:
+          type: integer
+          format: int32
+        latestRiskLevel:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+        milestoneCount:
+          type: integer
+          format: int32
+        planVersion:
+          type: integer
+          format: int32
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - SUPERSEDED
+          - ARCHIVED
+        supersededAt:
+          type: string
+          format: date-time
+        title:
+          type: string
+      required:
+      - changeReason
+      - createdAt
+      - id
+      - latestRatioBp
+      - latestRiskLevel
+      - milestoneCount
+      - planVersion
+      - status
+      - supersededAt
+      - title
+    PlanView:
+      type: object
+      properties:
+        changeReason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        latestSnapshot:
+          $ref: "#/components/schemas/SnapshotView"
+        milestones:
+          type: array
+          items:
+            $ref: "#/components/schemas/MilestoneView"
+        planVersion:
+          type: integer
+          format: int32
+        replanRecommended:
+          type: boolean
+        skillTargets:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanSkillTargetView"
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - SUPERSEDED
+          - ARCHIVED
+        supersededAt:
+          type: string
+          format: date-time
+        supersedesPlanId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        version:
+          type: integer
+          format: int64
+      required:
+      - changeReason
+      - createdAt
+      - id
+      - latestSnapshot
+      - milestones
+      - planVersion
+      - replanRecommended
+      - skillTargets
+      - status
+      - supersededAt
+      - supersedesPlanId
+      - title
+      - version
+    ProblemDetail:
+      type: object
+      properties:
+        code:
+          type: string
+        detail:
+          type: string
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldError"
+        instance:
+          type: string
+        status:
+          type: integer
+          format: int32
+        title:
+          type: string
+        traceId:
+          type: string
+        type:
+          type: string
+      required:
+      - code
+      - detail
+      - errors
+      - instance
+      - status
+      - title
+      - traceId
+      - type
+    ReplanCommitResponse:
+      type: object
+      properties:
+        milestoneIdMapping:
+          type: array
+          items:
+            $ref: "#/components/schemas/MilestoneIdMappingView"
+        plan:
+          $ref: "#/components/schemas/PlanView"
+      required:
+      - milestoneIdMapping
+      - plan
+    ReplanRequest:
+      type: object
+      properties:
+        acceptedDeferrals:
+          type: array
+          items:
+            type: string
+            maxLength: 100
+            minLength: 0
+          maxItems: 100
+          minItems: 0
+        acceptedTargetRaises:
+          type: array
+          items:
+            $ref: "#/components/schemas/TargetRaiseInput"
+          maxItems: 400
+          minItems: 0
+        acceptedTargetReductions:
+          type: array
+          items:
+            $ref: "#/components/schemas/TargetReductionInput"
+          maxItems: 400
+          minItems: 0
+        milestones:
+          type: array
+          items:
+            $ref: "#/components/schemas/MilestoneInput"
+          maxItems: 24
+          minItems: 0
+        reason:
+          type: string
+          maxLength: 1000
+          minLength: 0
+        restoredDeferrals:
+          type: array
+          items:
+            type: string
+            maxLength: 100
+            minLength: 0
+          maxItems: 100
+          minItems: 0
+        version:
+          type: integer
+          format: int64
+      required:
+      - acceptedDeferrals
+      - acceptedTargetRaises
+      - acceptedTargetReductions
+      - milestones
+      - reason
+      - restoredDeferrals
+      - version
+    RoleTargetView:
+      type: object
+      properties:
+        practicalImportanceBp:
+          type: integer
+          format: int32
+        priority:
+          type: string
+          enum:
+          - MUST
+          - SHOULD
+          - LATER
+        targets:
+          $ref: "#/components/schemas/AxisLevels"
+      required:
+      - practicalImportanceBp
+      - priority
+      - targets
+    SelfAssessmentInput:
+      type: object
+      properties:
+        category:
+          type: string
+          enum:
+          - JAVA
+          - SPRING
+          - DATABASE
+          - WEB_HTTP
+          - NETWORK
+          - CS
+          - ALGORITHM
+          - TESTING
+          - DEVOPS
+          - SECURITY
+          - PRACTICAL_ENGINEERING
+          - SYSTEM_DESIGN
+          - EXPLANATION
+        level:
+          type: integer
+          format: int32
+          maximum: 5
+          minimum: 0
+      required:
+      - category
+      - level
+    SideProjectCreateRequest:
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 1000
+          minLength: 0
+        name:
+          type: string
+          maxLength: 100
+          minLength: 0
+        repoUrl:
+          type: string
+          maxLength: 500
+          minLength: 0
+        stack:
+          type: string
+          maxLength: 300
+          minLength: 0
+      required:
+      - name
+    SideProjectInput:
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 1000
+          minLength: 0
+        name:
+          type: string
+          maxLength: 100
+          minLength: 0
+        repoUrl:
+          type: string
+          maxLength: 500
+          minLength: 0
+        stack:
+          type: string
+          maxLength: 300
+          minLength: 0
+      required:
+      - name
+    SideProjectPatchRequest:
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 1000
+          minLength: 0
+        name:
+          type: string
+          maxLength: 100
+          minLength: 0
+        repoUrl:
+          type: string
+          maxLength: 500
+          minLength: 0
+        stack:
+          type: string
+          maxLength: 300
+          minLength: 0
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - PAUSED
+          - DONE
+        version:
+          type: integer
+          format: int64
+      required:
+      - version
+    SideProjectView:
+      type: object
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        description:
+          type: string
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        repoUrl:
+          type: string
+        stack:
+          type: string
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - PAUSED
+          - DONE
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+      required:
+      - createdAt
+      - description
+      - id
+      - name
+      - repoUrl
+      - stack
+      - status
+      - updatedAt
+      - version
+    SkillNodeView:
+      type: object
+      properties:
+        category:
+          type: string
+          enum:
+          - JAVA
+          - SPRING
+          - DATABASE
+          - WEB_HTTP
+          - NETWORK
+          - CS
+          - ALGORITHM
+          - TESTING
+          - DEVOPS
+          - SECURITY
+          - PRACTICAL_ENGINEERING
+          - SYSTEM_DESIGN
+          - EXPLANATION
+        code:
+          type: string
+        description:
+          type: string
+        id:
+          type: string
+          format: uuid
+        minutesPerLevelStep:
+          type: integer
+          format: int32
+        name:
+          type: string
+        parentCode:
+          type: string
+        prerequisiteCodes:
+          type: array
+          items:
+            type: string
+        roleTarget:
+          $ref: "#/components/schemas/RoleTargetView"
+        sortOrder:
+          type: integer
+          format: int32
+      required:
+      - category
+      - code
+      - description
+      - id
+      - minutesPerLevelStep
+      - name
+      - parentCode
+      - prerequisiteCodes
+      - roleTarget
+      - sortOrder
+    SkillRef:
+      type: object
+      properties:
+        category:
+          type: string
+          enum:
+          - JAVA
+          - SPRING
+          - DATABASE
+          - WEB_HTTP
+          - NETWORK
+          - CS
+          - ALGORITHM
+          - TESTING
+          - DEVOPS
+          - SECURITY
+          - PRACTICAL_ENGINEERING
+          - SYSTEM_DESIGN
+          - EXPLANATION
+        code:
+          type: string
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      required:
+      - category
+      - code
+      - id
+      - name
+    SkillTargetView:
+      type: object
+      properties:
+        adjustment:
+          type: string
+          enum:
+          - ROLE_DEFAULT
+          - DEFERRED
+          - TARGET_REDUCED
+          - USER_EDITED
+        deferred:
+          type: boolean
+        practicalImportanceBp:
+          type: integer
+          format: int32
+        priority:
+          type: string
+          enum:
+          - MUST
+          - SHOULD
+          - LATER
+        targets:
+          $ref: "#/components/schemas/AxisLevels"
+      required:
+      - adjustment
+      - deferred
+      - practicalImportanceBp
+      - priority
+      - targets
+    SkillTreeResponse:
+      type: object
+      properties:
+        catalogVersion:
+          type: integer
+          format: int32
+        role:
+          type: string
+          enum:
+          - JAVA_BACKEND
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillNodeView"
+      required:
+      - catalogVersion
+      - role
+      - skills
+    SnapshotView:
+      type: object
+      properties:
+        completionRateBp:
+          type: integer
+          format: int32
+        effectiveBudgetMinutes:
+          type: integer
+          format: int32
+        generatedAt:
+          type: string
+          format: date-time
+        horizonDate:
+          type: string
+          format: date
+        nominalBudgetMinutes:
+          type: integer
+          format: int32
+        ratioBp:
+          type: integer
+          format: int32
+        requiredMustMinutes:
+          type: integer
+          format: int32
+        requiredShouldMinutes:
+          type: integer
+          format: int32
+        riskLevel:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+        snapshotDate:
+          type: string
+          format: date
+      required:
+      - completionRateBp
+      - effectiveBudgetMinutes
+      - generatedAt
+      - horizonDate
+      - nominalBudgetMinutes
+      - ratioBp
+      - requiredMustMinutes
+      - requiredShouldMinutes
+      - riskLevel
+      - snapshotDate
+    TargetRaiseInput:
+      type: object
+      properties:
+        axis:
+          type: string
+          enum:
+          - KNOWLEDGE
+          - IMPLEMENTATION
+          - EXPLANATION
+          - DEBUGGING
+        newTarget:
+          type: integer
+          format: int32
+          maximum: 5
+          minimum: 0
+        skillCode:
+          type: string
+          maxLength: 100
+          minLength: 0
+      required:
+      - axis
+      - newTarget
+      - skillCode
+    TargetReductionInput:
+      type: object
+      properties:
+        axis:
+          type: string
+          enum:
+          - KNOWLEDGE
+          - IMPLEMENTATION
+          - EXPLANATION
+          - DEBUGGING
+        newTarget:
+          type: integer
+          format: int32
+          maximum: 5
+          minimum: 0
+        skillCode:
+          type: string
+          maxLength: 100
+          minLength: 0
+      required:
+      - axis
+      - newTarget
+      - skillCode
+    UpdateMeRequest:
+      type: object
+      properties:
+        dayStartHour:
+          type: integer
+          format: int32
+          maximum: 6
+          minimum: 0
+        displayName:
+          type: string
+          maxLength: 100
+          minLength: 1
+        timezone:
+          type: string
+          maxLength: 50
+          minLength: 0
+        version:
+          type: integer
+          format: int64
+        weekdayStudyMinutes:
+          type: integer
+          format: int32
+          maximum: 720
+          minimum: 0
+        weekendStudyMinutes:
+          type: integer
+          format: int32
+          maximum: 720
+          minimum: 0
+      required:
+      - version
+    UserSkillStateView:
+      type: object
+      properties:
+        evidenceCount:
+          type: integer
+          format: int32
+        evidenceLevels:
+          $ref: "#/components/schemas/AxisLevels"
+        lastPracticedAt:
+          type: string
+          format: date-time
+        planningLevels:
+          $ref: "#/components/schemas/AxisLevels"
+        selfAssessedLevel:
+          type: integer
+          format: int32
+        selfAssessmentActive:
+          type: boolean
+        skill:
+          $ref: "#/components/schemas/SkillRef"
+        target:
+          $ref: "#/components/schemas/SkillTargetView"
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+      - evidenceCount
+      - evidenceLevels
+      - lastPracticedAt
+      - planningLevels
+      - selfAssessedLevel
+      - selfAssessmentActive
+      - skill
+      - target
+      - updatedAt
+    UserSkillStatesResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserSkillStateView"
+      required:
+      - items
+  securitySchemes:
+    bearerAuth:
+      bearerFormat: JWT
+      scheme: bearer
+      type: http

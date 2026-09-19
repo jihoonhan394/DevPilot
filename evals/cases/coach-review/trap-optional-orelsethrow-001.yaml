@@ -1,0 +1,55 @@
+id: coach-review/trap-optional-orelsethrow-001
+operation: COACH_REVIEW
+title: "오탐 함정: Optional.orElseThrow로 없는 회원을 도메인 예외로 처리"
+tags: [trap, java, optional]
+trap: true
+input:
+  variables:
+    language: JAVA
+    contentType: CODE
+    projectType: SPRING_BOOT
+    topic: 회원 프로필 조회
+    fileName: MemberQueryService.java
+    skillContext: |
+      JAVA.OPTIONAL · Optional · planning K3 I3 E2 D2
+    weakAxes: NULL_BOUNDARY
+    skillCodeCandidates: |
+      JAVA.OPTIONAL · Optional
+      JAVA.EXCEPTION · 예외 처리
+      SPRING.TRANSACTION · Spring 트랜잭션
+  userContent:
+    userSelfReview:
+      kind: TEXT
+      text: ""
+    content:
+      kind: CODE
+      language: JAVA
+      text: |
+        package com.example.member;
+
+        import org.springframework.stereotype.Service;
+        import org.springframework.transaction.annotation.Transactional;
+
+        @Service
+        public class MemberQueryService {
+
+            private final MemberRepository memberRepository;
+
+            public MemberQueryService(MemberRepository memberRepository) {
+                this.memberRepository = memberRepository;
+            }
+
+            @Transactional(readOnly = true)
+            public MemberProfile getProfile(Long memberId) {
+                Member member = memberRepository.findById(memberId)
+                        .orElseThrow(() -> new MemberNotFoundException(memberId));
+                return new MemberProfile(member.getId(), member.getNickname());
+            }
+        }
+expect:
+  confidentialSuspected: false
+  mustDetect: []
+  mustNotClaim:
+    - category: NULL_BOUNDARY
+    - category: EXCEPTION_STRATEGY
+    - category: TRANSACTION_DATA_CONSISTENCY

@@ -1,0 +1,309 @@
+# Seed review cards — DATABASE
+# Spec: docs/19-content-spec.md §3.5 (schema), §7.3 (작성 가이드)
+# 기준: PostgreSQL 16 / Jakarta Persistence / Hibernate 7
+cards:
+  - conceptKey: DATABASE.SQL_BASICS.LEFT_JOIN_WHERE_FILTER
+    skill: DATABASE.SQL_BASICS
+    reviewType: BUG_SPOT
+    prompt: |-
+      결제 완료 주문이 없는 사용자도 결과에 포함하려고 LEFT JOIN을 썼지만 그런 사용자가 빠집니다. 이유와
+      수정 방법은?
+      ```sql
+      SELECT u.id, u.name, o.id AS order_id
+      FROM users u
+      LEFT JOIN orders o ON o.user_id = u.id
+      WHERE o.status = 'PAID';
+      ```
+    expectedAnswer: >-
+      WHERE는 조인 결과에 적용된다. 결제 완료 주문이 없는 사용자 행은 o.status가 NULL이라 조건이 참이
+      아니므로 제거되고, 결과적으로 INNER JOIN처럼 동작한다. 오른쪽 테이블 조건을 ON 절로 옮겨
+      LEFT JOIN orders o ON o.user_id = u.id AND o.status = 'PAID'로 작성한다.
+    rubric:
+      - id: R1
+        criterion: WHERE는 조인 후 결과 행에 적용된다
+      - id: R2
+        criterion: NULL 비교가 참이 아니어서 외부 조인 행이 제거된다
+      - id: R3
+        criterion: 오른쪽 테이블 조건을 ON 절로 이동
+
+  - conceptKey: DATABASE.MODELING.MANY_TO_MANY_JOIN_TABLE
+    skill: DATABASE.MODELING
+    reviewType: EXPLAIN
+    prompt: >-
+      학생과 강의 같은 N:M 관계를 테이블로 어떻게 설계하나요? 수강 신청일 같은 관계 속성이 생기면 어디에
+      두나요?
+    expectedAnswer: >-
+      두 테이블의 외래 키를 가진 연결 테이블(예: enrollment)을 둔다. (student_id, course_id)에 유일 제약
+      또는 복합 기본 키를 걸어 중복 신청을 막는다. 신청일이나 상태처럼 관계 자체의 속성은 연결 테이블의
+      컬럼으로 둔다. JPA에서는 @ManyToMany 대신 연결 엔티티를 두고 양쪽과 N:1로 매핑하면 속성을 추가하기
+      쉽다.
+    rubric:
+      - id: R1
+        criterion: 외래 키 두 개를 가진 연결 테이블
+      - id: R2
+        criterion: 유일 제약이나 복합 키로 중복 방지
+      - id: R3
+        criterion: 관계 속성은 연결 테이블 컬럼으로 둔다
+
+  - conceptKey: DATABASE.INDEX.COMPOSITE_COLUMN_ORDER
+    skill: DATABASE.INDEX
+    reviewType: EXPLAIN
+    prompt: >-
+      orders 테이블에 (user_id, created_at) 복합 B-tree 인덱스가 있습니다. PostgreSQL 16에서 (1) WHERE
+      user_id = ? AND created_at >= ? 와 (2) WHERE created_at >= ? 의 인덱스 효율 차이를 설명하세요.
+    expectedAnswer: >-
+      복합 B-tree 인덱스는 선두(왼쪽) 컬럼에 조건이 있을 때 가장 효율적이다. (1)은 선두 컬럼 user_id의
+      등치 조건과 다음 컬럼의 범위 조건으로 스캔할 인덱스 범위를 좁힌다. (2)는 선두 컬럼 조건이 없어
+      인덱스를 쓰더라도 넓은 범위를 훑어야 하므로 효율이 낮고, 플래너가 순차 스캔이나 다른 인덱스를 고를
+      가능성이 크다. 인덱스 컬럼 순서는 자주 쓰는 조회 조건에 맞춰 정한다.
+    rubric:
+      - id: R1
+        criterion: 선두 컬럼 조건이 스캔 범위를 결정한다
+      - id: R2
+        criterion: (1)은 등치와 범위 조건으로 범위를 좁힌다
+      - id: R3
+        criterion: (2)는 선두 컬럼 조건이 없어 효율이 낮다
+
+  - conceptKey: DATABASE.INDEX.EXPRESSION_ON_COLUMN
+    skill: DATABASE.INDEX
+    reviewType: BUG_SPOT
+    prompt: |-
+      email 인덱스가 있는데도 이 조회가 느립니다. 이유와 해결 방법 두 가지는?
+      ```sql
+      CREATE INDEX idx_users_email ON users (email);
+
+      SELECT id, email FROM users WHERE lower(email) = lower($1);
+      ```
+    expectedAnswer: >-
+      인덱스는 email 원래 값으로 만들어졌는데 조건은 lower(email)이라는 식의 결과를 비교하므로 이 인덱스로
+      조건을 처리할 수 없다. 해결 방법은 (1) CREATE INDEX ... ON users (lower(email)) 같은 표현식 인덱스를
+      만들거나, (2) 저장할 때 email을 소문자로 정규화하고 email = $1로 조회하는 것이다.
+    rubric:
+      - id: R1
+        criterion: 컬럼에 함수를 적용하면 원래 컬럼 인덱스를 쓸 수 없다
+      - id: R2
+        criterion: 표현식 인덱스로 해결
+      - id: R3
+        criterion: 저장 시 정규화 후 원래 컬럼으로 조회
+
+  - conceptKey: DATABASE.INDEX.EXPLAIN_PLAN.EXPLAIN_ANALYZE
+    skill: DATABASE.INDEX.EXPLAIN_PLAN
+    reviewType: RECALL
+    prompt: >-
+      EXPLAIN과 EXPLAIN ANALYZE의 차이는? UPDATE 문에 EXPLAIN ANALYZE를 쓸 때 주의할 점은?
+    expectedAnswer: >-
+      EXPLAIN은 쿼리를 실행하지 않고 플래너가 고른 계획과 예상 비용, 예상 행 수를 보여준다. EXPLAIN
+      ANALYZE는 실제로 실행해 실제 소요 시간과 실제 행 수를 함께 보여주므로 예상과 실제의 차이로 통계
+      문제를 찾을 수 있다. UPDATE나 DELETE에 쓰면 데이터가 실제로 바뀌므로 BEGIN으로 트랜잭션을 연 뒤
+      실행하고 ROLLBACK한다.
+    rubric:
+      - id: R1
+        criterion: ANALYZE는 쿼리를 실제로 실행한다
+      - id: R2
+        criterion: 예상 값과 실제 시간·행 수를 비교한다
+      - id: R3
+        criterion: 변경 문은 트랜잭션으로 감싸고 롤백한다
+
+  - conceptKey: DATABASE.TRANSACTION.READ_COMMITTED_SNAPSHOT
+    skill: DATABASE.TRANSACTION
+    reviewType: RECALL
+    prompt: >-
+      PostgreSQL의 기본 격리 수준은 무엇이고, 그 수준에서 같은 트랜잭션 안의 같은 SELECT를 두 번 실행하면
+      결과가 달라질 수 있나요?
+    expectedAnswer: >-
+      기본 격리 수준은 READ COMMITTED다. 각 SQL 문은 그 문장이 시작하기 전에 커밋된 데이터만 본다. 두
+      SELECT 사이에 다른 트랜잭션이 변경을 커밋하면 두 번째 SELECT에 반영되어 결과가 달라질 수
+      있다(non-repeatable read). 커밋되지 않은 변경은 보이지 않는다.
+    rubric:
+      - id: R1
+        criterion: 기본값 READ COMMITTED
+      - id: R2
+        criterion: 문장 단위로 커밋된 데이터를 본다
+      - id: R3
+        criterion: non-repeatable read가 발생할 수 있다
+
+  - conceptKey: DATABASE.TRANSACTION.PG_READ_UNCOMMITTED
+    skill: DATABASE.TRANSACTION
+    reviewType: CHOICE
+    prompt: |-
+      PostgreSQL 16에서 격리 수준을 READ UNCOMMITTED로 설정하고 다른 트랜잭션이 아직 커밋하지 않은 변경을
+      조회하면 어떻게 되나요?
+      A) 커밋되지 않은 변경이 보인다 (dirty read)
+      B) READ COMMITTED처럼 동작해 커밋되지 않은 변경은 보이지 않는다
+      C) 오류가 발생해 트랜잭션을 시작할 수 없다
+      D) 자동으로 SERIALIZABLE로 승격된다
+    expectedAnswer: >-
+      B) PostgreSQL의 READ UNCOMMITTED는 READ COMMITTED와 같게 동작한다. MVCC 구조에서 dirty read를
+      허용하지 않는다.
+    rubric:
+      - id: R1
+        criterion: PostgreSQL에서 READ UNCOMMITTED의 실제 동작
+      - id: R2
+        criterion: dirty read가 발생하지 않는다
+
+  - conceptKey: DATABASE.TRANSACTION.SERIALIZATION_FAILURE_RETRY
+    skill: DATABASE.TRANSACTION
+    reviewType: RECALL
+    prompt: >-
+      PostgreSQL REPEATABLE READ 트랜잭션이 시작된 뒤 다른 트랜잭션이 수정하고 커밋한 행을 UPDATE하면 어떻게
+      되나요? 애플리케이션은 어떻게 대응해야 하나요?
+    expectedAnswer: >-
+      could not serialize access due to concurrent update 오류(SQLSTATE 40001)로 실패한다. 애플리케이션은
+      현재 트랜잭션을 중단하고 트랜잭션 전체를 처음부터 재시도해야 한다. 재시도한 트랜잭션은 이미 커밋된
+      변경을 반영한 스냅샷에서 시작한다.
+    rubric:
+      - id: R1
+        criterion: 동시 수정 시 직렬화 실패 오류
+      - id: R2
+        criterion: SQLSTATE 40001 또는 could not serialize access 메시지
+      - id: R3
+        criterion: 트랜잭션 전체를 처음부터 재시도한다
+
+  - conceptKey: DATABASE.TRANSACTION.LOCKING.LOST_UPDATE
+    skill: DATABASE.TRANSACTION.LOCKING
+    reviewType: EXPLAIN
+    prompt: >-
+      재고 차감을 SELECT로 stock을 읽고, 애플리케이션에서 stock - 1을 계산한 뒤, UPDATE로 계산값을 쓰도록
+      구현했습니다. READ COMMITTED에서 같은 상품 주문 두 건이 동시에 들어오면 무슨 문제가 생기나요? 해결
+      방법 두 가지를 설명하세요.
+    expectedAnswer: >-
+      두 트랜잭션이 같은 stock 값을 읽고 각자 계산한 값을 쓰면 한 번의 차감이 덮어써져 사라진다(lost
+      update). 해결 방법은 (1) UPDATE ... SET stock = stock - 1 WHERE id = ? AND stock > 0처럼 DB에서
+      원자적으로 갱신하고 영향받은 행 수로 성공을 확인하기, (2) SELECT ... FOR UPDATE로 행을 잠근 뒤 계산하기,
+      (3) @Version 낙관적 락으로 충돌을 감지하고 재시도하기 중 상황에 맞게 고른다.
+    rubric:
+      - id: R1
+        criterion: 읽고 계산해서 쓰는 구조의 lost update
+      - id: R2
+        criterion: 조건부 원자적 UPDATE
+      - id: R3
+        criterion: 비관적 잠금(FOR UPDATE) 또는 낙관적 락(@Version)
+
+  - conceptKey: DATABASE.TRANSACTION.LOCKING.DEADLOCK
+    skill: DATABASE.TRANSACTION.LOCKING
+    reviewType: RECALL
+    prompt: >-
+      데드락은 어떤 상황에서 생기나요? PostgreSQL은 데드락을 어떻게 처리하고, 애플리케이션에서 줄이는 방법은?
+    expectedAnswer: >-
+      트랜잭션 A가 행 1을 잠근 채 행 2를 기다리고, B가 행 2를 잠근 채 행 1을 기다리는 것처럼 서로의 잠금을
+      순환해서 기다릴 때 생긴다. PostgreSQL은 데드락을 감지하면 관련 트랜잭션 중 하나를 오류(SQLSTATE
+      40P01)로 중단시킨다. 여러 행을 잠글 때 항상 같은 순서(예: id 오름차순)로 잠그고, 트랜잭션을 짧게
+      유지하고, 중단된 트랜잭션은 재시도한다.
+    rubric:
+      - id: R1
+        criterion: 잠금 순환 대기
+      - id: R2
+        criterion: PostgreSQL이 감지해 한 트랜잭션을 중단한다
+      - id: R3
+        criterion: 일관된 잠금 순서와 짧은 트랜잭션, 재시도
+
+  - conceptKey: DATABASE.JPA.OWNING_SIDE
+    skill: DATABASE.JPA
+    reviewType: RECALL
+    prompt: >-
+      Team(1)과 Member(N) 양방향 연관관계에서 Member.team은 @ManyToOne, Team.members는
+      @OneToMany(mappedBy = "team")입니다. team.getMembers().add(member)만 호출하고 member.setTeam(team)을
+      호출하지 않으면 member 테이블의 team_id가 저장되나요?
+    expectedAnswer: >-
+      저장되지 않는다. 외래 키를 관리하는 쪽은 연관관계의 주인인 Member.team이고, mappedBy로 선언된
+      Team.members는 외래 키를 변경하지 않는 반대편이다. 양쪽 객체 상태를 함께 맞추는 연관관계 편의
+      메서드(예: team.addMember(member) 안에서 member.setTeam(team)도 호출)를 사용한다.
+    rubric:
+      - id: R1
+        criterion: 연관관계의 주인이 외래 키를 관리한다
+      - id: R2
+        criterion: mappedBy 쪽 변경은 외래 키에 반영되지 않는다
+      - id: R3
+        criterion: 양쪽을 함께 설정하는 편의 메서드
+
+  - conceptKey: DATABASE.JPA.PERSISTENCE_CONTEXT.DIRTY_CHECKING
+    skill: DATABASE.JPA.PERSISTENCE_CONTEXT
+    reviewType: RECALL
+    prompt: >-
+      @Transactional 서비스 메서드에서 조회한 엔티티의 필드를 변경하고 save()를 호출하지 않았습니다. 변경이
+      DB에 반영되나요? 영속성 컨텍스트가 이미 닫힌 뒤 받은 엔티티를 변경했다면?
+    expectedAnswer: >-
+      반영된다. 영속 상태 엔티티는 flush 시점(보통 트랜잭션 커밋 직전)에 조회 당시 스냅샷과 비교해 변경된
+      필드의 UPDATE를 실행한다(변경 감지). 영속성 컨텍스트가 닫힌 뒤의 준영속 엔티티는 변경 감지 대상이
+      아니므로 변경해도 반영되지 않는다.
+    rubric:
+      - id: R1
+        criterion: 변경 감지(dirty checking)
+      - id: R2
+        criterion: flush 시점에 스냅샷과 비교해 UPDATE를 만든다
+      - id: R3
+        criterion: 준영속 엔티티는 반영되지 않는다
+
+  - conceptKey: DATABASE.JPA.FETCH_STRATEGY.N_PLUS_ONE
+    skill: DATABASE.JPA.FETCH_STRATEGY
+    reviewType: EXPLAIN
+    prompt: >-
+      게시글 20개를 조회한 뒤 각 게시글의 작성자 이름을 출력했더니 SQL이 21번 실행되었습니다. 원인과 해결
+      방법 세 가지를 설명하세요.
+    expectedAnswer: >-
+      게시글 목록 1번 조회 후, 지연 로딩된 작성자 연관 객체에 접근할 때마다 게시글별로 추가 SELECT가
+      실행되는 N+1 문제다. 해결 방법은 (1) JPQL fetch join으로 한 번에 조회, (2) @EntityGraph로 함께 로딩할
+      연관관계 지정, (3) batch fetch 크기(hibernate.default_batch_fetch_size 또는 @BatchSize)를 설정해 IN
+      절로 묶어 조회하는 것이다. 목록 화면은 필요한 컬럼만 담는 DTO projection도 쓸 수 있다.
+    rubric:
+      - id: R1
+        criterion: 지연 로딩 연관 객체 접근마다 추가 쿼리가 실행되는 N+1
+      - id: R2
+        criterion: fetch join 또는 EntityGraph
+      - id: R3
+        criterion: batch fetch 또는 DTO projection
+
+  - conceptKey: DATABASE.JPA.FETCH_STRATEGY.DEFAULT_FETCH_TYPE
+    skill: DATABASE.JPA.FETCH_STRATEGY
+    reviewType: CHOICE
+    prompt: |-
+      JPA 명세의 연관관계 기본 fetch 전략으로 옳은 것은?
+      A) 모든 연관관계가 LAZY
+      B) @ManyToOne과 @OneToOne은 EAGER, @OneToMany와 @ManyToMany는 LAZY
+      C) @ManyToOne과 @OneToOne은 LAZY, @OneToMany와 @ManyToMany는 EAGER
+      D) 모든 연관관계가 EAGER
+    expectedAnswer: >-
+      B) 그래서 @ManyToOne과 @OneToOne에는 fetch = FetchType.LAZY를 명시해 의도하지 않은 즉시 로딩과 N+1을
+      피한다.
+    rubric:
+      - id: R1
+        criterion: 단일 값 연관관계의 기본값은 EAGER
+      - id: R2
+        criterion: 단일 값 연관관계에 LAZY를 명시하는 이유
+
+  - conceptKey: DATABASE.JPA.FETCH_STRATEGY.COLLECTION_FETCH_JOIN_PAGING
+    skill: DATABASE.JPA.FETCH_STRATEGY
+    reviewType: RECALL
+    prompt: >-
+      @OneToMany 컬렉션을 fetch join하면서 페이징(setFirstResult, setMaxResults)을 적용하면 어떤 문제가
+      생기나요? 대안은?
+    expectedAnswer: >-
+      컬렉션을 fetch join하면 결과 행이 부모 수가 아니라 부모와 자식 조합 수만큼 늘어나 DB의 LIMIT을 부모
+      기준으로 적용할 수 없다. Hibernate는 경고를 남기고 결과 전체를 메모리로 읽은 뒤 페이징하므로 데이터가
+      많으면 메모리와 성능 문제가 생긴다. 부모만 페이징 조회한 뒤 batch fetch로 컬렉션을 IN 조회하거나,
+      부모 ID를 먼저 페이징하고 그 ID로 컬렉션을 조회한다.
+    rubric:
+      - id: R1
+        criterion: 컬렉션 fetch join은 행 수를 늘려 DB 페이징이 맞지 않는다
+      - id: R2
+        criterion: 메모리에서 페이징되는 위험
+      - id: R3
+        criterion: 부모 페이징 후 batch fetch 또는 ID 기반 조회
+
+  - conceptKey: DATABASE.MIGRATION.NEVER_EDIT_APPLIED
+    skill: DATABASE.MIGRATION
+    reviewType: RECALL
+    prompt: >-
+      이미 운영 DB에 적용된 Flyway migration 파일(V3__plan.sql)의 오타를 고쳐 다시 배포하면 어떤 일이
+      생기나요? 올바른 방법은?
+    expectedAnswer: >-
+      Flyway는 적용한 migration의 checksum을 이력 테이블(flyway_schema_history)에 저장한다. 적용된 파일을
+      수정하면 기동 시 검증에서 checksum 불일치로 실패하고, 이미 적용된 환경과 새 환경의 스키마가 달라질
+      수 있다. 적용된 파일은 수정하지 않고 변경 내용을 새 버전 파일(V4 이후)로 추가한다.
+    rubric:
+      - id: R1
+        criterion: 이력 테이블의 checksum 검증
+      - id: R2
+        criterion: 수정 시 검증 실패와 환경 간 스키마 불일치
+      - id: R3
+        criterion: 새 버전 migration으로 변경한다

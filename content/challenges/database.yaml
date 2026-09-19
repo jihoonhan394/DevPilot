@@ -1,0 +1,271 @@
+# Seed challenges — DATABASE (PRACTICE)
+# Spec: docs/19-content-spec.md §3.6 (schema), §6 (난이도), §7 (rubric·hint 작성 가이드)
+# 기준: PostgreSQL 16 / Hibernate 7 / Spring Data JPA
+challenges:
+  - seedKey: PRACTICE.DATABASE.INDEX.L2.001
+    purpose: PRACTICE
+    skills:
+      - DATABASE.INDEX
+    difficulty: 2
+    estimatedMinutes: 25
+    isTransfer: false
+    title: 사용자별 최근 결제 주문 조회에 맞는 인덱스 설계
+    scenario: |-
+      orders 테이블(약 500만 행)을 조회하는 마이페이지 API가 느립니다. 현재 인덱스는 기본 키(id)와
+      created_at 단일 인덱스뿐입니다. status 값은 PAID, CANCELLED, PENDING 세 가지이고 대부분 PAID입니다.
+      ```sql
+      SELECT id, status, total_amount, created_at
+      FROM orders
+      WHERE user_id = $1 AND status = 'PAID'
+      ORDER BY created_at DESC
+      LIMIT 20;
+      ```
+    prompt: |-
+      1. 이 쿼리에 맞는 인덱스 하나를 제안하고 컬럼 순서를 정한 이유를 설명하세요.
+      2. status 단일 인덱스를 추가하는 방안의 효과가 작은 이유와, 새 인덱스가 쓰기에 주는 비용을 설명하세요.
+      3. 인덱스가 실제로 쓰이는지 확인하는 방법을 적으세요.
+    constraints:
+      - PostgreSQL 16 기준으로 답한다
+      - 인덱스는 최대 1개만 추가한다
+    expectedConcepts:
+      - 복합 인덱스 컬럼 순서
+      - 선택도
+      - 인덱스 순서로 정렬 생략
+      - 인덱스 쓰기 비용
+      - 실행 계획 확인
+    rubric:
+      - id: R1
+        criterion: 등치 조건 컬럼(user_id, status) 뒤에 정렬 컬럼 created_at을 두는 복합 인덱스를 제안한다
+        weightBp: 4000
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 선두 컬럼 조건이 스캔 범위를 줄이고 인덱스 순서로 정렬 단계를 생략할 수 있음을 설명한다
+        weightBp: 2500
+        axis: EXPLANATION
+      - id: R3
+        criterion: 선택도가 낮은 status 단일 인덱스의 한계와 인덱스 유지에 드는 쓰기 비용을 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+      - id: R4
+        criterion: EXPLAIN ANALYZE로 인덱스 사용과 정렬 단계 제거를 확인하는 방법을 제시한다
+        weightBp: 1500
+        axis: DEBUGGING
+    commonMistakes:
+      - created_at을 선두 컬럼으로 두어 사용자 조건으로 범위를 좁히지 못함
+      - 조건 컬럼마다 단일 인덱스를 따로 추가함
+      - 인덱스 추가 후 실행 계획을 확인하지 않음
+    transferTargets:
+      - DATABASE.INDEX.EXPLAIN_PLAN
+    hints:
+      QUESTION_ONLY: 이 쿼리는 전체 주문 중 어떤 조건으로 먼저 범위를 좁히고, 결과를 어떤 순서로 몇 건만 필요로 하나요?
+      CONCEPT_HINT: 복합 B-tree 인덱스는 선두 컬럼 조건에서 가장 효율적이고, 등치 조건 뒤에 오는 컬럼 순서로 정렬된 결과를 바로 읽을 수 있다는 점을 떠올려 보세요.
+      DIRECTION: 등치 조건 컬럼과 정렬 컬럼을 구분해 인덱스 컬럼 순서를 정하고, 추가 전후의 실행 계획에서 스캔 방식과 정렬 단계가 어떻게 바뀌는지 비교해 보세요.
+
+  - seedKey: PRACTICE.DATABASE.JPA.PERSISTENCE_CONTEXT.L2.001
+    purpose: PRACTICE
+    skills:
+      - DATABASE.JPA.PERSISTENCE_CONTEXT
+    difficulty: 2
+    estimatedMinutes: 20
+    isTransfer: false
+    title: 반영되지 않는 프로필 수정과 불필요한 save 정리
+    scenario: |-
+      rename은 정상 동작하지만 changeBio로 바꾼 소개글은 DB에 반영되지 않습니다. 동료는 "rename처럼 항상
+      save를 호출하면 된다"고 말합니다. open-in-view는 false입니다.
+      ```java
+      @Service
+      public class ProfileService {
+          private final MemberRepository memberRepository;
+          // 생성자 생략
+
+          @Transactional
+          public void rename(UUID memberId, String newName) {
+              Member member = memberRepository.findById(memberId).orElseThrow();
+              member.rename(newName);
+              memberRepository.save(member);
+          }
+
+          public void changeBio(UUID memberId, String bio) {
+              Member member = memberRepository.findById(memberId).orElseThrow();
+              member.changeBio(bio);
+          }
+      }
+      ```
+    prompt: |-
+      1. changeBio가 반영되지 않는 이유를 영속성 컨텍스트로 설명하세요.
+      2. rename의 save 호출이 필요한지 판단하고 이유를 설명하세요.
+      3. 두 메서드를 같은 방식으로 동작하도록 고친 코드를 작성하세요.
+    constraints:
+      - 엔티티 변경은 엔티티 메서드로 한다
+      - open-in-view 설정은 바꾸지 않는다
+    expectedConcepts:
+      - 영속 상태와 준영속 상태
+      - 변경 감지
+      - 트랜잭션 범위
+      - flush 시점
+    rubric:
+      - id: R1
+        criterion: changeBio에 트랜잭션 경계를 두어 조회와 변경이 같은 영속성 컨텍스트에서 일어나게 한다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 트랜잭션 안의 영속 엔티티는 커밋 시 변경 감지로 UPDATE되므로 save가 필요 없음을 설명한다
+        weightBp: 3000
+        axis: EXPLANATION
+      - id: R3
+        criterion: 트랜잭션 밖에서 조회한 엔티티가 준영속이 되어 변경이 반영되지 않는 원인을 진단한다
+        weightBp: 2500
+        axis: DEBUGGING
+      - id: R4
+        criterion: 불필요한 save 호출을 제거해 두 메서드를 같은 방식으로 정리한다
+        weightBp: 1000
+        axis: IMPLEMENTATION
+    commonMistakes:
+      - changeBio에 save만 추가해 원인을 가림
+      - 변경 감지가 트랜잭션 없이도 동작한다고 설명함
+      - 클래스 전체에 readOnly 트랜잭션을 붙여 변경이 flush되지 않음
+    transferTargets:
+      - SPRING.DATA_JPA
+    hints:
+      QUESTION_ONLY: changeBio 안에서 조회가 끝난 뒤, 그 엔티티를 관리하던 영속성 컨텍스트는 아직 살아 있을까요?
+      CONCEPT_HINT: 영속 엔티티의 변경 감지(dirty checking)와, 트랜잭션이 끝나면 엔티티가 준영속이 된다는 점을 비교해 보세요.
+      DIRECTION: 두 메서드의 트랜잭션 경계를 먼저 표시하고, 각 경계 안에서 엔티티가 어떤 상태인지 적어 보세요. 그다음 save 호출이 실제로 필요한 곳이 있는지 판단하세요.
+
+  - seedKey: PRACTICE.DATABASE.JPA.FETCH_STRATEGY.L3.001
+    purpose: PRACTICE
+    skills:
+      - DATABASE.JPA.FETCH_STRATEGY
+    difficulty: 3
+    estimatedMinutes: 35
+    isTransfer: false
+    title: 게시글 목록 API의 N+1 쿼리 제거
+    scenario: |-
+      게시글 목록 한 페이지(20개)를 조회할 때 SQL 로그에 쿼리가 40개 넘게 찍힙니다. 작성자는 대부분 서로
+      다르고, 응답에는 id, title, authorName, commentCount가 필요합니다.
+      ```java
+      @Entity
+      class Post {
+          @Id UUID id;
+          String title;
+          @ManyToOne(fetch = FetchType.LAZY) Member author;
+          @OneToMany(mappedBy = "post") List<Comment> comments = new ArrayList<>();
+      }
+
+      @Transactional(readOnly = true)
+      public List<PostSummary> list(Pageable pageable) {
+          return postRepository.findAll(pageable).stream()
+              .map(p -> new PostSummary(p.getId(), p.getTitle(),
+                      p.getAuthor().getName(), p.getComments().size()))
+              .toList();
+      }
+      ```
+    prompt: |-
+      1. 추가 쿼리가 생기는 원인을 설명하세요.
+      2. 페이징을 유지하면서 페이지 크기와 관계없이 쿼리 수가 일정하도록 고친 코드를 작성하세요.
+      3. comments를 fetch join으로 해결하지 않는 이유와 선택한 방법의 트레이드오프를 설명하세요.
+    constraints:
+      - 페이지 크기와 정렬 조건을 유지한다
+      - 응답 필드(id, title, authorName, commentCount)를 바꾸지 않는다
+    expectedConcepts:
+      - N+1 문제
+      - 단일 연관의 fetch join 또는 EntityGraph
+      - 컬렉션 fetch join과 페이징
+      - DTO projection 또는 batch fetch
+    rubric:
+      - id: R1
+        criterion: 작성자를 fetch join이나 EntityGraph로 목록 조회에 포함한다
+        weightBp: 3000
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 댓글 수를 집계 쿼리나 DTO projection으로 가져와 컬렉션 초기화를 없앤다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 지연 로딩 연관 객체에 접근할 때마다 추가 쿼리가 실행되는 원리를 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+      - id: R4
+        criterion: 컬렉션 fetch join과 페이징을 함께 쓰면 메모리 페이징 위험이 있음을 설명한다
+        weightBp: 1500
+        axis: EXPLANATION
+      - id: R5
+        criterion: SQL 로그나 쿼리 수 검증 테스트로 개선을 확인하는 방법을 제시한다
+        weightBp: 1000
+        axis: DEBUGGING
+    commonMistakes:
+      - 연관관계를 EAGER로 바꿔 모든 조회에 즉시 로딩을 퍼뜨림
+      - comments까지 fetch join하고 페이징을 그대로 적용함
+      - 댓글 수를 세려고 댓글 엔티티를 모두 로딩함
+    transferTargets:
+      - SPRING.DATA_JPA
+    hints:
+      QUESTION_ONLY: 목록 20개를 변환하는 동안 작성자 이름과 댓글 수를 읽는 순간마다 무엇이 데이터베이스에 요청될까요?
+      CONCEPT_HINT: 지연 로딩 프록시 초기화로 생기는 N+1, 단일 연관의 fetch join, 컬렉션 집계를 위한 DTO projection이나 batch fetch를 비교해 보세요.
+      DIRECTION: 단일 값 연관(작성자)과 컬렉션 연관(댓글)을 나눠 각각 해결 방법을 고르세요. 목록에 필요한 값만 한 번에 조회할 수 있는지 먼저 검토하세요.
+
+  - seedKey: PRACTICE.DATABASE.TRANSACTION.L3.001
+    purpose: PRACTICE
+    skills:
+      - DATABASE.TRANSACTION
+      - DATABASE.TRANSACTION.LOCKING
+    difficulty: 3
+    estimatedMinutes: 40
+    isTransfer: false
+    title: 한정 수량 이벤트의 초과 판매 막기
+    scenario: |-
+      재고 100개인 상품 이벤트에서 주문 103건이 성공했는데 stock은 0으로 남아 실제 판매 수량과 맞지
+      않습니다. PostgreSQL 16 기본 격리 수준이고, 애플리케이션 인스턴스는 2대입니다.
+      ```java
+      @Transactional
+      public void order(UUID productId, int quantity) {
+          Product product = productRepository.findById(productId).orElseThrow();
+          if (product.getStock() < quantity) {
+              throw new OutOfStockException(productId);
+          }
+          product.decreaseStock(quantity); // stock 필드를 계산한 값으로 바꾼다
+          orderRepository.save(new Order(productId, quantity));
+      }
+      ```
+    prompt: |-
+      1. 초과 판매가 생기는 실행 순서를 두 트랜잭션의 타임라인으로 설명하세요.
+      2. 초과 판매가 일어나지 않도록 고친 코드를 작성하세요.
+      3. 해결 방법 두 가지 이상을 비교하고 이 상황에 고른 방법의 근거를 설명하세요.
+    constraints:
+      - 인스턴스가 여러 대여도 안전해야 한다
+      - PostgreSQL 기본 격리 수준을 유지한다
+    expectedConcepts:
+      - lost update
+      - 조건부 원자적 UPDATE
+      - 비관적 잠금(SELECT FOR UPDATE)
+      - 낙관적 락과 재시도
+    rubric:
+      - id: R1
+        criterion: 조건부 원자적 UPDATE, 행 잠금, 낙관적 락 중 하나로 재고 확인과 차감을 원자적으로 만든다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 두 트랜잭션이 같은 재고를 읽고 각자 쓰는 lost update 타임라인을 설명한다
+        weightBp: 2500
+        axis: EXPLANATION
+      - id: R3
+        criterion: 해결 방법 두 가지 이상을 경합 빈도, 대기, 재시도 관점에서 비교한다
+        weightBp: 2000
+        axis: EXPLANATION
+      - id: R4
+        criterion: synchronized 같은 JVM 락이 여러 인스턴스에서 동작하지 않는 이유를 설명한다
+        weightBp: 1000
+        axis: EXPLANATION
+      - id: R5
+        criterion: 동시 요청 테스트로 초과 판매가 없음을 확인하는 방법을 제시한다
+        weightBp: 1000
+        axis: DEBUGGING
+    commonMistakes:
+      - 서비스 메서드에 synchronized를 붙임
+      - 격리 수준만 올리고 직렬화 실패 재시도를 처리하지 않음
+      - 낙관적 락 충돌 예외를 처리하지 않아 사용자에게 500이 반환됨
+    transferTargets:
+      - SPRING.TRANSACTION
+    hints:
+      QUESTION_ONLY: 재고가 1개 남았을 때 두 주문 트랜잭션이 거의 동시에 재고를 읽으면, 각자 확인하는 값과 마지막에 저장되는 값은 무엇일까요?
+      CONCEPT_HINT: 읽고 판단한 뒤 쓰는 구조의 갱신 손실과, 이를 막는 DB 수준의 조건부 갱신, 행 잠금, 버전 기반 충돌 감지를 비교해 보세요.
+      DIRECTION: 재고 확인과 차감을 DB가 한 번에 판정하게 만들 수 있는지 먼저 검토하고, 어렵다면 잠금과 버전 충돌 중 무엇을 쓸지 경합 빈도를 기준으로 정하세요.

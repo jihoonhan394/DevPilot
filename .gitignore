@@ -1,24 +1,53 @@
-# Compiled class file
-*.class
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+api.env
+ops.env
+backend/src/evalTest/resources/secrets/
 
-# Log file
-*.log
+# 운영 접속값 (서버 주소·계정·DB 비밀번호) — 저장소 밖에 둔다 (docs/10 §6)
+DevPilot-ops/
+_local-ops/
+ops-info/
 
-# BlueJ files
-*.ctxt
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
 
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
+# Backend (Gradle)
+backend/.gradle/
+backend/build/
+backend/out/
+backend/bin/
 
-# Package Files #
-*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
+# Flutter
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/build/
+app/.fvm/
+**/*.g.dart
+**/*.freezed.dart
+app/lib/l10n/app_localizations*.dart
+app/config/*.json
+!app/config/*.example.json
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
-replay_pid*
+# Evals
+evals/reports/
+
+# Local data
+*.dump
+pgdata/
+
+# --- 이 PC 로컬 전용 (저장소에 올리지 않는다) ---
+/doc/
+
+# Claude Code 에이전트 worktree (도구 산출물)
+.claude/worktrees/

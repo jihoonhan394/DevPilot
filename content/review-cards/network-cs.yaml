@@ -1,0 +1,89 @@
+# Seed review cards — NETWORK, CS
+# Spec: docs/19-content-spec.md §3.5 (schema), §7.3 (작성 가이드)
+cards:
+  - conceptKey: NETWORK.TCP_IP.HANDSHAKE_RELIABILITY
+    skill: NETWORK.TCP_IP
+    reviewType: RECALL
+    prompt: >-
+      TCP 연결은 어떻게 수립되나요? TCP가 신뢰성을 보장하는 방법과 UDP와의 차이를 설명하세요.
+    expectedAnswer: >-
+      클라이언트 SYN, 서버 SYN-ACK, 클라이언트 ACK의 3-way handshake로 연결을 수립한다. TCP는 순서 번호와
+      확인 응답, 재전송, 흐름 제어와 혼잡 제어로 데이터가 순서대로 빠짐없이 전달되게 한다. UDP는 연결 수립과
+      재전송이 없어 오버헤드가 작지만 손실과 순서를 보장하지 않는다.
+    rubric:
+      - id: R1
+        criterion: SYN, SYN-ACK, ACK의 3-way handshake
+      - id: R2
+        criterion: 순서 번호, 확인 응답, 재전송으로 신뢰성 보장
+      - id: R3
+        criterion: UDP는 비연결형이며 손실·순서를 보장하지 않는다
+
+  - conceptKey: NETWORK.DNS.TTL_CACHE
+    skill: NETWORK.DNS
+    reviewType: RECALL
+    prompt: >-
+      서버를 새 IP로 옮기고 DNS A 레코드를 바꿨는데 일부 사용자는 한동안 이전 서버로 접속합니다. 이유와 다음
+      이전 때의 대비책은?
+    expectedAnswer: >-
+      리졸버와 클라이언트가 이전 레코드를 TTL 동안 캐시하기 때문이다. 캐시가 만료되기 전까지는 이전 IP를
+      사용한다. 이전 작업 전에 TTL을 미리 짧게 낮춰 두고, 전환 기간에는 이전 서버도 유지하거나 새 서버로
+      전달한다.
+    rubric:
+      - id: R1
+        criterion: DNS 레코드는 TTL 동안 캐시된다
+      - id: R2
+        criterion: 이전 전에 TTL을 낮추는 대비
+
+  - conceptKey: NETWORK.TLS.GUARANTEES
+    skill: NETWORK.TLS
+    reviewType: EXPLAIN
+    prompt: >-
+      HTTPS(TLS)가 제공하는 보안 속성 세 가지는 무엇이고, 클라이언트는 서버를 어떻게 인증하나요? 인증서 검증을
+      끄면 어떤 위험이 있나요?
+    expectedAnswer: >-
+      TLS는 기밀성(암호화), 무결성(변조 탐지), 서버 인증을 제공한다. 클라이언트는 서버 인증서가 신뢰하는 CA까지
+      이어지는 체인으로 서명되었는지, 유효 기간 안인지, 접속한 호스트 이름과 인증서의 이름이 일치하는지
+      확인한다. 검증을 끄면 공격자가 자신의 인증서로 중간에서 통신을 가로채는 중간자 공격에 노출된다.
+    rubric:
+      - id: R1
+        criterion: 기밀성, 무결성, 서버 인증
+      - id: R2
+        criterion: 인증서 체인과 호스트 이름 검증
+      - id: R3
+        criterion: 검증을 끄면 중간자 공격에 노출된다
+
+  - conceptKey: CS.OS_PROCESS_THREAD.PROCESS_VS_THREAD
+    skill: CS.OS_PROCESS_THREAD
+    reviewType: RECALL
+    prompt: >-
+      프로세스와 스레드의 차이를 메모리 공유 관점에서 설명하고, 멀티 스레드의 장점과 주의점을 말해 보세요.
+    expectedAnswer: >-
+      프로세스는 독립된 메모리 공간을 가진 실행 단위다. 스레드는 프로세스 안에서 코드와 힙 같은 메모리를
+      공유하고 스택은 스레드마다 따로 가진다. 스레드는 생성과 전환 비용이 낮고 데이터 공유가 쉽지만, 공유
+      자원에 동기화가 필요하고 한 스레드의 오류가 프로세스 전체에 영향을 줄 수 있다.
+    rubric:
+      - id: R1
+        criterion: 프로세스는 독립 메모리, 스레드는 힙 공유와 개별 스택
+      - id: R2
+        criterion: 스레드는 생성·전환 비용이 낮다
+      - id: R3
+        criterion: 공유 자원 동기화 필요와 장애 영향 범위
+
+  - conceptKey: CS.DATA_STRUCTURE.HASH_TABLE
+    skill: CS.DATA_STRUCTURE
+    reviewType: RECALL
+    prompt: >-
+      해시 테이블의 조회가 평균 O(1)인 이유와 최악의 경우가 느려지는 이유는? Java HashMap은 충돌이 많을 때
+      어떻게 대응하나요?
+    expectedAnswer: >-
+      해시 함수로 키의 버킷 위치를 바로 계산하므로 평균 O(1)에 조회와 삽입을 한다. 많은 키가 같은 버킷에
+      몰리는 충돌이 생기면 버킷 안을 순차 탐색해야 해 최악 O(n)이 된다. Java HashMap은 한 버킷의 항목이
+      일정 수를 넘고 테이블이 충분히 크면 그 버킷을 트리 구조로 바꿔 최악 탐색을 O(log n)으로 줄이고, 적재율을
+      넘으면 테이블을 키워 재배치한다.
+    rubric:
+      - id: R1
+        criterion: 해시 함수로 버킷 위치를 계산한다
+      - id: R2
+        criterion: 충돌이 몰리면 최악 O(n)
+      - id: R3
+        criterion: HashMap의 트리화와 리사이즈

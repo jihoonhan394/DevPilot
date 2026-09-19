@@ -1,0 +1,338 @@
+# Seed challenges — DIAGNOSTIC
+# Spec: docs/19-content-spec.md §3.6 (schema), §4 CV-59, §9 (온보딩 진단 연계)
+# 규칙: difficulty 3, estimatedMinutes <= 15, isTransfer false, skills는 한 카테고리
+# 통과 판정은 06-learning-engine-rules.md §7.4 (CORRECT 이고 maxHintLevel <= QUESTION_ONLY)
+challenges:
+  - seedKey: DIAGNOSTIC.JAVA.L3.001
+    purpose: DIAGNOSTIC
+    skills:
+      - JAVA.EXCEPTION
+      - JAVA.EXCEPTION.TRY_WITH_RESOURCES
+      - JAVA.COLLECTION
+    difficulty: 3
+    estimatedMinutes: 15
+    isTransfer: false
+    title: Java 진단 — 짧은 코드의 결함 세 가지 찾기
+    scenario: |-
+      사용자 ID 목록 파일을 읽어 중복 없는 집합을 만드는 코드입니다.
+      ```java
+      public Set<UserId> loadUserIds(Path path) {
+          Set<UserId> ids = new HashSet<>();
+          try {
+              BufferedReader reader = Files.newBufferedReader(path);
+              String line;
+              while ((line = reader.readLine()) != null) {
+                  ids.add(new UserId(line.trim()));
+              }
+              reader.close();
+          } catch (IOException e) {
+              e.printStackTrace();
+          }
+          return ids;
+      }
+
+      public final class UserId {
+          private final String value;
+          public UserId(String value) { this.value = value; }
+          @Override
+          public boolean equals(Object o) {
+              return o instanceof UserId other && value.equals(other.value);
+          }
+      }
+      ```
+    prompt: |-
+      1. 이 코드의 결함 세 가지를 찾아 각각 어떤 문제가 생기는지 설명하세요.
+      2. 고친 코드의 핵심 부분을 작성하세요.
+      힌트 없이 15분 안에 답하세요. 진단 결과는 학습 계획의 시작 수준을 정하는 데만 쓰입니다.
+    constraints:
+      - JDK 표준 API만 사용한다
+    expectedConcepts:
+      - try-with-resources로 자원 해제
+      - 예외 삼킴과 원인 보존
+      - equals와 hashCode 계약
+    rubric:
+      - id: R1
+        criterion: 예외 경로에서 reader가 닫히지 않는 문제를 찾고 try-with-resources로 고친다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 예외를 출력만 하고 삼켜 부분 결과가 정상처럼 반환되는 문제를 찾고 원인을 보존해 전파한다
+        weightBp: 3000
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: hashCode를 재정의하지 않아 HashSet 중복 제거가 되지 않는 원인을 설명한다
+        weightBp: 3500
+        axis: EXPLANATION
+    commonMistakes:
+      - hashCode 문제를 놓치고 자원 문제만 지적함
+      - 예외를 RuntimeException으로 감싸면서 원인 예외를 버림
+      - 공백 줄 처리 같은 부차적인 문제만 지적하고 핵심 결함을 놓침
+    transferTargets: []
+    hints:
+      QUESTION_ONLY: 파일 읽기 도중 실패하면 호출자는 무엇을 돌려받고, 같은 ID가 두 줄 있으면 집합에는 몇 개가 들어갈까요?
+      CONCEPT_HINT: 자원 해제를 보장하는 구문, 예외 변환과 원인 보존, 해시 기반 컬렉션이 요구하는 동등성 계약을 점검해 보세요.
+      DIRECTION: 정상 경로, 입출력 예외 경로, 중복 데이터 입력의 세 시나리오로 코드를 따라가며 각 결과가 의도와 같은지 확인하세요.
+
+  - seedKey: DIAGNOSTIC.SPRING.L3.001
+    purpose: DIAGNOSTIC
+    skills:
+      - SPRING.TRANSACTION
+      - SPRING.AOP_PROXY
+    difficulty: 3
+    estimatedMinutes: 15
+    isTransfer: false
+    title: Spring 진단 — 트랜잭션 롤백 여부 판단하기
+    scenario: |-
+      accounts는 JdbcTemplate으로 UPDATE를 바로 실행하는 컴포넌트이며 자체 트랜잭션 설정이 없습니다.
+      AspectJ 모드는 쓰지 않습니다.
+      ```java
+      @Service
+      public class TransferService {
+          // (A) 컨트롤러가 호출한다
+          public void transfer(UUID from, UUID to, long amount) {
+              moveMoney(from, to, amount);
+          }
+
+          @Transactional
+          public void moveMoney(UUID from, UUID to, long amount) {
+              accounts.withdraw(from, amount);
+              accounts.deposit(to, amount); // 계좌가 없으면 AccountNotFoundException (RuntimeException)
+          }
+
+          // (B) 컨트롤러가 호출한다
+          @Transactional
+          public void transferWithLimit(UUID from, UUID to, long amount) throws LimitExceededException {
+              accounts.withdraw(from, amount);
+              limitPolicy.check(from, amount); // 한도 초과면 LimitExceededException (checked)
+              accounts.deposit(to, amount);
+          }
+      }
+
+      @Service
+      public class SettlementService {
+          private final TransferService transferService;
+
+          // (C) 배치 작업이 호출한다. 생성자 생략
+          @Transactional
+          public void settle(UUID from, UUID to, long amount) {
+              transferService.moveMoney(from, to, amount);
+          }
+      }
+      ```
+    prompt: |-
+      1. (A), (B), (C) 각각에서 출금 뒤 예외가 발생하면 출금이 롤백되는지 판단하고 근거를 설명하세요.
+      2. 롤백되지 않는 경우의 수정 방법을 적으세요.
+      힌트 없이 15분 안에 답하세요. 진단 결과는 학습 계획의 시작 수준을 정하는 데만 쓰입니다.
+    constraints:
+      - 판단 근거는 Spring 기본 설정을 기준으로 한다
+    expectedConcepts:
+      - 프록시 기반 트랜잭션과 self-invocation
+      - checked 예외의 기본 롤백 규칙
+      - REQUIRED 전파로 기존 트랜잭션 참여
+    rubric:
+      - id: R1
+        criterion: (A)는 내부 호출이라 트랜잭션이 적용되지 않아 출금이 남는다고 판단하고 이유를 설명한다
+        weightBp: 3500
+        axis: EXPLANATION
+      - id: R2
+        criterion: (B)는 checked 예외라 기본 설정에서 커밋되어 출금이 남는다고 판단하고 rollbackFor 지정 같은 수정을 제시한다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: (C)는 다른 빈을 거친 호출이 기존 트랜잭션에 참여해 전체가 롤백된다고 판단한다
+        weightBp: 3000
+        axis: EXPLANATION
+    commonMistakes:
+      - (A)에서 moveMoney에 @Transactional이 있으니 롤백된다고 판단함
+      - (B)에서 모든 예외가 롤백된다고 판단함
+      - (C)에서 이미 열린 트랜잭션에 참여한다는 점을 설명하지 못함
+    transferTargets: []
+    hints:
+      QUESTION_ONLY: 세 호출 각각에서 예외가 발생한 시점에 진행 중인 트랜잭션이 실제로 있나요, 그리고 그 예외는 어떤 종류인가요?
+      CONCEPT_HINT: 프록시를 거치는 호출에만 선언적 트랜잭션이 적용된다는 점, 기본 롤백 대상 예외의 종류, 기본 전파 방식을 확인해 보세요.
+      DIRECTION: 각 호출을 컨트롤러나 배치에서 시작해 따라가며 프록시를 거치는 지점을 표시하고, 예외가 트랜잭션 경계를 지날 때 롤백 대상인지 판정하세요.
+
+  - seedKey: DIAGNOSTIC.DATABASE.L3.001
+    purpose: DIAGNOSTIC
+    skills:
+      - DATABASE.JPA.FETCH_STRATEGY
+      - DATABASE.INDEX
+    difficulty: 3
+    estimatedMinutes: 15
+    isTransfer: false
+    title: Database 진단 — 쿼리 로그로 성능 문제 찾기
+    scenario: |-
+      주문 목록 API(페이지 크기 20)를 한 번 호출했을 때의 SQL 로그 요약입니다. Order 엔티티는
+      @ManyToOne(fetch = LAZY)로 User를 참조하고 응답에 사용자 이름이 포함됩니다. orders는 약 300만 행이고
+      인덱스는 기본 키와 user_id 단일 인덱스뿐입니다. status 파라미터는 주로 PENDING이며 PENDING 주문은
+      전체의 약 1%입니다.
+      ```text
+      [1회, 820ms] select o.id, o.user_id, o.status, o.created_at from orders o
+                   where o.status = ? order by o.created_at desc limit ?
+      [20회, 각 1ms] select u.id, u.name from users u where u.id = ?
+      ```
+    prompt: |-
+      1. 쿼리가 21번 실행되는 원인과 해결 방법을 설명하세요.
+      2. 첫 쿼리가 느린 가장 유력한 원인과 인덱스 제안(컬럼 순서 포함)을 설명하세요.
+      힌트 없이 15분 안에 답하세요. 진단 결과는 학습 계획의 시작 수준을 정하는 데만 쓰입니다.
+    constraints:
+      - PostgreSQL 16과 JPA(Hibernate) 기준으로 답한다
+    expectedConcepts:
+      - 지연 로딩으로 인한 N+1
+      - fetch join 또는 EntityGraph
+      - 조건과 정렬을 함께 고려한 복합 인덱스
+      - 선택도
+    rubric:
+      - id: R1
+        criterion: 지연 로딩된 사용자에 접근할 때마다 추가 쿼리가 실행되는 N+1을 진단한다
+        weightBp: 2500
+        axis: DEBUGGING
+      - id: R2
+        criterion: fetch join, EntityGraph, batch fetch 중 하나로 쿼리 수를 줄이는 방법을 제시한다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: status 조건과 created_at 정렬에 맞는 복합 인덱스(status, created_at)를 제안한다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R4
+        criterion: 등치 조건 뒤에 정렬 컬럼을 두면 정렬 없이 필요한 행만 읽을 수 있는 이유를 설명한다
+        weightBp: 2500
+        axis: EXPLANATION
+    commonMistakes:
+      - 연관관계를 EAGER로 바꾸는 것을 해결책으로 제시함
+      - created_at 단일 인덱스만 제안해 status 조건을 고려하지 않음
+      - 인덱스 컬럼 순서의 근거를 설명하지 못함
+    transferTargets: []
+    hints:
+      QUESTION_ONLY: 첫 번째 쿼리 이후 반복되는 20번의 쿼리는 응답을 만드는 과정의 어느 순간에 실행될까요?
+      CONCEPT_HINT: 지연 로딩 연관 객체 접근으로 생기는 N+1과, 등치 조건과 정렬을 함께 처리하는 복합 B-tree 인덱스를 떠올려 보세요.
+      DIRECTION: 두 문제를 분리해서 첫째는 연관 객체를 함께 가져오는 조회 방식으로, 둘째는 조건 컬럼과 정렬 컬럼의 순서를 기준으로 인덱스를 설계해 보세요.
+
+  - seedKey: DIAGNOSTIC.TESTING.L3.001
+    purpose: DIAGNOSTIC
+    skills:
+      - TESTING.UNIT_TEST_DESIGN
+      - TESTING.JUNIT
+    difficulty: 3
+    estimatedMinutes: 15
+    isTransfer: false
+    title: Testing 진단 — 믿을 수 없는 테스트 찾기
+    scenario: |-
+      포인트 서비스의 단위 테스트입니다. CI에서 가끔 실패하고, 적립 금액을 잘못 계산하는 버그가 있었는데도
+      통과한 적이 있습니다. 포인트는 적립 후 1년이 지나면 만료되어야 합니다.
+      ```java
+      class PointServiceTest {
+          private static final InMemoryPointRepository repository = new InMemoryPointRepository();
+          private final PointService service = new PointService(repository, Clock.systemDefaultZone());
+
+          @Test
+          void earnAddsBalance() {
+              service.earn(USER_ID, 100);
+              assertTrue(service.balance(USER_ID) > 0);
+          }
+
+          @Test
+          void useDeductsBalance() {
+              service.earn(USER_ID, 300);
+              service.use(USER_ID, 100);
+              assertEquals(200, service.balance(USER_ID));
+          }
+
+          @Test
+          void pointsExpireAfterOneYear() throws InterruptedException {
+              service.earn(USER_ID, 100);
+              Thread.sleep(1_000);
+              service.expireOverdue();
+              assertEquals(100, service.balance(USER_ID));
+          }
+      }
+      ```
+    prompt: |-
+      1. 이 테스트 클래스의 결함 세 가지를 찾아 각각 어떤 문제가 생기는지 설명하세요.
+      2. 고친 테스트의 핵심 부분을 작성하세요.
+      힌트 없이 15분 안에 답하세요. 진단 결과는 학습 계획의 시작 수준을 정하는 데만 쓰입니다.
+    constraints:
+      - JUnit Jupiter와 JDK 표준 API만 사용한다
+    expectedConcepts:
+      - 테스트 격리(공유 상태 제거)
+      - 실패를 드러내는 정확한 단언
+      - Clock 주입으로 시간 제어
+    rubric:
+      - id: R1
+        criterion: static으로 공유한 저장소 때문에 실행 순서에 따라 결과가 달라지는 문제를 찾고 테스트마다 새 저장소를 만든다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 0보다 큰지만 보는 단언이 잘못된 적립 금액을 통과시키는 문제를 찾고 정확한 기대값으로 단언한다
+        weightBp: 3000
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 시스템 시계와 sleep으로는 1년 뒤 만료를 검증할 수 없음을 설명하고 테스트가 제어하는 Clock 주입을 제시한다
+        weightBp: 3500
+        axis: EXPLANATION
+    commonMistakes:
+      - sleep 시간을 늘리는 것을 해결책으로 제시함
+      - 실행 순서를 고정하는 애너테이션으로 공유 상태 문제를 가림
+      - 만료 테스트가 만료를 검증하지 않는다는 점을 놓침
+    transferTargets: []
+    hints:
+      QUESTION_ONLY: 테스트 메서드의 실행 순서가 바뀌거나 적립 금액 계산이 틀렸을 때, 그리고 1년이 지난 상황에서 각 테스트는 어떤 결과를 낼까요?
+      CONCEPT_HINT: 테스트 간 격리와 실행 순서 독립성, 틀린 구현을 잡아내는 구체적인 단언, 테스트가 시간을 제어하는 Clock 주입을 점검해 보세요.
+      DIRECTION: 테스트마다 새로 준비되는 객체와 테스트 사이에 공유되는 객체를 구분하고, 각 단언이 틀린 구현을 잡을 수 있는지, 시간이 흐른 상황을 기다리지 않고 만들 수 있는지 차례로 확인하세요.
+
+  - seedKey: DIAGNOSTIC.WEB_HTTP.L3.001
+    purpose: DIAGNOSTIC
+    skills:
+      - WEB_HTTP.HTTP_BASICS
+      - WEB_HTTP.REST_API_DESIGN
+    difficulty: 3
+    estimatedMinutes: 12
+    isTransfer: false
+    title: Web·HTTP 진단 — 주문 API 설계 리뷰
+    scenario: |-
+      동료가 설계한 주문 API 목록입니다. 각 줄은 메서드, 경로, 응답 상태 코드, 설명입니다.
+      ```text
+      GET   /api/getOrders?userId=42         200  주문 목록
+      POST  /api/orders/cancel?orderId=7     200  {"result": "FAIL", "reason": "ALREADY_SHIPPED"}
+      GET   /api/orders/7/delete             200  주문 삭제
+      POST  /api/orders                      200  {"orderId": 8}
+      PUT   /api/orders/7                    200  요청 본문에 있는 필드만 부분 수정
+      ```
+    prompt: |-
+      1. 이 설계의 문제를 네 가지 이상 찾아 HTTP 의미론(메서드의 안전성과 멱등성, 상태 코드) 근거로 설명하세요.
+      2. 고친 엔드포인트와 상태 코드를 제시하세요.
+      힌트 없이 12분 안에 답하세요. 진단 결과는 학습 계획의 시작 수준을 정하는 데만 쓰입니다.
+    constraints:
+      - RFC 9110 HTTP Semantics 기준으로 답한다
+    expectedConcepts:
+      - 안전한 메서드와 멱등성
+      - 상태 코드 의미(201, 404, 409)
+      - 리소스 중심 URI
+      - PUT과 PATCH의 차이
+    rubric:
+      - id: R1
+        criterion: GET으로 삭제하면 안전한 메서드 의미를 위반해 자동 요청으로 삭제될 수 있음을 설명한다
+        weightBp: 2500
+        axis: EXPLANATION
+      - id: R2
+        criterion: 실패를 200과 본문 필드로 표현하지 않고 상태 코드(이미 배송된 주문 취소는 409 등)로 표현하도록 고친다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 생성은 201과 Location, 삭제는 DELETE, 목록은 리소스 중심 URI로 고친 설계를 제시한다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R4
+        criterion: PUT은 전체 상태 교체 의미라 부분 수정은 PATCH로 구분해야 함을 설명한다
+        weightBp: 2500
+        axis: EXPLANATION
+    commonMistakes:
+      - URI에 동사가 들어간 문제만 지적하고 메서드 의미 위반을 놓침
+      - 모든 실패를 400으로 통일함
+      - PUT과 PATCH를 같은 의미로 설명함
+    transferTargets: []
+    hints:
+      QUESTION_ONLY: 브라우저나 검색 크롤러가 링크를 미리 따라가는 상황이라면 이 목록의 어떤 요청이 위험할까요?
+      CONCEPT_HINT: 메서드의 안전성과 멱등성, 상태 코드가 결과를 표현하는 방식, 전체 교체와 부분 수정의 의미 차이를 RFC 9110 기준으로 점검해 보세요.
+      DIRECTION: 줄마다 메서드, 경로, 상태 코드 세 칸으로 나눠 각각의 의미가 실제 동작과 맞는지 표시하고, 맞지 않는 칸만 고쳐 다시 적어 보세요.

@@ -1,0 +1,328 @@
+# Seed challenges — TESTING, SECURITY (PRACTICE)
+# Spec: docs/19-content-spec.md §3.6 (schema), §6 (난이도), §7 (rubric·hint 작성 가이드)
+# 기준: JUnit Jupiter 5+, AssertJ, Mockito / OWASP Cheat Sheet Series
+challenges:
+  - seedKey: PRACTICE.TESTING.UNIT_TEST_DESIGN.L2.001
+    purpose: PRACTICE
+    skills:
+      - TESTING.UNIT_TEST_DESIGN
+      - TESTING.JUNIT
+    difficulty: 2
+    estimatedMinutes: 25
+    isTransfer: false
+    title: 배송비 계산 규칙의 경계값 테스트 작성
+    scenario: |-
+      배송비 규칙은 다음과 같습니다.
+      - 주문 금액이 0원 이하이면 IllegalArgumentException
+      - 30,000원 미만이면 기본 배송비 3,000원, 30,000원 이상이면 무료
+      - 도서·산간 지역이면 금액과 관계없이 3,000원 추가
+      ```java
+      public long shippingFee(long orderAmount, boolean remoteArea) {
+          if (orderAmount <= 0) {
+              throw new IllegalArgumentException("orderAmount must be positive");
+          }
+          long base = orderAmount > 30_000 ? 0 : 3_000;
+          return remoteArea ? base + 3_000 : base;
+      }
+      ```
+    prompt: |-
+      1. 규칙을 검증하는 테스트 케이스 목록을 먼저 설계하세요(입력, 기대값, 고른 이유).
+      2. JUnit Jupiter 파라미터화 테스트로 작성하세요.
+      3. 작성한 테스트가 드러내는 결함이 있으면 설명하세요.
+    constraints:
+      - JUnit Jupiter와 AssertJ만 사용한다
+      - 하나의 테스트 메서드는 하나의 규칙을 검증한다
+    expectedConcepts:
+      - 경계값 분석
+      - 파라미터화 테스트
+      - 예외 경로 테스트
+      - 조건 조합(도서·산간 지역)
+    rubric:
+      - id: R1
+        criterion: 0, 1, 29999, 30000 같은 경계값과 지역 조합을 파라미터화 테스트로 작성한다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 0원 이하 입력의 예외 발생을 별도 테스트로 검증한다
+        weightBp: 1500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 각 입력을 고른 이유를 규칙의 경계 기준으로 설명한다
+        weightBp: 2500
+        axis: EXPLANATION
+      - id: R4
+        criterion: 30000원에서 무료가 되지 않는 결함(초과와 이상 비교 오류)을 테스트로 찾아 설명한다
+        weightBp: 2500
+        axis: DEBUGGING
+    commonMistakes:
+      - 10000원, 50000원처럼 경계에서 먼 값만 테스트함
+      - 여러 규칙을 하나의 테스트에 몰아 실패 원인을 찾기 어려움
+      - 도서·산간 지역과 무료 배송 구간이 겹치는 조합을 빠뜨림
+    transferTargets:
+      - PRACTICAL_ENGINEERING.NULL_BOUNDARY
+    hints:
+      QUESTION_ONLY: 규칙 문장에서 결과가 바뀌는 지점은 어디이고, 그 지점 바로 앞과 뒤의 입력은 무엇인가요?
+      CONCEPT_HINT: 경계값 분석과 동등 분할, 그리고 같은 검증을 여러 입력으로 반복하는 파라미터화 테스트를 떠올려 보세요.
+      DIRECTION: 금액 구간과 지역 여부를 두 축으로 표를 만들고, 각 구간 경계의 바로 안과 밖 값을 한 줄씩 채운 뒤 그 표를 테스트 인자로 옮기세요.
+
+  - seedKey: PRACTICE.TESTING.TEST_DOUBLE.L3.001
+    purpose: PRACTICE
+    skills:
+      - TESTING.TEST_DOUBLE
+      - TESTING.UNIT_TEST_DESIGN
+    difficulty: 3
+    estimatedMinutes: 30
+    isTransfer: false
+    title: 현재 시각과 외부 알림에 의존하는 구독 만료 처리 테스트
+    scenario: |-
+      구독 만료 배치의 핵심 서비스입니다. 테스트가 없고, 동료가 쓴 테스트 초안은 Thread.sleep으로 만료 시각이
+      지나기를 기다립니다.
+      ```java
+      @Service
+      public class SubscriptionExpiryService {
+          private final SubscriptionRepository subscriptionRepository;
+          private final NotificationClient notificationClient;
+          // 생성자 생략
+
+          @Transactional
+          public int expireOverdue() {
+              Instant now = Instant.now();
+              List<Subscription> overdue = subscriptionRepository.findActiveEndingBefore(now);
+              overdue.forEach(subscription -> {
+                  subscription.expire(now);
+                  notificationClient.sendExpired(subscription.userId());
+              });
+              return overdue.size();
+          }
+      }
+      ```
+    prompt: |-
+      1. 결정적으로 테스트할 수 있도록 필요한 최소한의 구조 변경을 하세요.
+      2. Spring 컨텍스트 없이 실행되는 단위 테스트를 작성하세요.
+      3. 각 협력 객체에 stub, mock, fake 중 무엇을 썼는지와 이유를 설명하세요.
+    constraints:
+      - 테스트에서 Thread.sleep을 쓰지 않는다
+      - static 메서드 mocking을 쓰지 않는다
+    expectedConcepts:
+      - Clock 주입
+      - 테스트 더블 선택(stub, mock, fake)
+      - 상태 검증과 행위 검증
+      - 결정적 테스트
+    rubric:
+      - id: R1
+        criterion: Clock을 생성자로 주입받아 현재 시각을 고정할 수 있게 바꾸고 테스트에서 고정 시각을 쓴다
+        weightBp: 3000
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 만료 대상과 비대상 구독을 준비해 상태 변화와 반환 개수를 검증한다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 알림은 호출 여부를 검증하고 저장소는 결과를 준비하는 더블로 둔 선택 이유를 설명한다
+        weightBp: 2500
+        axis: EXPLANATION
+      - id: R4
+        criterion: sleep 기반 테스트가 느리고 불안정한 이유를 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+    commonMistakes:
+      - 모든 협력 객체를 mock으로 만들고 호출 순서까지 검증함
+      - 현재 시각을 static mocking으로 가로챔
+      - 만료 시각과 정확히 같은 경계 시각을 테스트하지 않음
+    transferTargets:
+      - TESTING.SPRING_TEST
+    hints:
+      QUESTION_ONLY: 이 테스트를 내일 실행해도, 다른 시간대의 CI 서버에서 실행해도 같은 결과가 나오려면 무엇이 고정되어야 할까요?
+      CONCEPT_HINT: 시간을 외부에서 주입하는 Clock, 그리고 응답을 준비하는 stub과 호출을 검증하는 mock의 차이를 떠올려 보세요.
+      DIRECTION: 먼저 시간 의존을 생성자로 들어오는 협력 객체로 바꾸고, 저장소와 알림 클라이언트 각각에 대해 결과를 준비해야 하는지 호출을 확인해야 하는지 나눠서 테스트 더블을 고르세요.
+
+  - seedKey: PRACTICE.SECURITY.SENSITIVE_DATA_LOGGING.L2.001
+    purpose: PRACTICE
+    skills:
+      - SECURITY.SENSITIVE_DATA_LOGGING
+      - PRACTICAL_ENGINEERING.LOGGING
+    difficulty: 2
+    estimatedMinutes: 20
+    isTransfer: false
+    title: 로그에 남는 비밀번호·토큰·API 키 제거
+    scenario: |-
+      장애 분석 중 운영 로그에서 아래 코드가 남긴 줄들이 발견되었습니다. LoginRequest는 email과 password를
+      가진 record이고, url에는 apiKey 쿼리 파라미터가, responseBody에는 고객 주소가 들어 있습니다.
+      ```java
+      log.info("login request: {}", request);
+      log.warn("token verification failed. header={}", httpRequest.getHeader("Authorization"));
+      log.error("external api error: url={}, response={}", url, responseBody);
+      ```
+    prompt: |-
+      1. 각 로그 줄이 어떤 민감 정보를 남기는지와 그 위험을 설명하세요.
+      2. 장애 분석에 필요한 정보는 남기면서 민감 정보가 기록되지 않도록 고친 코드를 작성하세요.
+      3. 같은 실수가 반복되지 않도록 코드 차원의 장치를 한 가지 이상 제안하세요.
+    constraints:
+      - 로그를 모두 삭제하는 방식으로 해결하지 않는다
+      - SLF4J 파라미터 로깅 형식을 유지한다
+    expectedConcepts:
+      - 민감 정보 로깅 금지
+      - 마스킹
+      - record의 자동 toString 노출
+      - 분석용 대체 정보(추적 ID, 상태 코드)
+    rubric:
+      - id: R1
+        criterion: 비밀번호, Authorization 헤더, API 키, 응답 본문 원문을 로그에서 제외하거나 마스킹한다
+        weightBp: 4000
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 분석에 필요한 정보(사용자 참조, 상태 코드, 오류 코드, 추적 ID)는 남긴다
+        weightBp: 2000
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 각 값이 노출되면 생기는 위험(계정 탈취, 토큰 재사용, 개인정보 유출)을 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+      - id: R4
+        criterion: toString 재정의, 마스킹 유틸리티, 로그 검사 테스트 같은 재발 방지 장치를 제안한다
+        weightBp: 2000
+        axis: EXPLANATION
+    commonMistakes:
+      - record의 자동 생성 toString이 password를 포함한다는 점을 놓침
+      - URL 쿼리 파라미터에 들어 있는 API 키를 놓침
+      - 마스킹 없이 로그 레벨만 DEBUG로 낮춤
+    transferTargets:
+      - SECURITY.SECRET_MANAGEMENT
+    hints:
+      QUESTION_ONLY: 이 로그 파일을 읽을 수 있는 사람이 로그 내용만으로 할 수 있는 일은 무엇일까요?
+      CONCEPT_HINT: 로그에 그대로 기록하면 안 되는 데이터 종류와, 자동 생성되는 문자열 표현이 모든 필드를 드러내는 문제를 확인해 보세요.
+      DIRECTION: 줄마다 기록되는 값을 목록으로 적고 민감 여부를 표시한 뒤, 민감한 값은 빼거나 가리고 분석에 필요한 대체 정보로 바꾸세요.
+
+  - seedKey: PRACTICE.SECURITY.INPUT_VALIDATION.L3.001
+    purpose: PRACTICE
+    skills:
+      - SECURITY.INPUT_VALIDATION
+    difficulty: 3
+    estimatedMinutes: 30
+    isTransfer: false
+    title: 게시글 검색 API의 검색어·정렬 조건 인젝션 막기
+    scenario: |-
+      게시글 검색 API입니다. keyword, sort, direction은 요청 쿼리 파라미터 값이 그대로 전달됩니다.
+      ```java
+      public List<PostRow> search(String keyword, String sort, String direction) {
+          String sql = "SELECT id, title, created_at FROM posts "
+              + "WHERE title LIKE '%" + keyword + "%' "
+              + "ORDER BY " + sort + " " + direction
+              + " LIMIT 50";
+          return jdbcTemplate.query(sql, postRowMapper);
+      }
+      ```
+    prompt: |-
+      1. 이 메서드에 가능한 공격 입력 예를 하나 들고 원인을 설명하세요.
+      2. 바인드 변수로 해결할 수 있는 부분과 없는 부분을 구분해 설명하세요.
+      3. 검색어와 정렬 조건을 안전하게 처리하도록 고친 코드를 작성하세요.
+    constraints:
+      - JdbcTemplate을 유지한다
+      - 허용 정렬 컬럼은 created_at과 title 두 가지이고, 방향은 오름차순과 내림차순이다
+    expectedConcepts:
+      - 파라미터 바인딩
+      - 식별자 allowlist
+      - LIKE 와일드카드 이스케이프
+      - 허용되지 않은 입력 거부
+    rubric:
+      - id: R1
+        criterion: 검색어는 바인드 변수로 전달한다
+        weightBp: 3000
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 정렬 컬럼과 방향은 허용 목록으로 매핑하고 목록에 없는 입력은 거부한다
+        weightBp: 3000
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 식별자와 정렬 방향은 바인드 변수로 넘길 수 없는 이유와 공격 예를 설명한다
+        weightBp: 2500
+        axis: EXPLANATION
+      - id: R4
+        criterion: 검색어에 포함된 퍼센트나 밑줄 같은 LIKE 와일드카드의 처리 필요성을 설명한다
+        weightBp: 1500
+        axis: EXPLANATION
+    commonMistakes:
+      - 따옴표만 이스케이프해 정렬 절의 인젝션을 남김
+      - 정렬 컬럼을 바인드 변수로 넣어 상수 정렬이 되어 정렬이 적용되지 않음
+      - 허용 목록 대신 금지 단어 목록으로 막으려 함
+    transferTargets:
+      - SPRING.VALIDATION
+    hints:
+      QUESTION_ONLY: 사용자가 보낸 문자열 중 데이터로만 쓰여야 하는 값과 SQL 문법의 일부가 되는 값은 각각 무엇인가요?
+      CONCEPT_HINT: 값 위치에는 파라미터 바인딩을 쓰고, 컬럼 이름이나 정렬 방향처럼 바인딩할 수 없는 식별자는 허용 목록으로 검증한다는 원칙을 확인해 보세요.
+      DIRECTION: 입력 세 개를 값과 식별자로 분류하고, 값은 바인딩으로, 식별자는 미리 정한 매핑표에서만 고르도록 구조를 바꾸세요. 매핑에 없는 입력의 응답도 정하세요.
+
+  - seedKey: PRACTICE.SECURITY.AUTHN_AUTHZ.L4.001
+    purpose: PRACTICE
+    skills:
+      - SECURITY.AUTHN_AUTHZ
+      - SPRING.SECURITY
+    difficulty: 4
+    estimatedMinutes: 45
+    isTransfer: true
+    title: 사용자 소유 리소스 API의 접근 제어 누락 막기
+    scenario: |-
+      학습 노트 서비스의 API 세 개입니다. JWT 인증은 설정되어 있어 로그인하지 않은 요청은 401로 거절됩니다.
+      ```java
+      @GetMapping("/api/v1/notes/{noteId}")
+      NoteResponse get(@PathVariable UUID noteId) {
+          Note note = noteRepository.findById(noteId).orElseThrow(NoteNotFoundException::new);
+          return NoteResponse.from(note);
+      }
+
+      @PatchMapping("/api/v1/notes/{noteId}")
+      NoteResponse update(@PathVariable UUID noteId, @Valid @RequestBody UpdateNoteRequest request) {
+          Note note = noteRepository.findById(noteId).orElseThrow(NoteNotFoundException::new);
+          note.update(request.title(), request.body(), request.ownerId());
+          return NoteResponse.from(note);
+      }
+
+      @GetMapping("/api/v1/notes")
+      List<NoteResponse> list(@RequestParam UUID userId) {
+          return noteRepository.findByOwnerId(userId).stream().map(NoteResponse::from).toList();
+      }
+      ```
+    prompt: |-
+      1. 세 API의 접근 제어 문제를 모두 찾아 공격 시나리오와 함께 설명하세요.
+      2. 인증된 사용자 본인의 노트만 조회·수정할 수 있도록 고친 코드를 작성하세요.
+      3. 다른 사용자의 노트 ID로 요청했을 때의 응답 상태 코드와 선택 이유, 이를 검증하는 테스트를 설명하세요.
+    constraints:
+      - 사용자 ID는 요청 파라미터나 본문이 아니라 인증 정보에서 얻는다
+      - 컨트롤러에서 repository를 직접 호출하지 않도록 서비스 계층으로 옮긴다
+    expectedConcepts:
+      - 객체 수준 접근 제어(IDOR)
+      - 인증 주체에서 사용자 식별
+      - 소유권 조건을 포함한 조회
+      - 클라이언트가 보낸 소유자 값 불신(mass assignment)
+      - 404로 존재 여부 숨김
+    rubric:
+      - id: R1
+        criterion: 모든 조회와 수정에서 인증 주체의 사용자 ID를 소유권 조회 조건으로 사용한다
+        weightBp: 3000
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 요청의 userId와 ownerId를 제거해 사용자가 소유자를 지정하거나 바꾸지 못하게 한다
+        weightBp: 2000
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 타인 노트 조회, 소유자 변경, 타인 목록 조회의 세 공격 시나리오를 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+      - id: R4
+        criterion: 타인 리소스에 404를 반환해 존재 여부를 숨기는 선택을 설명한다
+        weightBp: 1500
+        axis: EXPLANATION
+      - id: R5
+        criterion: 다른 사용자의 토큰으로 요청해 404를 확인하는 테스트를 제시한다
+        weightBp: 1500
+        axis: DEBUGGING
+    commonMistakes:
+      - 조회 API에만 소유자 검사를 넣고 수정 API는 빠뜨림
+      - 요청 본문의 ownerId를 그대로 신뢰함
+      - 403과 404를 기준 없이 섞어 씀
+    transferTargets:
+      - SECURITY.OWASP_TOP10
+    hints:
+      QUESTION_ONLY: 로그인한 사용자 A가 사용자 B의 노트 ID나 사용자 ID를 알게 되면 세 API 각각으로 무엇을 할 수 있을까요?
+      CONCEPT_HINT: 인증과 인가의 구분, 객체 수준 접근 제어, 클라이언트가 보낸 식별자를 신뢰하지 않는 원칙을 떠올려 보세요.
+      DIRECTION: 세 API에서 사용자 식별값이 어디서 오는지 표시하고, 모두 인증 정보에서 오도록 바꾼 뒤 조회 조건 자체에 소유자를 포함하세요. 수정 요청에서 바꿀 수 있는 필드도 다시 정하세요.

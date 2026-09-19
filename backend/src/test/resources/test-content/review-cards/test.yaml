@@ -1,0 +1,89 @@
+# 테스트 review card: MUST skill마다 1장 (CV-48 WARN 없음). 합성 문장이다
+cards:
+  - conceptKey: JAVA.EXCEPTION.CAUSE_CHAIN
+    skill: JAVA.EXCEPTION
+    reviewType: RECALL
+    prompt: 예외를 다른 예외로 감쌀 때 원래 예외 정보를 잃지 않으려면 무엇을 해야 하나요?
+    expectedAnswer: 새 예외의 생성자에 원래 예외를 cause로 넘겨 스택 정보를 보존한다.
+    rubric:
+      - id: R1
+        criterion: 원인 예외 보존
+      - id: R2
+        criterion: cause를 생성자 인자로 전달한다
+  - conceptKey: JAVA.COLLECTION.HASH_CONTRACT
+    skill: JAVA.COLLECTION
+    reviewType: EXPLAIN
+    prompt: equals를 재정의하면서 hashCode를 재정의하지 않으면 HashSet에서 무슨 일이 생기는지 설명하세요.
+    expectedAnswer: 같은 값이어도 다른 버킷에 들어가 중복 저장되거나 조회에 실패한다. 두 메서드는 함께 재정의해야 한다.
+    rubric:
+      - id: R1
+        criterion: equals와 hashCode 계약
+      - id: R2
+        criterion: 버킷이 달라 중복이나 조회 실패가 생긴다
+  - conceptKey: SPRING.TRANSACTION.SELF_INVOCATION
+    skill: SPRING.TRANSACTION
+    reviewType: BUG_SPOT
+    prompt: |-
+      아래 코드에서 save 호출이 트랜잭션 없이 실행되는 이유와 고칠 방법은?
+      ```java
+      public void register(Order order) {
+          save(order);
+      }
+
+      @Transactional
+      public void save(Order order) {
+          repository.save(order);
+      }
+      ```
+    expectedAnswer: 같은 클래스 안의 호출은 프록시를 거치지 않아 트랜잭션이 적용되지 않는다. 트랜잭션 메서드를 다른 bean으로 옮긴다.
+    rubric:
+      - id: R1
+        criterion: 프록시 기반 선언적 트랜잭션
+      - id: R2
+        criterion: 내부 호출은 프록시를 우회한다
+  - conceptKey: DATABASE.INDEX.COMPOSITE_ORDER
+    skill: DATABASE.INDEX
+    reviewType: CHOICE
+    prompt: |-
+      (user_id, created_at) 복합 인덱스가 도움이 되는 조회는?
+      A) where created_at > ? 만 있는 조회
+      B) where user_id = ? order by created_at 조회
+      C) where status = ? 조회
+    expectedAnswer: B) 선두 컬럼 user_id로 범위를 좁히고 created_at 순서를 그대로 쓴다.
+    rubric:
+      - id: R1
+        criterion: 선두 컬럼 조건
+      - id: R2
+        criterion: 정렬 순서를 인덱스로 처리한다
+  - conceptKey: WEB_HTTP.HTTP_BASICS.IDEMPOTENT_METHODS
+    skill: WEB_HTTP.HTTP_BASICS
+    reviewType: RECALL
+    prompt: HTTP 메서드 중 같은 요청을 여러 번 보내도 결과가 같은 메서드를 떠올려 보세요.
+    expectedAnswer: GET, PUT, DELETE는 멱등이다. POST는 멱등이 아니라 별도 키로 중복을 막는다.
+    rubric:
+      - id: R1
+        criterion: 멱등 메서드 구분
+      - id: R2
+        criterion: POST는 멱등이 아니다
+  - conceptKey: TESTING.JUNIT.PARAMETERIZED
+    skill: TESTING.JUNIT
+    reviewType: RECALL
+    prompt: 같은 검증을 여러 입력으로 반복할 때 JUnit 5에서 쓰는 기능은 무엇인가요?
+    expectedAnswer: ParameterizedTest와 CsvSource 같은 인자 공급자로 입력별 케이스를 만든다.
+    rubric:
+      - id: R1
+        criterion: 파라미터화 테스트
+      - id: R2
+        criterion: 인자 공급자로 입력을 준다
+  - conceptKey: EXPLANATION.PROJECT_STORY.TRADEOFF
+    skill: EXPLANATION.PROJECT_STORY
+    reviewType: EXPLAIN
+    prompt: 내 프로젝트에서 두 가지 방법 중 하나를 고른 경험을 선택 이유와 함께 설명해 보세요.
+    expectedAnswer: 문제 상황, 비교한 선택지, 고른 이유와 결과를 순서대로 말하고 다시 한다면 무엇을 바꿀지 덧붙인다.
+    rubric:
+      - id: R1
+        criterion: 문제 상황 제시
+      - id: R2
+        criterion: 선택지 비교와 근거
+      - id: R3
+        criterion: 결과와 회고

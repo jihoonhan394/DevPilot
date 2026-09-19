@@ -1,0 +1,25 @@
+# DevPilot daily database backup (결정 C: 서버 로컬 pg_dump, 로컬 PC pull)
+# 기준: docs/10-deployment-and-operations.md §8 (2026-09-18)
+# 설치: prepare-server.sh가 /etc/systemd/system/ 에 복사한다
+# 수동 실행: sudo systemctl start devpilot-backup.service && journalctl -u devpilot-backup.service -n 50
+
+[Unit]
+Description=DevPilot daily backup (pg_dump -Fc -> /opt/devpilot/backups)
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+ExecStart=/opt/devpilot/backup.sh
+TimeoutStartSec=30min
+Nice=10
+PrivateTmp=true
+NoNewPrivileges=true
+# strict: /opt/devpilot 포함 전체가 읽기 전용, 백업·상태 경로만 쓰기 허용 (docker.sock 연결은 읽기 전용 마운트에서도 된다 — 구현 시 확인)
+ProtectSystem=strict
+ReadWritePaths=/opt/devpilot/backups /opt/devpilot/state
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true

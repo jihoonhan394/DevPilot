@@ -1,0 +1,49 @@
+# profile: test — ./gradlew test (CI 포함). 테스트 클래스는 @ActiveProfiles("test")
+# 기준: docs/03-system-architecture.md §10, docs/09-test-and-quality.md, docs/18-project-setup-and-local-dev.md §4.4 (2026-09-18)
+#   DB   : Testcontainers postgres:16 + @ServiceConnection (spring.datasource.* 를 여기서 정하지 않는다)
+#   인증 : auth-mode=supabase(JWKS 경로) + TestJwksServer(로컬 EC P-256 JWKS). TestJwksConfig가 DynamicPropertyRegistrar로
+#          spring.security.oauth2.resourceserver.jwt.issuer-uri / jwk-set-uri 를 **직접** 등록한다 — application.yml의
+#          ${SUPABASE_URL} placeholder 해석에 의존하지 않는다 (docs/09 §6.2). web slice는 spring-security-test jwt().
+#          devtoken 모드(POST /dev/token, 앱 공개키 JwtDecoder)는 별도 테스트에서 auth-mode를 덮어써 검증한다
+#   CORS : 설정 없음 (docs/07-security-and-privacy.md §9.1)
+#   AI   : fake (FakeAiConfig는 devpilot.ai.provider=fake 일 때만 bean 등록 — provider=disabled E2E와 충돌 방지)
+#   스케줄러: @EnableScheduling 설정 클래스에 @Profile("!test") → 테스트에서 job이 자동 실행되지 않는다
+#   OpenAPI: OpenApiSnapshotTest가 /v3/api-docs.yaml 을 읽어 build/openapi/openapi.yaml 로 쓴다
+#            → api-docs 는 test profile에서 켠다 (Swagger UI는 끈다)
+
+spring:
+  jpa:
+    properties:
+      # SQL 실행 순서 확인 (docs/09 §8.2 I-02). 기록은 RecordingStatementInspector.start()를 부른 스레드만 한다
+      hibernate.session_factory.statement_inspector: com.devpilot.testsupport.RecordingStatementInspector
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: false
+  writer-with-order-by-keys: true
+  writer-with-default-pretty-printer: true
+
+devpilot:
+  security:
+    auth-mode: supabase
+    devtoken:
+      issuer: http://localhost/dev     # application.yml 기본값 ${APP_BASE_URL}/dev 은 test에서 해석되지 않는다
+                                       # (CI가 APP_BASE_URL을 주지 않음) → devtoken 테스트(09 §6.4)용 고정값
+    allowed-emails: owner@devpilot.test,invited@devpilot.test
+    allowed-subjects: ""
+    log-hash-key: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef   # 테스트 고정값 (64 hex)
+  web:
+    app-base-url: http://localhost:5173
+  content:
+    location: classpath:test-content/   # 테스트 전용 소형 catalog (docs/09 §4.2). 운영 content/에 의존하지 않는다
+  ai:
+    provider: fake
+    monthly-budget-usd: 25       # 운영 기본은 3 (DEC-06). 예산 테스트 벡터(17 §8.5, 09 BI-01~06)는 이 25 기준이다 — 재계산하지 않는다
+
+logging:
+  level:
+    root: WARN
+    com.devpilot: INFO
+    org.testcontainers: INFO

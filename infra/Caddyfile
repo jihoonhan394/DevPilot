@@ -1,0 +1,64 @@
+# DevPilot Caddyfile — 결정 B: TLS는 호스트의 tailscale serve가 종단하고, Caddy는 127.0.0.1:18080(컨테이너 :80)에서
+# 보안 헤더·정적 파일·/api 프록시만 한다. ACME·tls 블록 없음.
+# 기준: docs/10-deployment-and-operations.md §4.2, §5.4 (2026-09-18)
+# - 같은 origin에서 Flutter web 정적 파일과 /api 를 제공한다 (운영 CORS 없음)
+# - CSP는 Report-Only로 시작한다. 브라우저 콘솔에서 위반이 없음을 확인한 뒤
+#   헤더 이름을 Content-Security-Policy 로 바꾼다 (07-security-and-privacy.md §9.4)
+# - 배포 위치: /opt/devpilot/Caddyfile (prepare-server.sh가 복사, compose.prod.yml이 :ro 마운트)
+
+{
+	auto_https off
+}
+
+:80 {
+	encode zstd gzip
+
+	# 헤더 값의 기준: docs/07-security-and-privacy.md §9.3, CSP §9.4
+	# HSTS: tailscale serve가 HTTPS로 종단한 뒤 이 헤더를 그대로 전달한다 (구현 시 확인)
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-origin"
+		Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; media-src 'none'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		-Server
+	}
+
+	# API: backend 필터(64KB)가 기준이고, 여기서는 바깥 한도만 둔다
+	handle /api/* {
+		request_body {
+			max_size 1MB
+		}
+		# api가 Cache-Control을 정하지 않은 응답에만 no-store (캘린더 피드 값은 덮어쓰지 않음, 07 §9.3)
+		header ?Cache-Control "no-store"
+		reverse_proxy api:8080 {
+			# tailscale serve(127.0.0.1) → docker bridge 를 거쳐 오므로 X-Forwarded-Proto=https 를 backend까지 전달한다
+			trusted_proxies private_ranges
+		}
+	}
+
+	# 외부에 노출하는 actuator는 /actuator/health 하나뿐이다 (상세 비노출).
+	# 중첩 handle은 서로 배타적이며 matcher 없는 블록이 마지막에 평가된다.
+	handle /actuator* {
+		@health path /actuator/health
+		handle @health {
+			reverse_proxy api:8080 {
+				trusted_proxies private_ranges
+			}
+		}
+		handle {
+			respond 404
+		}
+	}
+
+	# Flutter web SPA. 산출물 파일명에 해시가 없으므로 전부 no-cache(ETag 재검증)로 제공한다
+	handle {
+		root * /srv/web
+		header Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}

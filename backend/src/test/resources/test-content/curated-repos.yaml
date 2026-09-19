@@ -1,0 +1,43 @@
+# 테스트 curated repo·reading (docs/09 §4.2): 해석되지 않는 호스트, 가짜 40자 SHA, 합성 경로
+repos:
+  - key: testrepo
+    name: Test Repository
+    url: https://repo.example.invalid/testrepo
+    subPath: ""
+    pinnedCommit: 0123456789abcdef0123456789abcdef01234567
+    license: UNSPECIFIED
+    stack: Java 25, Spring Boot 4.1
+    why: 테스트용 가상 저장소다. 경로와 줄 번호만 쓴다.
+    cloneHint: git clone https://repo.example.invalid/testrepo.git
+    licenseNote: 테스트 전용 — 코드 없음
+readings:
+  - key: READ.TESTREPO.ORDER_SERVICE.001
+    repo: testrepo
+    path: src/main/java/example/OrderService.java
+    lines: [10, 60]
+    skillCodes: [SPRING.TRANSACTION]
+    estimatedMinutes: 15
+    question: 이 서비스의 트랜잭션 경계가 어디에 생기는지 찾고 그 위치를 고른 이유를 추측해서 설명해 보세요.
+    lookFor:
+      - 트랜잭션이 시작되는 메서드
+      - 외부 호출이 경계 안에 있는가
+  - key: READ.TESTREPO.ORDER_REPOSITORY.001
+    repo: testrepo
+    path: src/main/java/example/OrderRepository.java
+    lines: [1, 40]
+    skillCodes: [DATABASE.INDEX]
+    estimatedMinutes: 10
+    question: 이 저장소의 조회 메서드들이 어떤 인덱스를 기대하는지 적고 빠진 인덱스가 있는지 판단해 보세요.
+    lookFor:
+      - where 절의 컬럼
+      - 정렬 기준
+  - key: READ.TESTREPO.ORDER_TEST.001
+    repo: testrepo
+    path: src/test/java/example/OrderServiceTest.java
+    lines: [5, 70]
+    skillCodes: [TESTING.JUNIT]
+    estimatedMinutes: 15
+    question: 이 테스트가 무엇을 검증하고 무엇을 놓치는지 나눠서 설명하고 한 케이스를 더한다면 무엇일지 말해 보세요.
+    lookFor:
+      - 준비와 검증의 경계
+      - 경계값 케이스

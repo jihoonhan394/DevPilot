@@ -1,0 +1,61 @@
+id: coach-review/resource-leak-001
+operation: COACH_REVIEW
+title: 예외 경로에서 BufferedReader가 닫히지 않음 (self-review에서 언급)
+tags: [java, resource, self-review]
+trap: false
+input:
+  variables:
+    language: JAVA
+    contentType: CODE
+    projectType: JAVA_LIBRARY
+    topic: 설정 파일 읽기
+    fileName: ConfigLoader.java
+    skillContext: |
+      JAVA.IO_RESOURCE · I/O와 자원 관리 · planning K2 I1 E1 D0
+      JAVA.EXCEPTION · 예외 처리 · planning K2 I2 E1 D1
+    weakAxes: RESOURCE_LIFECYCLE, EXCEPTION_STRATEGY
+    skillCodeCandidates: |
+      JAVA.IO_RESOURCE · I/O와 자원 관리
+      JAVA.EXCEPTION · 예외 처리
+      JAVA.OPTIONAL · Optional
+      JAVA.CONCURRENCY · 동시성 기초
+      SECURITY.SENSITIVE_DATA · 민감정보 보호
+  userContent:
+    userSelfReview:
+      kind: TEXT
+      text: 빈 파일이면 예외를 던지게 했다. 그런데 예외가 나면 reader가 제대로 닫히는지는 확신이 없다.
+    content:
+      kind: CODE
+      language: JAVA
+      text: |
+        package com.example.config;
+
+        import java.io.BufferedReader;
+        import java.io.IOException;
+        import java.nio.file.Files;
+        import java.nio.file.Path;
+
+        public class ConfigLoader {
+
+            public String readFirstLine(Path path) throws IOException {
+                BufferedReader reader = Files.newBufferedReader(path);
+                String line = reader.readLine();
+                if (line == null) {
+                    throw new IOException("empty config: " + path);
+                }
+                reader.close();
+                return line;
+            }
+        }
+expect:
+  confidentialSuspected: false
+  mustDetect:
+    - id: D1
+      category: RESOURCE_LIFECYCLE
+      findingTypeIn: [BUG, RISK]
+      lines: [11, 16]
+      questionMentionsAny: ["닫", "close", "해제", "자원"]
+  mustNotClaim:
+    - category: SECURITY
+  expectMentionedByUser: [D1]
+  expectSelfReviewAxesInclude: [RESOURCE_LIFECYCLE]

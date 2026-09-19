@@ -1,0 +1,60 @@
+id: coach-review/optional-get-001
+operation: COACH_REVIEW
+title: findById 결과에 검사 없이 Optional.get() 호출
+tags: [java, spring, optional, null]
+trap: false
+input:
+  variables:
+    language: JAVA
+    contentType: CODE
+    projectType: SPRING_BOOT
+    topic: 회원 프로필 조회
+    fileName: MemberService.java
+    skillContext: |
+      JAVA.OPTIONAL · Optional · planning K1 I1 E0 D0
+    weakAxes: NULL_BOUNDARY
+    skillCodeCandidates: |
+      JAVA.OPTIONAL · Optional
+      JAVA.EXCEPTION · 예외 처리
+      SPRING.TRANSACTION · Spring 트랜잭션
+      DATABASE.JPA_BASICS · JPA 기본
+  userContent:
+    userSelfReview:
+      kind: TEXT
+      text: 읽기 전용 트랜잭션을 붙였으니 조회 성능은 괜찮을 것 같다.
+    content:
+      kind: CODE
+      language: JAVA
+      text: |
+        package com.example.member;
+
+        import org.springframework.stereotype.Service;
+        import org.springframework.transaction.annotation.Transactional;
+
+        @Service
+        public class MemberService {
+
+            private final MemberRepository memberRepository;
+
+            public MemberService(MemberRepository memberRepository) {
+                this.memberRepository = memberRepository;
+            }
+
+            @Transactional(readOnly = true)
+            public MemberProfile getProfile(Long memberId) {
+                Member member = memberRepository.findById(memberId).get();
+                return new MemberProfile(member.getId(), member.getNickname());
+            }
+        }
+expect:
+  confidentialSuspected: false
+  mustDetect:
+    - id: D1
+      categoryIn: [NULL_BOUNDARY, EXCEPTION_STRATEGY]
+      findingTypeIn: [BUG, RISK]
+      lines: [17, 17]
+      questionMentionsAny: ["없", "존재", "Optional", "NoSuchElement"]
+  mustNotClaim:
+    - category: TRANSACTION_DATA_CONSISTENCY
+    - category: CONCURRENCY
+  expectSelfReviewAxesInclude: [PERFORMANCE]

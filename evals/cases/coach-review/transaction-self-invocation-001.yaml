@@ -1,0 +1,74 @@
+id: coach-review/transaction-self-invocation-001
+operation: COACH_REVIEW
+title: 같은 클래스 안에서 @Transactional 메서드를 호출해 프록시를 우회함
+tags: [spring, transaction, proxy]
+trap: false
+input:
+  variables:
+    language: JAVA
+    contentType: CODE
+    projectType: SPRING_BOOT
+    topic: 만료 주문 일괄 취소
+    fileName: OrderBatchService.java
+    skillContext: |
+      SPRING.TRANSACTION · Spring 트랜잭션 · planning K2 I1 E1 D0
+      DATABASE.JPA_BASICS · JPA 기본 · planning K2 I2 E1 D1
+    weakAxes: TRANSACTION_DATA_CONSISTENCY
+    skillCodeCandidates: |
+      SPRING.TRANSACTION · Spring 트랜잭션
+      DATABASE.JPA_BASICS · JPA 기본
+      DATABASE.JPA_FETCH · JPA 연관관계 로딩
+      JAVA.EXCEPTION · 예외 처리
+      JAVA.OPTIONAL · Optional
+  userContent:
+    userSelfReview:
+      kind: TEXT
+      text: 주문마다 트랜잭션을 따로 걸어서 한 건이 실패해도 나머지는 취소되게 만들었다.
+    content:
+      kind: CODE
+      language: JAVA
+      text: |
+        package com.example.order;
+
+        import org.springframework.stereotype.Service;
+        import org.springframework.transaction.annotation.Transactional;
+
+        import java.util.List;
+
+        @Service
+        public class OrderBatchService {
+
+            private final OrderRepository orderRepository;
+
+            public OrderBatchService(OrderRepository orderRepository) {
+                this.orderRepository = orderRepository;
+            }
+
+            public void cancelExpiredOrders(List<Long> orderIds) {
+                for (Long orderId : orderIds) {
+                    cancelOrder(orderId);
+                }
+            }
+
+            @Transactional
+            public void cancelOrder(Long orderId) {
+                Order order = orderRepository.findById(orderId)
+                        .orElseThrow(() -> new OrderNotFoundException(orderId));
+                order.cancel();
+                orderRepository.save(order);
+                order.getItems().forEach(item -> item.getStock().restore(item.getQuantity()));
+            }
+        }
+expect:
+  confidentialSuspected: false
+  mustDetect:
+    - id: D1
+      category: TRANSACTION_DATA_CONSISTENCY
+      findingTypeIn: [BUG, RISK]
+      lines: [17, 24]
+      questionMentionsAny: ["프록시", "proxy", "내부 호출", "self-invocation", "트랜잭션"]
+  mustNotClaim:
+    - category: NULL_BOUNDARY
+      lines: [25, 26]
+    - category: SECURITY
+  expectSelfReviewAxesInclude: [TRANSACTION_DATA_CONSISTENCY]

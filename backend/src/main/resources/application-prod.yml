@@ -1,0 +1,49 @@
+# profile: prod — 자체 서버 컨테이너 (infra/compose.prod.yml, env_file /opt/devpilot/api.env)
+# 기준: docs/03-system-architecture.md §8, §10, docs/10-deployment-and-operations.md §6 (2026-09-18)
+#   DB   : 서버 PostgreSQL 16 (공용 인스턴스, DB devpilot / role devpilot, TLS 없음 — 같은 호스트)
+#          DATABASE_URL 예: jdbc:postgresql://host.docker.internal:5432/devpilot (compose extra_hosts, docs/10 §2.4)
+#          실제 값은 저장소 밖 DevPilot-ops/02-database.md
+#   인증 : devtoken (결정 A, 운영도 동일). DEVPILOT_DEV_JWT_KEY(EC P-256 PEM) 는 prod 에서 필수 —
+#          api.env 에 한 줄(\n 이스케이프)로 둔다. 비어 있으면 기동 실패 (재기동마다 토큰이 무효가 되는 것을 막는다)
+#
+#   [경고] devtoken 은 임시 수단이다. 안전성의 근거는 "tailnet 밖에서 POST /dev/token 에 닿을 수 없다" 하나뿐이다.
+#          공개 URL 이 되면 allowlist 이메일만 알면 누구나 로그인한다. 이 profile 은 비공개 네트워크(Tailscale) 배포 전용이다.
+#          공개 배포 전에 반드시 DEVPILOT_AUTH_MODE=supabase 로 전환한다 (docs/03 §4.2, docs/11 §3.10, docs/13 BL-SEC-18).
+#          prod + auth-mode=devtoken 이면 기동 시 WARN 1줄을 남긴다 (기동을 막지는 않는다).
+#
+#   AI   : deepseek (기본값). DEEPSEEK_API_KEY 는 api.env. S3 전에는 api.env 에서 DEVPILOT_AI_PROVIDER=disabled
+#   로그 : structured JSON (ECS)
+#
+# 기본값이 없는 placeholder(${VAR})는 값이 없으면 기동이 실패한다. 의도된 동작이다.
+
+spring:
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+
+logging:
+  structured:
+    format:
+      console: ecs
+  level:
+    root: INFO
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+devpilot:
+  security:
+    auth-mode: ${DEVPILOT_AUTH_MODE:devtoken}
+    devtoken:
+      private-key-pem: ${DEVPILOT_DEV_JWT_KEY}          # 필수 (docs/10 §6)
+    allowed-emails: ${DEVPILOT_ALLOWED_EMAILS}
+    log-hash-key: ${DEVPILOT_LOG_HASH_KEY}
+  web:
+    cors-allowed-origins: ""                             # 같은 origin 배포 → CORS 없음
+    app-base-url: ${APP_BASE_URL}                        # 필수: https://<tailnet-host> (캘린더 피드 URL, devtoken issuer)
+  ai:
+    provider: ${DEVPILOT_AI_PROVIDER:deepseek}           # S3 전에는 api.env 에서 disabled

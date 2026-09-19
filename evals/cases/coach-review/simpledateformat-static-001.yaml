@@ -1,0 +1,60 @@
+id: coach-review/simpledateformat-static-001
+operation: COACH_REVIEW
+title: thread-safe하지 않은 SimpleDateFormat을 static 필드로 공유
+tags: [java, concurrency]
+trap: false
+input:
+  variables:
+    language: JAVA
+    contentType: CODE
+    projectType: SPRING_BOOT
+    topic: 여러 컨트롤러에서 쓰는 날짜 유틸
+    fileName: DateUtils.java
+    skillContext: |
+      JAVA.CONCURRENCY · 동시성 기초 · planning K1 I1 E0 D0
+    weakAxes: CONCURRENCY
+    skillCodeCandidates: |
+      JAVA.CONCURRENCY · 동시성 기초
+      JAVA.EXCEPTION · 예외 처리
+      JAVA.STRING · 문자열
+  userContent:
+    userSelfReview:
+      kind: TEXT
+      text: 포맷 객체를 매번 만들지 않도록 상수로 만들어 재사용했다.
+    content:
+      kind: CODE
+      language: JAVA
+      text: |
+        package com.example.common;
+
+        import java.text.ParseException;
+        import java.text.SimpleDateFormat;
+        import java.util.Date;
+
+        public final class DateUtils {
+
+            private static final SimpleDateFormat FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+            private DateUtils() {
+            }
+
+            public static String format(Date date) {
+                return FORMAT.format(date);
+            }
+
+            public static Date parse(String text) throws ParseException {
+                return FORMAT.parse(text);
+            }
+        }
+expect:
+  confidentialSuspected: false
+  mustDetect:
+    - id: D1
+      category: CONCURRENCY
+      findingTypeIn: [BUG, RISK]
+      lines: [9, 20]
+      questionMentionsAny: ["스레드", "thread", "동시", "공유"]
+  mustNotClaim:
+    - category: SECURITY
+    - category: RESOURCE_LIFECYCLE
+  expectSelfReviewAxesInclude: [PERFORMANCE]

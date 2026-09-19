@@ -1,0 +1,4 @@
+# source: 06 §7.5 §7.6 #13-14, rows: 2
+id,selfAssessedLevel,selfAssessmentActive,evidence,expected
+V13,4,true,1|0|0|0,3|3|3|3
+V14,4,false,1|0|0|0,1|0|0|0

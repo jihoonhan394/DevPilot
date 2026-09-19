@@ -1,0 +1,321 @@
+# Seed review cards — JAVA
+# Spec: docs/19-content-spec.md §3.5 (schema), §7.3 (작성 가이드)
+# 기준: Java 21+ / Java SE 25
+cards:
+  - conceptKey: JAVA.OOP.COMPOSITION_OVER_INHERITANCE
+    skill: JAVA.OOP
+    reviewType: EXPLAIN
+    prompt: >-
+      기능을 재사용하려고 기존 클래스를 상속하기보다 조합(composition)을 선택하는 것이 나은 이유를
+      설명하고, 예시를 하나 드세요.
+    expectedAnswer: >-
+      상속은 하위 클래스가 상위 클래스의 구현 세부에 강하게 결합되어 상위 클래스가 바뀌면 하위 클래스가
+      깨질 수 있고 캡슐화가 약해진다. 명확한 is-a 관계가 아니라 기능 재사용이 목적이면 대상 객체를 필드로
+      가지고 필요한 메서드만 위임하는 조합이 안전하다. 예를 들어 HashSet을 상속해 추가 횟수를 세면
+      addAll이 내부에서 add를 호출하는지에 따라 결과가 달라지지만, Set을 필드로 감싸 위임하면 내부 구현에
+      의존하지 않는다.
+    rubric:
+      - id: R1
+        criterion: 상속은 상위 클래스 구현과 강하게 결합된다는 점
+      - id: R2
+        criterion: is-a가 아닌 재사용 목적이면 필드로 가지고 위임하는 조합을 쓴다
+      - id: R3
+        criterion: 상위 구현 변경이 하위 동작을 바꾸는 구체적인 예시를 든다
+
+  - conceptKey: JAVA.COLLECTION.EQUALS_HASHCODE_CONTRACT
+    skill: JAVA.COLLECTION
+    reviewType: BUG_SPOT
+    prompt: |-
+      마지막 줄에서 id가 null이 될 수 있는 이유와 수정 방법은?
+      ```java
+      public final class Email {
+          private final String value;
+          public Email(String value) { this.value = value; }
+          @Override
+          public boolean equals(Object o) {
+              return o instanceof Email other && value.equals(other.value);
+          }
+      }
+      Map<Email, Long> ids = new HashMap<>();
+      ids.put(new Email("a@x.com"), 1L);
+      Long id = ids.get(new Email("a@x.com"));
+      ```
+    expectedAnswer: >-
+      equals만 재정의하고 hashCode를 재정의하지 않아 Object의 hashCode를 쓰므로, 값이 같은 두 Email의
+      해시 값이 대개 다르다. HashMap은 hashCode로 버킷을 찾은 뒤 equals로 비교하므로 다른 버킷을 찾아
+      null을 반환할 수 있다. equals가 같으면 hashCode도 같아야 한다는 계약에 따라 value 기반 hashCode를
+      재정의하거나 record로 바꾼다.
+    rubric:
+      - id: R1
+        criterion: equals와 hashCode의 일관성 계약 위반
+      - id: R2
+        criterion: HashMap이 hashCode로 버킷을 찾고 equals로 비교한다는 동작
+      - id: R3
+        criterion: value 기반 hashCode 재정의 또는 record 사용으로 수정
+
+  - conceptKey: JAVA.COLLECTION.REMOVE_WHILE_ITERATING
+    skill: JAVA.COLLECTION
+    reviewType: BUG_SPOT
+    prompt: |-
+      이 코드를 실행하면 어떤 문제가 생기나요? 안전하게 바꾸는 방법은?
+      ```java
+      List<String> names = new ArrayList<>(List.of("a", "b", "c"));
+      for (String name : names) {
+          if (name.equals("a")) {
+              names.remove(name);
+          }
+      }
+      ```
+    expectedAnswer: >-
+      for-each는 Iterator를 사용하는데, 순회 중 리스트를 직접 remove로 수정하면 fail-fast Iterator가
+      ConcurrentModificationException을 던질 수 있다(이 예시에서는 발생하지만, 발생이 보장되는 동작은
+      아니다). names.removeIf(name -> name.equals("a"))를 쓰거나 Iterator를 직접 사용해 iterator.remove()로
+      제거한다.
+    rubric:
+      - id: R1
+        criterion: 순회 중 컬렉션 구조 변경과 fail-fast Iterator
+      - id: R2
+        criterion: ConcurrentModificationException이 발생할 수 있다는 점
+      - id: R3
+        criterion: removeIf 또는 Iterator.remove로 수정
+
+  - conceptKey: JAVA.GENERICS.PECS
+    skill: JAVA.GENERICS
+    reviewType: RECALL
+    prompt: >-
+      List<? extends Number>와 List<? super Integer>는 각각 어떤 작업에 적합한가요? PECS 원칙으로
+      설명하세요.
+    expectedAnswer: >-
+      ? extends Number는 요소를 꺼내 Number로 읽는 생산자(producer)에 적합하다. 실제 원소 타입을 알 수
+      없으므로 null 외에는 추가할 수 없다. ? super Integer는 Integer를 넣는 소비자(consumer)에 적합하며,
+      꺼낸 값은 Object로만 보장된다. Producer-Extends, Consumer-Super로 기억한다.
+    rubric:
+      - id: R1
+        criterion: PECS (Producer-Extends, Consumer-Super)
+      - id: R2
+        criterion: extends 와일드카드는 읽기용이며 null 외 추가가 불가능하다
+      - id: R3
+        criterion: super 와일드카드는 쓰기용이며 꺼낸 값은 Object로만 보장된다
+
+  - conceptKey: JAVA.EXCEPTION.CHECKED_VS_UNCHECKED
+    skill: JAVA.EXCEPTION
+    reviewType: RECALL
+    prompt: >-
+      checked 예외와 unchecked 예외는 어떻게 구분되고, 각각 어떤 상황에 쓰나요?
+    expectedAnswer: >-
+      checked 예외는 Exception의 하위 타입 중 RuntimeException 계열이 아닌 것으로, 컴파일러가 catch 또는
+      throws 선언을 강제한다. unchecked 예외는 RuntimeException과 Error 계열로 처리가 강제되지 않는다.
+      호출자가 합리적으로 복구할 수 있는 조건은 checked, 잘못된 인자나 상태 같은 프로그래밍 오류는
+      unchecked로 표현한다.
+    rubric:
+      - id: R1
+        criterion: 컴파일러의 처리 강제 여부로 구분된다
+      - id: R2
+        criterion: RuntimeException과 Error 계열이 unchecked라는 점
+      - id: R3
+        criterion: 복구 가능성에 따른 선택 기준
+
+  - conceptKey: JAVA.EXCEPTION.CAUSE_PRESERVATION
+    skill: JAVA.EXCEPTION
+    reviewType: BUG_SPOT
+    prompt: |-
+      이 예외 변환 코드의 문제와 수정 방법은?
+      ```java
+      Config load(Path path) {
+          try {
+              return parse(Files.readString(path));
+          } catch (IOException e) {
+              throw new ConfigLoadException("설정 파일을 읽을 수 없습니다: " + path);
+          }
+      }
+      ```
+    expectedAnswer: >-
+      새 예외를 만들 때 원래 예외 e를 cause로 넘기지 않아 원인 예외의 종류, 메시지, 스택 트레이스가
+      사라진다. 장애 분석 시 파일이 없는지 권한 문제인지 알 수 없다. ConfigLoadException에 cause를 받는
+      생성자를 두고 new ConfigLoadException(message, e)처럼 원인을 보존한다.
+    rubric:
+      - id: R1
+        criterion: 예외 변환 시 원인(cause) 보존
+      - id: R2
+        criterion: 원인 예외와 스택 트레이스가 사라져 분석이 어려워진다는 영향
+      - id: R3
+        criterion: cause를 생성자 인자로 전달하도록 수정
+
+  - conceptKey: JAVA.EXCEPTION.TRY_WITH_RESOURCES.SUPPRESSED
+    skill: JAVA.EXCEPTION.TRY_WITH_RESOURCES
+    reviewType: RECALL
+    prompt: >-
+      try-with-resources 본문에서 예외 A가 발생하고, 자원을 닫는 close()에서도 예외 B가 발생했습니다.
+      호출자는 어떤 예외를 받고, B는 어떻게 확인하나요? 자원이 두 개면 닫히는 순서는?
+    expectedAnswer: >-
+      호출자는 본문에서 발생한 A를 받는다. close()에서 발생한 B는 버려지지 않고 A의 suppressed 예외로
+      추가되어 A.getSuppressed()로 확인할 수 있다. 자원이 여러 개면 선언(초기화)의 역순으로 닫힌다.
+    rubric:
+      - id: R1
+        criterion: suppressed 예외 메커니즘
+      - id: R2
+        criterion: 본문 예외 A가 전파되고 B는 getSuppressed로 확인한다
+      - id: R3
+        criterion: 자원은 선언의 역순으로 닫힌다
+
+  - conceptKey: JAVA.EXCEPTION.TRY_WITH_RESOURCES.LEAK
+    skill: JAVA.EXCEPTION.TRY_WITH_RESOURCES
+    reviewType: BUG_SPOT
+    prompt: |-
+      이 메서드에서 자원이 새는 경로와 수정 방법은?
+      ```java
+      String firstLine(Path path) throws IOException {
+          BufferedReader reader = Files.newBufferedReader(path);
+          String line = reader.readLine();
+          reader.close();
+          return line;
+      }
+      ```
+    expectedAnswer: >-
+      readLine()에서 IOException이 발생하면 close()에 도달하지 못해 파일 핸들이 닫히지 않는다. reader를
+      try-with-resources의 자원으로 선언하면 정상 종료와 예외 종료 모두에서 close()가 자동 호출된다.
+    rubric:
+      - id: R1
+        criterion: 예외 발생 시 close가 호출되지 않는 경로
+      - id: R2
+        criterion: try-with-resources로 자원을 선언하도록 수정
+      - id: R3
+        criterion: 정상 종료와 예외 종료 모두에서 닫힌다는 설명
+
+  - conceptKey: JAVA.LAMBDA_STREAM.LAZY_EVALUATION
+    skill: JAVA.LAMBDA_STREAM
+    reviewType: RECALL
+    prompt: >-
+      Stream에 filter와 map만 호출하고 최종 연산을 호출하지 않으면 람다가 실행되나요? 최종 연산까지 끝난
+      Stream 변수로 다시 연산하면 어떻게 되나요?
+    expectedAnswer: >-
+      filter, map 같은 중간 연산은 지연 평가되어 최종 연산(collect, forEach, count 등)이 호출될 때
+      실행된다. 최종 연산이 없으면 람다는 실행되지 않는다. Stream은 한 번만 소비할 수 있어서 이미 사용한
+      Stream에 다시 연산하면 IllegalStateException이 발생한다.
+    rubric:
+      - id: R1
+        criterion: 중간 연산의 지연(lazy) 평가
+      - id: R2
+        criterion: 최종 연산이 호출될 때 파이프라인이 실행된다
+      - id: R3
+        criterion: Stream은 재사용할 수 없고 IllegalStateException이 발생한다
+
+  - conceptKey: JAVA.LAMBDA_STREAM.TOMAP_DUPLICATE_KEY
+    skill: JAVA.LAMBDA_STREAM
+    reviewType: BUG_SPOT
+    prompt: |-
+      운영 데이터에서 이 코드가 실패할 수 있는 조건과 대응 방법은?
+      ```java
+      Map<String, User> byEmail = users.stream()
+          .collect(Collectors.toMap(User::email, Function.identity()));
+      ```
+    expectedAnswer: >-
+      같은 email을 가진 User가 두 명 이상이면 키 중복으로 IllegalStateException이 발생한다. 중복이 정상
+      데이터라면 toMap의 세 번째 인자로 병합 함수를 주거나 groupingBy로 목록을 모은다. 중복이 오류라면
+      입력 단계에서 유일성을 보장하고 명확한 예외로 처리한다.
+    rubric:
+      - id: R1
+        criterion: 키 중복 시 toMap의 동작
+      - id: R2
+        criterion: IllegalStateException이 발생한다는 점
+      - id: R3
+        criterion: 병합 함수, groupingBy, 유일성 보장 중 상황에 맞는 대응
+
+  - conceptKey: JAVA.OPTIONAL.RETURN_TYPE_USAGE
+    skill: JAVA.OPTIONAL
+    reviewType: EXPLAIN
+    prompt: >-
+      Optional은 어디에 쓰도록 설계되었나요? 필드나 메서드 파라미터에 쓰는 것을 피하는 이유와 get() 대신
+      쓸 수 있는 방법을 설명하세요.
+    expectedAnswer: >-
+      Optional은 결과가 없을 수 있음을 명확히 드러내야 하는 메서드 반환 타입에 주로 쓰도록 설계되었다.
+      필드나 파라미터에 쓰면 Optional 자체가 null일 수 있고 직렬화와 호출 코드가 복잡해져 오히려 의도가
+      흐려진다. 값을 꺼낼 때는 get() 대신 orElseThrow, orElse, orElseGet, map, ifPresent처럼 없음을
+      명시적으로 처리하는 메서드를 쓴다.
+    rubric:
+      - id: R1
+        criterion: 결과 없음을 표현하는 반환 타입 용도
+      - id: R2
+        criterion: 필드와 파라미터 사용을 피하는 이유
+      - id: R3
+        criterion: orElseThrow, map 같은 명시적 처리 메서드 사용
+
+  - conceptKey: JAVA.MODERN_SYNTAX.RECORD_SHALLOW_IMMUTABILITY
+    skill: JAVA.MODERN_SYNTAX
+    reviewType: RECALL
+    prompt: >-
+      record를 선언하면 컴파일러가 무엇을 만들어 주나요? List 타입 컴포넌트를 가진 record가 불변이
+      되려면 무엇을 더 해야 하나요?
+    expectedAnswer: >-
+      컴포넌트마다 private final 필드와 같은 이름의 접근자 메서드, canonical 생성자, 컴포넌트 기반
+      equals, hashCode, toString을 만든다. 필드 재할당은 막지만 List 같은 가변 객체의 내부 변경은 막지
+      못하는 얕은 불변이다. compact 생성자에서 List.copyOf로 방어적 복사를 해 불변 리스트를 보관한다.
+    rubric:
+      - id: R1
+        criterion: 필드, 접근자, 생성자, equals/hashCode/toString 자동 생성
+      - id: R2
+        criterion: record는 얕은 불변이라는 점
+      - id: R3
+        criterion: compact 생성자에서 방어적 복사
+
+  - conceptKey: JAVA.CONCURRENCY.RACE_CONDITION_COUNTER
+    skill: JAVA.CONCURRENCY
+    reviewType: BUG_SPOT
+    prompt: |-
+      여러 요청 스레드가 같은 VisitCounter 인스턴스의 increment()를 동시에 호출합니다. 어떤 문제가 생기고
+      어떻게 고치나요?
+      ```java
+      public class VisitCounter {
+          private int count;
+          public void increment() { count++; }
+          public int count() { return count; }
+      }
+      ```
+    expectedAnswer: >-
+      count++는 읽기, 증가, 쓰기의 세 단계라 원자적이지 않다. 두 스레드가 같은 값을 읽고 각각 쓰면 증가분이
+      사라지는 경쟁 조건이 생기고, 동기화 없이 읽는 값은 최신이 아닐 수도 있다. AtomicInteger(또는
+      LongAdder)를 쓰거나 increment와 count를 synchronized로 보호한다.
+    rubric:
+      - id: R1
+        criterion: count++가 원자적이지 않은 복합 연산이라는 점
+      - id: R2
+        criterion: 증가분이 유실되는 경쟁 조건
+      - id: R3
+        criterion: AtomicInteger 또는 synchronized로 수정
+
+  - conceptKey: JAVA.CONCURRENCY.VIRTUAL_THREAD.NO_POOLING
+    skill: JAVA.CONCURRENCY.VIRTUAL_THREAD
+    reviewType: RECALL
+    prompt: >-
+      가상 스레드를 스레드 풀에 담아 재사용하지 않는 이유는? 외부 API 동시 호출 수를 10개로 제한하려면
+      무엇을 쓰나요? 가상 스레드는 CPU 연산을 더 빠르게 하나요?
+    expectedAnswer: >-
+      가상 스레드는 생성 비용이 낮아 작업마다 새로 만드는 것이 의도된 사용 방식이다(예:
+      Executors.newVirtualThreadPerTaskExecutor). 동시 접근 수 제한은 풀 크기가 아니라 Semaphore로 한다.
+      가상 스레드는 코드를 더 빨리 실행하지 않으며, I/O 대기가 많은 작업에서 처리량을 높이기 위한 것이다.
+    rubric:
+      - id: R1
+        criterion: 가상 스레드는 풀링하지 않고 작업마다 생성한다
+      - id: R2
+        criterion: 동시성 제한은 Semaphore로 한다
+      - id: R3
+        criterion: 속도가 아니라 I/O 중심 작업의 처리량을 높인다
+
+  - conceptKey: JAVA.JVM_MEMORY_GC.REACHABILITY
+    skill: JAVA.JVM_MEMORY_GC
+    reviewType: RECALL
+    prompt: >-
+      JVM의 힙과 스택에는 각각 무엇이 저장되나요? GC가 객체를 회수하는 기준은 무엇이고, GC가 있는데도
+      메모리 누수가 생기는 예는?
+    expectedAnswer: >-
+      힙에는 객체가 저장되고 모든 스레드가 공유하며 GC 대상이다. 스택은 스레드마다 있고 메서드 호출
+      프레임(지역 변수, 참조 값)을 저장한다. GC는 GC root(스레드 스택의 지역 변수, static 필드 등)에서
+      참조를 따라 도달할 수 없는 객체를 회수한다. static Map 캐시에 객체를 계속 넣고 제거하지 않으면
+      참조가 남아 회수되지 않아 누수가 된다.
+    rubric:
+      - id: R1
+        criterion: GC root에서의 도달 가능성(reachability) 기준
+      - id: R2
+        criterion: 힙은 공유 객체 영역, 스택은 스레드별 호출 프레임
+      - id: R3
+        criterion: 참조가 남은 컬렉션으로 인한 누수 예시

@@ -1,0 +1,61 @@
+name: devpilot_app
+description: "DevPilot learning coach web app (Flutter web, PWA)."
+# Private app. Never published to pub.dev.
+publish_to: 'none'
+
+version: 0.0.1+1
+
+environment:
+  sdk: ^3.13.3
+
+# Packages follow docs/18-project-setup-and-local-dev.md §6.2. Resolved versions are pinned by pubspec.lock.
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^3.4.3
+  go_router: ^18.0.1
+  dio: ^5.11.1
+  freezed_annotation: ^3.1.0
+  json_annotation: ^4.12.0
+  intl: any
+  flutter_markdown_plus: ^1.0.12
+  url_launcher: ^6.3.2
+  uuid: ^4.6.0
+  web: ^1.1.1
+  flutter_localizations:
+    sdk: flutter
+  # flutter create default. Framework code references CupertinoIcons; the font is tree-shaken on
+  # build and must be bundled because the CSP blocks font fallbacks from a CDN.
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.16.1
+  freezed: ^4.0.1
+  json_serializable: ^6.14.1
+  mocktail: ^1.0.5
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  # OFL texts are registered with LicenseRegistry (lib/core/theme/font_licenses.dart).
+  assets:
+    - assets/fonts/Pretendard-OFL.txt
+    - assets/fonts/JetBrainsMono-OFL.txt
+
+  # Bundled fonts must cover every displayed glyph: the CSP blocks the gstatic.com fallback (docs/18 §6.6).
+  fonts:
+    - family: Pretendard
+      fonts:
+        - asset: assets/fonts/Pretendard-Regular.otf
+          weight: 400
+        - asset: assets/fonts/Pretendard-SemiBold.otf
+          weight: 600
+        - asset: assets/fonts/Pretendard-Bold.otf
+          weight: 700
+    - family: JetBrainsMono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Regular.ttf

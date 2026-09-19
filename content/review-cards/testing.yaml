@@ -1,0 +1,137 @@
+# Seed review cards — TESTING
+# Spec: docs/19-content-spec.md §3.5 (schema), §7.3 (작성 가이드)
+# 기준: JUnit Jupiter 5+, Spring Boot 4.1 test slices, Spring Framework 7 @MockitoBean
+cards:
+  - conceptKey: TESTING.JUNIT.PARAMETERIZED_TEST
+    skill: TESTING.JUNIT
+    reviewType: RECALL
+    prompt: >-
+      같은 검증 로직을 입력값 여러 개로 반복하는 테스트를 JUnit Jupiter에서 어떻게 작성하나요? 입력을
+      제공하는 방법 세 가지를 말해 보세요.
+    expectedAnswer: >-
+      테스트 메서드에 @ParameterizedTest를 붙이고(@Test는 함께 붙이지 않는다) 인자 소스를 지정한다.
+      @ValueSource는 단일 값 목록, @CsvSource는 여러 인자를 한 줄씩, @MethodSource는 팩토리 메서드가
+      반환하는 인자 스트림을 제공한다. 각 입력은 별도 테스트 결과로 보고된다.
+    rubric:
+      - id: R1
+        criterion: '@ParameterizedTest 사용'
+      - id: R2
+        criterion: ValueSource, CsvSource, MethodSource 같은 인자 소스
+      - id: R3
+        criterion: 입력마다 별도 결과로 보고된다
+
+  - conceptKey: TESTING.UNIT_TEST_DESIGN.BOUNDARY_VALUES
+    skill: TESTING.UNIT_TEST_DESIGN
+    reviewType: EXPLAIN
+    prompt: >-
+      주문 수량은 1 이상 100 이하만 허용합니다. 경계값 분석으로 최소한의 테스트 입력을 고르고 이유를
+      설명하세요.
+    expectedAnswer: >-
+      경계 바로 안쪽과 바깥쪽인 0, 1, 100, 101을 테스트한다. 비교 연산자를 < 와 <= 로 잘못 쓰는 오류가
+      경계에서 주로 드러나기 때문이다. 0과 101은 거부, 1과 100은 허용을 기대한다. 음수나 누락 같은 형식
+      오류는 별도 케이스로 둔다.
+    rubric:
+      - id: R1
+        criterion: 경계와 바로 바깥 값을 함께 테스트한다
+      - id: R2
+        criterion: 0, 1, 100, 101 선택
+      - id: R3
+        criterion: 비교 연산자 오류가 경계에서 드러난다는 이유
+
+  - conceptKey: TESTING.UNIT_TEST_DESIGN.TIME_DEPENDENCY
+    skill: TESTING.UNIT_TEST_DESIGN
+    reviewType: BUG_SPOT
+    prompt: |-
+      이 코드를 테스트하기 어려운 이유와 테스트 가능하게 바꾸는 방법은?
+      ```java
+      public class CouponService {
+          public boolean isExpired(Coupon coupon) {
+              return LocalDate.now().isAfter(coupon.expiresOn());
+          }
+      }
+      ```
+    expectedAnswer: >-
+      메서드가 시스템 시계와 기본 시간대를 직접 읽어 결과가 실행 날짜와 환경에 따라 달라진다. 만료일 당일이나
+      자정 전후 같은 경계를 재현할 수 없고 테스트가 날짜에 따라 실패할 수 있다. Clock을 생성자로 주입받아
+      LocalDate.now(clock)을 쓰고, 테스트에서는 Clock.fixed로 원하는 시각과 시간대를 고정한다.
+    rubric:
+      - id: R1
+        criterion: 시스템 시계에 직접 의존하는 비결정성
+      - id: R2
+        criterion: 경계 시점을 재현할 수 없다
+      - id: R3
+        criterion: Clock 주입과 Clock.fixed로 고정
+
+  - conceptKey: TESTING.TEST_DOUBLE.STUB_MOCK_FAKE
+    skill: TESTING.TEST_DOUBLE
+    reviewType: RECALL
+    prompt: >-
+      테스트 더블 중 stub, mock, fake의 차이를 설명하세요.
+    expectedAnswer: >-
+      stub은 호출에 미리 정한 값을 돌려주어 테스트 대상이 특정 상태로 동작하게 하며, 결과 상태를 검증한다.
+      mock은 어떤 메서드가 어떤 인자로 호출되어야 하는지 기대를 두고 상호작용(행위)을 검증한다. fake는 메모리
+      저장소처럼 실제로 동작하지만 운영에는 맞지 않는 단순한 구현이다.
+    rubric:
+      - id: R1
+        criterion: stub은 미리 정한 응답으로 상태 검증에 쓴다
+      - id: R2
+        criterion: mock은 호출 기대로 행위를 검증한다
+      - id: R3
+        criterion: fake는 단순하지만 실제로 동작하는 구현이다
+
+  - conceptKey: TESTING.TEST_DOUBLE.OVER_MOCKING
+    skill: TESTING.TEST_DOUBLE
+    reviewType: EXPLAIN
+    prompt: >-
+      서비스 테스트에서 repository와 모든 협력 객체를 mock으로 만들고 호출 순서까지 검증하면 어떤 문제가
+      생기나요? 대안은?
+    expectedAnswer: >-
+      테스트가 결과가 아니라 구현 세부(호출 순서와 횟수)에 결합되어, 동작이 같은 리팩터링에도 테스트가
+      깨진다. 또한 mock이 실제 쿼리나 매핑 오류를 숨겨 테스트는 통과하는데 운영에서 실패할 수 있다. 결과
+      상태와 외부로 드러나는 부수효과를 검증하고, 순수 규칙은 mock 없이 테스트하며, DB 동작은 fake 대신
+      Testcontainers 같은 실제 DB 테스트로 확인한다.
+    rubric:
+      - id: R1
+        criterion: 구현 세부에 결합되어 리팩터링에 깨진다
+      - id: R2
+        criterion: 실제 통합 오류를 숨긴다
+      - id: R3
+        criterion: 결과 검증과 실제 DB 테스트 같은 대안
+
+  - conceptKey: TESTING.SPRING_TEST.WEBMVCTEST_SCOPE
+    skill: TESTING.SPRING_TEST
+    reviewType: RECALL
+    prompt: >-
+      @WebMvcTest로 컨트롤러를 테스트할 때 컨트롤러가 의존하는 @Service 빈은 로드되나요? 어떻게 대체하고,
+      @SpringBootTest와는 언제 구분해 쓰나요?
+    expectedAnswer: >-
+      @WebMvcTest는 @Controller, @ControllerAdvice, Converter, Filter 같은 MVC 관련 빈만 스캔하고 일반
+      @Component나 @Service 빈은 로드하지 않는다. 필요한 협력 빈은 @MockitoBean으로 mock을 등록한다. 요청
+      매핑, 검증, 직렬화, 오류 응답을 빠르게 확인할 때 쓰고, 빈 연결 전체와 DB까지 포함한 흐름은
+      @SpringBootTest로 검증한다.
+    rubric:
+      - id: R1
+        criterion: slice 테스트는 MVC 관련 빈만 로드한다
+      - id: R2
+        criterion: 협력 빈은 @MockitoBean으로 등록한다
+      - id: R3
+        criterion: 전체 흐름 검증은 @SpringBootTest로 구분한다
+
+  - conceptKey: TESTING.TESTCONTAINERS.REAL_DATABASE
+    skill: TESTING.TESTCONTAINERS
+    reviewType: EXPLAIN
+    prompt: >-
+      PostgreSQL을 쓰는 서비스의 저장소 테스트를 H2 인메모리 DB 대신 Testcontainers로 작성하는 이유와 비용을
+      설명하세요.
+    expectedAnswer: >-
+      H2는 PostgreSQL과 SQL 문법, 타입(jsonb, 배열), 부분 인덱스, 잠금과 격리 동작이 달라 테스트가 통과해도
+      운영에서 실패할 수 있다. Testcontainers로 운영과 같은 버전의 PostgreSQL 컨테이너를 띄우면 migration과
+      실제 쿼리를 그대로 검증할 수 있다. 비용은 Docker가 필요하고 컨테이너 시작 시간이 든다는 점이며,
+      컨테이너를 테스트 간에 재사용해 줄인다.
+    rubric:
+      - id: R1
+        criterion: 인메모리 DB와 운영 DB의 동작 차이
+      - id: R2
+        criterion: 같은 버전 컨테이너로 migration과 쿼리를 검증한다
+      - id: R3
+        criterion: Docker 의존과 시작 시간 비용

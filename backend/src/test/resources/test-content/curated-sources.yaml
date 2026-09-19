@@ -1,0 +1,9 @@
+# 테스트 curated source (docs/19 §3.7)
+sources:
+  - id: CS-TEST-SPRING-TX
+    title: Spring Framework Transaction Management
+    url: https://docs.spring.io/spring-framework/reference/data-access/transaction.html
+    publisher: Spring
+    versionScope: Spring Framework 7.0.x
+    claim: 선언적 트랜잭션은 프록시를 통해 적용된다.
+    verifiedAt: 2026-09-17

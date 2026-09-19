@@ -1,0 +1,46 @@
+id: hint-generate/coach-finding-direction-001
+operation: HINT_GENERATE
+title: "coach finding DIRECTION: self-invocation 해결 방향을 코드 없이 설명"
+tags: [coach, spring, transaction, no-code]
+trap: false
+input:
+  variables:
+    targetType: COACH_FINDING
+    requestedLevel: DIRECTION
+    targetSummary: |
+      유형: BUG
+      사고 축: TRANSACTION_DATA_CONSISTENCY
+      요약: cancelExpiredOrders()가 같은 클래스의 @Transactional 메서드 cancelOrder()를 직접 호출해 트랜잭션이 적용되지 않는다.
+      학습 질문: cancelOrder()에 붙인 @Transactional은 어떤 객체를 거쳐 호출될 때 동작하나요? 지금 호출은 그 객체를 거치나요?
+    latestFeedback: |
+      프록시가 관련 있다는 점은 맞게 짚었습니다. 다만 같은 객체 안에서 this로 호출할 때 프록시가 개입하는지는 아직 설명하지 않았습니다.
+    previousHints: |
+      QUESTION_ONLY: cancelOrder()가 호출될 때 Spring이 끼어들 수 있는 지점은 어디일까요?
+      CONCEPT_HINT: Spring의 선언적 트랜잭션은 bean을 감싼 프록시가 메서드 호출을 가로채서 시작합니다. 프록시를 거치지 않는 호출에는 트랜잭션 advice가 적용되지 않습니다.
+  userContent:
+    learnerExplanation:
+      kind: TEXT
+      text: 프록시가 트랜잭션을 걸어 준다는 건 알겠는데, 같은 클래스 안에서 부르는 게 왜 문제인지 모르겠습니다.
+    userAttempt:
+      kind: CODE
+      language: JAVA
+      firstLineNumber: 17
+      text: |
+            public void cancelExpiredOrders(List<Long> orderIds) {
+                for (Long orderId : orderIds) {
+                    cancelOrder(orderId);
+                }
+            }
+
+            @Transactional
+            public void cancelOrder(Long orderId) {
+                Order order = orderRepository.findById(orderId)
+                        .orElseThrow(() -> new OrderNotFoundException(orderId));
+                order.cancel();
+                orderRepository.save(order);
+            }
+expect:
+  level: DIRECTION
+  containsCode: false
+  mustNotContainAny: ["```", "();", "@Transactional\n", "new TransactionTemplate("]
+  mentionsAny: ["분리", "다른 bean", "외부", "프록시를 거", "주입"]

@@ -1,0 +1,91 @@
+# DevPilot production stack (자체 서버, Rocky Linux 9 x86_64, 공용 Docker — 결정 B/D)
+# 기준: docs/10-deployment-and-operations.md §5 (2026-09-18)
+#
+# 실행은 항상 /opt/devpilot/deploy.sh가 한다. 수동 실행 형식 (deploy 사용자):
+#   docker compose -f /opt/devpilot/compose.prod.yml up -d
+#   (deploy.sh가 /opt/devpilot/.env 에 TAG·API_IMAGE 를 기록하므로 compose가 자동으로 읽는다)
+#
+# 변수 출처
+#   TAG, API_IMAGE             /opt/devpilot/.env (deploy.sh가 기록: TAG=v0.x.y, API_IMAGE=ghcr.io/<owner>/devpilot-api)
+#   애플리케이션 환경변수      /opt/devpilot/api.env (chmod 600, 저장소에 없음, docs/10 §6)
+#
+# 노출: caddy가 127.0.0.1:18080:80 하나만 publish한다. 호스트의 `tailscale serve --bg --https=443 http://127.0.0.1:18080`
+#       (1회, root)가 TLS를 종단한다. api는 publish하지 않는다. ACME·certs 볼륨·80/443·443/udp 없음.
+# 메모리: 서버 가용 4.7GB 중 api 1.5g + caddy 128m. AlwaysPreTouch 없음 (공용 서버).
+name: devpilot
+
+services:
+  api:
+    # 자체 이미지: 불변 tag(v0.<sprint>.<patch>)로 참조한다. release.yml이 linux/amd64로 빌드해 GHCR에 push (docs/10 §7.2)
+    image: ${API_IMAGE:?set API_IMAGE (deploy.sh writes /opt/devpilot/.env)}:${TAG:?set TAG (deploy.sh writes /opt/devpilot/.env)}
+    restart: unless-stopped
+    env_file:
+      - /opt/devpilot/api.env
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      # heap 1GB 고정. 근거: docs/10-deployment-and-operations.md §3.3
+      JAVA_TOOL_OPTIONS: "-Xmx1g -XX:+ExitOnOutOfMemoryError"
+    expose:
+      - "8080"
+    # 공용 PostgreSQL(호스트 5432) 접근: DATABASE_URL=jdbc:postgresql://host.docker.internal:5432/devpilot (docs/10 §2.4)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 1.5g
+    stop_grace_period: 40s
+    # 이미지에 curl/wget이 없어 bash /dev/tcp 로 확인한다 (eclipse-temurin은 Ubuntu 기반 — 구현 시 확인).
+    # 배포 판단은 deploy.sh가 호스트에서 http://127.0.0.1:18080/actuator/health 로 따로 한다
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /actuator/health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q '\"status\":\"UP\"' <&3"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+    networks:
+      - devpilot
+
+  caddy:
+    image: caddy:2.11.4-alpine # TODO(S2 P1): pin @sha256 digest (docs/07 §11.5)
+    restart: unless-stopped
+    ports:
+      # 호스트 loopback에만 publish한다. Docker publish는 firewalld를 우회하므로 127.0.0.1: 접두사가 필수다 (docs/10 §3.2)
+      - "127.0.0.1:18080:80"
+    volumes:
+      # Caddyfile 변경은 prepare-server.sh(재실행)가 복사한 뒤 `docker compose restart caddy` 로 반영한다 (파일 마운트는 reload로 안 바뀐다)
+      - /opt/devpilot/Caddyfile:/etc/caddy/Caddyfile:ro
+      # deploy.sh가 web.zip 내용으로 디렉터리 안을 교체한다 (디렉터리 자체는 유지 → 컨테이너에 바로 보인다)
+      - /opt/devpilot/web:/srv/web:ro
+    tmpfs:
+      # TLS 없음 → 영속 저장소 불필요. Caddy 자동 저장 설정만 tmpfs에 둔다
+      - /data
+      - /config
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    mem_limit: 128m
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+    depends_on:
+      - api
+    networks:
+      - devpilot
+
+networks:
+  devpilot: {}

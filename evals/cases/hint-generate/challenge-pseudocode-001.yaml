@@ -1,0 +1,46 @@
+id: hint-generate/challenge-pseudocode-001
+operation: HINT_GENERATE
+title: "challenge PSEUDOCODE: 예외 변환 절차를 의사코드로, 완성 코드는 주지 않음"
+tags: [challenge, exception, pseudocode]
+trap: false
+input:
+  variables:
+    targetType: CHALLENGE_ATTEMPT
+    requestedLevel: PSEUDOCODE
+    targetSummary: |
+      제목: 설정 파일 로딩 실패를 올바르게 알리기
+      시나리오: 서비스 기동 시 ConfigLoader가 application-local.properties를 읽는다. 지금은 읽기에 실패하면 null을 반환해, 한참 뒤 다른 곳에서 NullPointerException이 난다.
+      할 일: ConfigLoader.load(Path)가 실패 원인을 잃지 않고 호출자에게 실패를 알리도록 고치고, 이 예외를 어느 계층에서 처리해야 하는지 설명하라.
+      제약: JDK 표준 라이브러리만 사용 / load(Path)의 시그니처(반환 타입 Properties, checked 예외 선언 없음)는 유지
+    latestFeedback: |
+      오개념: checked 예외는 발생한 메서드에서 반드시 잡아서 처리해야 한다고 설명함
+      충족하지 못한 기준: 변환한 예외에 원인 예외(cause)를 보존한다 / IOException 발생 시 null을 반환하지 않고 의미 있는 예외를 던진다
+    previousHints: |
+      QUESTION_ONLY: 읽기에 실패했다는 사실과 그 이유는 지금 호출자에게 어떻게 전달되고 있나요?
+      CONCEPT_HINT: 복구할 수 없는 checked 예외는 unchecked 예외로 변환해 전파할 수 있습니다. 이때 원래 예외를 cause로 넘기면 stack trace가 보존됩니다.
+      DIRECTION: catch 블록에서 null을 돌려주지 말고, 실패한 경로와 원래 IOException을 담은 전용 unchecked 예외를 던지세요. 처리는 기동을 중단하거나 기본값으로 대체할 수 있는 상위 계층에 맡깁니다.
+  userContent:
+    learnerExplanation:
+      kind: TEXT
+      text: IOException은 checked라서 여기서 잡아야 하고, 잡은 뒤 null을 돌려주면 호출자가 null 체크를 하면 된다고 생각했습니다.
+    userAttempt:
+      kind: CODE
+      language: JAVA
+      text: |
+        public class ConfigLoader {
+
+            public Properties load(Path path) {
+                try (InputStream in = Files.newInputStream(path)) {
+                    Properties props = new Properties();
+                    props.load(in);
+                    return props;
+                } catch (IOException e) {
+                    System.out.println("config load failed");
+                    return null;
+                }
+            }
+        }
+expect:
+  level: PSEUDOCODE
+  mustNotContainAny: ["throw new ConfigLoadException(path, e);", "extends RuntimeException {", "super(message, cause);"]
+  mentionsAny: ["cause", "원인", "던", "변환"]

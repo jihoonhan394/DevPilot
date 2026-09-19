@@ -1,0 +1,14 @@
+# DevPilot health ping timer — 5분마다 (healthchecks.io check devpilot-health: Period 5분, Grace 10분)
+# 기준: docs/10-deployment-and-operations.md §11.1, §11.2 (2026-09-18)
+
+[Unit]
+Description=Run DevPilot health ping every 5 minutes
+
+[Timer]
+OnCalendar=*:0/5
+AccuracySec=30s
+Persistent=false
+Unit=devpilot-healthping.service
+
+[Install]
+WantedBy=timers.target

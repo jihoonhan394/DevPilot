@@ -1,0 +1,17 @@
+# build_runner configuration.
+#
+# source_gen formats *.g.dart at width 80 but, unlike its other builders, does not write the
+# `// dart format width=80` marker. Without the marker `dart format --set-exit-if-changed lib test`
+# (CI app job, docs/09 §14.1) reformats every generated file to page_width 100 and fails.
+#
+# explicit_to_json: nested request models (ReplanRequest.milestones) become plain maps in toJson(),
+# so the Idempotency-Key body fingerprint and the request body are built from the same JSON.
+targets:
+  $default:
+    builders:
+      source_gen:combining_builder:
+        options:
+          preamble: "// dart format width=80"
+      json_serializable:
+        options:
+          explicit_to_json: true

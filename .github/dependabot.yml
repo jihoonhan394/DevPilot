@@ -1,0 +1,43 @@
+# DevPilot Dependabot version updates — S0: gradle, pub, github-actions (docs/10 §7.4, 2026-09-18)
+# minor/patch는 생태계별로 한 PR로 묶고, major는 개별 PR로 받는다. CI green이면 주 1회 developer에 병합한다.
+# docker / docker-compose 생태계는 S2 P1 (컨테이너 base image digest 고정)과 함께 추가한다.
+version: 2
+
+updates:
+  - package-ecosystem: gradle
+    directory: /backend
+    target-branch: developer
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Seoul
+    open-pull-requests-limit: 5
+    groups:
+      gradle-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: pub
+    directory: /app
+    target-branch: developer
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Seoul
+    open-pull-requests-limit: 5
+    groups:
+      pub-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: developer
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Seoul
+    groups:
+      actions-minor-patch:
+        update-types: [minor, patch]

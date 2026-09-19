@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd">
+<!--
+  DevPilot Checkstyle (main). 기준: docs/08-coding-conventions.md §11.3
+  포맷(들여쓰기·줄 길이·공백)은 Spotless가 맡는다. 여기에는 명명·import·구조 규칙만 둔다.
+  모든 규칙은 error. 억제(SuppressWarningsHolder/Filter)는 쓰지 않는다.
+-->
+<module name="Checker">
+    <property name="charset" value="UTF-8"/>
+    <property name="severity" value="error"/>
+    <property name="fileExtensions" value="java"/>
+
+    <module name="TreeWalker">
+        <module name="PackageName">
+            <property name="format" value="^com\.devpilot(\.[a-z][a-z0-9]*)*$"/>
+        </module>
+        <module name="TypeName">
+            <property name="format" value="^[A-Z][a-zA-Z0-9]*$"/>
+        </module>
+        <module name="MethodName">
+            <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+        </module>
+        <module name="MemberName">
+            <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+        </module>
+        <module name="ParameterName">
+            <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+        </module>
+        <module name="LambdaParameterName">
+            <property name="format" value="^([a-z][a-zA-Z0-9]*|_)$"/>
+        </module>
+        <module name="LocalVariableName">
+            <property name="format" value="^([a-z][a-zA-Z0-9]*|_)$"/>
+            <property name="allowOneCharVarInForLoop" value="true"/>
+        </module>
+        <module name="LocalFinalVariableName">
+            <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+        </module>
+        <module name="CatchParameterName">
+            <property name="format" value="^([a-z][a-zA-Z0-9]*|_)$"/>
+        </module>
+        <module name="PatternVariableName">
+            <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+        </module>
+        <module name="RecordComponentName">
+            <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+        </module>
+        <module name="StaticVariableName">
+            <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+        </module>
+        <module name="ConstantName">
+            <property name="format" value="^log$|^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$"/>
+        </module>
+        <module name="ClassTypeParameterName">
+            <property name="format" value="^[A-Z][A-Z0-9]*$"/>
+        </module>
+        <module name="MethodTypeParameterName">
+            <property name="format" value="^[A-Z][A-Z0-9]*$"/>
+        </module>
+        <module name="RecordTypeParameterName">
+            <property name="format" value="^[A-Z][A-Z0-9]*$"/>
+        </module>
+        <module name="InterfaceTypeParameterName">
+            <property name="format" value="^[A-Z][A-Z0-9]*$"/>
+        </module>
+        <module name="AbbreviationAsWordInName">
+            <property name="allowedAbbreviationLength" value="1"/>
+            <property name="ignoreStatic" value="true"/>
+            <property name="ignoreFinal" value="true"/>
+            <property name="tokens"
+                      value="CLASS_DEF, INTERFACE_DEF, ENUM_DEF, RECORD_DEF, METHOD_DEF, VARIABLE_DEF, PARAMETER_DEF, RECORD_COMPONENT_DEF"/>
+        </module>
+        <module name="IllegalIdentifierName"/>
+        <module name="AvoidStarImport"/>
+        <module name="UnusedImports">
+            <property name="processJavadoc" value="true"/>
+        </module>
+        <module name="IllegalImport">
+            <property name="illegalPkgs"
+                      value="sun, com.sun, lombok, junit.framework, org.hamcrest, org.joda.time"/>
+            <property name="illegalClasses"
+                      value="org.junit.Assert, org.junit.jupiter.api.Assertions, java.util.Date, java.sql.Timestamp, java.text.SimpleDateFormat, org.springframework.beans.factory.annotation.Value, org.springframework.lang.Nullable, org.springframework.lang.NonNull, javax.annotation.Nullable, jakarta.annotation.Nullable"/>
+        </module>
+        <module name="OuterTypeNumber">
+            <property name="max" value="1"/>
+        </module>
+        <module name="OneTopLevelClass"/>
+        <module name="RegexpSinglelineJava">
+            <property name="id" value="RomanizedKorean"/>
+            <property name="format"
+                      value="(?:\b|_|(?&lt;=[a-z])(?=[A-Z]))(?i:sawon|hoesa|gyoyuk|jumun|gogaek|mokrok|sangse|deungrok|sujeong|sujung|sakje|johoe|jeonsong|gyeolje|seungin|hakseup|bokseup|gyehoek|mokpyo|sayongja|jeongbo|bunseok|pyeongga|munje|dapbyeon|sijak|jongryo|sangtae|yocheong|eungdap|gisul|hoewon|gwalli|seolmyeong|yeonseup|jindan|gubun|yeobu|beonho|ireum|nalja|geumaek|jeojang|cheori|gyeolgwa|naeyong|jemok|gaesu|suryang|bunryu|ilja)(?=[A-Z0-9_]|\b)"/>
+            <property name="ignoreComments" value="true"/>
+            <property name="message" value="Romanized Korean identifier is not allowed (08 §2.2)"/>
+        </module>
+        <module name="RegexpSinglelineJava">
+            <property name="id" value="YnSuffix"/>
+            <property name="format" value="(?&lt;=[a-z0-9])Yn\b"/>
+            <property name="ignoreComments" value="true"/>
+            <property name="message" value="Yn suffix is not allowed (08 §2.1)"/>
+        </module>
+    </module>
+</module>

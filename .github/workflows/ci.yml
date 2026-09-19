@@ -1,0 +1,167 @@
+# DevPilot CI — main·developer push, 두 브랜치 대상 PR, release.yml의 reusable call
+# 기준: docs/10-deployment-and-operations.md §7.1 (2026-09-18)
+# 필수 status check (branch protection, main·developer 둘 다): security, backend, app, content
+# 단계 순서·실패 기준: docs/09-test-and-quality.md §14.1, docs/07-security-and-privacy.md §11
+# S0 보안 도구 = gitleaks + actions SHA 고정 검사 (+ dependabot.yml). Trivy·CodeQL·image digest 고정은 S2 P1 (docs/10 §7.4)
+name: ci
+
+on:
+  pull_request:
+    branches: [main, developer]
+  push:
+    branches: [main, developer]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  security:
+    name: security
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: actions-pin-check (uses 값은 40자 commit SHA)
+        # 모든 action은 S0에 commit SHA로 고정했다(주석에 버전). 새 action도 SHA로만 추가한다 (docs/10 §7.5)
+        run: |
+          if grep -rnE '^[[:space:]]*-?[[:space:]]*uses:' .github/workflows \
+              | grep -vE 'uses:[[:space:]]*\./' \
+              | grep -vE '@[0-9a-f]{40}([[:space:]]|$)'; then
+            echo "::error::commit SHA로 고정되지 않은 action이 있다 (docs/10 §7.5)"
+            exit 1
+          fi
+      - name: gitleaks (.gitleaks.toml = 기본 규칙 + DeepSeek 키 sk-hex32, docs/07 §11.3)
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  backend:
+    name: backend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # migration immutability 검사에 base 브랜치 히스토리가 필요하다
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "25"
+      - uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      # 적용된 migration은 수정 금지 (docs/04 §10, docs/09 §8). base 는 developer 또는 main
+      - name: Migration immutability
+        if: github.event_name == 'pull_request'
+        working-directory: .
+        run: |
+          set -euo pipefail
+          # 이 규칙은 첫 배포(릴리스 태그 v*)부터 발효한다 (docs/04 §10). 그 전에는 V1~V9를 직접 고칠 수 있다
+          if [ -z "$(git tag -l 'v*')" ]; then
+            echo "첫 릴리스 태그 전 — migration 불변성 검사 생략 (docs/04 §10)"
+            exit 0
+          fi
+          git fetch --no-tags --depth=200 origin "${{ github.base_ref }}"
+          changed=$(git diff --name-status "origin/${{ github.base_ref }}..." \
+            | grep -E '^M.*backend/src/main/resources/db/migration/V' || true)
+          if [ -n "$changed" ]; then
+            echo "적용된 migration 파일이 수정되었다. 새 V{n} 파일로 만들어라:"
+            echo "$changed"
+            exit 1
+          fi
+      - name: Format
+        run: ./gradlew spotlessCheck
+      - name: Compile (main -Werror, lockfile)
+        run: ./gradlew compileJava compileTestJava
+      - name: Checkstyle
+        run: ./gradlew checkstyleMain checkstyleTest
+      - name: PMD, SpotBugs
+        run: ./gradlew pmdMain spotbugsMain
+      - name: Unit tests (tag unit)
+        run: ./gradlew test
+      - name: Integration tests (tag integration, Testcontainers postgres:16 — runner의 Docker)
+        run: ./gradlew integrationTest
+      - name: Coverage gate
+        run: ./gradlew jacocoTestCoverageVerification
+      - name: OpenAPI snapshot
+        run: ./gradlew openApiCheck
+      - name: Upload reports
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: backend-reports
+          path: |
+            backend/build/reports/
+            backend/build/test-results/
+            backend/build/openapi/
+          retention-days: 7
+
+  app:
+    name: app
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Read Flutter version from .fvmrc
+        id: fvm
+        run: echo "version=$(jq -r '.flutter' .fvmrc)" >> "$GITHUB_OUTPUT"
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: ${{ steps.fvm.outputs.version }}
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - name: Format check (생성 코드는 커밋하지 않으므로 생성 전에 검사)
+        run: dart format --output=none --set-exit-if-changed lib test
+      - name: Romanized identifier check (docs/08 §2.2)
+        run: bash tool/check_identifiers.sh
+      - name: Generate code (l10n, freezed, json_serializable)
+        run: |
+          flutter gen-l10n
+          dart run build_runner build --delete-conflicting-outputs
+      - run: flutter analyze --fatal-infos --fatal-warnings
+      - run: flutter test
+      - name: Web build check (AUTH_MODE=dev, 예시 설정)
+        run: >-
+          flutter build web --release --no-web-resources-cdn --csp
+          --dart-define-from-file=config/local.example.json
+
+  content:
+    name: content
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      # 필수 check가 path filter로 "건너뜀" 상태가 되지 않도록 job은 항상 돌고, 변경이 없으면 검증 단계만 생략한다
+      - name: Detect content changes
+        id: changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" != "pull_request" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "${BASE_SHA}" HEAD -- content/ | grep -q .; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Validate content (docs/19-content-spec.md)
+        if: steps.changes.outputs.run == 'true'
+        run: |
+          python3 -m venv "${RUNNER_TEMP}/venv"
+          "${RUNNER_TEMP}/venv/bin/pip" install --quiet pyyaml
+          "${RUNNER_TEMP}/venv/bin/python" content/tools/validate_content.py

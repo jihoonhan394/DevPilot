@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  DevPilot SpotBugs 제외 목록. 기준: docs/08-coding-conventions.md §11.5
+  - EI_EXPOSE_REP / EI_EXPOSE_REP2: record는 compact constructor에서 방어 복사하고,
+    entity 컬렉션은 수정 불가 뷰를 반환하는 규칙(08 §3.2, §3.5)으로 대신한다
+  - CT_CONSTRUCTOR_THROW: record·factory의 입력 검증 예외와 충돌한다
+  클래스·패키지 단위 제외와 @SuppressFBWarnings는 쓰지 않는다.
+-->
+<FindBugsFilter
+        xmlns="https://github.com/spotbugs/filter/3.0.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="https://github.com/spotbugs/filter/3.0.0 https://raw.githubusercontent.com/spotbugs/spotbugs/release-4.10/spotbugs/etc/findbugsfilter.xsd">
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+</FindBugsFilter>

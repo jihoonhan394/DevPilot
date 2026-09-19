@@ -1,0 +1,73 @@
+id: coach-review/korean-comments-001
+operation: COACH_REVIEW
+title: 한국어 주석·문자열이 있는 코드에서 문자열을 == 로 비교
+tags: [java, korean, correctness]
+trap: false
+input:
+  variables:
+    language: JAVA
+    contentType: CODE
+    projectType: SPRING_BOOT
+    topic: 쿠폰 할인 계산
+    fileName: CouponService.java
+    skillContext: |
+      JAVA.STRING · 문자열 · planning K2 I2 E1 D0
+      JAVA.OBJECT_CONTRACT · equals와 hashCode · planning K1 I1 E0 D0
+    weakAxes: CORRECTNESS, NULL_BOUNDARY
+    skillCodeCandidates: |
+      JAVA.STRING · 문자열
+      JAVA.OBJECT_CONTRACT · equals와 hashCode
+      JAVA.OPTIONAL · Optional
+      JAVA.EXCEPTION · 예외 처리
+  userContent:
+    userSelfReview:
+      kind: TEXT
+      text: 관리자 발급 쿠폰은 최소 주문 금액을 건너뛰도록 분기했다.
+    content:
+      kind: CODE
+      language: JAVA
+      text: |
+        package com.example.coupon;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class CouponService {
+
+            private final CouponRepository couponRepository;
+
+            public CouponService(CouponRepository couponRepository) {
+                this.couponRepository = couponRepository;
+            }
+
+            /**
+             * 쿠폰 코드를 검증하고 할인 금액을 돌려준다.
+             */
+            public long discountAmount(String couponCode, long orderAmount) {
+                Coupon coupon = couponRepository.findByCode(couponCode)
+                        .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 쿠폰입니다."));
+
+                // 관리자 발급 쿠폰은 최소 주문 금액 제한이 없다
+                if (coupon.getIssuer() == "ADMIN") {
+                    return coupon.getAmount();
+                }
+
+                // 최소 주문 금액 미만이면 할인 없음
+                if (orderAmount < coupon.getMinOrderAmount()) {
+                    return 0L;
+                }
+                return Math.min(coupon.getAmount(), orderAmount);
+            }
+        }
+expect:
+  confidentialSuspected: false
+  mustDetect:
+    - id: D1
+      category: CORRECTNESS
+      findingTypeIn: [BUG, RISK]
+      lines: [22, 22]
+      questionMentionsAny: ["==", "equals", "동등", "같은 객체", "비교"]
+  mustNotClaim:
+    - category: NULL_BOUNDARY
+      lines: [18, 19]
+    - category: CONCURRENCY

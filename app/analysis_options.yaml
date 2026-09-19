@@ -1,0 +1,45 @@
+# DevPilot Flutter app — analyzer & formatter
+# 기준: docs/18-project-setup-and-local-dev.md §6.4
+# CI: flutter analyze --fatal-infos (경고·info 0건), dart format --set-exit-if-changed
+
+include: package:flutter_lints/flutter.yaml
+
+formatter:
+  page_width: 100
+  trailing_commas: preserve
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "lib/l10n/app_localizations*.dart"
+    - "build/**"
+    - "web/**"
+  errors:
+    # freezed + json_serializable 조합에서 @JsonKey 위치 경고를 끈다 (freezed 문서 권장)
+    invalid_annotation_target: ignore
+    todo: ignore
+
+linter:
+  rules:
+    - always_declare_return_types
+    - avoid_dynamic_calls
+    - avoid_print
+    - avoid_slow_async_io
+    - avoid_type_to_string
+    - cancel_subscriptions
+    - close_sinks
+    - directives_ordering
+    - no_adjacent_strings_in_list
+    - prefer_const_constructors
+    - prefer_final_fields
+    - prefer_final_locals
+    - prefer_single_quotes
+    - unawaited_futures
+    - unnecessary_lambdas
+    - use_build_context_synchronously
+    - use_super_parameters

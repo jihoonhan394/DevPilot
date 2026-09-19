@@ -1,0 +1,124 @@
+# 테스트 skill tree: root 13 + non-root 10
+skills:
+  - code: JAVA
+    name: Java
+    category: JAVA
+    description: 테스트용 Java 카테고리 묶음 노드다.
+  - code: JAVA.EXCEPTION
+    name: 예외 처리
+    category: JAVA
+    parent: JAVA
+    description: checked/unchecked 예외의 차이와 원인 보존을 이해하고 처리 계층을 고른다.
+    minutesPerLevelStep: 90
+    prerequisites: []
+  - code: JAVA.COLLECTION
+    name: Collection Framework
+    category: JAVA
+    parent: JAVA
+    description: List, Set, Map 구현체의 특성과 equals/hashCode 계약을 이해한다.
+    minutesPerLevelStep: 90
+    prerequisites: []
+  - code: SPRING
+    name: Spring
+    category: SPRING
+    description: 테스트용 Spring 카테고리 묶음 노드다.
+  - code: SPRING.TRANSACTION
+    name: Spring Transaction
+    category: SPRING
+    parent: SPRING
+    description: '@Transactional의 적용 범위와 기본 롤백 규칙, 트랜잭션 경계 설계를 이해한다.'
+    minutesPerLevelStep: 150
+    prerequisites: [JAVA.EXCEPTION]
+  - code: DATABASE
+    name: Database
+    category: DATABASE
+    description: 테스트용 Database 카테고리 묶음 노드다.
+  - code: DATABASE.INDEX
+    name: 인덱스
+    category: DATABASE
+    parent: DATABASE
+    description: B-tree 인덱스와 복합 인덱스 컬럼 순서가 조회 성능에 주는 영향을 설명한다.
+    minutesPerLevelStep: 120
+    prerequisites: []
+  - code: WEB_HTTP
+    name: Web/HTTP
+    category: WEB_HTTP
+    description: 테스트용 Web/HTTP 카테고리 묶음 노드다.
+  - code: WEB_HTTP.HTTP_BASICS
+    name: HTTP 기초
+    category: WEB_HTTP
+    parent: WEB_HTTP
+    description: HTTP 메서드, 상태 코드, 헤더의 의미를 알고 API 응답을 설계한다.
+    minutesPerLevelStep: 60
+    prerequisites: []
+  - code: NETWORK
+    name: Network
+    category: NETWORK
+    description: 테스트용 Network 카테고리 묶음 노드다.
+  - code: CS
+    name: CS
+    category: CS
+    description: 테스트용 CS 카테고리 묶음 노드다.
+  - code: ALGORITHM
+    name: Algorithm
+    category: ALGORITHM
+    description: 테스트용 Algorithm 카테고리 묶음 노드다.
+  - code: ALGORITHM.SORT_SEARCH
+    name: 정렬과 탐색
+    category: ALGORITHM
+    parent: ALGORITHM
+    description: 기본 정렬과 이분 탐색의 시간 복잡도를 설명하고 직접 구현한다.
+    minutesPerLevelStep: 90
+    prerequisites: []
+  - code: TESTING
+    name: Testing
+    category: TESTING
+    description: 테스트용 Testing 카테고리 묶음 노드다.
+  - code: TESTING.JUNIT
+    name: JUnit
+    category: TESTING
+    parent: TESTING
+    description: JUnit 5로 단위 테스트를 작성하고 파라미터화 테스트를 쓴다.
+    minutesPerLevelStep: 60
+    prerequisites: []
+  - code: DEVOPS
+    name: DevOps
+    category: DEVOPS
+    description: 테스트용 DevOps 카테고리 묶음 노드다.
+  - code: DEVOPS.DOCKER
+    name: Docker
+    category: DEVOPS
+    parent: DEVOPS
+    description: 컨테이너 이미지를 만들고 실행하며 레이어 캐시를 이해한다.
+    minutesPerLevelStep: 90
+    prerequisites: []
+  - code: SECURITY
+    name: Security
+    category: SECURITY
+    description: 테스트용 Security 카테고리 묶음 노드다.
+  - code: PRACTICAL_ENGINEERING
+    name: Practical Engineering
+    category: PRACTICAL_ENGINEERING
+    description: 테스트용 실무 엔지니어링 카테고리 묶음 노드다.
+  - code: SYSTEM_DESIGN
+    name: System Design
+    category: SYSTEM_DESIGN
+    description: 테스트용 System Design 카테고리 묶음 노드다.
+  - code: SYSTEM_DESIGN.CACHING
+    name: 캐싱
+    category: SYSTEM_DESIGN
+    parent: SYSTEM_DESIGN
+    description: 캐시 적중률, 만료 정책, 일관성 문제를 설명한다.
+    minutesPerLevelStep: 90
+    prerequisites: []
+  - code: EXPLANATION
+    name: Explanation
+    category: EXPLANATION
+    description: 테스트용 Explanation 카테고리 묶음 노드다.
+  - code: EXPLANATION.PROJECT_STORY
+    name: 프로젝트 설명
+    category: EXPLANATION
+    parent: EXPLANATION
+    description: 만든 프로젝트의 문제, 선택, 결과를 2분 안에 설명한다.
+    minutesPerLevelStep: 60
+    prerequisites: []

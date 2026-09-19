@@ -1,0 +1,76 @@
+# Curated sources — VerificationGuard가 CURATED_SOURCE 근거로 인정하는 ID 목록
+# Spec: docs/19-content-spec.md §3.7, 06-learning-engine-rules.md §10
+# - url 호스트는 devpilot.ai.trusted-source-hosts에 있어야 한다 (CV-71)
+# - 서버는 URL을 fetch하지 않는다. verifiedAt은 작성자가 사람 손으로 확인한 날짜다
+# - claim은 해당 문서가 직접 뒷받침하는 문장만 쓴다
+sources:
+  - id: CS-JAVA-TRY-WITH-RESOURCES
+    title: The Java Language Specification, Java SE 25 — 14.20.3 try-with-resources
+    url: https://docs.oracle.com/javase/specs/jls/se25/html/jls-14.html#jls-14.20.3
+    publisher: Oracle
+    versionScope: Java SE 25
+    claim: try-with-resources는 선언한 자원을 블록 종료 시 자동으로 닫으며, 여러 자원은 초기화의 역순으로 닫힌다.
+    verifiedAt: 2026-09-17
+  - id: CS-JAVA-OBJECT-HASHCODE-CONTRACT
+    title: java.lang.Object (Java SE 25 & JDK 25 API)
+    url: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html
+    publisher: Oracle
+    versionScope: Java SE 25
+    claim: equals로 같다고 판단되는 두 객체는 hashCode도 같은 정수를 반환해야 한다(hashCode 일반 계약).
+    verifiedAt: 2026-09-17
+  - id: CS-SPRING-TX-SELF-INVOCATION
+    title: Spring Framework Reference — Using @Transactional
+    url: https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html
+    publisher: Spring (Broadcom)
+    versionScope: Spring Framework 7.0.x
+    claim: 기본 proxy 모드에서는 프록시를 거치는 외부 호출만 가로채므로, 대상 객체 내부의 self-invocation에는 @Transactional이 있어도 트랜잭션이 적용되지 않는다.
+    verifiedAt: 2026-09-17
+  - id: CS-SPRING-TX-ROLLBACK-RULES
+    title: Spring Framework Reference — Rolling Back a Declarative Transaction
+    url: https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/rolling-back.html
+    publisher: Spring (Broadcom)
+    versionScope: Spring Framework 7.0.x
+    claim: 기본 설정은 RuntimeException과 Error에만 롤백을 표시하며, 트랜잭션 메서드에서 던진 checked 예외는 롤백을 일으키지 않는다.
+    verifiedAt: 2026-09-17
+  - id: CS-SPRING-TX-REQUIRES-NEW
+    title: Spring Framework Reference — Understanding Spring Framework Transaction Propagation
+    url: https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/tx-propagation.html
+    publisher: Spring (Broadcom)
+    versionScope: Spring Framework 7.0.x
+    claim: REQUIRES_NEW는 독립된 물리 트랜잭션을 사용해 외부와 따로 커밋·롤백되며, 외부 트랜잭션 자원을 잡은 채 새 커넥션을 얻어 커넥션 풀 고갈을 일으킬 수 있다.
+    verifiedAt: 2026-09-17
+  - id: CS-SPRING-MVC-PROBLEM-DETAIL
+    title: Spring Framework Reference — Error Responses (Spring MVC)
+    url: https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-ann-rest-exceptions.html
+    publisher: Spring (Broadcom)
+    versionScope: Spring Framework 7.0.x
+    claim: ProblemDetail은 RFC 9457 problem detail 표현이며, ResponseEntityExceptionHandler를 상속한 @ControllerAdvice로 Spring MVC 예외를 이 형식으로 응답할 수 있다.
+    verifiedAt: 2026-09-17
+  - id: CS-POSTGRESQL-TRANSACTION-ISOLATION
+    title: PostgreSQL 16 Documentation — 13.2 Transaction Isolation
+    url: https://www.postgresql.org/docs/16/transaction-iso.html
+    publisher: PostgreSQL Global Development Group
+    versionScope: PostgreSQL 16
+    claim: 기본 격리 수준은 Read Committed이고 Read Uncommitted는 Read Committed처럼 동작하며, Repeatable Read에서 동시 수정 충돌 시 직렬화 오류가 나면 트랜잭션 전체를 재시도해야 한다.
+    verifiedAt: 2026-09-17
+  - id: CS-POSTGRESQL-MULTICOLUMN-INDEX
+    title: PostgreSQL 16 Documentation — 11.3 Multicolumn Indexes
+    url: https://www.postgresql.org/docs/16/indexes-multicolumn.html
+    publisher: PostgreSQL Global Development Group
+    versionScope: PostgreSQL 16
+    claim: 복합 B-tree 인덱스는 컬럼의 어떤 부분집합 조건에도 쓰일 수 있지만 선두(가장 왼쪽) 컬럼에 조건이 있을 때 가장 효율적이다.
+    verifiedAt: 2026-09-17
+  - id: CS-OWASP-SQL-INJECTION-PREVENTION
+    title: OWASP Cheat Sheet Series — SQL Injection Prevention Cheat Sheet
+    url: https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
+    publisher: OWASP Foundation
+    versionScope: 버전 없음 (2026-09-17 기준 내용)
+    claim: 파라미터화 쿼리가 1차 방어이며, 바인드 변수를 쓸 수 없는 테이블·컬럼 이름이나 정렬 방향은 허용 목록으로 매핑해 검증한다.
+    verifiedAt: 2026-09-17
+  - id: CS-OWASP-LOGGING-SENSITIVE-DATA
+    title: OWASP Cheat Sheet Series — Logging Cheat Sheet
+    url: https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html
+    publisher: OWASP Foundation
+    versionScope: 버전 없음 (2026-09-17 기준 내용)
+    claim: 세션 식별자, 액세스 토큰, 인증 비밀번호, 암호화 키, 결제 정보, 민감한 개인정보는 로그에 직접 기록하지 않고 제거·마스킹·해시·암호화한다.
+    verifiedAt: 2026-09-17

@@ -1,0 +1,78 @@
+# Seed review cards — EXPLANATION
+# Spec: docs/19-content-spec.md §3.5 (schema), §7.3 (작성 가이드)
+# 기술 설명 카드는 설명의 "구조"를 떠올리는 카드다. 사용자 자신의 사례로 답한다
+cards:
+  - conceptKey: EXPLANATION.PROJECT_STORY.STAR_STRUCTURE
+    skill: EXPLANATION.PROJECT_STORY
+    reviewType: EXPLAIN
+    prompt: >-
+      동료에게 최근 만든 프로젝트를 2분 안에 설명한다면 어떤 구조로 말할지 설명하고, 본인 프로젝트 하나로
+      뼈대를 말해 보세요.
+    expectedAnswer: >-
+      STAR 구조로 설명한다. Situation(서비스와 규모, 문제 배경), Task(내가 맡은 책임과 목표), Action(내가
+      직접 한 설계와 구현, 그 선택의 이유), Result(수치나 전후 비교로 확인한 결과와 배운 점) 순서다. 함께 한
+      부분과 본인 기여를 구분하고, 듣는 사람이 이어서 물을 만한 기술 주제(예: 트랜잭션 경계, 성능 개선 근거)를
+      Action에 한두 개 담아 둔다.
+    rubric:
+      - id: R1
+        criterion: STAR(Situation, Task, Action, Result) 구조
+      - id: R2
+        criterion: 함께 한 부분과 본인 기여를 구분한다
+      - id: R3
+        criterion: 결과를 수치나 비교로 제시한다
+      - id: R4
+        criterion: 이어서 나올 질문의 기술 주제를 준비한다
+
+  - conceptKey: EXPLANATION.TECH_DECISION.TRADEOFF_ANSWER
+    skill: EXPLANATION.TECH_DECISION
+    reviewType: EXPLAIN
+    prompt: >-
+      코드 리뷰에서 동료가 "왜 이 기술을 선택했나요?"라고 묻는다면 어떤 구조로 답할지 설명하고, 본인
+      프로젝트의 기술 선택 하나로 답해 보세요.
+    expectedAnswer: >-
+      요구사항과 제약(규모, 일정, 팀 역량, 비용)을 먼저 말하고, 검토한 대안을 두 개 이상 비교 기준과 함께
+      제시한다. 기준에 따라 선택한 이유를 말한 뒤, 감수한 단점과 그 단점을 어떻게 완화했는지, 조건이 바뀌면
+      어떤 선택을 다시 검토할지까지 답한다. "많이 써서", "최신이라서"만으로 답하지 않는다.
+    rubric:
+      - id: R1
+        criterion: 요구사항과 제약에서 출발한다
+      - id: R2
+        criterion: 대안 두 개 이상을 기준과 함께 비교한다
+      - id: R3
+        criterion: 감수한 단점과 완화 방법, 재검토 조건을 말한다
+
+  - conceptKey: EXPLANATION.TROUBLESHOOTING_STORY.STRUCTURE
+    skill: EXPLANATION.TROUBLESHOOTING_STORY
+    reviewType: EXPLAIN
+    prompt: >-
+      팀 회고에서 개발하며 겪은 어려운 문제와 해결 과정을 공유한다면 어떤 순서로 말할지 설명하고, 본인
+      사례의 뼈대를 말해 보세요.
+    expectedAnswer: >-
+      현상(무엇이 언제 어떻게 잘못되었는지와 영향), 가설(가능한 원인 후보), 검증(로그, 재현, 측정으로 가설을
+      확인하거나 버린 과정), 원인, 해결(선택한 수정과 대안을 고르지 않은 이유), 재발 방지(테스트, 모니터링,
+      규칙 추가), 배운 점 순서로 설명한다. 추측이 아니라 확인한 근거를 중심으로 말한다.
+    rubric:
+      - id: R1
+        criterion: 현상과 영향으로 시작한다
+      - id: R2
+        criterion: 가설과 검증 과정을 근거와 함께 말한다
+      - id: R3
+        criterion: 해결과 재발 방지를 구분한다
+
+  - conceptKey: EXPLANATION.LEARNING_RETROSPECTIVE.STRUCTURE
+    skill: EXPLANATION.LEARNING_RETROSPECTIVE
+    reviewType: EXPLAIN
+    prompt: >-
+      최근 몇 주 동안 배운 것을 동료에게 되돌아보며 설명한다면 어떤 구조로 말할지 설명하고, 본인이 배운 것
+      하나로 뼈대를 말해 보세요.
+    expectedAnswer: >-
+      무엇을 왜 배우기 시작했는지(부딪힌 문제나 필요)에서 출발한다. 배운 핵심 개념을 한두 문장으로 설명하고,
+      그것을 실제로 적용한 구체적인 행동(코드, 테스트, 프로젝트 변경)을 근거로 든다. 적용 전과 후에 무엇이
+      달라졌는지, 아직 헷갈리는 부분은 무엇인지 말하고, 다음에 무엇을 배울지 연결한다.
+    rubric:
+      - id: R1
+        criterion: 배우게 된 계기(문제나 필요)에서 출발한다
+      - id: R2
+        criterion: 적용한 구체적 행동을 근거로 든다
+      - id: R3
+        criterion: 달라진 점과 남은 빈틈, 다음 학습을 연결한다

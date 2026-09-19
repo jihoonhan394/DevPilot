@@ -1,0 +1,97 @@
+id: coach-review/n-plus-one-001
+operation: COACH_REVIEW
+title: 주문 목록 반복문에서 LAZY 연관관계를 접근해 N+1 조회 발생
+tags: [jpa, performance]
+trap: false
+input:
+  variables:
+    language: JAVA
+    contentType: CODE
+    projectType: SPRING_BOOT
+    topic: 주문 요약 목록
+    fileName: OrderSummaryService.java
+    skillContext: |
+      DATABASE.JPA_FETCH · JPA 연관관계 로딩 · planning K1 I1 E0 D0
+      DATABASE.JPA_BASICS · JPA 기본 · planning K2 I2 E1 D1
+    weakAxes: PERFORMANCE
+    skillCodeCandidates: |
+      DATABASE.JPA_FETCH · JPA 연관관계 로딩
+      DATABASE.JPA_BASICS · JPA 기본
+      SPRING.TRANSACTION · Spring 트랜잭션
+      JAVA.EXCEPTION · 예외 처리
+  userContent:
+    userSelfReview:
+      kind: TEXT
+      text: 읽기 전용 트랜잭션 안에서 조회하니까 LazyInitializationException은 나지 않는다.
+    content:
+      kind: CODE
+      language: JAVA
+      text: |
+        package com.example.order;
+
+        import jakarta.persistence.Entity;
+        import jakarta.persistence.GeneratedValue;
+        import jakarta.persistence.Id;
+        import jakarta.persistence.OneToMany;
+        import jakarta.persistence.Table;
+        import org.springframework.stereotype.Service;
+        import org.springframework.transaction.annotation.Transactional;
+
+        import java.util.ArrayList;
+        import java.util.List;
+
+        @Service
+        public class OrderSummaryService {
+
+            private final OrderRepository orderRepository;
+
+            public OrderSummaryService(OrderRepository orderRepository) {
+                this.orderRepository = orderRepository;
+            }
+
+            @Transactional(readOnly = true)
+            public List<OrderSummary> summarize(Long memberId) {
+                List<Order> orders = orderRepository.findAllByMemberId(memberId);
+                List<OrderSummary> result = new ArrayList<>();
+                for (Order order : orders) {
+                    int itemCount = order.getItems().size();
+                    String firstProductName = order.getItems().get(0).getProduct().getName();
+                    result.add(new OrderSummary(order.getId(), itemCount, firstProductName));
+                }
+                return result;
+            }
+        }
+
+        @Entity
+        @Table(name = "orders")
+        class Order {
+
+            @Id
+            @GeneratedValue
+            private Long id;
+
+            private Long memberId;
+
+            @OneToMany(mappedBy = "order")
+            private List<OrderItem> items = new ArrayList<>();
+
+            Long getId() {
+                return id;
+            }
+
+            List<OrderItem> getItems() {
+                return items;
+            }
+        }
+expect:
+  confidentialSuspected: false
+  mustDetect:
+    - id: D1
+      category: PERFORMANCE
+      findingTypeIn: [BUG, RISK]
+      lines: [25, 31]
+      questionMentionsAny: ["쿼리", "조회", "N+1", "fetch", "몇 번"]
+  mustNotClaim:
+    - category: SECURITY
+    - category: CONCURRENCY
+  expectSelfReviewAxesInclude: [TRANSACTION_DATA_CONSISTENCY]

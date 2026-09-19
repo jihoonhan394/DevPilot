@@ -1,0 +1,33 @@
+# DevPilot 오프라인 대체 로컬 DB — 기본은 서버 PostgreSQL 16 이다 (접속값: 저장소 밖 DevPilot-ops/02-database.md, .env)
+# 서버(tailnet)에 닿지 않을 때만 로컬 Docker 로 띄운다. 그때 .env: DATABASE_URL=jdbc:postgresql://localhost:55432/devpilot
+# 사용: docker compose -f infra/compose.dev.yml up -d
+# 주의: 서버 Docker 터널(DOCKER_HOST=tcp://localhost:2375, dev-docker-tunnel.ps1) 위에서 실행하면 컨테이너와 포트가
+#       서버에 생긴다 — 로컬 Docker(Docker Desktop 등)가 있을 때만 쓴다.
+# 기준: docs/18-project-setup-and-local-dev.md §5, docs/03-system-architecture.md §10 (local profile) (2026-09-18)
+# 이 파일의 비밀번호는 로컬 전용 고정값이다. 운영 값과 무관하다.
+name: devpilot-dev
+
+services:
+  postgres:
+    image: postgres:16 # 개발·운영 DB와 같은 major 16 (Testcontainers도 postgres:16). digest 고정은 S2 P1
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: devpilot
+      POSTGRES_USER: devpilot
+      POSTGRES_PASSWORD: devpilot
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      # 5432 는 서버 Docker 터널 사용 시 서버의 공용 PG와 충돌하므로 55432 를 쓴다
+      - "55432:5432"
+    volumes:
+      - devpilot_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devpilot -d devpilot"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+volumes:
+  devpilot_pgdata: {}

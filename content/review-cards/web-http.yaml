@@ -1,0 +1,146 @@
+# Seed review cards — WEB_HTTP
+# Spec: docs/19-content-spec.md §3.5 (schema), §7.3 (작성 가이드)
+# 기준: HTTP Semantics RFC 9110, Fetch/CORS
+cards:
+  - conceptKey: WEB_HTTP.HTTP_BASICS.SAFE_IDEMPOTENT_METHODS
+    skill: WEB_HTTP.HTTP_BASICS
+    reviewType: RECALL
+    prompt: >-
+      RFC 9110 기준으로 안전한(safe) 메서드와 멱등(idempotent) 메서드는 각각 무엇인가요? POST와 PATCH는?
+    expectedAnswer: >-
+      안전한 메서드는 GET, HEAD, OPTIONS, TRACE로 서버 상태 변경을 의도하지 않는다. 멱등 메서드는 안전한
+      메서드와 PUT, DELETE로, 같은 요청을 여러 번 보내도 의도한 효과가 한 번 보낸 것과 같다. POST는 멱등이
+      아니고, PATCH도 멱등이 보장되지 않는다.
+    rubric:
+      - id: R1
+        criterion: 안전성은 상태 변경 의도, 멱등성은 반복 요청 효과로 정의된다
+      - id: R2
+        criterion: 안전한 메서드 GET, HEAD, OPTIONS, TRACE
+      - id: R3
+        criterion: 멱등 메서드는 안전한 메서드와 PUT, DELETE이며 POST와 PATCH는 보장되지 않는다
+
+  - conceptKey: WEB_HTTP.HTTP_BASICS.STATUS_401_VS_403
+    skill: WEB_HTTP.HTTP_BASICS
+    reviewType: CHOICE
+    prompt: |-
+      로그인한 사용자 A가 사용자 B만 수정할 수 있는 리소스에 PUT을 보냈습니다. 권한이 없다는 사실을 알려도
+      되는 상황이라면 가장 적절한 상태 코드는?
+      A) 400 Bad Request
+      B) 401 Unauthorized
+      C) 403 Forbidden
+      D) 409 Conflict
+    expectedAnswer: >-
+      C) 401은 유효한 인증 정보가 없을 때(WWW-Authenticate 헤더 동반), 403은 인증은 되었지만 서버가 요청
+      수행을 거부할 때 쓴다. 리소스의 존재 자체를 숨겨야 하면 404로 응답할 수 있다.
+    rubric:
+      - id: R1
+        criterion: 401은 인증 부재, 403은 권한 거부
+      - id: R2
+        criterion: 존재를 숨길 때는 404를 쓸 수 있다
+
+  - conceptKey: WEB_HTTP.HTTP_BASICS.STATUS_409_CONFLICT
+    skill: WEB_HTTP.HTTP_BASICS
+    reviewType: RECALL
+    prompt: >-
+      409 Conflict는 어떤 상황에 쓰나요? 400 Bad Request와 구분하는 기준과 예시를 드세요.
+    expectedAnswer: >-
+      409는 요청이 대상 리소스의 현재 상태와 충돌해 완료할 수 없고, 사용자가 충돌을 해결한 뒤 다시 보낼 수
+      있는 상황에 쓴다. 예를 들어 버전 불일치로 인한 동시 수정 충돌이나 이미 진행 중인 작업에 대한 중복
+      요청이다. 요청 형식이나 값 자체가 잘못된 경우는 리소스 상태와 무관하므로 400이다.
+    rubric:
+      - id: R1
+        criterion: 리소스의 현재 상태와의 충돌
+      - id: R2
+        criterion: 해결 후 재요청이 가능한 상황이라는 점
+      - id: R3
+        criterion: 형식 오류인 400과 구분하는 예시
+
+  - conceptKey: WEB_HTTP.REST_API_DESIGN.CREATED_LOCATION
+    skill: WEB_HTTP.REST_API_DESIGN
+    reviewType: RECALL
+    prompt: >-
+      POST /orders로 주문을 새로 만들었을 때 적절한 응답 상태 코드와 새 리소스의 위치를 알리는 방법은?
+    expectedAnswer: >-
+      201 Created로 응답하고, 새로 만든 주요 리소스는 Location 헤더(예: /orders/{orderId})로 식별한다.
+      Location 헤더가 없으면 요청 대상 URI가 생성된 리소스로 해석된다. 본문에는 생성된 리소스의 표현을 담을
+      수 있다.
+    rubric:
+      - id: R1
+        criterion: 201 Created
+      - id: R2
+        criterion: Location 헤더로 새 리소스를 식별한다
+
+  - conceptKey: WEB_HTTP.REST_API_DESIGN.CURSOR_PAGINATION
+    skill: WEB_HTTP.REST_API_DESIGN
+    reviewType: EXPLAIN
+    prompt: >-
+      목록 API에서 offset 페이지네이션과 cursor(keyset) 페이지네이션의 장단점을 비교하세요.
+    expectedAnswer: >-
+      offset 방식은 구현이 쉽고 임의 페이지로 이동할 수 있지만, offset이 커질수록 앞의 행을 건너뛰기 위해
+      읽어야 해서 느려지고, 조회 중 데이터가 추가·삭제되면 항목이 중복되거나 누락된다. cursor 방식은 마지막
+      항목의 정렬 키(예: created_at과 id) 다음부터 조회해 인덱스를 활용하고 결과가 일관되지만, 임의 페이지
+      이동이 어렵고 정렬 키가 유일해야 한다(동점이면 id를 함께 쓴다).
+    rubric:
+      - id: R1
+        criterion: offset은 깊은 페이지에서 느려진다
+      - id: R2
+        criterion: offset은 데이터 변경 시 중복·누락이 생긴다
+      - id: R3
+        criterion: cursor는 정렬 키 기반으로 빠르고 일관되지만 임의 이동이 어렵다
+
+  - conceptKey: WEB_HTTP.IDEMPOTENCY.RETRY_DUPLICATE_PREVENTION
+    skill: WEB_HTTP.IDEMPOTENCY
+    reviewType: EXPLAIN
+    prompt: >-
+      결제 생성 POST가 타임아웃되어 클라이언트가 같은 요청을 재시도했습니다. 서버에서는 첫 요청이 이미
+      처리되었을 수 있습니다. 중복 결제를 막는 설계를 설명하세요.
+    expectedAnswer: >-
+      클라이언트는 사용자 행동 1회마다 고유 키를 만들어 Idempotency-Key 헤더로 보내고, 네트워크 재시도에는
+      같은 키를 재사용한다. 서버는 (사용자, 키)에 대해 요청 해시와 처리 결과를 저장하고, 같은 키가 다시
+      오면 처리하지 않고 저장된 응답을 돌려준다. 키가 같은데 본문이 다르면 거부하고, 아직 처리 중이면 충돌로
+      응답한다. 키 저장에 유일 제약을 걸어 동시에 도착한 요청도 한 번만 처리한다.
+    rubric:
+      - id: R1
+        criterion: 사용자 행동마다 고유한 멱등 키를 보낸다
+      - id: R2
+        criterion: 서버가 키별 결과를 저장하고 재요청에 저장된 응답을 반환한다
+      - id: R3
+        criterion: 본문 불일치 거부와 동시 요청 처리(유일 제약)
+
+  - conceptKey: WEB_HTTP.CORS.PREFLIGHT
+    skill: WEB_HTTP.CORS
+    reviewType: RECALL
+    prompt: >-
+      브라우저가 다른 출처의 API에 Authorization 헤더와 Content-Type application/json으로 요청할 때 실제
+      요청 전에 무슨 일이 일어나나요? CORS 설정으로 비브라우저 클라이언트의 요청을 막을 수 있나요?
+    expectedAnswer: >-
+      단순 요청 조건을 벗어나므로 브라우저가 먼저 OPTIONS preflight 요청을 보내고, 서버의
+      Access-Control-Allow-Origin, Access-Control-Allow-Methods, Access-Control-Allow-Headers 응답을 확인한
+      뒤 실제 요청을 보낸다. CORS는 브라우저가 적용하는 정책이라 curl이나 서버 간 호출은 막지 못한다. 따라서
+      CORS는 인증과 인가를 대체하지 않는다.
+    rubric:
+      - id: R1
+        criterion: OPTIONS preflight 요청
+      - id: R2
+        criterion: Access-Control-Allow 계열 응답 헤더로 허용 여부를 확인한다
+      - id: R3
+        criterion: CORS는 브라우저 정책이라 인증·인가를 대체하지 않는다
+
+  - conceptKey: WEB_HTTP.AUTH_SESSION_TOKEN.COOKIE_VS_BEARER
+    skill: WEB_HTTP.AUTH_SESSION_TOKEN
+    reviewType: EXPLAIN
+    prompt: >-
+      쿠키 기반 세션 인증과 Authorization 헤더의 Bearer 토큰 인증을 보안과 운영 관점에서 비교하세요.
+    expectedAnswer: >-
+      쿠키 세션은 서버가 세션 상태를 저장하고 브라우저가 쿠키를 자동 전송하므로 CSRF 대응(SameSite, CSRF
+      토큰)이 필요하다. HttpOnly로 스크립트 접근을 막을 수 있고 서버에서 세션을 즉시 무효화하기 쉽다. Bearer
+      토큰은 클라이언트가 헤더에 직접 넣어 자동 전송되지 않으므로 CSRF 위험이 낮고 서버를 무상태로 확장하기
+      쉽다. 대신 스크립트가 접근할 수 있는 곳에 저장하면 XSS로 탈취될 수 있고, 만료 전 폐기가 어려워 짧은
+      만료 시간과 갱신 전략이 필요하다.
+    rubric:
+      - id: R1
+        criterion: 쿠키 자동 전송으로 인한 CSRF 위험과 대응
+      - id: R2
+        criterion: 토큰 저장 위치에 따른 XSS 탈취 위험
+      - id: R3
+        criterion: 세션 즉시 무효화와 토큰 폐기 어려움(짧은 만료) 비교

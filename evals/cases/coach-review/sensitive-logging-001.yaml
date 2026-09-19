@@ -1,0 +1,68 @@
+id: coach-review/sensitive-logging-001
+operation: COACH_REVIEW
+title: 로그인 요청의 비밀번호와 발급 토큰을 로그에 남김
+tags: [spring, security, logging]
+trap: false
+input:
+  variables:
+    language: JAVA
+    contentType: CODE
+    projectType: SPRING_BOOT
+    topic: 로그인 API
+    fileName: LoginController.java
+    skillContext: |
+      SECURITY.SENSITIVE_DATA · 민감정보 보호 · planning K1 I0 E0 D0
+      PRACTICAL_ENGINEERING.LOGGING · 로깅 · planning K2 I2 E1 D1
+    weakAxes: SECURITY, OBSERVABILITY
+    skillCodeCandidates: |
+      SECURITY.SENSITIVE_DATA · 민감정보 보호
+      PRACTICAL_ENGINEERING.LOGGING · 로깅
+      SPRING.WEB_MVC · Spring Web MVC
+      JAVA.EXCEPTION · 예외 처리
+  userContent:
+    userSelfReview:
+      kind: TEXT
+      text: 로그인 실패 원인을 추적하려고 요청 값을 로그로 남겼다.
+    content:
+      kind: CODE
+      language: JAVA
+      text: |
+        package com.example.auth;
+
+        import org.slf4j.Logger;
+        import org.slf4j.LoggerFactory;
+        import org.springframework.web.bind.annotation.PostMapping;
+        import org.springframework.web.bind.annotation.RequestBody;
+        import org.springframework.web.bind.annotation.RestController;
+
+        @RestController
+        public class LoginController {
+
+            private static final Logger log = LoggerFactory.getLogger(LoginController.class);
+
+            private final AuthService authService;
+
+            public LoginController(AuthService authService) {
+                this.authService = authService;
+            }
+
+            @PostMapping("/api/login")
+            public TokenResponse login(@RequestBody LoginRequest request) {
+                log.info("login attempt email={}, password={}", request.email(), request.password());
+                TokenResponse token = authService.login(request.email(), request.password());
+                log.debug("issued accessToken={}", token.accessToken());
+                return token;
+            }
+        }
+expect:
+  confidentialSuspected: false
+  mustDetect:
+    - id: D1
+      categoryIn: [SECURITY, OBSERVABILITY]
+      findingTypeIn: [BUG, RISK]
+      lines: [22, 24]
+      questionMentionsAny: ["비밀번호", "password", "토큰", "민감", "로그"]
+  mustNotClaim:
+    - category: CONCURRENCY
+    - category: RESOURCE_LIFECYCLE
+  expectSelfReviewAxesInclude: [OBSERVABILITY]

@@ -1,0 +1,43 @@
+# 테스트 role target: non-root skill마다 1개 (MUST 7, SHOULD 2, LATER 1)
+targetRole: JAVA_BACKEND
+targets:
+  - skill: JAVA.EXCEPTION
+    priority: MUST
+    importance: 0.90
+    target: { knowledge: 4, implementation: 4, explanation: 4, debugging: 3 }
+  - skill: JAVA.COLLECTION
+    priority: MUST
+    importance: 0.85
+    target: { knowledge: 4, implementation: 4, explanation: 3, debugging: 3 }
+  - skill: SPRING.TRANSACTION
+    priority: MUST
+    importance: 0.95
+    target: { knowledge: 4, implementation: 4, explanation: 4, debugging: 3 }
+  - skill: DATABASE.INDEX
+    priority: MUST
+    importance: 0.85
+    target: { knowledge: 4, implementation: 3, explanation: 3, debugging: 2 }
+  - skill: WEB_HTTP.HTTP_BASICS
+    priority: MUST
+    importance: 0.85
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }
+  - skill: ALGORITHM.SORT_SEARCH
+    priority: SHOULD
+    importance: 0.55
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }
+  - skill: TESTING.JUNIT
+    priority: MUST
+    importance: 0.85
+    target: { knowledge: 3, implementation: 4, explanation: 3, debugging: 3 }
+  - skill: DEVOPS.DOCKER
+    priority: SHOULD
+    importance: 0.60
+    target: { knowledge: 3, implementation: 3, explanation: 2, debugging: 2 }
+  - skill: SYSTEM_DESIGN.CACHING
+    priority: LATER
+    importance: 0.40
+    target: { knowledge: 2, implementation: 2, explanation: 2, debugging: 1 }
+  - skill: EXPLANATION.PROJECT_STORY
+    priority: MUST
+    importance: 0.80
+    target: { knowledge: 3, implementation: 0, explanation: 4, debugging: 0 }

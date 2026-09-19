@@ -1,0 +1,41 @@
+# DevPilot content catalog
+# Spec: docs/19-content-spec.md §3.1
+# - catalogVersion: seed 대상 파일(이 파일에 나열된 모든 파일)이 바뀌면 1 올린다 (§8)
+# - YamlContentReader는 여기 나열된 파일만 읽는다. 나열 순서대로 읽는다
+catalogVersion: 4
+files:
+  skillTrees:
+    - skill-tree/java-backend.yaml
+  roleTargets:
+    - role-targets/java-backend.yaml
+  planTemplates:
+    - plan-templates/java-backend.yaml
+  reviewCards:
+    - review-cards/java.yaml
+    - review-cards/spring.yaml
+    - review-cards/database.yaml
+    - review-cards/web-http.yaml
+    - review-cards/testing.yaml
+    - review-cards/security.yaml
+    - review-cards/practical-engineering.yaml
+    - review-cards/devops.yaml
+    - review-cards/network-cs.yaml
+    - review-cards/explanation.yaml
+  challenges:
+    - challenges/java.yaml
+    - challenges/spring.yaml
+    - challenges/database.yaml
+    - challenges/testing-security.yaml
+    - challenges/diagnostic.yaml
+  curatedSources: curated-sources.yaml
+  # READ_CODE 과제용 저장소/읽기 목록 (19 §3.8). 서버는 저장소를 fetch하지 않는다
+  curatedRepos: curated-repos.yaml
+# DIAGNOSTIC challenge가 반드시 있어야 하는 카테고리 (CV-59). 제안 로직은 challenge skills의 category로 고른다 (19 §9)
+diagnosticCategories: [JAVA, SPRING, DATABASE, WEB_HTTP, TESTING]
+# 은퇴한 식별자. 다시 쓰지 않는다 (§8.3)
+retired:
+  skillCodes: []
+  challengeSeedKeys: []
+  conceptKeys: []
+  curatedSourceIds: []
+  readingKeys: []

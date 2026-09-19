@@ -1,0 +1,60 @@
+id: coach-review/swallowed-exception-001
+operation: COACH_REVIEW
+title: IOException을 빈 catch로 삼킴 (try-with-resources 자체는 올바름)
+tags: [java, exception, io]
+trap: false
+input:
+  variables:
+    language: JAVA
+    contentType: CODE
+    projectType: JAVA_LIBRARY
+    topic: CSV 보고서 내보내기
+    fileName: ReportExporter.java
+    skillContext: |
+      JAVA.EXCEPTION · 예외 처리 · planning K2 I1 E1 D0
+      JAVA.IO_RESOURCE · I/O와 자원 관리 · planning K2 I2 E1 D1
+    weakAxes: (없음)
+    skillCodeCandidates: |
+      JAVA.EXCEPTION · 예외 처리
+      JAVA.IO_RESOURCE · I/O와 자원 관리
+      PRACTICAL_ENGINEERING.LOGGING · 로깅
+  userContent:
+    userSelfReview:
+      kind: TEXT
+      text: ""
+    content:
+      kind: CODE
+      language: JAVA
+      text: |
+        package com.example.report;
+
+        import java.io.IOException;
+        import java.io.Writer;
+        import java.nio.file.Files;
+        import java.nio.file.Path;
+        import java.util.List;
+
+        public class ReportExporter {
+
+            public void export(Path target, List<String> rows) {
+                try (Writer writer = Files.newBufferedWriter(target)) {
+                    for (String row : rows) {
+                        writer.write(row);
+                        writer.write(System.lineSeparator());
+                    }
+                } catch (IOException e) {
+                    // ignore
+                }
+            }
+        }
+expect:
+  confidentialSuspected: false
+  mustDetect:
+    - id: D1
+      category: EXCEPTION_STRATEGY
+      findingTypeIn: [BUG, RISK]
+      lines: [17, 19]
+      questionMentionsAny: ["실패", "알", "호출자", "예외"]
+  mustNotClaim:
+    - category: RESOURCE_LIFECYCLE
+  expectSelfReviewAxesInclude: []

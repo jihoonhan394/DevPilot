@@ -1,0 +1,608 @@
+# DevPilot skill tree — JAVA_BACKEND
+# Spec: docs/19-content-spec.md §3.2
+# - root skill: code == category, parent 없음, role target 없음 (묶음 노드)
+# - non-root skill: code == parent.code + "." + SEGMENT, 같은 category
+# - 파일 안 순서 = skill.sort_order (0부터)
+skills:
+  # ------------------------------------------------------------------ JAVA
+  - code: JAVA
+    name: Java
+    category: JAVA
+    description: Java 언어와 표준 라이브러리. 백엔드 코드의 정확성과 가독성을 결정하는 기반이다.
+  - code: JAVA.OOP
+    name: 객체지향 기초 (OOP)
+    category: JAVA
+    parent: JAVA
+    description: 캡슐화, 인터페이스, 상속보다 조합을 이해하고 책임이 분명한 클래스를 설계한다.
+    minutesPerLevelStep: 90
+    prerequisites: []
+  - code: JAVA.COLLECTION
+    name: Collection Framework
+    category: JAVA
+    parent: JAVA
+    description: List, Set, Map 구현체의 특성과 equals/hashCode 계약을 이해하고 상황에 맞는 자료구조를 고른다.
+    minutesPerLevelStep: 90
+    prerequisites: [JAVA.OOP]
+  - code: JAVA.GENERICS
+    name: Generics
+    category: JAVA
+    parent: JAVA
+    description: 타입 파라미터, 와일드카드(extends/super), 타입 소거를 이해하고 타입 안전한 API를 만든다.
+    minutesPerLevelStep: 90
+    prerequisites: [JAVA.COLLECTION]
+  - code: JAVA.EXCEPTION
+    name: 예외 처리 (Exception)
+    category: JAVA
+    parent: JAVA
+    description: checked/unchecked 예외의 차이, 예외 변환과 원인 보존, 처리 계층 선택 기준을 안다.
+    minutesPerLevelStep: 90
+    prerequisites: [JAVA.OOP]
+  - code: JAVA.EXCEPTION.TRY_WITH_RESOURCES
+    name: try-with-resources와 자원 해제
+    category: JAVA
+    parent: JAVA.EXCEPTION
+    description: AutoCloseable 자원을 확실히 닫고 suppressed 예외를 이해한다.
+    minutesPerLevelStep: 60
+    prerequisites: [JAVA.EXCEPTION]
+  - code: JAVA.LAMBDA_STREAM
+    name: Lambda와 Stream API
+    category: JAVA
+    parent: JAVA
+    description: 함수형 인터페이스와 Stream의 지연 평가, Collector 사용법을 이해하고 읽기 쉬운 변환 코드를 쓴다.
+    minutesPerLevelStep: 90
+    prerequisites: [JAVA.COLLECTION, JAVA.GENERICS]
+  - code: JAVA.OPTIONAL
+    name: Optional
+    category: JAVA
+    parent: JAVA
+    description: 값이 없을 수 있는 반환값을 Optional로 표현하고, 남용하는 패턴을 구분한다.
+    minutesPerLevelStep: 60
+    prerequisites: [JAVA.LAMBDA_STREAM]
+  - code: JAVA.MODERN_SYNTAX
+    name: Record·Sealed·Pattern Matching
+    category: JAVA
+    parent: JAVA
+    description: record, sealed 타입, switch 식과 패턴 매칭으로 데이터 모델을 간결하고 안전하게 표현한다.
+    minutesPerLevelStep: 60
+    prerequisites: [JAVA.OOP]
+  - code: JAVA.CONCURRENCY
+    name: 동시성 기초
+    category: JAVA
+    parent: JAVA
+    description: 스레드, ExecutorService, 경쟁 조건과 원자성, 불변 객체와 동시성 컬렉션을 이해한다.
+    minutesPerLevelStep: 150
+    prerequisites: [JAVA.COLLECTION]
+  - code: JAVA.CONCURRENCY.VIRTUAL_THREAD
+    name: Virtual Thread
+    category: JAVA
+    parent: JAVA.CONCURRENCY
+    description: 가상 스레드가 처리량을 높이는 조건과 풀링하지 않는 사용 방식을 이해한다.
+    minutesPerLevelStep: 90
+    prerequisites: [JAVA.CONCURRENCY]
+  - code: JAVA.JVM_MEMORY_GC
+    name: JVM 메모리와 GC 기초
+    category: JAVA
+    parent: JAVA
+    description: 힙과 스택, 객체 도달 가능성과 GC의 기본 동작을 설명하고 메모리 문제의 증상을 구분한다.
+    minutesPerLevelStep: 90
+    prerequisites: [JAVA.OOP]
+
+  # ------------------------------------------------------------------ SPRING
+  - code: SPRING
+    name: Spring
+    category: SPRING
+    description: Spring Framework와 Spring Boot로 웹 애플리케이션을 구성하는 핵심 기술.
+  - code: SPRING.DI_IOC
+    name: DI·IoC 컨테이너
+    category: SPRING
+    parent: SPRING
+    description: 빈 등록과 생성자 주입, 빈 스코프와 생명주기를 이해하고 의존 관계를 설계한다.
+    minutesPerLevelStep: 90
+    prerequisites: [JAVA.OOP]
+  - code: SPRING.BOOT_CONFIG
+    name: Spring Boot 설정·Profile
+    category: SPRING
+    parent: SPRING
+    description: 자동 구성, 외부 설정 우선순위, Profile, @ConfigurationProperties 바인딩을 사용한다.
+    minutesPerLevelStep: 60
+    prerequisites: [SPRING.DI_IOC]
+  - code: SPRING.MVC_REST
+    name: Spring MVC REST API
+    category: SPRING
+    parent: SPRING
+    description: 컨트롤러 매핑, 요청·응답 변환(HttpMessageConverter), 상태 코드 지정으로 REST API를 만든다.
+    minutesPerLevelStep: 90
+    prerequisites: [SPRING.DI_IOC, WEB_HTTP.HTTP_BASICS]
+  - code: SPRING.VALIDATION
+    name: Bean Validation
+    category: SPRING
+    parent: SPRING
+    description: 요청 DTO에 제약을 선언하고 @Valid 적용 범위와 검증 실패 응답을 설계한다.
+    minutesPerLevelStep: 60
+    prerequisites: [SPRING.MVC_REST]
+  - code: SPRING.EXCEPTION_HANDLING
+    name: 예외 처리·ProblemDetail
+    category: SPRING
+    parent: SPRING
+    description: '@RestControllerAdvice와 ProblemDetail(RFC 9457)로 일관된 오류 응답을 만들고 내부 정보 노출을 막는다.'
+    minutesPerLevelStep: 60
+    prerequisites: [SPRING.MVC_REST, JAVA.EXCEPTION]
+  - code: SPRING.AOP_PROXY
+    name: AOP와 프록시
+    category: SPRING
+    parent: SPRING
+    description: Spring AOP의 프록시 동작과 내부 호출(self-invocation) 한계를 설명한다.
+    minutesPerLevelStep: 90
+    prerequisites: [SPRING.DI_IOC]
+  - code: SPRING.TRANSACTION
+    name: Spring Transaction
+    category: SPRING
+    parent: SPRING
+    description: '@Transactional의 적용 범위, 기본 롤백 규칙, 트랜잭션 경계 설계를 이해한다.'
+    minutesPerLevelStep: 150
+    prerequisites: [SPRING.AOP_PROXY, DATABASE.TRANSACTION]
+  - code: SPRING.TRANSACTION.PROPAGATION
+    name: 트랜잭션 전파·readOnly
+    category: SPRING
+    parent: SPRING.TRANSACTION
+    description: REQUIRED와 REQUIRES_NEW 같은 전파 속성과 readOnly 힌트의 효과와 비용을 구분한다.
+    minutesPerLevelStep: 90
+    prerequisites: [SPRING.TRANSACTION]
+  - code: SPRING.DATA_JPA
+    name: Spring Data JPA
+    category: SPRING
+    parent: SPRING
+    description: Repository, 쿼리 메서드, projection, save 동작(persist/merge)을 이해하고 사용한다.
+    minutesPerLevelStep: 90
+    prerequisites: [DATABASE.JPA]
+  - code: SPRING.SECURITY
+    name: Spring Security 기초
+    category: SPRING
+    parent: SPRING
+    description: 필터 체인 구조, 인증과 인가 흐름, 401/403 처리 방식을 이해한다.
+    minutesPerLevelStep: 120
+    prerequisites: [SPRING.MVC_REST, SECURITY.AUTHN_AUTHZ]
+  - code: SPRING.SECURITY.JWT_RESOURCE_SERVER
+    name: JWT Resource Server
+    category: SPRING
+    parent: SPRING.SECURITY
+    description: OAuth2 Resource Server로 JWT 서명, issuer, audience, 만료를 검증한다.
+    minutesPerLevelStep: 90
+    prerequisites: [SPRING.SECURITY]
+
+  # ------------------------------------------------------------------ DATABASE
+  - code: DATABASE
+    name: Database
+    category: DATABASE
+    description: 관계형 데이터베이스와 JPA로 데이터를 정확하고 효율적으로 다루는 기술.
+  - code: DATABASE.SQL_BASICS
+    name: SQL 기초 (JOIN·집계)
+    category: DATABASE
+    parent: DATABASE
+    description: SELECT, JOIN, GROUP BY, 서브쿼리를 작성하고 NULL이 결과에 주는 영향을 안다.
+    minutesPerLevelStep: 90
+    prerequisites: []
+  - code: DATABASE.MODELING
+    name: 데이터 모델링·정규화
+    category: DATABASE
+    parent: DATABASE
+    description: 키와 제약 조건, 정규화, 1:N/N:M 관계를 테이블로 설계한다.
+    minutesPerLevelStep: 90
+    prerequisites: [DATABASE.SQL_BASICS]
+  - code: DATABASE.INDEX
+    name: 인덱스
+    category: DATABASE
+    parent: DATABASE
+    description: B-tree 인덱스 구조, 복합 인덱스 컬럼 순서, 인덱스를 쓰지 못하는 조건과 쓰기 비용을 이해한다.
+    minutesPerLevelStep: 90
+    prerequisites: [DATABASE.SQL_BASICS]
+  - code: DATABASE.INDEX.EXPLAIN_PLAN
+    name: 실행 계획 읽기
+    category: DATABASE
+    parent: DATABASE.INDEX
+    description: EXPLAIN과 EXPLAIN ANALYZE로 스캔 방식과 예상/실제 행 수를 읽고 병목을 찾는다.
+    minutesPerLevelStep: 90
+    prerequisites: [DATABASE.INDEX]
+  - code: DATABASE.TRANSACTION
+    name: 트랜잭션·격리 수준
+    category: DATABASE
+    parent: DATABASE
+    description: ACID와 격리 수준별 이상 현상, PostgreSQL MVCC의 기본 동작을 설명한다.
+    minutesPerLevelStep: 90
+    prerequisites: [DATABASE.SQL_BASICS]
+  - code: DATABASE.TRANSACTION.LOCKING
+    name: 락·동시 수정 제어
+    category: DATABASE
+    parent: DATABASE.TRANSACTION
+    description: lost update, 행 잠금(SELECT FOR UPDATE), 낙관적 락, 데드락 원인과 예방을 이해한다.
+    minutesPerLevelStep: 90
+    prerequisites: [DATABASE.TRANSACTION]
+  - code: DATABASE.JPA
+    name: JPA 엔티티 매핑
+    category: DATABASE
+    parent: DATABASE
+    description: 엔티티, 식별자, 연관관계 매핑과 연관관계 주인을 이해하고 테이블과 객체를 연결한다.
+    minutesPerLevelStep: 90
+    prerequisites: [DATABASE.SQL_BASICS, JAVA.OOP]
+  - code: DATABASE.JPA.PERSISTENCE_CONTEXT
+    name: 영속성 컨텍스트
+    category: DATABASE
+    parent: DATABASE.JPA
+    description: 1차 캐시, 변경 감지(dirty checking), flush 시점, 준영속 상태를 설명한다.
+    minutesPerLevelStep: 90
+    prerequisites: [DATABASE.JPA]
+  - code: DATABASE.JPA.FETCH_STRATEGY
+    name: 지연 로딩과 N+1
+    category: DATABASE
+    parent: DATABASE.JPA
+    description: LAZY/EAGER 로딩, N+1 발생 원인, fetch join·EntityGraph·batch fetch 선택 기준을 안다.
+    minutesPerLevelStep: 90
+    prerequisites: [DATABASE.JPA.PERSISTENCE_CONTEXT]
+  - code: DATABASE.MIGRATION
+    name: 스키마 마이그레이션 (Flyway)
+    category: DATABASE
+    parent: DATABASE
+    description: 버전 관리되는 migration으로 스키마를 변경하고 적용된 파일을 수정하지 않는 규칙을 지킨다.
+    minutesPerLevelStep: 60
+    prerequisites: [DATABASE.MODELING]
+
+  # ------------------------------------------------------------------ WEB_HTTP
+  - code: WEB_HTTP
+    name: Web·HTTP
+    category: WEB_HTTP
+    description: HTTP 의미론과 REST API 설계, 브라우저 보안 모델.
+  - code: WEB_HTTP.HTTP_BASICS
+    name: HTTP 메서드·상태 코드
+    category: WEB_HTTP
+    parent: WEB_HTTP
+    description: 메서드의 안전성과 멱등성, 주요 상태 코드와 헤더의 의미를 RFC 9110 기준으로 설명한다.
+    minutesPerLevelStep: 60
+    prerequisites: []
+  - code: WEB_HTTP.REST_API_DESIGN
+    name: REST API 설계
+    category: WEB_HTTP
+    parent: WEB_HTTP
+    description: 리소스 경로, 상태 코드, 오류 형식, 페이지네이션을 일관되게 설계한다.
+    minutesPerLevelStep: 90
+    prerequisites: [WEB_HTTP.HTTP_BASICS]
+  - code: WEB_HTTP.IDEMPOTENCY
+    name: 멱등성과 재시도
+    category: WEB_HTTP
+    parent: WEB_HTTP
+    description: 네트워크 재시도에서 중복 처리를 막는 멱등 설계와 Idempotency-Key 패턴을 이해한다.
+    minutesPerLevelStep: 60
+    prerequisites: [WEB_HTTP.HTTP_BASICS]
+  - code: WEB_HTTP.CORS
+    name: CORS와 Same-Origin Policy
+    category: WEB_HTTP
+    parent: WEB_HTTP
+    description: 브라우저의 동일 출처 정책과 preflight 요청, CORS 응답 헤더의 역할을 이해한다.
+    minutesPerLevelStep: 60
+    prerequisites: [WEB_HTTP.HTTP_BASICS]
+  - code: WEB_HTTP.AUTH_SESSION_TOKEN
+    name: 쿠키·세션과 토큰 인증
+    category: WEB_HTTP
+    parent: WEB_HTTP
+    description: 쿠키 세션과 Bearer 토큰 방식의 차이, CSRF와 토큰 탈취 위험을 비교한다.
+    minutesPerLevelStep: 60
+    prerequisites: [WEB_HTTP.HTTP_BASICS]
+
+  # ------------------------------------------------------------------ NETWORK
+  - code: NETWORK
+    name: Network
+    category: NETWORK
+    description: 백엔드 통신을 떠받치는 TCP/IP, DNS, TLS 기초.
+  - code: NETWORK.TCP_IP
+    name: TCP/IP 기초
+    category: NETWORK
+    parent: NETWORK
+    description: TCP 연결 수립과 신뢰성 보장 방식, UDP와의 차이, 포트와 소켓을 설명한다.
+    minutesPerLevelStep: 90
+    prerequisites: []
+  - code: NETWORK.DNS
+    name: DNS
+    category: NETWORK
+    parent: NETWORK
+    description: 도메인 이름 해석 과정과 TTL 캐시가 배포·장애에 주는 영향을 이해한다.
+    minutesPerLevelStep: 60
+    prerequisites: []
+  - code: NETWORK.TLS
+    name: TLS·HTTPS
+    category: NETWORK
+    parent: NETWORK
+    description: TLS가 제공하는 기밀성, 무결성, 서버 인증과 인증서 검증 과정을 설명한다.
+    minutesPerLevelStep: 90
+    prerequisites: []
+
+  # ------------------------------------------------------------------ CS
+  - code: CS
+    name: Computer Science
+    category: CS
+    description: 운영체제와 자료구조 등 동작 원리 설명과 성능 판단의 기반이 되는 컴퓨터 과학 지식.
+  - code: CS.OS_PROCESS_THREAD
+    name: 프로세스·스레드·메모리
+    category: CS
+    parent: CS
+    description: 프로세스와 스레드의 차이, 컨텍스트 스위칭, 가상 메모리의 기본 개념을 설명한다.
+    minutesPerLevelStep: 90
+    prerequisites: []
+  - code: CS.DATA_STRUCTURE
+    name: 자료구조
+    category: CS
+    parent: CS
+    description: 배열, 연결 리스트, 해시 테이블, 트리, 힙의 연산 복잡도와 사용 상황을 구분한다.
+    minutesPerLevelStep: 90
+    prerequisites: []
+  - code: CS.IO_MODEL
+    name: 동기·비동기와 I/O 모델
+    category: CS
+    parent: CS
+    description: 블로킹/논블로킹, 동기/비동기의 차이와 스레드 모델이 처리량에 주는 영향을 설명한다.
+    minutesPerLevelStep: 90
+    prerequisites: []
+
+  # ------------------------------------------------------------------ ALGORITHM
+  - code: ALGORITHM
+    name: Algorithm
+    category: ALGORITHM
+    description: 문제 풀이와 성능 판단에 필요한 알고리즘 기초. 학습 목표에 따라 우선순위를 조정한다.
+  - code: ALGORITHM.COMPLEXITY
+    name: 시간·공간 복잡도
+    category: ALGORITHM
+    parent: ALGORITHM
+    description: Big-O로 코드의 복잡도를 계산하고 입력 크기에 맞는 접근을 고른다.
+    minutesPerLevelStep: 60
+    prerequisites: []
+  - code: ALGORITHM.SORT_SEARCH
+    name: 정렬·이분 탐색·투 포인터
+    category: ALGORITHM
+    parent: ALGORITHM
+    description: 정렬 후 탐색, 이분 탐색, 투 포인터로 전형적인 문제를 푼다.
+    minutesPerLevelStep: 90
+    prerequisites: [ALGORITHM.COMPLEXITY]
+  - code: ALGORITHM.GRAPH_SEARCH
+    name: 그래프 탐색 (BFS·DFS)
+    category: ALGORITHM
+    parent: ALGORITHM
+    description: 그래프와 격자 문제를 BFS, DFS로 모델링하고 방문 처리를 정확히 한다.
+    minutesPerLevelStep: 150
+    prerequisites: [ALGORITHM.COMPLEXITY, CS.DATA_STRUCTURE]
+  - code: ALGORITHM.DP_GREEDY
+    name: DP·그리디
+    category: ALGORITHM
+    parent: ALGORITHM
+    description: 부분 문제 정의와 점화식, 그리디 선택의 정당성을 판단해 최적화 문제를 푼다.
+    minutesPerLevelStep: 150
+    prerequisites: [ALGORITHM.COMPLEXITY]
+
+  # ------------------------------------------------------------------ TESTING
+  - code: TESTING
+    name: Testing
+    category: TESTING
+    description: 변경을 안전하게 만드는 자동화 테스트 작성과 설계.
+  - code: TESTING.JUNIT
+    name: JUnit 5·AssertJ
+    category: TESTING
+    parent: TESTING
+    description: JUnit Jupiter와 AssertJ로 읽기 쉬운 단위 테스트와 파라미터화 테스트를 작성한다.
+    minutesPerLevelStep: 60
+    prerequisites: [JAVA.OOP]
+  - code: TESTING.UNIT_TEST_DESIGN
+    name: 테스트 설계
+    category: TESTING
+    parent: TESTING
+    description: 경계값, 실패 경로, 시간 같은 비결정 요소를 고려해 테스트 케이스를 설계한다.
+    minutesPerLevelStep: 90
+    prerequisites: [TESTING.JUNIT]
+  - code: TESTING.TEST_DOUBLE
+    name: 테스트 더블 (Mockito)
+    category: TESTING
+    parent: TESTING
+    description: stub, mock, fake를 구분하고 과도한 mocking 없이 협력 객체를 대체한다.
+    minutesPerLevelStep: 60
+    prerequisites: [TESTING.UNIT_TEST_DESIGN]
+  - code: TESTING.SPRING_TEST
+    name: Spring 테스트 (slice·통합)
+    category: TESTING
+    parent: TESTING
+    description: '@WebMvcTest, @DataJpaTest 같은 slice 테스트와 @SpringBootTest 통합 테스트를 목적에 맞게 고른다.'
+    minutesPerLevelStep: 90
+    prerequisites: [TESTING.JUNIT, SPRING.DI_IOC]
+  - code: TESTING.TESTCONTAINERS
+    name: Testcontainers
+    category: TESTING
+    parent: TESTING
+    description: 실제 PostgreSQL 컨테이너로 migration과 쿼리를 검증하는 통합 테스트를 작성한다.
+    minutesPerLevelStep: 90
+    prerequisites: [TESTING.SPRING_TEST, DEVOPS.DOCKER]
+
+  # ------------------------------------------------------------------ DEVOPS
+  - code: DEVOPS
+    name: DevOps
+    category: DEVOPS
+    description: 코드를 빌드, 검증, 배포하고 운영하는 도구와 절차.
+  - code: DEVOPS.GIT
+    name: Git 협업
+    category: DEVOPS
+    parent: DEVOPS
+    description: 브랜치 전략, merge와 rebase, PR 리뷰 흐름으로 협업한다.
+    minutesPerLevelStep: 60
+    prerequisites: []
+  - code: DEVOPS.BUILD_GRADLE
+    name: Gradle 빌드
+    category: DEVOPS
+    parent: DEVOPS
+    description: Gradle 태스크, 의존성 구성, 빌드 캐시를 이해하고 빌드 스크립트를 읽고 수정한다.
+    minutesPerLevelStep: 60
+    prerequisites: []
+  - code: DEVOPS.DOCKER
+    name: Docker
+    category: DEVOPS
+    parent: DEVOPS
+    description: 이미지와 컨테이너, Dockerfile 레이어 캐시, 볼륨과 네트워크, Compose를 사용한다.
+    minutesPerLevelStep: 90
+    prerequisites: [DEVOPS.LINUX_BASICS]
+  - code: DEVOPS.CI_GITHUB_ACTIONS
+    name: CI (GitHub Actions)
+    category: DEVOPS
+    parent: DEVOPS
+    description: 워크플로, job, secret 사용 규칙을 이해하고 빌드·테스트 자동화를 구성한다.
+    minutesPerLevelStep: 90
+    prerequisites: [DEVOPS.GIT, DEVOPS.BUILD_GRADLE]
+  - code: DEVOPS.LINUX_BASICS
+    name: Linux 기초
+    category: DEVOPS
+    parent: DEVOPS
+    description: 셸 명령, 프로세스와 포트 확인, 파일 권한, 로그 확인으로 서버를 다룬다.
+    minutesPerLevelStep: 90
+    prerequisites: []
+  - code: DEVOPS.CLOUD_DEPLOY
+    name: 클라우드 VM 배포
+    category: DEVOPS
+    parent: DEVOPS
+    description: VM에 컨테이너를 배포하고 환경변수·secret 주입, 리버스 프록시, 롤백 절차를 구성한다.
+    minutesPerLevelStep: 120
+    prerequisites: [DEVOPS.DOCKER, DEVOPS.CI_GITHUB_ACTIONS]
+
+  # ------------------------------------------------------------------ SECURITY
+  - code: SECURITY
+    name: Security
+    category: SECURITY
+    description: 웹 애플리케이션의 주요 보안 위협과 방어 원칙.
+  - code: SECURITY.OWASP_TOP10
+    name: OWASP Top 10 기초
+    category: SECURITY
+    parent: SECURITY
+    description: 접근 제어 실패, 인젝션, SSRF 같은 대표 위험과 방어 원칙을 설명한다.
+    minutesPerLevelStep: 90
+    prerequisites: []
+  - code: SECURITY.AUTHN_AUTHZ
+    name: 인증·인가와 접근 제어
+    category: SECURITY
+    parent: SECURITY
+    description: 인증과 인가를 구분하고 사용자 소유 리소스에 대한 접근 제어(IDOR 방지)를 구현한다.
+    minutesPerLevelStep: 90
+    prerequisites: [WEB_HTTP.AUTH_SESSION_TOKEN]
+  - code: SECURITY.INPUT_VALIDATION
+    name: 입력 검증과 인젝션 방어
+    category: SECURITY
+    parent: SECURITY
+    description: 파라미터 바인딩과 allowlist 검증으로 SQL 인젝션 같은 입력 기반 공격을 막는다.
+    minutesPerLevelStep: 60
+    prerequisites: [SECURITY.OWASP_TOP10]
+  - code: SECURITY.SECRET_MANAGEMENT
+    name: Secret 관리
+    category: SECURITY
+    parent: SECURITY
+    description: API 키와 비밀번호를 코드와 저장소 밖에 두고, 노출 시 폐기·재발급 절차를 따른다.
+    minutesPerLevelStep: 60
+    prerequisites: [DEVOPS.GIT]
+  - code: SECURITY.SENSITIVE_DATA_LOGGING
+    name: 민감 정보 로깅·마스킹
+    category: SECURITY
+    parent: SECURITY
+    description: 토큰, 비밀번호, 개인정보가 로그에 남지 않도록 제외하거나 마스킹한다.
+    minutesPerLevelStep: 60
+    prerequisites: [PRACTICAL_ENGINEERING.LOGGING]
+
+  # ------------------------------------------------------------------ PRACTICAL_ENGINEERING
+  - code: PRACTICAL_ENGINEERING
+    name: Practical Engineering
+    category: PRACTICAL_ENGINEERING
+    description: 실무 코드 품질을 좌우하는 로깅, 자원, 경계 처리, 리뷰, 장애 분석 습관.
+  - code: PRACTICAL_ENGINEERING.LOGGING
+    name: 로깅 전략
+    category: PRACTICAL_ENGINEERING
+    parent: PRACTICAL_ENGINEERING
+    description: 로그 레벨 기준, 구조화 로그와 추적 ID, 중복 로깅을 피하는 예외 로깅 위치를 정한다.
+    minutesPerLevelStep: 60
+    prerequisites: [JAVA.EXCEPTION]
+  - code: PRACTICAL_ENGINEERING.RESOURCE_TIMEOUT
+    name: 자원 관리·타임아웃
+    category: PRACTICAL_ENGINEERING
+    parent: PRACTICAL_ENGINEERING
+    description: 커넥션과 스레드 같은 한정 자원을 해제하고 외부 호출에 타임아웃을 설정한다.
+    minutesPerLevelStep: 90
+    prerequisites: [JAVA.EXCEPTION.TRY_WITH_RESOURCES]
+  - code: PRACTICAL_ENGINEERING.NULL_BOUNDARY
+    name: null·경계값 처리
+    category: PRACTICAL_ENGINEERING
+    parent: PRACTICAL_ENGINEERING
+    description: null, 빈 컬렉션, 경계값을 계약으로 정하고 방어 코드와 검증 위치를 결정한다.
+    minutesPerLevelStep: 60
+    prerequisites: [JAVA.OOP]
+  - code: PRACTICAL_ENGINEERING.CODE_REVIEW
+    name: 코드 리뷰·리팩터링
+    category: PRACTICAL_ENGINEERING
+    parent: PRACTICAL_ENGINEERING
+    description: 위험도 순으로 리뷰 의견을 내고, 테스트로 보호한 상태에서 작은 단위로 리팩터링한다.
+    minutesPerLevelStep: 90
+    prerequisites: [TESTING.UNIT_TEST_DESIGN]
+  - code: PRACTICAL_ENGINEERING.INCIDENT_ANALYSIS
+    name: 장애 분석
+    category: PRACTICAL_ENGINEERING
+    parent: PRACTICAL_ENGINEERING
+    description: 영향 범위 확인, 완화, 재현, 원인 분석, 재발 방지 순서로 문제를 추적하고 기록한다.
+    minutesPerLevelStep: 90
+    prerequisites: [PRACTICAL_ENGINEERING.LOGGING]
+
+  # ------------------------------------------------------------------ SYSTEM_DESIGN
+  - code: SYSTEM_DESIGN
+    name: System Design
+    category: SYSTEM_DESIGN
+    description: 트래픽과 데이터가 늘어날 때의 설계 선택지. 주니어 수준에서는 개념 설명 중심.
+  - code: SYSTEM_DESIGN.CACHING
+    name: 캐시 전략
+    category: SYSTEM_DESIGN
+    parent: SYSTEM_DESIGN
+    description: 캐시 적용 위치, 만료와 무효화, 캐시 불일치 위험을 설명한다.
+    minutesPerLevelStep: 90
+    prerequisites: [DATABASE.INDEX]
+  - code: SYSTEM_DESIGN.SCALABILITY
+    name: 확장성 기초
+    category: SYSTEM_DESIGN
+    parent: SYSTEM_DESIGN
+    description: stateless 서버, 수평 확장, DB 병목과 읽기 복제본의 역할을 설명한다.
+    minutesPerLevelStep: 120
+    prerequisites: []
+  - code: SYSTEM_DESIGN.MESSAGE_QUEUE
+    name: 메시지 큐 개념
+    category: SYSTEM_DESIGN
+    parent: SYSTEM_DESIGN
+    description: 비동기 메시징의 장점과 at-least-once 전달, 중복 처리 같은 기본 개념을 설명한다.
+    minutesPerLevelStep: 120
+    prerequisites: []
+
+  # ------------------------------------------------------------------ EXPLANATION
+  - code: EXPLANATION
+    name: Explanation
+    category: EXPLANATION
+    description: 직접 만든 것과 내린 판단을 다른 사람이 이해할 수 있게 구조적으로 설명하는 능력.
+  - code: EXPLANATION.PROJECT_STORY
+    name: 프로젝트 경험 설명
+    category: EXPLANATION
+    parent: EXPLANATION
+    description: 프로젝트의 문제, 본인의 역할과 행동, 결과를 STAR 구조로 2분 안에 설명한다.
+    minutesPerLevelStep: 90
+    prerequisites: []
+  - code: EXPLANATION.TECH_DECISION
+    name: 기술 선택 근거 설명
+    category: EXPLANATION
+    parent: EXPLANATION
+    description: 요구사항과 제약, 대안 비교, 감수한 단점을 포함해 기술 선택 이유를 설명한다.
+    minutesPerLevelStep: 90
+    prerequisites: []
+  - code: EXPLANATION.TROUBLESHOOTING_STORY
+    name: 문제 해결 경험 설명
+    category: EXPLANATION
+    parent: EXPLANATION
+    description: 현상, 가설, 검증, 원인, 해결, 재발 방지 순서로 문제 해결 경험을 설명한다.
+    minutesPerLevelStep: 90
+    prerequisites: []
+  - code: EXPLANATION.LEARNING_RETROSPECTIVE
+    name: 배운 것 되돌아보며 설명하기
+    category: EXPLANATION
+    parent: EXPLANATION
+    description: 무엇을 왜 배웠고 그 뒤 무엇을 다르게 하게 되었는지 되돌아보며 설명하고 다음 학습과 연결한다.
+    minutesPerLevelStep: 60
+    prerequisites: []

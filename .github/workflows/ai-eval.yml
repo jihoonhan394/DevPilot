@@ -1,0 +1,79 @@
+# DevPilot AI evals — real model calls (cost). 수동 실행(workflow_dispatch)만 (결정 E)
+# 기준: docs/10-deployment-and-operations.md §7.3, docs/17-ai-integration.md §12 (eval 형식·합격 기준) (2026-09-18)
+#
+# GitHub environment "ai-eval": required reviewer = 저장소 소유자 (실행마다 승인), secret DEEPSEEK_API_KEY
+#   (prod와 같은 DeepSeek 선불 잔액을 쓴다 — 키가 하나다). 1회 상한 USD 0.5 (all × repeat 3 ≈ USD 0.3, evals/README.md)
+name: ai-eval
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "eval suite (evals/cases/<suite>), all = 전체"
+        required: true
+        default: coach-review
+        type: string
+      repeat:
+        description: "case당 반복 횟수 (1~5)"
+        required: true
+        default: "3"
+        type: string
+      max_cost_usd:
+        description: "예상 비용 상한 USD (0.1~0.5, 결정 E)"
+        required: true
+        default: "0.5"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-eval
+  cancel-in-progress: false
+
+jobs:
+  eval:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: ai-eval
+    permissions:
+      contents: read
+    env:
+      SUITE: ${{ inputs.suite }}
+      REPEAT: ${{ inputs.repeat }}
+      MAX_COST_USD: ${{ inputs.max_cost_usd }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Validate inputs
+        run: |
+          [[ "$SUITE" =~ ^[a-z0-9-]+$ ]] || { echo "invalid suite: $SUITE"; exit 1; }
+          [[ "$REPEAT" =~ ^[1-5]$ ]] || { echo "repeat must be 1-5"; exit 1; }
+          [[ "$MAX_COST_USD" =~ ^0\.[0-9]{1,2}$ ]] || { echo "max_cost_usd must look like 0.25"; exit 1; }
+          awk -v v="$MAX_COST_USD" 'BEGIN { exit (v + 0 <= 0.5 && v + 0 >= 0.1) ? 0 : 1 }' \
+            || { echo "max_cost_usd must be 0.1-0.5 (결정 E)"; exit 1; }
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "25"
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - name: Run evals (provider deepseek — build.gradle.kts aiEval 이 고정)
+        working-directory: backend
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: ./gradlew aiEval -PevalSuite="$SUITE" -PevalRepeat="$REPEAT" -PevalMaxCostUsd="$MAX_COST_USD"
+      - name: Upload eval reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ai-eval-reports
+          path: backend/build/reports/ai-eval/
+          retention-days: 30
+      - name: Job summary
+        if: always()
+        run: |
+          summary="backend/build/reports/ai-eval/summary.md"
+          if [[ ! -f "$summary" ]]; then
+            echo "eval summary not found" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          cat "$summary" >> "$GITHUB_STEP_SUMMARY"

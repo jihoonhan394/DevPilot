@@ -1,0 +1,280 @@
+# Seed challenges — SPRING (PRACTICE)
+# Spec: docs/19-content-spec.md §3.6 (schema), §6 (난이도), §7 (rubric·hint 작성 가이드)
+# 기준: Spring Boot 4.1 / Spring Framework 7.0 / Jakarta Validation
+challenges:
+  - seedKey: PRACTICE.SPRING.VALIDATION.L2.001
+    purpose: PRACTICE
+    skills:
+      - SPRING.VALIDATION
+    difficulty: 2
+    estimatedMinutes: 25
+    isTransfer: false
+    title: 회원 가입 API의 입력 검증 누락 고치기
+    scenario: |-
+      회원 가입 API가 빈 이메일, 기준 미달 나이, 누락된 주소로도 서비스 계층까지 진행되어 DB 제약 위반으로
+      500 오류가 납니다. 제약 애너테이션은 이미 선언되어 있습니다.
+      ```java
+      public record SignUpRequest(
+          @NotBlank @Email String email,
+          @Min(14) int age,
+          Address address) {}
+
+      public record Address(@NotBlank String city, @NotBlank String zipCode) {}
+
+      @RestController
+      class UserController {
+          private final UserService userService;
+
+          UserController(UserService userService) {
+              this.userService = userService;
+          }
+
+          @PostMapping("/api/v1/users")
+          ResponseEntity<UserResponse> signUp(@RequestBody SignUpRequest request) {
+              return ResponseEntity.status(HttpStatus.CREATED).body(userService.signUp(request));
+          }
+      }
+      ```
+    prompt: |-
+      1. 검증이 동작하지 않는 이유를 모두 찾아 설명하세요.
+      2. 잘못된 요청이 서비스 계층에 도달하기 전에 400으로 거절되도록 고친 코드를 작성하세요.
+      3. 검증 실패 응답에 어떤 정보를 담고 무엇을 담지 않을지 설명하세요.
+    constraints:
+      - Jakarta Validation 애너테이션을 사용한다
+      - 서비스 계층 코드는 수정하지 않는다
+    expectedConcepts:
+      - '@Valid 적용 위치'
+      - 중첩 객체 연쇄 검증
+      - MethodArgumentNotValidException
+      - 필드 오류 응답
+    rubric:
+      - id: R1
+        criterion: 요청 본문 파라미터에 @Valid를 붙여 검증을 실행한다
+        weightBp: 3000
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: address에 @NotNull과 @Valid를 붙여 누락과 중첩 객체 제약을 모두 검증한다
+        weightBp: 3000
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 검증 실패가 MethodArgumentNotValidException을 거쳐 400 응답이 되는 흐름을 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+      - id: R4
+        criterion: 실패 응답에 필드 이름과 사용자용 메시지를 담고 내부 정보는 넣지 않는 이유를 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+    commonMistakes:
+      - 컨트롤러 파라미터에만 @Valid를 붙이고 중첩 객체 필드는 놓침
+      - address가 null일 때를 막지 않음
+      - 서비스 계층에서 if 문으로 같은 검증을 중복 구현함
+    transferTargets:
+      - SECURITY.INPUT_VALIDATION
+    hints:
+      QUESTION_ONLY: 제약 애너테이션이 선언되어 있다는 사실만으로 Spring MVC가 요청 본문을 검사할까요?
+      CONCEPT_HINT: 검증을 실행시키는 애너테이션의 위치와, 중첩 객체에 대한 연쇄(cascaded) 검증 규칙을 확인해 보세요.
+      DIRECTION: 컨트롤러 메서드의 요청 본문 파라미터와 레코드 안의 중첩 객체 필드를 각각 살펴보고, 값이 아예 없을 때도 거절되는지 확인해 보세요.
+
+  - seedKey: PRACTICE.SPRING.EXCEPTION_HANDLING.L2.001
+    purpose: PRACTICE
+    skills:
+      - SPRING.EXCEPTION_HANDLING
+    difficulty: 2
+    estimatedMinutes: 25
+    isTransfer: false
+    title: 흩어진 try-catch를 일관된 ProblemDetail 응답으로 바꾸기
+    scenario: |-
+      컨트롤러마다 예외 처리 방식이 달라 클라이언트가 오류 형식마다 분기 코드를 작성하고 있습니다. 아래
+      컨트롤러 외에도 어떤 API는 message 필드로, 어떤 API는 errorCode 필드로 오류를 응답합니다.
+      ```java
+      @GetMapping("/api/v1/orders/{orderId}")
+      ResponseEntity<?> get(@PathVariable UUID orderId) {
+          try {
+              return ResponseEntity.ok(orderService.get(orderId));
+          } catch (OrderNotFoundException e) {
+              return ResponseEntity.status(404).body(Map.of("error", "not found"));
+          } catch (Exception e) {
+              return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+          }
+      }
+      ```
+    prompt: |-
+      1. 오류 응답을 RFC 9457 ProblemDetail 형식으로 통일하는 전역 예외 처리 구조를 설계하고 구현하세요.
+      2. 예상한 예외와 예상하지 못한 예외를 어떻게 다르게 처리하는지, 응답과 로그에 각각 무엇을 남기는지 설명하세요.
+    constraints:
+      - 컨트롤러에는 예외 처리 코드를 남기지 않는다
+      - 응답 본문에 스택 트레이스나 예외 메시지 원문을 넣지 않는다
+    expectedConcepts:
+      - RestControllerAdvice
+      - ProblemDetail(RFC 9457)
+      - 예상 예외와 예상하지 못한 예외 구분
+      - 내부 정보 노출 방지
+    rubric:
+      - id: R1
+        criterion: 전역 advice에서 도메인 예외를 알맞은 상태 코드의 ProblemDetail로 변환한다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 예상하지 못한 예외는 500과 일반 메시지로 응답하고 상세는 서버 로그에만 남긴다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 예외 메시지 원문을 응답하면 생기는 정보 노출 위험을 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+      - id: R4
+        criterion: 클라이언트가 분기할 수 있는 안정적인 오류 코드 확장 필드를 둔 이유를 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+    commonMistakes:
+      - 전역 처리기에서도 예외 메시지 원문을 detail에 그대로 넣음
+      - 모든 예외를 500으로 처리해 404와 400 구분이 사라짐
+      - 예상된 도메인 예외까지 ERROR 레벨 스택 트레이스로 로깅함
+    transferTargets:
+      - PRACTICAL_ENGINEERING.LOGGING
+    hints:
+      QUESTION_ONLY: 클라이언트 개발자 입장에서 API마다 오류 응답 모양이 다르면 어떤 코드를 반복해서 작성해야 할까요?
+      CONCEPT_HINT: 컨트롤러 밖에서 예외를 모아 처리하는 advice 구조와, 표준 오류 응답 형식인 Problem Details 명세를 떠올려 보세요.
+      DIRECTION: 예외를 예상한 것과 예상하지 못한 것으로 나누고, 각 그룹이 응답에 드러낼 정보와 로그에만 남길 정보를 표로 먼저 정리한 뒤 처리기를 만드세요.
+
+  - seedKey: PRACTICE.SPRING.TRANSACTION.L3.001
+    purpose: PRACTICE
+    skills:
+      - SPRING.TRANSACTION
+      - SPRING.AOP_PROXY
+    difficulty: 3
+    estimatedMinutes: 35
+    isTransfer: false
+    title: 포인트 부족으로 실패했는데 주문이 남는 문제
+    scenario: |-
+      컨트롤러는 placeOrder를 호출합니다. 포인트 잔액이 부족해 예외가 발생했는데도 주문 행이 DB에 남아
+      있었습니다. open-in-view는 false이고 repository는 Spring Data JPA 기본 구현입니다.
+      ```java
+      @Service
+      public class OrderService {
+          private final OrderRepository orderRepository;
+          private final PointWalletRepository pointWalletRepository;
+          // 생성자 생략
+
+          public OrderResult placeOrder(OrderCommand command) {
+              validate(command);
+              return saveOrderAndUsePoints(command);
+          }
+
+          @Transactional
+          public OrderResult saveOrderAndUsePoints(OrderCommand command) {
+              Order order = orderRepository.save(Order.from(command));
+              PointWallet wallet = pointWalletRepository.getByUserId(command.userId());
+              wallet.use(command.points()); // 잔액 부족 시 InsufficientPointsException (RuntimeException)
+              return OrderResult.from(order);
+          }
+      }
+      ```
+    prompt: |-
+      1. 주문 행이 남은 원인을 Spring 트랜잭션 적용 방식으로 설명하세요.
+      2. 포인트가 부족하면 주문 저장도 함께 롤백되도록 고친 코드를 작성하세요.
+      3. 고친 동작을 어떤 테스트로 확인할지 설명하세요.
+    constraints:
+      - AspectJ 모드나 TransactionTemplate 같은 프로그래밍 방식 트랜잭션은 사용하지 않는다
+      - 주문 저장과 포인트 사용은 하나의 트랜잭션이어야 한다
+    expectedConcepts:
+      - 프록시 기반 트랜잭션
+      - self-invocation
+      - 트랜잭션 진입점
+      - repository 메서드의 기본 트랜잭션
+    rubric:
+      - id: R1
+        criterion: 외부에서 호출되는 진입점에 트랜잭션을 두거나 트랜잭션 메서드를 별도 빈으로 분리해 프록시를 거치게 한다
+        weightBp: 4000
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 같은 객체 안의 this 호출은 프록시를 거치지 않아 @Transactional이 적용되지 않음을 설명한다
+        weightBp: 3000
+        axis: EXPLANATION
+      - id: R3
+        criterion: 트랜잭션이 없을 때 save가 repository 자체 트랜잭션으로 먼저 커밋된 원인을 진단한다
+        weightBp: 1500
+        axis: DEBUGGING
+      - id: R4
+        criterion: 예외 발생 후 주문 행이 없는지 확인하는 통합 테스트 방법을 제시한다
+        weightBp: 1500
+        axis: EXPLANATION
+    commonMistakes:
+      - 메서드 가시성만 바꾸거나 @Transactional을 더 붙이기만 함
+      - 예외를 catch해 로그만 남겨 롤백 신호가 사라짐
+      - 테스트 메서드에 @Transactional을 붙여 실제 커밋 여부를 확인하지 못함
+    transferTargets:
+      - SPRING.TRANSACTION.PROPAGATION
+    hints:
+      QUESTION_ONLY: 컨트롤러가 호출한 메서드에서 @Transactional이 붙은 메서드로 가는 호출은 누구를 거쳐 전달될까요?
+      CONCEPT_HINT: Spring의 선언적 트랜잭션은 프록시가 외부 호출을 가로채 적용한다는 점과, 같은 객체 안의 내부 호출이 어떻게 처리되는지 확인해 보세요.
+      DIRECTION: 트랜잭션이 시작되어야 하는 진입점을 정하고, 그 진입점이 프록시를 통해 호출되는 구조인지 확인하세요. 필요하면 책임을 다른 빈으로 나누는 방안도 비교하세요.
+
+  - seedKey: PRACTICE.SPRING.TRANSACTION.L4.001
+    purpose: PRACTICE
+    skills:
+      - SPRING.TRANSACTION
+    difficulty: 4
+    estimatedMinutes: 50
+    isTransfer: true
+    title: 외부 결제 호출과 checked 예외가 섞인 주문 확정 흐름 재설계
+    scenario: |-
+      주문 확정 서비스입니다. PaymentDeclinedException은 checked 예외이고, paymentClient는 외부 결제
+      서버를 HTTP로 호출하며 느릴 때는 수 초가 걸립니다.
+      ```java
+      @Transactional
+      public void confirm(UUID orderId) throws PaymentDeclinedException {
+          Order order = orderRepository.findById(orderId).orElseThrow(OrderNotFoundException::new);
+          order.markConfirming();
+          PaymentReceipt receipt = paymentClient.charge(order.paymentRequest());
+          order.confirm(receipt);
+      }
+      ```
+      운영에서 두 가지 문제가 보고되었습니다.
+      (1) 결제가 거절되었는데 주문 상태가 CONFIRMING으로 커밋되어 남는다.
+      (2) 결제 서버가 느려지면 DB 커넥션 풀이 고갈되어 결제와 무관한 API까지 실패한다.
+    prompt: |-
+      1. 두 문제의 원인을 각각 설명하세요.
+      2. 결제 거절 시 주문 상태가 일관되게 남고, 외부 호출 중에는 DB 커넥션을 점유하지 않도록 흐름을 재설계해 구현하세요.
+      3. 외부 결제는 성공했는데 이후 DB 반영이 실패하는 경우를 어떻게 다룰지 설명하세요.
+    constraints:
+      - 결제 클라이언트는 수정할 수 없다
+      - 메시지 큐 같은 새 인프라는 도입하지 않는다
+    expectedConcepts:
+      - checked 예외의 기본 롤백 규칙
+      - 트랜잭션 안의 외부 호출
+      - 트랜잭션 분리와 상태 전이
+      - 보상 처리 또는 결제 상태 재조회
+    rubric:
+      - id: R1
+        criterion: 외부 결제 호출을 트랜잭션 밖으로 빼고 호출 전후 상태 변경을 각각 짧은 트랜잭션으로 나눈다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: checked 예외는 기본 설정에서 롤백되지 않아 중간 상태가 커밋되었음을 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+      - id: R3
+        criterion: 결제 거절을 명시적인 실패 상태로 기록하는 등 거절 시 최종 상태를 정해 구현한다
+        weightBp: 1500
+        axis: IMPLEMENTATION
+      - id: R4
+        criterion: 트랜잭션이 외부 호출 동안 커넥션을 점유해 풀이 고갈되는 원리를 진단한다
+        weightBp: 1500
+        axis: DEBUGGING
+      - id: R5
+        criterion: 결제 성공 후 반영 실패 시 결제 취소 보상이나 결제 상태 재조회로 정합성을 맞추는 방안을 설명한다
+        weightBp: 1500
+        axis: EXPLANATION
+    commonMistakes:
+      - rollbackFor만 추가하고 외부 호출은 트랜잭션 안에 그대로 둠
+      - REQUIRES_NEW를 남용해 요청당 커넥션을 더 많이 사용함
+      - 결제 성공 후 DB 반영 실패 시나리오를 고려하지 않음
+      - 트랜잭션을 나눈 메서드를 같은 클래스 내부에서 호출해 트랜잭션이 적용되지 않음
+    transferTargets:
+      - PRACTICAL_ENGINEERING.RESOURCE_TIMEOUT
+      - WEB_HTTP.IDEMPOTENCY
+    hints:
+      QUESTION_ONLY: 결제 거절 예외가 던져졌을 때 Spring은 그 예외 종류를 보고 트랜잭션을 어떻게 끝낼까요? 외부 응답을 기다리는 동안 DB 커넥션은 어디에 있을까요?
+      CONCEPT_HINT: unchecked 예외만 롤백하는 기본 규칙, 트랜잭션 범위가 곧 커넥션 점유 시간이라는 점, 외부 시스템과 정합성을 맞추는 보상 처리를 함께 떠올려 보세요.
+      DIRECTION: 흐름을 준비 상태 저장, 외부 결제 호출, 결과 반영의 세 단계로 나누고 DB가 필요한 단계만 짧은 트랜잭션으로 묶으세요. 단계 사이에서 실패하면 주문이 어떤 상태로 남는지 표로 확인하세요.

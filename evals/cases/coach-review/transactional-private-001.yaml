@@ -1,0 +1,70 @@
+id: coach-review/transactional-private-001
+operation: COACH_REVIEW
+title: private 메서드에 붙인 @Transactional이 적용되지 않아 변경 감지가 동작하지 않음
+tags: [spring, transaction, jpa]
+trap: false
+input:
+  variables:
+    language: JAVA
+    contentType: CODE
+    projectType: SPRING_BOOT
+    topic: 포인트 적립
+    fileName: PointService.java
+    skillContext: |
+      SPRING.TRANSACTION · Spring 트랜잭션 · planning K1 I1 E0 D0
+      DATABASE.JPA_BASICS · JPA 기본 · planning K2 I1 E1 D0
+    weakAxes: (없음)
+    skillCodeCandidates: |
+      SPRING.TRANSACTION · Spring 트랜잭션
+      DATABASE.JPA_BASICS · JPA 기본
+      JAVA.EXCEPTION · 예외 처리
+      JAVA.CONCURRENCY · 동시성 기초
+  userContent:
+    userSelfReview:
+      kind: TEXT
+      text: ""
+    content:
+      kind: CODE
+      language: JAVA
+      text: |
+        package com.example.point;
+
+        import org.springframework.stereotype.Service;
+        import org.springframework.transaction.annotation.Transactional;
+
+        @Service
+        public class PointService {
+
+            private final PointAccountRepository accountRepository;
+            private final PointHistoryRepository historyRepository;
+
+            public PointService(PointAccountRepository accountRepository,
+                                PointHistoryRepository historyRepository) {
+                this.accountRepository = accountRepository;
+                this.historyRepository = historyRepository;
+            }
+
+            public void earn(Long memberId, long amount) {
+                addPoint(memberId, amount);
+            }
+
+            @Transactional
+            private void addPoint(Long memberId, long amount) {
+                PointAccount account = accountRepository.findByMemberId(memberId)
+                        .orElseThrow(() -> new IllegalArgumentException("account not found: " + memberId));
+                account.add(amount);
+                historyRepository.save(PointHistory.earned(memberId, amount));
+            }
+        }
+expect:
+  confidentialSuspected: false
+  mustDetect:
+    - id: D1
+      category: TRANSACTION_DATA_CONSISTENCY
+      findingTypeIn: [BUG, RISK]
+      lines: [19, 28]
+      questionMentionsAny: ["private", "프록시", "proxy", "트랜잭션", "변경 감지", "dirty checking"]
+  mustNotClaim:
+    - category: SECURITY
+    - category: NULL_BOUNDARY
+      lines: [24, 25]

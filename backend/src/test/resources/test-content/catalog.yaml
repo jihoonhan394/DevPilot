@@ -1,0 +1,23 @@
+# 테스트 전용 소형 catalog (docs/09 §4.2). 운영 content/와 따로 두고 test profile의 devpilot.content.location이 가리킨다.
+# 규칙은 운영과 같다(docs/19 §4): python content/tools/validate_content.py backend/src/test/resources/test-content 가 PASS여야 한다.
+catalogVersion: 1
+files:
+  skillTrees:
+    - skill-tree/test.yaml
+  roleTargets:
+    - role-targets/test.yaml
+  planTemplates:
+    - plan-templates/test.yaml
+  reviewCards:
+    - review-cards/test.yaml
+  challenges:
+    - challenges/test.yaml
+  curatedSources: curated-sources.yaml
+  curatedRepos: curated-repos.yaml
+diagnosticCategories: [JAVA]
+retired:
+  skillCodes: []
+  challengeSeedKeys: []
+  conceptKeys: []
+  curatedSourceIds: []
+  readingKeys: []

@@ -1,0 +1,28 @@
+# DevPilot gitleaks 설정 — 기본 규칙 + 프로젝트 전용 규칙. allowlist 경로를 두지 않는다 (docs/07 §11.3, 2026-09-18)
+# CI: .github/workflows/ci.yml security job (gitleaks-action). 로컬: gitleaks git --redact -v .
+# 테스트의 가짜 secret은 소스에 리터럴로 쓰지 않고 런타임에 조합한다 (예: "sk-" + "a".repeat(32)).
+title = "DevPilot gitleaks"
+
+[extend]
+useDefault = true
+
+# DeepSeek API 키: sk- + 16진수 32자 (docs/17 §7.2 P3, docs/07 §11.3 L-2)
+[[rules]]
+id = "deepseek-api-key"
+description = "DeepSeek API key (sk- + 32 hex)"
+regex = '''\bsk-[0-9a-f]{32}\b'''
+keywords = ["sk-"]
+
+# devtoken 서명 키·기타 PEM (DEVPILOT_DEV_JWT_KEY 는 api.env/.env 에만 둔다)
+[[rules]]
+id = "devpilot-private-key-pem"
+description = "PEM private key block"
+regex = '''-----BEGIN (EC |RSA |OPENSSH |ENCRYPTED |)PRIVATE KEY-----'''
+keywords = ["PRIVATE KEY"]
+
+# Later(Supabase Auth 도입 시)에도 커밋 금지: sb_secret_ 는 secret, sb_publishable_ 는 정보 등급이지만 저장소에 두지 않는다
+[[rules]]
+id = "supabase-key"
+description = "Supabase secret/publishable key"
+regex = '''\bsb_(secret|publishable)_[A-Za-z0-9_-]{16,}'''
+keywords = ["sb_secret_", "sb_publishable_"]

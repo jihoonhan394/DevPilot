@@ -1,0 +1,185 @@
+# DevPilot curated repositories & code readings — READ_CODE 과제 콘텐츠
+# Spec: docs/19-content-spec.md §3.8 (schema), §4.1 CV-80~CV-86 (검증), §8.4 (줄 번호 관리)
+# Rules: docs/06-learning-engine-rules.md §5.3 (READ_CODE 제안), §9.5 RC-1~RC-4
+#
+# - 서버는 이 저장소를 fetch하지 않는다. 사용자가 cloneHint로 직접 clone해서 IDE로 읽는다
+# - lines는 pinnedCommit 기준이다. 저장소가 바뀌면 틀어지므로 pinnedCommit을 올릴 때
+#   readings의 path·lines를 전부 다시 확인한다 (19 §8.4)
+# - question은 답을 유도하지 않는 열린 질문이다. 러버덕 세션의 시작점이 된다 (06 §9.5 RD-2)
+repos:
+  - key: modulith
+    name: Spring Modulith Example (full)
+    url: https://github.com/spring-projects/spring-modulith
+    subPath: spring-modulith-examples/spring-modulith-example-full
+    pinnedCommit: e9e003a6363e2793a0e5eebe320cb02816ed1e0c
+    license: Apache-2.0
+    stack: "Spring Boot 4, Spring Modulith, Java 17+"
+    why: "모듈러 모놀리스의 최소 형태. main 298줄 10파일이라 하루에 전부 읽을 수 있다. 모듈 경계와 이벤트로 결합을 끊는 방법을 본다."
+    cloneHint: "git clone https://github.com/spring-projects/spring-modulith.git && cd spring-modulith && git checkout e9e003a6363e2793a0e5eebe320cb02816ed1e0c && cd spring-modulith-examples/spring-modulith-example-full"
+  - key: petclinic
+    name: Spring PetClinic
+    url: https://github.com/spring-projects/spring-petclinic
+    subPath: ""
+    pinnedCommit: 818c4136ea971c21674525f9053de0d9c7ad8cfe
+    license: Apache-2.0
+    stack: "Spring Boot 4.1, Java 17, Spring Data JPA"
+    why: "Spring 공식 샘플. 계층 구조와 테스트 작성법의 정석이고, 테스트 코드가 main보다 많다(main 1,878줄 / test 2,336줄)."
+    cloneHint: "git clone https://github.com/spring-projects/spring-petclinic.git && cd spring-petclinic && git checkout 818c4136ea971c21674525f9053de0d9c7ad8cfe"
+  - key: restbucks
+    name: Spring RESTBucks (server)
+    url: https://github.com/odrotbohm/spring-restbucks
+    subPath: server
+    pinnedCommit: ad97ad03c367a69ff1de70c660be2731cbe7bc3d
+    license: UNSPECIFIED
+    stack: "Spring Boot 4.1, Spring Modulith 2.1, Spring Data REST, Java 17+"
+    why: "주문·결제 도메인을 상태 전이로 다룬다. 우리가 만드는 주문 시스템과 문제가 같다."
+    licenseNote: "저장소에 라이선스 명시가 없다. 읽기만 한다. 코드를 복사해 오거나 이 파일에 인용하지 않는다."
+    cloneHint: "git clone https://github.com/odrotbohm/spring-restbucks.git && cd spring-restbucks && git checkout ad97ad03c367a69ff1de70c660be2731cbe7bc3d && cd server"
+
+readings:
+  # ---------------------------------------------------------------- modulith
+  - key: READ.MODULITH.EVENT_PUBLISH.001
+    repo: modulith
+    path: src/main/java/example/order/OrderManagement.java
+    lines: [16, 40]
+    skillCodes: [SPRING.DI_IOC, SPRING.TRANSACTION]
+    estimatedMinutes: 12
+    question: "이 서비스는 재고 모듈을 직접 호출하지 않고 이벤트를 발행합니다. 직접 호출했을 때와 비교해서 무엇이 달라지는지 설명해 보세요."
+    lookFor:
+      - 모듈 사이의 의존 방향
+      - 트랜잭션 경계와 이벤트 발행 시점
+      - 직접 호출로 바꾸면 무엇이 깨지는지
+  - key: READ.MODULITH.EVENT_LISTEN.001
+    repo: modulith
+    path: src/main/java/example/inventory/InventoryManagement.java
+    lines: [16, 51]
+    skillCodes: [SPRING.TRANSACTION.PROPAGATION, JAVA.CONCURRENCY]
+    estimatedMinutes: 12
+    question: "이 리스너는 1초를 쉬는 느린 작업을 흉내 냅니다. 주문을 넣은 사람이 그 1초를 기다리게 되는지 아닌지, 무엇을 보고 판단할 수 있을까요?"
+    lookFor:
+      - 동기 리스너와 비동기 리스너의 차이
+      - 이벤트가 발행되는 시점과 처리되는 시점
+      - 리스너가 느릴 때 주문 쪽에 생기는 영향
+  - key: READ.MODULITH.BOUNDARY_TEST.001
+    repo: modulith
+    path: src/test/java/example/ModularityTests.java
+    lines: [16, 40]
+    skillCodes: [TESTING.SPRING_TEST, PRACTICAL_ENGINEERING.CODE_REVIEW]
+    estimatedMinutes: 12
+    question: "테스트 두 줄이 모듈 구조를 검사한다고 합니다. 이 테스트가 실패하게 만들려면 코드에 무엇을 어떻게 써야 할지 생각해 보세요."
+    lookFor:
+      - 모듈의 경계가 코드에서 무엇으로 정해지는가
+      - 내부 패키지와 공개 타입의 차이
+      - 구조 규칙을 테스트로 두는 이유
+  - key: READ.MODULITH.EVENT_FAILURE.001
+    repo: modulith
+    path: src/test/java/example/order/EventPublicationRegistryTests.java
+    lines: [32, 78]
+    skillCodes: [SPRING.TRANSACTION, TESTING.SPRING_TEST]
+    estimatedMinutes: 18
+    question: "리스너가 예외를 던졌는데도 테스트는 미완료 발행이 1건 남아 있다고 단언합니다. 이 상태가 그냥 유실되는 것보다 왜 나은지 설명해 보세요."
+    lookFor:
+      - 이벤트 발행과 리스너 처리가 같은 트랜잭션인지
+      - 실패한 리스너를 나중에 다시 돌릴 수 있는 근거
+      - 내 주문 시스템에서 이런 유실이 생길 만한 지점
+  # --------------------------------------------------------------- petclinic
+  - key: READ.PETCLINIC.CONTROLLER_SLICE.001
+    repo: petclinic
+    path: src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java
+    lines: [48, 122]
+    skillCodes: [SPRING.MVC_REST, SPRING.VALIDATION]
+    estimatedMinutes: 15
+    question: "이 컨트롤러는 Repository를 직접 주입받고 Service 계층이 없습니다. 이렇게 두어도 괜찮은 경우와 곤란해지는 경우를 나눠서 설명해 보세요."
+    lookFor:
+      - 계층을 나누는 목적
+      - 트랜잭션 경계가 어디에 생기는가
+      - 지금 내 프로젝트는 어느 쪽에 가까운가
+  - key: READ.PETCLINIC.ENTITY_MAPPING.001
+    repo: petclinic
+    path: src/main/java/org/springframework/samples/petclinic/owner/Owner.java
+    lines: [47, 110]
+    skillCodes: [DATABASE.JPA, DATABASE.JPA.FETCH_STRATEGY, DATABASE.MODELING]
+    estimatedMinutes: 15
+    question: "Owner가 Pet 목록을 갖는 방식은 단방향이고 즉시 로딩입니다. 이 선택이 조회 한 번에 어떤 SQL로 이어질지 예상해서 말해 보세요."
+    lookFor:
+      - cascade가 무엇을 정하는가
+      - EAGER와 LAZY가 만드는 쿼리 차이
+      - 연관을 양방향으로 두었을 때 생기는 일
+  - key: READ.PETCLINIC.WEB_SLICE_TEST.001
+    repo: petclinic
+    path: src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java
+    lines: [60, 134]
+    skillCodes: [TESTING.SPRING_TEST, TESTING.TEST_DOUBLE]
+    estimatedMinutes: 15
+    question: "이 테스트는 Repository를 가짜로 바꾸고 웹 계층만 띄웁니다. 이렇게 잘라서 얻는 것과 대신 확인하지 못하게 되는 것을 말해 보세요."
+    lookFor:
+      - 슬라이스 테스트가 띄우는 빈의 범위
+      - 가짜 객체를 쓸 때 검증되지 않는 것
+      - 통합 테스트와의 역할 분담
+  - key: READ.PETCLINIC.DATA_JPA_TEST.001
+    repo: petclinic
+    path: src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java
+    lines: [72, 145]
+    skillCodes: [TESTING.SPRING_TEST, DATABASE.JPA.PERSISTENCE_CONTEXT]
+    estimatedMinutes: 18
+    question: "테스트 메서드에 붙은 트랜잭션은 끝나면 되돌려집니다. 되돌려지는데도 저장이 되었는지를 어떻게 확인할 수 있는 것인지 설명해 보세요."
+    lookFor:
+      - 영속성 컨텍스트와 flush 시점
+      - 롤백되는 테스트가 감추는 문제
+      - 테스트 사이의 데이터 격리 방법
+  # --------------------------------------------------------------- restbucks
+  - key: READ.RESTBUCKS.AGGREGATE.001
+    repo: restbucks
+    path: src/main/java/de/odrotbohm/restbucks/order/Order.java
+    lines: [46, 100]
+    skillCodes: [DATABASE.MODELING, DATABASE.TRANSACTION.LOCKING]
+    estimatedMinutes: 15
+    question: "주문 엔티티에 버전 필드가 하나 있습니다. 두 사람이 같은 주문을 동시에 고칠 때 이 필드가 무엇을 하는지 설명해 보세요."
+    lookFor:
+      - 낙관적 잠금이 충돌을 언제 알아채는가
+      - 비관적 잠금과의 차이
+      - 충돌이 났을 때 사용자에게 무엇을 보여줄지
+  - key: READ.RESTBUCKS.STATE_TRANSITION.001
+    repo: restbucks
+    path: src/main/java/de/odrotbohm/restbucks/order/Order.java
+    lines: [123, 200]
+    skillCodes: [JAVA.OOP, JAVA.EXCEPTION]
+    estimatedMinutes: 18
+    question: "상태를 바꾸는 메서드들이 모두 현재 상태를 먼저 확인하고 아니면 예외를 던집니다. 이 검사를 서비스 계층으로 옮기면 무엇이 달라질지 말해 보세요."
+    lookFor:
+      - 상태 규칙을 엔티티가 지키는 것의 의미
+      - 상태 예외가 API 응답까지 가는 경로
+      - 전이 표를 어디에 적어 둘지
+  - key: READ.RESTBUCKS.REPOSITORY_TX.001
+    repo: restbucks
+    path: src/main/java/de/odrotbohm/restbucks/order/Orders.java
+    lines: [38, 103]
+    skillCodes: [SPRING.DATA_JPA, SPRING.TRANSACTION]
+    estimatedMinutes: 15
+    question: "리포지터리 인터페이스의 기본 메서드에 트랜잭션과 이벤트 리스너가 함께 붙어 있습니다. 이 코드가 어디에 있어야 맞다고 보는지 근거를 들어 말해 보세요."
+    lookFor:
+      - 리포지터리의 책임 범위
+      - 이벤트 리스너가 도는 트랜잭션
+      - 서비스 계층으로 옮겼을 때의 장단점
+  - key: READ.RESTBUCKS.PAYMENT_TX.001
+    repo: restbucks
+    path: src/main/java/de/odrotbohm/restbucks/payment/PaymentServiceImpl.java
+    lines: [36, 90]
+    skillCodes: [SPRING.TRANSACTION, JAVA.EXCEPTION]
+    estimatedMinutes: 15
+    question: "결제 메서드는 실패를 모두 예외로 알리고 클래스 전체에 트랜잭션이 걸려 있습니다. 카드 승인이 외부 호출이라면 이 구조에 어떤 문제가 생길지 말해 보세요."
+    lookFor:
+      - 트랜잭션 안에서 외부 호출을 할 때의 위험
+      - 읽기 전용 트랜잭션을 따로 둔 이유
+      - 실패를 예외로 알릴 때와 반환값으로 알릴 때
+  - key: READ.RESTBUCKS.PAYMENT_API.001
+    repo: restbucks
+    path: src/main/java/de/odrotbohm/restbucks/payment/web/PaymentController.java
+    lines: [56, 137]
+    skillCodes: [WEB_HTTP.REST_API_DESIGN, SPRING.EXCEPTION_HANDLING, WEB_HTTP.IDEMPOTENCY]
+    estimatedMinutes: 18
+    question: "이미 결제된 주문에 다시 결제를 보내면 이 컨트롤러는 404를 돌려줍니다. 이 응답이 적절한지, 아니라면 무엇이 더 나은지 근거를 들어 말해 보세요."
+    lookFor:
+      - 같은 요청이 두 번 왔을 때의 기대 동작
+      - 상태 충돌에 쓰는 상태 코드
+      - 예외를 응답으로 바꾸는 지점

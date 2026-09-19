@@ -1,0 +1,334 @@
+# DevPilot role skill targets — JAVA_BACKEND
+# Spec: docs/19-content-spec.md §3.3
+# 기준: 주니어 Java 백엔드 개발자가 실무에서 혼자 기능을 만들고 설명할 수 있는 수준
+# - MUST 목표는 대부분 3~4, explanation 3~4, debugging 2~3
+# - DEC-14: ALGORITHM = SHOULD, EXPLANATION = MUST
+# - EXPLANATION는 challenge/coach 증거가 생기지 않는 축(implementation, debugging)을 0으로 둔다
+# - 순서: skill tree 파일 순서와 같게 유지한다 (검증 규칙은 아님)
+targetRole: JAVA_BACKEND
+targets:
+  # ------------------------------------------------------------------ JAVA
+  - skill: JAVA.OOP
+    priority: MUST
+    importance: 0.80
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }
+  - skill: JAVA.COLLECTION
+    priority: MUST
+    importance: 0.85
+    target: { knowledge: 4, implementation: 4, explanation: 3, debugging: 3 }
+  - skill: JAVA.GENERICS
+    priority: SHOULD
+    importance: 0.60
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }
+  - skill: JAVA.EXCEPTION
+    priority: MUST
+    importance: 0.90
+    target: { knowledge: 4, implementation: 4, explanation: 4, debugging: 3 }
+  - skill: JAVA.EXCEPTION.TRY_WITH_RESOURCES
+    priority: MUST
+    importance: 0.75
+    target: { knowledge: 4, implementation: 4, explanation: 3, debugging: 3 }
+  - skill: JAVA.LAMBDA_STREAM
+    priority: MUST
+    importance: 0.75
+    target: { knowledge: 3, implementation: 4, explanation: 3, debugging: 2 }
+  - skill: JAVA.OPTIONAL
+    priority: SHOULD
+    importance: 0.55
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }
+  - skill: JAVA.MODERN_SYNTAX
+    priority: SHOULD
+    importance: 0.50
+    target: { knowledge: 3, implementation: 3, explanation: 2, debugging: 1 }
+  - skill: JAVA.CONCURRENCY
+    priority: MUST
+    importance: 0.75
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }
+  - skill: JAVA.CONCURRENCY.VIRTUAL_THREAD
+    priority: SHOULD
+    importance: 0.45
+    target: { knowledge: 3, implementation: 2, explanation: 3, debugging: 1 }
+  - skill: JAVA.JVM_MEMORY_GC
+    priority: SHOULD
+    importance: 0.55
+    target: { knowledge: 3, implementation: 1, explanation: 3, debugging: 2 }
+
+  # ------------------------------------------------------------------ SPRING
+  - skill: SPRING.DI_IOC
+    priority: MUST
+    importance: 0.90
+    target: { knowledge: 4, implementation: 3, explanation: 4, debugging: 3 }
+  - skill: SPRING.BOOT_CONFIG
+    priority: MUST
+    importance: 0.65
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 3 }
+  - skill: SPRING.MVC_REST
+    priority: MUST
+    importance: 0.90
+    target: { knowledge: 4, implementation: 4, explanation: 3, debugging: 3 }
+  - skill: SPRING.VALIDATION
+    priority: MUST
+    importance: 0.70
+    target: { knowledge: 3, implementation: 4, explanation: 3, debugging: 2 }
+  - skill: SPRING.EXCEPTION_HANDLING
+    priority: MUST
+    importance: 0.85
+    target: { knowledge: 4, implementation: 4, explanation: 4, debugging: 3 }
+  - skill: SPRING.AOP_PROXY
+    priority: MUST
+    importance: 0.70
+    target: { knowledge: 4, implementation: 2, explanation: 4, debugging: 3 }
+  - skill: SPRING.TRANSACTION
+    priority: MUST
+    importance: 0.95
+    target: { knowledge: 4, implementation: 4, explanation: 4, debugging: 3 }
+  - skill: SPRING.TRANSACTION.PROPAGATION
+    priority: SHOULD
+    importance: 0.60
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 3 }
+  - skill: SPRING.DATA_JPA
+    priority: MUST
+    importance: 0.80
+    target: { knowledge: 3, implementation: 4, explanation: 3, debugging: 3 }
+  - skill: SPRING.SECURITY
+    priority: MUST
+    importance: 0.70
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }
+  - skill: SPRING.SECURITY.JWT_RESOURCE_SERVER
+    priority: SHOULD
+    importance: 0.55
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }
+
+  # ------------------------------------------------------------------ DATABASE
+  - skill: DATABASE.SQL_BASICS
+    priority: MUST
+    importance: 0.90
+    target: { knowledge: 4, implementation: 4, explanation: 3, debugging: 3 }
+  - skill: DATABASE.MODELING
+    priority: MUST
+    importance: 0.70
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }
+  - skill: DATABASE.INDEX
+    priority: MUST
+    importance: 0.85
+    target: { knowledge: 4, implementation: 3, explanation: 4, debugging: 3 }
+  - skill: DATABASE.INDEX.EXPLAIN_PLAN
+    priority: SHOULD
+    importance: 0.60
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 3 }
+  - skill: DATABASE.TRANSACTION
+    priority: MUST
+    importance: 0.90
+    target: { knowledge: 4, implementation: 3, explanation: 4, debugging: 3 }
+  - skill: DATABASE.TRANSACTION.LOCKING
+    priority: MUST
+    importance: 0.75
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 3 }
+  - skill: DATABASE.JPA
+    priority: MUST
+    importance: 0.85
+    target: { knowledge: 4, implementation: 4, explanation: 3, debugging: 3 }
+  - skill: DATABASE.JPA.PERSISTENCE_CONTEXT
+    priority: MUST
+    importance: 0.85
+    target: { knowledge: 4, implementation: 3, explanation: 4, debugging: 3 }
+  - skill: DATABASE.JPA.FETCH_STRATEGY
+    priority: MUST
+    importance: 0.90
+    target: { knowledge: 4, implementation: 4, explanation: 4, debugging: 3 }
+  - skill: DATABASE.MIGRATION
+    priority: SHOULD
+    importance: 0.55
+    target: { knowledge: 3, implementation: 3, explanation: 2, debugging: 2 }
+
+  # ------------------------------------------------------------------ WEB_HTTP
+  - skill: WEB_HTTP.HTTP_BASICS
+    priority: MUST
+    importance: 0.85
+    target: { knowledge: 4, implementation: 3, explanation: 4, debugging: 3 }
+  - skill: WEB_HTTP.REST_API_DESIGN
+    priority: MUST
+    importance: 0.80
+    target: { knowledge: 3, implementation: 4, explanation: 4, debugging: 2 }
+  - skill: WEB_HTTP.IDEMPOTENCY
+    priority: SHOULD
+    importance: 0.55
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }
+  - skill: WEB_HTTP.CORS
+    priority: SHOULD
+    importance: 0.50
+    target: { knowledge: 3, implementation: 2, explanation: 3, debugging: 3 }
+  - skill: WEB_HTTP.AUTH_SESSION_TOKEN
+    priority: MUST
+    importance: 0.75
+    target: { knowledge: 3, implementation: 2, explanation: 4, debugging: 2 }
+
+  # ------------------------------------------------------------------ NETWORK
+  - skill: NETWORK.TCP_IP
+    priority: SHOULD
+    importance: 0.55
+    target: { knowledge: 3, implementation: 1, explanation: 3, debugging: 1 }
+  - skill: NETWORK.DNS
+    priority: LATER
+    importance: 0.35
+    target: { knowledge: 2, implementation: 1, explanation: 2, debugging: 1 }
+  - skill: NETWORK.TLS
+    priority: SHOULD
+    importance: 0.50
+    target: { knowledge: 3, implementation: 1, explanation: 3, debugging: 2 }
+
+  # ------------------------------------------------------------------ CS
+  - skill: CS.OS_PROCESS_THREAD
+    priority: SHOULD
+    importance: 0.60
+    target: { knowledge: 3, implementation: 1, explanation: 3, debugging: 1 }
+  - skill: CS.DATA_STRUCTURE
+    priority: SHOULD
+    importance: 0.60
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 1 }
+  - skill: CS.IO_MODEL
+    priority: SHOULD
+    importance: 0.45
+    target: { knowledge: 3, implementation: 1, explanation: 3, debugging: 1 }
+
+  # ------------------------------------------------------------------ ALGORITHM (DEC-14: SHOULD)
+  - skill: ALGORITHM.COMPLEXITY
+    priority: SHOULD
+    importance: 0.60
+    target: { knowledge: 3, implementation: 2, explanation: 3, debugging: 1 }
+  - skill: ALGORITHM.SORT_SEARCH
+    priority: SHOULD
+    importance: 0.50
+    target: { knowledge: 3, implementation: 3, explanation: 2, debugging: 1 }
+  - skill: ALGORITHM.GRAPH_SEARCH
+    priority: SHOULD
+    importance: 0.45
+    target: { knowledge: 3, implementation: 3, explanation: 2, debugging: 1 }
+  - skill: ALGORITHM.DP_GREEDY
+    priority: SHOULD
+    importance: 0.40
+    target: { knowledge: 3, implementation: 3, explanation: 2, debugging: 1 }
+
+  # ------------------------------------------------------------------ TESTING
+  - skill: TESTING.JUNIT
+    priority: MUST
+    importance: 0.85
+    target: { knowledge: 3, implementation: 4, explanation: 3, debugging: 3 }
+  - skill: TESTING.UNIT_TEST_DESIGN
+    priority: MUST
+    importance: 0.75
+    target: { knowledge: 3, implementation: 3, explanation: 4, debugging: 3 }
+  - skill: TESTING.TEST_DOUBLE
+    priority: MUST
+    importance: 0.70
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }
+  - skill: TESTING.SPRING_TEST
+    priority: MUST
+    importance: 0.80
+    target: { knowledge: 3, implementation: 4, explanation: 3, debugging: 3 }
+  - skill: TESTING.TESTCONTAINERS
+    priority: SHOULD
+    importance: 0.60
+    target: { knowledge: 3, implementation: 3, explanation: 2, debugging: 3 }
+
+  # ------------------------------------------------------------------ DEVOPS
+  - skill: DEVOPS.GIT
+    priority: MUST
+    importance: 0.80
+    target: { knowledge: 3, implementation: 4, explanation: 3, debugging: 3 }
+  - skill: DEVOPS.BUILD_GRADLE
+    priority: SHOULD
+    importance: 0.55
+    target: { knowledge: 3, implementation: 3, explanation: 2, debugging: 2 }
+  - skill: DEVOPS.DOCKER
+    priority: MUST
+    importance: 0.75
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 3 }
+  - skill: DEVOPS.CI_GITHUB_ACTIONS
+    priority: MUST
+    importance: 0.65
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }
+  - skill: DEVOPS.LINUX_BASICS
+    priority: SHOULD
+    importance: 0.55
+    target: { knowledge: 3, implementation: 3, explanation: 2, debugging: 3 }
+  - skill: DEVOPS.CLOUD_DEPLOY
+    priority: SHOULD
+    importance: 0.60
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 3 }
+
+  # ------------------------------------------------------------------ SECURITY
+  - skill: SECURITY.OWASP_TOP10
+    priority: MUST
+    importance: 0.75
+    target: { knowledge: 3, implementation: 2, explanation: 4, debugging: 2 }
+  - skill: SECURITY.AUTHN_AUTHZ
+    priority: MUST
+    importance: 0.85
+    target: { knowledge: 4, implementation: 3, explanation: 4, debugging: 3 }
+  - skill: SECURITY.INPUT_VALIDATION
+    priority: MUST
+    importance: 0.80
+    target: { knowledge: 3, implementation: 4, explanation: 3, debugging: 3 }
+  - skill: SECURITY.SECRET_MANAGEMENT
+    priority: MUST
+    importance: 0.70
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }
+  - skill: SECURITY.SENSITIVE_DATA_LOGGING
+    priority: SHOULD
+    importance: 0.60
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }
+
+  # ------------------------------------------------------------------ PRACTICAL_ENGINEERING
+  - skill: PRACTICAL_ENGINEERING.LOGGING
+    priority: MUST
+    importance: 0.75
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 3 }
+  - skill: PRACTICAL_ENGINEERING.RESOURCE_TIMEOUT
+    priority: SHOULD
+    importance: 0.65
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 3 }
+  - skill: PRACTICAL_ENGINEERING.NULL_BOUNDARY
+    priority: MUST
+    importance: 0.75
+    target: { knowledge: 3, implementation: 4, explanation: 3, debugging: 3 }
+  - skill: PRACTICAL_ENGINEERING.CODE_REVIEW
+    priority: SHOULD
+    importance: 0.60
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 3 }
+  - skill: PRACTICAL_ENGINEERING.INCIDENT_ANALYSIS
+    priority: SHOULD
+    importance: 0.60
+    target: { knowledge: 3, implementation: 2, explanation: 3, debugging: 3 }
+
+  # ------------------------------------------------------------------ SYSTEM_DESIGN
+  - skill: SYSTEM_DESIGN.CACHING
+    priority: SHOULD
+    importance: 0.50
+    target: { knowledge: 3, implementation: 2, explanation: 3, debugging: 1 }
+  - skill: SYSTEM_DESIGN.SCALABILITY
+    priority: LATER
+    importance: 0.40
+    target: { knowledge: 2, implementation: 1, explanation: 3, debugging: 0 }
+  - skill: SYSTEM_DESIGN.MESSAGE_QUEUE
+    priority: LATER
+    importance: 0.35
+    target: { knowledge: 2, implementation: 1, explanation: 2, debugging: 0 }
+
+  # ------------------------------------------------------------------ EXPLANATION (DEC-14: MUST)
+  - skill: EXPLANATION.PROJECT_STORY
+    priority: MUST
+    importance: 0.90
+    target: { knowledge: 3, implementation: 0, explanation: 4, debugging: 0 }
+  - skill: EXPLANATION.TECH_DECISION
+    priority: MUST
+    importance: 0.85
+    target: { knowledge: 3, implementation: 0, explanation: 4, debugging: 0 }
+  - skill: EXPLANATION.TROUBLESHOOTING_STORY
+    priority: MUST
+    importance: 0.80
+    target: { knowledge: 3, implementation: 0, explanation: 4, debugging: 0 }
+  - skill: EXPLANATION.LEARNING_RETROSPECTIVE
+    priority: MUST
+    importance: 0.70
+    target: { knowledge: 2, implementation: 0, explanation: 4, debugging: 0 }

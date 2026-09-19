@@ -1,0 +1,93 @@
+id: coach-review/entity-equals-hashcode-001
+operation: COACH_REVIEW
+title: 생성 전 id(null)로 equals/hashCode를 구현해 저장 전 엔티티가 HashSet에서 하나로 합쳐짐
+tags: [jpa, equals, collections]
+trap: false
+input:
+  variables:
+    language: JAVA
+    contentType: CODE
+    projectType: SPRING_BOOT
+    topic: 게시글 태그 등록
+    fileName: Tag.java
+    skillContext: |
+      JAVA.OBJECT_CONTRACT · equals와 hashCode · planning K2 I1 E1 D0
+      DATABASE.JPA_BASICS · JPA 기본 · planning K2 I2 E1 D1
+    weakAxes: CORRECTNESS
+    skillCodeCandidates: |
+      JAVA.OBJECT_CONTRACT · equals와 hashCode
+      DATABASE.JPA_BASICS · JPA 기본
+      JAVA.CONCURRENCY · 동시성 기초
+  userContent:
+    userSelfReview:
+      kind: TEXT
+      text: 엔티티는 id가 같으면 같은 객체로 봐야 해서 id로 equals를 구현했다.
+    content:
+      kind: CODE
+      language: JAVA
+      text: |
+        package com.example.post;
+
+        import jakarta.persistence.Entity;
+        import jakarta.persistence.GeneratedValue;
+        import jakarta.persistence.Id;
+
+        import java.util.HashSet;
+        import java.util.List;
+        import java.util.Objects;
+        import java.util.Set;
+
+        @Entity
+        public class Tag {
+
+            @Id
+            @GeneratedValue
+            private Long id;
+
+            private String name;
+
+            protected Tag() {
+            }
+
+            public Tag(String name) {
+                this.name = name;
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) {
+                    return true;
+                }
+                if (!(o instanceof Tag other)) {
+                    return false;
+                }
+                return Objects.equals(id, other.id);
+            }
+
+            @Override
+            public int hashCode() {
+                return Objects.hashCode(id);
+            }
+        }
+
+        class TagAssigner {
+
+            Set<Tag> newTags(List<String> names) {
+                Set<Tag> tags = new HashSet<>();
+                for (String name : names) {
+                    tags.add(new Tag(name));
+                }
+                return tags;
+            }
+        }
+expect:
+  confidentialSuspected: false
+  mustDetect:
+    - id: D1
+      categoryIn: [CORRECTNESS, TRANSACTION_DATA_CONSISTENCY, NULL_BOUNDARY]
+      findingTypeIn: [BUG, RISK]
+      lines: [28, 54]
+      questionMentionsAny: ["null", "저장 전", "HashSet", "hashCode", "같은"]
+  mustNotClaim:
+    - category: SECURITY
+    - category: CONCURRENCY

@@ -1,0 +1,56 @@
+id: coach-review/trap-try-with-resources-001
+operation: COACH_REVIEW
+title: "오탐 함정: try-with-resources와 cause를 보존한 예외 변환이 올바른 코드"
+tags: [trap, java, resource, exception]
+trap: true
+input:
+  variables:
+    language: JAVA
+    contentType: CODE
+    projectType: JAVA_LIBRARY
+    topic: 설정 파일 읽기
+    fileName: ConfigLoader.java
+    skillContext: |
+      JAVA.IO_RESOURCE · I/O와 자원 관리 · planning K3 I3 E2 D2
+      JAVA.EXCEPTION · 예외 처리 · planning K3 I2 E2 D1
+    weakAxes: RESOURCE_LIFECYCLE
+    skillCodeCandidates: |
+      JAVA.IO_RESOURCE · I/O와 자원 관리
+      JAVA.EXCEPTION · 예외 처리
+      JAVA.OPTIONAL · Optional
+  userContent:
+    userSelfReview:
+      kind: TEXT
+      text: reader는 try-with-resources로 닫고, IOException은 cause를 담아 UncheckedIOException으로 바꿨다.
+    content:
+      kind: CODE
+      language: JAVA
+      text: |
+        package com.example.config;
+
+        import java.io.BufferedReader;
+        import java.io.IOException;
+        import java.io.UncheckedIOException;
+        import java.nio.charset.StandardCharsets;
+        import java.nio.file.Files;
+        import java.nio.file.Path;
+        import java.util.Optional;
+
+        public class ConfigLoader {
+
+            public Optional<String> readFirstLine(Path path) {
+                try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+                    return Optional.ofNullable(reader.readLine());
+                } catch (IOException e) {
+                    throw new UncheckedIOException("failed to read config: " + path, e);
+                }
+            }
+        }
+expect:
+  confidentialSuspected: false
+  mustDetect: []
+  mustNotClaim:
+    - category: RESOURCE_LIFECYCLE
+    - category: EXCEPTION_STRATEGY
+    - category: NULL_BOUNDARY
+  expectSelfReviewAxesInclude: [RESOURCE_LIFECYCLE, EXCEPTION_STRATEGY]

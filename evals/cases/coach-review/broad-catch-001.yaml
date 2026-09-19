@@ -1,0 +1,66 @@
+id: coach-review/broad-catch-001
+operation: COACH_REVIEW
+title: 결제 흐름 전체를 catch (Exception)으로 감싸 원인을 잃음
+tags: [java, spring, exception]
+trap: false
+input:
+  variables:
+    language: JAVA
+    contentType: CODE
+    projectType: SPRING_BOOT
+    topic: 결제 승인
+    fileName: PaymentService.java
+    skillContext: |
+      JAVA.EXCEPTION · 예외 처리 · planning K2 I2 E1 D1
+      SPRING.TRANSACTION · Spring 트랜잭션 · planning K1 I1 E0 D0
+    weakAxes: EXCEPTION_STRATEGY
+    skillCodeCandidates: |
+      JAVA.EXCEPTION · 예외 처리
+      SPRING.TRANSACTION · Spring 트랜잭션
+      PRACTICAL_ENGINEERING.LOGGING · 로깅
+      SECURITY.SENSITIVE_DATA · 민감정보 보호
+  userContent:
+    userSelfReview:
+      kind: TEXT
+      text: 결제가 실패했을 때 사용자에게 실패 메시지가 잘 전달되는지 보고 싶다.
+    content:
+      kind: CODE
+      language: JAVA
+      text: |
+        package com.example.payment;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class PaymentService {
+
+            private final PaymentGateway gateway;
+            private final PaymentRepository repository;
+
+            public PaymentService(PaymentGateway gateway, PaymentRepository repository) {
+                this.gateway = gateway;
+                this.repository = repository;
+            }
+
+            public PaymentResult pay(PaymentCommand command) {
+                try {
+                    PaymentResponse response = gateway.charge(command.cardToken(), command.amount());
+                    repository.save(Payment.approved(command.orderId(), response.transactionId()));
+                    return PaymentResult.success(response.transactionId());
+                } catch (Exception e) {
+                    return PaymentResult.failure("결제 실패");
+                }
+            }
+        }
+expect:
+  confidentialSuspected: false
+  mustDetect:
+    - id: D1
+      category: EXCEPTION_STRATEGY
+      findingTypeIn: [BUG, RISK]
+      lines: [17, 23]
+      questionMentionsAny: ["예외", "Exception", "원인", "로그"]
+  mustNotClaim:
+    - category: CONCURRENCY
+    - category: NULL_BOUNDARY
+  expectSelfReviewAxesInclude: []
