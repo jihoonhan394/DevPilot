@@ -338,7 +338,19 @@ class ContentValidatorTest {
                 error(
                         "CV-86",
                         "question too short",
-                        f -> f.readings().getFirst().put("question", "짧은 질문이다")));
+                        f -> f.readings().getFirst().put("question", "짧은 질문이다")),
+                error(
+                        "CV-03",
+                        "retired is not a boolean",
+                        f -> f.readings().getFirst().put("retired", "yes")));
+    }
+
+    @Test
+    void shouldAcceptOptionalRetiredFlagOnReading() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        fixture.readings().getFirst().put("retired", false);
+
+        assertThat(validator.validate(fixture.content).errors()).isEmpty();
     }
 
     static Stream<Arguments> warningCases() {

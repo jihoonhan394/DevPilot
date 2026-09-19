@@ -17,7 +17,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-/** docs/19 §5, vector §5.4 ({@code 19-05-plan-template-placement.yaml}, V1~V7). */
+/** docs/19 §5, vector §5.4 ({@code 19-05-plan-template-placement.yaml}, V1~V8). */
 @UnitTest
 class PlanTemplatePlacementTest {
 

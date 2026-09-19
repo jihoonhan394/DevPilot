@@ -818,10 +818,13 @@ def validate(content_dir: str):
             reading_keys: set[str] = set()
             for idx, rd in enumerate(readings):
                 where = f"{rel}#readings[{idx}]"
-                allowed = {"key", "repo", "path", "lines", "skillCodes", "estimatedMinutes",
-                           "question", "lookFor"}
-                if not check_keys(rd, allowed, allowed, res, where):
+                required = {"key", "repo", "path", "lines", "skillCodes", "estimatedMinutes",
+                            "question", "lookFor"}
+                # optional: retired (bool). CV-83/CV-87 retirement rules arrive with S3 (BL-CNT-16)
+                if not check_keys(rd, required | {"retired"}, required, res, where):
                     continue
+                if "retired" in rd and not isinstance(rd["retired"], bool):
+                    res.error("CV-03", where, "retired must be a boolean")
                 key = rd["key"]
                 where = f"{rel}#{key}"
                 if not (isinstance(key, str) and READING_KEY_RE.match(key) and len(key) <= 100):
@@ -993,8 +996,9 @@ def print_placement_vectors(data: dict) -> None:
         ("V3 short 20 days", d(2026, 10, 1), d(2026, 10, 20)),
         ("V4 5 days", d(2026, 10, 1), d(2026, 10, 5)),
         ("V5 92 days", d(2026, 10, 1), d(2026, 12, 31)),
-        ("V6 61 days", d(2026, 10, 1), d(2026, 11, 30)),
+        ("V6 62 days, compressed", d(2026, 10, 1), d(2026, 12, 1)),
         ("V7 target == today", d(2026, 10, 1), d(2026, 10, 1)),
+        ("V8 63 days = 9 x minDays, sequential", d(2026, 10, 1), d(2026, 12, 2)),
     ]
     for name, today, target in cases:
         print(f"\n### {name}: today={today} targetCompletionDate={target}")

@@ -142,6 +142,9 @@ class ProfileServiceIntegrationTest extends ApiTestSupport {
         api.patch(TestUser.owner(), ME, Map.of("role", "ADMIN", "version", 0))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
+        api.patch(TestUser.owner(), ME, Map.of("experienceProfile", "OTHER", "version", 0))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
     }
 
     @Test

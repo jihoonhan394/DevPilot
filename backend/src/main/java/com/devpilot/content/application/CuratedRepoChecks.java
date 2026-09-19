@@ -13,7 +13,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * CV-80 ~ CV-87 (curated repo·reading, docs/19 §3.8·§4.1). reading 등록({@code
- * CuratedReadingRegistry})은 S3(BL-CNT-15)이고 S1은 검증만 한다. 서버는 저장소를 fetch하지 않는다.
+ * CuratedReadingRegistry})은 S3(BL-CNT-15)이고 지금은 검증만 한다. 서버는 저장소를 fetch하지 않는다.
  */
 final class CuratedRepoChecks {
 
@@ -45,6 +45,20 @@ final class CuratedRepoChecks {
                     "estimatedMinutes",
                     "question",
                     "lookFor");
+
+    /** 선택 필드 {@code retired}(boolean)까지. CV-83·CV-87 은퇴 규칙은 S3(BL-CNT-16)에 붙는다. */
+    private static final Set<String> READING_ALLOWED_KEYS =
+            Set.of(
+                    "key",
+                    "repo",
+                    "path",
+                    "lines",
+                    "skillCodes",
+                    "estimatedMinutes",
+                    "question",
+                    "lookFor",
+                    "retired");
+
     private static final int MIN_READINGS_PER_REPO = 3;
     private static final int MAX_READINGS_PER_REPO = 5;
 
@@ -141,11 +155,14 @@ final class CuratedRepoChecks {
             Object value,
             Set<String> readingKeys,
             Map<String, Integer> readingCounts) {
-        if (!RawYaml.checkKeys(
-                value, READING_KEYS, READING_KEYS, context, file + "#readings[" + index + "]")) {
+        String position = file + "#readings[" + index + "]";
+        if (!RawYaml.checkKeys(value, READING_ALLOWED_KEYS, READING_KEYS, context, position)) {
             return;
         }
         Map<String, Object> reading = RawYaml.asMap(value);
+        if (reading.containsKey("retired") && !(reading.get("retired") instanceof Boolean)) {
+            context.error("CV-03", position, "retired must be a boolean");
+        }
         String key = String.valueOf(reading.get("key"));
         String where = file + "#" + key;
         if (!(READING_KEY.matcher(key).matches() && key.length() <= 100)) {
