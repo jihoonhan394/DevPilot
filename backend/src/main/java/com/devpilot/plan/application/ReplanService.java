@@ -9,6 +9,7 @@ import com.devpilot.common.math.FixedPointMath;
 import com.devpilot.common.security.CurrentUser;
 import com.devpilot.common.time.PlanDayCalculator;
 import com.devpilot.goal.application.LearningGoalQueryService;
+import com.devpilot.integration.ai.masking.SecretMasker;
 import com.devpilot.plan.application.ReplanPreviewResult.DeferSuggestionView;
 import com.devpilot.plan.application.ReplanPreviewResult.ExpansionSuggestionView;
 import com.devpilot.plan.application.ReplanPreviewResult.RiskEstimateView;
@@ -50,7 +51,8 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code @Version} 충돌 또는 unique 위반으로 409가 된다(AC-24). 목표 조정 4종(defer·축소·복원·상향)을 적용하고, {@code
  * PLAN_REPLANNED} 이벤트와 새 plan 기준 오늘 스냅샷을 남긴다. 미리보기는 같은 검사·계산을 하고 저장하지 않는다.
  *
- * <p>{@code reason}·milestone 텍스트 마스킹(docs/05 §1.11)은 {@code SecretMasker}가 생기는 S3(BL-AIP-09)에 붙는다.
+ * <p>{@code reason}과 milestone {@code title}·{@code description}은 첫 단계에서 마스킹한다(docs/05 §1.11, 감사
+ * source {@code LEARNING_PLAN}). preview도 같은 입력이므로 같은 422를 미리 돌려준다.
  */
 @Service
 public class ReplanService {
@@ -58,12 +60,16 @@ public class ReplanService {
     private static final int MAX_YEARS_AHEAD = 3;
     private static final int MAX_YEARS_BEHIND = 1;
 
+    /** {@code SECRET_BLOCKED} 감사 source (docs/07 §6.3). */
+    static final String MASKING_SOURCE = "LEARNING_PLAN";
+
     private final LearningPlanRepository learningPlanRepository;
     private final SkillCatalogQueryService skillCatalogQueryService;
     private final PlanQueryService planQueryService;
     private final LearningGoalQueryService learningGoalQueryService;
     private final StudyBudgetService studyBudgetService;
     private final ReplanEventRecorder replanEventRecorder;
+    private final SecretMasker secretMasker;
     private final Clock clock;
 
     ReplanService(
@@ -73,6 +79,7 @@ public class ReplanService {
             LearningGoalQueryService learningGoalQueryService,
             StudyBudgetService studyBudgetService,
             ReplanEventRecorder replanEventRecorder,
+            SecretMasker secretMasker,
             Clock clock) {
         this.learningPlanRepository = learningPlanRepository;
         this.skillCatalogQueryService = skillCatalogQueryService;
@@ -80,12 +87,14 @@ public class ReplanService {
         this.learningGoalQueryService = learningGoalQueryService;
         this.studyBudgetService = studyBudgetService;
         this.replanEventRecorder = replanEventRecorder;
+        this.secretMasker = secretMasker;
         this.clock = clock;
     }
 
     /** replan 확정 (docs/05 §7.8). */
     @Transactional
-    public ReplanResult replan(CurrentUser user, UUID planId, ReplanCommand command) {
+    public ReplanResult replan(CurrentUser user, UUID planId, ReplanCommand request) {
+        ReplanCommand command = masked(user.userId(), request);
         LearningPlan previous = activePlan(user.userId(), planId, command.version());
         Instant now = clock.instant();
         LocalDate today = PlanDayCalculator.planDate(now, user.zoneId(), user.dayStartHour());
@@ -136,7 +145,8 @@ public class ReplanService {
      * LEARNING_GOAL_NOT_FOUND}. 아무것도 저장하지 않는다.
      */
     @Transactional(readOnly = true)
-    public ReplanPreviewResult preview(CurrentUser user, UUID planId, ReplanCommand command) {
+    public ReplanPreviewResult preview(CurrentUser user, UUID planId, ReplanCommand request) {
+        ReplanCommand command = masked(user.userId(), request);
         LearningPlan plan = activePlan(user.userId(), planId, command.version());
         LocalDate today =
                 PlanDayCalculator.planDate(clock.instant(), user.zoneId(), user.dayStartHour());
@@ -150,6 +160,33 @@ public class ReplanService {
                 new ReplanSuggestionPolicy(studyBudgetService.riskEvaluator())
                         .suggest(evaluation.items(), evaluation.budget().effectiveMinutes());
         return toPreview(plan.getId(), today, evaluation, suggestions);
+    }
+
+    /** 자유 텍스트 마스킹 (docs/05 §1.11). private key가 있으면 422, 아무것도 읽거나 바꾸기 전이다. */
+    private ReplanCommand masked(UUID userId, ReplanCommand command) {
+        List<ReplanCommand.MilestoneInput> milestones = new ArrayList<>();
+        for (ReplanCommand.MilestoneInput input : command.milestones()) {
+            milestones.add(
+                    new ReplanCommand.MilestoneInput(
+                            input.id(),
+                            secretMasker.maskOrReject(userId, MASKING_SOURCE, input.title()),
+                            secretMasker.maskOrRejectNullable(
+                                    userId, MASKING_SOURCE, input.description()),
+                            input.startDate(),
+                            input.endDate(),
+                            input.priority(),
+                            input.status(),
+                            input.sortOrder(),
+                            input.skillCodes()));
+        }
+        return new ReplanCommand(
+                secretMasker.maskOrRejectNullable(userId, MASKING_SOURCE, command.reason()),
+                command.version(),
+                milestones,
+                command.acceptedDeferrals(),
+                command.acceptedTargetReductions(),
+                command.restoredDeferrals(),
+                command.acceptedTargetRaises());
     }
 
     private LearningPlan activePlan(UUID userId, UUID planId, long version) {

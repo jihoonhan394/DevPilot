@@ -9,6 +9,7 @@ import com.devpilot.common.error.NotFoundException;
 import com.devpilot.common.math.FixedPointMath;
 import com.devpilot.common.security.CurrentUser;
 import com.devpilot.common.time.PlanDayCalculator;
+import com.devpilot.integration.ai.masking.SecretMasker;
 import com.devpilot.learning.application.LearningEventRecorder.NewLearningEvent;
 import com.devpilot.learning.application.SessionTaskPort.SessionTask;
 import com.devpilot.learning.domain.EventSourceType;
@@ -33,7 +34,8 @@ import org.springframework.transaction.annotation.Transactional;
  * 학습 세션 시작·완료·중단 (docs/05 §9.1~§9.3, BL-TDY-10). 사용자당 {@code IN_PROGRESS}는 1개다(I-05): 새 세션을 시작하면 이전
  * 세션을 {@code ABANDONED}로 바꾸고 flush한 뒤 INSERT한다. {@code SESSION_*} 이벤트를 남긴다(docs/04 §6).
  *
- * <p>{@code selfReflection} 마스킹(docs/05 §1.11)은 {@code SecretMasker}가 생기는 S3(BL-AIP-09)에 붙는다.
+ * <p>{@code selfReflection}은 첫 단계에서 마스킹한다(docs/05 §1.11). private key가 있으면 422 {@code
+ * SECRET_DETECTED_BLOCKED}이고 아무것도 바꾸지 않는다.
  */
 @Service
 public class LearningSessionService {
@@ -46,16 +48,19 @@ public class LearningSessionService {
     private final LearningSessionRepository learningSessionRepository;
     private final LearningEventRecorder learningEventRecorder;
     private final SessionTaskPort sessionTaskPort;
+    private final SecretMasker secretMasker;
     private final Clock clock;
 
     public LearningSessionService(
             LearningSessionRepository learningSessionRepository,
             LearningEventRecorder learningEventRecorder,
             SessionTaskPort sessionTaskPort,
+            SecretMasker secretMasker,
             Clock clock) {
         this.learningSessionRepository = learningSessionRepository;
         this.learningEventRecorder = learningEventRecorder;
         this.sessionTaskPort = sessionTaskPort;
+        this.secretMasker = secretMasker;
         this.clock = clock;
     }
 
@@ -108,6 +113,8 @@ public class LearningSessionService {
     @Transactional
     public SessionView complete(
             UUID userId, UUID sessionId, int actualMinutes, @Nullable String selfReflection) {
+        String maskedReflection =
+                secretMasker.maskOrRejectNullable(userId, "LEARNING_SESSION", selfReflection);
         LearningSession session = find(userId, sessionId);
         if (!session.isInProgress()) {
             throw new ConflictException(
@@ -126,7 +133,7 @@ public class LearningSessionService {
                                     FieldErrorCodes.ACTUAL_MINUTES_EXCEEDS_ELAPSED)));
         }
         String reflection =
-                selfReflection == null || selfReflection.isEmpty() ? null : selfReflection;
+                maskedReflection == null || maskedReflection.isEmpty() ? null : maskedReflection;
         session.complete(actualMinutes, reflection, now);
         UUID taskId = session.getLearningTaskId();
         UUID skillId =

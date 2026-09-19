@@ -4,6 +4,7 @@ import com.devpilot.common.error.ConflictException;
 import com.devpilot.common.error.ErrorCode;
 import com.devpilot.common.error.NotFoundException;
 import com.devpilot.goal.domain.LearningGoalDatesChanged;
+import com.devpilot.integration.ai.masking.SecretMasker;
 import com.devpilot.plan.domain.LearningPlan;
 import com.devpilot.plan.domain.MilestoneStatus;
 import com.devpilot.plan.domain.PlanMilestone;
@@ -44,16 +45,19 @@ public class PlanCommandService {
     private final PlanTemplateRegistry planTemplateRegistry;
     private final SkillCatalogQueryService skillCatalogQueryService;
     private final PlanQueryService planQueryService;
+    private final SecretMasker secretMasker;
 
     public PlanCommandService(
             LearningPlanRepository learningPlanRepository,
             PlanTemplateRegistry planTemplateRegistry,
             SkillCatalogQueryService skillCatalogQueryService,
-            PlanQueryService planQueryService) {
+            PlanQueryService planQueryService,
+            SecretMasker secretMasker) {
         this.learningPlanRepository = learningPlanRepository;
         this.planTemplateRegistry = planTemplateRegistry;
         this.skillCatalogQueryService = skillCatalogQueryService;
         this.planQueryService = planQueryService;
+        this.secretMasker = secretMasker;
     }
 
     /**
@@ -97,13 +101,16 @@ public class PlanCommandService {
     }
 
     /**
-     * milestone in-place 수정 (docs/05 §7.6). plan 조회(404 {@code PLAN_NOT_FOUND}) → ACTIVE(409 {@code
-     * PLAN_NOT_ACTIVE}) → milestone 조회(404 {@code RESOURCE_NOT_FOUND}) → version(409). plan의
-     * version·planVersion은 바뀌지 않는다.
+     * milestone in-place 수정 (docs/05 §7.6). {@code description} 마스킹(422, docs/05 §1.11) → plan
+     * 조회(404 {@code PLAN_NOT_FOUND}) → ACTIVE(409 {@code PLAN_NOT_ACTIVE}) → milestone 조회(404
+     * {@code RESOURCE_NOT_FOUND}) → version(409). plan의 version·planVersion은 바뀌지 않는다.
      */
     @Transactional
     public MilestoneView updateMilestone(
             UUID userId, UUID planId, UUID milestoneId, MilestonePatchCommand command) {
+        String description =
+                secretMasker.maskOrRejectNullable(
+                        userId, ReplanService.MASKING_SOURCE, command.description());
         LearningPlan plan =
                 learningPlanRepository
                         .findByIdAndUserId(planId, userId)
@@ -122,7 +129,7 @@ public class PlanCommandService {
             throw new ConflictException(
                     ErrorCode.CONCURRENT_MODIFICATION, "milestone version does not match");
         }
-        if (milestone.patch(command.status(), command.description(), command.sortOrder())) {
+        if (milestone.patch(command.status(), description, command.sortOrder())) {
             learningPlanRepository.flush();
         }
         return PlanQueryService.toMilestoneView(

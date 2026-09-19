@@ -9,6 +9,7 @@ import com.devpilot.common.security.CurrentUser;
 import com.devpilot.common.time.PlanDayCalculator;
 import com.devpilot.goal.application.LearningGoalQueryService;
 import com.devpilot.goal.application.LearningGoalView;
+import com.devpilot.integration.ai.masking.SecretMasker;
 import com.devpilot.learning.application.LearningEventRecorder;
 import com.devpilot.learning.application.LearningEventRecorder.NewLearningEvent;
 import com.devpilot.learning.domain.EvaluatedOutcome;
@@ -44,8 +45,8 @@ import org.springframework.transaction.annotation.Transactional;
  * LEECH_DETECTED})를 처리한다.
  *
  * <p>AI 평가({@code evaluate = true}, BL-MEM-09)는 S3다. S2는 평가 대상이면 {@code evaluationSkippedReason =
- * AI_UNAVAILABLE}, 아니면 null이고 결과는 항상 {@code NOT_EVALUATED}다. {@code answerText} 마스킹(docs/05 §1.11)은
- * {@code SecretMasker}가 생기는 S3(BL-AIP-09)에 붙는다.
+ * AI_UNAVAILABLE}, 아니면 null이고 결과는 항상 {@code NOT_EVALUATED}다. {@code answerText}는 첫 단계에서
+ * 마스킹하고(docs/05 §1.11) 마스킹본만 저장한다.
  */
 @Service
 public class ReviewService {
@@ -54,6 +55,7 @@ public class ReviewService {
     private final ReviewAnswerRepository reviewAnswerRepository;
     private final LearningEventRecorder learningEventRecorder;
     private final LearningGoalQueryService learningGoalQueryService;
+    private final SecretMasker secretMasker;
     private final Clock clock;
     private final FinalRatingPolicy finalRatingPolicy = new FinalRatingPolicy();
     private final RuleBasedV1Scheduler scheduler;
@@ -64,23 +66,28 @@ public class ReviewService {
             ReviewAnswerRepository reviewAnswerRepository,
             LearningEventRecorder learningEventRecorder,
             LearningGoalQueryService learningGoalQueryService,
+            SecretMasker secretMasker,
             Clock clock,
             DevPilotProperties properties) {
         this.reviewItemRepository = reviewItemRepository;
         this.reviewAnswerRepository = reviewAnswerRepository;
         this.learningEventRecorder = learningEventRecorder;
         this.learningGoalQueryService = learningGoalQueryService;
+        this.secretMasker = secretMasker;
         this.clock = clock;
         this.scheduler = new RuleBasedV1Scheduler(ReviewRuleSettings.scheduler(properties));
         this.suspendAfterFailures = properties.review().suspendAfterFailures();
     }
 
     /**
-     * 답변 처리. 404 → {@code ACTIVE}가 아니면 409 → 아직 due가 아니면 409 {@code INVALID_STATE_TRANSITION} →
-     * {@code wasVariant} 불일치면 409 {@code CONCURRENT_MODIFICATION}.
+     * 답변 처리. 마스킹(422) → 404 → {@code ACTIVE}가 아니면 409 → 아직 due가 아니면 409 {@code
+     * INVALID_STATE_TRANSITION} → {@code wasVariant} 불일치면 409 {@code CONCURRENT_MODIFICATION}.
      */
     @Transactional
     public ReviewAnswerResult answer(CurrentUser user, UUID reviewItemId, AnswerCommand command) {
+        String answerText =
+                secretMasker.maskOrRejectNullable(
+                        user.userId(), "REVIEW_ANSWER", command.answerText());
         ReviewItem item =
                 reviewItemRepository
                         .findByIdAndUserId(reviewItemId, user.userId())
@@ -102,7 +109,6 @@ public class ReviewService {
             throw new ConflictException(
                     ErrorCode.CONCURRENT_MODIFICATION, "presented question changed");
         }
-        String answerText = command.answerText();
         boolean evaluationTarget =
                 command.evaluate()
                         && answerText != null
@@ -132,7 +138,7 @@ public class ReviewService {
                                         today,
                                         command.wasVariant(),
                                         item.getPrompt(),
-                                        command.answerText(),
+                                        answerText,
                                         command.selfRating(),
                                         outcome,
                                         null,

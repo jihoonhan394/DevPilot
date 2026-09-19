@@ -92,7 +92,7 @@ Base package: `com.devpilot`
 | `learning` | `common`, `integration.ai` |
 | `skill` | `common`, `learning` |
 | `goal` | `common`, `skill` |
-| `plan` | `common`, `goal`, `skill` |
+| `plan` | `common`, `goal`, `skill`, `integration.ai` (`SecretMasker` — replan·milestone 자유 텍스트) |
 | `review` | `common`, `skill`, `learning`, `goal` (horizon), `plan` (skill priority), `integration.ai` |
 | `training` | `common`, `skill`, `learning`, `review`, `integration.ai` |
 | `today` | `common`, `plan`, `skill`, `review`, `learning`, `training`, `goal` (focus skill → `projectNeed`, `06` §5.4), `project` (PROJECT_TASK 대상), `integration.ai` (`AiStatus`). `CuratedReadingRegistry`는 today 모듈이 갖고 content 모듈이 기동 시 등록한다(`SeedCardRegistry`와 같은 방식) |
@@ -101,7 +101,7 @@ Base package: `com.devpilot`
 | `radar` | `common`, `skill`, `evidence`, `goal` (target role), `plan` (활성 plan의 `plan_skill_target`, `06` §13), `integration.ai` |
 | `onboarding` | `common`, `user`, `goal`, `plan`, `skill`, `review` (seed 카드 배정), `training`, `project` (첫 사이드 프로젝트 생성) |
 | `dashboard` | `common`, `user`, `plan`, `skill`, `review`, `today`, `learning`, `coach`, `evidence` (`MetricsCalculator` — 약한 thinking 축), `integration.ai` |
-| `project` | `common` |
+| `project` | `common`, `integration.ai` (`SecretMasker` — 사이드 프로젝트 `name`·`description`·`stack`) |
 | `rubberduck` | `common`, `integration.ai`, `skill`(대상 skill), `learning`(학습 세션 id, `RUBBER_DUCK_COMPLETED` 기록, `hintDisclosed` 조회), `review`(gap → 복습 카드, `REVIEW_ITEM` 대상), `training`(`CHALLENGE` 대상), `today`(`CODE_READING` 대상 task·RC-1 완료, reading 조회), `project`(`PROJECT_WORK` 대상). **다른 모듈은 rubberduck에 의존하지 않는다**(account 모듈의 export 집계만 예외) |
 | `content` | `common`, `skill`, `plan`, `review`, `training`, `today` (`CuratedReadingRegistry` 등록) |
 | `account` | `common`, `user`, `goal`, `plan`, `skill`, `learning`, `review`, `today`, `training`, `coach`, `evidence`, `radar`, `project`, `rubberduck` (데이터 export 전용 집계) |
@@ -217,7 +217,7 @@ com.devpilot.<module>
 | `integration.ai.api.AiUsageSnapshot`, `AiBudgetDecision`, `AiConcurrencyReservation` | 도메인 모듈에 노출되는 불변 record: 사용량 요약(`GET /me`), 예산 판정, 동시 실행 예약(`17` §8) |
 | `integration.ai.api.output` (패키지) | operation 출력 record 11종(`CoachReviewOutput` 등 9종 + 러버덕 `RubberDuckTurnOutput`·`RubberDuckSummaryOutput`, `17` §4). 도메인 모듈은 이 record만 받는다 |
 | `integration.ai.deepseek.DeepSeekAiProvider` | Spring `RestClient`로 `POST /responses` 호출(`instructions`, `input`, `text.format json_schema`, `max_output_tokens`, `thinking`, `reasoning_effort`, `store:false`), 응답 `output[]`에서 `type=message`의 `output_text` 추출, 종료 상태·HTTP 오류 → `AiCallStatus` 매핑, `Retry-After` 대기(`17` §5) |
-| `integration.ai.deepseek.DeepSeekBalanceClient` | `GET /user/balance` 조회 (`AiBalanceCheckJob`, 402 처리) |
+| `AiProvider.checkBalance()` (`DeepSeekAiProvider` 구현) | `GET /user/balance` 조회 (`AiBalanceCheckJob`). 별도 client 클래스를 두지 않고 provider가 같은 base URL·인증 헤더로 조회한다. fake는 `setBalance` hook 값, disabled는 `unsupported`(job no-op) |
 | `integration.ai.fake.FakeAiProvider` | fixture 기반 응답 (`local`, `test`, `demo`). `@ConditionalOnProperty(devpilot.ai.provider=fake)` |
 | `integration.ai.disabled.DisabledAiProvider` | 항상 `AI_UNAVAILABLE` |
 | `integration.ai.prompt.PromptRegistry` | `classpath:prompts/<id>/<version>/` 로딩, 활성 버전 선택, 템플릿 치환 |
@@ -416,7 +416,7 @@ IdempotencyService.execute(userId, key, method, path, requestHash, action):
 | `RetentionCleanupJob` | common | `0 30 18 * * *` | `idempotency_record` 만료 삭제(직접) + `RetentionCleanupTarget` 구현 호출: `ai_call_log` 180일 초과 삭제(`integration.ai`), `requirement_doc.source_text` 180일 purge(`radar`). 대상 모듈을 직접 의존하지 않는다 (§2.2) |
 | `AccountDeletionJob` | user | `0 */5 * * * *` | `DELETION_REQUESTED` 사용자 삭제 (cascade) + 감사 로그 |
 | `OrphanAsyncTaskJob` | common | 기동 시 1회 + `0 */10 * * * *` | `OrphanAsyncTaskSweeper` 구현 호출: 10분 넘게 갱신되지 않은 `PENDING`/`RUNNING` 작업(coach review, challenge 생성, submission 평가, review variant, evidence 초안, 요구사항 분석) → `FAILED(INTERRUPTED)`. 대상 모듈을 직접 의존하지 않는다 (§2.2) |
-| `AiBalanceCheckJob` | integration.ai | `0 15 * * * *` (매시 15분, `balance-check-cron`) | `provider=deepseek`일 때만. `GET /user/balance` → 잔액 < `min-balance-usd`이면 `AiBalanceMonitor`를 `BALANCE_EXHAUSTED`로, 이상이면 해제. 상태가 바뀔 때 감사 이벤트 `AI_BALANCE_LOW`/`AI_BALANCE_RESTORED` + WARN/INFO. 조회 실패는 상태를 바꾸지 않는다 (S3) |
+| `AiBalanceCheckJob` | integration.ai | `0 15 * * * *` (매시 15분, `balance-check-cron`) | `provider=deepseek`일 때만. `GET /user/balance` → 잔액 < `min-balance-usd`이면 `AiBalanceMonitor`를 `BALANCE_EXHAUSTED`로, 이상이면 해제. 소진으로 바뀔 때 감사 이벤트 `AI_BALANCE_LOW` + ERROR 로그, 해제될 때 INFO 로그만(감사 이벤트 없음, `17` §8.7). 조회 실패는 상태를 바꾸지 않는다 (S3) |
 | `StaleRubberDuckJob` | rubberduck | `0 25 * * * *` (매시 25분) | `status = IN_PROGRESS`이고 `started_at < now − devpilot.rubberduck.stale-after`(24h)인 러버덕 세션 → `ABANDONED`, `completed_at = now`. 정리 AI를 부르지 않고 복습 카드·학습 이벤트도 만들지 않는다(`05` §9.5). 부분 인덱스 `idx_rubber_duck_session_in_progress`를 쓴다 |
 
 - `@EnableScheduling`을 쓰고 단일 인스턴스를 전제로 한다. 인스턴스를 늘리면 분산 락을 도입한다(현재 범위 밖).
