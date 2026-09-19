@@ -134,3 +134,43 @@ enum CodeLanguage {
   /// Wire value, also shown as the dropdown label (identifiers stay in English, docs/02 §9).
   String get wireName => _$CodeLanguageEnumMap[this]!;
 }
+
+/// Kinds of `learning_event` rows (docs/04 §6), shown as the evidence behind a skill level change
+/// (docs/02 SCR-SKILL-DETAIL).
+enum LearningEventType {
+  @JsonValue('SESSION_STARTED')
+  sessionStarted,
+  @JsonValue('SESSION_COMPLETED')
+  sessionCompleted,
+  @JsonValue('SELF_EXPLANATION_SUBMITTED')
+  selfExplanationSubmitted,
+  @JsonValue('SELF_EXPLANATION_SKIPPED')
+  selfExplanationSkipped,
+  @JsonValue('HINT_DISCLOSED')
+  hintDisclosed,
+  @JsonValue('CHALLENGE_STARTED')
+  challengeStarted,
+  @JsonValue('CHALLENGE_SUBMITTED')
+  challengeSubmitted,
+  @JsonValue('CHALLENGE_EVALUATED')
+  challengeEvaluated,
+  @JsonValue('REVIEW_ANSWERED')
+  reviewAnswered,
+  @JsonValue('LEECH_DETECTED')
+  leechDetected,
+  @JsonValue('RUBBER_DUCK_COMPLETED')
+  rubberDuckCompleted,
+  @JsonValue('COACH_REVIEW_COMPLETED')
+  coachReviewCompleted,
+  @JsonValue('COACH_FINDING_CLOSED')
+  coachFindingClosed,
+  @JsonValue('DIAGNOSTIC_PASSED')
+  diagnosticPassed,
+  @JsonValue('DIAGNOSTIC_FAILED')
+  diagnosticFailed,
+  @JsonValue('EVIDENCE_ACCEPTED')
+  evidenceAccepted,
+  @JsonValue('PLAN_REPLANNED')
+  planReplanned,
+  unknown,
+}

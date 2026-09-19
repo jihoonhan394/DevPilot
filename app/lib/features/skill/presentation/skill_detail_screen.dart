@@ -8,13 +8,15 @@ import 'package:devpilot_app/core/widgets/screen_body.dart';
 import 'package:devpilot_app/core/widgets/skeleton.dart';
 import 'package:devpilot_app/features/skill/data/skill_repository.dart';
 import 'package:devpilot_app/features/skill/domain/skill_overview.dart';
+import 'package:devpilot_app/features/skill/presentation/skill_detail_actions.dart';
+import 'package:devpilot_app/features/skill/presentation/skill_history_section.dart';
 import 'package:devpilot_app/features/skill/presentation/skill_tree_controller.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// SCR-SKILL-DETAIL, S1 part: header, axis table and self-assessment line (docs/02 §3.10).
-/// The level history (S3) and the review/practice/explain buttons (S2/S3) come later.
+/// SCR-SKILL-DETAIL: header, axis table, self-assessment line, the buttons to this skill's cards,
+/// challenges and the rubber duck, and the level change history (docs/02 §3.10).
 class SkillDetailScreen extends ConsumerWidget {
   const SkillDetailScreen({super.key, required this.skillId});
 
@@ -89,6 +91,14 @@ class _SkillDetail extends StatelessWidget {
           ),
         if (state != null && !state.selfAssessmentActive)
           Text(l10n.skillDetailSelfInactive, style: textTheme.bodySmall),
+        const SizedBox(height: AppSpacing.lg),
+        SkillDetailActions(
+          skillId: row.node.id,
+          skillCode: row.node.code,
+          skillName: row.node.name,
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        SkillHistorySection(skillId: row.node.id),
       ],
     );
   }

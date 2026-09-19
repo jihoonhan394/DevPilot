@@ -1,8 +1,10 @@
 import 'package:devpilot_app/core/api/api_client.dart';
 import 'package:devpilot_app/core/api/api_enums.dart';
+import 'package:devpilot_app/core/api/cursor_page.dart';
 import 'package:devpilot_app/core/auth/auth_controller.dart';
 import 'package:devpilot_app/core/l10n/enum_labels.dart';
 import 'package:devpilot_app/core/widgets/skill_multi_picker.dart';
+import 'package:devpilot_app/features/skill/data/skill_history_models.dart';
 import 'package:devpilot_app/features/skill/data/skill_models.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +16,9 @@ abstract interface class SkillRepository {
 
   /// `GET /skills/me`.
   Future<UserSkillStatesResponse> fetchMyStates();
+
+  /// `GET /skills/{skillId}/history?cursor=` — level changes, newest first.
+  Future<CursorPage<SkillStateChangeView>> fetchHistory({required String skillId, String? cursor});
 }
 
 final class ApiSkillRepository implements SkillRepository {
@@ -32,6 +37,21 @@ final class ApiSkillRepository implements SkillRepository {
   @override
   Future<UserSkillStatesResponse> fetchMyStates() async =>
       UserSkillStatesResponse.fromJson(await _apiClient.getJson('/skills/me'));
+
+  @override
+  Future<CursorPage<SkillStateChangeView>> fetchHistory({
+    required String skillId,
+    String? cursor,
+  }) async {
+    final json = await _apiClient.getJson(
+      '/skills/$skillId/history',
+      queryParameters: {'cursor': ?cursor},
+    );
+    return CursorPage.fromJson(
+      json,
+      (item) => SkillStateChangeView.fromJson(item! as Map<String, Object?>),
+    );
+  }
 }
 
 final skillRepositoryProvider = Provider<SkillRepository>(

@@ -141,6 +141,29 @@ extension ReadingFeedbackLabel on ReadingFeedback {
   };
 }
 
+extension LearningEventTypeLabel on LearningEventType {
+  String label(AppLocalizations l10n) => switch (this) {
+    LearningEventType.sessionStarted => l10n.enumLearningEventSessionStarted,
+    LearningEventType.sessionCompleted => l10n.enumLearningEventSessionCompleted,
+    LearningEventType.selfExplanationSubmitted => l10n.enumLearningEventExplanationSubmitted,
+    LearningEventType.selfExplanationSkipped => l10n.enumLearningEventExplanationSkipped,
+    LearningEventType.hintDisclosed => l10n.enumLearningEventHintDisclosed,
+    LearningEventType.challengeStarted => l10n.enumLearningEventChallengeStarted,
+    LearningEventType.challengeSubmitted => l10n.enumLearningEventChallengeSubmitted,
+    LearningEventType.challengeEvaluated => l10n.enumLearningEventChallengeEvaluated,
+    LearningEventType.reviewAnswered => l10n.enumLearningEventReviewAnswered,
+    LearningEventType.leechDetected => l10n.enumLearningEventLeechDetected,
+    LearningEventType.rubberDuckCompleted => l10n.enumLearningEventRubberDuckCompleted,
+    LearningEventType.coachReviewCompleted => l10n.enumLearningEventCoachReviewCompleted,
+    LearningEventType.coachFindingClosed => l10n.enumLearningEventCoachFindingClosed,
+    LearningEventType.diagnosticPassed => l10n.enumLearningEventDiagnosticPassed,
+    LearningEventType.diagnosticFailed => l10n.enumLearningEventDiagnosticFailed,
+    LearningEventType.evidenceAccepted => l10n.enumLearningEventEvidenceAccepted,
+    LearningEventType.planReplanned => l10n.enumLearningEventPlanReplanned,
+    LearningEventType.unknown => l10n.enumUnknown,
+  };
+}
+
 /// `SkillLevel` label for an ordinal 0~5 (docs/04 §3, docs/02 §3.1).
 String skillLevelLabel(int level, AppLocalizations l10n) => switch (level) {
   0 => l10n.enumSkillLevel0,

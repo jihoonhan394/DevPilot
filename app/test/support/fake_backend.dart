@@ -14,6 +14,7 @@ import 'package:devpilot_app/features/project/data/side_project_repository.dart'
 import 'package:devpilot_app/features/settings/data/me_repository.dart';
 import 'package:devpilot_app/features/settings/data/me_response.dart';
 import 'package:devpilot_app/features/settings/data/update_me_request.dart';
+import 'package:devpilot_app/features/skill/data/skill_history_models.dart';
 import 'package:devpilot_app/features/skill/data/skill_models.dart';
 import 'package:devpilot_app/features/skill/data/skill_repository.dart';
 import 'package:devpilot_app/features/today/data/today_models.dart';
@@ -24,6 +25,7 @@ import 'learning_fixtures.dart';
 import 'reading_fakes.dart';
 import 'review_item_fakes.dart';
 import 'rubber_duck_fakes.dart';
+import 'skill_history_fakes.dart';
 import 'training_fakes.dart';
 
 export 'learning_fakes.dart';
@@ -295,6 +297,12 @@ final class FakeLearningGoalRepository implements LearningGoalRepository {
 final class FakeSkillRepository implements SkillRepository {
   var treeFetchCount = 0;
 
+  /// Level changes of every skill, served two per page.
+  List<SkillStateChangeView> history = testSkillHistory();
+  final historyQueries = <({String skillId, String? cursor})>[];
+  final historyFailures = <ApiException>[];
+  static const historyPageSize = 2;
+
   @override
   Future<SkillTreeResponse> fetchTree({TargetRole role = TargetRole.javaBackend}) async {
     treeFetchCount++;
@@ -303,6 +311,24 @@ final class FakeSkillRepository implements SkillRepository {
 
   @override
   Future<UserSkillStatesResponse> fetchMyStates() async => testSkillStates();
+
+  @override
+  Future<CursorPage<SkillStateChangeView>> fetchHistory({
+    required String skillId,
+    String? cursor,
+  }) async {
+    historyQueries.add((skillId: skillId, cursor: cursor));
+    final failure = historyFailures.isEmpty ? null : historyFailures.removeAt(0);
+    if (failure != null) {
+      throw failure;
+    }
+    final from = cursor == null ? 0 : int.parse(cursor);
+    final to = (from + historyPageSize).clamp(0, history.length);
+    return CursorPage(
+      items: history.sublist(from.clamp(0, history.length), to),
+      nextCursor: to < history.length ? '$to' : null,
+    );
+  }
 }
 
 final class FakeSideProjectRepository implements SideProjectRepository {
