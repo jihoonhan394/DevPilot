@@ -1,11 +1,18 @@
 package com.devpilot.today.application;
 
+import com.devpilot.common.config.DevPilotProperties;
+import com.devpilot.common.time.PlanDayCalculator;
 import com.devpilot.integration.ai.api.AiStatus;
 import com.devpilot.integration.ai.budget.AiBudgetGuard;
 import com.devpilot.today.domain.CuratedReading;
+import com.devpilot.today.domain.TaskProposalPolicy.ChallengeOption;
 import com.devpilot.today.domain.TaskProposalPolicy.ReadingOption;
 import com.devpilot.today.infrastructure.LearningTaskRepository;
+import com.devpilot.training.application.ChallengeQueryService;
+import com.devpilot.training.application.ChallengeQueryService.ChallengeCandidate;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -34,48 +41,80 @@ class ProposalOptionCollector {
     private final AiBudgetGuard aiBudgetGuard;
     private final CuratedReadingRegistry curatedReadingRegistry;
     private final LearningTaskRepository learningTaskRepository;
+    private final ChallengeQueryService challengeQueryService;
+    private final int challengeExclusionDays;
 
     ProposalOptionCollector(
             AiBudgetGuard aiBudgetGuard,
             CuratedReadingRegistry curatedReadingRegistry,
-            LearningTaskRepository learningTaskRepository) {
+            LearningTaskRepository learningTaskRepository,
+            ChallengeQueryService challengeQueryService,
+            DevPilotProperties properties) {
         this.aiBudgetGuard = aiBudgetGuard;
         this.curatedReadingRegistry = curatedReadingRegistry;
         this.learningTaskRepository = learningTaskRepository;
+        this.challengeQueryService = challengeQueryService;
+        this.challengeExclusionDays = properties.planner().challengeRepeatExclusionDays();
     }
 
-    ProposalOptions collect(UUID userId, LocalDate today) {
+    ProposalOptions collect(UUID userId, LocalDate today, ZoneId zone, int dayStartHour) {
         AiStatus status = aiBudgetGuard.status();
         boolean aiAvailable = status != AiStatus.DISABLED && status != AiStatus.BALANCE_EXHAUSTED;
         if (!aiAvailable) {
-            return new ProposalOptions(false, List.of());
+            return new ProposalOptions(false, List.of(), List.of());
         }
         Set<String> excluded =
                 new HashSet<>(learningTaskRepository.findCompletedReadingKeys(userId));
         excluded.addAll(
                 learningTaskRepository.findProposedReadingKeys(
                         userId, today.minusDays(RECENT_PROPOSAL_DAYS - 1L), today));
-        List<CuratedReading> candidates =
+        List<CuratedReading> readings =
                 curatedReadingRegistry.active().stream()
                         .filter(reading -> !excluded.contains(reading.key()))
                         .sorted(Comparator.comparing(CuratedReading::key))
                         .toList();
-        return new ProposalOptions(true, candidates);
+        Instant recentSince =
+                PlanDayCalculator.planDayStart(
+                        today.minusDays(challengeExclusionDays - 1L), zone, dayStartHour);
+        return new ProposalOptions(
+                true, readings, challengeQueryService.practiceCandidates(userId, recentSince));
     }
 
-    /** 제안 입력. {@code candidates}는 key ASC. */
-    record ProposalOptions(boolean aiAvailable, List<CuratedReading> candidates) {
+    /** 제안 입력. {@code readings}는 key ASC. */
+    record ProposalOptions(
+            boolean aiAvailable,
+            List<CuratedReading> readings,
+            List<ChallengeCandidate> challenges) {
 
         ProposalOptions {
-            candidates = List.copyOf(candidates);
+            readings = List.copyOf(readings);
+            challenges = List.copyOf(challenges);
         }
 
-        /** 해당 skill code를 가진 후보 (key ASC). */
+        /** 해당 skill code를 가진 reading 후보 (key ASC). */
         List<ReadingOption> readingsFor(String skillCode) {
-            return candidates.stream()
+            return readings.stream()
                     .filter(reading -> reading.skillCodes().contains(skillCode))
                     .map(ProposalOptions::option)
                     .toList();
+        }
+
+        /** 해당 skill code를 가진 challenge 후보 (docs/06 §5.3 1번). */
+        List<ChallengeOption> challengesFor(String skillCode) {
+            return challenges.stream()
+                    .filter(challenge -> challenge.skillCodes().contains(skillCode))
+                    .map(ProposalOptions::option)
+                    .toList();
+        }
+
+        private static ChallengeOption option(ChallengeCandidate challenge) {
+            return new ChallengeOption(
+                    challenge.id(),
+                    challenge.seedKey(),
+                    challenge.title(),
+                    challenge.scenario(),
+                    challenge.difficulty(),
+                    challenge.estimatedMinutes());
         }
 
         private static ReadingOption option(CuratedReading reading) {

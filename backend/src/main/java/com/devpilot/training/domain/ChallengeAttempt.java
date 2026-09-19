@@ -22,8 +22,8 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Persistable;
 
 /**
- * 한 번의 풀이 (docs/04 §2 {@code challenge_attempt}). 상태 전이는 docs/04 §4.2다: {@code STARTED → SUBMITTED →
- * EVALUATED}, 재제출은 {@code EVALUATED → SUBMITTED}, 어디서든 {@code ABANDONED}.
+ * 한 번의 풀이 (docs/04 §2 {@code challenge_attempt}). 상태 전이는 docs/04 §4.2다: {@code STARTED → SUBMITTED
+ * → EVALUATED}, 재제출은 {@code EVALUATED → SUBMITTED}, 어디서든 {@code ABANDONED}.
  */
 @Entity
 @Table(name = "challenge_attempt")
@@ -61,7 +61,8 @@ public class ChallengeAttempt implements Persistable<UUID> {
     private @Nullable EvaluatedOutcome evaluatedOutcome;
 
     @Enumerated(EnumType.STRING)
-    @Column private @Nullable AttemptOutcome outcome;
+    @Column
+    private @Nullable AttemptOutcome outcome;
 
     @Column(name = "rubric_coverage_bp")
     private @Nullable Integer rubricCoverageBp;
@@ -102,14 +103,11 @@ public class ChallengeAttempt implements Persistable<UUID> {
     /** 포기한 attempt는 더 쓰지 않는다 (docs/05 §10.7·§10.8·§10.9 2단계). */
     public void requireNotAbandoned() {
         if (status == AttemptStatus.ABANDONED) {
-            throw new ConflictException(
-                    ErrorCode.INVALID_STATE_TRANSITION, "attempt is abandoned");
+            throw new ConflictException(ErrorCode.INVALID_STATE_TRANSITION, "attempt is abandoned");
         }
     }
 
-    /**
-     * 자기 설명 제출·건너뛰기 (docs/05 §10.7). {@code STARTED}이고 아직 기록이 없을 때만 허용한다 — 한 번 기록하면 바꾸지 않는다.
-     */
+    /** 자기 설명 제출·건너뛰기 (docs/05 §10.7). {@code STARTED}이고 아직 기록이 없을 때만 허용한다 — 한 번 기록하면 바꾸지 않는다. */
     public void recordSelfExplanation(@Nullable String maskedText, boolean skipped) {
         if (status != AttemptStatus.STARTED || hasSelfExplanationRecord()) {
             throw new ConflictException(
@@ -241,7 +239,9 @@ public class ChallengeAttempt implements Persistable<UUID> {
 
     @Override
     public boolean equals(Object other) {
-        return other instanceof ChallengeAttempt attempt && id != null && id.equals(attempt.getId());
+        return other instanceof ChallengeAttempt attempt
+                && id != null
+                && id.equals(attempt.getId());
     }
 
     @Override

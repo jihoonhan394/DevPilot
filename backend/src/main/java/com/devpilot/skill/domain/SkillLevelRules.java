@@ -19,8 +19,8 @@ import java.util.function.Predicate;
 import org.jspecify.annotations.Nullable;
 
 /**
- * skill 레벨 규칙 (docs/06 §7.1~§7.4, vector §7.6). 순수 규칙 클래스다(ARCH-12) — 입력은 60일 이벤트 payload와 현재
- * 레벨뿐이고 저장은 {@code SkillStateUpdater}가 한다.
+ * skill 레벨 규칙 (docs/06 §7.1~§7.4, vector §7.6). 순수 규칙 클래스다(ARCH-12) — 입력은 60일 이벤트 payload와 현재 레벨뿐이고
+ * 저장은 {@code SkillStateUpdater}가 한다.
  *
  * <pre>
  * 1. DIAGNOSTIC_* 이벤트면 §7.4를 적용하고 끝낸다 (1단계 제한·cooldown 없음)
@@ -91,11 +91,7 @@ public final class SkillLevelRules {
         addDiagnosticChange(
                 changes, SkillAxis.KNOWLEDGE, input.current().knowledge(), target, event);
         addDiagnosticChange(
-                changes,
-                SkillAxis.IMPLEMENTATION,
-                input.current().implementation(),
-                target,
-                event);
+                changes, SkillAxis.IMPLEMENTATION, input.current().implementation(), target, event);
         return new Outcome(changes, false, lastPracticedAt(events), evidenceCount(events));
     }
 
@@ -125,15 +121,19 @@ public final class SkillLevelRules {
         };
     }
 
-    /** {@code K_DOWN_RECALL_FAIL}: 가장 최근 {@code REVIEW_ANSWERED} 2개가 모두 AGAIN이고 최근 14 plan-day 안. */
+    /**
+     * {@code K_DOWN_RECALL_FAIL}: 가장 최근 {@code REVIEW_ANSWERED} 2개가 모두 AGAIN이고 최근 14 plan-day 안.
+     */
     private @Nullable LevelChange knowledgeDecline(RuleInput input) {
         int current = input.current().knowledge();
         if (current < 3) {
             return null;
         }
         List<RuleEvent> answers =
-                take(input.events(), event -> event.eventType()
-                        == LearningEventType.REVIEW_ANSWERED, 2);
+                take(
+                        input.events(),
+                        event -> event.eventType() == LearningEventType.REVIEW_ANSWERED,
+                        2);
         if (answers.size() < 2) {
             return null;
         }
@@ -196,8 +196,7 @@ public final class SkillLevelRules {
             }
             List<RuleEvent> latest = findings.subList(0, 3);
             boolean allMissed =
-                    latest.stream()
-                            .allMatch(event -> "MISSED".equals(event.text("discoveredBy")));
+                    latest.stream().allMatch(event -> "MISSED".equals(event.text("discoveredBy")));
             if (allMissed) {
                 return new LevelChange(
                         SkillAxis.DEBUGGING,
@@ -227,8 +226,7 @@ public final class SkillLevelRules {
         };
     }
 
-    private @Nullable LevelChange knowledgeRise(
-            List<RuleEvent> events, int current, int next) {
+    private @Nullable LevelChange knowledgeRise(List<RuleEvent> events, int current, int next) {
         return switch (next) {
             case 1 ->
                     events.isEmpty()
@@ -249,8 +247,7 @@ public final class SkillLevelRules {
                                                 && event.hintAtMost(
                                                         "hintLevel", HintLevel.CONCEPT_HINT));
                 yield matches.size() >= 2
-                        ? change(
-                                SkillAxis.KNOWLEDGE, current, next, "K2_RECALL_GUIDED", matches)
+                        ? change(SkillAxis.KNOWLEDGE, current, next, "K2_RECALL_GUIDED", matches)
                         : null;
             }
             case 3 -> {
@@ -261,8 +258,7 @@ public final class SkillLevelRules {
                 Set<LocalDate> dates = new LinkedHashSet<>();
                 matches.forEach(event -> dates.add(event.planDate()));
                 Integer intervalBefore = matches.getFirst().number("intervalBefore");
-                boolean ready =
-                        dates.size() >= 2 && intervalBefore != null && intervalBefore >= 4;
+                boolean ready = dates.size() >= 2 && intervalBefore != null && intervalBefore >= 4;
                 yield ready
                         ? change(
                                 SkillAxis.KNOWLEDGE,
@@ -286,8 +282,7 @@ public final class SkillLevelRules {
                         filter(
                                 events,
                                 event ->
-                                        event.eventType()
-                                                        == LearningEventType.CHALLENGE_EVALUATED
+                                        event.eventType() == LearningEventType.CHALLENGE_EVALUATED
                                                 && equals(event.number("difficulty"), 5)
                                                 && "SOLVED_INDEPENDENTLY"
                                                         .equals(event.text("outcome")));
@@ -307,12 +302,10 @@ public final class SkillLevelRules {
                         filter(
                                 events,
                                 event ->
-                                        event.eventType()
-                                                == LearningEventType.CHALLENGE_SUBMITTED);
+                                        event.eventType() == LearningEventType.CHALLENGE_SUBMITTED);
                 yield matches.isEmpty()
                         ? null
-                        : change(
-                                SkillAxis.IMPLEMENTATION, current, next, "I1_ATTEMPTED", matches);
+                        : change(SkillAxis.IMPLEMENTATION, current, next, "I1_ATTEMPTED", matches);
             }
             case 2 -> {
                 List<RuleEvent> matches =
@@ -336,8 +329,7 @@ public final class SkillLevelRules {
                         filter(
                                 events,
                                 event ->
-                                        event.eventType()
-                                                        == LearningEventType.CHALLENGE_EVALUATED
+                                        event.eventType() == LearningEventType.CHALLENGE_EVALUATED
                                                 && "SOLVED_INDEPENDENTLY"
                                                         .equals(event.text("outcome"))
                                                 && atLeast(event.number("difficulty"), 2));
@@ -362,9 +354,7 @@ public final class SkillLevelRules {
                 List<RuleEvent> evidence =
                         filter(
                                 events,
-                                event ->
-                                        event.eventType()
-                                                == LearningEventType.EVIDENCE_ACCEPTED);
+                                event -> event.eventType() == LearningEventType.EVIDENCE_ACCEPTED);
                 yield matches.isEmpty() || evidence.isEmpty()
                         ? null
                         : change(
@@ -379,23 +369,20 @@ public final class SkillLevelRules {
                         filter(
                                 events,
                                 event ->
-                                        event.eventType()
-                                                        == LearningEventType.CHALLENGE_EVALUATED
+                                        event.eventType() == LearningEventType.CHALLENGE_EVALUATED
                                                 && "SOLVED_INDEPENDENTLY"
                                                         .equals(event.text("outcome"))
                                                 && equals(event.number("difficulty"), 5));
                 boolean transfer = matches.stream().anyMatch(event -> event.flag("isTransfer"));
                 yield distinct(matches, "challengeId") >= 2 && transfer
-                        ? change(
-                                SkillAxis.IMPLEMENTATION, current, next, "I5_TRANSFER", matches)
+                        ? change(SkillAxis.IMPLEMENTATION, current, next, "I5_TRANSFER", matches)
                         : null;
             }
             default -> null;
         };
     }
 
-    private @Nullable LevelChange explanationRise(
-            List<RuleEvent> events, int current, int next) {
+    private @Nullable LevelChange explanationRise(List<RuleEvent> events, int current, int next) {
         return switch (next) {
             case 1 -> {
                 List<RuleEvent> matches =
@@ -406,13 +393,11 @@ public final class SkillLevelRules {
                                                         == LearningEventType
                                                                 .SELF_EXPLANATION_SUBMITTED
                                                 || (event.eventType()
-                                                                == LearningEventType
-                                                                        .REVIEW_ANSWERED
+                                                                == LearningEventType.REVIEW_ANSWERED
                                                         && "EXPLAIN"
                                                                 .equals(event.text("reviewType")))
                                                 || event.eventType()
-                                                        == LearningEventType
-                                                                .RUBBER_DUCK_COMPLETED);
+                                                        == LearningEventType.RUBBER_DUCK_COMPLETED);
                 yield matches.isEmpty()
                         ? null
                         : change(
@@ -468,8 +453,7 @@ public final class SkillLevelRules {
                         filter(
                                 events,
                                 event ->
-                                        event.eventType()
-                                                        == LearningEventType.CHALLENGE_EVALUATED
+                                        event.eventType() == LearningEventType.CHALLENGE_EVALUATED
                                                 && equals(event.number("difficulty"), 5)
                                                 && atLeast(
                                                         event.number("explanationCoverageBp"),
@@ -490,11 +474,9 @@ public final class SkillLevelRules {
                                 events,
                                 event ->
                                         event.eventType()
-                                                        == LearningEventType
-                                                                .COACH_REVIEW_COMPLETED
+                                                        == LearningEventType.COACH_REVIEW_COMPLETED
                                                 || event.eventType()
-                                                        == LearningEventType
-                                                                .COACH_FINDING_CLOSED);
+                                                        == LearningEventType.COACH_FINDING_CLOSED);
                 yield matches.isEmpty()
                         ? null
                         : change(SkillAxis.DEBUGGING, current, next, "D1_ANY_REVIEW", matches);
@@ -504,8 +486,7 @@ public final class SkillLevelRules {
                         filter(
                                 events,
                                 event ->
-                                        event.eventType()
-                                                        == LearningEventType.COACH_FINDING_CLOSED
+                                        event.eventType() == LearningEventType.COACH_FINDING_CLOSED
                                                 && event.textIn(
                                                         "discoveredBy",
                                                         "FOUND_AFTER_HINT",
@@ -514,26 +495,18 @@ public final class SkillLevelRules {
                                                         "maxHintLevel", HintLevel.DIRECTION));
                 yield matches.isEmpty()
                         ? null
-                        : change(
-                                SkillAxis.DEBUGGING, current, next, "D2_FOUND_WITH_HINT",
-                                matches);
+                        : change(SkillAxis.DEBUGGING, current, next, "D2_FOUND_WITH_HINT", matches);
             }
             case 3 -> {
                 List<RuleEvent> matches = unpromptedFindings(events);
                 yield matches.size() >= 2
-                        ? change(
-                                SkillAxis.DEBUGGING,
-                                current,
-                                next,
-                                "D3_FOUND_UNPROMPTED",
-                                matches)
+                        ? change(SkillAxis.DEBUGGING, current, next, "D3_FOUND_UNPROMPTED", matches)
                         : null;
             }
             case 4 -> {
                 List<RuleEvent> matches = unpromptedFindings(events);
                 boolean highConfidence =
-                        matches.stream()
-                                .anyMatch(event -> "HIGH".equals(event.text("confidence")));
+                        matches.stream().anyMatch(event -> "HIGH".equals(event.text("confidence")));
                 yield matches.size() >= 3
                                 && distinct(matches, "coachReviewId") >= 2
                                 && highConfidence
@@ -581,16 +554,12 @@ public final class SkillLevelRules {
                                     : new Evidence(
                                             event,
                                             coverage,
-                                            event.hintAtMost(
-                                                    "hintLevel", HintLevel.QUESTION_ONLY));
+                                            event.hintAtMost("hintLevel", HintLevel.QUESTION_ONLY));
                         }
                         case RUBBER_DUCK_COMPLETED -> {
                             Integer gapCount = event.number("gapCount");
                             Integer turns = event.number("turns");
-                            yield gapCount != null
-                                            && gapCount == 0
-                                            && turns != null
-                                            && turns >= 3
+                            yield gapCount != null && gapCount == 0 && turns != null && turns >= 3
                                     ? new Evidence(
                                             event,
                                             settings.rubberDuckCoverageBp(),
@@ -657,8 +626,7 @@ public final class SkillLevelRules {
         return List.copyOf(all);
     }
 
-    private static List<RuleEvent> filter(
-            List<RuleEvent> events, Predicate<RuleEvent> predicate) {
+    private static List<RuleEvent> filter(List<RuleEvent> events, Predicate<RuleEvent> predicate) {
         return events.stream().filter(predicate).toList();
     }
 

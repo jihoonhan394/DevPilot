@@ -159,9 +159,7 @@ public class ReviewQueryService {
             nextCursor = cursorCodec.encode(last.getDueAt(), last.getId());
         }
         return new CursorPage<>(
-                page.stream()
-                        .map(item -> view(item, user.zoneId(), user.dayStartHour()))
-                        .toList(),
+                page.stream().map(item -> view(item, user.zoneId(), user.dayStartHour())).toList(),
                 nextCursor);
     }
 
@@ -177,9 +175,7 @@ public class ReviewQueryService {
                 PlanDayCalculator.planDate(item.getDueAt(), zone, dayStartHour));
     }
 
-    /**
-     * 개념 키 → 카드 id·skill·due (docs/05 §10.6 {@code reviewScheduled}). 없는 키는 map에 없다.
-     */
+    /** 개념 키 → 카드 id·skill·due (docs/05 §10.6 {@code reviewScheduled}). 없는 키는 map에 없다. */
     public Map<String, ScheduledCardRef> findByConceptKeys(
             UUID userId, Collection<String> conceptKeys, ZoneId zone, int dayStartHour) {
         if (conceptKeys.isEmpty()) {

@@ -35,8 +35,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * challenge 조회 (docs/05 §10.2·§10.4, BL-TRN-02). today(BL-TDY-14)와 온보딩 진단(BL-TRN-13)이 후보 목록을 쓴다.
- * 접근 규칙은 공용 seed 또는 본인 소유이고, 그 외는 404 {@code RESOURCE_NOT_FOUND}다.
+ * challenge 조회 (docs/05 §10.2·§10.4, BL-TRN-02). today(BL-TDY-14)와 온보딩 진단(BL-TRN-13)이 후보 목록을 쓴다. 접근
+ * 규칙은 공용 seed 또는 본인 소유이고, 그 외는 404 {@code RESOURCE_NOT_FOUND}다.
  *
  * <p>본문 공개: {@code status ∈ {VALIDATED, RETIRED}}일 때만 제목·시나리오·문제를 채운다. 정답 정보(expectedConcepts,
  * rubric, commonMistakes)는 그 challenge를 한 번이라도 평가받은 사용자에게만 보인다(docs/05 §10.1).
@@ -74,12 +74,7 @@ public class ChallengeQueryService {
                 position == null
                         ? challengeRepository.findValidatedPage(userId, skillId, purpose, fetch)
                         : challengeRepository.findValidatedPageAfter(
-                                userId,
-                                skillId,
-                                purpose,
-                                position.sortKey(),
-                                position.id(),
-                                fetch);
+                                userId, skillId, purpose, position.sortKey(), position.id(), fetch);
         boolean hasNext = challenges.size() > limit;
         List<Challenge> page = hasNext ? challenges.subList(0, limit) : challenges;
         String nextCursor = null;
@@ -208,7 +203,8 @@ public class ChallengeQueryService {
      */
     public List<DiagnosticCandidate> diagnosticCandidates(UUID userId) {
         List<Challenge> challenges =
-                challengeRepository.findValidatedByPurpose(userId, ChallengePurpose.DIAGNOSTIC)
+                challengeRepository
+                        .findValidatedByPurpose(userId, ChallengePurpose.DIAGNOSTIC)
                         .stream()
                         .filter(challenge -> challenge.getOwnerUserId() == null)
                         .toList();
@@ -277,6 +273,33 @@ public class ChallengeQueryService {
         return skillsOf(challenge, refs).stream().map(SkillRef::code).toList();
     }
 
+    /**
+     * 러버덕 {@code CHALLENGE} 대상 (docs/05 §9.5 표): {@code targetId}는 본인 attempt id다. 없거나 타인 것이면
+     * empty. skill은 challenge skill 중 code ASC 첫 번째다.
+     */
+    public Optional<AttemptTarget> findAttemptTarget(UUID userId, UUID attemptId) {
+        return attemptRepository
+                .findByIdAndUserId(attemptId, userId)
+                .flatMap(
+                        attempt ->
+                                challengeRepository
+                                        .findAccessible(userId, attempt.getChallengeId())
+                                        .map(challenge -> attemptTarget(attempt, challenge)));
+    }
+
+    private AttemptTarget attemptTarget(ChallengeAttempt attempt, Challenge challenge) {
+        Map<UUID, SkillRef> refs = skillRefs(List.of(challenge));
+        List<SkillRef> skills = skillsOf(challenge, refs);
+        String title = challenge.getTitle() == null ? "" : challenge.getTitle();
+        String prompt = challenge.getPrompt() == null ? "" : challenge.getPrompt();
+        return new AttemptTarget(
+                attempt.getId(),
+                challenge.getId(),
+                title,
+                (title + "\n" + prompt).strip(),
+                skills.isEmpty() ? null : skills.getFirst().id());
+    }
+
     /** 활성 attempt id (docs/05 §10.5 중복 시작 검사). */
     public Optional<UUID> findActiveAttemptId(UUID userId, UUID challengeId) {
         return attemptRepository.findActive(userId, challengeId, Limit.of(1)).stream()
@@ -302,6 +325,19 @@ public class ChallengeQueryService {
             skillCodes = List.copyOf(skillCodes);
         }
     }
+
+    /**
+     * 러버덕 {@code CHALLENGE} 대상 (docs/05 §9.5).
+     *
+     * @param summary docs/17 §3.11 {@code targetSummary} (challenge title + prompt)
+     * @param skillId 유도할 skill. challenge skill이 없으면 null
+     */
+    public record AttemptTarget(
+            UUID attemptId,
+            UUID challengeId,
+            String title,
+            String summary,
+            @Nullable UUID skillId) {}
 
     /** 진단 후보 (docs/05 §4.2). */
     public record DiagnosticCandidate(

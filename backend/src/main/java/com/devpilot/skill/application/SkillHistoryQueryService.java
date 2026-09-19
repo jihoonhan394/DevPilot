@@ -17,8 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * {@code GET /skills/{skillId}/history} (docs/05 §6.3, BL-SKL-06). 본인 이력만 돌려준다(I-15). 없는 skill은
- * 404 {@code RESOURCE_NOT_FOUND}이고, 변경이 없으면 빈 목록이다.
+ * {@code GET /skills/{skillId}/history} (docs/05 §6.3, BL-SKL-06). 본인 이력만 돌려준다(I-15). 없는 skill은 404
+ * {@code RESOURCE_NOT_FOUND}이고, 변경이 없으면 빈 목록이다.
  */
 @Service
 @Transactional(readOnly = true)

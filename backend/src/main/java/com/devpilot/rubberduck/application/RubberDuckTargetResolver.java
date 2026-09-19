@@ -17,6 +17,8 @@ import com.devpilot.today.application.ReadingQueryService;
 import com.devpilot.today.application.TodayQueryService;
 import com.devpilot.today.application.TodayQueryService.ReadCodeTaskRef;
 import com.devpilot.today.domain.CuratedReading;
+import com.devpilot.training.application.ChallengeQueryService;
+import com.devpilot.training.application.ChallengeQueryService.AttemptTarget;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -30,8 +32,6 @@ import org.springframework.stereotype.Component;
  * 러버덕 대상 확인·요약·skill 유도 (docs/05 §9.5 표). 대상이 본인 것이 아니거나 없으면 400 {@code VALIDATION_FAILED}(field
  * {@code targetId}, code {@code REFERENCE_NOT_FOUND}) — 타인 소유와 없음을 구분하지 않는다(docs/05 §1.2.3). 대상이
  * 지워진 세션도 조회할 수 있어야 하므로 조회 경로는 예외를 던지지 않고 빈 요약을 돌려준다.
- *
- * <p>{@code CHALLENGE} 대상은 training 모듈(S4)이 생기면 붙인다 — 지금은 {@code REFERENCE_NOT_FOUND}다.
  */
 @Component
 class RubberDuckTargetResolver {
@@ -44,6 +44,7 @@ class RubberDuckTargetResolver {
     private final SideProjectQueryService sideProjectQueryService;
     private final SkillCatalogQueryService skillCatalogQueryService;
     private final LearningSessionQueryService learningSessionQueryService;
+    private final ChallengeQueryService challengeQueryService;
 
     RubberDuckTargetResolver(
             TodayQueryService todayQueryService,
@@ -51,13 +52,15 @@ class RubberDuckTargetResolver {
             ReviewQueryService reviewQueryService,
             SideProjectQueryService sideProjectQueryService,
             SkillCatalogQueryService skillCatalogQueryService,
-            LearningSessionQueryService learningSessionQueryService) {
+            LearningSessionQueryService learningSessionQueryService,
+            ChallengeQueryService challengeQueryService) {
         this.todayQueryService = todayQueryService;
         this.readingQueryService = readingQueryService;
         this.reviewQueryService = reviewQueryService;
         this.sideProjectQueryService = sideProjectQueryService;
         this.skillCatalogQueryService = skillCatalogQueryService;
         this.learningSessionQueryService = learningSessionQueryService;
+        this.challengeQueryService = challengeQueryService;
     }
 
     /** 지금 진행 중인 학습 세션 id (docs/05 §9.6 5단계). 없으면 null. */
@@ -94,8 +97,18 @@ class RubberDuckTargetResolver {
             case CODE_READING -> codeReading(userId, requireId(targetId));
             case REVIEW_ITEM -> reviewItem(userId, requireId(targetId));
             case PROJECT_WORK -> projectWork(userId, requireId(targetId));
-            case CHALLENGE -> throw referenceNotFound();
+            case CHALLENGE -> challenge(userId, requireId(targetId));
         };
+    }
+
+    /** {@code CHALLENGE} 대상은 본인 attempt다 (docs/05 §9.5 표, docs/06 §9.5 RD-3 연결). */
+    private ResolvedTarget challenge(UUID userId, UUID targetId) {
+        AttemptTarget target =
+                challengeQueryService
+                        .findAttemptTarget(userId, targetId)
+                        .orElseThrow(RubberDuckTargetResolver::referenceNotFound);
+        return new ResolvedTarget(
+                targetId, null, null, target.title(), target.summary(), target.skillId());
     }
 
     /** 조회용: 대상이 지워졌으면 {@code title}·{@code summary}가 비어 있다(docs/05 §9.5). */

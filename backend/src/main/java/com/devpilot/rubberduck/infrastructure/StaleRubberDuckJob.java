@@ -1,6 +1,7 @@
 package com.devpilot.rubberduck.infrastructure;
 
 import com.devpilot.common.config.DevPilotProperties;
+import com.devpilot.common.job.JobMetrics;
 import com.devpilot.common.job.PerUserJob;
 import com.devpilot.common.logging.AuditLogger;
 import com.devpilot.common.logging.UserRefCalculator;
@@ -30,9 +31,10 @@ public class StaleRubberDuckJob extends PerUserJob {
             RubberDuckService rubberDuckService,
             AuditLogger auditLogger,
             UserRefCalculator userRefCalculator,
+            JobMetrics jobMetrics,
             DevPilotProperties properties,
             Clock clock) {
-        super(auditLogger, userRefCalculator, clock);
+        super(auditLogger, userRefCalculator, jobMetrics, clock);
         this.sessions = sessions;
         this.rubberDuckService = rubberDuckService;
         this.staleAfter = properties.rubberduck().staleAfter();

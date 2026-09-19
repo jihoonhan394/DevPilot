@@ -23,8 +23,8 @@ public interface RubberDuckSessionRepository extends JpaRepository<RubberDuckSes
             UUID userId, RubberDuckTargetType targetType, UUID targetId, RubberDuckStatus status);
 
     /**
-     * HL-2 예외 (docs/06 §9.5, docs/05 §10.8 3단계): 이 대상에 턴이 1개 이상인 세션이 있는가. 상태는 보지 않는다 — 턴 자체가
-     * 자기 설명이다.
+     * HL-2 예외 (docs/06 §9.5, docs/05 §10.8 3단계): 이 대상에 턴이 1개 이상인 세션이 있는가. 상태는 보지 않는다 — 턴 자체가 자기
+     * 설명이다.
      */
     @Query(
             """

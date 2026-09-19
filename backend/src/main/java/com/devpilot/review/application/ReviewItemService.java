@@ -32,9 +32,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 복습 카드 생성·수정 (docs/05 §11.5·§11.6, BL-MEM-07)과 다른 모듈이 부르는 카드 upsert (docs/06 §6.3). 첫 due는
- * {@code planDayStart(today + 1)}이고, **같은 {@code concept_key}의 카드가 이미 있으면 새로 만들지 않고 due를
- * 당긴다**(I-06).
+ * 복습 카드 생성·수정 (docs/05 §11.5·§11.6, BL-MEM-07)과 다른 모듈이 부르는 카드 upsert (docs/06 §6.3). 첫 due는 {@code
+ * planDayStart(today + 1)}이고, **같은 {@code concept_key}의 카드가 이미 있으면 새로 만들지 않고 due를 당긴다**(I-06).
  */
 @Service
 public class ReviewItemService {
@@ -138,14 +137,11 @@ public class ReviewItemService {
         UUID userId = user.userId();
         ReviewItem item = require(userId, reviewItemId);
         if (item.getVersion() != command.version()) {
-            throw new ConflictException(
-                    ErrorCode.CONCURRENT_MODIFICATION, "review item changed");
+            throw new ConflictException(ErrorCode.CONCURRENT_MODIFICATION, "review item changed");
         }
-        String prompt =
-                secretMasker.maskOrRejectNullable(userId, MASKING_SOURCE, command.prompt());
+        String prompt = secretMasker.maskOrRejectNullable(userId, MASKING_SOURCE, command.prompt());
         String expectedAnswer =
-                secretMasker.maskOrRejectNullable(
-                        userId, MASKING_SOURCE, command.expectedAnswer());
+                secretMasker.maskOrRejectNullable(userId, MASKING_SOURCE, command.expectedAnswer());
         item.editQuestion(prompt, expectedAnswer);
         if (command.status() != null) {
             item.changeStatus(command.status(), nextPlanDayStart(userId, clock.instant()));

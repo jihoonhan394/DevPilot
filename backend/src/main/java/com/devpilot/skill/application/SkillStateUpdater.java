@@ -135,11 +135,7 @@ public class SkillStateUpdater {
 
     private static RuleEvent toRuleEvent(RecordedEventView view) {
         return new RuleEvent(
-                view.id(),
-                view.eventType(),
-                view.planDate(),
-                view.occurredAt(),
-                view.payload());
+                view.id(), view.eventType(), view.planDate(), view.occurredAt(), view.payload());
     }
 
     /** skill 하나의 초기값. 진단 모드면 {@code selfAssessedLevel = null}. */

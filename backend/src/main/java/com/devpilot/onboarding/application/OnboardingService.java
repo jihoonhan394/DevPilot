@@ -33,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
  * ONBOARDING_ALREADY_COMPLETED}가 된다.
  *
  * <p>8단계 seed 카드 배정(BL-MEM-08)과 9단계 오늘 snapshot(BL-GOL-13)은 plan 생성 뒤 같은 트랜잭션에서 한다. 11단계 진단 제안은
- * S3(BL-TRN-13)라 {@code suggestedDiagnostics = []}다.
+ * {@link DiagnosticSuggestionService}가 계산한다(docs/05 §4.2).
  */
 @Service
 public class OnboardingService {
@@ -44,6 +44,7 @@ public class OnboardingService {
     private final SkillStateUpdater skillStateUpdater;
     private final OnboardingPlanSetup onboardingPlanSetup;
     private final SideProjectService sideProjectService;
+    private final DiagnosticSuggestionService diagnosticSuggestionService;
     private final SelfAssessmentPropagation selfAssessmentPropagation =
             new SelfAssessmentPropagation();
     private final Clock clock;
@@ -55,6 +56,7 @@ public class OnboardingService {
             SkillStateUpdater skillStateUpdater,
             OnboardingPlanSetup onboardingPlanSetup,
             SideProjectService sideProjectService,
+            DiagnosticSuggestionService diagnosticSuggestionService,
             Clock clock) {
         this.profileService = profileService;
         this.learningGoalService = learningGoalService;
@@ -62,6 +64,7 @@ public class OnboardingService {
         this.skillStateUpdater = skillStateUpdater;
         this.onboardingPlanSetup = onboardingPlanSetup;
         this.sideProjectService = sideProjectService;
+        this.diagnosticSuggestionService = diagnosticSuggestionService;
         this.clock = clock;
     }
 
@@ -95,7 +98,7 @@ public class OnboardingService {
                 plan.activePlan(),
                 sideProject,
                 plan.assignedSeedCards(),
-                List.of());
+                diagnosticSuggestionService.suggest(userId));
     }
 
     /** docs/05 §4.1 도메인 검사 표. 모든 오류를 모아 한 번에 돌려준다. */

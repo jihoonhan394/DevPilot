@@ -1,5 +1,6 @@
 package com.devpilot.common.job;
 
+import static com.devpilot.testsupport.TestJobMetrics.jobMetrics;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.devpilot.common.logging.AuditLogger;
@@ -32,6 +33,7 @@ class OrphanAsyncTaskJobTest {
                 new OrphanAsyncTaskJob(
                         List.of(first, second),
                         new AuditLogger(),
+                        jobMetrics(),
                         clock,
                         TestProperties.testProfile());
 
@@ -63,6 +65,7 @@ class OrphanAsyncTaskJobTest {
                 new OrphanAsyncTaskJob(
                         List.of(failing, sweeper("ok", cutoffs, 1)),
                         new AuditLogger(),
+                        jobMetrics(),
                         clock,
                         TestProperties.testProfile());
         try (AuditLogCapture capture = AuditLogCapture.start()) {
@@ -76,7 +79,11 @@ class OrphanAsyncTaskJobTest {
     void shouldDoNothingWhenNoModuleOwnsAsyncTasks() {
         OrphanAsyncTaskJob job =
                 new OrphanAsyncTaskJob(
-                        List.of(), new AuditLogger(), clock, TestProperties.testProfile());
+                        List.of(),
+                        new AuditLogger(),
+                        jobMetrics(),
+                        clock,
+                        TestProperties.testProfile());
 
         assertThat(job.runOnce()).isZero();
     }

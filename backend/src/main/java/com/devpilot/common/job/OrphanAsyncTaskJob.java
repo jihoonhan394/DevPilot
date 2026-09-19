@@ -28,16 +28,19 @@ public class OrphanAsyncTaskJob {
 
     private final List<OrphanAsyncTaskSweeper> sweepers;
     private final AuditLogger auditLogger;
+    private final JobMetrics jobMetrics;
     private final Clock clock;
     private final Duration orphanTimeout;
 
     public OrphanAsyncTaskJob(
             List<OrphanAsyncTaskSweeper> sweepers,
             AuditLogger auditLogger,
+            JobMetrics jobMetrics,
             Clock clock,
             DevPilotProperties properties) {
         this.sweepers = List.copyOf(sweepers);
         this.auditLogger = auditLogger;
+        this.jobMetrics = jobMetrics;
         this.clock = clock;
         this.orphanTimeout = properties.ai().async().orphanTimeout();
     }
@@ -57,12 +60,14 @@ public class OrphanAsyncTaskJob {
         Instant started = clock.instant();
         Instant staleBefore = started.minus(orphanTimeout);
         int interrupted = 0;
+        int failed = 0;
         for (OrphanAsyncTaskSweeper sweeper : sweepers) {
             Instant sweeperStarted = clock.instant();
             try {
                 interrupted += sweeper.markInterrupted(staleBefore);
             } catch (Exception exception) {
                 // docs/03 §7 허용 위치 3: 한 모듈의 실패가 다른 모듈 정리를 막지 않게 한다
+                failed++;
                 Map<String, Object> fields = new LinkedHashMap<>();
                 fields.put("job", OrphanAsyncTaskJob.class.getSimpleName() + ":" + sweeper.name());
                 fields.put("userRef", null);
@@ -72,6 +77,7 @@ public class OrphanAsyncTaskJob {
                 auditLogger.log(AuditEvent.JOB_FAILED, fields);
             }
         }
+        jobMetrics.record("OrphanAsyncTaskJob", failed);
         log.info(
                 "job=OrphanAsyncTaskJob started={} sweepers={} interrupted={} durationMs={}",
                 started,

@@ -26,12 +26,17 @@ public abstract class PerUserJob {
 
     private final AuditLogger auditLogger;
     private final UserRefCalculator userRefCalculator;
+    private final JobMetrics jobMetrics;
     private final Clock clock;
 
     protected PerUserJob(
-            AuditLogger auditLogger, UserRefCalculator userRefCalculator, Clock clock) {
+            AuditLogger auditLogger,
+            UserRefCalculator userRefCalculator,
+            JobMetrics jobMetrics,
+            Clock clock) {
         this.auditLogger = auditLogger;
         this.userRefCalculator = userRefCalculator;
+        this.jobMetrics = jobMetrics;
         this.clock = clock;
     }
 
@@ -68,6 +73,7 @@ public abstract class PerUserJob {
                                         Duration.between(userStarted, clock.instant()).toMillis()));
             }
         }
+        jobMetrics.record(name(), failed);
         long durationMs = Duration.between(started, clock.instant()).toMillis();
         log.info(
                 "job={} started={} processed={} failed={} durationMs={}",

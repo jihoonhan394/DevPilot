@@ -50,8 +50,7 @@ public interface ReviewItemRepository extends JpaRepository<ReviewItem, UUID> {
     long countByUserId(UUID userId);
 
     /** 여러 개념 키의 카드 (docs/05 §10.6 {@code reviewScheduled}). */
-    @Query(
-            "select i from ReviewItem i where i.userId = :userId and i.conceptKey in :conceptKeys")
+    @Query("select i from ReviewItem i where i.userId = :userId and i.conceptKey in :conceptKeys")
     List<ReviewItem> findByConceptKeys(
             @Param("userId") UUID userId, @Param("conceptKeys") Collection<String> conceptKeys);
 

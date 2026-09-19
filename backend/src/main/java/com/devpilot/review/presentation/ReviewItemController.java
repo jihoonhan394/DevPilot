@@ -28,9 +28,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * 복습 카드 관리 (docs/05 §11.4~§11.6, BL-MEM-07). 타 사용자 카드는 404 {@code RESOURCE_NOT_FOUND}다.
- */
+/** 복습 카드 관리 (docs/05 §11.4~§11.6, BL-MEM-07). 타 사용자 카드는 404 {@code RESOURCE_NOT_FOUND}다. */
 @RestController
 @RequestMapping("/api/v1/review-items")
 @Tag(name = "review")

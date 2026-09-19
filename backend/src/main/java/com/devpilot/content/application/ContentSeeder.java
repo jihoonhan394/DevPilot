@@ -22,8 +22,8 @@ import org.springframework.stereotype.Component;
  *       로그.
  *   <li>{@code catalogVersion < DB 버전}이면 적재하지 않고 WARN, 메모리 등록만 한다(이전 이미지로 롤백한 경우).
  *   <li>skill·prerequisite·role target upsert(한 트랜잭션). 사라진 skill은 {@code active = false}.
- *   <li>{@code seed-challenges = true}면 seed challenge를 upsert한다({@link ChallengeSeedService}).
- *       구조가 바뀐 seed는 기동 실패다.
+ *   <li>{@code seed-challenges = true}면 seed challenge를 upsert한다({@link ChallengeSeedService}). 구조가
+ *       바뀐 seed는 기동 실패다.
  *   <li>{@link ContentRegistration}이 plan template·review card·curated reading(은퇴한 것 포함)을 메모리
  *       registry에 등록한다.
  *   <li>새 seed card를 기존 온보딩 완료 사용자에게 추가한다({@link SeedCardAssignmentService#backfillAll()},

@@ -55,6 +55,7 @@ public final class TestProperties {
                 base.content(),
                 base.ai(),
                 base.rubberduck(),
+                base.training(),
                 base.coach());
     }
 

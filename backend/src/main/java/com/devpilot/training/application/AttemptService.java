@@ -86,8 +86,7 @@ public class AttemptService {
         }
         Instant now = clock.instant();
         ChallengeAttempt attempt =
-                attemptRepository.saveAndFlush(
-                        ChallengeAttempt.start(userId, challengeId, now));
+                attemptRepository.saveAndFlush(ChallengeAttempt.start(userId, challengeId, now));
         LocalDate planDate = planDate(user, now);
         ChallengeStartedPayload payload =
                 new ChallengeStartedPayload(
@@ -133,12 +132,10 @@ public class AttemptService {
                             hasText
                                     ? ApiFieldError.of(
                                             "skipped", FieldErrorCodes.MUTUALLY_EXCLUSIVE)
-                                    : ApiFieldError.of(
-                                            "text", FieldErrorCodes.ONE_OF_REQUIRED)));
+                                    : ApiFieldError.of("text", FieldErrorCodes.ONE_OF_REQUIRED)));
         }
         UUID userId = user.userId();
-        String masked =
-                hasText ? secretMasker.maskOrReject(userId, MASKING_SOURCE, text) : null;
+        String masked = hasText ? secretMasker.maskOrReject(userId, MASKING_SOURCE, text) : null;
         ChallengeAttempt attempt = require(userId, attemptId);
         attempt.requireNotAbandoned();
         attempt.recordSelfExplanation(masked, skipped);
@@ -149,8 +146,8 @@ public class AttemptService {
                 skipped
                         ? SelfExplanationPayload.skipped(attemptId)
                         : SelfExplanationPayload.submitted(
-                                attemptId, masked == null ? 0 : masked.codePointCount(0,
-                                        masked.length()));
+                                attemptId,
+                                masked == null ? 0 : masked.codePointCount(0, masked.length()));
         LearningEventType eventType =
                 skipped
                         ? LearningEventType.SELF_EXPLANATION_SKIPPED

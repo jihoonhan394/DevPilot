@@ -35,8 +35,7 @@ import org.springframework.data.domain.Persistable;
  * 연습·진단 문제 (docs/04 §2 {@code challenge} + {@code challenge_skill}). {@code owner_user_id}가 null이면
  * 공용 seed다. seed는 {@code ContentSeeder}가 갱신하고(docs/04 §9), 그 외는 생성 후 본문이 바뀌지 않는다 — 상태만 바뀐다.
  *
- * <p>{@code hints_json}은 1~3단계 사전 hint다(HL-6). 어떤 view에도 넣지 않고 hint endpoint로만 공개한다(docs/05
- * §10.1).
+ * <p>{@code hints_json}은 1~3단계 사전 hint다(HL-6). 어떤 view에도 넣지 않고 hint endpoint로만 공개한다(docs/05 §10.1).
  */
 @Entity
 @Table(name = "challenge")

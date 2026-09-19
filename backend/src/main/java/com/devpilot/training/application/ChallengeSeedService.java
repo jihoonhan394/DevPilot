@@ -55,7 +55,8 @@ public class ChallengeSeedService {
     /** seed challenge 전체를 upsert한다. 한 트랜잭션이다(docs/04 §9). */
     @Transactional
     public SeedOutcome upsert(List<ChallengeSeed> seeds) {
-        Map<String, SkillRef> skills = skillCatalogQueryService.findActiveByCodes(skillCodes(seeds));
+        Map<String, SkillRef> skills =
+                skillCatalogQueryService.findActiveByCodes(skillCodes(seeds));
         Instant now = clock.instant();
         int created = 0;
         int updated = 0;

@@ -51,7 +51,8 @@ public final class HintLadderPolicy {
                 && !context.acknowledgeEvidenceImpact()) {
             return Decision.of(Outcome.CONFIRMATION_REQUIRED);
         }
-        if (requested == HintLevel.FULL_EXAMPLE && context.submissionCount() == 0
+        if (requested == HintLevel.FULL_EXAMPLE
+                && context.submissionCount() == 0
                 && !context.giveUp()) {
             return Decision.of(Outcome.FULL_EXAMPLE_NOT_ALLOWED);
         }
@@ -66,8 +67,8 @@ public final class HintLadderPolicy {
     }
 
     /**
-     * HL-1 반환 단계: 요청 단계 이하에서 저장된 가장 높은 단계, 없으면 저장된 가장 낮은 단계 (docs/05 §10.8 4단계). 저장된 내용이 하나도
-     * 없으면 null이다.
+     * HL-1 반환 단계: 요청 단계 이하에서 저장된 가장 높은 단계, 없으면 저장된 가장 낮은 단계 (docs/05 §10.8 4단계). 저장된 내용이 하나도 없으면
+     * null이다.
      */
     static @Nullable HintLevel storedLevelFor(HintLevel requested, Set<HintLevel> stored) {
         if (stored.isEmpty()) {

@@ -153,7 +153,8 @@ public class UserSkillState implements Persistable<UUID> {
     /** 규칙 실행마다 갱신하는 집계 (docs/06 §7.1). */
     public void refreshEvidence(@Nullable Instant lastPracticedAt, int evidenceCount) {
         if (lastPracticedAt != null
-                && (this.lastPracticedAt == null || lastPracticedAt.isAfter(this.lastPracticedAt))) {
+                && (this.lastPracticedAt == null
+                        || lastPracticedAt.isAfter(this.lastPracticedAt))) {
             this.lastPracticedAt = lastPracticedAt;
         }
         this.evidenceCount = evidenceCount;

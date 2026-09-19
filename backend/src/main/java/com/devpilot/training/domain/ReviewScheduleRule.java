@@ -22,15 +22,13 @@ public final class ReviewScheduleRule {
     private ReviewScheduleRule() {}
 
     /** 복습 항목을 만들 조건인가. */
-    public static boolean shouldSchedule(
-            @Nullable AttemptOutcome outcome, HintLevel maxHintLevel) {
+    public static boolean shouldSchedule(@Nullable AttemptOutcome outcome, HintLevel maxHintLevel) {
         if (outcome == null) {
             return false;
         }
         return switch (outcome) {
             case FAILED, PARTIAL -> true;
-            case SOLVED_WITH_HINTS ->
-                    maxHintLevel.ordinal() >= HintLevel.PSEUDOCODE.ordinal();
+            case SOLVED_WITH_HINTS -> maxHintLevel.ordinal() >= HintLevel.PSEUDOCODE.ordinal();
             case SOLVED_INDEPENDENTLY, ABANDONED -> false;
         };
     }

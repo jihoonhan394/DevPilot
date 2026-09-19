@@ -279,6 +279,7 @@ class PromptRegistryTest {
                         ai.guards(),
                         prompts),
                 base.rubberduck(),
+                base.training(),
                 base.coach());
     }
 }

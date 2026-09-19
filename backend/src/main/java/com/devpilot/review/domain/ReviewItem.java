@@ -257,8 +257,8 @@ public class ReviewItem implements Persistable<UUID> {
     }
 
     /**
-     * 문항 수정 (docs/05 §11.6). {@code ARCHIVED} 카드는 고칠 수 없고, variant가 만들어지는 중이면 거절한다. variant가
-     * 있으면 비운다.
+     * 문항 수정 (docs/05 §11.6). {@code ARCHIVED} 카드는 고칠 수 없고, variant가 만들어지는 중이면 거절한다. variant가 있으면
+     * 비운다.
      */
     public void editQuestion(@Nullable String prompt, @Nullable String expectedAnswer) {
         if (prompt == null && expectedAnswer == null) {

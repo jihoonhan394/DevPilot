@@ -38,8 +38,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * 답안 제출과 평가 재시도 (docs/05 §10.9·§10.10, BL-TRN-09·BL-TRN-10). 검사 → 마스킹 → 예산 → 저장({@code PENDING})
- * → 커밋 후 {@code SubmissionEvaluationTask}다. 이 클래스는 AI를 직접 부르지 않는다.
+ * 답안 제출과 평가 재시도 (docs/05 §10.9·§10.10, BL-TRN-09·BL-TRN-10). 검사 → 마스킹 → 예산 → 저장({@code PENDING}) →
+ * 커밋 후 {@code SubmissionEvaluationTask}다. 이 클래스는 AI를 직접 부르지 않는다.
  */
 @Service
 public class SubmissionService {
@@ -90,8 +90,7 @@ public class SubmissionService {
         Instant now = clock.instant();
         LocalDate planDate = PlanDayCalculator.planDate(now, user.zoneId(), user.dayStartHour());
         Prepared prepared =
-                requireNonNull(
-                        transactions.execute(status -> prepareSubmit(userId, attemptId)));
+                requireNonNull(transactions.execute(status -> prepareSubmit(userId, attemptId)));
         requireBudget(userId);
         Started started =
                 requireNonNull(
@@ -116,9 +115,9 @@ public class SubmissionService {
     }
 
     /**
-     * {@code POST .../submissions/{submissionNo}/retry} (docs/05 §10.10). {@code FAILED}이고 최신
-     * 제출이며 attempt가 살아 있어야 한다. {@code AI_REFUSED}·{@code CONFIDENTIAL_SUSPECTED}는 같은 입력이면 같은
-     * 결과라 재시도하지 않는다(docs/05 §1.8).
+     * {@code POST .../submissions/{submissionNo}/retry} (docs/05 §10.10). {@code FAILED}이고 최신 제출이며
+     * attempt가 살아 있어야 한다. {@code AI_REFUSED}·{@code CONFIDENTIAL_SUSPECTED}는 같은 입력이면 같은 결과라 재시도하지
+     * 않는다(docs/05 §1.8).
      */
     public AsyncStart retry(CurrentUser user, UUID attemptId, int submissionNo) {
         UUID userId = user.userId();
@@ -146,8 +145,7 @@ public class SubmissionService {
                         .orElseThrow(
                                 () ->
                                         new com.devpilot.common.error.NotFoundException(
-                                                ErrorCode.RESOURCE_NOT_FOUND,
-                                                "attempt not found"));
+                                                ErrorCode.RESOURCE_NOT_FOUND, "attempt not found"));
         attempt.requireNotAbandoned();
         if (attempt.getSubmissionCount() >= maxSubmissions) {
             throw new ConflictException(
@@ -189,8 +187,7 @@ public class SubmissionService {
                         .orElseThrow(
                                 () ->
                                         new com.devpilot.common.error.NotFoundException(
-                                                ErrorCode.RESOURCE_NOT_FOUND,
-                                                "attempt not found"));
+                                                ErrorCode.RESOURCE_NOT_FOUND, "attempt not found"));
         int submissionNo = attempt.recordSubmission();
         ChallengeSubmission submission =
                 submissionRepository.saveAndFlush(
@@ -231,8 +228,7 @@ public class SubmissionService {
                         .orElseThrow(
                                 () ->
                                         new com.devpilot.common.error.NotFoundException(
-                                                ErrorCode.RESOURCE_NOT_FOUND,
-                                                "attempt not found"));
+                                                ErrorCode.RESOURCE_NOT_FOUND, "attempt not found"));
         List<ChallengeSubmission> submissions =
                 submissionRepository.findByAttemptIdOrderBySubmissionNoAsc(attemptId);
         ChallengeSubmission submission =
@@ -256,14 +252,16 @@ public class SubmissionService {
     }
 
     /**
-     * docs/05 §1.8 "시작 전 검사 순서": 저장 전에 AI 가능 여부·예산·동시 실행을 본다. 예약은 바로 닫는다 — 저장된 {@code PENDING}
-     * 제출이 그 뒤로 동시 실행 수에 잡힌다({@code AiPendingJobCounter}).
+     * docs/05 §1.8 "시작 전 검사 순서": 저장 전에 AI 가능 여부·예산·동시 실행을 본다. 예약은 바로 닫는다 — 저장된 {@code PENDING} 제출이
+     * 그 뒤로 동시 실행 수에 잡힌다({@code AiPendingJobCounter}).
      */
     private void requireBudget(UUID userId) {
-        AiBudgetDecision decision =
-                aiBudgetGuard.check(userId, AiOperation.CHALLENGE_EVALUATE);
-        try (AiConcurrencyReservation reservation = decision.reservation()) {
+        AiBudgetDecision decision = aiBudgetGuard.check(userId, AiOperation.CHALLENGE_EVALUATE);
+        AiConcurrencyReservation reservation = decision.reservation();
+        try {
             decision.requireAllowed();
+        } finally {
+            reservation.close();
         }
     }
 
@@ -295,9 +293,7 @@ public class SubmissionService {
 
     /** 제출 입력 (docs/05 §10.9 {@code SubmissionRequest}). 값은 마스킹 전 원문이다. */
     public record SubmitCommand(
-            @Nullable String answerText,
-            @Nullable String code,
-            @Nullable CodeLanguage language) {}
+            @Nullable String answerText, @Nullable String code, @Nullable CodeLanguage language) {}
 
     /** 202 응답 재료 (docs/05 §2.3 {@code AsyncStatusView}). */
     public record AsyncStart(UUID attemptId, int submissionNo, Instant statusUpdatedAt) {}

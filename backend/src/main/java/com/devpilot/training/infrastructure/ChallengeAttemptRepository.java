@@ -50,8 +50,7 @@ public interface ChallengeAttemptRepository extends JpaRepository<ChallengeAttem
                and a.challengeId = :challengeId
                and a.evaluatedOutcome is not null
             """)
-    boolean existsEvaluated(
-            @Param("userId") UUID userId, @Param("challengeId") UUID challengeId);
+    boolean existsEvaluated(@Param("userId") UUID userId, @Param("challengeId") UUID challengeId);
 
     /** 최근 14 plan-day 안에 시도한 challenge (docs/06 §5.3 1번). */
     @Query(

@@ -41,8 +41,8 @@ public class LearningEventQueryService {
     }
 
     /**
-     * skill 레벨 규칙 입력 (docs/06 §7.1): 최근 {@code since} 이후의 무효화되지 않은 이벤트, 최신순. payload만 쓰므로 다른
-     * 테이블을 조회하지 않는다.
+     * skill 레벨 규칙 입력 (docs/06 §7.1): 최근 {@code since} 이후의 무효화되지 않은 이벤트, 최신순. payload만 쓰므로 다른 테이블을
+     * 조회하지 않는다.
      */
     public List<RecordedEventView> recentForSkill(UUID userId, UUID skillId, Instant since) {
         return learningEventRepository.findRecentForSkill(userId, skillId, since).stream()

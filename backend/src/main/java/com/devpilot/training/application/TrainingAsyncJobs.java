@@ -1,9 +1,10 @@
-package com.devpilot.training.infrastructure;
+package com.devpilot.training.application;
 
 import com.devpilot.common.async.AsyncFailureCode;
 import com.devpilot.common.job.OrphanAsyncTaskSweeper;
 import com.devpilot.integration.ai.api.AiPendingJobCounter;
 import com.devpilot.training.domain.ChallengeSubmission;
+import com.devpilot.training.infrastructure.ChallengeSubmissionRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -16,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
  * FAILED(INTERRUPTED)}로 바꾼다.
  */
 @Component
-class TrainingAsyncJobs implements AiPendingJobCounter, OrphanAsyncTaskSweeper {
+public class TrainingAsyncJobs implements AiPendingJobCounter, OrphanAsyncTaskSweeper {
 
     private final ChallengeSubmissionRepository submissionRepository;
     private final Clock clock;
@@ -42,8 +43,7 @@ class TrainingAsyncJobs implements AiPendingJobCounter, OrphanAsyncTaskSweeper {
     public int markInterrupted(Instant staleBefore) {
         List<ChallengeSubmission> stale = submissionRepository.findStale(staleBefore);
         Instant now = clock.instant();
-        stale.forEach(
-                submission -> submission.failEvaluation(AsyncFailureCode.INTERRUPTED, now));
+        stale.forEach(submission -> submission.failEvaluation(AsyncFailureCode.INTERRUPTED, now));
         submissionRepository.flush();
         return stale.size();
     }

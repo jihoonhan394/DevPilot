@@ -197,8 +197,7 @@ final class CatalogMapping {
         return seeds;
     }
 
-    private static ChallengeSeedService.ChallengeSeed challengeSeed(
-            Map<String, Object> challenge) {
+    private static ChallengeSeedService.ChallengeSeed challengeSeed(Map<String, Object> challenge) {
         List<ChallengeRubricItem> rubric = new ArrayList<>();
         for (Object item : RawYaml.asList(challenge.get("rubric"))) {
             Map<String, Object> criterion = RawYaml.asMap(item);

@@ -68,9 +68,7 @@ public class UserSkillStateQueryService {
                                                 state.getLastPracticedAt())));
     }
 
-    /**
-     * skill id → 자기평가 레벨 (docs/06 §7.4 {@code claimedLevel}). 자기평가가 없는 skill은 map에 없다.
-     */
+    /** skill id → 자기평가 레벨 (docs/06 §7.4 {@code claimedLevel}). 자기평가가 없는 skill은 map에 없다. */
     public Map<UUID, Integer> selfAssessedLevels(UUID userId) {
         Map<UUID, Integer> levels = new HashMap<>();
         for (UserSkillState state : userSkillStateRepository.findByUserId(userId)) {
@@ -81,6 +79,25 @@ public class UserSkillStateQueryService {
         }
         return Map.copyOf(levels);
     }
+
+    /** skill id → 자기평가 상태 (docs/05 §4.2 진단 제안). state 행이 없는 skill은 map에 없다. */
+    public Map<UUID, AssessmentState> assessmentStates(UUID userId) {
+        Map<UUID, AssessmentState> states = new HashMap<>();
+        for (UserSkillState state : userSkillStateRepository.findByUserId(userId)) {
+            states.put(
+                    state.getSkillId(),
+                    new AssessmentState(
+                            state.getSelfAssessedLevel(), state.isSelfAssessmentActive()));
+        }
+        return Map.copyOf(states);
+    }
+
+    /**
+     * 자기평가 상태 (docs/05 §4.2).
+     *
+     * @param selfAssessedLevel 진단 모드면 null
+     */
+    public record AssessmentState(@Nullable Integer selfAssessedLevel, boolean active) {}
 
     /**
      * 규칙 입력용 skill state.

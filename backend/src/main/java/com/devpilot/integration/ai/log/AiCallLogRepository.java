@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -38,4 +39,9 @@ public interface AiCallLogRepository extends JpaRepository<AiCallLog, UUID> {
 
     /** 사용자의 행, 최신 순 (테스트·운영 조회). */
     List<AiCallLog> findByUserIdOrderByCreatedAtAsc(UUID userId);
+
+    /** 보존 기간이 지난 행 삭제 (docs/04 §8, BL-FND-24). 지운 행 수를 돌려준다. */
+    @Modifying
+    @Query("delete from AiCallLog l where l.createdAt < :cutoff")
+    int deleteOlderThan(@Param("cutoff") Instant cutoff);
 }

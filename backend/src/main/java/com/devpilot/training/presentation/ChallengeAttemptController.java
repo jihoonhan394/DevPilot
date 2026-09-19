@@ -28,9 +28,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * attempt 상세와 풀이 흐름 (docs/05 §10.6~§10.11). 타 사용자 attempt는 404 {@code RESOURCE_NOT_FOUND}다.
- */
+/** attempt 상세와 풀이 흐름 (docs/05 §10.6~§10.11). 타 사용자 attempt는 404 {@code RESOURCE_NOT_FOUND}다. */
 @RestController
 @RequestMapping("/api/v1/challenge-attempts")
 @Tag(name = "training")
@@ -122,8 +120,7 @@ public class ChallengeAttemptController {
                 AsyncStatusView.class,
                 () -> {
                     AsyncStart started =
-                            submissionService.submit(
-                                    currentUser, attemptId, request.toCommand());
+                            submissionService.submit(currentUser, attemptId, request.toCommand());
                     return ResponseEntity.status(HttpStatus.ACCEPTED)
                             .body(
                                     AsyncStatusView.forSubmission(

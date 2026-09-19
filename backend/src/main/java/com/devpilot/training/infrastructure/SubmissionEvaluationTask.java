@@ -49,8 +49,7 @@ public class SubmissionEvaluationTask extends AsyncAiTask<SubmissionEvaluationRe
                     failureCode == null ? AsyncFailureCode.INTERNAL_ERROR : failureCode);
             return;
         }
-        evaluationService.complete(
-                event, input.get(), result.requireValue(), result.aiCallId());
+        evaluationService.complete(event, input.get(), result.requireValue(), result.aiCallId());
     }
 
     @Override

@@ -27,8 +27,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * challenge 조회와 attempt 시작 (docs/05 §10.2·§10.4·§10.5, BL-TRN-02·BL-TRN-05). 공용 seed 또는 본인 소유가
- * 아니면 404 {@code RESOURCE_NOT_FOUND}다.
+ * challenge 조회와 attempt 시작 (docs/05 §10.2·§10.4·§10.5, BL-TRN-02·BL-TRN-05). 공용 seed 또는 본인 소유가 아니면
+ * 404 {@code RESOURCE_NOT_FOUND}다.
  */
 @RestController
 @RequestMapping("/api/v1/challenges")

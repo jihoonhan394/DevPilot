@@ -18,6 +18,9 @@ import com.devpilot.learning.domain.EventSourceType;
 import com.devpilot.learning.domain.HintContentOrigin;
 import com.devpilot.learning.domain.HintDisclosedPayload;
 import com.devpilot.learning.domain.HintDisclosure;
+import com.devpilot.learning.domain.HintLadderPolicy;
+import com.devpilot.learning.domain.HintLadderPolicy.Decision;
+import com.devpilot.learning.domain.HintLadderPolicy.HintRequestContext;
 import com.devpilot.learning.domain.HintLevel;
 import com.devpilot.learning.domain.HintTargetType;
 import com.devpilot.learning.domain.LearningEventType;
@@ -62,6 +65,7 @@ public class HintService {
     private final HintDisclosureRepository hintDisclosureRepository;
     private final LearningEventRecorder learningEventRecorder;
     private final AiGateway aiGateway;
+    private final HintLadderPolicy policy = new HintLadderPolicy();
 
     public HintService(
             HintDisclosureRepository hintDisclosureRepository,
@@ -70,6 +74,11 @@ public class HintService {
         this.hintDisclosureRepository = hintDisclosureRepository;
         this.learningEventRecorder = learningEventRecorder;
         this.aiGateway = aiGateway;
+    }
+
+    /** HL-1~HL-6 판정 (docs/06 §9.1). 대상 모듈이 맥락을 채워 부른다. */
+    public Decision decide(HintRequestContext context) {
+        return policy.decide(context);
     }
 
     /** 대상의 공개 hint (단계 오름차순). */
@@ -114,8 +123,7 @@ public class HintService {
                         userContent,
                         HintGenerateOutput.class,
                         input.userId(),
-                        new GuardContext(
-                                0, Set.of(), input.requestedLevel().name(), Set.of())));
+                        new GuardContext(0, Set.of(), input.requestedLevel().name(), Set.of())));
     }
 
     /**
@@ -159,12 +167,7 @@ public class HintService {
                             command.targetId(),
                             command.planDate(),
                             payload,
-                            "HINT:"
-                                    + command.targetId()
-                                    + ":"
-                                    + command.level()
-                                    + ":"
-                                    + skillId,
+                            "HINT:" + command.targetId() + ":" + command.level() + ":" + skillId,
                             command.now()));
         }
         return disclosure.getId();

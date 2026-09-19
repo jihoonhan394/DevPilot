@@ -1,5 +1,6 @@
 package com.devpilot.common.job;
 
+import static com.devpilot.testsupport.TestJobMetrics.jobMetrics;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.devpilot.common.logging.AuditLogger;
@@ -75,7 +76,7 @@ class PerUserJobTest {
         private final Set<Instant> instants = new HashSet<>();
 
         RecordingJob() {
-            super(new AuditLogger(), userRefCalculator, clock);
+            super(new AuditLogger(), userRefCalculator, jobMetrics(), clock);
         }
 
         @Override

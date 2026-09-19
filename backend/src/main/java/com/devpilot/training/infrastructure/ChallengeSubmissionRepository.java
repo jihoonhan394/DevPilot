@@ -27,7 +27,9 @@ public interface ChallengeSubmissionRepository extends JpaRepository<ChallengeSu
             """)
     int countPendingOrRunning(@Param("userId") UUID userId);
 
-    /** 멈춘 평가 ({@code OrphanAsyncTaskJob}, docs/03 §5.3, {@code idx_challenge_submission_status}). */
+    /**
+     * 멈춘 평가 ({@code OrphanAsyncTaskJob}, docs/03 §5.3, {@code idx_challenge_submission_status}).
+     */
     @Query(
             """
             select s from ChallengeSubmission s

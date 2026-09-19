@@ -88,6 +88,9 @@ public class ReviewAnswer implements Persistable<UUID> {
     @Column(nullable = false, updatable = false)
     private String strategy;
 
+    @Column(name = "ai_call_id", updatable = false)
+    private @Nullable UUID aiCallId;
+
     @Column(name = "answered_at", nullable = false, updatable = false)
     private Instant answeredAt;
 
@@ -116,6 +119,7 @@ public class ReviewAnswer implements Persistable<UUID> {
         answer.intervalBefore = values.intervalBefore();
         answer.intervalAfter = values.intervalAfter();
         answer.strategy = Objects.requireNonNull(values.strategy(), "strategy");
+        answer.aiCallId = values.aiCallId();
         answer.answeredAt = Objects.requireNonNull(values.answeredAt(), "answeredAt");
         return answer;
     }
@@ -184,6 +188,7 @@ public class ReviewAnswer implements Persistable<UUID> {
             int intervalBefore,
             int intervalAfter,
             String strategy,
+            @Nullable UUID aiCallId,
             Instant answeredAt) {
 
         public Values {

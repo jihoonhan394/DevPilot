@@ -29,6 +29,7 @@ import com.devpilot.today.domain.ReasonTemplates.ReasonInput;
 import com.devpilot.today.domain.ReasonTemplates.ReasonParams;
 import com.devpilot.today.domain.ScoreBreakdown;
 import com.devpilot.today.domain.TaskProposalPolicy;
+import com.devpilot.today.domain.TaskProposalPolicy.ChallengeOption;
 import com.devpilot.today.domain.TaskProposalPolicy.Proposal;
 import com.devpilot.today.domain.TaskProposalPolicy.ProposalInput;
 import com.devpilot.today.domain.TaskProposalPolicy.ReadingOption;
@@ -52,8 +53,8 @@ import org.springframework.stereotype.Component;
  * level, 집중 skill, leech, 최근 복습 실패, 어제·그제 main, ACTIVE 사이드 프로젝트)을 모아 규칙 클래스를 순서대로 돌린다: 후보 → 제안 →
  * 점수·순위 → 시간 배분·과제 조정 → reason. 저장은 {@link TodayPlanService}가 한다. AI를 호출하지 않는다.
  *
- * <p>AI 사용 가능 여부와 reading 후보는 {@link ProposalOptionCollector}가 모은다(BL-TDY-16). challenge 후보는
- * training 모듈(BL-TDY-14)이 붙기 전까지 빈 목록이다. 규칙 입력은 {@link PlannerInputCollector}가 모은다.
+ * <p>AI 사용 가능 여부와 challenge·reading 후보는 {@link ProposalOptionCollector}가 모은다(BL-TDY-14·BL-TDY-16).
+ * 규칙 입력은 {@link PlannerInputCollector}가 모은다.
  */
 @Component
 public class DailyPlanComposer {
@@ -107,7 +108,7 @@ public class DailyPlanComposer {
                         new Context(risk == null ? RiskLevel.LOW : risk, energy, comebackMode),
                         due);
         ProposalOptionCollector.ProposalOptions options =
-                proposalOptionCollector.collect(userId, today);
+                proposalOptionCollector.collect(userId, today, user.zoneId(), user.dayStartHour());
         Optional<LearningTask.MainValues> main = chooseMain(inputs, options, allocation);
         return new Composition(plan.id(), risk, comebackMode, allocation, main.orElse(null));
     }
@@ -169,7 +170,7 @@ public class DailyPlanComposer {
                                 inputs.context().energy(),
                                 inputs.context().comebackMode(),
                                 options.aiAvailable(),
-                                List.of(),
+                                options.challengesFor(code),
                                 options.readingsFor(code),
                                 inputs.sideProject()));
         ScoredCandidate scored =
@@ -187,7 +188,14 @@ public class DailyPlanComposer {
                                 inputs.context().risk(),
                                 inputs.context().energy(),
                                 inputs.context().comebackMode()));
-        return new Evaluated(scored, proposal, milestone, skill, target, options.readingsFor(code));
+        return new Evaluated(
+                scored,
+                proposal,
+                milestone,
+                skill,
+                target,
+                options.challengesFor(code),
+                options.readingsFor(code));
     }
 
     private LearningTask.MainValues toMain(Evaluated chosen, Inputs inputs, Allocation allocation) {
@@ -196,7 +204,7 @@ public class DailyPlanComposer {
                         chosen.proposal(),
                         allocation,
                         chosen.skill(),
-                        List.of(),
+                        chosen.challenges(),
                         chosen.readings());
         ScoredCandidate scored = chosen.scored();
         Factors factors = scored.input().factors();
@@ -282,5 +290,6 @@ public class DailyPlanComposer {
             MilestoneContext milestone,
             SkillContext skill,
             @Nullable SkillTarget target,
+            List<ChallengeOption> challenges,
             List<ReadingOption> readings) {}
 }

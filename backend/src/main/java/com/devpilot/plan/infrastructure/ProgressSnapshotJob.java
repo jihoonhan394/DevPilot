@@ -1,5 +1,6 @@
 package com.devpilot.plan.infrastructure;
 
+import com.devpilot.common.job.JobMetrics;
 import com.devpilot.common.job.PerUserJob;
 import com.devpilot.common.logging.AuditLogger;
 import com.devpilot.common.logging.UserRefCalculator;
@@ -27,8 +28,9 @@ public class ProgressSnapshotJob extends PerUserJob {
             StudyBudgetService studyBudgetService,
             AuditLogger auditLogger,
             UserRefCalculator userRefCalculator,
+            JobMetrics jobMetrics,
             Clock clock) {
-        super(auditLogger, userRefCalculator, clock);
+        super(auditLogger, userRefCalculator, jobMetrics, clock);
         this.planQueryService = planQueryService;
         this.studyBudgetService = studyBudgetService;
     }

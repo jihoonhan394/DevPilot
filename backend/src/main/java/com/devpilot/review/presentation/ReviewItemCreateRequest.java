@@ -19,7 +19,6 @@ public record ReviewItemCreateRequest(
 
     /** 서비스 입력으로 바꾼다. */
     public CreateCommand toCommand() {
-        return new CreateCommand(
-                skillCode, conceptKey, reviewType, prompt, expectedAnswer, rubric);
+        return new CreateCommand(skillCode, conceptKey, reviewType, prompt, expectedAnswer, rubric);
     }
 }

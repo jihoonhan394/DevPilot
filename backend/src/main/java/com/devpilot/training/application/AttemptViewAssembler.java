@@ -39,8 +39,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 
 /**
- * {@code AttemptView} 구성 (docs/05 §10.6). 공개 hint, 제출·평가, 평가로 만들어진 복습 카드, 근거 이벤트 id를 모은다. 저장하지
- * 않는다.
+ * {@code AttemptView} 구성 (docs/05 §10.6). 공개 hint, 제출·평가, 평가로 만들어진 복습 카드, 근거 이벤트 id를 모은다. 저장하지 않는다.
  */
 @Component
 class AttemptViewAssembler {
@@ -70,8 +69,7 @@ class AttemptViewAssembler {
         this.maxSubmissions = properties.training().maxSubmissionsPerAttempt();
     }
 
-    AttemptView view(
-            ChallengeAttempt attempt, Challenge challenge, ZoneId zone, int dayStartHour) {
+    AttemptView view(ChallengeAttempt attempt, Challenge challenge, ZoneId zone, int dayStartHour) {
         UUID userId = attempt.getUserId();
         List<ChallengeSubmission> submissions =
                 submissionRepository.findByAttemptIdOrderBySubmissionNoAsc(attempt.getId());
@@ -186,8 +184,7 @@ class AttemptViewAssembler {
 
     private List<ScheduledReviewView> scheduledReviews(
             ChallengeAttempt attempt, Challenge challenge, ZoneId zone, int dayStartHour) {
-        if (!ReviewScheduleRule.shouldSchedule(
-                attempt.getOutcome(), attempt.getMaxHintLevel())) {
+        if (!ReviewScheduleRule.shouldSchedule(attempt.getOutcome(), attempt.getMaxHintLevel())) {
             return List.of();
         }
         Map<UUID, SkillRef> refs = skillCatalogQueryService.findRefs(challenge.getSkillIds());
@@ -210,8 +207,7 @@ class AttemptViewAssembler {
                     ScheduledCardRef card = cards.get(conceptKey);
                     if (card != null) {
                         views.add(
-                                new ScheduledReviewView(
-                                        card.reviewItemId(), code, card.dueDate()));
+                                new ScheduledReviewView(card.reviewItemId(), code, card.dueDate()));
                     }
                 });
         return List.copyOf(views);

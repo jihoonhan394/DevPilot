@@ -2,6 +2,7 @@ package com.devpilot.common.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.devpilot.learning.application.LearningRuleSettings;
 import com.devpilot.plan.application.PlanRuleSettings;
 import com.devpilot.review.application.ReviewRuleSettings;
 import com.devpilot.rubberduck.application.RubberDuckRuleSettings;
@@ -10,7 +11,6 @@ import com.devpilot.testsupport.TestProperties;
 import com.devpilot.testsupport.TestRuleSettings;
 import com.devpilot.testsupport.UnitTest;
 import com.devpilot.today.application.TodayRuleSettings;
-import com.devpilot.training.application.TrainingRuleSettings;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -52,7 +52,7 @@ class RuleSettingsFactoryTest {
 
     @Test
     void shouldConvertRubricScorerSettings() {
-        assertThat(TrainingRuleSettings.rubricScorer(properties))
+        assertThat(LearningRuleSettings.rubricScorer(properties))
                 .isEqualTo(TestRuleSettings.rubricScorer());
     }
 

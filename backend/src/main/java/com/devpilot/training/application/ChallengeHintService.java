@@ -18,9 +18,9 @@ import com.devpilot.learning.application.HintService.GenerateInput;
 import com.devpilot.learning.application.HintService.RecordCommand;
 import com.devpilot.learning.domain.EventSourceType;
 import com.devpilot.learning.domain.HintContentOrigin;
-import com.devpilot.learning.domain.HintLadderPolicy;
 import com.devpilot.learning.domain.HintLadderPolicy.Decision;
 import com.devpilot.learning.domain.HintLadderPolicy.HintRequestContext;
+import com.devpilot.learning.domain.HintLadderPolicy.Outcome;
 import com.devpilot.learning.domain.HintLevel;
 import com.devpilot.learning.domain.HintTargetType;
 import com.devpilot.training.domain.Challenge;
@@ -45,9 +45,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * challenge attempt의 Hint Ladder (docs/05 §10.8, docs/06 §9.1~§9.2, BL-TRN-08). 판정은 {@link
- * HintLadderPolicy}, AI 호출·저장은 {@link HintService}가 한다. AI는 트랜잭션 밖에서만 부른다(T-2): {@code tx1(검사) →
- * HINT_GENERATE → tx2(저장)}.
+ * challenge attempt의 Hint Ladder (docs/05 §10.8, docs/06 §9.1~§9.2, BL-TRN-08). 판정·AI 호출·저장은 모두
+ * {@link HintService}가 하고, 이 클래스는 challenge 쪽 맥락(사전 hint, 제출, 자기 설명)을 채운다. AI는 트랜잭션 밖에서만 부른다(T-2):
+ * {@code tx1(검사) → HINT_GENERATE → tx2(저장)}.
  */
 @Service
 public class ChallengeHintService {
@@ -59,7 +59,6 @@ public class ChallengeHintService {
     private final HintService hintService;
     private final TransactionTemplate transactions;
     private final Clock clock;
-    private final HintLadderPolicy policy = new HintLadderPolicy();
 
     public ChallengeHintService(
             ChallengeQueryService challengeQueryService,
@@ -98,7 +97,7 @@ public class ChallengeHintService {
                             ErrorCode.FULL_EXAMPLE_NOT_ALLOWED,
                             "a full example needs a submission or giving up");
             case RETURN_STORED -> {
-                return prepared.storedResult();
+                return prepared.requireStoredResult();
             }
             case DISCLOSE_PREGENERATED -> {
                 return store(user, attemptId, prepared, null);
@@ -122,8 +121,7 @@ public class ChallengeHintService {
                         .orElseThrow(
                                 () ->
                                         new com.devpilot.common.error.NotFoundException(
-                                                ErrorCode.RESOURCE_NOT_FOUND,
-                                                "attempt not found"));
+                                                ErrorCode.RESOURCE_NOT_FOUND, "attempt not found"));
         attempt.requireNotAbandoned();
         Challenge challenge = challengeQueryService.require(userId, attempt.getChallengeId());
         List<DisclosedHint> disclosures =
@@ -132,7 +130,7 @@ public class ChallengeHintService {
                 attempt.hasSelfExplanationRecord()
                         || explanationProvider.hasRubberDuckTurns(userId, attemptId);
         Decision decision =
-                policy.decide(
+                hintService.decide(
                         new HintRequestContext(
                                 command.requestedLevel(),
                                 attempt.getMaxHintLevel(),
@@ -143,7 +141,7 @@ public class ChallengeHintService {
                                 command.acknowledgeEvidenceImpact(),
                                 command.giveUp()));
         HintResult stored = null;
-        if (decision.outcome() == HintLadderPolicy.Outcome.RETURN_STORED) {
+        if (decision.outcome() == Outcome.RETURN_STORED) {
             HintLevel level = decision.requireLevel();
             DisclosedHint hint =
                     disclosures.stream()
@@ -161,7 +159,7 @@ public class ChallengeHintService {
                             null);
         }
         GenerateInput aiInput = null;
-        if (decision.outcome() == HintLadderPolicy.Outcome.DISCLOSE_GENERATED) {
+        if (decision.outcome() == Outcome.DISCLOSE_GENERATED) {
             List<ChallengeSubmission> submissions =
                     submissionRepository.findByAttemptIdOrderBySubmissionNoAsc(attemptId);
             aiInput =
@@ -174,7 +172,7 @@ public class ChallengeHintService {
                             submissions.isEmpty() ? null : submissions.getLast());
         }
         String pregenerated =
-                decision.outcome() == HintLadderPolicy.Outcome.DISCLOSE_PREGENERATED
+                decision.outcome() == Outcome.DISCLOSE_PREGENERATED
                         ? challenge.pregeneratedHint(decision.requireLevel())
                         : null;
         return new Prepared(
@@ -329,12 +327,10 @@ public class ChallengeHintService {
     private static void validateShape(HintCommand command) {
         List<ApiFieldError> errors = new ArrayList<>();
         if (command.requestedLevel() == HintLevel.SELF_EXPLAIN) {
-            errors.add(
-                    ApiFieldError.of("requestedLevel", FieldErrorCodes.VALUE_NOT_ALLOWED));
+            errors.add(ApiFieldError.of("requestedLevel", FieldErrorCodes.VALUE_NOT_ALLOWED));
         }
         if (Boolean.TRUE.equals(command.skipSelfExplanation())) {
-            errors.add(
-                    ApiFieldError.of("skipSelfExplanation", FieldErrorCodes.VALUE_NOT_ALLOWED));
+            errors.add(ApiFieldError.of("skipSelfExplanation", FieldErrorCodes.VALUE_NOT_ALLOWED));
         }
         if (!errors.isEmpty()) {
             throw new BusinessValidationException("invalid hint request", errors);
@@ -377,7 +373,7 @@ public class ChallengeHintService {
             skillIds = Set.copyOf(skillIds);
         }
 
-        HintResult storedResult() {
+        HintResult requireStoredResult() {
             return Objects.requireNonNull(storedResult, "storedResult");
         }
     }

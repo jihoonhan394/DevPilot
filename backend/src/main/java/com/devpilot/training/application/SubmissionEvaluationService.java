@@ -1,7 +1,6 @@
 package com.devpilot.training.application;
 
 import com.devpilot.common.async.AsyncFailureCode;
-import com.devpilot.common.config.DevPilotProperties;
 import com.devpilot.common.domain.ContentOrigin;
 import com.devpilot.common.time.PlanDayCalculator;
 import com.devpilot.integration.ai.AiGateway;
@@ -18,13 +17,13 @@ import com.devpilot.integration.ai.api.output.ChallengeEvaluateOutput;
 import com.devpilot.integration.ai.api.output.RubricJudgementOutput;
 import com.devpilot.learning.application.LearningEventRecorder;
 import com.devpilot.learning.application.LearningEventRecorder.NewLearningEvent;
+import com.devpilot.learning.application.RubricScoringService;
 import com.devpilot.learning.domain.ChallengeEvaluatedPayload;
 import com.devpilot.learning.domain.DiagnosticPayload;
 import com.devpilot.learning.domain.EvaluatedOutcome;
 import com.devpilot.learning.domain.EventSourceType;
 import com.devpilot.learning.domain.HintLevel;
 import com.devpilot.learning.domain.LearningEventType;
-import com.devpilot.learning.domain.RubricScorer;
 import com.devpilot.learning.domain.RubricScorer.Score;
 import com.devpilot.learning.domain.RubricScorer.ScoredCriterion;
 import com.devpilot.review.application.ReviewItemService;
@@ -67,8 +66,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 제출 평가 (docs/05 §10.9 9단계, docs/17 §3.4, BL-TRN-09·BL-TRN-11·BL-TRN-12). {@code
- * SubmissionEvaluationTask}가 {@code tx1 → AI → tx2} 순서로 부른다 — 이 클래스의 {@link #evaluate}만 트랜잭션
- * 밖이다.
+ * SubmissionEvaluationTask}가 {@code tx1 → AI → tx2} 순서로 부른다 — 이 클래스의 {@link #evaluate}만 트랜잭션 밖이다.
  */
 @Service
 public class SubmissionEvaluationService {
@@ -90,7 +88,7 @@ public class SubmissionEvaluationService {
     private final UserSkillStateQueryService userSkillStateQueryService;
     private final AiGateway aiGateway;
     private final Clock clock;
-    private final RubricScorer rubricScorer;
+    private final RubricScoringService rubricScorer;
     private final AttemptOutcomeCalculator outcomeCalculator = new AttemptOutcomeCalculator();
 
     public SubmissionEvaluationService(
@@ -102,8 +100,8 @@ public class SubmissionEvaluationService {
             SkillCatalogQueryService skillCatalogQueryService,
             UserSkillStateQueryService userSkillStateQueryService,
             AiGateway aiGateway,
-            Clock clock,
-            DevPilotProperties properties) {
+            RubricScoringService rubricScorer,
+            Clock clock) {
         this.attemptRepository = attemptRepository;
         this.submissionRepository = submissionRepository;
         this.challengeQueryService = challengeQueryService;
@@ -113,7 +111,7 @@ public class SubmissionEvaluationService {
         this.userSkillStateQueryService = userSkillStateQueryService;
         this.aiGateway = aiGateway;
         this.clock = clock;
-        this.rubricScorer = new RubricScorer(TrainingRuleSettings.rubricScorer(properties));
+        this.rubricScorer = rubricScorer;
     }
 
     /** tx1: {@code PENDING → RUNNING}과 입력 수집. 이미 시작·종료됐으면 empty. */
@@ -124,8 +122,7 @@ public class SubmissionEvaluationService {
         if (submission == null || !submission.markRunning(clock.instant())) {
             return Optional.empty();
         }
-        ChallengeAttempt attempt =
-                attemptRepository.findById(event.attemptId()).orElseThrow();
+        ChallengeAttempt attempt = attemptRepository.findById(event.attemptId()).orElseThrow();
         Challenge challenge =
                 challengeQueryService.require(event.userId(), attempt.getChallengeId());
         submissionRepository.flush();
@@ -177,9 +174,7 @@ public class SubmissionEvaluationService {
                         UserContentBlock.code(
                                 "code",
                                 UserContentKind.CODE,
-                                UNKNOWN_LANGUAGE.equals(input.language())
-                                        ? null
-                                        : input.language(),
+                                UNKNOWN_LANGUAGE.equals(input.language()) ? null : input.language(),
                                 orEmpty(input.code()),
                                 1,
                                 CODE));
@@ -203,12 +198,10 @@ public class SubmissionEvaluationService {
             ChallengeEvaluateOutput output,
             @Nullable UUID aiCallId) {
         Instant now = clock.instant();
-        LocalDate planDate =
-                PlanDayCalculator.planDate(now, event.zone(), event.dayStartHour());
+        LocalDate planDate = PlanDayCalculator.planDate(now, event.zone(), event.dayStartHour());
         ChallengeSubmission submission =
                 submissionRepository.findById(event.submissionId()).orElseThrow();
-        ChallengeAttempt attempt =
-                attemptRepository.findById(event.attemptId()).orElseThrow();
+        ChallengeAttempt attempt = attemptRepository.findById(event.attemptId()).orElseThrow();
         Challenge challenge =
                 challengeQueryService.require(event.userId(), attempt.getChallengeId());
         SubmissionEvaluation evaluation = sanitize(output, input);
@@ -235,8 +228,8 @@ public class SubmissionEvaluationService {
                 now);
         attemptRepository.flush();
         Map<UUID, SkillRef> skills = skillCatalogQueryService.findRefs(challenge.getSkillIds());
-        recordEvaluated(event, challenge, attempt, submission, score, outcome, skills, planDate,
-                now);
+        recordEvaluated(
+                event, challenge, attempt, submission, score, outcome, skills, planDate, now);
         if (challenge.getPurpose() == ChallengePurpose.DIAGNOSTIC) {
             recordDiagnostic(event, challenge, attempt, submission, score, skills, planDate, now);
         }
@@ -304,10 +297,8 @@ public class SubmissionEvaluationService {
             Instant now) {
         boolean passed =
                 score.evaluatedOutcome() == EvaluatedOutcome.CORRECT
-                        && attempt.getMaxHintLevel().ordinal()
-                                <= HintLevel.QUESTION_ONLY.ordinal();
-        Map<UUID, Integer> claimed =
-                userSkillStateQueryService.selfAssessedLevels(event.userId());
+                        && attempt.getMaxHintLevel().ordinal() <= HintLevel.QUESTION_ONLY.ordinal();
+        Map<UUID, Integer> claimed = userSkillStateQueryService.selfAssessedLevels(event.userId());
         for (UUID skillId : orderedSkillIds(challenge, skills)) {
             learningEventRecorder.record(
                     new NewLearningEvent(
