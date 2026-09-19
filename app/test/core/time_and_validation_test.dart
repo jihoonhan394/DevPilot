@@ -95,8 +95,20 @@ void main() {
 
     test('shouldDetectPrivateKeyBlocks', () {
       // Built at runtime so secret scanners don't flag the test (docs/07 §11.3).
-      expect(InputRules.containsPrivateKey('-----BEGIN RSA ' 'PRIVATE KEY-----'), isTrue);
-      expect(InputRules.containsPrivateKey('-----BEGIN ' 'PRIVATE KEY-----'), isTrue);
+      expect(
+        InputRules.containsPrivateKey(
+          '-----BEGIN RSA '
+          'PRIVATE KEY-----',
+        ),
+        isTrue,
+      );
+      expect(
+        InputRules.containsPrivateKey(
+          '-----BEGIN '
+          'PRIVATE KEY-----',
+        ),
+        isTrue,
+      );
       expect(InputRules.containsPrivateKey('-----BEGIN PUBLIC KEY-----'), isFalse);
     });
   });
