@@ -765,7 +765,7 @@ def validate(content_dir: str):
                         res.error("CV-72", where, "verifiedAt must be YYYY-MM-DD")
                 data["sources"].append(src)
 
-    # ---- curated repos / readings (CV-80..CV-86) --------------------------
+    # ---- curated repos / readings (CV-80..CV-87) --------------------------
     rel = files.get("curatedRepos")
     if isinstance(rel, str):
         doc = load_yaml(os.path.join(content_dir, rel), res, rel)
@@ -811,7 +811,7 @@ def validate(content_dir: str):
                     res.error("CV-82", where, "pinnedCommit must be a 40-char lowercase hex SHA or null")
                 if pinned is None:
                     res.warn("CV-82", where, "pinnedCommit is null: reading line numbers are unpinned")
-                repo["_readings"] = 0
+                repo["_readings"] = 0  # readings that are not retired (CV-87)
                 data["repos"].append(repo)
 
             repos_by_key = {r["key"]: r for r in data["repos"]}
@@ -820,11 +820,12 @@ def validate(content_dir: str):
                 where = f"{rel}#readings[{idx}]"
                 required = {"key", "repo", "path", "lines", "skillCodes", "estimatedMinutes",
                             "question", "lookFor"}
-                # optional: retired (bool). CV-83/CV-87 retirement rules arrive with S3 (BL-CNT-16)
+                # optional: retired (bool, default false) — docs/19 §3.8, §8.2
                 if not check_keys(rd, required | {"retired"}, required, res, where):
                     continue
                 if "retired" in rd and not isinstance(rd["retired"], bool):
                     res.error("CV-03", where, "retired must be a boolean")
+                is_retired = rd.get("retired") is True
                 key = rd["key"]
                 where = f"{rel}#{key}"
                 if not (isinstance(key, str) and READING_KEY_RE.match(key) and len(key) <= 100):
@@ -832,13 +833,17 @@ def validate(content_dir: str):
                                               r"(^READ\.<REPO>\.<TOPIC>\.NNN$)")
                 if key in reading_keys:
                     res.error("CV-83", where, "duplicate reading key")
-                if key in retired_readings:
-                    res.error("CV-83", where, "key is in retired.readingKeys")
+                # CV-83 retirement: an active reading must not use a retired key, and a
+                # retired reading must be listed in retired.readingKeys (docs/19 §8.2)
+                if is_retired and key not in retired_readings:
+                    res.error("CV-83", where, "retired reading key must be listed in retired.readingKeys")
+                if not is_retired and key in retired_readings:
+                    res.error("CV-83", where, "key is in retired.readingKeys but the reading is not retired")
                 reading_keys.add(key)
 
                 if rd["repo"] not in repos_by_key:
                     res.error("CV-84", where, f"unknown repo reference {rd['repo']}")
-                else:
+                elif not is_retired:
                     repos_by_key[rd["repo"]]["_readings"] += 1
 
                 path = rd["path"]
@@ -881,10 +886,18 @@ def validate(content_dir: str):
                             res.error("CV-86", where, "lookFor item length 5..200")
                 data["readings"].append(rd)
 
+            # CV-83: every retired key keeps its definition (retired units stay resolvable, §8.2)
+            for key in sorted(retired_readings - reading_keys):
+                res.error("CV-83", "catalog.yaml#retired.readingKeys",
+                          f"{key} has no reading definition in {rel} (keep it with retired: true)")
+
+            # CV-87: count only readings that are not retired. A repo kept only for retired
+            # readings (0 active) is not a warning target
             for repo in data["repos"]:
-                if not 3 <= repo["_readings"] <= 5:
+                active = repo["_readings"]
+                if active and not 3 <= active <= 5:
                     res.warn("CV-87", f"{rel}#{repo['key']}",
-                             f"repo has {repo['_readings']} readings (expected 3..5)")
+                             f"repo has {active} active readings (expected 3..5)")
 
     # ---- WARN: MUST skills without seed card ------------------------------
     carded = {c["skill"] for c in data["cards"]}
