@@ -7,6 +7,24 @@ servers:
 security:
 - bearerAuth: []
 paths:
+  /api/v1/dashboard:
+    get:
+      operationId: dashboardGet
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - dashboard
   /api/v1/learning-goal:
     get:
       operationId: goalGetGoal
@@ -48,6 +66,142 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - goal
+  /api/v1/learning-sessions:
+    get:
+      operationId: learningListSessions
+      parameters:
+      - in: query
+        name: from
+        required: false
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: to
+        required: false
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+          maxLength: 512
+          minLength: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CursorPageSessionView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - learning
+    post:
+      operationId: learningStartSession
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SessionStartRequest"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionStartResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - learning
+  /api/v1/learning-sessions/{sessionId}/abandon:
+    post:
+      operationId: learningAbandonSession
+      parameters:
+      - in: path
+        name: sessionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - learning
+  /api/v1/learning-sessions/{sessionId}/complete:
+    post:
+      operationId: learningCompleteSession
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: sessionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SessionCompleteRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - learning
   /api/v1/me:
     delete:
       operationId: userDeleteMe
@@ -189,6 +343,24 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - plan
+  /api/v1/plans/active/budget:
+    get:
+      operationId: planGetActiveBudget
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - plan
   /api/v1/plans/{planId}:
     get:
       operationId: planGet
@@ -287,6 +459,105 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - plan
+  /api/v1/plans/{planId}/replan/preview:
+    post:
+      operationId: planPreviewReplan
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: false
+        schema:
+          type: string
+      - in: path
+        name: planId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplanRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReplanPreviewResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - plan
+  /api/v1/reviews/due:
+    get:
+      operationId: reviewGetDue
+      parameters:
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+          maximum: 100
+          minimum: 1
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DueReviewsResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - review
+  /api/v1/reviews/{reviewItemId}/answer:
+    post:
+      operationId: reviewAnswer
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: reviewItemId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewAnswerRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewAnswerResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - review
   /api/v1/side-projects:
     get:
       operationId: projectList
@@ -480,6 +751,85 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - skill
+  /api/v1/today:
+    get:
+      operationId: todayGet
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TodayView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/today/generate:
+    post:
+      operationId: todayGenerate
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TodayGenerateRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TodayView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/today/tasks/{taskId}:
+    patch:
+      operationId: todayUpdateTaskStatus
+      parameters:
+      - in: path
+        name: taskId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskStatusPatchRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskStatusView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
 components:
   schemas:
     AccountDeletionResponse:
@@ -496,6 +846,21 @@ components:
       required:
       - deletionRequestedAt
       - status
+    AiMeta:
+      type: object
+      properties:
+        guardActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuardActionView"
+        model:
+          type: string
+        promptVersion:
+          type: string
+      required:
+      - guardActions
+      - model
+      - promptVersion
     AiUsageView:
       type: object
       properties:
@@ -534,6 +899,54 @@ components:
       - explanation
       - implementation
       - knowledge
+    BudgetView:
+      type: object
+      properties:
+        completionRateBp:
+          type: integer
+          format: int32
+        effectiveBudgetMinutes:
+          type: integer
+          format: int32
+        horizonDate:
+          type: string
+          format: date
+        nominalBudgetMinutes:
+          type: integer
+          format: int32
+        planId:
+          type: string
+          format: uuid
+        ratioBp:
+          type: integer
+          format: int32
+        requiredMustMinutes:
+          type: integer
+          format: int32
+        requiredShouldMinutes:
+          type: integer
+          format: int32
+        riskLevel:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+        today:
+          type: string
+          format: date
+      required:
+      - completionRateBp
+      - effectiveBudgetMinutes
+      - horizonDate
+      - nominalBudgetMinutes
+      - planId
+      - ratioBp
+      - requiredMustMinutes
+      - requiredShouldMinutes
+      - riskLevel
+      - today
     CursorPagePlanSummaryView:
       type: object
       properties:
@@ -541,6 +954,18 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PlanSummaryView"
+        nextCursor:
+          type: string
+      required:
+      - items
+      - nextCursor
+    CursorPageSessionView:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SessionView"
         nextCursor:
           type: string
       required:
@@ -558,6 +983,93 @@ components:
       required:
       - items
       - nextCursor
+    DashboardView:
+      type: object
+      properties:
+        aiStatus:
+          type: string
+          enum:
+          - ENABLED
+          - BUDGET_WARNING
+          - BALANCE_EXHAUSTED
+          - DISABLED
+        dueReviewCount:
+          type: integer
+          format: int32
+        milestoneTimeline:
+          $ref: "#/components/schemas/MilestoneTimelineView"
+        replanRecommended:
+          type: boolean
+        risk:
+          $ref: "#/components/schemas/RiskSummaryView"
+        skillCategories:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillCategorySummaryView"
+        today:
+          type: string
+          format: date
+        todaySummary:
+          $ref: "#/components/schemas/TodaySummaryView"
+        weakThinkingAxes:
+          type: array
+          items:
+            type: string
+            enum:
+            - CORRECTNESS
+            - NULL_BOUNDARY
+            - RESOURCE_LIFECYCLE
+            - EXCEPTION_STRATEGY
+            - SECURITY
+            - PERFORMANCE
+            - CONCURRENCY
+            - OBSERVABILITY
+            - MAINTAINABILITY
+            - TRANSACTION_DATA_CONSISTENCY
+        weekCompletedSessions:
+          type: integer
+          format: int32
+        weekStartDate:
+          type: string
+          format: date
+        weekStudyMinutes:
+          type: integer
+          format: int32
+      required:
+      - aiStatus
+      - dueReviewCount
+      - milestoneTimeline
+      - replanRecommended
+      - risk
+      - skillCategories
+      - today
+      - todaySummary
+      - weakThinkingAxes
+      - weekCompletedSessions
+      - weekStartDate
+      - weekStudyMinutes
+    DeferSuggestionView:
+      type: object
+      properties:
+        practicalImportanceBp:
+          type: integer
+          format: int32
+        priority:
+          type: string
+          enum:
+          - MUST
+          - SHOULD
+          - LATER
+        requiredMinutes:
+          type: integer
+          format: int32
+        skill:
+          $ref: "#/components/schemas/SkillRef"
+      required:
+      - practicalImportanceBp
+      - priority
+      - requiredMinutes
+      - skill
     DiagnosticSuggestionView:
       type: object
       properties:
@@ -601,6 +1113,118 @@ components:
       - selfAssessedLevel
       - skill
       - title
+    DueReviewItemView:
+      type: object
+      properties:
+        dueDate:
+          type: string
+          format: date
+        expectedAnswer:
+          type: string
+        overdueDays:
+          type: integer
+          format: int32
+        prompt:
+          type: string
+        reviewItemId:
+          type: string
+          format: uuid
+        reviewType:
+          type: string
+          enum:
+          - RECALL
+          - BUG_SPOT
+          - EXPLAIN
+          - CHOICE
+        rubric:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewRubricItemView"
+        skillCode:
+          type: string
+        skillName:
+          type: string
+        wasVariant:
+          type: boolean
+      required:
+      - dueDate
+      - expectedAnswer
+      - overdueDays
+      - prompt
+      - reviewItemId
+      - reviewType
+      - rubric
+      - skillCode
+      - skillName
+      - wasVariant
+    DueReviewsResponse:
+      type: object
+      properties:
+        cap:
+          type: integer
+          format: int32
+        comebackMode:
+          type: boolean
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DueReviewItemView"
+        planDate:
+          type: string
+          format: date
+        totalDueCount:
+          type: integer
+          format: int32
+      required:
+      - cap
+      - comebackMode
+      - items
+      - planDate
+      - totalDueCount
+    ExpansionSuggestionView:
+      type: object
+      properties:
+        addedMinutes:
+          type: integer
+          format: int32
+        axis:
+          type: string
+          enum:
+          - KNOWLEDGE
+          - IMPLEMENTATION
+          - EXPLANATION
+          - DEBUGGING
+        currentTarget:
+          type: integer
+          format: int32
+        kind:
+          type: string
+          enum:
+          - RESTORE_DEFERRED
+          - RAISE_TARGET
+        newTarget:
+          type: integer
+          format: int32
+        practicalImportanceBp:
+          type: integer
+          format: int32
+        priority:
+          type: string
+          enum:
+          - MUST
+          - SHOULD
+          - LATER
+        skill:
+          $ref: "#/components/schemas/SkillRef"
+      required:
+      - addedMinutes
+      - axis
+      - currentTarget
+      - kind
+      - newTarget
+      - practicalImportanceBp
+      - priority
+      - skill
     FieldError:
       type: object
       properties:
@@ -614,6 +1238,19 @@ components:
       - code
       - field
       - message
+    GuardActionView:
+      type: object
+      properties:
+        action:
+          type: string
+        detail:
+          type: string
+        guard:
+          type: string
+      required:
+      - action
+      - detail
+      - guard
     LearningGoalInput:
       type: object
       properties:
@@ -698,6 +1335,79 @@ components:
       - targetCompletionDate
       - targetRole
       - updatedAt
+      - version
+    MainTaskView:
+      type: object
+      properties:
+        challengeId:
+          type: string
+          format: uuid
+        completedAt:
+          type: string
+          format: date-time
+        description:
+          type: string
+        estimatedMinutes:
+          type: integer
+          format: int32
+        id:
+          type: string
+          format: uuid
+        milestoneId:
+          type: string
+          format: uuid
+        readingKey:
+          type: string
+        reasons:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReasonView"
+        sideProjectId:
+          type: string
+          format: uuid
+        skillCode:
+          type: string
+        skillName:
+          type: string
+        status:
+          type: string
+          enum:
+          - PLANNED
+          - IN_PROGRESS
+          - COMPLETED
+          - SKIPPED
+          - DEFERRED
+        taskType:
+          type: string
+          enum:
+          - RECALL
+          - REVIEW
+          - CHALLENGE
+          - PROJECT_TASK
+          - COACH_REVIEW
+          - READING
+          - READ_CODE
+          - EXPLAIN
+        title:
+          type: string
+        version:
+          type: integer
+          format: int64
+      required:
+      - challengeId
+      - completedAt
+      - description
+      - estimatedMinutes
+      - id
+      - milestoneId
+      - readingKey
+      - reasons
+      - sideProjectId
+      - skillCode
+      - skillName
+      - status
+      - taskType
+      - title
       - version
     MeResponse:
       type: object
@@ -866,6 +1576,31 @@ components:
           format: int64
       required:
       - version
+    MilestoneTimelineView:
+      type: object
+      properties:
+        horizonDate:
+          type: string
+          format: date
+        milestones:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimelineMilestoneView"
+        planId:
+          type: string
+          format: uuid
+        planVersion:
+          type: integer
+          format: int32
+        todayMarker:
+          type: string
+          format: date
+      required:
+      - horizonDate
+      - milestones
+      - planId
+      - planVersion
+      - todayMarker
     MilestoneView:
       type: object
       properties:
@@ -1165,6 +1900,29 @@ components:
       - title
       - traceId
       - type
+    ReasonView:
+      type: object
+      properties:
+        code:
+          type: string
+          enum:
+          - MILESTONE_CORE
+          - MILESTONE_NEXT
+          - HIGH_PRACTICAL_IMPORTANCE
+          - LARGE_SKILL_GAP
+          - REVIEW_OVERDUE
+          - RECENT_RECALL_FAILURE
+          - PROJECT_FOCUS
+          - READ_REAL_CODE
+          - CONTINUE_YESTERDAY
+          - DEADLINE_RISK_MUST
+          - LOW_ENERGY_LIGHT_TASK
+          - COMEBACK_EASY_START
+        text:
+          type: string
+      required:
+      - code
+      - text
     ReplanCommitResponse:
       type: object
       properties:
@@ -1177,6 +1935,72 @@ components:
       required:
       - milestoneIdMapping
       - plan
+    ReplanPreviewResponse:
+      type: object
+      properties:
+        completionRateBp:
+          type: integer
+          format: int32
+        deferSuggestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeferSuggestionView"
+        effectiveBudgetMinutes:
+          type: integer
+          format: int32
+        expansionSuggestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExpansionSuggestionView"
+        horizonDate:
+          type: string
+          format: date
+        mustTargetReductionSuggestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/TargetReductionSuggestionView"
+        nominalBudgetMinutes:
+          type: integer
+          format: int32
+        planId:
+          type: string
+          format: uuid
+        ratioBp:
+          type: integer
+          format: int32
+        requiredMustMinutes:
+          type: integer
+          format: int32
+        requiredShouldMinutes:
+          type: integer
+          format: int32
+        riskAfterSuggestions:
+          $ref: "#/components/schemas/RiskEstimateView"
+        riskLevel:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+        today:
+          type: string
+          format: date
+      required:
+      - completionRateBp
+      - deferSuggestions
+      - effectiveBudgetMinutes
+      - expansionSuggestions
+      - horizonDate
+      - mustTargetReductionSuggestions
+      - nominalBudgetMinutes
+      - planId
+      - ratioBp
+      - requiredMustMinutes
+      - requiredShouldMinutes
+      - riskAfterSuggestions
+      - riskLevel
+      - today
     ReplanRequest:
       type: object
       properties:
@@ -1229,6 +2053,249 @@ components:
       - reason
       - restoredDeferrals
       - version
+    ReviewAnswerRequest:
+      type: object
+      properties:
+        answerText:
+          type: string
+          maxLength: 5000
+          minLength: 0
+        evaluate:
+          type: boolean
+        hintLevel:
+          type: string
+          enum:
+          - SELF_EXPLAIN
+          - QUESTION_ONLY
+          - CONCEPT_HINT
+          - DIRECTION
+          - PSEUDOCODE
+          - PARTIAL_CODE
+          - FULL_EXAMPLE
+        responseSeconds:
+          type: integer
+          format: int32
+          maximum: 86400
+          minimum: 0
+        selfRating:
+          type: string
+          enum:
+          - AGAIN
+          - HARD
+          - GOOD
+          - EASY
+        wasVariant:
+          type: boolean
+      required:
+      - hintLevel
+      - responseSeconds
+      - selfRating
+    ReviewAnswerResponse:
+      type: object
+      properties:
+        adjustedBy:
+          type: array
+          items:
+            type: string
+            enum:
+            - EVALUATED_INCORRECT
+            - EVALUATED_PARTIAL
+            - HINT_CAP_AGAIN
+            - HINT_CAP_HARD
+            - HINT_CAP_GOOD
+        aiMeta:
+          $ref: "#/components/schemas/AiMeta"
+        evaluatedOutcome:
+          type: string
+          enum:
+          - CORRECT
+          - PARTIAL
+          - INCORRECT
+          - NOT_EVALUATED
+        evaluationFeedback:
+          type: string
+        evaluationSkippedReason:
+          type: string
+          enum:
+          - AI_UNAVAILABLE
+          - AI_TIMEOUT
+          - AI_REFUSED
+          - AI_OUTPUT_INVALID
+          - AI_BUDGET_EXCEEDED
+          - AI_RATE_LIMITED
+          - CONFIDENTIAL_SUSPECTED
+          - INTERRUPTED
+          - INTERNAL_ERROR
+        finalRating:
+          type: string
+          enum:
+          - AGAIN
+          - HARD
+          - GOOD
+          - EASY
+        intervalAfter:
+          type: integer
+          format: int32
+        intervalBefore:
+          type: integer
+          format: int32
+        leechDetected:
+          type: boolean
+        nextDueDate:
+          type: string
+          format: date
+        reviewAnswerId:
+          type: string
+          format: uuid
+        rubricCoverageBp:
+          type: integer
+          format: int32
+        rubricResults:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewRubricResultView"
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - SUSPENDED
+          - ARCHIVED
+      required:
+      - adjustedBy
+      - aiMeta
+      - evaluatedOutcome
+      - evaluationFeedback
+      - evaluationSkippedReason
+      - finalRating
+      - intervalAfter
+      - intervalBefore
+      - leechDetected
+      - nextDueDate
+      - reviewAnswerId
+      - rubricCoverageBp
+      - rubricResults
+      - status
+    ReviewRubricItemView:
+      type: object
+      properties:
+        criterion:
+          type: string
+        id:
+          type: string
+      required:
+      - criterion
+      - id
+    ReviewRubricResultView:
+      type: object
+      properties:
+        criterion:
+          type: string
+        id:
+          type: string
+        met:
+          type: boolean
+      required:
+      - criterion
+      - id
+      - met
+    ReviewTaskView:
+      type: object
+      properties:
+        dueReviewCount:
+          type: integer
+          format: int32
+        estimatedMinutes:
+          type: integer
+          format: int32
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - PLANNED
+          - IN_PROGRESS
+          - COMPLETED
+          - SKIPPED
+          - DEFERRED
+        version:
+          type: integer
+          format: int64
+      required:
+      - dueReviewCount
+      - estimatedMinutes
+      - id
+      - status
+      - version
+    RiskEstimateView:
+      type: object
+      properties:
+        ratioBp:
+          type: integer
+          format: int32
+        requiredMustMinutes:
+          type: integer
+          format: int32
+        requiredShouldMinutes:
+          type: integer
+          format: int32
+        riskLevel:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+      required:
+      - ratioBp
+      - requiredMustMinutes
+      - requiredShouldMinutes
+      - riskLevel
+    RiskPointView:
+      type: object
+      properties:
+        ratioBp:
+          type: integer
+          format: int32
+        riskLevel:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+        snapshotDate:
+          type: string
+          format: date
+      required:
+      - ratioBp
+      - riskLevel
+      - snapshotDate
+    RiskSummaryView:
+      type: object
+      properties:
+        currentRatioBp:
+          type: integer
+          format: int32
+        currentRiskLevel:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+        currentSnapshotDate:
+          type: string
+          format: date
+        trend:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskPointView"
+      required:
+      - currentRatioBp
+      - currentRiskLevel
+      - currentSnapshotDate
+      - trend
     RoleTargetView:
       type: object
       properties:
@@ -1274,6 +2341,79 @@ components:
       required:
       - category
       - level
+    SessionCompleteRequest:
+      type: object
+      properties:
+        actualMinutes:
+          type: integer
+          format: int32
+          maximum: 720
+          minimum: 0
+        selfReflection:
+          type: string
+          maxLength: 5000
+          minLength: 0
+      required:
+      - actualMinutes
+    SessionStartRequest:
+      type: object
+      properties:
+        learningTaskId:
+          type: string
+          format: uuid
+    SessionStartResponse:
+      type: object
+      properties:
+        abandonedSessionId:
+          type: string
+          format: uuid
+        session:
+          $ref: "#/components/schemas/SessionView"
+      required:
+      - abandonedSessionId
+      - session
+    SessionView:
+      type: object
+      properties:
+        actualMinutes:
+          type: integer
+          format: int32
+        completedAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        learningTaskId:
+          type: string
+          format: uuid
+        planDate:
+          type: string
+          format: date
+        selfReflection:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+          - IN_PROGRESS
+          - COMPLETED
+          - ABANDONED
+        version:
+          type: integer
+          format: int64
+      required:
+      - actualMinutes
+      - completedAt
+      - id
+      - learningTaskId
+      - planDate
+      - selfReflection
+      - startedAt
+      - status
+      - version
     SideProjectCreateRequest:
       type: object
       properties:
@@ -1385,6 +2525,39 @@ components:
       - status
       - updatedAt
       - version
+    SkillCategorySummaryView:
+      type: object
+      properties:
+        avgPlanningLevelMilli:
+          type: integer
+          format: int32
+        avgTargetLevelMilli:
+          type: integer
+          format: int32
+        category:
+          type: string
+          enum:
+          - JAVA
+          - SPRING
+          - DATABASE
+          - WEB_HTTP
+          - NETWORK
+          - CS
+          - ALGORITHM
+          - TESTING
+          - DEVOPS
+          - SECURITY
+          - PRACTICAL_ENGINEERING
+          - SYSTEM_DESIGN
+          - EXPLANATION
+        skillCount:
+          type: integer
+          format: int32
+      required:
+      - avgPlanningLevelMilli
+      - avgTargetLevelMilli
+      - category
+      - skillCount
     SkillNodeView:
       type: object
       properties:
@@ -1610,6 +2783,260 @@ components:
       - axis
       - newTarget
       - skillCode
+    TargetReductionSuggestionView:
+      type: object
+      properties:
+        axis:
+          type: string
+          enum:
+          - KNOWLEDGE
+          - IMPLEMENTATION
+          - EXPLANATION
+          - DEBUGGING
+        currentTarget:
+          type: integer
+          format: int32
+        newTarget:
+          type: integer
+          format: int32
+        planningLevel:
+          type: integer
+          format: int32
+        savedMinutes:
+          type: integer
+          format: int32
+        skill:
+          $ref: "#/components/schemas/SkillRef"
+      required:
+      - axis
+      - currentTarget
+      - newTarget
+      - planningLevel
+      - savedMinutes
+      - skill
+    TaskStatusPatchRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - PLANNED
+          - IN_PROGRESS
+          - COMPLETED
+          - SKIPPED
+          - DEFERRED
+        version:
+          type: integer
+          format: int64
+      required:
+      - status
+      - version
+    TaskStatusView:
+      type: object
+      properties:
+        completedAt:
+          type: string
+          format: date-time
+        dailyPlanId:
+          type: string
+          format: uuid
+        id:
+          type: string
+          format: uuid
+        main:
+          type: boolean
+        planDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum:
+          - PLANNED
+          - IN_PROGRESS
+          - COMPLETED
+          - SKIPPED
+          - DEFERRED
+        taskType:
+          type: string
+          enum:
+          - RECALL
+          - REVIEW
+          - CHALLENGE
+          - PROJECT_TASK
+          - COACH_REVIEW
+          - READING
+          - READ_CODE
+          - EXPLAIN
+        version:
+          type: integer
+          format: int64
+      required:
+      - completedAt
+      - dailyPlanId
+      - id
+      - main
+      - planDate
+      - status
+      - taskType
+      - version
+    TimelineMilestoneView:
+      type: object
+      properties:
+        current:
+          type: boolean
+        endDate:
+          type: string
+          format: date
+        id:
+          type: string
+          format: uuid
+        priority:
+          type: string
+          enum:
+          - MUST
+          - SHOULD
+          - LATER
+        startDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum:
+          - PLANNED
+          - IN_PROGRESS
+          - DONE
+          - DEFERRED
+          - DROPPED
+        title:
+          type: string
+      required:
+      - current
+      - endDate
+      - id
+      - priority
+      - startDate
+      - status
+      - title
+    TodayGenerateRequest:
+      type: object
+      properties:
+        availableMinutes:
+          type: integer
+          format: int32
+          maximum: 720
+          minimum: 5
+        energyLevel:
+          type: string
+          enum:
+          - LOW
+          - NORMAL
+          - HIGH
+        force:
+          type: boolean
+      required:
+      - availableMinutes
+      - energyLevel
+    TodaySummaryView:
+      type: object
+      properties:
+        generated:
+          type: boolean
+        mainTaskEstimatedMinutes:
+          type: integer
+          format: int32
+        mainTaskId:
+          type: string
+          format: uuid
+        mainTaskStatus:
+          type: string
+          enum:
+          - PLANNED
+          - IN_PROGRESS
+          - COMPLETED
+          - SKIPPED
+          - DEFERRED
+        mainTaskTitle:
+          type: string
+        mainTaskType:
+          type: string
+          enum:
+          - RECALL
+          - REVIEW
+          - CHALLENGE
+          - PROJECT_TASK
+          - COACH_REVIEW
+          - READING
+          - READ_CODE
+          - EXPLAIN
+        reviewTaskStatus:
+          type: string
+          enum:
+          - PLANNED
+          - IN_PROGRESS
+          - COMPLETED
+          - SKIPPED
+          - DEFERRED
+      required:
+      - generated
+      - mainTaskEstimatedMinutes
+      - mainTaskId
+      - mainTaskStatus
+      - mainTaskTitle
+      - mainTaskType
+      - reviewTaskStatus
+    TodayView:
+      type: object
+      properties:
+        availableMinutes:
+          type: integer
+          format: int32
+        comebackMode:
+          type: boolean
+        dailyPlanId:
+          type: string
+          format: uuid
+        deadlineRisk:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+        earlierMainTasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/MainTaskView"
+        energyLevel:
+          type: string
+          enum:
+          - LOW
+          - NORMAL
+          - HIGH
+        generatedAt:
+          type: string
+          format: date-time
+        generationCount:
+          type: integer
+          format: int32
+        mainTask:
+          $ref: "#/components/schemas/MainTaskView"
+        planDate:
+          type: string
+          format: date
+        reviewTask:
+          $ref: "#/components/schemas/ReviewTaskView"
+      required:
+      - availableMinutes
+      - comebackMode
+      - dailyPlanId
+      - deadlineRisk
+      - earlierMainTasks
+      - energyLevel
+      - generatedAt
+      - generationCount
+      - mainTask
+      - planDate
+      - reviewTask
     UpdateMeRequest:
       type: object
       properties:

@@ -58,6 +58,7 @@ class AuthorizationIsolationTest extends ApiTestSupport {
                                         "/api/v1/side-projects/{id}",
                                         current.fixture().sideProjectId())
                                 .andReturn());
+        String learningBefore = ownerLearningState(current);
 
         MvcResult result = perform(endpoint, current.invited(), current.fixture());
 
@@ -80,6 +81,14 @@ class AuthorizationIsolationTest extends ApiTestSupport {
                                                 current.fixture().sideProjectId())
                                         .andReturn()))
                 .isEqualTo(projectBefore);
+        assertThat(ownerLearningState(current)).isEqualTo(learningBefore);
+    }
+
+    /** A의 오늘 계획·세션·복습 카드 상태 (S2 owned endpoint가 바꾸지 않았는지 확인). */
+    private String ownerLearningState(State current) throws Exception {
+        return text(api.get(current.owner(), "/api/v1/today").andReturn())
+                + text(api.get(current.owner(), "/api/v1/learning-sessions").andReturn())
+                + text(api.get(current.owner(), "/api/v1/reviews/due").andReturn());
     }
 
     @ParameterizedTest(name = "[{index}] {0}")
@@ -233,6 +242,11 @@ class AuthorizationIsolationTest extends ApiTestSupport {
 
         JsonNode plan = activePlan(owner);
         JsonNode goal = api.body(api.get(owner, "/api/v1/learning-goal"));
+        JsonNode today = api.generateToday(owner, 30, "NORMAL");
+        JsonNode session = api.startSession(owner, null).path("session");
+        JsonNode due = api.body(api.get(owner, "/api/v1/reviews/due"));
+        // B도 오늘 계획이 있어야 GET /today가 200이다 (SCOPED_COLLECTION)
+        api.generateToday(invited, 30, "NORMAL");
         Map<String, Object> learningGoalBody = new LinkedHashMap<>();
         learningGoalBody.put("targetRole", "JAVA_BACKEND");
         learningGoalBody.put("targetCompletionDate", "2027-04-01");
@@ -244,6 +258,9 @@ class AuthorizationIsolationTest extends ApiTestSupport {
                         plan.path("id").asString(),
                         plan.path("milestones").get(0).path("id").asString(),
                         onboarded.path("sideProject").path("id").asString(),
+                        today.path("mainTask").path("id").asString(),
+                        session.path("id").asString(),
+                        due.path("items").get(0).path("reviewItemId").asString(),
                         replanRequest(plan, "격리 확인"),
                         TestApi.onboardingRequest(),
                         TestApi.sideProjectRequest("새 프로젝트"),
@@ -254,6 +271,11 @@ class AuthorizationIsolationTest extends ApiTestSupport {
         ownerIds.add(fixture.planId());
         plan.path("milestones").forEach(milestone -> ownerIds.add(milestone.path("id").asString()));
         ownerIds.add(fixture.sideProjectId());
+        ownerIds.add(today.path("dailyPlanId").asString());
+        ownerIds.add(fixture.taskId());
+        ownerIds.add(today.path("reviewTask").path("id").asString());
+        ownerIds.add(fixture.sessionId());
+        due.path("items").forEach(item -> ownerIds.add(item.path("reviewItemId").asString()));
         return new State(owner, invited, fixture, ownerIds);
     }
 

@@ -7,8 +7,8 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpMethod;
 
 /**
- * 격리 테스트 endpoint catalog (docs/09 §9.2). S1에 있는 endpoint만 넣는다 — 새 endpoint를 만들면 여기에 추가해야 {@code
- * EndpointCatalogCompletenessTest}가 통과한다.
+ * 격리 테스트 endpoint catalog (docs/09 §9.2). 지금 있는 endpoint만 넣는다(S1·S2) — 새 endpoint를 만들면 여기에 추가해야
+ * {@code EndpointCatalogCompletenessTest}가 통과한다.
  */
 public final class UserOwnedEndpoints {
 
@@ -45,12 +45,18 @@ public final class UserOwnedEndpoints {
      * A가 가진 리소스 id와 요청 body 재료.
      *
      * @param invitedMeVersion B의 현재 {@code app_user.version} (B의 {@code PATCH /me}용)
+     * @param taskId A의 오늘 main 과제
+     * @param sessionId A의 {@code IN_PROGRESS} 학습 세션
+     * @param reviewItemId A의 due 복습 카드
      */
     public record IsolationFixture(
             long invitedMeVersion,
             String planId,
             String milestoneId,
             String sideProjectId,
+            String taskId,
+            String sessionId,
+            String reviewItemId,
             Map<String, Object> replanBody,
             Map<String, Object> onboardingBody,
             Map<String, Object> sideProjectBody,
@@ -111,6 +117,57 @@ public final class UserOwnedEndpoints {
                         fixture -> new Object[] {fixture.sideProjectId()},
                         NO_BODY,
                         "RESOURCE_NOT_FOUND"),
+                new EndpointCase(
+                        "E07",
+                        HttpMethod.POST,
+                        "/api/v1/plans/{planId}/replan/preview",
+                        Kind.OWNED_RESOURCE,
+                        fixture -> new Object[] {fixture.planId()},
+                        IsolationFixture::replanBody,
+                        "PLAN_NOT_FOUND"),
+                new EndpointCase(
+                        "E08",
+                        HttpMethod.PATCH,
+                        "/api/v1/today/tasks/{taskId}",
+                        Kind.OWNED_RESOURCE,
+                        fixture -> new Object[] {fixture.taskId()},
+                        fixture -> Map.of("status", "SKIPPED", "version", 0),
+                        "RESOURCE_NOT_FOUND"),
+                new EndpointCase(
+                        "E09",
+                        HttpMethod.POST,
+                        "/api/v1/learning-sessions/{sessionId}/complete",
+                        Kind.OWNED_RESOURCE,
+                        fixture -> new Object[] {fixture.sessionId()},
+                        fixture -> Map.of("actualMinutes", 0),
+                        "RESOURCE_NOT_FOUND"),
+                new EndpointCase(
+                        "E17",
+                        HttpMethod.POST,
+                        "/api/v1/learning-sessions/{sessionId}/abandon",
+                        Kind.OWNED_RESOURCE,
+                        fixture -> new Object[] {fixture.sessionId()},
+                        NO_BODY,
+                        "RESOURCE_NOT_FOUND"),
+                new EndpointCase(
+                        "E18",
+                        HttpMethod.POST,
+                        "/api/v1/reviews/{reviewItemId}/answer",
+                        Kind.OWNED_RESOURCE,
+                        fixture -> new Object[] {fixture.reviewItemId()},
+                        fixture ->
+                                Map.of(
+                                        "selfRating",
+                                        "GOOD",
+                                        "hintLevel",
+                                        "SELF_EXPLAIN",
+                                        "responseSeconds",
+                                        30,
+                                        "wasVariant",
+                                        false,
+                                        "evaluate",
+                                        false),
+                        "RESOURCE_NOT_FOUND"),
                 // SCOPED_COLLECTION
                 scoped("E10", HttpMethod.GET, "/api/v1/me"),
                 scoped("E11", HttpMethod.GET, "/api/v1/learning-goal"),
@@ -118,6 +175,11 @@ public final class UserOwnedEndpoints {
                 scoped("E13", HttpMethod.GET, "/api/v1/plans/active"),
                 scoped("E14", HttpMethod.GET, "/api/v1/plans"),
                 scoped("E15", HttpMethod.GET, "/api/v1/side-projects"),
+                scoped("E19", HttpMethod.GET, "/api/v1/plans/active/budget"),
+                scoped("E21", HttpMethod.GET, "/api/v1/today"),
+                scoped("E22", HttpMethod.GET, "/api/v1/learning-sessions"),
+                scoped("E23", HttpMethod.GET, "/api/v1/reviews/due"),
+                scoped("E24", HttpMethod.GET, "/api/v1/dashboard"),
                 new EndpointCase(
                         "E16",
                         HttpMethod.PATCH,
@@ -151,7 +213,20 @@ public final class UserOwnedEndpoints {
                         "E33",
                         HttpMethod.PUT,
                         "/api/v1/learning-goal",
-                        IsolationFixture::learningGoalBody));
+                        IsolationFixture::learningGoalBody),
+                account(
+                        "E34",
+                        HttpMethod.POST,
+                        "/api/v1/today/generate",
+                        fixture ->
+                                Map.of(
+                                        "availableMinutes",
+                                        30,
+                                        "energyLevel",
+                                        "NORMAL",
+                                        "force",
+                                        false)),
+                account("E35", HttpMethod.POST, "/api/v1/learning-sessions", fixture -> Map.of()));
     }
 
     /** 인증 없이 열리는 경로와 Bearer를 쓰지 않는 경로 (docs/07 §4.1, docs/09 §9.2 끝). */
