@@ -2,7 +2,7 @@
 # Spec: docs/19-content-spec.md §3.1
 # - catalogVersion: seed 대상 파일(이 파일에 나열된 모든 파일)이 바뀌면 1 올린다 (§8)
 # - YamlContentReader는 여기 나열된 파일만 읽는다. 나열 순서대로 읽는다
-catalogVersion: 4
+catalogVersion: 5
 files:
   skillTrees:
     - skill-tree/java-backend.yaml
@@ -38,4 +38,11 @@ retired:
   challengeSeedKeys: []
   conceptKeys: []
   curatedSourceIds: []
-  readingKeys: []
+  # 은퇴한 reading은 curated-repos.yaml에 retired: true로 남는다 (19 §8.2, CV-83)
+  # 2026-09-19 소스 점검: restbucks(라이선스 명시 없음) → modular-monolith로 교체
+  readingKeys:
+    - READ.RESTBUCKS.AGGREGATE.001
+    - READ.RESTBUCKS.STATE_TRANSITION.001
+    - READ.RESTBUCKS.REPOSITORY_TX.001
+    - READ.RESTBUCKS.PAYMENT_TX.001
+    - READ.RESTBUCKS.PAYMENT_API.001
