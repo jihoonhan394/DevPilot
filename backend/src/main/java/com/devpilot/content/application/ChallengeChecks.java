@@ -386,8 +386,12 @@ final class ChallengeChecks {
             context.error("CV-59", where, "DIAGNOSTIC skills must share one category");
         }
         for (Object skill : skills) {
-            Map<String, Object> target = context.targets.get(String.valueOf(skill));
-            if (target != null && !isDiagnosticReady(target)) {
+            // 어느 한 트랙에서라도 MUST·importance >= 0.70이면 된다 (CV-59). 트랙이 하나이던 때에는
+            // JAVA_BACKEND만 봐서, 그 트랙에서만 MUST인 category를 진단할 수 없었다.
+            List<Map<String, Object>> trackTargets =
+                    context.targetsBySkill.getOrDefault(String.valueOf(skill), List.of());
+            if (!trackTargets.isEmpty()
+                    && trackTargets.stream().noneMatch(ChallengeChecks::isDiagnosticReady)) {
                 context.error(
                         "CV-59",
                         where,

@@ -278,3 +278,261 @@ challenges:
       QUESTION_ONLY: 결제 거절 예외가 던져졌을 때 Spring은 그 예외 종류를 보고 트랜잭션을 어떻게 끝낼까요? 외부 응답을 기다리는 동안 DB 커넥션은 어디에 있을까요?
       CONCEPT_HINT: unchecked 예외만 롤백하는 기본 규칙, 트랜잭션 범위가 곧 커넥션 점유 시간이라는 점, 외부 시스템과 정합성을 맞추는 보상 처리를 함께 떠올려 보세요.
       DIRECTION: 흐름을 준비 상태 저장, 외부 결제 호출, 결과 반영의 세 단계로 나누고 DB가 필요한 단계만 짧은 트랜잭션으로 묶으세요. 단계 사이에서 실패하면 주문이 어떤 상태로 남는지 표로 확인하세요.
+
+  - seedKey: PRACTICE.SPRING.DI_IOC.L1.001
+    purpose: PRACTICE
+    skills:
+      - SPRING.DI_IOC
+    difficulty: 1
+    estimatedMinutes: 15
+    isTransfer: false
+    title: 직접 만든 객체 안에서만 NullPointerException이 나는 이유 고치기
+    scenario: |-
+      주문 저장은 잘 되는데, 검증을 부르는 순간 NullPointerException이 납니다.
+      ```java
+      @Service
+      public class OrderService {
+          @Autowired
+          private OrderRepository repository;
+
+          public void place(OrderRequest request) {
+              OrderValidator validator = new OrderValidator();
+              validator.validate(request);   // 여기서 NullPointerException
+              repository.save(request.toOrder());
+          }
+      }
+
+      @Component
+      public class OrderValidator {
+          @Autowired
+          private PolicyRepository policies;   // 실행 중에 null 이다
+
+          public void validate(OrderRequest request) {
+              policies.findLimit(request.userId());
+          }
+      }
+      ```
+    prompt: |-
+      1. NullPointerException이 나는 이유를 설명하세요.
+      2. 두 클래스를 생성자 주입으로 고친 코드를 작성하세요.
+      3. 필드 주입 대신 생성자 주입을 권하는 이유를 한 가지 들어 설명하세요.
+    constraints:
+      - 컨테이너가 관리하는 객체를 코드에서 직접 꺼내 오는 방식은 쓰지 않는다
+      - 클래스의 책임은 그대로 둔다
+    expectedConcepts:
+      - 컨테이너가 만든 객체에만 의존성이 채워진다
+      - 생성자 주입
+      - 직접 만든 객체의 의존성은 비어 있다
+      - 필요한 의존을 드러내는 설계
+    rubric:
+      - id: R1
+        criterion: 직접 만든 객체는 컨테이너 밖에 있어 의존성이 채워지지 않는다는 점을 원인으로 짚는다
+        weightBp: 3500
+        axis: DEBUGGING
+      - id: R2
+        criterion: 두 클래스를 생성자로 의존성을 받도록 고친 코드를 작성한다
+        weightBp: 3000
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 생성자 주입이 주는 이점을 한 가지 이상 근거를 들어 설명한다
+        weightBp: 3500
+        axis: EXPLANATION
+    commonMistakes:
+      - 검증기 안에서 다시 저장소를 직접 만들어 같은 문제를 반복함
+      - 필드 주입을 그대로 두고 초기화 시점만 바꿔 우회함
+      - 정적 접근으로 컨테이너에서 객체를 꺼내 와 테스트가 불가능해짐
+    transferTargets:
+      - TESTING.UNIT_TEST_DESIGN
+    hints:
+      QUESTION_ONLY: 이 검증기 객체는 누가 만들었고, 만든 쪽은 그 안의 저장소를 채워 줄 수 있었을까요?
+      CONCEPT_HINT: 애너테이션이 붙었다고 해서 모든 객체가 컨테이너의 것이 되는 것은 아니라는 점과, 의존을 생성자로 받는 방식을 떠올려 보세요.
+      DIRECTION: 이 요청 흐름에서 객체를 만든 주체가 누구인지 하나씩 표시해 보고, 컨테이너가 만들지 않은 자리를 찾아 그 의존을 생성자로 옮겨 보세요.
+
+  - seedKey: PRACTICE.SPRING.DI_IOC.L2.001
+    purpose: PRACTICE
+    skills:
+      - SPRING.DI_IOC
+    difficulty: 2
+    estimatedMinutes: 20
+    isTransfer: false
+    title: 같은 타입 구현이 둘이라 기동이 멈춘 애플리케이션 살리기
+    scenario: |-
+      결제 알림을 문자로 보내던 기능에 이메일 발송을 더했더니 기동이 실패합니다.
+      ```text
+      Parameter 0 of constructor in com.example.order.OrderService required a single bean,
+      but 2 were found:
+        - emailNotifier: defined in file [.../EmailNotifier.class]
+        - smsNotifier: defined in file [.../SmsNotifier.class]
+      ```
+      두 클래스 모두 Notifier 인터페이스를 구현하고 컴포넌트로 등록되어 있습니다. 주문 서비스는 기본으로
+      문자 발송을 쓰고, 정산 서비스는 이메일을 써야 합니다. 앞으로 두 곳 모두에 보내야 할 수도 있습니다.
+    prompt: |-
+      1. 이 메시지가 무엇을 말하는지, 컨테이너가 어떤 순서로 후보를 찾다가 멈췄는지 설명하세요.
+      2. 해결 방법을 세 가지 이상 적고 각각 어떤 상황에 맞는지 한 줄씩 적으세요.
+      3. 위 요구(주문은 문자, 정산은 이메일)에 맞는 방법을 골라 고친 코드를 작성하세요.
+      4. 나중에 두 곳 모두에 보내야 할 때 지금 고친 구조가 어떻게 달라지는지 적으세요.
+    constraints:
+      - 한쪽 구현의 컴포넌트 등록을 지우는 방법은 쓰지 않는다
+      - 주문 서비스와 정산 서비스의 책임은 그대로 둔다
+    expectedConcepts:
+      - 타입으로 후보를 찾는 방식
+      - 후보가 여럿일 때의 구분 방법
+      - 기본 구현 지정
+      - 같은 타입 여러 개를 함께 받기
+    rubric:
+      - id: R1
+        criterion: 타입으로 후보를 찾다가 하나로 좁히지 못해 멈췄다는 점을 메시지 근거로 설명한다
+        weightBp: 3000
+        axis: EXPLANATION
+      - id: R2
+        criterion: 서로 다른 해결 방법을 세 가지 이상 들고 각각의 적용 상황을 구분한다
+        weightBp: 2000
+        axis: EXPLANATION
+      - id: R3
+        criterion: 요구에 맞는 방법을 골라 두 서비스가 서로 다른 구현을 받도록 고친 코드를 작성한다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R4
+        criterion: 여러 구현을 함께 받아야 할 때의 변경 범위를 적는다
+        weightBp: 1500
+        axis: IMPLEMENTATION
+    commonMistakes:
+      - 한쪽 구현의 등록을 지워 기능을 잃음
+      - 기본 구현만 지정하고 다른 쪽이 왜 그 구현을 받는지 설명하지 못함
+      - 이름으로만 맞추고 필드 이름이 바뀌면 깨진다는 점을 놓침
+    transferTargets:
+      - JAVA.OOP
+    hints:
+      QUESTION_ONLY: 컨테이너는 무엇을 단서로 넣어 줄 대상을 골랐고, 그 단서만으로 지금 하나를 고를 수 있나요?
+      CONCEPT_HINT: 후보가 여럿일 때 이름으로 지목하는 방법, 기본값을 정하는 방법, 아예 전부 받아 쓰는 방법 세 갈래를 떠올려 보세요.
+      DIRECTION: 주문과 정산이 각각 어떤 구현을 원하는지 표로 적고, 앞으로 구현이 하나 더 늘어도 표만 고치면 되는 방법을 골라 보세요.
+
+  - seedKey: PRACTICE.SPRING.MVC_REST.L1.001
+    purpose: PRACTICE
+    skills:
+      - SPRING.MVC_REST
+    difficulty: 1
+    estimatedMinutes: 15
+    isTransfer: false
+    title: 요구에 맞지 않게 매핑된 조회 API 고치기
+    scenario: |-
+      주문 조회 API입니다. 지금은 물음표 뒤에 값을 붙여야만 동작하고, 없는 주문을 물어도 빈 본문과 함께
+      200이 나옵니다.
+      ```java
+      @RestController
+      public class OrderController {
+
+          private final OrderService orderService;   // 생성자 생략
+
+          @RequestMapping("/orders")
+          public Order find(String id) {
+              return orderService.findOrNull(id);
+          }
+      }
+      ```
+      요구는 이렇습니다. 단건 조회는 /orders/7 처럼 경로로 받고, 목록 조회는 /orders?status=PAID 로 받으며,
+      없는 주문은 404로 답한다.
+    prompt: |-
+      1. 요구에 맞게 매핑을 고친 컨트롤러 코드를 작성하세요.
+      2. 없는 주문일 때 404가 나가게 하는 방법을 적용하세요.
+      3. 조회에 다른 메서드가 아닌 GET만 받도록 제한하는 이유를 설명하세요.
+    constraints:
+      - 서비스 계층의 시그니처는 그대로 둔다
+      - 오류 응답 형식을 새로 설계하지 않는다
+    expectedConcepts:
+      - 경로 변수 받기
+      - 조회 조건을 질의 문자열로 받기
+      - 메서드별 매핑 제한
+      - 없는 리소스에 맞는 상태 코드
+    rubric:
+      - id: R1
+        criterion: 단건은 경로에서, 목록 조건은 질의 문자열에서 받도록 매핑을 나눈다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 없는 주문에 404가 나가도록 처리한다
+        weightBp: 3000
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 조회를 GET으로 제한하는 이유를 메서드의 의미로 설명한다
+        weightBp: 3500
+        axis: EXPLANATION
+    commonMistakes:
+      - 모든 요청을 하나의 매핑으로 받고 안에서 다시 분기함
+      - 없는 주문에 200과 빈 본문을 돌려줌
+      - 경로에 동사를 넣어 조회와 변경을 구분하려 함
+    transferTargets:
+      - WEB_HTTP.REST_API_DESIGN
+    hints:
+      QUESTION_ONLY: 주소의 어느 부분이 무엇을 가리키는 이름이고, 어느 부분이 그 대상을 걸러 내는 조건일까요?
+      CONCEPT_HINT: 값을 주소의 경로에서 받는 방식과 물음표 뒤에서 받는 방식이 나뉜다는 점, 그리고 찾지 못했을 때 쓰는 상태 코드를 떠올려 보세요.
+      DIRECTION: 요구 세 줄을 각각 한 줄짜리 매핑으로 적어 보고, 응답이 정상인 경우와 없는 경우로 나눠 상태 코드를 먼저 정한 다음 코드를 채워 보세요.
+
+  - seedKey: PRACTICE.SPRING.MVC_REST.L2.001
+    purpose: PRACTICE
+    skills:
+      - SPRING.MVC_REST
+    difficulty: 2
+    estimatedMinutes: 25
+    isTransfer: false
+    title: 엔티티를 그대로 주고받는 생성 API 손보기
+    scenario: |-
+      주문 생성 API입니다. 요청 본문을 엔티티로 바로 받고, 저장한 엔티티를 그대로 돌려줍니다.
+      ```java
+      @PostMapping("/orders")
+      public Order create(@RequestBody Order order) {
+          return orderService.save(order);
+      }
+
+      @Entity
+      public class Order {
+          @Id @GeneratedValue private Long id;
+          private String status;
+          private long totalAmount;
+          private long costAmount;       // 원가. 외부에 나가면 안 된다
+          private String internalMemo;   // 담당자 메모
+          // 연관관계와 생성자 생략
+      }
+      ```
+      응답에는 원가와 담당자 메모가 함께 나가고 있고, 클라이언트가 보낸 본문에 status 나 id 가 들어오면
+      그 값이 그대로 반영됩니다. 생성 성공에도 200이 나갑니다.
+    prompt: |-
+      1. 요청과 응답을 위한 형을 따로 두도록 고친 코드를 작성하세요.
+      2. 생성이 성공했을 때 나가야 할 상태 코드와 헤더를 적용하세요.
+      3. 엔티티를 그대로 주고받을 때 생기는 문제를 두 가지 들어 설명하세요. 하나는 응답 쪽, 하나는 요청
+         쪽에서 고릅니다.
+    constraints:
+      - 저장 계층의 엔티티 구조는 바꾸지 않는다
+      - 응답에 원가와 담당자 메모를 포함하지 않는다
+    expectedConcepts:
+      - 요청과 응답 형을 따로 두기
+      - 생성 결과의 상태 코드와 위치 헤더
+      - 내부 필드가 밖으로 새는 문제
+      - 클라이언트가 정하면 안 되는 값
+    rubric:
+      - id: R1
+        criterion: 요청과 응답을 위한 형을 따로 두고 엔티티를 직접 노출하지 않게 고친다
+        weightBp: 3000
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 생성 성공에 맞는 상태 코드와 만들어진 자원의 위치를 응답에 담는다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 내부 전용 필드가 응답으로 새는 문제를 설명한다
+        weightBp: 3000
+        axis: EXPLANATION
+      - id: R4
+        criterion: 클라이언트가 정하면 안 되는 값을 그대로 받는 위험을 설명한다
+        weightBp: 1500
+        axis: EXPLANATION
+    commonMistakes:
+      - 직렬화에서 제외하는 표시만 붙이고 요청 쪽 문제를 그대로 둠
+      - 응답 형만 만들고 요청은 엔티티로 계속 받음
+      - 생성에도 200을 돌려주고 만들어진 자원의 위치를 알리지 않음
+    transferTargets:
+      - SECURITY.INPUT_VALIDATION
+    hints:
+      QUESTION_ONLY: 지금 이 응답 본문에는 고객에게 보여도 되는 값과 보이면 안 되는 값이 섞여 있지 않나요?
+      CONCEPT_HINT: 저장 구조와 밖에 약속한 계약을 따로 두는 이유, 그리고 새로 만들었음을 알리는 응답 방식을 떠올려 보세요.
+      DIRECTION: 밖에 나가도 되는 값과 밖에서 받아도 되는 값을 각각 목록으로 적고, 그 목록 그대로 형을 하나씩 만든 다음 컨트롤러에서 변환해 보세요.

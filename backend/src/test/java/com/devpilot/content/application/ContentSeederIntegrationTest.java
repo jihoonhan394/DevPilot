@@ -90,7 +90,9 @@ class ContentSeederIntegrationTest {
                                 "select id, code, parent_id, active from devpilot.skill order by"
                                         + " code"))
                 .isEqualTo(before);
-        assertThat(count("select count(*) from devpilot.role_skill_target")).isEqualTo(20);
+        // 트랙 3종 × skill 10개 (test.yaml, test-integration.yaml, test-starter.yaml).
+        // 트랙을 늘리면 이 수도 함께 늘어난다.
+        assertThat(count("select count(*) from devpilot.role_skill_target")).isEqualTo(30);
     }
 
     @Test

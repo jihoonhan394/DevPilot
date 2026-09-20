@@ -176,3 +176,75 @@ cards:
         criterion: 연동 대상에도 같은 값을 전달해 흐름을 잇는다
       - id: R3
         criterion: 구조화해 남기되 민감 정보는 제외한다
+
+  - conceptKey: DEVOPS.LINUX_BASICS.PERMISSION_BITS
+    skill: DEVOPS.LINUX_BASICS
+    reviewType: RECALL
+    prompt: >-
+      배포한 jar를 실행하려니 Permission denied가 납니다. 파일 목록에는 권한이 rw-r----- 로 보이고 소유자와
+      그룹은 deploy인데, 서비스는 appuser 계정으로 실행됩니다. 이 열 자리 표기는 왼쪽부터 무엇을 뜻하고,
+      appuser가 읽지도 못하는 이유는 무엇인가요?
+    expectedAnswer: >-
+      맨 앞 한 자리는 파일 종류이고, 이어지는 세 자리씩이 소유자, 그룹, 그 밖의 사용자 권한이다. rw-r----- 은
+      소유자에게 읽기와 쓰기, 그룹에게 읽기, 그 밖에는 아무 권한도 주지 않는다. appuser는 소유자도 deploy
+      그룹도 아니므로 마지막 세 자리가 적용되어 읽기조차 되지 않는다. 실행하려면 실행 비트가 따로 필요하고,
+      디렉터리는 들어가는 데에도 실행 비트가 필요하다. 해결은 소유자나 그룹을 실행 계정에 맞추거나 필요한
+      자리에만 권한을 주는 것이고, 모두에게 여는 777은 답이 아니다.
+    rubric:
+      - id: R1
+        criterion: 종류 한 자리와 소유자·그룹·그 밖 세 자리씩으로 읽는다
+      - id: R2
+        criterion: 소유자도 그룹도 아니면 마지막 세 자리가 적용된다
+      - id: R3
+        criterion: 실행과 디렉터리 진입에는 실행 비트가 필요하다
+      - id: R4
+        criterion: 모두에게 열지 않고 소유자·그룹 또는 필요한 자리만 조정한다
+
+  - conceptKey: DEVOPS.LINUX_BASICS.DELETED_OPEN_FILE
+    skill: DEVOPS.LINUX_BASICS
+    reviewType: EXPLAIN
+    prompt: >-
+      디스크 사용률이 100%라는 경고를 받았습니다. 큰 로그 파일 하나를 지웠는데도 여유 공간이 늘지 않고,
+      디렉터리 용량을 모두 더해 봐도 전체 사용량의 절반밖에 되지 않습니다. 왜 이런 차이가 생기고 공간을
+      어떻게 돌려받나요?
+    expectedAnswer: >-
+      파일을 지워도 그 파일을 열어 둔 프로세스가 있으면 이름만 사라지고 실제 블록은 반환되지 않는다. 사용량
+      합계는 이름이 남아 있는 파일만 세기 때문에 전체 사용량과 어긋난다. 그 파일을 열고 있는 프로세스를 찾아
+      재시작하거나 로그 파일을 다시 열게 하면 공간이 돌아온다. 운영 중인 로그는 지우는 대신 크기를 0으로
+      잘라내거나 로테이션을 설정해 프로세스가 파일을 계속 쓰는 상태를 깨지 않는 편이 안전하다.
+    rubric:
+      - id: R1
+        criterion: 열려 있는 파일은 지워도 블록이 반환되지 않는다
+      - id: R2
+        criterion: 용량 합계는 이름이 남은 파일만 세어 전체 사용량과 어긋난다
+      - id: R3
+        criterion: 해당 프로세스를 재시작하거나 파일을 다시 열게 해야 공간이 돌아온다
+      - id: R4
+        criterion: 운영 로그는 삭제 대신 잘라내기나 로테이션으로 관리한다
+
+  - conceptKey: DEVOPS.LINUX_BASICS.DEPLOY_SCRIPT_BUG
+    skill: DEVOPS.LINUX_BASICS
+    reviewType: BUG_SPOT
+    prompt: |-
+      서버에 새 버전을 올리는 배포 스크립트입니다. 결함 두 가지와 수정 방법은?
+      ```bash
+      #!/bin/sh
+      APP_DIR=/opt/app
+      cp app.jar "$APP_DIR/"
+      chmod 777 "$APP_DIR/app.jar"
+      nohup java -jar "$APP_DIR/app.jar" > "$APP_DIR/logs/app.log" &
+      echo "배포 완료"
+      ```
+    expectedAnswer: >-
+      첫째, 777은 서버의 아무 계정이나 이 파일을 바꿀 수 있게 만든다. 실행 계정이 읽고 실행할 수 있을 만큼만
+      주고(예: 소유자를 실행 계정으로 맞추고 750) 쓰기 권한은 배포 계정에만 남긴다. 둘째, 표준 출력만 파일로
+      보내고 표준 오류는 그대로 두어 기동 실패 메시지가 사라진다. 표준 오류도 같은 파일로 합치거나 별도
+      파일로 남겨야 왜 뜨지 않았는지 알 수 있다. 덧붙여 배포 완료 출력은 프로세스가 살아 있는지 확인하지 않고
+      찍히므로 기동 확인을 거친 뒤에 찍는 편이 낫다.
+    rubric:
+      - id: R1
+        criterion: 777 대신 실행 계정에 필요한 만큼만 권한을 준다
+      - id: R2
+        criterion: 표준 오류를 남기지 않아 기동 실패 원인이 사라진다
+      - id: R3
+        criterion: 표준 오류를 같은 파일이나 별도 파일로 남기도록 고친다

@@ -39,7 +39,7 @@ SKILL_CATEGORIES = [
     "TESTING", "DEVOPS", "SECURITY", "INTEGRATION", "PRACTICAL_ENGINEERING", "SYSTEM_DESIGN",
     "EXPLANATION",
 ]
-TARGET_ROLES = {"JAVA_BACKEND", "INTEGRATION_ENGINEER"}
+TARGET_ROLES = {"JAVA_BACKEND", "JAVA_BACKEND_STARTER", "INTEGRATION_ENGINEER"}
 PRIORITIES = ["MUST", "SHOULD", "LATER"]
 REVIEW_TYPES = {"RECALL", "BUG_SPOT", "EXPLAIN", "CHOICE"}
 CHALLENGE_PURPOSES = {"PRACTICE", "DIAGNOSTIC"}
@@ -55,7 +55,7 @@ TRUSTED_SOURCE_HOSTS = [
     "docs.flutter.dev", "api.flutter.dev", "pmd.github.io", "spotbugs.readthedocs.io",
     "checkstyle.org", "junit.org", "hibernate.org", "docs.jboss.org",
     "developer.mozilla.org", "www.rfc-editor.org", "git-scm.com",
-    "spec.openapis.org", "docs.gradle.org",
+    "spec.openapis.org", "docs.gradle.org", "man7.org",
 ]
 
 # docs/06-learning-engine-rules.md §4.2
@@ -734,11 +734,17 @@ def validate(content_dir: str):
                 if len(cats) != 1:
                     res.error("CV-59", where, "DIAGNOSTIC skills must share one category")
                 for s in skills:
-                    t = tgt.get(s)
-                    if t and (t.get("priority") != "MUST" or not isinstance(t.get("importance"), (int, float))
-                              or t["importance"] < DIAGNOSTIC_MIN_IMPORTANCE - 1e-9):
+                    # 어느 한 트랙에서라도 MUST·importance >= 0.70이면 된다 (CV-59). 트랙이 하나이던 때에는
+                    # JAVA_BACKEND만 봐서, 그 트랙에서만 MUST인 category를 진단할 수 없었다.
+                    track_targets = [targets_by_role[r][s] for r in TARGET_ROLES if s in targets_by_role[r]]
+                    ready = any(
+                        t.get("priority") == "MUST"
+                        and isinstance(t.get("importance"), (int, float))
+                        and t["importance"] >= DIAGNOSTIC_MIN_IMPORTANCE - 1e-9
+                        for t in track_targets)
+                    if track_targets and not ready:
                         res.error("CV-59", where,
-                                  f"DIAGNOSTIC skill {s} must be MUST with importance >= 0.70")
+                                  f"DIAGNOSTIC skill {s} must be MUST with importance >= 0.70 in some track")
             elif is_int(ch["difficulty"]) and is_int(ch["estimatedMinutes"]):
                 limit = {1: 20, 2: 30, 3: 40, 4: 60, 5: 90}[ch["difficulty"]]
                 if ch["estimatedMinutes"] > limit:

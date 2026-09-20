@@ -1,0 +1,169 @@
+# DevPilot plan template — JAVA_BACKEND_STARTER (Java 백엔드 입문)
+# Spec: docs/19-content-spec.md §3.4 (스키마), §5 (날짜 배치 알고리즘), §10.4 A
+# - milestones 순서 = plan_milestone.sort_order
+# - PREPARATION milestone이 모두 CONSOLIDATION milestone보다 앞에 온다 (입문 트랙은 PREPARATION 5 + CONSOLIDATION 1)
+# - weightBp 전체 합 = 10000. 단계(phase) 안에서는 해당 단계 합으로 다시 나눠 쓴다
+# - 이 트랙의 non-root skill 92개가 **전부 정확히 한 milestone**에 들어간다. MUST 20개도 모두 들어 있다(CV-36)
+#
+# milestone은 과목 순서가 아니라 **하나를 고쳐서 배포하고 확인하기까지의 순서**다.
+# 공부는 했지만 운영에서 만져 본 적이 없는 사람을 기준으로, 매 milestone이 "직접 눌러 확인하는 것"으로 끝난다.
+# milestone 안의 순환은 읽기 → 개념 → 구현 → 러버덕 → 복습이다.
+# milestone priority: 1~5 MUST, 6 SHOULD — 기한이 촉박할 때 마지막 정리 단계부터 잘라낸다.
+#   (milestone의 priority는 잘라내는 순서를 정하고, skill의 priority는 role target이 정한다.
+#    SHOULD milestone 안에도 MUST role target skill이 들어갈 수 있다. 위험도 계산은
+#    plan_skill_target.priority를 쓴다 — docs/06-learning-engine-rules.md §4.1)
+# readings 연결은 content/curated-repos.yaml이 skillCodes로 맺는다(06 §5.3 READ_CODE).
+# 이 트랙은 readCodeMinKnowledge = 2라 KNOWLEDGE 2 미만인 동안에는 READING이 먼저 나온다(06 §5.3).
+templateKey: JAVA_BACKEND_STARTER_DEFAULT
+targetRole: JAVA_BACKEND_STARTER
+planTitle: Java 백엔드 입문 성장 계획
+placement:
+  minMilestoneDays: 7
+milestones:
+  - key: SETUP_AND_FIRST_API
+    title: 환경과 첫 API
+    description: >-
+      내려받은 프로젝트를 내 손으로 띄우고, 요청 하나가 어디를 지나 어디서 응답이 되는지 직접 따라간다.
+      컨트롤러·서비스·저장소를 나눠 첫 조회 API를 만들고, 브라우저와 curl로 눌러 상태 코드와 본문을 확인한다.
+      만든 것은 브랜치로 올리고 리뷰 지적을 하나 받아 고쳐 본다.
+    priority: MUST
+    weightBp: 1800
+    phase: PREPARATION
+    skillCodes:
+      - DEVOPS.GIT
+      - DEVOPS.BUILD_GRADLE
+      - JAVA.OOP
+      - JAVA.MODERN_SYNTAX
+      - SPRING.DI_IOC
+      - SPRING.BOOT_CONFIG
+      - SPRING.MVC_REST
+      - WEB_HTTP.HTTP_BASICS
+      - WEB_HTTP.REST_API_DESIGN
+      - WEB_HTTP.CORS
+      - PRACTICAL_ENGINEERING.REQUIREMENTS
+      - PRACTICAL_ENGINEERING.CODE_REVIEW
+      - NETWORK.TCP_IP
+      - NETWORK.DNS
+  - key: CRUD_AND_VALIDATION
+    title: CRUD와 검증
+    description: >-
+      등록·수정·삭제를 붙이고, 잘못된 입력이 들어왔을 때 어디서 막히고 사용자에게 무엇이 보이는지 정한다.
+      예외를 삼키지 않고 오류 응답 형식을 하나로 맞춘다. 로그인한 사람만 고칠 수 있게 막는 것까지 해 본다.
+    priority: MUST
+    weightBp: 1900
+    phase: PREPARATION
+    skillCodes:
+      - JAVA.COLLECTION
+      - JAVA.GENERICS
+      - JAVA.OPTIONAL
+      - JAVA.EXCEPTION
+      - JAVA.EXCEPTION.TRY_WITH_RESOURCES
+      - SPRING.VALIDATION
+      - SPRING.EXCEPTION_HANDLING
+      - SPRING.DATA_JPA
+      - SPRING.SECURITY
+      - DATABASE.JPA
+      - DATABASE.MODELING
+      - WEB_HTTP.AUTH_SESSION_TOKEN
+      - SECURITY.INPUT_VALIDATION
+      - SECURITY.AUTHN_AUTHZ
+      - SECURITY.OWASP_TOP10
+      - PRACTICAL_ENGINEERING.NULL_BOUNDARY
+  - key: DATABASE_AND_TRANSACTION
+    title: DB와 트랜잭션
+    description: >-
+      psql로 직접 붙어 조인과 집계로 데이터를 꺼내 보고, 제약을 걸어 잘못된 데이터가 아예 들어가지 못하게 한다.
+      중간에 실패했을 때 무엇이 남고 무엇이 되돌아가는지 트랜잭션을 걸었다 뺐다 하며 눈으로 확인한다.
+    priority: MUST
+    weightBp: 1800
+    phase: PREPARATION
+    skillCodes:
+      - DATABASE.SQL_BASICS
+      - DATABASE.TRANSACTION
+      - DATABASE.TRANSACTION.LOCKING
+      - DATABASE.INDEX
+      - DATABASE.INDEX.EXPLAIN_PLAN
+      - DATABASE.MIGRATION
+      - DATABASE.JPA.PERSISTENCE_CONTEXT
+      - DATABASE.JPA.FETCH_STRATEGY
+      - SPRING.TRANSACTION
+      - SPRING.TRANSACTION.PROPAGATION
+      - SPRING.AOP_PROXY
+      - JAVA.LAMBDA_STREAM
+      - JAVA.CONCURRENCY
+      - WEB_HTTP.IDEMPOTENCY
+      - CS.DATA_STRUCTURE
+  - key: TEST_AND_FIX
+    title: 테스트
+    description: >-
+      고치기 전에 깨지는 테스트를 먼저 쓴다. 성공 경로 하나와 실패 경로 하나를 짝으로 만들고, 고친 뒤 초록으로
+      바뀌는 것을 확인한다. 테스트가 있으니 마음 놓고 고칠 수 있다는 감각을 여기서 얻는다.
+    priority: MUST
+    weightBp: 1300
+    phase: PREPARATION
+    skillCodes:
+      - TESTING.JUNIT
+      - TESTING.UNIT_TEST_DESIGN
+      - TESTING.TEST_DOUBLE
+      - TESTING.SPRING_TEST
+      - TESTING.TESTCONTAINERS
+      - TESTING.GOLDEN_REGRESSION
+      - PRACTICAL_ENGINEERING.RESOURCE_TIMEOUT
+  - key: DEPLOY_AND_LOGS
+    title: 배포와 로그 확인
+    description: >-
+      컨테이너로 묶어 서버에 올리고, 올라간 뒤 정말 동작하는지 직접 확인한다. 터미널에서 로그를 따라가며
+      실패한 요청 하나를 골라 어디서 끊겼는지 좁혀 본다. 찾은 것은 현상·영향·원인·조치 순서로 짧게 적는다.
+    priority: MUST
+    weightBp: 1900
+    phase: PREPARATION
+    skillCodes:
+      - DEVOPS.DOCKER
+      - DEVOPS.LINUX_BASICS
+      - DEVOPS.CI_GITHUB_ACTIONS
+      - DEVOPS.CLOUD_DEPLOY
+      - DEVOPS.AWS_BASICS
+      - DEVOPS.KUBERNETES_BASICS
+      - DEVOPS.OFFLINE_DEPLOY
+      - DEVOPS.WAS_PORTABILITY
+      - DEVOPS.OBSERVABILITY
+      - PRACTICAL_ENGINEERING.LOGGING
+      - PRACTICAL_ENGINEERING.INCIDENT_ANALYSIS
+      - PRACTICAL_ENGINEERING.TROUBLESHOOTING_REPORT
+      - SECURITY.SECRET_MANAGEMENT
+      - SECURITY.SENSITIVE_DATA_LOGGING
+      - NETWORK.TLS
+      - CS.OS_PROCESS_THREAD
+      - CS.IO_MODEL
+  - key: EXPLAIN_AND_CONSOLIDATE
+    title: 설명과 정리
+    description: >-
+      고친 것 하나를 골라 무엇을 왜 그렇게 했는지 남이 알아듣게 설명해 본다. 막혔다가 풀린 순간도 같은 형식으로
+      정리한다. 남은 시간에는 아직 손대지 않은 주제를 골라 이름과 쓰임 정도만 알아 둔다.
+    priority: SHOULD
+    weightBp: 1300
+    phase: CONSOLIDATION
+    skillCodes:
+      - EXPLANATION.PROJECT_STORY
+      - EXPLANATION.TECH_DECISION
+      - EXPLANATION.TROUBLESHOOTING_STORY
+      - EXPLANATION.LEARNING_RETROSPECTIVE
+      - JAVA.CONCURRENCY.VIRTUAL_THREAD
+      - JAVA.JVM_MEMORY_GC
+      - SPRING.SECURITY.JWT_RESOURCE_SERVER
+      - ALGORITHM.COMPLEXITY
+      - ALGORITHM.SORT_SEARCH
+      - ALGORITHM.GRAPH_SEARCH
+      - ALGORITHM.DP_GREEDY
+      - INTEGRATION.API_CONTRACT
+      - INTEGRATION.INTERFACE_SPEC
+      - INTEGRATION.CLIENT_AUTH
+      - INTEGRATION.WEBHOOK
+      - INTEGRATION.LEGACY_DATA
+      - INTEGRATION.BATCH_SYNC
+      - INTEGRATION.EXTENSION_DESIGN
+      - INTEGRATION.CUSTOMER_VARIANT
+      - INTEGRATION.SECURITY_APPLIANCE
+      - SYSTEM_DESIGN.CACHING
+      - SYSTEM_DESIGN.SCALABILITY
+      - SYSTEM_DESIGN.MESSAGE_QUEUE

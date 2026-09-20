@@ -670,7 +670,7 @@ Severity `ERROR`는 기동 실패와 CI 실패, `WARN`은 로그만 남긴다. J
 | CV-56 | ERROR | hint에 백틱(`` ` ``)이 없고, §4.2 코드 줄 판정에 걸리는 줄이 0개 |
 | CV-57 | ERROR | `QUESTION_ONLY`가 `?`로 끝나고, `expectedConcepts` 항목을 대소문자 무시 부분 문자열로 포함하지 않는다 |
 | CV-58 | ERROR | `transferTargets`가 role target이 있는 skill이고 `skills`와 겹치지 않는다. `isTransfer = true`면 difficulty ≥ 3 |
-| CV-59 | ERROR | DIAGNOSTIC은 difficulty 3, estimatedMinutes ≤ 15, isTransfer false, skills가 한 category이고 모두 role target priority `MUST`·importance ≥ 0.70. `diagnosticCategories`의 각 category에 DIAGNOSTIC이 1개 이상 |
+| CV-59 | ERROR | DIAGNOSTIC은 difficulty 3, estimatedMinutes ≤ 15, isTransfer false, skills가 한 category이고 모두 **어느 한 트랙에서라도** role target priority `MUST`·importance ≥ 0.70. `diagnosticCategories`의 각 category에 DIAGNOSTIC이 1개 이상. **트랙이 하나이던 때에는 `JAVA_BACKEND`만 봤는데, 트랙이 늘면서 그 트랙에서만 MUST인 category(예: `INTEGRATION`)를 진단할 수 없었다** — 진단은 시작 수준을 정하는 것이라 그 사람이 공부할 트랙 기준으로 본다 |
 | CV-60 | WARN | PRACTICE estimatedMinutes가 난이도별 상한 초과: L1 20, L2 30, L3 40, L4 60, L5 90 (§6) |
 | CV-61 | ERROR | 템플릿 배치 smoke test: 고정 입력 4개(창 길이 1일(목표일 = 오늘), 10일, 31일, 211일)에서 §5 결과가 모두 `today ≤ start ≤ end ≤ targetCompletionDate` |
 | CV-62 | ERROR | `timeLimitMinutes`가 있으면 정수 1~120이고 `estimatedMinutes` 이하다. `purpose = DIAGNOSTIC`에는 쓰지 않는다(진단은 15분 이하 고정이다, CV-59) |

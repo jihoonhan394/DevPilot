@@ -3,6 +3,7 @@ package com.devpilot.content.application;
 import com.devpilot.skill.domain.Priority;
 import com.devpilot.skill.domain.TargetRole;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -20,12 +21,14 @@ final class RoleTargetChecks {
             List.of("knowledge", "implementation", "explanation", "debugging");
 
     /**
-     * 콘텐츠가 덮어야 하는 학습 트랙. {@link TargetRole}의 부분집합이다 — {@code JAVA_BACKEND_STARTER}의 role target·계획
-     * 템플릿은 아직 쓰지 않았다(BL-CNT-17). 기준 검증기({@code content/tools/validate_content.py}의 {@code
-     * TARGET_ROLES})와 같은 집합을 쓴다. 트랙 콘텐츠를 추가하면 여기에 더한다.
+     * 콘텐츠가 덮어야 하는 학습 트랙. 지금은 {@link TargetRole} 전부다. 기준 검증기({@code
+     * content/tools/validate_content.py}의 {@code TARGET_ROLES})와 같은 집합을 쓴다. 트랙 콘텐츠를 추가하면 여기에 더한다.
      */
     static final Set<String> CONTENT_TRACKS =
-            Set.of(TargetRole.JAVA_BACKEND.name(), TargetRole.INTEGRATION_ENGINEER.name());
+            Set.of(
+                    TargetRole.JAVA_BACKEND.name(),
+                    TargetRole.JAVA_BACKEND_STARTER.name(),
+                    TargetRole.INTEGRATION_ENGINEER.name());
 
     private static final Set<String> TARGET_KEYS =
             Set.of("skill", "priority", "importance", "target");
@@ -75,7 +78,20 @@ final class RoleTargetChecks {
             }
         }
         context.targets.putAll(byRole.getOrDefault(TargetRole.JAVA_BACKEND.name(), Map.of()));
+        collectTargetsBySkill(context, byRole);
         checkPrerequisiteReadiness(context);
+    }
+
+    /** skill code → 트랙별 role target. 진단 준비(CV-59)는 어느 트랙에서든 MUST면 된다. */
+    private static void collectTargetsBySkill(
+            ValidationContext context, Map<String, Map<String, Map<String, Object>>> byRole) {
+        for (Map<String, Map<String, Object>> trackTargets : byRole.values()) {
+            trackTargets.forEach(
+                    (code, target) ->
+                            context.targetsBySkill
+                                    .computeIfAbsent(code, key -> new ArrayList<>())
+                                    .add(target));
+        }
     }
 
     private static void checkTarget(

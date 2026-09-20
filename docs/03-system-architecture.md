@@ -611,7 +611,7 @@ devpilot:
       REQUIREMENT_EXTRACT:     { mode: ASYNC, thinking: false, max-tokens: 8000,  timeout: 120s, max-retries: 1, input-token-budget: 8000 }
       RUBBER_DUCK:             { mode: SYNC,  thinking: false, max-tokens: 1500,  timeout: 20s,  max-retries: 0, input-token-budget: 6000 }
       RUBBER_DUCK_SUMMARY:     { mode: SYNC,  thinking: true,  reasoning-effort: low, max-tokens: 4000, timeout: 30s, max-retries: 0, input-token-budget: 8000 }
-    trusted-source-hosts: [docs.spring.io, spring.io, docs.oracle.com, openjdk.org, www.postgresql.org, owasp.org, cheatsheetseries.owasp.org, www.kisa.or.kr, supabase.com, dart.dev, docs.flutter.dev, api.flutter.dev, pmd.github.io, spotbugs.readthedocs.io, checkstyle.org, junit.org, hibernate.org, docs.jboss.org, developer.mozilla.org, www.rfc-editor.org, git-scm.com, spec.openapis.org, docs.gradle.org]
+    trusted-source-hosts: [docs.spring.io, spring.io, docs.oracle.com, openjdk.org, www.postgresql.org, owasp.org, cheatsheetseries.owasp.org, www.kisa.or.kr, supabase.com, dart.dev, docs.flutter.dev, api.flutter.dev, pmd.github.io, spotbugs.readthedocs.io, checkstyle.org, junit.org, hibernate.org, docs.jboss.org, developer.mozilla.org, www.rfc-editor.org, git-scm.com, spec.openapis.org, docs.gradle.org, man7.org]
     curated-sources-location: classpath:content/curated-sources.yaml
     pricing:                                             # USD per 1M tokens, 2026-09-18 확인 (17-ai-integration.md §8.4)
       peak-multiplier: 2                                 # 결정 F: 피크 시간대 판정 없이 항상 곱한다 (보수 계산)

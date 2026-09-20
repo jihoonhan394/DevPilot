@@ -46,8 +46,11 @@ final class ValidationContext {
 
     final Set<String> nonRootCodes = new HashSet<>();
 
-    /** JAVA_BACKEND role target: skill code → 원본. */
+    /** JAVA_BACKEND role target: skill code → 원본. 기본 트랙 기준 검사(CV-18 등)가 쓴다. */
     final Map<String, Map<String, Object>> targets = new LinkedHashMap<>();
+
+    /** 트랙 전체의 role target: skill code → 트랙별 원본 목록. 진단 준비(CV-59)는 어느 트랙이든 보면 된다. */
+    final Map<String, List<Map<String, Object>>> targetsBySkill = new LinkedHashMap<>();
 
     /** 구조 검사를 통과한 plan template(CV-61 대상). */
     final List<Map<String, Object>> validTemplates = new ArrayList<>();

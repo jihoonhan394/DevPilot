@@ -509,3 +509,36 @@ conceptReadings:
       - 내 서비스에서 직접 만들어야 할 지표 하나를 정하고 이름과 태그를 적어 보세요
     verifiedAt: 2026-09-21
     retired: false
+  - key: DOC.LINUX.FILE_PERMISSION.001
+    title: chmod(1) — Linux manual page
+    url: https://man7.org/linux/man-pages/man1/chmod.1.html
+    publisher: Linux man-pages project (GNU coreutils)
+    versionScope: GNU coreutils 9.11 (2026-04 man page)
+    skillCodes: [DEVOPS.LINUX_BASICS]
+    estimatedMinutes: 20
+    whyRead: |-
+      서버에서 Permission denied를 만났을 때 무엇이 막혔는지 읽어 낼 수 있게 된다. 권한 표기 열 자리가
+      누구의 어떤 권한인지, 숫자 표기와 기호 표기가 어떻게 같은 것을 가리키는지 알면 무작정 모두에게
+      권한을 여는 대신 필요한 자리만 열 수 있다.
+    checkPoints:
+      - 숫자 표기 세 자리가 각각 누구의 권한이고 4, 2, 1이 무엇을 뜻하는지 적어 보세요
+      - 기호 표기에서 더하기와 등호가 결과를 어떻게 다르게 만드는지 적어 보세요
+      - 내 서버의 애플리케이션 디렉터리와 로그 파일에 어떤 권한이 적당한지 정하고 이유를 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.LINUX.SERVICE_LOG.001
+    title: journalctl(1) — Linux manual page
+    url: https://man7.org/linux/man-pages/man1/journalctl.1.html
+    publisher: Linux man-pages project (systemd)
+    versionScope: systemd 262 (2026-09-21 기준 내용)
+    skillCodes: [DEVOPS.LINUX_BASICS]
+    estimatedMinutes: 25
+    whyRead: |-
+      로그 파일을 찾아 헤매는 대신 서비스 이름으로 로그를 꺼낼 수 있게 된다. 기간과 심각도로 좁히는
+      방법, 새 줄을 이어서 보는 방법을 알면 장애가 난 시각의 기록만 골라 읽을 수 있다.
+    checkPoints:
+      - 특정 서비스의 로그만 보려면 어떤 선택지를 쓰는지 적어 보세요
+      - 시간 범위와 심각도로 좁히는 선택지를 각각 하나씩 적어 보세요
+      - 내 서비스에서 장애가 났을 때 어떤 조건으로 로그를 꺼낼지 명령 한 줄을 미리 적어 두세요
+    verifiedAt: 2026-09-21
+    retired: false
