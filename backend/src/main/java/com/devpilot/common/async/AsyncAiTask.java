@@ -6,8 +6,9 @@ import org.slf4j.LoggerFactory;
 /**
  * 비동기 AI 작업 템플릿 (docs/03 §5.3, BL-FND-23). 모듈의 {@code ..infrastructure..*Task}가 상속하고, 이벤트 메서드에
  * {@code @Async(AsyncConfig.AI_TASK_EXECUTOR)} + {@code @TransactionalEventListener(phase =
- * AFTER_COMMIT)}를 붙여 {@link #runSafely}를 부른다(ARCH-05). 요청 스레드는 리소스를 {@code PENDING}으로 저장·커밋한 뒤 이벤트를
- * 발행한다.
+ * AFTER_COMMIT)}를 붙여 {@link #runSafely}를 부른다(ARCH-05). 요청 스레드는 리소스를 {@code PENDING}으로 저장하는 **트랜잭션
+ * 안에서** 이벤트를 발행한다 — {@code AFTER_COMMIT} listener는 발행 시점에 활성 트랜잭션이 있어야 등록되고, 없으면 이벤트가 조용히 버려진다
+ * ({@code fallbackExecution} 기본값 false). 실행은 그 트랜잭션이 커밋된 뒤에 일어난다.
  *
  * <pre>
  * process(event):

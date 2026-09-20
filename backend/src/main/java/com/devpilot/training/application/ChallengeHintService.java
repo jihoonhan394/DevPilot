@@ -16,6 +16,7 @@ import com.devpilot.learning.application.HintService;
 import com.devpilot.learning.application.HintService.DisclosedHint;
 import com.devpilot.learning.application.HintService.GenerateInput;
 import com.devpilot.learning.application.HintService.RecordCommand;
+import com.devpilot.learning.domain.CodeLanguage;
 import com.devpilot.learning.domain.EventSourceType;
 import com.devpilot.learning.domain.HintContentOrigin;
 import com.devpilot.learning.domain.HintLadderPolicy.Decision;
@@ -256,6 +257,7 @@ public class ChallengeHintService {
         String code = latest == null ? null : latest.getCode();
         boolean isCode = code != null && !code.isBlank();
         String userAttempt = isCode ? code : (latest == null ? null : latest.getAnswerText());
+        CodeLanguage language = latest == null ? null : latest.getLanguage();
         return new GenerateInput(
                 userId,
                 HintTargetType.CHALLENGE_ATTEMPT,
@@ -266,7 +268,7 @@ public class ChallengeHintService {
                 attempt.getSelfExplanation(),
                 userAttempt,
                 isCode,
-                isCode && latest.getLanguage() != null ? latest.getLanguage().name() : null);
+                isCode && language != null ? language.name() : null);
     }
 
     /** challenge 본문 요약 (docs/17 §3.5 {@code targetSummary}). */

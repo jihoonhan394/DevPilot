@@ -1,25 +1,17 @@
 package com.devpilot.review.application;
 
 import com.devpilot.common.async.AsyncFailureCode;
-import com.devpilot.common.config.DevPilotProperties;
 import com.devpilot.common.error.ConflictException;
 import com.devpilot.common.error.ErrorCode;
 import com.devpilot.common.error.NotFoundException;
 import com.devpilot.common.security.CurrentUser;
 import com.devpilot.common.time.PlanDayCalculator;
 import com.devpilot.common.web.AiMeta;
-import com.devpilot.goal.application.LearningGoalQueryService;
-import com.devpilot.goal.application.LearningGoalView;
 import com.devpilot.integration.ai.api.AiResult;
 import com.devpilot.integration.ai.api.output.ReviewEvaluateOutput;
 import com.devpilot.integration.ai.masking.SecretMasker;
-import com.devpilot.learning.application.LearningEventRecorder;
-import com.devpilot.learning.application.LearningEventRecorder.NewLearningEvent;
 import com.devpilot.learning.domain.EvaluatedOutcome;
-import com.devpilot.learning.domain.EventSourceType;
 import com.devpilot.learning.domain.HintLevel;
-import com.devpilot.learning.domain.LearningEventType;
-import com.devpilot.learning.domain.LeechDetectedPayload;
 import com.devpilot.learning.domain.ReviewAnsweredPayload;
 import com.devpilot.review.application.ReviewEvaluationSupport.Evaluation;
 import com.devpilot.review.application.ReviewEvaluationSupport.EvaluationInput;
@@ -31,11 +23,8 @@ import com.devpilot.review.domain.ReviewItem;
 import com.devpilot.review.domain.ReviewItemStatus;
 import com.devpilot.review.domain.ReviewRating;
 import com.devpilot.review.domain.ReviewSchedulingStrategy.Schedule;
-import com.devpilot.review.domain.ReviewSchedulingStrategy.ScheduleInput;
 import com.devpilot.review.domain.ReviewType;
 import com.devpilot.review.domain.RubricItem;
-import com.devpilot.review.domain.RuleBasedV1Scheduler;
-import com.devpilot.review.infrastructure.ReviewAnswerRepository;
 import com.devpilot.review.infrastructure.ReviewItemRepository;
 import java.time.Clock;
 import java.time.Instant;
@@ -61,37 +50,29 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class ReviewService {
 
     private final ReviewItemRepository reviewItemRepository;
-    private final ReviewAnswerRepository reviewAnswerRepository;
-    private final LearningEventRecorder learningEventRecorder;
-    private final LearningGoalQueryService learningGoalQueryService;
+    private final ReviewAnswerRecorder answerRecorder;
+    private final ReviewSchedulingSupport schedulingSupport;
     private final ReviewEvaluationSupport evaluationSupport;
     private final SecretMasker secretMasker;
     private final TransactionTemplate transactions;
     private final Clock clock;
     private final FinalRatingPolicy finalRatingPolicy = new FinalRatingPolicy();
-    private final RuleBasedV1Scheduler scheduler;
-    private final int suspendAfterFailures;
 
     public ReviewService(
             ReviewItemRepository reviewItemRepository,
-            ReviewAnswerRepository reviewAnswerRepository,
-            LearningEventRecorder learningEventRecorder,
-            LearningGoalQueryService learningGoalQueryService,
+            ReviewAnswerRecorder answerRecorder,
+            ReviewSchedulingSupport schedulingSupport,
             ReviewEvaluationSupport evaluationSupport,
             SecretMasker secretMasker,
             PlatformTransactionManager transactionManager,
-            Clock clock,
-            DevPilotProperties properties) {
+            Clock clock) {
         this.reviewItemRepository = reviewItemRepository;
-        this.reviewAnswerRepository = reviewAnswerRepository;
-        this.learningEventRecorder = learningEventRecorder;
-        this.learningGoalQueryService = learningGoalQueryService;
+        this.answerRecorder = answerRecorder;
+        this.schedulingSupport = schedulingSupport;
         this.evaluationSupport = evaluationSupport;
         this.secretMasker = secretMasker;
         this.transactions = new TransactionTemplate(transactionManager);
         this.clock = clock;
-        this.scheduler = new RuleBasedV1Scheduler(ReviewRuleSettings.scheduler(properties));
-        this.suspendAfterFailures = properties.review().suspendAfterFailures();
     }
 
     /**
@@ -219,44 +200,46 @@ public class ReviewService {
                         command.selfRating(), evaluated.evaluatedOutcome(), command.hintLevel());
         int intervalBefore = item.getIntervalDays();
         Schedule schedule =
-                scheduler.schedule(
-                        new ScheduleInput(
-                                intervalBefore,
-                                rating.finalRating(),
-                                item.getConsecutiveSuccesses(),
-                                item.getConsecutiveFailures(),
-                                today,
-                                horizon(userId)));
+                schedulingSupport.schedule(
+                        userId,
+                        intervalBefore,
+                        rating.finalRating(),
+                        item.getConsecutiveSuccesses(),
+                        item.getConsecutiveFailures(),
+                        today);
         Instant nextDueAt =
                 PlanDayCalculator.planDayStart(schedule.dueDate(), zone, user.dayStartHour());
         ReviewAnswer answer =
-                reviewAnswerRepository.save(
-                        ReviewAnswer.record(
-                                new ReviewAnswer.Values(
-                                        item.getId(),
-                                        userId,
-                                        today,
-                                        command.wasVariant(),
-                                        presented.prompt(),
-                                        answerText,
-                                        command.selfRating(),
-                                        evaluated.evaluatedOutcome(),
-                                        evaluated.rubricCoverageBp(),
-                                        command.hintLevel(),
-                                        rating.finalRating(),
-                                        rating.adjustedBy(),
-                                        command.responseSeconds(),
-                                        intervalBefore,
-                                        schedule.intervalDays(),
-                                        scheduler.name(),
-                                        evaluated.aiCallId(),
-                                        now)));
+                answerRecorder.save(
+                        new ReviewAnswer.Values(
+                                item.getId(),
+                                userId,
+                                today,
+                                command.wasVariant(),
+                                presented.prompt(),
+                                answerText,
+                                command.selfRating(),
+                                evaluated.evaluatedOutcome(),
+                                evaluated.rubricCoverageBp(),
+                                command.hintLevel(),
+                                rating.finalRating(),
+                                rating.adjustedBy(),
+                                command.responseSeconds(),
+                                intervalBefore,
+                                schedule.intervalDays(),
+                                schedulingSupport.schedulerName(),
+                                evaluated.aiCallId(),
+                                now));
         item.applyAnswer(rating.finalRating(), schedule, nextDueAt, now);
-        Answered answered = new Answered(userId, item, answer, today, now);
-        recordAnswered(answered, command, rating, intervalBefore, schedule, evaluated);
-        boolean leech = item.suspendIfLeech(suspendAfterFailures);
+        ReviewAnswerRecorder.AnsweredCard answered =
+                new ReviewAnswerRecorder.AnsweredCard(userId, item, answer, today, now);
+        answerRecorder.recordAnswered(
+                answered,
+                answeredPayload(
+                        item, answer, command, rating, intervalBefore, schedule, evaluated));
+        boolean leech = item.suspendIfLeech(schedulingSupport.suspendAfterFailures());
         if (leech) {
-            recordLeech(answered);
+            answerRecorder.recordLeech(answered);
         }
         reviewItemRepository.flush();
         return new ReviewAnswerResult(
@@ -276,67 +259,29 @@ public class ReviewService {
                 evaluated.aiMeta());
     }
 
-    /** 간격 상한 horizon = 목표일 (budget과 같은 기준). 학습 목표가 없으면 null. */
-    private @Nullable LocalDate horizon(UUID userId) {
-        return learningGoalQueryService
-                .find(userId)
-                .map(LearningGoalView::targetCompletionDate)
-                .orElse(null);
-    }
-
-    private void recordAnswered(
-            Answered answered,
+    /** {@code REVIEW_ANSWERED} payload (docs/05 §11.3 5단계). */
+    private static ReviewAnsweredPayload answeredPayload(
+            ReviewItem item,
+            ReviewAnswer answer,
             AnswerCommand command,
             FinalRatingPolicy.Result rating,
             int intervalBefore,
             Schedule schedule,
             Evaluated evaluated) {
-        ReviewItem item = answered.item();
-        learningEventRecorder.record(
-                new NewLearningEvent(
-                        answered.userId(),
-                        item.getSkillId(),
-                        null,
-                        LearningEventType.REVIEW_ANSWERED,
-                        EventSourceType.REVIEW_ITEM,
-                        item.getId(),
-                        answered.today(),
-                        new ReviewAnsweredPayload(
-                                item.getId(),
-                                answered.answer().getId(),
-                                item.getConceptKey(),
-                                item.getReviewType().name(),
-                                command.wasVariant(),
-                                command.selfRating().name(),
-                                evaluated.evaluatedOutcome(),
-                                evaluated.rubricCoverageBp(),
-                                command.hintLevel(),
-                                rating.finalRating().name(),
-                                intervalBefore,
-                                schedule.intervalDays()),
-                        "REVIEW_ANSWERED:" + answered.answer().getId(),
-                        answered.now()));
+        return new ReviewAnsweredPayload(
+                item.getId(),
+                answer.getId(),
+                item.getConceptKey(),
+                item.getReviewType().name(),
+                command.wasVariant(),
+                command.selfRating().name(),
+                evaluated.evaluatedOutcome(),
+                evaluated.rubricCoverageBp(),
+                command.hintLevel(),
+                rating.finalRating().name(),
+                intervalBefore,
+                schedule.intervalDays());
     }
-
-    private void recordLeech(Answered answered) {
-        ReviewItem item = answered.item();
-        learningEventRecorder.record(
-                new NewLearningEvent(
-                        answered.userId(),
-                        item.getSkillId(),
-                        null,
-                        LearningEventType.LEECH_DETECTED,
-                        EventSourceType.REVIEW_ITEM,
-                        item.getId(),
-                        answered.today(),
-                        new LeechDetectedPayload(item.getId(), item.getConsecutiveFailures()),
-                        "LEECH:" + item.getId() + ":" + answered.answer().getId(),
-                        answered.now()));
-    }
-
-    /** 이벤트 기록에 쓰는 답변 맥락. */
-    private record Answered(
-            UUID userId, ReviewItem item, ReviewAnswer answer, LocalDate today, Instant now) {}
 
     /** tx1에서 기억한 출제 문항과 상태 (docs/05 §11.3 2단계). */
     private record Presented(

@@ -17,6 +17,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -124,8 +125,10 @@ public class DiagnosticSuggestionService {
                     if (skill == null || !state.active()) {
                         return;
                     }
-                    Integer level = state.selfAssessedLevel();
-                    maxLevels.merge(skill.category(), level == null ? 0 : level, Math::max);
+                    maxLevels.merge(
+                            skill.category(),
+                            Objects.requireNonNullElse(state.selfAssessedLevel(), 0),
+                            Math::max);
                 });
         if (diagnosticMode) {
             return maxLevels;

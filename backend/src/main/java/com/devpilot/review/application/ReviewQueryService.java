@@ -5,8 +5,6 @@ import com.devpilot.common.security.CurrentUser;
 import com.devpilot.common.time.PlanDayCalculator;
 import com.devpilot.common.web.CursorCodec;
 import com.devpilot.common.web.CursorPage;
-import com.devpilot.learning.application.LearningSessionQueryService;
-import com.devpilot.plan.application.PlanQueryService;
 import com.devpilot.review.application.DueReviewsView.DueReviewItemView;
 import com.devpilot.review.application.DueReviewsView.ReviewRubricItemView;
 import com.devpilot.review.domain.DueReviewSelector;
@@ -51,8 +49,7 @@ public class ReviewQueryService {
     private final ReviewItemRepository reviewItemRepository;
     private final ReviewAnswerRepository reviewAnswerRepository;
     private final SkillCatalogQueryService skillCatalogQueryService;
-    private final PlanQueryService planQueryService;
-    private final LearningSessionQueryService learningSessionQueryService;
+    private final DueReviewInputs dueReviewInputs;
     private final CursorCodec cursorCodec;
     private final Clock clock;
     private final int maxPerDay;
@@ -63,16 +60,14 @@ public class ReviewQueryService {
             ReviewItemRepository reviewItemRepository,
             ReviewAnswerRepository reviewAnswerRepository,
             SkillCatalogQueryService skillCatalogQueryService,
-            PlanQueryService planQueryService,
-            LearningSessionQueryService learningSessionQueryService,
+            DueReviewInputs dueReviewInputs,
             CursorCodec cursorCodec,
             Clock clock,
             DevPilotProperties properties) {
         this.reviewItemRepository = reviewItemRepository;
         this.reviewAnswerRepository = reviewAnswerRepository;
         this.skillCatalogQueryService = skillCatalogQueryService;
-        this.planQueryService = planQueryService;
-        this.learningSessionQueryService = learningSessionQueryService;
+        this.dueReviewInputs = dueReviewInputs;
         this.cursorCodec = cursorCodec;
         this.clock = clock;
         this.maxPerDay = properties.review().maxPerDay();
@@ -85,7 +80,7 @@ public class ReviewQueryService {
      */
     public DueReviewsView due(UUID userId, ZoneId zone, int dayStartHour, @Nullable Integer limit) {
         LocalDate today = PlanDayCalculator.planDate(clock.instant(), zone, dayStartHour);
-        boolean comebackMode = learningSessionQueryService.isComebackMode(userId, today);
+        boolean comebackMode = dueReviewInputs.isComebackMode(userId, today);
         int cap = cap(comebackMode);
         int effectiveCap = limit == null ? cap : Math.min(limit, cap);
         Map<UUID, SkillDetailView> skills = skillCatalogQueryService.activeSkillDetails();
@@ -215,7 +210,7 @@ public class ReviewQueryService {
             int dayStartHour,
             Map<UUID, SkillDetailView> skills,
             Map<UUID, ReviewItem> byId) {
-        Map<UUID, SkillTargetView> targets = planQueryService.activePlanTargets(userId);
+        Map<UUID, SkillTargetView> targets = dueReviewInputs.activePlanTargets(userId);
         List<ReviewItem> active =
                 reviewItemRepository.findActiveDueBefore(
                         userId, nextPlanDayStart(today, zone, dayStartHour));

@@ -7,11 +7,8 @@ import com.devpilot.common.time.PlanDayCalculator;
 import com.devpilot.common.web.validation.InputRules;
 import com.devpilot.goal.application.LearningGoalService;
 import com.devpilot.goal.application.LearningGoalView;
-import com.devpilot.onboarding.domain.SelfAssessmentPropagation;
 import com.devpilot.project.application.SideProjectService;
 import com.devpilot.project.application.SideProjectView;
-import com.devpilot.skill.application.SkillCatalogQueryService;
-import com.devpilot.skill.application.SkillStateUpdater;
 import com.devpilot.skill.domain.SkillCategory;
 import com.devpilot.user.application.MeResponse;
 import com.devpilot.user.application.OnboardingProfileCommand;
@@ -20,9 +17,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,36 +27,32 @@ import org.springframework.transaction.annotation.Transactional;
  * 프로젝트를 만든다. 실패하면 아무것도 남지 않는다(AC-11 S2). 같은 사용자의 동시 온보딩은 사용자 행 잠금으로 줄을 세워 뒤의 요청이 409 {@code
  * ONBOARDING_ALREADY_COMPLETED}가 된다.
  *
- * <p>8단계 seed 카드 배정(BL-MEM-08)과 9단계 오늘 snapshot(BL-GOL-13)은 plan 생성 뒤 같은 트랜잭션에서 한다. 11단계 진단 제안은
- * {@link DiagnosticSuggestionService}가 계산한다(docs/05 §4.2).
+ * <p>5단계 skill state는 {@link OnboardingSkillSetup}, 6~9단계 plan v1·seed 카드(BL-MEM-08)·오늘
+ * snapshot(BL-GOL-13)은 {@link OnboardingPlanSetup}이 같은 트랜잭션에서 만든다. 11단계 진단 제안은 {@link
+ * DiagnosticSuggestionService}가 계산한다(docs/05 §4.2).
  */
 @Service
 public class OnboardingService {
 
     private final ProfileService profileService;
     private final LearningGoalService learningGoalService;
-    private final SkillCatalogQueryService skillCatalogQueryService;
-    private final SkillStateUpdater skillStateUpdater;
+    private final OnboardingSkillSetup onboardingSkillSetup;
     private final OnboardingPlanSetup onboardingPlanSetup;
     private final SideProjectService sideProjectService;
     private final DiagnosticSuggestionService diagnosticSuggestionService;
-    private final SelfAssessmentPropagation selfAssessmentPropagation =
-            new SelfAssessmentPropagation();
     private final Clock clock;
 
     OnboardingService(
             ProfileService profileService,
             LearningGoalService learningGoalService,
-            SkillCatalogQueryService skillCatalogQueryService,
-            SkillStateUpdater skillStateUpdater,
+            OnboardingSkillSetup onboardingSkillSetup,
             OnboardingPlanSetup onboardingPlanSetup,
             SideProjectService sideProjectService,
             DiagnosticSuggestionService diagnosticSuggestionService,
             Clock clock) {
         this.profileService = profileService;
         this.learningGoalService = learningGoalService;
-        this.skillCatalogQueryService = skillCatalogQueryService;
-        this.skillStateUpdater = skillStateUpdater;
+        this.onboardingSkillSetup = onboardingSkillSetup;
         this.onboardingPlanSetup = onboardingPlanSetup;
         this.sideProjectService = sideProjectService;
         this.diagnosticSuggestionService = diagnosticSuggestionService;
@@ -86,7 +77,7 @@ public class OnboardingService {
         MeResponse user = profileService.completeOnboarding(userId, profile(command));
         LearningGoalView learningGoal =
                 learningGoalService.createForOnboarding(userId, command.learningGoal());
-        initializeSkillStates(userId, command);
+        onboardingSkillSetup.initialize(userId, command);
         OnboardingPlanSetup.Result plan =
                 onboardingPlanSetup.setUp(userId, command, learningGoal, today);
         SideProjectService.NewSideProjectCommand newSideProject = command.sideProject();
@@ -98,7 +89,8 @@ public class OnboardingService {
                 plan.activePlan(),
                 sideProject,
                 plan.assignedSeedCards(),
-                diagnosticSuggestionService.suggest(userId));
+                // 05 §4.1 11단계: 짧은 진단을 고르지 않았으면 제안하지 않는다.
+                command.runDiagnostic() ? diagnosticSuggestionService.suggest(userId) : List.of());
     }
 
     /** docs/05 §4.1 도메인 검사 표. 모든 오류를 모아 한 번에 돌려준다. */
@@ -138,29 +130,6 @@ public class OnboardingService {
             seen.add(category);
         }
         return errors;
-    }
-
-    private void initializeSkillStates(UUID userId, OnboardingCommand command) {
-        Map<SkillCategory, Integer> levels = new EnumMap<>(SkillCategory.class);
-        command.selfAssessments()
-                .forEach(assessment -> levels.put(assessment.category(), assessment.level()));
-        List<SelfAssessmentPropagation.TargetedSkill> targeted =
-                skillCatalogQueryService.roleTargets(command.learningGoal().targetRole()).stream()
-                        .map(
-                                target ->
-                                        new SelfAssessmentPropagation.TargetedSkill(
-                                                target.skillId(), target.category()))
-                        .toList();
-        skillStateUpdater.initializeForNewUser(
-                userId,
-                selfAssessmentPropagation
-                        .propagate(targeted, levels, command.runDiagnostic())
-                        .stream()
-                        .map(
-                                state ->
-                                        new SkillStateUpdater.InitialSkillState(
-                                                state.skillId(), state.selfAssessedLevel()))
-                        .toList());
     }
 
     private static OnboardingProfileCommand profile(OnboardingCommand command) {
