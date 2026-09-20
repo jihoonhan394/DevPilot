@@ -1195,7 +1195,7 @@ AI 출력 파싱 직후 finding마다 순서대로 적용한다.
 ```
 
 - **서버는 URL을 fetch하지 않는다.** 호스트 문자열만 검사한다.
-- allowlist (`devpilot.ai.trusted-source-hosts`): `docs.spring.io`, `spring.io`, `docs.oracle.com`, `openjdk.org`, `www.postgresql.org`, `owasp.org`, `cheatsheetseries.owasp.org`, `www.kisa.or.kr`, `supabase.com`, `dart.dev`, `docs.flutter.dev`, `api.flutter.dev`, `pmd.github.io`, `spotbugs.readthedocs.io`, `checkstyle.org`, `junit.org`, `hibernate.org`, `docs.jboss.org`, `developer.mozilla.org`, `www.rfc-editor.org`, `git-scm.com`
+- allowlist (`devpilot.ai.trusted-source-hosts`): `docs.spring.io`, `spring.io`, `docs.oracle.com`, `openjdk.org`, `www.postgresql.org`, `owasp.org`, `cheatsheetseries.owasp.org`, `www.kisa.or.kr`, `supabase.com`, `dart.dev`, `docs.flutter.dev`, `api.flutter.dev`, `pmd.github.io`, `spotbugs.readthedocs.io`, `checkstyle.org`, `junit.org`, `hibernate.org`, `docs.jboss.org`, `developer.mozilla.org`, `www.rfc-editor.org`, `git-scm.com`, `spec.openapis.org`, `docs.gradle.org`
 - DB CHECK로 이중 방어한다(`schema.sql` coach_finding).
 
 **Test vectors**

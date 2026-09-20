@@ -2,7 +2,7 @@
 # Spec: docs/19-content-spec.md §3.1
 # - catalogVersion: seed 대상 파일(이 파일에 나열된 모든 파일)이 바뀌면 1 올린다 (§8)
 # - YamlContentReader는 여기 나열된 파일만 읽는다. 나열 순서대로 읽는다
-catalogVersion: 6
+catalogVersion: 7
 files:
   skillTrees:
     - skill-tree/java-backend.yaml
@@ -22,6 +22,7 @@ files:
     - review-cards/security.yaml
     - review-cards/practical-engineering.yaml
     - review-cards/devops.yaml
+    - review-cards/integration.yaml
     - review-cards/network-cs.yaml
     - review-cards/explanation.yaml
   challenges:
@@ -29,6 +30,8 @@ files:
     - challenges/spring.yaml
     - challenges/database.yaml
     - challenges/testing-security.yaml
+    - challenges/integration.yaml
+    - challenges/devops.yaml
     - challenges/diagnostic.yaml
   curatedSources: curated-sources.yaml
   # READ_CODE 과제용 저장소/읽기 목록 (19 §3.8). 서버는 저장소를 fetch하지 않는다

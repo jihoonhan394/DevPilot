@@ -55,6 +55,7 @@ TRUSTED_SOURCE_HOSTS = [
     "docs.flutter.dev", "api.flutter.dev", "pmd.github.io", "spotbugs.readthedocs.io",
     "checkstyle.org", "junit.org", "hibernate.org", "docs.jboss.org",
     "developer.mozilla.org", "www.rfc-editor.org", "git-scm.com",
+    "spec.openapis.org", "docs.gradle.org",
 ]
 
 # docs/06-learning-engine-rules.md §4.2

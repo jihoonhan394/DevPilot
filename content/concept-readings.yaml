@@ -245,3 +245,267 @@ conceptReadings:
       - 최근 한 달에 배운 것 하나를 골라 그 뒤 무엇을 다르게 하게 되었는지와 다음에 무엇을 이어 배울지 적어 보세요
     verifiedAt: 2026-09-21
     retired: false
+  # ----------------------------------------------- INTEGRATION.API_CONTRACT
+  - key: DOC.OPENAPI.DESCRIPTION_STRUCTURE.001
+    title: OpenAPI Specification v3.1.1 — 4.3. OpenAPI Description Structure
+    url: https://spec.openapis.org/oas/v3.1.1.html#openapi-description-structure
+    publisher: OpenAPI Initiative
+    versionScope: OpenAPI Specification 3.1.1 (2024-10-24)
+    skillCodes: [INTEGRATION.API_CONTRACT]
+    estimatedMinutes: 25
+    whyRead: |-
+      명세를 파일 하나에 끝까지 이어 쓰지 않게 된다. 진입 문서와 참조되는 문서가 나뉘고 같은 스키마를
+      여러 곳에서 가리킬 수 있다는 것을 알면, 연동 상대가 여럿이어도 항목 정의를 한 벌만 유지할 수 있다.
+    checkPoints:
+      - OpenAPI 설명이 여러 문서로 나뉠 때 진입 문서가 반드시 담아야 하는 것이 무엇인지 적어 보세요
+      - 같은 스키마를 두 곳에서 쓰려면 어디에 두고 어떻게 가리키는지 적어 보세요
+      - 내가 만든 API 하나를 골라 공용으로 빼낼 스키마와 그대로 둘 스키마를 나눠 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.OPENAPI.RESPONSES.001
+    title: OpenAPI Specification v3.1.1 — 4.8.16. Responses Object
+    url: https://spec.openapis.org/oas/v3.1.1.html#responses-object
+    publisher: OpenAPI Initiative
+    versionScope: OpenAPI Specification 3.1.1 (2024-10-24)
+    skillCodes: [INTEGRATION.API_CONTRACT]
+    estimatedMinutes: 20
+    whyRead: |-
+      성공 응답만 적힌 명세를 내놓지 않게 된다. 상태 코드마다 본문 형식을 따로 적고 나머지를 기본 응답으로
+      묶는 구조를 알면, 상대가 오류 처리까지 미리 구현할 수 있는 명세를 쓸 수 있다.
+    checkPoints:
+      - 상태 코드별 응답과 기본(default) 응답이 각각 언제 쓰이는지 나눠 적어 보세요
+      - 같은 상태 코드에 본문 형식이 둘 이상일 때 명세에서 어떻게 구분하는지 적어 보세요
+      - 내 API의 오류 응답 하나를 골라 상태 코드와 본문 스키마를 명세 형태로 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # --------------------------------------------- INTEGRATION.INTERFACE_SPEC
+  - key: DOC.SPEC.REQUIREMENT_LEVELS.001
+    title: "RFC 2119: Key words for use in RFCs to Indicate Requirement Levels"
+    url: https://www.rfc-editor.org/rfc/rfc2119.html
+    publisher: IETF (RFC Editor)
+    versionScope: RFC 2119 (1997-03, BCP 14)
+    skillCodes: [INTEGRATION.INTERFACE_SPEC]
+    estimatedMinutes: 10
+    whyRead: |-
+      명세서에 가능하면 처리한다 같은 문장을 남기지 않게 된다. 필수와 권장과 선택을 정해진 낱말로
+      갈라 두면 상대가 무엇까지 구현해야 하는지 물어보지 않고도 알 수 있다.
+    checkPoints:
+      - 필수 · 권장 · 선택을 나타내는 낱말을 각각 적고 셋의 차이를 한 줄로 적어 보세요
+      - 권장 수준을 따르지 않기로 할 때 문서가 요구하는 판단이 무엇인지 적어 보세요
+      - 내가 쓴 명세서 문장 하나를 골라 이 낱말을 써서 다시 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.SPEC.TIMESTAMP.001
+    title: "RFC 3339: Date and Time on the Internet: Timestamps"
+    url: https://www.rfc-editor.org/rfc/rfc3339.html
+    publisher: IETF (RFC Editor)
+    versionScope: RFC 3339 (2002-07)
+    skillCodes: [INTEGRATION.INTERFACE_SPEC]
+    estimatedMinutes: 25
+    whyRead: |-
+      항목 정의에서 날짜 형식 한 줄로 끝내지 않게 된다. 시각에 시간대가 붙어야 하는 이유와 Z 표기,
+      오프셋 표기의 차이를 알면 양쪽이 같은 순간을 가리키는 명세를 쓸 수 있다.
+    checkPoints:
+      - 날짜와 시각 사이 구분자, 시간대 표기 자리를 예시 한 줄로 적어 보세요
+      - Z로 끝나는 시각과 오프셋이 붙은 시각이 같은 순간일 수 있는지 이유와 함께 적어 보세요
+      - 내 연동 항목 정의에서 시각 필드 하나를 골라 형식과 시간대 규칙을 다시 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ------------------------------------------------ INTEGRATION.CLIENT_AUTH
+  - key: DOC.OAUTH2.CLIENT_CREDENTIALS.001
+    title: RFC 6749 The OAuth 2.0 Authorization Framework — 4.4. Client Credentials Grant
+    url: https://www.rfc-editor.org/rfc/rfc6749.html#section-4.4
+    publisher: IETF (RFC Editor)
+    versionScope: RFC 6749 (2012-10)
+    skillCodes: [INTEGRATION.CLIENT_AUTH]
+    estimatedMinutes: 20
+    whyRead: |-
+      사용자 없이 시스템끼리 인증하는 흐름을 규격으로 설명할 수 있게 된다. 어떤 자격 증명을 어디로
+      보내고 무엇을 돌려받는지, 응답의 수명 값이 무엇을 뜻하는지 알면 토큰 재발급 시점을 정할 수 있다.
+    checkPoints:
+      - 이 방식에서 자격 증명을 가진 쪽과 토큰을 내주는 쪽이 각각 누구인지 적어 보세요
+      - 토큰 응답에 들어 있는 수명 값이 무엇을 기준으로 한 시간인지 적어 보세요
+      - 내 연동에서 토큰을 언제 새로 받을지 기준을 정하고 그 이유를 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.OAUTH2.BEARER_TOKEN.001
+    title: "RFC 6750: The OAuth 2.0 Authorization Framework: Bearer Token Usage"
+    url: https://www.rfc-editor.org/rfc/rfc6750.html
+    publisher: IETF (RFC Editor)
+    versionScope: RFC 6750 (2012-10)
+    skillCodes: [INTEGRATION.CLIENT_AUTH]
+    estimatedMinutes: 25
+    whyRead: |-
+      받은 토큰을 어디에 실어 보낼지 감으로 정하지 않게 된다. 표준이 정한 자리와 쓰지 말라는 자리,
+      토큰이 만료됐을 때 서버가 돌려주는 오류 형태를 알면 만료를 코드로 구분해 처리할 수 있다.
+    checkPoints:
+      - 토큰을 실어 보내는 표준 자리와, 쓰지 말라고 한 자리와 그 이유를 적어 보세요
+      - 만료된 토큰으로 요청했을 때 돌아오는 상태 코드와 오류 값을 적어 보세요
+      - 내 연동 클라이언트가 그 오류를 받았을 때 할 일을 순서로 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ---------------------------------------------------- INTEGRATION.WEBHOOK
+  - key: DOC.HTTP.IDEMPOTENT_METHODS.001
+    title: RFC 9110 HTTP Semantics — 9.2.2. Idempotent Methods
+    url: https://www.rfc-editor.org/rfc/rfc9110.html#name-idempotent-methods
+    publisher: IETF (RFC Editor)
+    versionScope: RFC 9110 (2022-06)
+    skillCodes: [INTEGRATION.WEBHOOK]
+    estimatedMinutes: 15
+    whyRead: |-
+      같은 요청이 두 번 와도 괜찮다는 말을 규격의 정의로 바꿀 수 있게 된다. 멱등이 서버에 남는 결과를
+      두고 하는 말이라는 것과, 그래서 클라이언트가 재시도해도 되는 조건이 무엇인지 잡을 수 있다.
+    checkPoints:
+      - 멱등을 응답이 아니라 서버에 남는 결과로 정의하는 문장을 한 줄로 옮겨 적어 보세요
+      - 클라이언트가 스스로 재시도해도 된다고 보는 조건이 무엇인지 적어 보세요
+      - 내가 만든 수신 끝점을 하나 골라 같은 이벤트가 두 번 왔을 때 무엇이 달라지는지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.HTTP.MESSAGE_SIGNATURES.001
+    title: "RFC 9421: HTTP Message Signatures"
+    url: https://www.rfc-editor.org/rfc/rfc9421.html
+    publisher: IETF (RFC Editor)
+    versionScope: RFC 9421 (2024-02, Standards Track)
+    skillCodes: [INTEGRATION.WEBHOOK]
+    estimatedMinutes: 40
+    whyRead: |-
+      서명 검증을 본문 해시 비교로 끝내지 않게 된다. 무엇을 서명 대상에 넣었는지 수신 측이 어떻게 알고,
+      시각과 일회용 값이 왜 필요한지 알면 같은 요청을 다시 보내는 공격까지 막는 검증을 설계할 수 있다.
+    checkPoints:
+      - 서명이 덮는 대상 목록을 수신 측이 어디에서 읽는지 적어 보세요
+      - 생성 시각과 만료 시각, 일회용 값이 각각 무엇을 막으려는 장치인지 적어 보세요
+      - 내 수신 끝점에서 서명 검증에 실패했을 때 어떤 응답을 줄지 정하고 이유를 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ------------------------------------------------ INTEGRATION.LEGACY_DATA
+  - key: DOC.CSV.FORMAT.001
+    title: "RFC 4180: Common Format and MIME Type for Comma-Separated Values (CSV) Files"
+    url: https://www.rfc-editor.org/rfc/rfc4180.html
+    publisher: IETF (RFC Editor)
+    versionScope: RFC 4180 (2005-10, Informational)
+    skillCodes: [INTEGRATION.LEGACY_DATA]
+    estimatedMinutes: 15
+    whyRead: |-
+      CSV를 쉼표로 자르면 되는 형식으로 보지 않게 된다. 값 안의 쉼표와 따옴표, 줄바꿈을 어떻게 감싸고
+      푸는지 알면 한 줄이 밀려서 적재되는 사고를 미리 막을 수 있다.
+    checkPoints:
+      - 값 안에 쉼표나 줄바꿈이 있을 때 어떻게 적는지 예시 한 줄로 적어 보세요
+      - 값 안의 따옴표를 어떻게 표시하는지 적어 보세요
+      - 내가 받는 파일에 머리글 줄이 있는지 없는지를 어떻게 합의할지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.ENCODING.CHARACTER_SET.001
+    title: PostgreSQL 16 Documentation — 24.3. Character Set Support
+    url: https://www.postgresql.org/docs/16/multibyte.html
+    publisher: PostgreSQL Global Development Group
+    versionScope: PostgreSQL 16
+    skillCodes: [INTEGRATION.LEGACY_DATA]
+    estimatedMinutes: 25
+    whyRead: |-
+      글자가 깨지는 일을 DB 문제로 뭉뚱그리지 않게 된다. 서버 인코딩과 클라이언트 인코딩이 따로 있고
+      그 사이에서 변환이 일어난다는 것을 알면, 깨진 값이 어느 단계에서 생겼는지 짚을 수 있다.
+    checkPoints:
+      - 서버 인코딩과 클라이언트 인코딩이 각각 무엇을 정하는지 나눠 적어 보세요
+      - 클라이언트 인코딩으로 표현할 수 없는 글자를 주고받을 때 무슨 일이 일어나는지 적어 보세요
+      - 내가 적재하는 레거시 파일의 인코딩을 어디에서 확인하고 어디에서 맞출지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ------------------------------------------------- INTEGRATION.BATCH_SYNC
+  - key: DOC.SYNC.TRANSACTION_ISOLATION.001
+    title: PostgreSQL 16 Documentation — 13.2. Transaction Isolation
+    url: https://www.postgresql.org/docs/16/transaction-iso.html
+    publisher: PostgreSQL Global Development Group
+    versionScope: PostgreSQL 16
+    skillCodes: [INTEGRATION.BATCH_SYNC]
+    estimatedMinutes: 30
+    whyRead: |-
+      증분 동기화가 행을 빠뜨리는 이유를 설명할 수 있게 된다. 조회가 어느 시점의 스냅샷을 보는지,
+      늦게 커밋된 행이 왜 기준 시각보다 앞선 값을 가질 수 있는지 알면 커서 기준을 다르게 잡게 된다.
+    checkPoints:
+      - 기본 격리 수준에서 한 트랜잭션 안의 두 조회가 다른 결과를 볼 수 있는지 이유와 함께 적어 보세요
+      - 반복 읽기 수준이 무엇을 더 보장하고 무엇을 대가로 치르는지 적어 보세요
+      - 내 배치의 기준 시각을 어느 시점으로 잡을지 정하고 빠지는 행이 없는 이유를 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.SYNC.UPSERT.001
+    title: PostgreSQL 16 Documentation — INSERT (ON CONFLICT)
+    url: https://www.postgresql.org/docs/16/sql-insert.html
+    publisher: PostgreSQL Global Development Group
+    versionScope: PostgreSQL 16
+    skillCodes: [INTEGRATION.BATCH_SYNC]
+    estimatedMinutes: 25
+    whyRead: |-
+      배치를 다시 돌려도 같은 결과가 되게 만들 수 있다. 충돌 대상을 어떻게 지정하고 아무것도 하지 않을지
+      갱신할지 고르는 방법을 알면, 재실행할 때 먼저 지우고 다시 넣는 위험한 방식을 피할 수 있다.
+    checkPoints:
+      - 충돌 대상을 생략해도 되는 경우와 반드시 적어야 하는 경우를 나눠 적어 보세요
+      - 갱신 쪽에서 새로 넣으려던 값을 어떻게 가리키는지 적어 보세요
+      - 내 동기화 대상 테이블에 어떤 유일 제약이 있어야 재실행이 안전한지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # -------------------------------------------------- DEVOPS.OFFLINE_DEPLOY
+  - key: DOC.GRADLE.DEPENDENCY_LOCKING.001
+    title: Gradle User Manual — Locking Versions
+    url: https://docs.gradle.org/current/userguide/dependency_locking.html
+    publisher: Gradle
+    versionScope: Gradle 9.7.1 (current, 2026-09-21 확인)
+    skillCodes: [DEVOPS.OFFLINE_DEPLOY]
+    estimatedMinutes: 25
+    whyRead: |-
+      폐쇄망에 가져갈 의존성 목록을 고정할 수 있게 된다. 잠금 파일이 무엇을 적어 두는지, 범위로 적은
+      버전이 왜 위험한지 알면 현장에서만 빌드 결과가 달라지는 상황을 미리 없앨 수 있다.
+    checkPoints:
+      - 잠금 파일에 무엇이 적히고 그 파일을 어디에 보관해야 하는지 적어 보세요
+      - 잠금 상태를 처음 만들고 나중에 갱신할 때 각각 무엇을 해야 하는지 적어 보세요
+      - 내 프로젝트에서 버전을 범위나 변동 버전으로 적은 의존성이 있는지 확인하고 어떻게 할지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.CONTAINER.LAYERED_IMAGE.001
+    title: Spring Boot Reference — Dockerfiles (Container Images)
+    url: https://docs.spring.io/spring-boot/reference/packaging/container-images/dockerfiles.html
+    publisher: Spring (Broadcom)
+    versionScope: Spring Boot 4.1.x
+    skillCodes: [DEVOPS.OFFLINE_DEPLOY]
+    estimatedMinutes: 25
+    whyRead: |-
+      반입할 이미지를 매번 통째로 다시 만들지 않아도 되게 만든다. 의존성 층과 애플리케이션 층을 나누면
+      업그레이드 때 실제로 바뀌는 층이 무엇인지 알 수 있고, 옮겨야 할 용량을 줄일 수 있다.
+    checkPoints:
+      - 애플리케이션 jar를 층으로 나누는 이유를 이미지 갱신 관점에서 적어 보세요
+      - 빌드 단계와 실행 단계를 나누면 최종 이미지에서 무엇이 빠지는지 적어 보세요
+      - 내 서비스의 버전이 올라갈 때 어느 층이 바뀌고 어느 층이 그대로인지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # --------------------------------------------------- DEVOPS.OBSERVABILITY
+  - key: DOC.ACTUATOR.ENDPOINTS.001
+    title: Spring Boot Reference — Endpoints (Actuator)
+    url: https://docs.spring.io/spring-boot/reference/actuator/endpoints.html
+    publisher: Spring (Broadcom)
+    versionScope: Spring Boot 4.1.x
+    skillCodes: [DEVOPS.OBSERVABILITY]
+    estimatedMinutes: 30
+    whyRead: |-
+      헬스체크를 직접 만들지 않게 된다. 어떤 끝점이 기본으로 있고 무엇을 외부에 열어도 되는지, 생존
+      확인과 준비 확인을 왜 나누는지 알면 배포 스크립트가 무엇을 보고 판단할지 정할 수 있다.
+    checkPoints:
+      - 기본으로 열려 있는 끝점과 따로 열어야 하는 끝점을 나눠 적어 보세요
+      - 생존 확인과 준비 확인이 각각 무엇을 판단하는지 나눠 적어 보세요
+      - 내 서비스의 헬스체크에 어떤 의존 대상을 넣고 무엇을 뺄지 정하고 이유를 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.ACTUATOR.METRICS.001
+    title: Spring Boot Reference — Metrics (Actuator)
+    url: https://docs.spring.io/spring-boot/reference/actuator/metrics.html
+    publisher: Spring (Broadcom)
+    versionScope: Spring Boot 4.1.x
+    skillCodes: [DEVOPS.OBSERVABILITY]
+    estimatedMinutes: 30
+    whyRead: |-
+      지표를 로그 개수 세기로 대신하지 않게 된다. 이름과 태그로 나뉘는 지표 구조, 기본으로 수집되는
+      요청 지표가 무엇을 담는지 알면 장애가 났을 때 먼저 볼 값을 미리 정해 둘 수 있다.
+    checkPoints:
+      - 지표 이름과 태그가 각각 어떤 역할을 하는지 나눠 적어 보세요
+      - 기본으로 수집되는 HTTP 요청 지표에 어떤 태그가 붙는지 두 개 이상 적어 보세요
+      - 내 서비스에서 직접 만들어야 할 지표 하나를 정하고 이름과 태그를 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
