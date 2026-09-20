@@ -7,6 +7,7 @@ import com.devpilot.plan.application.PlanRuleSettings;
 import com.devpilot.review.application.ReviewRuleSettings;
 import com.devpilot.rubberduck.application.RubberDuckRuleSettings;
 import com.devpilot.rubberduck.domain.RubberDuckPolicy;
+import com.devpilot.skill.application.SkillRuleSettings;
 import com.devpilot.testsupport.TestProperties;
 import com.devpilot.testsupport.TestRuleSettings;
 import com.devpilot.testsupport.UnitTest;
@@ -54,6 +55,12 @@ class RuleSettingsFactoryTest {
     void shouldConvertRubricScorerSettings() {
         assertThat(LearningRuleSettings.rubricScorer(properties))
                 .isEqualTo(TestRuleSettings.rubricScorer());
+    }
+
+    @Test
+    void shouldConvertSkillLevelRuleSettings() {
+        assertThat(SkillRuleSettings.levelRules(properties))
+                .isEqualTo(TestRuleSettings.skillLevel());
     }
 
     @Test

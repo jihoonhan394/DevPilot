@@ -34,6 +34,7 @@ class CodeReadingFlowTest extends ApiTestSupport {
         onboarding.put("sideProject", TestApi.sideProjectRequest("주문 시스템"));
         JsonNode onboarded = api.onboard(user, onboarding);
         assertThat(onboarded.path("sideProject").path("status").asString()).isEqualTo("ACTIVE");
+        skipSeedPracticeChallenges(user);
 
         // 2. Today 생성 → READ_CODE
         JsonNode main = api.generateToday(user, 45, "NORMAL").path("mainTask");

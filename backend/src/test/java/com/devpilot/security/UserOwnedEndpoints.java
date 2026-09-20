@@ -8,8 +8,8 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpMethod;
 
 /**
- * 격리 테스트 endpoint catalog (docs/09 §9.2). 지금 있는 endpoint만 넣는다(S1·S2) — 새 endpoint를 만들면 여기에 추가해야
- * {@code EndpointCatalogCompletenessTest}가 통과한다.
+ * 격리 테스트 endpoint catalog (docs/09 §9.2). 지금 있는 endpoint만 넣는다(S1·S2와 S3 backend) — 새 endpoint를 만들면
+ * 여기에 추가해야 {@code EndpointCatalogCompletenessTest}가 통과한다.
  */
 public final class UserOwnedEndpoints {
 
@@ -55,6 +55,12 @@ public final class UserOwnedEndpoints {
      * @param reviewItemId A의 due 복습 카드
      * @param rubberDuckSessionId A의 {@code IN_PROGRESS} 러버덕 세션 (턴 1개)
      * @param readCodeTaskId A의 {@code READ_CODE} 과제 (러버덕 {@code CODE_READING} 대상)
+     * @param challengeId A 소유 challenge (docs/09 §9.2 "A 소유 AI 생성 challenge")
+     * @param attemptId A의 challenge attempt ({@code STARTED})
+     * @param submissionNo 평가 재시도 path 변수. attempt 소유권 검사가 submission 조회보다 먼저라 값 자체는 1로 둔다(docs/05
+     *     §10.10)
+     * @param skillId 공용 catalog skill id ({@code GET /skills/&#123;skillId&#125;/history}용, docs/09
+     *     §9.2)
      */
     public record IsolationFixture(
             long invitedMeVersion,
@@ -66,6 +72,10 @@ public final class UserOwnedEndpoints {
             String reviewItemId,
             String rubberDuckSessionId,
             String readCodeTaskId,
+            String challengeId,
+            String attemptId,
+            int submissionNo,
+            String skillId,
             Map<String, Object> replanBody,
             Map<String, Object> onboardingBody,
             Map<String, Object> sideProjectBody,
@@ -209,6 +219,92 @@ public final class UserOwnedEndpoints {
                         fixture -> new Object[] {fixture.rubberDuckSessionId()},
                         NO_BODY,
                         "RESOURCE_NOT_FOUND"),
+                // Training (docs/05 §10.4~§10.11). 모두 attempt·challenge 소유권 검사가 먼저라 404
+                // RESOURCE_NOT_FOUND다. 공용 seed challenge는 누구나 볼 수 있으므로 A 소유 challenge를 쓴다.
+                new EndpointCase(
+                        "E49",
+                        HttpMethod.GET,
+                        "/api/v1/challenges/{challengeId}",
+                        Kind.OWNED_RESOURCE,
+                        fixture -> new Object[] {fixture.challengeId()},
+                        NO_BODY,
+                        "RESOURCE_NOT_FOUND"),
+                new EndpointCase(
+                        "E50",
+                        HttpMethod.POST,
+                        "/api/v1/challenges/{challengeId}/attempts",
+                        Kind.OWNED_RESOURCE,
+                        fixture -> new Object[] {fixture.challengeId()},
+                        NO_BODY,
+                        "RESOURCE_NOT_FOUND"),
+                new EndpointCase(
+                        "E51",
+                        HttpMethod.GET,
+                        "/api/v1/challenge-attempts/{attemptId}",
+                        Kind.OWNED_RESOURCE,
+                        fixture -> new Object[] {fixture.attemptId()},
+                        NO_BODY,
+                        "RESOURCE_NOT_FOUND"),
+                // 자기 설명은 text·skipped 중 정확히 하나여야 400이 아니라 404까지 간다 (docs/05 §10.7)
+                new EndpointCase(
+                        "E52",
+                        HttpMethod.POST,
+                        "/api/v1/challenge-attempts/{attemptId}/self-explanation",
+                        Kind.OWNED_RESOURCE,
+                        fixture -> new Object[] {fixture.attemptId()},
+                        fixture -> Map.of("text", "남의 attempt에 끼어든 설명", "skipped", false),
+                        "RESOURCE_NOT_FOUND"),
+                // requestedLevel이 SELF_EXPLAIN이거나 skipSelfExplanation이 true면 400이 먼저다 (docs/05
+                // §10.8 1번)
+                new EndpointCase(
+                        "E53",
+                        HttpMethod.POST,
+                        "/api/v1/challenge-attempts/{attemptId}/hints",
+                        Kind.OWNED_RESOURCE,
+                        fixture -> new Object[] {fixture.attemptId()},
+                        fixture ->
+                                Map.of(
+                                        "requestedLevel",
+                                        "QUESTION_ONLY",
+                                        "acknowledgeEvidenceImpact",
+                                        false,
+                                        "giveUp",
+                                        false),
+                        "RESOURCE_NOT_FOUND"),
+                // answerText·code 중 하나는 있어야 400 ONE_OF_REQUIRED를 피한다 (docs/05 §10.9 1번)
+                new EndpointCase(
+                        "E54",
+                        HttpMethod.POST,
+                        "/api/v1/challenge-attempts/{attemptId}/submissions",
+                        Kind.OWNED_RESOURCE,
+                        fixture -> new Object[] {fixture.attemptId()},
+                        fixture -> Map.of("answerText", "남의 attempt에 낸 답안"),
+                        "RESOURCE_NOT_FOUND"),
+                new EndpointCase(
+                        "E55",
+                        HttpMethod.POST,
+                        "/api/v1/challenge-attempts/{attemptId}/submissions/{submissionNo}/retry",
+                        Kind.OWNED_RESOURCE,
+                        fixture -> new Object[] {fixture.attemptId(), fixture.submissionNo()},
+                        NO_BODY,
+                        "RESOURCE_NOT_FOUND"),
+                new EndpointCase(
+                        "E56",
+                        HttpMethod.POST,
+                        "/api/v1/challenge-attempts/{attemptId}/abandon",
+                        Kind.OWNED_RESOURCE,
+                        fixture -> new Object[] {fixture.attemptId()},
+                        NO_BODY,
+                        "RESOURCE_NOT_FOUND"),
+                // 복습 카드 관리 (docs/05 §11.6)
+                new EndpointCase(
+                        "E57",
+                        HttpMethod.PATCH,
+                        "/api/v1/review-items/{reviewItemId}",
+                        Kind.OWNED_RESOURCE,
+                        fixture -> new Object[] {fixture.reviewItemId()},
+                        fixture -> Map.of("status", "SUSPENDED", "version", 0),
+                        "RESOURCE_NOT_FOUND"),
                 // BODY_REFERENCE (docs/09 §9.1 ISO-1b)
                 bodyReference(
                         "E44",
@@ -239,6 +335,19 @@ public final class UserOwnedEndpoints {
                 scoped("E22", HttpMethod.GET, "/api/v1/learning-sessions"),
                 scoped("E23", HttpMethod.GET, "/api/v1/reviews/due"),
                 scoped("E24", HttpMethod.GET, "/api/v1/dashboard"),
+                // 목록은 호출자 범위로만 조회한다 — A의 challenge·카드·제안은 B 응답에 없다 (docs/05 §10.2·§11.4·§4.2)
+                scoped("E58", HttpMethod.GET, "/api/v1/challenges"),
+                scoped("E59", HttpMethod.GET, "/api/v1/review-items"),
+                scoped("E60", HttpMethod.GET, "/api/v1/diagnostics/suggestions"),
+                // skill은 공용 catalog지만 이력은 본인 것만 나온다 (docs/05 §6.3, docs/09 §9.2 "공용 skill ID")
+                new EndpointCase(
+                        "E61",
+                        HttpMethod.GET,
+                        "/api/v1/skills/{skillId}/history",
+                        Kind.SCOPED_COLLECTION,
+                        fixture -> new Object[] {fixture.skillId()},
+                        NO_BODY,
+                        null),
                 new EndpointCase(
                         "E16",
                         HttpMethod.PATCH,
@@ -298,7 +407,13 @@ public final class UserOwnedEndpoints {
                         "E47",
                         HttpMethod.POST,
                         "/api/v1/rubber-duck",
-                        fixture -> rubberDuckBody("CONCEPT", null, null)));
+                        fixture -> rubberDuckBody("CONCEPT", null, null)),
+                // 수동 카드 생성은 A의 id를 넣을 자리가 없다 (docs/05 §11.5, docs/09 §9.2 ACCOUNT_ACTION 목록)
+                account(
+                        "E62",
+                        HttpMethod.POST,
+                        "/api/v1/review-items",
+                        fixture -> manualCardBody()));
     }
 
     /** 인증 없이 열리는 경로와 Bearer를 쓰지 않는 경로 (docs/07 §4.1, docs/09 §9.2 끝). */
@@ -329,6 +444,18 @@ public final class UserOwnedEndpoints {
         body.put("targetId", targetId);
         body.put("conceptKey", "CONCEPT".equals(targetType) ? "SPRING.TRANSACTION.BOUNDARY" : null);
         body.put("skillCode", skillCode);
+        return body;
+    }
+
+    /** 수동 복습 카드 생성 요청 (docs/05 §11.5 {@code ReviewItemCreateRequest}). */
+    private static Map<String, Object> manualCardBody() {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("skillCode", "SPRING.TRANSACTION");
+        body.put("conceptKey", "SPRING.TRANSACTION.ISOLATION");
+        body.put("reviewType", "EXPLAIN");
+        body.put("prompt", "트랜잭션 격리 수준을 설명해 보세요.");
+        body.put("expectedAnswer", "READ COMMITTED가 기본이고 팬텀 읽기는 막지 못한다.");
+        body.put("rubric", List.of("격리 수준 이름을 든다", "각 수준이 막는 이상 현상을 설명한다"));
         return body;
     }
 

@@ -29,7 +29,7 @@ class CodeReadingTaskIntegrationTest extends ApiTestSupport {
     @Test
     void shouldProposeReadCodeWithReadingKeyAndReason() throws Exception {
         // AC-28 S3
-        TestUser user = onboardedOwner();
+        TestUser user = readCodeUser();
 
         JsonNode main = api.generateToday(user, 30, "NORMAL").path("mainTask");
 
@@ -55,7 +55,7 @@ class CodeReadingTaskIntegrationTest extends ApiTestSupport {
     @Test
     void shouldRequireCompletedRubberDuckBeforeCompletingReadCode() throws Exception {
         // AC-28 S5 (RC-1)
-        TestUser user = onboardedOwner();
+        TestUser user = readCodeUser();
         JsonNode main = readCodeTask(user);
         String taskId = main.path("id").asString();
         patch(user, taskId, Map.of("status", "IN_PROGRESS", "version", 0))
@@ -82,7 +82,7 @@ class CodeReadingTaskIntegrationTest extends ApiTestSupport {
     @Test
     void shouldAllowDeferAndSkipWithoutRubberDuck() throws Exception {
         // AC-28 S5 마지막 줄
-        TestUser user = onboardedOwner();
+        TestUser user = readCodeUser();
         JsonNode main = readCodeTask(user);
         String taskId = main.path("id").asString();
 
@@ -96,7 +96,7 @@ class CodeReadingTaskIntegrationTest extends ApiTestSupport {
     @Test
     void shouldStoreReadingFeedbackOnlyOnReadCodeCompletion() throws Exception {
         // AC-28 S5a
-        TestUser user = onboardedOwner();
+        TestUser user = readCodeUser();
         JsonNode main = readCodeTask(user);
         String taskId = main.path("id").asString();
         patch(user, taskId, Map.of("status", "IN_PROGRESS", "version", 0))
@@ -146,6 +146,13 @@ class CodeReadingTaskIntegrationTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.errors[0].code").value("VALUE_NOT_ALLOWED"));
         assertThat(taskStatus(reviewTaskId)).isEqualTo("IN_PROGRESS");
         assertThat(readingFeedback(reviewTaskId)).isNull();
+    }
+
+    /** §5.3 1번(CHALLENGE)을 비워 READ_CODE가 제안되게 한 사용자. */
+    private TestUser readCodeUser() throws Exception {
+        TestUser user = onboardedOwner();
+        skipSeedPracticeChallenges(user);
+        return user;
     }
 
     private JsonNode readCodeTask(TestUser user) throws Exception {

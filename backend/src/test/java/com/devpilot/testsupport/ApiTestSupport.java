@@ -74,6 +74,31 @@ public abstract class ApiTestSupport {
     }
 
     /**
+     * {@code READ_CODE} 제안을 보려면 {@code docs/06} §5.3 1번(CHALLENGE)이 비어 있어야 한다. seed PRACTICE
+     * challenge를 한 번씩 시작했다가 중단해 "최근 14 plan-day 안에 시도" 제외 조건에 걸리게 한다.
+     */
+    protected void skipSeedPracticeChallenges(TestUser user) throws Exception {
+        List<String> challengeIds =
+                jdbc.queryForList(
+                        "select id::text from devpilot.challenge"
+                                + " where purpose = 'PRACTICE' and status = 'VALIDATED'"
+                                + " and owner_user_id is null",
+                        String.class);
+        for (String challengeId : challengeIds) {
+            String attemptId =
+                    api.body(
+                                    api.post(
+                                            user,
+                                            "/api/v1/challenges/{challengeId}/attempts",
+                                            null,
+                                            challengeId))
+                            .path("id")
+                            .asString();
+            api.post(user, "/api/v1/challenge-attempts/{attemptId}/abandon", null, attemptId);
+        }
+    }
+
+    /**
      * {@code READ_CODE} 과제의 완료 조건(RC-1)을 만든다: 그 과제를 대상으로 러버덕 세션을 시작해 턴 1개를 내고 정리까지 마친다. 다른 과제 유형이면
      * 아무것도 하지 않는다.
      */

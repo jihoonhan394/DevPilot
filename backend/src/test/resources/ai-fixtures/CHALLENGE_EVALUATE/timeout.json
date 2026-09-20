@@ -1,0 +1,8 @@
+{
+  "description": "타임아웃 — 재시도까지 모두 실패해 failure_code = AI_TIMEOUT (docs/05 §1.9.4)",
+  "attempts": [
+    {
+      "simulate": "TIMEOUT"
+    }
+  ]
+}

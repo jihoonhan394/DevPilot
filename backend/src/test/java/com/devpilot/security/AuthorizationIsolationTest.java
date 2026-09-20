@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,12 @@ import tools.jackson.databind.JsonNode;
 // 분당 한도만 넉넉히 둔다 — 한도 자체는 RateLimitIntegrationTest가 본다(docs/09 §9.1).
 @TestPropertySource(properties = "devpilot.security.rate-limit.requests-per-minute=100000")
 class AuthorizationIsolationTest extends ApiTestSupport {
+
+    /**
+     * 평가 재시도 case의 {@code submissionNo}. attempt 소유권 검사가 submission 조회보다 먼저라(docs/05 §10.10) A가 실제
+     * 제출을 하지 않아도 B는 404를 받는다.
+     */
+    private static final int FIRST_SUBMISSION_NO = 1;
 
     private @Nullable State state;
 
@@ -291,6 +298,25 @@ class AuthorizationIsolationTest extends ApiTestSupport {
                 "/api/v1/rubber-duck/{sessionId}/turns",
                 Map.of("explanation", "트랜잭션 경계는 서비스 메서드에서 시작한다고 생각합니다."),
                 duckSessionId);
+        // A 소유 challenge와 그 attempt — challenge·attempt case의 대상이다(docs/09 §9.1 @BeforeAll 상태)
+        String challengeId = createOwnedChallenge(owner);
+        String attemptId =
+                api.body(
+                                api.post(
+                                        owner,
+                                        "/api/v1/challenges/{challengeId}/attempts",
+                                        null,
+                                        challengeId))
+                        .path("id")
+                        .asString();
+        // 공용 catalog skill id — 이력은 공용 skill id로 부르고 본인 것만 나온다(docs/05 §6.3)
+        String skillId =
+                api.body(api.get(owner, "/api/v1/skills/me"))
+                        .path("items")
+                        .get(0)
+                        .path("skill")
+                        .path("id")
+                        .asString();
         Map<String, Object> learningGoalBody = new LinkedHashMap<>();
         learningGoalBody.put("targetRole", "JAVA_BACKEND");
         learningGoalBody.put("targetCompletionDate", "2027-04-01");
@@ -307,6 +333,10 @@ class AuthorizationIsolationTest extends ApiTestSupport {
                         due.path("items").get(0).path("reviewItemId").asString(),
                         duckSessionId,
                         today.path("mainTask").path("id").asString(),
+                        challengeId,
+                        attemptId,
+                        FIRST_SUBMISSION_NO,
+                        skillId,
                         replanRequest(plan, "격리 확인"),
                         TestApi.onboardingRequest(),
                         TestApi.sideProjectRequest("새 프로젝트"),
@@ -322,8 +352,52 @@ class AuthorizationIsolationTest extends ApiTestSupport {
         ownerIds.add(today.path("reviewTask").path("id").asString());
         ownerIds.add(fixture.sessionId());
         ownerIds.add(fixture.rubberDuckSessionId());
+        ownerIds.add(fixture.challengeId());
+        ownerIds.add(fixture.attemptId());
         due.path("items").forEach(item -> ownerIds.add(item.path("reviewItemId").asString()));
         return new State(owner, invited, fixture, ownerIds);
+    }
+
+    /**
+     * A 소유 challenge를 만든다 (docs/09 §9.2 "A 소유 AI 생성 challenge"). 공용 seed challenge는 누구나 볼 수 있어
+     * {@code OWNED_RESOURCE} 대상이 될 수 없고, 생성 API({@code POST /challenges/generate}, docs/05 §10.3)는
+     * 아직 없다. 그래서 seed 한 개를 복사해 소유자만 A로 바꾼다 — 생성 API가 생기면 그 호출로 바꾼다.
+     */
+    private String createOwnedChallenge(TestUser owner) {
+        String ownerUserId = Objects.requireNonNull(userId(owner), "owner user id").toString();
+        String seedChallengeId =
+                Objects.requireNonNull(
+                        jdbc.queryForObject(
+                                "select id::text from devpilot.challenge"
+                                        + " where owner_user_id is null and status = 'VALIDATED'"
+                                        + " and purpose = 'PRACTICE' order by seed_key limit 1",
+                                String.class),
+                        "seed challenge");
+        String challengeId =
+                Objects.requireNonNull(
+                        jdbc.queryForObject(
+                                "insert into devpilot.challenge (owner_user_id, origin, status,"
+                                    + " generation_status, purpose, is_transfer, title, difficulty,"
+                                    + " estimated_minutes, scenario, prompt, constraints_json,"
+                                    + " expected_concepts_json, rubric_json, common_mistakes_json,"
+                                    + " transfer_targets_json, hints_json) select ?::uuid,"
+                                    + " 'AI_GENERATED', status, generation_status, purpose,"
+                                    + " is_transfer, title, difficulty, estimated_minutes,"
+                                    + " scenario, prompt, constraints_json, expected_concepts_json,"
+                                    + " rubric_json, common_mistakes_json, transfer_targets_json,"
+                                    + " hints_json from devpilot.challenge where id = ?::uuid"
+                                    + " returning id::text",
+                                String.class,
+                                ownerUserId,
+                                seedChallengeId),
+                        "owned challenge");
+        jdbc.update(
+                "insert into devpilot.challenge_skill (challenge_id, skill_id)"
+                        + " select ?::uuid, skill_id from devpilot.challenge_skill"
+                        + " where challenge_id = ?::uuid",
+                challengeId,
+                seedChallengeId);
+        return challengeId;
     }
 
     private static String text(MvcResult result) throws Exception {

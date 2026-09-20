@@ -265,9 +265,13 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
         request.put("runDiagnostic", true);
         request.put("selfAssessments", List.of());
 
+        // 05 §4.2: 진단 모드면 category당 1개(최대 5개)를 제안하고 selfAssessedLevel은 null이다.
         api.post(user, ONBOARDING, request)
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.suggestedDiagnostics").isEmpty());
+                .andExpect(jsonPath("$.suggestedDiagnostics").isNotEmpty())
+                .andExpect(jsonPath("$.suggestedDiagnostics[0].category").value("JAVA"))
+                .andExpect(jsonPath("$.suggestedDiagnostics[0].selfAssessedLevel").doesNotExist())
+                .andExpect(jsonPath("$.suggestedDiagnostics[0].challengeId").isNotEmpty());
 
         assertThat(
                         count(

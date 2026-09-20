@@ -1,0 +1,30 @@
+{
+  "description": "전부 미충족 (coverage 0 → INCORRECT → outcome FAILED, docs/06 §8.2)",
+  "attempts": [
+    {
+      "finishReason": "completed",
+      "output": {
+        "rubric": [
+          {
+            "id": "R1",
+            "met": false,
+            "evidenceQuote": null
+          },
+          {
+            "id": "R2",
+            "met": false,
+            "evidenceQuote": null
+          }
+        ],
+        "misconceptions": ["트랜잭션 경계를 메서드마다 따로 열어야 한다고 보고 있다"],
+        "followUpQuestion": "두 작업이 같은 커밋 단위에 들어가려면 무엇이 같아야 할까요?"
+      },
+      "usage": {
+        "inputTokens": 2400,
+        "cachedTokens": 0,
+        "outputTokens": 180,
+        "reasoningTokens": 0
+      }
+    }
+  ]
+}

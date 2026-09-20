@@ -1,0 +1,201 @@
+# source: 06 §7.6 #1-12 #15, rows: 13
+# current·expected는 K|I|E|D. today는 plan-day, hoursAgo는 now 기준 이벤트 시각이다.
+# changedAtHoursAgo는 축별 마지막 변경 시각(cooldown 24h), 없으면 변경 이력이 없다.
+vectors:
+  - id: V01
+    case: 이벤트가 1개라도 있으면 K1
+    current: "0|0|0|0"
+    today: "2026-10-15"
+    events:
+      - type: REVIEW_ANSWERED
+        planDate: "2026-10-15"
+        hoursAgo: 1
+        payload: { finalRating: GOOD, hintLevel: SELF_EXPLAIN, intervalBefore: 1, reviewType: RECALL }
+    expectedChanges:
+      - { axis: KNOWLEDGE, from: 0, to: 1, ruleCode: K1_ANY_EVENT }
+    expectedDeactivate: false
+  - id: V02
+    case: 힌트를 보고 떠올린 회상 2개 → K2 (cooldown 지남)
+    current: "1|0|0|0"
+    today: "2026-10-15"
+    changedAtHoursAgo: { KNOWLEDGE: 30 }
+    events:
+      - type: REVIEW_ANSWERED
+        planDate: "2026-10-15"
+        hoursAgo: 1
+        payload: { finalRating: HARD, hintLevel: CONCEPT_HINT, intervalBefore: 2, reviewType: RECALL }
+      - type: REVIEW_ANSWERED
+        planDate: "2026-10-14"
+        hoursAgo: 25
+        payload: { finalRating: HARD, hintLevel: CONCEPT_HINT, intervalBefore: 2, reviewType: RECALL }
+    expectedChanges:
+      - { axis: KNOWLEDGE, from: 1, to: 2, ruleCode: K2_RECALL_GUIDED }
+    expectedDeactivate: false
+  - id: V03
+    case: 같은 조건이라도 24시간 안에 바꿨으면 그대로 (cooldown)
+    current: "1|0|0|0"
+    today: "2026-10-15"
+    changedAtHoursAgo: { KNOWLEDGE: 10 }
+    events:
+      - type: REVIEW_ANSWERED
+        planDate: "2026-10-15"
+        hoursAgo: 1
+        payload: { finalRating: HARD, hintLevel: CONCEPT_HINT, intervalBefore: 2, reviewType: RECALL }
+      - type: REVIEW_ANSWERED
+        planDate: "2026-10-14"
+        hoursAgo: 25
+        payload: { finalRating: HARD, hintLevel: CONCEPT_HINT, intervalBefore: 2, reviewType: RECALL }
+    expectedChanges: []
+    expectedDeactivate: false
+  - id: V04
+    case: 독립 회상 3개라도 모두 같은 날이면 K3가 아니다
+    current: "2|0|0|0"
+    today: "2026-10-15"
+    events:
+      - type: REVIEW_ANSWERED
+        planDate: "2026-10-07"
+        hoursAgo: 1
+        payload: { finalRating: GOOD, hintLevel: SELF_EXPLAIN, intervalBefore: 4, reviewType: RECALL }
+      - type: REVIEW_ANSWERED
+        planDate: "2026-10-07"
+        hoursAgo: 2
+        payload: { finalRating: GOOD, hintLevel: SELF_EXPLAIN, intervalBefore: 4, reviewType: RECALL }
+      - type: REVIEW_ANSWERED
+        planDate: "2026-10-07"
+        hoursAgo: 3
+        payload: { finalRating: GOOD, hintLevel: SELF_EXPLAIN, intervalBefore: 4, reviewType: RECALL }
+    expectedChanges: []
+    expectedDeactivate: false
+  - id: V05
+    case: 서로 다른 날 3개이고 가장 최근 intervalBefore가 4 이상이면 K3
+    current: "2|0|0|0"
+    today: "2026-10-15"
+    events:
+      - type: REVIEW_ANSWERED
+        planDate: "2026-10-07"
+        hoursAgo: 1
+        payload: { finalRating: GOOD, hintLevel: SELF_EXPLAIN, intervalBefore: 4, reviewType: RECALL }
+      - type: REVIEW_ANSWERED
+        planDate: "2026-10-03"
+        hoursAgo: 100
+        payload: { finalRating: GOOD, hintLevel: SELF_EXPLAIN, intervalBefore: 2, reviewType: RECALL }
+      - type: REVIEW_ANSWERED
+        planDate: "2026-10-01"
+        hoursAgo: 150
+        payload: { finalRating: GOOD, hintLevel: SELF_EXPLAIN, intervalBefore: 1, reviewType: RECALL }
+    expectedChanges:
+      - { axis: KNOWLEDGE, from: 2, to: 3, ruleCode: K3_RECALL_INDEPENDENT }
+    expectedDeactivate: false
+  - id: V06
+    case: CHALLENGE_EVALUATED만 있으면 K1은 되지만 I1은 되지 않는다 (제출 이벤트가 필요)
+    current: "0|0|0|0"
+    today: "2026-10-15"
+    events:
+      - type: CHALLENGE_EVALUATED
+        planDate: "2026-10-15"
+        hoursAgo: 1
+        payload: { outcome: SOLVED_WITH_HINTS, maxHintLevel: PSEUDOCODE, difficulty: 2, challengeId: "c1", isTransfer: false }
+    expectedChanges:
+      - { axis: KNOWLEDGE, from: 0, to: 1, ruleCode: K1_ANY_EVENT }
+    expectedDeactivate: false
+  - id: V07
+    case: 해결했고 maxHintLevel이 PARTIAL_CODE 이하면 I2
+    current: "1|1|0|0"
+    today: "2026-10-15"
+    events:
+      - type: CHALLENGE_EVALUATED
+        planDate: "2026-10-15"
+        hoursAgo: 1
+        payload: { outcome: SOLVED_WITH_HINTS, maxHintLevel: PSEUDOCODE, difficulty: 2, challengeId: "c1", isTransfer: false }
+    expectedChanges:
+      - { axis: IMPLEMENTATION, from: 1, to: 2, ruleCode: I2_SOLVED_GUIDED }
+    expectedDeactivate: false
+  - id: V08
+    case: 독립 해결 3개라도 challengeId가 같으면 I3가 아니다
+    current: "1|2|0|0"
+    today: "2026-10-15"
+    events:
+      - type: CHALLENGE_EVALUATED
+        planDate: "2026-10-15"
+        hoursAgo: 1
+        payload: { outcome: SOLVED_INDEPENDENTLY, maxHintLevel: SELF_EXPLAIN, difficulty: 2, challengeId: "c1", isTransfer: false }
+      - type: CHALLENGE_EVALUATED
+        planDate: "2026-10-13"
+        hoursAgo: 50
+        payload: { outcome: SOLVED_INDEPENDENTLY, maxHintLevel: SELF_EXPLAIN, difficulty: 2, challengeId: "c1", isTransfer: false }
+      - type: CHALLENGE_EVALUATED
+        planDate: "2026-10-11"
+        hoursAgo: 100
+        payload: { outcome: SOLVED_INDEPENDENTLY, maxHintLevel: SELF_EXPLAIN, difficulty: 2, challengeId: "c1", isTransfer: false }
+    expectedChanges: []
+    expectedDeactivate: false
+  - id: V09
+    case: 최근 회상 2개가 모두 AGAIN이면 K 하락 + 자기평가 중단
+    current: "3|3|2|2"
+    today: "2026-10-15"
+    events:
+      - type: REVIEW_ANSWERED
+        planDate: "2026-10-12"
+        hoursAgo: 1
+        payload: { finalRating: AGAIN, hintLevel: SELF_EXPLAIN, intervalBefore: 4, reviewType: RECALL }
+      - type: REVIEW_ANSWERED
+        planDate: "2026-10-10"
+        hoursAgo: 50
+        payload: { finalRating: AGAIN, hintLevel: SELF_EXPLAIN, intervalBefore: 4, reviewType: RECALL }
+    expectedChanges:
+      - { axis: KNOWLEDGE, from: 3, to: 2, ruleCode: K_DOWN_RECALL_FAIL }
+    expectedDeactivate: true
+  - id: V10
+    case: 자기 설명 제출로 E1
+    current: "1|1|0|0"
+    today: "2026-10-15"
+    events:
+      - type: SELF_EXPLANATION_SUBMITTED
+        planDate: "2026-10-15"
+        hoursAgo: 1
+        payload: { attemptId: "a1", length: 120 }
+    expectedChanges:
+      - { axis: EXPLANATION, from: 0, to: 1, ruleCode: E1_ANY_EXPLANATION }
+    expectedDeactivate: false
+  - id: V11
+    case: 설명 coverage 4500이면 E2 (해결이 아니라 I는 그대로)
+    current: "1|1|1|0"
+    today: "2026-10-15"
+    events:
+      - type: CHALLENGE_EVALUATED
+        planDate: "2026-10-15"
+        hoursAgo: 1
+        payload: { outcome: PARTIAL, maxHintLevel: SELF_EXPLAIN, difficulty: 2, challengeId: "c1", isTransfer: false, explanationCoverageBp: 4500 }
+    expectedChanges:
+      - { axis: EXPLANATION, from: 1, to: 2, ruleCode: E2_PARTIAL }
+    expectedDeactivate: false
+  - id: V12
+    case: 스스로 짚은 finding 2개면 D2까지만 (축당 1단계)
+    current: "1|1|0|1"
+    today: "2026-10-15"
+    events:
+      - type: COACH_FINDING_CLOSED
+        planDate: "2026-10-15"
+        hoursAgo: 1
+        payload: { discoveredBy: MENTIONED_UNPROMPTED, findingType: RISK, axis: SECURITY, confidence: HIGH, maxHintLevel: SELF_EXPLAIN, coachReviewId: "r1" }
+      - type: COACH_FINDING_CLOSED
+        planDate: "2026-10-14"
+        hoursAgo: 25
+        payload: { discoveredBy: MENTIONED_UNPROMPTED, findingType: RISK, axis: PERFORMANCE, confidence: HIGH, maxHintLevel: SELF_EXPLAIN, coachReviewId: "r2" }
+    expectedChanges:
+      - { axis: DEBUGGING, from: 1, to: 2, ruleCode: D2_FOUND_WITH_HINT }
+    expectedDeactivate: false
+  - id: V15
+    case: 진단 통과는 K·I를 min(claimedLevel, 3)까지 올리고 cooldown을 무시한다
+    current: "1|1|0|0"
+    today: "2026-10-15"
+    changedAtHoursAgo: { KNOWLEDGE: 1, IMPLEMENTATION: 1 }
+    events:
+      - type: DIAGNOSTIC_PASSED
+        planDate: "2026-10-15"
+        hoursAgo: 1
+        payload: { attemptId: "a1", challengeId: "c1", claimedLevel: 3, rubricCoverageBp: 9000, difficulty: 3 }
+    expectedChanges:
+      - { axis: KNOWLEDGE, from: 1, to: 3, ruleCode: DIAG_PASSED }
+      - { axis: IMPLEMENTATION, from: 1, to: 3, ruleCode: DIAG_PASSED }
+    expectedDeactivate: false

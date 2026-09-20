@@ -6,9 +6,11 @@ import com.devpilot.plan.domain.DeadlineRiskEvaluator;
 import com.devpilot.plan.domain.StudyBudgetCalculator;
 import com.devpilot.review.domain.RuleBasedV1Scheduler;
 import com.devpilot.rubberduck.domain.RubberDuckPolicy;
+import com.devpilot.skill.domain.SkillLevelRules;
 import com.devpilot.today.domain.PlannerScoring;
 import com.devpilot.today.domain.ReasonTemplates;
 import com.devpilot.today.domain.TimeAllocator;
+import java.time.Duration;
 import java.util.List;
 
 /**
@@ -57,6 +59,11 @@ public final class TestRuleSettings {
 
     public static ComebackModePolicy comeback() {
         return new ComebackModePolicy(3);
+    }
+
+    /** docs/06 §7.1 기본값: 60일 창, 24시간 cooldown, 진단 상한 3, 러버덕 증거 coverage 7000. */
+    public static SkillLevelRules.Settings skillLevel() {
+        return new SkillLevelRules.Settings(60, Duration.ofHours(24), 3, 7_000);
     }
 
     /** docs/06 §9.5 기본값 (RD-3·RD-4). */

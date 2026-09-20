@@ -289,17 +289,23 @@ class ReviewServiceIntegrationTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.evaluationSkippedReason").doesNotExist());
     }
 
+    /**
+     * AI가 있을 때의 평가 경로. fake provider의 {@code REVIEW_EVALUATE} 기본 응답은 rubric 2개 중 1개만 충족하므로 {@code
+     * PARTIAL}이다. AI가 없을 때 건너뛰는 경로는 {@code AiDisabledFlowTest}가 검증한다.
+     */
     @Test
-    void shouldReportSkippedEvaluationWithoutAi() throws Exception {
+    void shouldEvaluateAnswerWithRubricWhenAiIsAvailable() throws Exception {
         TestUser user = onboardedOwner();
         Map<String, Object> request = TestApi.answerRequest("GOOD", "SELF_EXPLAIN");
         request.put("evaluate", true);
 
         api.post(user, ANSWER, request, firstDueId(user))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.evaluatedOutcome").value("NOT_EVALUATED"))
-                .andExpect(jsonPath("$.evaluationSkippedReason").value("AI_UNAVAILABLE"))
-                .andExpect(jsonPath("$.aiMeta").doesNotExist());
+                .andExpect(jsonPath("$.evaluatedOutcome").value("PARTIAL"))
+                .andExpect(jsonPath("$.evaluationSkippedReason").doesNotExist())
+                .andExpect(jsonPath("$.rubricResults").isNotEmpty())
+                .andExpect(jsonPath("$.evaluationFeedback").isNotEmpty())
+                .andExpect(jsonPath("$.aiMeta").exists());
     }
 
     @Test
