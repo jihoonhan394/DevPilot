@@ -14,13 +14,13 @@ import org.jspecify.annotations.Nullable;
  * d = clamp(planning IMPLEMENTATION + 1, 1, 5), 복귀 모드면 min(d, 2)
  * 1. AI 가능 + 조건을 만족하는 challenge(difficulty d, 없으면 d−1) → CHALLENGE
  * 2. AI 가능 + planning KNOWLEDGE ≥ 1 + 선택 가능한 reading → READ_CODE (reading 시간, difficulty 2)
- * 3. planning KNOWLEDGE < 2 → READING (25, 1)
+ * 3. planning KNOWLEDGE &lt; 2 → READING (개념 읽기 후보가 있으면 그 시간, 없으면 25. 둘 다 difficulty 1)
  * 4. projectNeed + energy != LOW + ACTIVE 사이드 프로젝트 → PROJECT_TASK (30, 3)
  * 5. 그 외 → EXPLAIN (15, 2)
  * </pre>
  *
- * challenge·reading 후보의 조건 확인(14 plan-day 안 시도·제안, 해결 여부, 완료한 reading)은 호출자가 하고, 이 클래스는 순서와 선택만
- * 정한다. S2 빌드는 두 후보 목록을 비워 둔다(BL-TDY-14·BL-TDY-16은 S3).
+ * challenge·reading·개념 읽기 후보의 조건 확인(14 plan-day 안 시도·제안, 해결 여부, 완료한 reading)은 호출자가 하고({@link
+ * ConceptReadingSelection}), 이 클래스는 순서와 선택만 정한다. S2 빌드는 후보 목록을 비워 둔다(BL-TDY-14·BL-TDY-16은 S3).
  */
 public final class TaskProposalPolicy {
 
@@ -66,7 +66,9 @@ public final class TaskProposalPolicy {
             }
         }
         if (planning.knowledge() < READING_MAX_KNOWLEDGE) {
-            return reading(skill);
+            return firstConceptReading(input.conceptReadings())
+                    .map(material -> reading(skill, material))
+                    .orElseGet(() -> reading(skill));
         }
         SideProjectRef project = input.activeSideProject();
         if (skill.projectNeed() && input.energy() != EnergyLevel.LOW && project != null) {
@@ -114,6 +116,11 @@ public final class TaskProposalPolicy {
         return readings.stream().min(Comparator.comparing(ReadingOption::key));
     }
 
+    /** 개념 읽기 선택: key ASC 첫 번째 (docs/06 §5.3 "개념 읽기 선택"). 비면 자료 없이 제안한다. */
+    static Optional<ConceptReading> firstConceptReading(List<ConceptReading> conceptReadings) {
+        return conceptReadings.stream().min(Comparator.comparing(ConceptReading::key));
+    }
+
     /** CHALLENGE: 제목 = challenge 제목, 설명 = scenario 앞 200자. */
     static Proposal challenge(ChallengeOption option) {
         String scenario = option.scenario();
@@ -154,7 +161,7 @@ public final class TaskProposalPolicy {
                 reading.repoName());
     }
 
-    /** READING: {@code {skill.name} 핵심 개념 정리}. */
+    /** READING (개념 읽기 후보 없음): {@code {skill.name} 핵심 개념 정리}. 자료를 가리키지 못하는 지금까지의 과제다. */
     static Proposal reading(SkillContext skill) {
         return new Proposal(
                 TaskType.READING,
@@ -164,6 +171,24 @@ public final class TaskProposalPolicy {
                 describe(skill, "공식 문서를 읽고 핵심 3가지를 스스로 적어 보세요."),
                 null,
                 null,
+                null,
+                null);
+    }
+
+    /**
+     * READING (개념 읽기 있음): {@code {skill.name} 개념 읽기 — {conceptReading.title}}. 예상 시간은 콘텐츠 값을 그대로
+     * 쓰고(docs/06 §5.3) key를 {@code learning_task.reading_key}에 저장한다. 자료 제목·링크·{@code checkPoints}는
+     * 화면이 {@code GET /readings/{readingKey}}로 가져온다(docs/02 SCR-TODAY).
+     */
+    static Proposal reading(SkillContext skill, ConceptReading material) {
+        return new Proposal(
+                TaskType.READING,
+                material.estimatedMinutes(),
+                READING_DIFFICULTY,
+                truncate(skill.name() + " 개념 읽기 — " + material.title(), TITLE_MAX),
+                truncate(material.whyRead() + "\n읽고 나서 핵심 3가지를 스스로 적어 보세요.", DESCRIPTION_MAX),
+                null,
+                material.key(),
                 null,
                 null);
     }
@@ -264,6 +289,8 @@ public final class TaskProposalPolicy {
      * 제안 입력.
      *
      * @param aiAvailable {@code aiStatus ∉ {DISABLED, BALANCE_EXHAUSTED}}
+     * @param conceptReadings 3번 분기가 쓸 개념 읽기 후보 (key ASC, {@link ConceptReadingSelection}). AI 상태와
+     *     무관하다 — 개념 읽기는 AI를 쓰지 않는다
      * @param activeSideProject 없으면 null (SP-1: PROJECT_TASK를 제안하지 않는다)
      */
     public record ProposalInput(
@@ -273,17 +300,20 @@ public final class TaskProposalPolicy {
             boolean aiAvailable,
             List<ChallengeOption> challenges,
             List<ReadingOption> readings,
+            List<ConceptReading> conceptReadings,
             @Nullable SideProjectRef activeSideProject) {
 
         public ProposalInput {
             challenges = List.copyOf(challenges);
             readings = List.copyOf(readings);
+            conceptReadings = List.copyOf(conceptReadings);
         }
     }
 
     /**
      * 제안 과제.
      *
+     * @param readingKey READ_CODE는 항상, READING은 개념 읽기 후보가 있을 때만. 그 밖에는 null (I-17)
      * @param repoName READ_CODE일 때 저장소 이름 (reason {@code READ_REAL_CODE} 변수)
      */
     public record Proposal(

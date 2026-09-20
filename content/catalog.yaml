@@ -33,6 +33,9 @@ files:
   curatedSources: curated-sources.yaml
   # READ_CODE 과제용 저장소/읽기 목록 (19 §3.8). 서버는 저장소를 fetch하지 않는다
   curatedRepos: curated-repos.yaml
+  # READING 과제가 읽을 공식 문서 목록 (19 §3.13). 선택 키이고 생략하면 같은 기본 경로를 읽는다.
+  # 코드 읽기(READ.*)와 key namespace·은퇴 목록을 같이 쓴다 (CV-120)
+  conceptReadings: concept-readings.yaml
 # DIAGNOSTIC challenge가 반드시 있어야 하는 카테고리 (CV-59). 제안 로직은 challenge skills의 category로 고른다 (19 §9)
 diagnosticCategories: [JAVA, SPRING, DATABASE, WEB_HTTP, TESTING]
 # 은퇴한 식별자. 다시 쓰지 않는다 (§8.3)

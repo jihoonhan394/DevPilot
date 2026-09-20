@@ -81,10 +81,12 @@ public class DiagnosticSuggestionService {
         if (candidates.isEmpty()) {
             return List.of();
         }
-        Set<UUID> attempted =
-                challengeQueryService.attemptedChallengeIds(userId, challengeIds(candidates));
+        // 진단을 실제로 받은 것(제출·평가)만 제외한다. 시작만 하고 나온 것은 다시 제안해 이어서 풀게 한다
+        // (docs/05 §4.2 2단계).
+        Set<UUID> diagnosed =
+                challengeQueryService.diagnosedChallengeIds(userId, challengeIds(candidates));
         Map<UUID, SkillTargetView> targets = planQueryService.activePlanTargets(userId);
-        Set<SkillCategory> excluded = excludedCategories(candidates, attempted, skills);
+        Set<SkillCategory> excluded = excludedCategories(candidates, diagnosed, skills);
         List<DiagnosticSuggestionView> suggestions = new ArrayList<>();
         for (Map.Entry<SkillCategory, Integer> entry : targetCategories.entrySet()) {
             SkillCategory category = entry.getKey();
@@ -105,7 +107,10 @@ public class DiagnosticSuggestionService {
                             found.candidate().id(),
                             found.candidate().title(),
                             found.candidate().difficulty(),
-                            found.candidate().estimatedMinutes()));
+                            found.candidate().estimatedMinutes(),
+                            challengeQueryService
+                                    .findActiveAttemptId(userId, found.candidate().id())
+                                    .orElse(null)));
             if (suggestions.size() == MAX_SUGGESTIONS) {
                 break;
             }
@@ -146,11 +151,11 @@ public class DiagnosticSuggestionService {
     /** docs/05 §4.2 2단계: 이미 attempt한 진단 challenge가 있는 category는 통째로 뺀다. */
     private static Set<SkillCategory> excludedCategories(
             List<DiagnosticCandidate> candidates,
-            Set<UUID> attempted,
+            Set<UUID> diagnosed,
             Map<UUID, SkillDetailView> skills) {
         Set<SkillCategory> excluded = new HashSet<>();
         for (DiagnosticCandidate candidate : candidates) {
-            if (!attempted.contains(candidate.id())) {
+            if (!diagnosed.contains(candidate.id())) {
                 continue;
             }
             for (UUID skillId : candidate.skillIds()) {

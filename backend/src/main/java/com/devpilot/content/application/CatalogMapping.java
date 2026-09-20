@@ -10,6 +10,7 @@ import com.devpilot.skill.application.SkillCatalogSeedService;
 import com.devpilot.skill.domain.Priority;
 import com.devpilot.skill.domain.SkillCategory;
 import com.devpilot.skill.domain.TargetRole;
+import com.devpilot.today.domain.ConceptReading;
 import com.devpilot.today.domain.CuratedReading;
 import com.devpilot.today.domain.CuratedRepo;
 import com.devpilot.training.application.ChallengeSeedService;
@@ -17,6 +18,7 @@ import com.devpilot.training.domain.ChallengePurpose;
 import com.devpilot.training.domain.ChallengeRubricItem;
 import com.devpilot.training.domain.RubricAxis;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -179,6 +181,31 @@ final class CatalogMapping {
                             Math.toIntExact(RawYaml.longValue(reading.get("estimatedMinutes"))),
                             (String) reading.get("question"),
                             strings(reading.get("lookFor")),
+                            Boolean.TRUE.equals(reading.get("retired"))));
+        }
+        return readings;
+    }
+
+    /**
+     * 개념 읽기 (docs/19 §3.13). 은퇴한 것도 넣는다({@code retired = true}) — 조회는 되고 planner만 제외한다 (docs/19
+     * §8.2).
+     */
+    static List<ConceptReading> conceptReadings(Map<String, Object> document) {
+        List<ConceptReading> readings = new ArrayList<>();
+        for (Object value : RawYaml.asList(document.get("conceptReadings"))) {
+            Map<String, Object> reading = RawYaml.asMap(value);
+            readings.add(
+                    new ConceptReading(
+                            (String) reading.get("key"),
+                            (String) reading.get("title"),
+                            (String) reading.get("url"),
+                            (String) reading.get("publisher"),
+                            (String) reading.get("versionScope"),
+                            strings(reading.get("skillCodes")),
+                            Math.toIntExact(RawYaml.longValue(reading.get("estimatedMinutes"))),
+                            (String) reading.get("whyRead"),
+                            strings(reading.get("checkPoints")),
+                            LocalDate.parse(String.valueOf(reading.get("verifiedAt"))),
                             Boolean.TRUE.equals(reading.get("retired"))));
         }
         return readings;

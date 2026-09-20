@@ -1034,14 +1034,18 @@ public record DiagnosticSuggestionView(
         UUID challengeId,
         String title,
         int difficulty,
-        Integer estimatedMinutes) {}
+        Integer estimatedMinutes,
+        @Nullable UUID activeAttemptId) {} // STARTED attempt가 있으면 그 id (이어서 풀기). 없으면 null
 ```
 
 선택 규칙 (`DiagnosticSuggestionService`, 결정적):
 1. 대상 category — `SkillCategory` 선언 순서로 처리하고, 결과는 **최대 5개**로 자른다(category당 1문제, 설계 §8).
    - **진단 모드**(`user_skill_state` 중 `self_assessed_level`이 `null`이 아닌 행이 하나도 없음 = 온보딩에서 `runDiagnostic = true`): `self_assessment_active = true`인 행이 있는 category 전부.
    - **자기평가 모드**: `self_assessment_active = true`인 행의 `self_assessed_level` 최댓값이 3 이상인 category.
-2. 그 category에서 사용자가 `purpose = DIAGNOSTIC` challenge attempt를 이미 가진 경우(상태 무관) category 전체를 제외한다. 진단은 category당 1회 제안한다.
+2. 그 category에서 **진단을 실제로 받은 경우** category 전체를 제외한다 — 그 category의 `purpose = DIAGNOSTIC` challenge에 `status ∈ {SUBMITTED, EVALUATED}`인 attempt가 있을 때다. 진단은 category당 1회 제안한다.
+   - `STARTED`(시작만 함)는 **제외하지 않고 이어서 풀도록 그대로 제안**한다. 응답의 `activeAttemptId`가 그 attempt다.
+   - `ABANDONED`(제출 없이 그만둠)도 **제외하지 않는다.** 진단을 받지 않았기 때문이다.
+   - 왜 이렇게 바꿨나: 이전 규칙은 상태와 무관하게 제외해서, 진단을 열었다가 나오기만 해도 그 category를 **영영 진단받지 못했다.** 그러면 그 category의 모든 skill이 0에서 시작하고 계획에서 뒤로 밀린다(2026-09-21 실사용에서 확인).
 3. 후보 challenge: `status = VALIDATED`, `purpose = DIAGNOSTIC`, `owner_user_id IS NULL`, `challenge_skill` 중 하나 이상이 그 category에 속하고 해당 skill의 `self_assessment_active = true`.
 4. 정렬: 대상 skill의 활성 plan `plan_skill_target.priority`(MUST → SHOULD → LATER → target 없음) → `practical_importance` DESC → `challenge.seed_key` ASC. 첫 번째 1개를 고른다. challenge가 여러 skill에 걸치면 이 정렬에서 가장 앞선 skill을 `skill`로 쓴다.
 5. 후보가 없는 category는 결과에서 뺀다.

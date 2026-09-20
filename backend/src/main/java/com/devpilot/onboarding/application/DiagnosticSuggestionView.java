@@ -18,4 +18,6 @@ public record DiagnosticSuggestionView(
         UUID challengeId,
         String title,
         int difficulty,
-        @Nullable Integer estimatedMinutes) {}
+        @Nullable Integer estimatedMinutes,
+        // 시작만 하고 남아 있는 attempt. 있으면 새로 시작하지 않고 이어서 푼다 (docs/05 §4.2).
+        @Nullable UUID activeAttemptId) {}

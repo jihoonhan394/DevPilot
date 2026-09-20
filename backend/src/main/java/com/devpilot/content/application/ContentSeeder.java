@@ -24,7 +24,7 @@ import org.springframework.stereotype.Component;
  *   <li>skill·prerequisite·role target upsert(한 트랜잭션). 사라진 skill은 {@code active = false}.
  *   <li>{@code seed-challenges = true}면 seed challenge를 upsert한다({@link ChallengeSeedService}). 구조가
  *       바뀐 seed는 기동 실패다.
- *   <li>{@link ContentRegistration}이 plan template·review card·curated reading(은퇴한 것 포함)을 메모리
+ *   <li>{@link ContentRegistration}이 plan template·review card·curated reading·개념 읽기(은퇴한 것 포함)를 메모리
  *       registry에 등록한다.
  *   <li>새 seed card를 기존 온보딩 완료 사용자에게 추가한다({@link SeedCardAssignmentService#backfillAll()},
  *       BL-MEM-08). 이미 있는 concept key는 건너뛴다.
@@ -110,12 +110,13 @@ public class ContentSeeder implements ApplicationRunner {
         int backfilled = seedCardAssignmentService.backfillAll();
         log.info(
                 "content seed finished catalogVersion={} dbVersion={} warnings={} seedCards={}"
-                        + " readings={} backfilledCards={} durationMs={}",
+                        + " readings={} conceptReadings={} backfilledCards={} durationMs={}",
                 catalogVersion,
                 dbVersion,
                 report.warnings().size(),
                 registered.seedCards(),
                 registered.readings(),
+                registered.conceptReadings(),
                 backfilled,
                 (System.nanoTime() - started) / 1_000_000);
     }

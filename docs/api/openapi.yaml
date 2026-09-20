@@ -825,7 +825,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CuratedReadingView"
+                $ref: "#/components/schemas/ReadingView"
           description: OK
         default:
           content:
@@ -1905,17 +1905,12 @@ components:
       - statusUpdatedAt
       - title
       - transferTargetSkillCodes
-    CuratedReadingView:
+    CodeReadingView:
       type: object
       properties:
         endLine:
           type: integer
           format: int32
-        estimatedMinutes:
-          type: integer
-          format: int32
-        key:
-          type: string
         lookFor:
           type: array
           items:
@@ -1926,26 +1921,44 @@ components:
           type: string
         repo:
           $ref: "#/components/schemas/CuratedRepoView"
-        retired:
-          type: boolean
-        skills:
-          type: array
-          items:
-            $ref: "#/components/schemas/SkillRef"
         startLine:
           type: integer
           format: int32
       required:
       - endLine
-      - estimatedMinutes
-      - key
       - lookFor
       - path
       - question
       - repo
-      - retired
-      - skills
       - startLine
+    ConceptReadingView:
+      type: object
+      properties:
+        checkPoints:
+          type: array
+          items:
+            type: string
+        publisher:
+          type: string
+        title:
+          type: string
+        url:
+          type: string
+        verifiedAt:
+          type: string
+          format: date
+        versionScope:
+          type: string
+        whyRead:
+          type: string
+      required:
+      - checkPoints
+      - publisher
+      - title
+      - url
+      - verifiedAt
+      - versionScope
+      - whyRead
     CuratedRepoView:
       type: object
       properties:
@@ -2142,6 +2155,9 @@ components:
     DiagnosticSuggestionView:
       type: object
       properties:
+        activeAttemptId:
+          type: string
+          format: uuid
         category:
           type: string
           enum:
@@ -2176,6 +2192,7 @@ components:
         title:
           type: string
       required:
+      - activeAttemptId
       - category
       - challengeId
       - difficulty
@@ -3193,6 +3210,37 @@ components:
       - title
       - traceId
       - type
+    ReadingView:
+      type: object
+      properties:
+        code:
+          $ref: "#/components/schemas/CodeReadingView"
+        concept:
+          $ref: "#/components/schemas/ConceptReadingView"
+        estimatedMinutes:
+          type: integer
+          format: int32
+        key:
+          type: string
+        kind:
+          type: string
+          enum:
+          - CODE
+          - CONCEPT
+        retired:
+          type: boolean
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillRef"
+      required:
+      - code
+      - concept
+      - estimatedMinutes
+      - key
+      - kind
+      - retired
+      - skills
     ReasonView:
       type: object
       properties:

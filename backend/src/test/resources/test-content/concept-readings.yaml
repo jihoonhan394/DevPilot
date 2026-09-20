@@ -1,0 +1,135 @@
+# 테스트 개념 읽기 (docs/09 §4.2, docs/19 §3.13)
+# - url 호스트는 devpilot.ai.trusted-source-hosts 안에 있어야 한다(CV-121). 서버는 이 URL을 요청하지 않는다
+# - 운영 content/의 코드 읽기가 덮지 못하는 MUST skill을 덮어 CV-125 WARN이 나지 않게 맞춰 둔다
+# - 은퇴한 단위는 지우지 않고 retired: true + catalog.yaml retired.readingKeys (CV-120, §8.2)
+conceptReadings:
+  - key: DOC.TESTJAVA.EXCEPTION.001
+    title: Java SE 25 Documentation — Exceptions
+    url: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html
+    publisher: Oracle
+    versionScope: Java SE 25
+    skillCodes: [JAVA.EXCEPTION]
+    estimatedMinutes: 20
+    whyRead: |-
+      예외를 언제 잡고 언제 그대로 올릴지 근거를 갖고 고를 수 있게 된다. 검사 예외와 비검사 예외가
+      호출자에게 요구하는 것이 어떻게 다른지 잡아 두면 catch 위치를 감으로 정하지 않게 된다.
+    checkPoints:
+      - 검사 예외와 비검사 예외가 호출자에게 요구하는 것이 어떻게 다른지 적어 보세요
+      - 예외를 잡아서 다시 던질 때 원인 예외를 남겨야 하는 이유를 적어 보세요
+      - 내 코드에서 예외를 삼키고 있는 자리를 하나 찾아 어떻게 고칠지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.TESTJAVA.COLLECTION.001
+    title: Java SE 25 Documentation — Collections Framework Overview
+    url: https://docs.oracle.com/en/java/javase/25/core/java-collections-framework.html
+    publisher: Oracle
+    versionScope: Java SE 25
+    skillCodes: [JAVA.COLLECTION]
+    estimatedMinutes: 25
+    whyRead: |-
+      List·Set·Map을 이름이 아니라 성질로 고를 수 있게 된다. 어떤 연산이 빠르고 어떤 연산이 느린지를
+      구현별로 잡아 두면 "왜 이 반복문이 느리지"를 자료구조 선택으로 설명할 수 있다.
+    checkPoints:
+      - ArrayList와 LinkedList에서 각각 빠른 연산과 느린 연산을 하나씩 적어 보세요
+      - HashMap의 key로 쓸 타입이 지켜야 하는 것을 적어 보세요
+      - 내 코드에서 자료구조를 바꾸면 빨라질 자리를 하나 찾아 이유와 함께 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.TESTHTTP.METHOD.001
+    title: RFC 9110 — HTTP Semantics, 9.2. Common Method Properties
+    url: https://www.rfc-editor.org/rfc/rfc9110.html#name-common-method-properties
+    publisher: IETF
+    versionScope: RFC 9110 (2022)
+    skillCodes: [WEB_HTTP.HTTP_BASICS]
+    estimatedMinutes: 20
+    whyRead: |-
+      메서드를 고를 때 "관례"가 아니라 규격을 근거로 댈 수 있게 된다. 안전과 멱등이 각각 무엇을
+      약속하는지 알면 재시도해도 되는 요청과 그렇지 않은 요청을 스스로 나눌 수 있다.
+    checkPoints:
+      - 안전한 메서드와 멱등한 메서드가 각각 무엇을 약속하는지 나눠서 적어 보세요
+      - POST가 멱등하지 않은 것이 재시도에 어떤 문제를 만드는지 적어 보세요
+      - 내 API에서 재시도해도 되는 요청과 안 되는 요청을 하나씩 골라 이유를 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.TESTEXPLAIN.RECORD.001
+    title: JEP 1 — JDK Enhancement-Proposal & Roadmap Process
+    url: https://openjdk.org/jeps/1
+    publisher: OpenJDK
+    versionScope: 버전 없음 (2026-09-21 기준 내용)
+    skillCodes: [EXPLANATION.PROJECT_STORY]
+    estimatedMinutes: 15
+    whyRead: |-
+      결정을 남기는 글이 어떤 칸으로 이루어지는지 본보기로 익힌다. 동기와 대안, 고르지 않은 이유를
+      나눠 적는 틀을 그대로 내 프로젝트 기록에 옮기면 설명이 감상이 아니라 근거가 된다.
+    checkPoints:
+      - 이 문서가 제안 하나에 요구하는 칸을 세 개 골라 적어 보세요
+      - 고르지 않은 대안을 함께 적게 하는 이유를 적어 보세요
+      - 내 프로젝트 결정 하나를 이 틀에 맞춰 다시 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # 은퇴한 개념 읽기: 조회는 되고 planner는 제안하지 않는다 (docs/19 §8.2, CV-120)
+  - key: DOC.TESTJAVA.LEGACY.001
+    title: Java SE 25 Documentation — Throwable
+    url: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Throwable.html
+    publisher: Oracle
+    versionScope: Java SE 25
+    skillCodes: [JAVA.EXCEPTION]
+    estimatedMinutes: 10
+    whyRead: |-
+      은퇴 경로를 확인하는 테스트 자료다. 은퇴한 단위도 지난 과제가 가리키므로 조회는 되어야 하고
+      새로 제안되지는 않아야 한다는 규칙을 이 항목으로 확인한다.
+    checkPoints:
+      - 은퇴한 자료가 조회되어야 하는 이유를 적어 보세요
+      - 은퇴한 자료가 새 과제로 제안되면 안 되는 이유를 적어 보세요
+      - 내가 은퇴시킬 자료를 고를 때 무엇을 볼지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: true
+  # 코드 읽기가 덮는 MUST skill도 함께 덮는다 — 코드 읽기를 모두 은퇴시켜도 CV-125가 나지 않아야 한다
+  - key: DOC.TESTSPRING.TRANSACTION.001
+    title: Spring Framework Documentation — Declarative Transaction Management
+    url: https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative.html
+    publisher: Spring
+    versionScope: Spring Framework 7.0.x
+    skillCodes: [SPRING.TRANSACTION]
+    estimatedMinutes: 30
+    whyRead: |-
+      선언적 트랜잭션이 프록시를 거쳐 걸린다는 것을 알면 같은 객체 안의 호출에서 왜 트랜잭션이 안 걸리는지
+      설명할 수 있다. 경계가 어디에 생기는지 짚어 두면 롤백이 안 되는 상황을 스스로 진단하게 된다.
+    checkPoints:
+      - 같은 클래스 안의 메서드를 직접 부르면 트랜잭션이 걸리지 않는 이유를 적어 보세요
+      - 기본 롤백 규칙이 어떤 예외에 적용되는지 적어 보세요
+      - 내 코드에서 트랜잭션 경계를 옮겨야 할 자리를 하나 찾아 이유와 함께 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.TESTDB.INDEX.001
+    title: PostgreSQL 16 Documentation — 11.1. Introduction (Indexes)
+    url: https://www.postgresql.org/docs/16/indexes-intro.html
+    publisher: PostgreSQL Global Development Group
+    versionScope: PostgreSQL 16
+    skillCodes: [DATABASE.INDEX]
+    estimatedMinutes: 15
+    whyRead: |-
+      인덱스를 늘리면 조회가 빨라지는 대신 변경이 느려진다는 맞바꿈을 근거로 댈 수 있게 된다.
+      쓰이지 않는 인덱스를 왜 지워야 하는지도 같은 근거로 설명할 수 있다.
+    checkPoints:
+      - 인덱스를 하나 더 만들면 변경 연산에 무엇이 더 붙는지 적어 보세요
+      - 쓰이지 않는 인덱스를 지워야 하는 이유를 적어 보세요
+      - 내 테이블의 인덱스가 각각 어떤 쿼리를 위한 것인지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.TESTJUNIT.ASSERTION.001
+    title: JUnit 5 User Guide — Assertions
+    url: https://junit.org/junit5/docs/current/user-guide/#writing-tests-assertions
+    publisher: JUnit Team
+    versionScope: JUnit 5 (current)
+    skillCodes: [TESTING.JUNIT]
+    estimatedMinutes: 20
+    whyRead: |-
+      테스트가 무엇을 확인하는지 읽는 사람에게 분명해진다. 어떤 단언을 쓰는지가 실패했을 때 나오는
+      메시지를 정하므로, 단언을 고르는 기준을 잡아 두면 실패 원인을 훨씬 빨리 찾게 된다.
+    checkPoints:
+      - 여러 단언을 한 번에 확인하고 싶을 때 무엇을 쓰는지와 그 이유를 적어 보세요
+      - 예외가 나는 것을 확인하는 단언을 어떻게 쓰는지 적어 보세요
+      - 내 테스트에서 실패 메시지가 불친절한 자리를 하나 골라 어떻게 고칠지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false

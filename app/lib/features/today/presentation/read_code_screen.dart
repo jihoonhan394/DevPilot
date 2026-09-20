@@ -44,6 +44,11 @@ class ReadCodeScreen extends ConsumerWidget {
             error.code == ApiErrorCode.validationFailed)) {
       return const NotFoundScreen();
     }
+    // A concept reading (`kind = CONCEPT`) has no file to open: it is shown inside the Today
+    // READING card instead, so this screen is not its destination (docs/02 SCR-TODAY).
+    if (reading.hasValue && reading.requireValue.code == null) {
+      return const NotFoundScreen();
+    }
     return Scaffold(
       appBar: AppBar(title: Semantics(header: true, child: Text(l10n.readCodeTitle))),
       body: Column(
@@ -57,7 +62,8 @@ class ReadCodeScreen extends ConsumerWidget {
                   error: error,
                   onRetry: () => ref.invalidate(readingProvider(readingKey)),
                 ),
-                data: (reading) => _ReadingGuide(reading: reading, taskId: taskId),
+                data: (reading) =>
+                    _ReadingGuide(reading: reading, code: reading.code!, taskId: taskId),
               ),
             ),
           ),
@@ -68,9 +74,10 @@ class ReadCodeScreen extends ConsumerWidget {
 }
 
 class _ReadingGuide extends StatelessWidget {
-  const _ReadingGuide({required this.reading, required this.taskId});
+  const _ReadingGuide({required this.reading, required this.code, required this.taskId});
 
-  final CuratedReadingView reading;
+  final ReadingView reading;
+  final CodeReadingView code;
   final String? taskId;
 
   @override
@@ -79,18 +86,18 @@ class _ReadingGuide extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        RepoHeader(reading: reading),
+        RepoHeader(code: code, retired: reading.retired),
         const Divider(height: AppSpacing.xxl),
-        CloneStep(repo: reading.repo),
+        CloneStep(repo: code.repo),
         const Divider(height: AppSpacing.xxl),
-        FileStep(reading: reading),
+        FileStep(code: code, estimatedMinutes: reading.estimatedMinutes),
         const Divider(height: AppSpacing.xxl),
-        QuestionStep(reading: reading),
+        QuestionStep(code: code),
         const SizedBox(height: AppSpacing.xl),
         if (task == null)
           Text(AppLocalizations.of(context).readCodeNoTask, key: const Key('readCode.noTask'))
         else
-          _ReadingActions(reading: reading, taskId: task),
+          _ReadingActions(reading: reading, code: code, taskId: task),
       ],
     );
   }
@@ -99,9 +106,10 @@ class _ReadingGuide extends StatelessWidget {
 /// "읽었으면 설명하기" (the rubber duck on this task, blocked with its reason while the AI is off)
 /// and "여기까지 기록" (the partial record of the running session → DEFERRED, no RC-1 check).
 class _ReadingActions extends ConsumerWidget {
-  const _ReadingActions({required this.reading, required this.taskId});
+  const _ReadingActions({required this.reading, required this.code, required this.taskId});
 
-  final CuratedReadingView reading;
+  final ReadingView reading;
+  final CodeReadingView code;
   final String taskId;
 
   Future<void> _recordPartially(BuildContext context, WidgetRef ref) async {
@@ -150,12 +158,12 @@ class _ReadingActions extends ConsumerWidget {
     taskId: taskId,
     preview: RubberDuckTargetPreview(
       title: l10n.readCodeDuckTitle(
-        reading.repo.name,
-        reading.fileName,
-        reading.startLine,
-        reading.endLine,
+        code.repo.name,
+        code.fileName,
+        code.startLine,
+        code.endLine,
       ),
-      summary: reading.question,
+      summary: code.question,
     ),
   );
 }

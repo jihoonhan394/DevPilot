@@ -172,6 +172,7 @@ public class DailyPlanComposer {
                                 options.aiAvailable(),
                                 options.challengesFor(code),
                                 options.readingsFor(code),
+                                options.conceptReadingsFor(code),
                                 inputs.sideProject()));
         ScoredCandidate scored =
                 scoring.score(

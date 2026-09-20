@@ -55,12 +55,14 @@ class CodeReadingFlowTest extends ApiTestSupport {
                 api.body(
                         api.get(user, "/api/v1/readings/{readingKey}", readingKey)
                                 .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.repo.cloneHint").isString())
-                                .andExpect(jsonPath("$.repo.pinnedCommit").isString())
-                                .andExpect(jsonPath("$.question").isString()));
-        assertThat(reading.path("startLine").asInt())
-                .isLessThanOrEqualTo(reading.path("endLine").asInt());
-        assertThat(reading.propertyNames()).doesNotContain("code", "content", "source");
+                                .andExpect(jsonPath("$.kind").value("CODE"))
+                                .andExpect(jsonPath("$.code.repo.cloneHint").isString())
+                                .andExpect(jsonPath("$.code.repo.pinnedCommit").isString())
+                                .andExpect(jsonPath("$.code.question").isString()));
+        JsonNode codeReading = reading.path("code");
+        assertThat(codeReading.path("startLine").asInt())
+                .isLessThanOrEqualTo(codeReading.path("endLine").asInt());
+        assertThat(codeReading.propertyNames()).doesNotContain("content", "source", "body");
 
         // 4·5. 시작한 뒤 러버덕 없이 완료하면 409 (RC-1)
         api.patch(user, TASKS, Map.of("status", "IN_PROGRESS", "version", 0), taskId)
@@ -92,7 +94,7 @@ class CodeReadingFlowTest extends ApiTestSupport {
         assertThat(prompt)
                 .contains("Test Repository")
                 .contains("OrderService.java")
-                .contains(reading.path("question").asString().substring(0, 20));
+                .contains(codeReading.path("question").asString().substring(0, 20));
         api.post(user, RUBBER_DUCK + "/{sessionId}/complete", null, sessionId)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("COMPLETED"));

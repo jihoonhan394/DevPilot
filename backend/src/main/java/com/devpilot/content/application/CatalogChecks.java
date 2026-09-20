@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -22,6 +23,8 @@ final class CatalogChecks {
 
     private static final Set<String> CATALOG_KEYS =
             Set.of("catalogVersion", "files", "diagnosticCategories", "retired");
+
+    /** 필수 파일 키 (docs/19 §3.1). */
     private static final Set<String> FILE_KEYS =
             Set.of(
                     "skillTrees",
@@ -31,6 +34,12 @@ final class CatalogChecks {
                     "challenges",
                     "curatedSources",
                     "curatedRepos");
+
+    /** {@code conceptReadings}는 선택이다 — 생략하면 기본 경로를 읽는다 (docs/19 §3.1·§3.13). */
+    private static final Set<String> ALLOWED_FILE_KEYS =
+            Stream.concat(FILE_KEYS.stream(), Stream.of("conceptReadings"))
+                    .collect(Collectors.toUnmodifiableSet());
+
     private static final Set<String> RETIRED_KEYS =
             Set.of(
                     "skillCodes",
@@ -65,7 +74,7 @@ final class CatalogChecks {
             context.error("CV-01", WHERE, "catalogVersion must be an integer >= 1");
         }
         context.files = RawYaml.asMap(catalog.get("files"));
-        RawYaml.checkKeys(context.files, FILE_KEYS, FILE_KEYS, context, WHERE + "#files");
+        RawYaml.checkKeys(context.files, ALLOWED_FILE_KEYS, FILE_KEYS, context, WHERE + "#files");
         checkRetired(context, RawYaml.asMap(catalog.get("retired")));
         context.diagnosticCategories = RawYaml.asList(catalog.get("diagnosticCategories"));
         for (Object category : context.diagnosticCategories) {
@@ -102,6 +111,8 @@ final class CatalogChecks {
                 listed.add(path);
             }
         }
+        // conceptReadings는 생략할 수 있고 그때는 기본 경로를 읽는다 (docs/19 §3.1)
+        listed.add(context.conceptReadingsFile());
         if (new HashSet<>(listed).size() != listed.size()) {
             context.error("CV-02", WHERE + "#files", "duplicate file entry");
         }

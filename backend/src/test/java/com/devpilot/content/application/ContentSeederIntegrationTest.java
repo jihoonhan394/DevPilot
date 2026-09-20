@@ -12,6 +12,9 @@ import com.devpilot.plan.application.PlanTemplateRegistry;
 import com.devpilot.skill.application.SkillCatalogSeedService;
 import com.devpilot.skill.domain.TargetRole;
 import com.devpilot.testsupport.IntegrationTest;
+import com.devpilot.today.application.ConceptReadingRegistry;
+import com.devpilot.today.application.CuratedReadingRegistry;
+import com.devpilot.today.domain.ConceptReading;
 import jakarta.persistence.EntityManager;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +33,8 @@ class ContentSeederIntegrationTest {
     @Autowired private ContentSeeder contentSeeder;
     @Autowired private SkillCatalogSeedService skillCatalogSeedService;
     @Autowired private PlanTemplateRegistry planTemplateRegistry;
+    @Autowired private CuratedReadingRegistry curatedReadingRegistry;
+    @Autowired private ConceptReadingRegistry conceptReadingRegistry;
     @Autowired private YamlContentReader yamlContentReader;
     @Autowired private DevPilotProperties properties;
     @Autowired private JdbcTemplate jdbc;
@@ -50,6 +55,26 @@ class ContentSeederIntegrationTest {
         assertThat(planTemplateRegistry.get(TargetRole.JAVA_BACKEND).templateKey())
                 .isEqualTo("TEST_BACKEND_DEFAULT");
         assertThat(skillCatalogSeedService.currentCatalogVersion()).isEqualTo(1);
+    }
+
+    /** docs/19 §3.12 7번, §3.13: 개념 읽기도 기동 때 메모리 registry에 등록된다(은퇴한 것 포함). */
+    @Test
+    void shouldRegisterConceptReadingsOnStartup() {
+        assertThat(conceptReadingRegistry.all()).hasSize(8);
+        assertThat(conceptReadingRegistry.active()).hasSize(7);
+        assertThat(conceptReadingRegistry.find("DOC.TESTJAVA.LEGACY.001"))
+                .get()
+                .extracting(ConceptReading::retired)
+                .isEqualTo(true);
+        ConceptReading reading =
+                conceptReadingRegistry.find("DOC.TESTJAVA.EXCEPTION.001").orElseThrow();
+        assertThat(reading.estimatedMinutes()).isEqualTo(20);
+        assertThat(reading.checkPoints()).hasSize(3);
+        assertThat(reading.skillCodes()).containsExactly("JAVA.EXCEPTION");
+        assertThat(reading.url()).startsWith("https://");
+        // 두 registry는 key namespace를 같이 쓴다 — 겹치는 key가 없다 (CV-120, docs/05 §19.7)
+        assertThat(conceptReadingRegistry.all())
+                .noneMatch(entry -> curatedReadingRegistry.find(entry.key()).isPresent());
     }
 
     @Test

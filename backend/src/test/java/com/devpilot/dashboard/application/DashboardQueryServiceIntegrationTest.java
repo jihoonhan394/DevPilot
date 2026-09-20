@@ -53,7 +53,9 @@ class DashboardQueryServiceIntegrationTest extends ApiTestSupport {
         assertThat(dashboard.path("weekStartDate").asString()).isEqualTo("2026-10-05");
         assertThat(dashboard.path("weekStudyMinutes").asInt()).isEqualTo(25);
         assertThat(dashboard.path("weekCompletedSessions").asInt()).isEqualTo(1);
-        assertThat(dashboard.path("aiStatus").asString()).isEqualTo("DISABLED");
+        // GET /me와 같은 값이어야 한다 (docs/05 §13.1). test profile은 fake provider라 ENABLED다.
+        assertThat(dashboard.path("aiStatus").asString())
+                .isEqualTo(api.body(api.get(user, "/api/v1/me")).path("aiStatus").asString());
         assertThat(dashboard.path("replanRecommended").asBoolean()).isFalse();
         assertThat(dashboard.path("risk").isNull()).isTrue();
         assertThat(dashboard.path("milestoneTimeline").isNull()).isTrue();

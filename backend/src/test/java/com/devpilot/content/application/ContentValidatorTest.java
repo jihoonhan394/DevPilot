@@ -31,6 +31,7 @@ class ContentValidatorTest {
     private static final String TEST_CONTENT = "classpath:test-content/";
     private static final String PRODUCTION_CONTENT = "classpath:content/";
     private static final String RETIRED_READING = "READ.TESTREPO.LEGACY_CONTROLLER.001";
+    private static final String RETIRED_CONCEPT_READING = "DOC.TESTJAVA.LEGACY.001";
 
     private final YamlContentReader reader = new YamlContentReader(new DefaultResourceLoader());
     private final ContentValidator validator =
@@ -357,7 +358,57 @@ class ContentValidatorTest {
                 error(
                         "CV-03",
                         "retired is not a boolean",
-                        f -> f.readings().getFirst().put("retired", "yes")));
+                        f -> f.readings().getFirst().put("retired", "yes")),
+                // 개념 읽기 (docs/19 §3.13, §4.3 표)
+                error(
+                        "CV-120",
+                        "concept reading key pattern invalid",
+                        f -> f.conceptReadings().getFirst().put("key", "DOC.git.branching.001")),
+                error(
+                        "CV-120",
+                        "concept reading key collides with a code reading",
+                        f ->
+                                f.conceptReadings()
+                                        .getFirst()
+                                        .put("key", "READ.TESTREPO.ORDER_SERVICE.001")),
+                error(
+                        "CV-120",
+                        "retired concept reading is not listed",
+                        f -> f.retired("readingKeys").remove(RETIRED_CONCEPT_READING)),
+                error(
+                        "CV-121",
+                        "concept reading url host is not trusted",
+                        f ->
+                                f.conceptReadings()
+                                        .getFirst()
+                                        .put("url", "https://blog.example.com/git")),
+                error(
+                        "CV-122",
+                        "verifiedAt is not an ISO date",
+                        f -> f.conceptReadings().getFirst().put("verifiedAt", "2026/09/21")),
+                error(
+                        "CV-123",
+                        "estimatedMinutes above 60",
+                        f -> f.conceptReadings().getFirst().put("estimatedMinutes", 90)),
+                error(
+                        "CV-123",
+                        "skillCode without a role target",
+                        f -> f.conceptReadings().getFirst().put("skillCodes", list("JAVA"))),
+                error(
+                        "CV-124",
+                        "only two checkPoints",
+                        f ->
+                                f.conceptReadings()
+                                        .getFirst()
+                                        .put("checkPoints", list("첫 번째 질문입니다", "두 번째 질문입니다"))),
+                error(
+                        "CV-124",
+                        "whyRead too short",
+                        f -> f.conceptReadings().getFirst().put("whyRead", "너무 짧은 설명이다.")),
+                error(
+                        "CV-03",
+                        "concept reading retired is not a boolean",
+                        f -> f.conceptReadings().getFirst().put("retired", "yes")));
     }
 
     /** CV-83 은퇴 규칙은 경우마다 정확히 1건, 위치는 해당 reading 또는 catalog 목록 (docs/19 §8.2). */
@@ -500,6 +551,21 @@ class ContentValidatorTest {
                         "only two active readings for a repo",
                         f -> f.readings().removeFirst()),
                 warning(
+                        "CV-125",
+                        "MUST skill loses its only reading",
+                        f -> {
+                            f.readings()
+                                    .removeIf(
+                                            reading ->
+                                                    list("SPRING.TRANSACTION")
+                                                            .equals(reading.get("skillCodes")));
+                            f.conceptReadings()
+                                    .removeIf(
+                                            reading ->
+                                                    list("SPRING.TRANSACTION")
+                                                            .equals(reading.get("skillCodes")));
+                        }),
+                warning(
                         "CV-87",
                         "retired readings are not counted",
                         f -> {
@@ -630,6 +696,10 @@ class ContentValidatorTest {
 
         List<Map<String, Object>> readings() {
             return maps(curatedRepos().get("readings"));
+        }
+
+        List<Map<String, Object>> conceptReadings() {
+            return maps(document("concept-readings.yaml").get("conceptReadings"));
         }
 
         private Map<String, Object> document(String path) {

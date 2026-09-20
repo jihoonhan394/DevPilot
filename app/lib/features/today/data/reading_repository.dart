@@ -2,10 +2,11 @@ import 'package:devpilot_app/core/api/api_client.dart';
 import 'package:devpilot_app/features/today/data/reading_models.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// `GET /readings/{readingKey}` (docs/05 §19.7): the same content for every user, no AI, no
-/// repository fetch. Throws `ApiException`.
+/// `GET /readings/{readingKey}` (docs/05 §19.7): code readings (`kind = CODE`) and concept
+/// readings (`kind = CONCEPT`), the same content for every user, no AI, no repository or document
+/// fetch. Throws `ApiException`.
 abstract interface class ReadingRepository {
-  Future<CuratedReadingView> fetchReading(String readingKey);
+  Future<ReadingView> fetchReading(String readingKey);
 }
 
 final class ApiReadingRepository implements ReadingRepository {
@@ -14,7 +15,7 @@ final class ApiReadingRepository implements ReadingRepository {
   final ApiClient _apiClient;
 
   @override
-  Future<CuratedReadingView> fetchReading(String readingKey) async => CuratedReadingView.fromJson(
+  Future<ReadingView> fetchReading(String readingKey) async => ReadingView.fromJson(
     await _apiClient.getJson('/readings/${Uri.encodeComponent(readingKey)}'),
   );
 }
@@ -23,8 +24,8 @@ final readingRepositoryProvider = Provider<ReadingRepository>(
   (ref) => ApiReadingRepository(ref.watch(apiClientProvider)),
 );
 
-/// One reading, read again each time SCR-READ-CODE opens.
-final readingProvider = FutureProvider.autoDispose.family<CuratedReadingView, String>(
+/// One reading, read again each time SCR-READ-CODE or a READING card opens.
+final readingProvider = FutureProvider.autoDispose.family<ReadingView, String>(
   (ref, readingKey) => ref.watch(readingRepositoryProvider).fetchReading(readingKey),
 );
 

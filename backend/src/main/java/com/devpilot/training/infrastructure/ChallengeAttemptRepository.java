@@ -76,7 +76,9 @@ public interface ChallengeAttemptRepository extends JpaRepository<ChallengeAttem
             """
             select distinct a.challengeId from ChallengeAttempt a
              where a.userId = :userId and a.challengeId in :challengeIds
+               and a.status in (com.devpilot.training.domain.AttemptStatus.SUBMITTED,
+                                com.devpilot.training.domain.AttemptStatus.EVALUATED)
             """)
-    List<UUID> findAttemptedChallengeIds(
+    List<UUID> findDiagnosedChallengeIds(
             @Param("userId") UUID userId, @Param("challengeIds") Collection<UUID> challengeIds);
 }

@@ -225,12 +225,15 @@ public class ChallengeQueryService {
         return List.copyOf(candidates);
     }
 
-    /** 진단 제안에서 제외할 challenge (docs/05 §4.2 2단계). */
-    public Set<UUID> attemptedChallengeIds(UUID userId, Set<UUID> challengeIds) {
+    /**
+     * 진단 제안에서 제외할 challenge (docs/05 §4.2 2단계). **진단을 실제로 받은 것만** 제외한다 — 제출했거나 평가까지 끝난 attempt다.
+     * {@code STARTED}(시작만 함)·{@code ABANDONED}(제출 없이 그만둠)는 진단 결과가 없으므로 제외하지 않는다.
+     */
+    public Set<UUID> diagnosedChallengeIds(UUID userId, Set<UUID> challengeIds) {
         if (challengeIds.isEmpty()) {
             return Set.of();
         }
-        return Set.copyOf(attemptRepository.findAttemptedChallengeIds(userId, challengeIds));
+        return Set.copyOf(attemptRepository.findDiagnosedChallengeIds(userId, challengeIds));
     }
 
     static List<RubricItemView> rubricViews(List<ChallengeRubricItem> rubric) {

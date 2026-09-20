@@ -5,6 +5,7 @@ import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/theme/devpilot_colors.dart';
 import 'package:devpilot_app/core/widgets/status_badge.dart';
 import 'package:devpilot_app/features/today/data/today_models.dart';
+import 'package:devpilot_app/features/today/presentation/concept_reading_section.dart';
 import 'package:devpilot_app/features/today/presentation/main_task_actions.dart';
 import 'package:devpilot_app/features/today/presentation/today_state.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
@@ -22,6 +23,7 @@ class MainTaskCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final description = task.description;
     final planned = task.status == TaskStatus.planned;
+    final readingKey = task.readingKey;
     return Card(
       key: const Key('today.mainCard'),
       child: Padding(
@@ -44,6 +46,10 @@ class MainTaskCard extends StatelessWidget {
                 key: const Key('today.readCodeLocal'),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
+            // READING with a concept reading: what to read, where to open it and the three
+            // points to answer (docs/02 SCR-TODAY). Hidden when the skill has no material.
+            if (task.taskType == TaskType.reading && readingKey != null)
+              ConceptReadingSection(readingKey: readingKey),
             if (planned && task.reasons.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.md),
               _ReasonList(reasons: task.reasons),

@@ -23,9 +23,9 @@ import org.yaml.snakeyaml.resolver.Resolver;
 
 /**
  * {@code content/} YAML 읽기 (docs/19 §2·§3.0). {@code catalog.yaml}의 {@code files}에 나열된 파일만 나열 순서대로
- * 읽는다 — 디렉터리를 훑지 않는다. SnakeYAML safe 로딩(임의 타입 생성 금지), anchor·alias 금지, 중복 키 금지. 소수({@code
- * importance})와 날짜({@code verifiedAt})는 {@code double}·{@code Date}로 바꾸지 않고 원문 문자열로 둔다(docs/06 §1
- * N-1).
+ * 읽는다 — 디렉터리를 훑지 않는다. {@code files.conceptReadings}만 선택이라 생략하면 기본 경로를 읽어 본다(docs/19 §3.1).
+ * SnakeYAML safe 로딩(임의 타입 생성 금지), anchor·alias 금지, 중복 키 금지. 소수({@code importance})와 날짜({@code
+ * verifiedAt})는 {@code double}·{@code Date}로 바꾸지 않고 원문 문자열로 둔다(docs/06 §1 N-1).
  */
 @Component
 public class YamlContentReader {
@@ -34,6 +34,9 @@ public class YamlContentReader {
     private static final List<String> LIST_KEYS =
             List.of("skillTrees", "roleTargets", "planTemplates", "reviewCards", "challenges");
     private static final List<String> SINGLE_KEYS = List.of("curatedSources", "curatedRepos");
+
+    /** {@code files.conceptReadings}를 생략했을 때 읽는 경로 (docs/19 §3.1·§3.13). */
+    private static final String DEFAULT_CONCEPT_READINGS = "concept-readings.yaml";
 
     private final ResourceLoader resourceLoader;
 
@@ -50,18 +53,32 @@ public class YamlContentReader {
         Map<String, LoadedDocument> documents = new LinkedHashMap<>();
         if (catalog.root() instanceof Map<?, ?> catalogMap
                 && catalogMap.get("files") instanceof Map<?, ?> files) {
-            for (String key : LIST_KEYS) {
-                if (files.get(key) instanceof List<?> paths) {
-                    for (Object path : paths) {
-                        addDocument(documents, base, path);
-                    }
-                }
-            }
-            for (String key : SINGLE_KEYS) {
-                addDocument(documents, base, files.get(key));
-            }
+            addListed(documents, base, files);
         }
         return new RawContent(catalog, documents);
+    }
+
+    /** {@code files}에 나열된 파일을 나열 순서대로 읽는다. */
+    private void addListed(Map<String, LoadedDocument> documents, String base, Map<?, ?> files) {
+        for (String key : LIST_KEYS) {
+            for (Object path : files.get(key) instanceof List<?> paths ? paths : List.of()) {
+                addDocument(documents, base, path);
+            }
+        }
+        for (String key : SINGLE_KEYS) {
+            addDocument(documents, base, files.get(key));
+        }
+        addConceptReadings(documents, base, files.get("conceptReadings"));
+    }
+
+    /** {@code conceptReadings}는 선택 키다 — 나열하지 않았으면 기본 경로가 있을 때만 읽는다 (docs/19 §3.1). */
+    private void addConceptReadings(
+            Map<String, LoadedDocument> documents, String base, Object listed) {
+        if (listed instanceof String path) {
+            addDocument(documents, base, path);
+        } else if (resourceLoader.getResource(base + DEFAULT_CONCEPT_READINGS).exists()) {
+            addDocument(documents, base, DEFAULT_CONCEPT_READINGS);
+        }
     }
 
     private void addDocument(Map<String, LoadedDocument> documents, String base, Object path) {

@@ -16,6 +16,9 @@ import org.jspecify.annotations.Nullable;
  */
 final class ValidationContext {
 
+    /** {@code files.conceptReadings}를 생략했을 때의 경로 (docs/19 §3.1). */
+    static final String DEFAULT_CONCEPT_READINGS = "concept-readings.yaml";
+
     private final RawContent content;
     private final List<ContentValidationReport.Issue> errors = new ArrayList<>();
     private final List<ContentValidationReport.Issue> warnings = new ArrayList<>();
@@ -28,6 +31,12 @@ final class ValidationContext {
     Set<String> retiredSourceIds = Set.of();
     Set<String> retiredReadingKeys = Set.of();
     List<?> diagnosticCategories = List.of();
+
+    /** 코드 읽기·개념 읽기가 같이 쓰는 key namespace (docs/19 §3.13, CV-120). */
+    final Set<String> readingKeys = new HashSet<>();
+
+    /** 은퇴하지 않은 코드 읽기·개념 읽기가 덮는 skill code (CV-125). */
+    final Set<String> readableSkillCodes = new HashSet<>();
 
     /** 유효한 skill code → skill 원본(파일 순서 유지). */
     final Map<String, Map<String, Object>> skillsByCode = new LinkedHashMap<>();
@@ -101,5 +110,17 @@ final class ValidationContext {
 
     @Nullable String singleFile(String key) {
         return files.get(key) instanceof String path ? path : null;
+    }
+
+    /** {@code files.conceptReadings}. 생략하면 기본 경로 (docs/19 §3.1·§3.13). */
+    String conceptReadingsFile() {
+        String listed = singleFile("conceptReadings");
+        return listed == null ? DEFAULT_CONCEPT_READINGS : listed;
+    }
+
+    /** {@code catalog.yaml}에 나열되지 않았고 파일도 없으면 {@code true} — 선택 파일이라 건너뛴다. */
+    boolean conceptReadingsAbsent() {
+        return singleFile("conceptReadings") == null
+                && !content.document(DEFAULT_CONCEPT_READINGS).found();
     }
 }

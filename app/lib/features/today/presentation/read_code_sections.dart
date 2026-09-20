@@ -15,15 +15,18 @@ import 'package:url_launcher/url_launcher.dart';
 /// `RepoHeader`: name, stack and license (or the read-only badge), why, and the repository link
 /// the user's own browser opens.
 class RepoHeader extends StatelessWidget {
-  const RepoHeader({super.key, required this.reading});
+  const RepoHeader({super.key, required this.code, required this.retired});
 
-  final CuratedReadingView reading;
+  final CodeReadingView code;
+
+  /// Retired unit (docs/19 §8.2): still resolvable, no longer proposed.
+  final bool retired;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final textTheme = Theme.of(context).textTheme;
-    final repo = reading.repo;
+    final repo = code.repo;
     final why = repo.why;
     final note = repo.licenseNote;
     return Column(
@@ -44,7 +47,7 @@ class RepoHeader extends StatelessWidget {
           ),
           Text(note ?? l10n.readCodeReadOnlyNote, key: const Key('readCode.readOnlyNote')),
         ],
-        if (reading.retired) Text(l10n.readCodeRetired, key: const Key('readCode.retired')),
+        if (retired) Text(l10n.readCodeRetired, key: const Key('readCode.retired')),
         if (why != null && why.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
           SectionTitle(l10n.readCodeWhy),
@@ -128,18 +131,19 @@ class CloneStep extends StatelessWidget {
 
 /// ② "이 파일을 여세요": the sub-folder note, the path broken at `/`, the line range and time.
 class FileStep extends StatelessWidget {
-  const FileStep({super.key, required this.reading});
+  const FileStep({super.key, required this.code, required this.estimatedMinutes});
 
-  final CuratedReadingView reading;
+  final CodeReadingView code;
+  final int? estimatedMinutes;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final subPath = reading.repo.subPath;
-    final minutes = reading.estimatedMinutes;
+    final subPath = code.repo.subPath;
+    final minutes = estimatedMinutes;
     final range = minutes == null
-        ? l10n.readCodeRangeOnly(reading.startLine, reading.endLine)
-        : l10n.readCodeRange(reading.startLine, reading.endLine, formatMinutes(minutes, l10n));
+        ? l10n.readCodeRangeOnly(code.startLine, code.endLine)
+        : l10n.readCodeRange(code.startLine, code.endLine, formatMinutes(minutes, l10n));
     return Column(
       key: const Key('readCode.fileStep'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -150,7 +154,7 @@ class FileStep extends StatelessWidget {
         SelectionArea(
           child: Text(
             // A zero-width space after each "/" lets a long path wrap there.
-            reading.path.replaceAll('/', '/​'),
+            code.path.replaceAll('/', '/​'),
             key: const Key('readCode.path'),
             style: AppTheme.codeTextStyle,
           ),
@@ -159,7 +163,7 @@ class FileStep extends StatelessWidget {
           alignment: Alignment.centerRight,
           child: CopyTextButton(
             key: const Key('readCode.pathCopyButton'),
-            value: reading.path,
+            value: code.path,
             label: l10n.readCodeCopyPath,
           ),
         ),
@@ -171,9 +175,9 @@ class FileStep extends StatelessWidget {
 
 /// ③ "읽으면서 생각할 질문" with the points to look for.
 class QuestionStep extends StatelessWidget {
-  const QuestionStep({super.key, required this.reading});
+  const QuestionStep({super.key, required this.code});
 
-  final CuratedReadingView reading;
+  final CodeReadingView code;
 
   @override
   Widget build(BuildContext context) {
@@ -183,11 +187,11 @@ class QuestionStep extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SectionTitle(l10n.readCodeStepThink),
-        SelectionArea(child: Text(reading.question, key: const Key('readCode.question'))),
-        if (reading.lookFor.isNotEmpty) ...[
+        SelectionArea(child: Text(code.question, key: const Key('readCode.question'))),
+        if (code.lookFor.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.sm),
           Text(l10n.readCodeLookFor, style: Theme.of(context).textTheme.titleSmall),
-          for (final point in reading.lookFor) Text('• $point'),
+          for (final point in code.lookFor) Text('• $point'),
         ],
       ],
     );

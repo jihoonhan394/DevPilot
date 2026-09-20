@@ -137,6 +137,7 @@ class TaskProposalPolicyTest {
                 (Boolean) row.get("aiAvailable"),
                 challenges(row.get("challenges")),
                 readings(row.get("readings")),
+                List.of(),
                 sideProject == null ? null : new SideProjectRef(PROJECT_ID, sideProject));
     }
 
