@@ -16,7 +16,7 @@
 | Web slice | controller 검증, 상태 코드, ProblemDetail 형식, 보안 필터(JWT는 `jwt()`) | `@WebMvcTest`, `MockMvcTester`, spring-security-test | 모듈 `presentation` mirror | `unit` / `test` | 예 |
 | JPA slice | repository 쿼리, projection, 배열·JSON 매핑 | `@DataJpaTest` + Testcontainers `postgres:16` | 모듈 `infrastructure` mirror | `integration` / `integrationTest` | 예 |
 | Integration | 서비스 + DB 트랜잭션, 불변식, 이벤트, 비동기 task, migration, 실제 JWT decoder | `@SpringBootTest`, Testcontainers, `TestJwksServer`, `FakeAiProvider`, Awaitility | 모듈 mirror, `*IntegrationTest` | `integration` / `integrationTest` | 예 |
-| API E2E flow | 여러 endpoint를 HTTP로 이어 호출하는 사용자 흐름 (§11) | `@SpringBootTest(webEnvironment = RANDOM_PORT)`, `RestTestClient` | `com.devpilot.e2e` | `integration` / `integrationTest` | 예 |
+| API E2E flow | 여러 endpoint를 이어 호출하는 사용자 흐름 (§11) | `@IntegrationTest`(`@SpringBootTest` + `@AutoConfigureMockMvc`), MockMvc | `com.devpilot.e2e` | `integration` / `integrationTest` | 예 |
 | AI eval | 실제 모델 품질 (`17-ai-integration.md` §12) | JUnit + `RestClient`(실제 DeepSeek 호출) | `backend/src/evalTest/java` | — / `aiEval` | **아니오** (수동 workflow) |
 | Flutter unit | controller(Notifier), repository 매핑, 오류 매핑, JSON round-trip | `flutter_test`, `ProviderContainer` | `app/test/` (lib mirror) | — / `flutter test` | 예 |
 | Flutter widget | SCR-TODAY, SCR-REVIEW-SESSION 등 화면 상태 | `flutter_test`, `WidgetTester` | `app/test/features/**/presentation/` | — / `flutter test` | 예 |
@@ -43,12 +43,12 @@
 | Spring Boot Test | `spring-boot-starter-test` | slice 애노테이션 패키지는 Boot 4에서 모듈별로 나뉘었다 — import 경로 확인 |
 | spring-security-test | BOM | `jwt()` post-processor, `SecurityMockMvcRequestPostProcessors` |
 | Testcontainers | BOM (2.x, 확인) | **`postgres:16`** 이미지(개발·운영 DB와 같은 major, `18` §1.1), `@ServiceConnection`. 컨테이너는 JVM당 1개(singleton). 로컬 Docker가 없으면 서버 Docker를 SSH 터널로 쓴다(`18` §3.1: `DOCKER_HOST`, `TESTCONTAINERS_HOST_OVERRIDE`) |
-| Awaitility | BOM | 비동기 결과 대기. `Thread.sleep` 대신 사용, 기본 최대 10초 |
+| Awaitility | `spring-boot-starter-test` 전이 의존성 | 비동기 결과 대기. `Thread.sleep` 대신 사용, 기본 최대 10초. **`libs.versions.toml`이나 `build.gradle.kts`에 따로 선언하지 않는다** — Boot test starter가 가져온다 |
 | `TestJwksServer` | JDK `com.sun.net.httpserver.HttpServer` (추가 의존성 없음) | 로컬 EC P-256 키의 JWKS 제공. JWKS 제공에는 MockWebServer·WireMock을 쓰지 않는다. DeepSeek 요청 검사(`DeepSeekAiProviderRequestTest`)는 spring-test의 `MockRestServiceServer`를 쓴다(추가 의존성 없음, `17-ai-integration.md` §12.1). WireMock·MockWebServer는 쓰지 않는다 |
 | Nimbus JOSE + JWT | `spring-security-oauth2-jose` 전이 의존성 | 테스트 토큰 서명 (`TestJwtFactory`) |
 | ArchUnit | `archunit-junit5` 1.x 최신 (확인) | ARCH 규칙 |
 | JaCoCo | Java 25 지원 버전 (확인) | §15 |
-| `RestTestClient` | Spring Framework 7 `spring-test` | E2E HTTP 호출 (확인). 사용할 수 없으면 `TestRestTemplate` |
+| MockMvc | `spring-boot-starter-test` (`@AutoConfigureMockMvc`) | slice·통합·E2E 흐름의 endpoint 호출. E2E도 실제 포트를 띄우지 않으므로 `RestTestClient`·`TestRestTemplate`은 쓰지 않는다 |
 | Flutter test | `flutter_test`, `integration_test` (SDK 내장) | FVM 고정 버전 |
 | k6 | 최신 안정판 (로컬 설치) | 선택 실행 성능 스모크 |
 
@@ -121,6 +121,7 @@ public class PostgresTestcontainersConfig {
 @Retention(RetentionPolicy.RUNTIME)
 @Tag("integration")
 @SpringBootTest
+@AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Import({PostgresTestcontainersConfig.class, TestClockConfig.class, TestJwksConfig.class, FakeAiConfig.class})
 public @interface IntegrationTest {}
@@ -128,7 +129,7 @@ public @interface IntegrationTest {}
 
 `FakeAiConfig`의 `FakeAiProvider` bean에는 main과 같은 `@ConditionalOnProperty("devpilot.ai.provider", havingValue = "fake")`를 붙인다. 그래서 provider를 덮어쓰는 테스트(E2E-07의 `disabled`)에서는 등록되지 않고 `DisabledAiProvider`가 선택된다.
 
-`@ApiFlowTest`(E2E, `RANDOM_PORT` 추가), `@UnitTest`(`@Tag("unit")`)도 같은 방식으로 `com.devpilot.testsupport`에 둔다. 테스트마다 `@MockitoBean`이나 `@TestPropertySource`를 추가하면 context 캐시가 깨지므로, 통합 테스트에서는 **AI provider 설정 변경(E2E-07) 외에 추가하지 않는다.**
+`@UnitTest`(`@Tag("unit")`)도 같은 방식으로 `com.devpilot.testsupport`에 둔다. **E2E 흐름(§11)도 같은 `@IntegrationTest`를 쓴다** — 별도의 E2E 메타 애노테이션을 두지 않는다. `@AutoConfigureMockMvc`가 이 애노테이션에 들어 있어 흐름 테스트가 MockMvc로 endpoint를 순서대로 호출하고, 같은 Spring context를 나머지 통합 테스트와 공유한다(서버 포트를 띄우지 않는다). 테스트마다 `@MockitoBean`이나 `@TestPropertySource`를 추가하면 context 캐시가 깨지므로, 통합 테스트에서는 **AI provider 설정 변경(E2E-07) 외에 추가하지 않는다.**
 
 ### 3.4 테스트 코드 규칙 (ArchUnit, `TestCodeRulesArchTest`)
 
@@ -206,7 +207,9 @@ V10,10,GOOD,CORRECT,SELF_EXPLAIN,GOOD,,5,4
 | §5.3 | `06-05-task-proposal.yaml` (분기 6개(REDO·READ_CODE 포함) + comeback + 제안 분기 T-1~T-5, 학습 트랙 T-6~T-9. §5.3·§5.4) | `TaskProposalPolicyTest` | unit |
 | §5.10 RE-1~RE-3 | `06-05-redo-candidate.yaml` (RE-V1~RE-V11. §5.4) | `RedoTaskPolicyTest` | unit |
 | §5.10 RE-6~RE-8 | — (RE-V12~RE-V15. §5.4) | `TodayPlanServiceIntegrationTest` | integration |
-| §5.4–5.5, §5.7 | `06-05-planner-score.yaml` (6행) | `PlannerScoringTest` | unit |
+| §5.4–5.5, §5.7 | `06-05-planner-score.yaml` (6행 — `devpilot.planner.weights.stage-gap = 0`으로 돌린다. §5.7 공통 조건) | `PlannerScoringTest` | unit |
+| §5.11 | `06-05-learning-stage.yaml` (ST-V1~ST-V12) | `LearningStageEvaluatorTest` | unit |
+| §5.12 | `06-05-daily-tip.yaml` (TIP-V1~TIP-V11) | `DailyTipSelectorTest` | unit |
 | §5.5 comebackMode | `06-05-comeback-mode.csv` | `ComebackModePolicyTest` | unit |
 | §5.6 | `06-05-time-allocation.csv` (6행) | `TimeAllocatorTest` | unit |
 | §5.8 | `06-05-reasons.yaml` (최소 1개 보장, modifier 우선, 최대 3개) | `ReasonTemplatesTest` | unit |
@@ -223,6 +226,7 @@ V10,10,GOOD,CORRECT,SELF_EXPLAIN,GOOD,,5,4
 | §8.2 | `06-08-rubric-coverage.yaml`의 outcome 컬럼 | `AttemptOutcomeCalculatorTest` | unit |
 | §8.3 | — | `SubmissionEvaluationTaskIntegrationTest` | integration |
 | §9.1–9.2 | `06-09-hint-ladder.csv` (9행 — HL-9 재현 잠금 3행 포함) | `HintLadderPolicyTest` | unit |
+| §9.6 | `06-09-vague-reference.yaml` (VR-V1~VR-V10) | `VagueReferenceCounterTest` | unit |
 | §9.5 PN-1~PN-4 | — (유형별 필수·금지 조합) | `SideProjectNoteServiceIntegrationTest` | integration |
 | §9.3 | `06-09-discovered-by.csv` | `DiscoveredByResolverTest` | unit |
 | §9.4 | — (findingType × discoveredBy × skill 유무 조합, 같은 concept_key 재사용) | `CoachFindingServiceIntegrationTest` | integration |
@@ -268,8 +272,8 @@ V10,10,GOOD,CORRECT,SELF_EXPLAIN,GOOD,,5,4
 
 | # | 요청 | 기대 |
 |---|---|---|
-| RX-1 | `newTarget` = 현재 그 축 target | 400 `VALIDATION_FAILED`, field error `TARGET_NOT_RAISED` |
-| RX-2 | `newTarget` = 6 | 400 `TARGET_NOT_RAISED` |
+| RX-1 | `newTarget` = 현재 그 축 target (또는 더 낮음) | 400 `VALIDATION_FAILED`, field error `acceptedTargetRaises[i].newTarget` → `TARGET_NOT_RAISED` (도메인 검사, `05` §1.2.3) |
+| RX-2 | `newTarget` = 6 | 400 `VALIDATION_FAILED`, field error `acceptedTargetRaises[i].newTarget` → **`Max`**. `TargetRaiseInput.newTarget`의 `@Max(5)`가 도메인 검사보다 먼저 걸린다(`05` §1.2.3 Bean Validation code, §1.4.3 순서 9) |
 | RX-3 | 같은 `(skillCode, axis)`를 `acceptedTargetReductions`와 `acceptedTargetRaises`에 동시에 | 400 `MUTUALLY_EXCLUSIVE` |
 | RX-4 | 같은 skill을 `acceptedDeferrals`와 `acceptedTargetRaises`에 동시에 | 400 `MUTUALLY_EXCLUSIVE` |
 | RX-5 | `acceptedTargetRaises` 안에 같은 `(skillCode, axis)` 2개 | 400 `DUPLICATE_VALUE` |
@@ -279,7 +283,7 @@ V10,10,GOOD,CORRECT,SELF_EXPLAIN,GOOD,,5,4
 
 - S1 빌드(최소 구현)에서는 `acceptedTargetRaises`가 비어 있지 않으면 400 `VALUE_NOT_ALLOWED`다(`05` §7.8). 이 케이스는 S2에서 RX-1~RX-8로 바꾼다.
 
-**`TaskProposalPolicyTest` — READ_CODE (AC-28, S3).** `06` §5.3의 제안 분기 표 T-1~T-5를 `06-05-task-proposal.yaml`에 그대로 넣는다(T-1 KNOWLEDGE 0 → READING, T-2 → READ_CODE 15분·difficulty 2, T-3 AI `DISABLED` → READING, T-4 reading 소진 → PROJECT_TASK, T-5 key ASC로 `READ.RESTBUCKS.AGGREGATE.001`). 같은 클래스의 추가 케이스:
+**`TaskProposalPolicyTest` — READ_CODE (AC-28, S3).** `06` §5.3의 제안 분기 표 T-1~T-5를 `06-05-task-proposal.yaml`에 그대로 넣는다(T-1 KNOWLEDGE 0 → READING, T-2 → READ_CODE 15분·difficulty 2, T-3 AI `DISABLED` → READING, T-4 reading 소진 → PROJECT_TASK, T-5 key ASC로 `READ.MODULAR_MONOLITH.SECURITY_CONFIG.001` — restbucks는 2026-09-19 소스 점검에서 전부 은퇴했다). 같은 클래스의 추가 케이스:
 
 - reading 선택: 사용자가 `COMPLETED`한 `READ_CODE` task의 key는 제외, 최근 14 plan-day 안에 제안된 key는 제외(14 plan-day 경계는 CHALLENGE의 "최근 14 plan-day" 제외와 같은 해석), 후보가 비면 3번 분기로 내려간다.
 - `aiStatus = BALANCE_EXHAUSTED`도 `DISABLED`와 같게 READ_CODE를 막는다(`17` §3.10).
@@ -500,7 +504,7 @@ DB 제약 자체는 `InvariantConstraintIntegrationTest`에서 JDBC로 직접 �
 
 ### 9.1 구조
 
-- `AuthorizationIsolationTest`(`@ApiFlowTest`)는 **endpoint catalog 하나를 입력으로 하는 파라미터화 테스트**다.
+- `AuthorizationIsolationTest`(`@IntegrationTest`)는 **endpoint catalog 하나를 입력으로 하는 파라미터화 테스트**다.
 - catalog: `com.devpilot.security.UserOwnedEndpoints` — `record EndpointCase(String id, HttpMethod method, String pathTemplate, Kind kind, BiFunction<Owner, TestApi, Map<String, String>> pathVariables, Function<Owner, Object> body, String expectedNotFoundCode)`.
 - `@BeforeAll`: 사용자 A(`TestUsers.owner()`)가 모든 리소스를 가진 상태를 API로 만든다(온보딩(사이드 프로젝트 포함), today(READ_CODE task 1개 포함), 세션, seed review 답변, 수동 카드, 러버덕 세션 2개(`COMPLETED` 1개, 턴 1개가 있는 `IN_PROGRESS` 1개), AI 생성 challenge + attempt + 제출 평가 완료, coach review 완료 + finding, evidence, weekly review, 요구사항 문서 — 해당 endpoint가 생기는 단계 전에는(예: 로드맵 비교는 S7) case를 catalog에 넣지 않는다).
 - 사용자 B(`TestUsers.invited()`)는 온보딩만 한다. 사용자 C는 `TestUsers.stranger()`.
@@ -773,10 +777,10 @@ DB 제약 자체는 `InvariantConstraintIntegrationTest`에서 JDBC로 직접 �
 
 | 테스트 | 계층 | 확인 |
 |---|---|---|
-| `ContentValidatorTest` | unit | `19` §4.1 CV-80~CV-87 각각 1케이스 이상. 오류 주입 목록은 `19` §4.3 표(`repo` 미실재 → CV-84, `path`의 `..`·내림차순 `lines` → CV-85 2건, 양수 아닌 `lines` → CV-85, 없는 skill code·40자 미만 `question` → CV-86, key 중복 → CV-83, `pinnedCommit: null` → CV-82 WARN). 은퇴 규칙(`19` §8.2): `retired: true`인데 key가 `retired.readingKeys`에 없음 → CV-83, `retired.readingKeys`에 있는데 reading이 지워짐 → CV-83, 은퇴하지 않은 reading의 key가 `retired.readingKeys`에 있음 → CV-83. 은퇴한 reading만 남은 저장소는 CV-87 WARN 없음 |
+| `ContentValidatorTest` | unit | `19` §4.1 CV-80~CV-87(코드 읽기)·CV-62(시간 제한)·CV-88~CV-89(`whyItMatters`)·CV-90~CV-96(오늘의 팁)·CV-100~CV-106(용어)·CV-110~CV-113(과제 체크리스트) 각각 1케이스 이상. 오류 주입 목록은 `19` §4.3 표(`repo` 미실재 → CV-84, `path`의 `..`·내림차순 `lines` → CV-85 2건, 양수 아닌 `lines` → CV-85, 없는 skill code·40자 미만 `question` → CV-86, key 중복 → CV-83, `pinnedCommit: null` → CV-82 WARN). 은퇴 규칙(`19` §8.2): `retired: true`인데 key가 `retired.readingKeys`에 없음 → CV-83, `retired.readingKeys`에 있는데 reading이 지워짐 → CV-83, 은퇴하지 않은 reading의 key가 `retired.readingKeys`에 있음 → CV-83. 은퇴한 reading만 남은 저장소는 CV-87 WARN 없음 |
 | `CuratedReadingRegistryTest` | unit | 테스트 콘텐츠 적재, key 조회, 없는 key → empty, 비활성 skill code는 `skills`에서 뺀다(`05` §19.7). `retired: true` reading도 key로 조회되고 `retired = true`다. 제안 후보 목록에는 없다(`06` §5.3) |
 | `ReadingControllerTest` | web slice | `readingKey` 패턴 위반 → 400 `VALIDATION_FAILED`(field `readingKey`, `Pattern`), 형식은 맞지만 없는 key → 404 `RESOURCE_NOT_FOUND`, 토큰 없음 → 401. **응답 JSON의 필드 집합이 `CuratedReadingView`·`CuratedRepoView` 정의와 정확히 같다 — 코드 본문을 담을 필드가 없다.** `startLine ≤ endLine`, `pinnedCommit`·`cloneHint` 포함 |
-| `NoOutboundFetchTest` | integration (`@ApiFlowTest`) | `OutboundRequestRecorder`(§4.1)를 설치한 상태에서 `GET /readings/{key}`, `POST /side-projects`·`PATCH /side-projects/{id}`(`repoUrl = https://repo.example.invalid/…`), `POST /onboarding`(`sideProject.repoUrl` 포함), `CODE_READING` 러버덕 시작 + 턴 1개를 호출 → `nonLoopbackRequests()`가 **0건**. 정적 보장은 ArchUnit ARCH-19(HTTP 클라이언트는 `integration.ai.deepseek`에만) |
+| `NoOutboundFetchTest` | integration (`@IntegrationTest`) | `OutboundRequestRecorder`(§4.1)를 설치한 상태에서 `GET /readings/{key}`, `POST /side-projects`·`PATCH /side-projects/{id}`(`repoUrl = https://repo.example.invalid/…`), `POST /onboarding`(`sideProject.repoUrl` 포함), `CODE_READING` 러버덕 시작 + 턴 1개를 호출 → `nonLoopbackRequests()`가 **0건**. 정적 보장은 ArchUnit ARCH-19(HTTP 클라이언트는 `integration.ai.deepseek`에만) |
 | `SideProjectServiceIntegrationTest` | integration | 아래 SP 표 |
 | `OnboardingServiceIntegrationTest` (AC-11 확장) | integration | `sideProject` 있음 → `side_project` 1행 `ACTIVE` + 응답 `sideProject` / `null` → 행 없음·응답 `null`, 이후 `POST /today/generate`에서 PROJECT_TASK 없음(SP-1) / `sideProject.repoUrl` 형식 오류 → 400 `URL`, 온보딩 전체 롤백(`onboarding_completed_at` null 유지) / `runDiagnostic = true` + `selfAssessments` 비어 있지 않음 → 400 `MUTUALLY_EXCLUSIVE` / `runDiagnostic = false` + 빈 목록 → 400 `ONE_OF_REQUIRED` / `runDiagnostic = true` → 모든 `self_assessed_level = null`, `suggestedDiagnostics` ≤ 5개(category당 1개) |
 | `TodayPlanServiceIntegrationTest` (RC-1) | integration | READ_CODE task `IN_PROGRESS → COMPLETED`: 그 task를 대상으로 한 러버덕 세션이 없음 → 409 `INVALID_STATE_TRANSITION` / `ABANDONED` 세션만 있음 → 409 / 다른 task 대상 `COMPLETED` 세션만 있음 → 409 / `COMPLETED` 세션 1개(정리 실패로 `summarySkippedReason`이 있어도) → 200. 다른 task 유형의 완료는 러버덕과 무관. `CODE_READING` 세션 `complete`만으로는 task 상태가 바뀌지 않는다(`05` §9.8 7번). **읽기 평가** `readingFeedback`(`05` §8.4): READ_CODE `COMPLETED` + `HELPFUL` → 200, `reading_feedback = 'HELPFUL'` / 생략 → 200, `reading_feedback = null` / `status = DEFERRED` + `readingFeedback` → 400 `VALIDATION_FAILED`(`VALUE_NOT_ALLOWED`, field `readingFeedback`), 상태 변화 없음 / `EXPLAIN` task `COMPLETED` + `readingFeedback` → 400 같은 코드 / `readingFeedback = "GREAT"` → 400 `UNKNOWN_ENUM_VALUE` / RC-1 미충족 + `readingFeedback` → 409 `INVALID_STATE_TRANSITION`(평가 저장 없음). 평가 저장 전후로 skill state·learning event·planner 입력(`score_breakdown`)이 같다 |
@@ -800,7 +804,7 @@ DB 제약 자체는 `InvariantConstraintIntegrationTest`에서 JDBC로 직접 �
 ---
 ## 11. API E2E flows
 
-- 실행 환경: `@ApiFlowTest`(`RANDOM_PORT`) + Testcontainers + `TestJwksServer` + `FakeAiProvider` + `MutableClock`. 비동기 task는 실제 `aiTaskExecutor`에서 실행되고 Awaitility로 기다린다(최대 10초, 간격 100ms).
+- 실행 환경: `@IntegrationTest`(§3.3 — `@SpringBootTest` + `@AutoConfigureMockMvc`) + Testcontainers + `TestJwksServer` + `FakeAiProvider` + `MutableClock`. **MockMvc로 endpoint를 순서대로 호출한다** — 서버 포트를 띄우지 않으므로 나머지 통합 테스트와 context를 공유한다. 비동기 task는 실제 `aiTaskExecutor`에서 실행되고 Awaitility로 기다린다(최대 10초, 간격 100ms). Awaitility는 `spring-boot-starter-test`가 전이로 가져온다(§2).
 - 공통 시작 시각: `2026-10-05T10:00:00Z` (KST 19:00, plan-day `2026-10-05`, `dayStartHour = 4`).
 - 모든 POST는 새 `Idempotency-Key`(E2E-06 제외). 응답 `status`, `code`, 핵심 필드와 DB 상태(사용자 범위 SQL)를 함께 확인한다.
 - 성공 응답 status(200/201/202/204)는 `05-api-spec.md`의 endpoint 정의를 따른다. 아래 표에 적은 status는 `05-api-spec.md`에 명시된 것만이다.
@@ -840,7 +844,7 @@ DB 제약 자체는 `InvariantConstraintIntegrationTest`에서 JDBC로 직접 �
 
 ### E2E-03 Challenge → hint → 제출 → 비동기 평가 → 복습 항목 → skill 변화 (`ChallengeAttemptFlowTest`, AC-04, AC-16, AC-09)
 
-전제: 테스트 seed challenge C (`VALIDATED`, difficulty 2, skill S 1개, `hints_json` 1~3단계, rubric R1 4000 IMPLEMENTATION / R2 4000 EXPLANATION / R3 2000 IMPLEMENTATION).
+전제: 테스트 seed challenge C (`VALIDATED`, difficulty 2, skill S 1개, `hints_json` 1~3단계, rubric **R1 5000 IMPLEMENTATION / R2 5000 EXPLANATION** — `src/test/resources/content/challenges`의 `PRACTICE.SPRING.TRANSACTION.L2.001`). `CHALLENGE_EVALUATE` fixture는 `default`(R1만 met), `all-met`, `none-met`, `timeout`이다(§4.1, `17` §12.2).
 
 | # | 요청 | 기대 |
 |---|---|---|
@@ -850,8 +854,8 @@ DB 제약 자체는 `InvariantConstraintIntegrationTest`에서 JDBC로 직접 �
 | 4 | `POST /challenge-attempts/{A}/self-explanation` `{text}` | `SELF_EXPLANATION_SUBMITTED`, E 0→1 |
 | 5 | `POST …/hints` `{requestedLevel: CONCEPT_HINT}` | 내용 = `hints_json.CONCEPT_HINT`, `maxHintLevel = CONCEPT_HINT`, `HINT_DISCLOSED.skippedLevels = [QUESTION_ONLY]`, AI 호출 0 |
 | 6 | `POST …/hints` `{requestedLevel: QUESTION_ONLY}` | CONCEPT_HINT 내용 반환, AI 호출 0, `hint_disclosure` 1행 유지 (HL-1) |
-| 7 | `fakeAiProvider.use(CHALLENGE_EVALUATE, "r1-met-only")` → `POST …/submissions` `{code, language: JAVA, answerText}` | 202, submission `PENDING`, `CHALLENGE_SUBMITTED`, I 0→1 |
-| 8 | Awaitility: `GET /challenge-attempts/{A}` | submission `COMPLETED`, `evaluatedOutcome = PARTIAL`(coverage 4000), attempt `EVALUATED`, `outcome = PARTIAL`, `rubricCoverageBp = 4000`, `explanationCoverageBp = 0` |
+| 7 | `fakeAiProvider.use(CHALLENGE_EVALUATE, "default")` → `POST …/submissions` `{code, language: JAVA, answerText}` | 202, submission `PENDING`, `CHALLENGE_SUBMITTED`, I 0→1 |
+| 8 | Awaitility: `GET /challenge-attempts/{A}` | submission `COMPLETED`, `evaluatedOutcome = PARTIAL`(coverage **5000** — R1만 met), attempt `EVALUATED`, `outcome = PARTIAL`, `rubricCoverageBp = 5000`, `explanationCoverageBp = 0`(R2가 유일한 EXPLANATION 항목이고 unmet) |
 | 9 | `GET /challenges/{C}` | 이제 `rubric`, `expectedConcepts` 포함 |
 | 10 | DB `review_item` | `concept_key = CHALLENGE:{C}`, `review_type = EXPLAIN`, `source_type = CHALLENGE_ATTEMPT`, `due_at = 2026-10-05T19:00:00Z` |
 | 11 | DB `skill_state_change` | S: K 0→1 `K1_ANY_EVENT`, E 0→1 `E1_ANY_EXPLANATION`, I 0→1 `I1_ATTEMPTED` 3행만 (E2는 coverage 0이라 없음) |
@@ -886,8 +890,8 @@ fixture `coach-review/two-findings`: F1(`RESOURCE_LIFECYCLE`, `BUG`, `mentionedB
 
 | # | 요청 | 기대 |
 |---|---|---|
-| 1 | 온보딩 완료, 활성 plan P1(`planVersion 1`) | — |
-| 2 | `POST /plans/{P1}/replan/preview` (**`Idempotency-Key` 없음**) — MUST milestone 기간을 줄여 risk HIGH가 되는 편집안 | 200, `riskLevel = HIGH`, `deferSuggestions` 1개 이상, `riskAfterSuggestions` 존재. DB plan 1행 유지 |
+| 1 | 온보딩 완료, 활성 plan P1(`planVersion 1`). **목표일을 가깝게 잡아** 시작부터 risk HIGH인 상태로 둔다 — `effective < requiredMust ≤ floorDiv(effective × 12_500, 10_000)`(`06` §4.3) | — |
+| 2 | `POST /plans/{P1}/replan/preview` (**`Idempotency-Key` 없음**) — milestone 구성을 바꾸는 편집안 | 200, `riskLevel = HIGH`, `deferSuggestions` 1개 이상, `riskAfterSuggestions` 존재. DB plan 1행 유지 |
 | 3 | `POST /plans/{P1}/replan` `{version, reason, milestones, acceptedDeferrals: [첫 제안 skill]}` | 새 plan P2 `planVersion = 2`, `supersedesPlanId = P1` |
 | 4 | `GET /plans/active` / `GET /plans/{P1}` / `GET /plans` | P2 / `SUPERSEDED` + `supersededAt` / 2개 |
 | 5 | DB | P2 `plan_skill_target`에서 수락한 skill `deferred = true`, `adjustment = DEFERRED`; `PLAN_REPLANNED` 이벤트 `{fromVersion: 1, toVersion: 2}`; 감사 이벤트 `PLAN_REPLANNED`; `plan_progress_snapshot(P2, 2026-10-05)` |
@@ -897,6 +901,8 @@ fixture `coach-review/two-findings`: F1(`RESOURCE_LIFECYCLE`, `BUG`, `mentionedB
 | 8a | `POST /plans/{P2}/replan` 같은 skill을 `acceptedDeferrals`와 `restoredDeferrals`에 동시에 | 400 `VALIDATION_FAILED`, 새 plan 없음 |
 | 8b | `POST /plans/{P2}/replan` `{version, reason, milestones, restoredDeferrals: [3번에서 defer한 skill]}` | P3 `planVersion = 3`, 해당 skill `deferred = false`, `adjustment = USER_EDITED` (`06` §11.2) |
 | 9 | 동시 replan은 `ReplanConcurrencyIntegrationTest`(§8.2) | — |
+
+- risk는 **milestone 기간이 아니라** MUST `plan_skill_target`의 `requiredMust`와 목표일까지의 `effective` 예산으로 계산한다(`06` §4.1~§4.3). milestone을 늘리거나 줄여도 risk는 그대로다 — 그래서 이 흐름은 1번에서 목표일로 risk를 만들고, 2번에서는 편집안이 제안을 만드는지만 본다.
 
 ### E2E-06 Idempotency (`IdempotencyTest`, AC-23)
 
@@ -917,7 +923,7 @@ fixture `coach-review/two-findings`: F1(`RESOURCE_LIFECYCLE`, `BUG`, `mentionedB
 
 ### E2E-07 AI 비활성 (`AiDisabledFlowTest`, AC-12)
 
-`@ApiFlowTest` + `@TestPropertySource(properties = "devpilot.ai.provider=disabled")` (이 테스트 전용 context). AI를 쓸 수 없을 때 자기채점 같은 대체 경로는 없다(`17-ai-integration.md` §3.10).
+`@IntegrationTest` + `@TestPropertySource(properties = "devpilot.ai.provider=disabled")` (이 테스트 전용 context). AI를 쓸 수 없을 때 자기채점 같은 대체 경로는 없다(`17-ai-integration.md` §3.10).
 
 | # | 요청 | 기대 |
 |---|---|---|
@@ -1171,7 +1177,7 @@ export const options = {
 | 규칙 | 내용 |
 |---|---|
 | 정의 | 코드 변경 없이 같은 커밋에서 통과와 실패가 모두 나온 테스트 |
-| 예방 | 시간은 `MutableClock`, 대기는 Awaitility(`Thread.sleep` 금지, TEST-01), 사용자 데이터는 테스트마다 새 사용자(§4.2), 순서 의존 금지, 랜덤은 고정 seed, 포트는 `RANDOM_PORT`, 외부 네트워크 금지 |
+| 예방 | 시간은 `MutableClock`, 대기는 Awaitility(`Thread.sleep` 금지, TEST-01), 사용자 데이터는 테스트마다 새 사용자(§4.2), 순서 의존 금지, 랜덤은 고정 seed, 고정 포트를 쓰는 테스트 서버 금지(`TestJwksServer`는 포트 0으로 띄운다), 외부 네트워크 금지 |
 | 재시도 | 자동 재시도 plugin·애노테이션 금지(TEST-05). CI "Re-run failed jobs"로 통과시킨 경우에도 flaky로 기록한다 |
 | 발견 시 | GitHub issue(label `flaky`, 실패 로그·커밋 SHA) 생성 → **2 작업일 안에** 원인 수정 |
 | 격리 | 2 작업일 안에 못 고치면 `@Disabled("flaky: #<issue>")`. 동시에 격리된 테스트는 최대 1개(TEST-03). 2개째가 필요하면 새 기능 작업을 멈추고 먼저 고친다 |

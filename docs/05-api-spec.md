@@ -34,7 +34,7 @@ Java 패키지: request/response record는 각 모듈의 `presentation` 패키�
 | Content-Type | 요청·응답 `application/json` (UTF-8). 오류는 `application/problem+json`. 예외: ICS(`text/calendar`), Markdown export(`text/markdown`) |
 | JSON 이름 | lowerCamelCase. 약어도 camelCase (`sourceUrl`, `aiMeta`) |
 | 알 수 없는 속성 | **거부**한다. `spring.jackson.deserialization.fail-on-unknown-properties=true` → 400 `MALFORMED_REQUEST` |
-| primitive 필드 | 요청 JSON에서 생략하면 Java 기본값(`false`, `0`)이 들어가고 그 뒤 Bean Validation을 적용한다. primitive 필드에 명시적 `null`을 보내면 400 `MALFORMED_REQUEST` (`fail-on-null-for-primitives=true`) |
+| 기본형 필드 | `fail-on-null-for-primitives=true`에서는 record의 **primitive 필드를 생략하거나 `null`로 보내면 400** `MALFORMED_REQUEST`다(Java 기본값을 넣지 않는다). 그래서 **생략을 허용하는 값은 래퍼 타입**(`Integer`, `Boolean`)으로 받는다: 없어도 되는 flag(`force`, `wasVariant`, `evaluate`)는 생략하거나 `null`이면 `false`이고, 반드시 있어야 하는 값(`availableMinutes`, `responseSeconds`)에는 `@NotNull`을 붙여 생략하면 400 `VALIDATION_FAILED`(code `NotNull`)다. primitive로 남아 있는 필드(`skipped`, `acknowledgeEvidenceImpact`, `giveUp`)는 클라이언트가 **항상 보낸다** |
 | null 표현 | 응답은 null 필드를 생략하지 않는다(`spring.jackson.default-property-inclusion=always`). 목록 필드는 비어 있으면 `[]`이고 `null`이 아니다 |
 | PATCH 의미 | PATCH 요청의 nullable 필드가 `null`(또는 생략)이면 "변경하지 않음"이다. 값을 지우는 방법은 endpoint별로 적는다 |
 | ID | UUID 문자열 (소문자, 하이픈 포함). path의 UUID 파싱 실패는 400 `VALIDATION_FAILED` (field = path 변수 이름, code `TYPE_MISMATCH`) |
@@ -118,7 +118,7 @@ Bean Validation code: `NotNull`, `NotBlank`, `NotEmpty`, `Size`, `Min`, `Max`, `
 | `ONE_OF_REQUIRED` | 둘 중 하나 이상 필요 | submission(answerText/code), self-explanation(text/skipped) |
 | `MUTUALLY_EXCLUSIVE` | 동시에 줄 수 없음 | self-explanation(text와 skipped=true) |
 | `LANGUAGE_REQUIRED` | `code`가 있으면 `language` 필수 | submission |
-| `VALUE_NOT_ALLOWED` | 값은 유효하지만 이 endpoint에서 허용하지 않음 | hint level, task/finding status, evidence draft의 원천 이벤트 종류, 유형에 맞지 않는 프로젝트 기록 항목(§19.8), `READ_CODE`가 아닌 task의 `readingFeedback`, `REDO`가 아닌 task의 `redoWithoutAi` |
+| `VALUE_NOT_ALLOWED` | 값은 유효하지만 이 endpoint에서 허용하지 않음 | hint level, task/finding status, evidence draft의 원천 이벤트 종류, 유형에 맞지 않는 프로젝트 기록 항목(§19.8), `READ_CODE`가 아닌 task의 `readingFeedback`, `REDO`가 아닌 task의 `redoWithoutAi`, `EXPLAIN`·`READ_CODE`가 아닌 task의 `explainedToPerson`·`explainedNote` |
 | `VALUE_REQUIRED` | 이 상황에서 반드시 있어야 하는 값이 없음 | `REDO` 과제 완료의 `redoWithoutAi`(§8.4), 유형에 필요한 프로젝트 기록 항목(§19.8) |
 | `REQUIRED_FOR_ACCEPT` | accept에 필요한 필드가 비어 있음 | evidence accept |
 | `ACTUAL_MINUTES_EXCEEDS_ELAPSED` | 실제 경과 시간 대비 과다 (§9.2) | session complete |
@@ -300,6 +300,7 @@ backend 자신은 이 endpoint를 호출하지 않는다(메모리의 공개키�
 | 정렬 | endpoint마다 고정 `(sortKey, id)`. 클라이언트가 정렬을 고르지 않는다 |
 | cursor 내용 | `CursorCodec`(`03-system-architecture.md` §3.1)이 JSON `{"v":1,"k":"<sortKey 문자열>","id":"<uuid>"}`를 base64url(패딩 없음)로 인코딩. `k`는 Instant면 ISO-8601, 날짜면 `yyyy-MM-dd`, 정수면 10진 문자열. (filter scope 해시 `f`는 2026-09-18 범위 축소로 제거 — 필터를 바꾸면 클라이언트가 cursor를 버린다) |
 | 불투명성 | 클라이언트는 cursor를 해석·생성하지 않는다 |
+| 콘텐츠 목록 | 팁·용어 목록(§20)은 DB 행이 아니라 콘텐츠라 UUID id가 없다. 이때 cursor의 `id`는 빈 문자열이고 비교는 `k`(= 콘텐츠 `key`, 유일하다)만으로 한다. 그 밖의 규칙은 같다 |
 | 오류 | base64url/JSON 디코딩 실패, `v ≠ 1`, `k` 타입 불일치 → 400 `INVALID_CURSOR` |
 | 다음 페이지 조건 | sortKey DESC 목록: `(sortKey, id) < (k, id)` / ASC 목록: `(sortKey, id) > (k, id)`. 서버는 `limit + 1`개를 읽어 다음 페이지 존재를 판단한다 |
 
@@ -443,7 +444,7 @@ AI 결과를 보여주는 응답에는 `aiMeta`(§2.4)를 넣는다. AI 결과�
 | `X-Trace-Id` | 요청(선택)·응답(항상) | §1.4.3 #1 |
 | `Idempotent-Replayed: true` | 응답 | 재생 응답 |
 | `Retry-After` | 응답 | 429 |
-| `Content-Disposition: attachment; filename="..."` | 응답 | `GET /me/export`, `GET /evidence/export` |
+| `Content-Disposition: attachment; filename="..."` | 응답 | `GET /me/export`, `GET /evidence/export`, `GET /side-projects/{id}/notes/export`(§19.13) |
 
 ### 1.11 Secret masking
 
@@ -457,6 +458,7 @@ AI 결과를 보여주는 응답에는 `aiMeta`(§2.4)를 넣는다. AI 결과�
 | `POST /challenge-attempts/{attemptId}/submissions` | `answerText`, `code` |
 | `POST /reviews/{reviewItemId}/answer` | `answerText` |
 | `POST /learning-sessions/{sessionId}/complete` | `selfReflection` |
+| `PATCH /today/tasks/{taskId}` | `explainedNote` (§8.4, I-24) |
 | `POST /rubber-duck/{sessionId}/turns` | `explanation` (RD-6, 원문은 남기지 않는다) |
 | `POST /requirement-docs` | `sourceText` |
 | `POST /review-items` | `prompt`, `expectedAnswer`, `rubric[]` 항목 |
@@ -714,7 +716,7 @@ public record UpdateMeRequest(
 | `plans[]` | array | `learning_plan` (`planVersion` ASC). 항목마다 `milestones[]`(+`skillCodes[]`), `skillTargets[]`, `snapshots[]`(`snapshotDate` ASC) |
 | `skillStates[]` | array | `user_skill_state` (`skillCode` ASC) |
 | `skillStateChanges[]` | array | `skill_state_change` (`changedAt` ASC) |
-| `dailyPlans[]` | array | `daily_plan` + `tasks[]`(`learning_task`, `sortOrder` ASC — `READ_CODE` 행은 `readingKey`·`readingFeedback` 포함(소스 점검 입력 `19` §8.5), `REDO` 행은 `redoSourceTaskId`·`redoWithoutAi` 포함) (`planDate` ASC) |
+| `dailyPlans[]` | array | `daily_plan` + `tasks[]`(`learning_task`, `sortOrder` ASC — `READ_CODE` 행은 `readingKey`·`readingFeedback` 포함(소스 점검 입력 `19` §8.5), `REDO` 행은 `redoSourceTaskId`·`redoWithoutAi` 포함, `EXPLAIN`·`READ_CODE` 행은 `explainedToPerson`·`explainedNote` 포함) (`planDate` ASC) |
 | `learningSessions[]` | array | `learning_session` (`startedAt` ASC) |
 | `learningEvents[]` | array | `learning_event` (`occurredAt` ASC). 무효화된 이벤트도 `invalidatedAt`과 함께 포함 |
 | `hintDisclosures[]` | array | `hint_disclosure` (`disclosedAt` ASC) |
@@ -729,6 +731,7 @@ public record UpdateMeRequest(
 | `requirementDocs[]` | array | `requirement_doc` + `requirements[]`(`sortOrder` ASC) (`createdAt` ASC). purge된 문서는 `sourceText: null` |
 | `sideProjects[]` | array | `side_project` + `notes[]`(`side_project_note`, `occurredOn` ASC·`id` ASC — 모든 텍스트는 마스킹본, §19.8) (`createdAt` ASC) |
 | `rubberDuckSessions[]` | array | `rubber_duck_session` + `turns[]`(`rubber_duck_turn`, `turnNo` ASC — `userText`는 마스킹본) (`startedAt` ASC) |
+| `dailyTips[]` | array | `user_daily_tip` (`shownOn` ASC, `tipKey` ASC). 팁 본문은 콘텐츠라 `tipKey`·`shownOn`·`feedback`만 있다(§20, ADR-041) |
 
 행 변환 규칙:
 - 컬럼 이름 snake_case → lowerCamelCase. 값 형식은 §1.1(Instant, date, 정수).
@@ -903,7 +906,7 @@ public record OnboardingRequest(
         @NotNull @Min(0) @Max(720) Integer weekendStudyMinutes,
         @NotNull @Valid LearningGoalInput learningGoal,             // 1단계: 무엇을(학습 트랙)·언제까지(목표일)
         @NotNull Boolean runDiagnostic,                             // 3단계: true = 짧은 진단, false = 자기평가 입력으로 대체
-        @NotNull @Size(max = 13) List<@NotNull @Valid SelfAssessmentInput> selfAssessments,  // runDiagnostic = true면 []
+        @NotNull @Size(max = 14) List<@NotNull @Valid SelfAssessmentInput> selfAssessments,  // SkillCategory 값 수. runDiagnostic = true면 []
         @Valid SideProjectInput sideProject,                        // null = 건너뛰기 (SP-1)
         @NotNull Boolean useTemplate) {}
 
@@ -1210,6 +1213,41 @@ public record EvidenceEventView(
 ```
 
 - 본인 이력만 반환한다. 변경이 없으면 `items: []`.
+
+### 6.4 `GET /skills/{skillId}` — skill 상세 (학습 단계 포함)
+
+| 항목 | 값 |
+|---|---|
+| operationId | `skillGet` |
+| 인증 / IK | Bearer / — |
+| path | `skillId`: UUID (catalog skill id, 비활성 포함 — §6.3과 같은 기준) |
+| 응답 | 200 `SkillDetailView` |
+| 오류 | 404 `RESOURCE_NOT_FOUND`(없는 skill) |
+| Sprint · 요구사항 | S3 · FR-06, BL-STG-01~02, AC-09 |
+
+```java
+public record SkillDetailView(
+        SkillRef skill,
+        String parentCode,                          // 최상위면 null
+        String description,                         // null 가능
+        String whyItMatters,                        // 이 기술을 왜 하는지 한 줄. 콘텐츠 값, 없으면 null
+        int minutesPerLevelStep,
+        List<String> prerequisiteCodes,             // code ASC
+        AxisLevels evidenceLevels,                  // user_skill_state *_level. 행이 없으면 전부 0
+        AxisLevels planningLevels,                  // 06 §7.5
+        SkillTargetView target,                     // 활성 plan의 plan_skill_target. 없으면 null (§6.2)
+        List<LearningStageView> learningStages) {}  // LearningStage 선언 순서 6칸, 항상 6개
+
+public record LearningStageView(
+        LearningStage stage,
+        boolean completed,
+        Instant completedAt) {}                     // 그 단계를 채운 가장 이른 기록의 시각. completed = false면 null
+```
+
+- `learningStages`는 **저장하지 않는다.** 요청 시점에 이미 있는 기록(과제 완료, 러버덕 세션, 복습 답변, 재현 과제)에서 결정적으로 계산한다(ADR-042, `06` §5.11). 단계 이름과 순서는 `04-domain-model-and-db.md` §3 `LearningStage`다.
+- `whyItMatters`는 DB 컬럼이 아니라 기술 트리 콘텐츠(`content/skill-tree*.yaml`)의 값이고, 기동 시 적재한 registry에서 읽는다(`19-content-spec.md`). 값이 없는 skill은 `null`이다.
+- 비활성 skill(`active = false`)도 조회된다. 지난 과제·복습 카드가 가리키는 skill을 계속 보여 주기 위해서다(§19.7 은퇴한 reading과 같은 기준).
+- `/skills/tree`(§6.1)와 `/skills/me`(§6.2)는 리터럴 경로이며 `/skills/{skillId}`보다 우선한다(§7의 `/plans/active`와 같은 방식).
 
 ---
 
@@ -1636,7 +1674,8 @@ public record TodayView(
         Instant generatedAt,
         MainTaskView mainTask,                  // 규칙 아래. 후보가 없으면 null
         ReviewTaskView reviewTask,              // REVIEW task가 없으면 null (due가 없거나 reviewMinutes = 0)
-        List<MainTaskView> earlierMainTasks) {} // mainTask를 뺀 같은 날의 다른 main task, sortOrder ASC
+        List<MainTaskView> earlierMainTasks,    // mainTask를 뺀 같은 날의 다른 main task, sortOrder ASC
+        TipExperimentView tipExperiment) {}     // WILL_TRY로 표시한 팁의 실험 후보 1건. 없으면 null (06 §5.12 TIP-6)
 
 public record MainTaskView(
         UUID id,
@@ -1652,15 +1691,30 @@ public record MainTaskView(
         Boolean redoWithoutAi,         // taskType = REDO이고 COMPLETED일 때만. 그 외 null (RE-6)
         String title,
         String description,            // null 가능
+        String whyItMatters,           // 이 기술을 왜 하는지 한 줄 (§6.4와 같은 콘텐츠 값). skill이 없거나 값이 없으면 null
+        ChecklistView checklist,       // 시작 전·끝내기 전 확인 목록. 맞는 목록이 없으면 null
         int estimatedMinutes,
         TaskStatus status,
         List<ReasonView> reasons,      // 1~3개 (06 §5.8)
+        Boolean explainedToPerson,     // taskType = EXPLAIN | READ_CODE이고 값이 있을 때만. 그 외 null (I-24)
+        String explainedNote,          // 〃 (마스킹본, ≤ 500자)
         Instant completedAt,
         long version) {}
 
 public record ReasonView(
         ReasonCode code,
         String text) {}
+
+public record ChecklistView(
+        String key,                    // content/checklists 의 key (예: "CHK.API.DESIGN")
+        List<String> before,           // 시작 전 확인 목록 3~5개
+        List<String> after) {}         // 끝내기 전 확인 목록 3~5개
+
+public record TipExperimentView(
+        String tipKey,                 // 05 §20의 팁. 자세한 내용은 GET /tips/today 또는 GET /tips에서 본다
+        String title,
+        String experiment,             // 5분 안에 재현하는 방법. 팁에 없으면 null
+        int estimatedMinutes) {}       // devpilot.tips.experiment-minutes (기본 25)
 
 public record ReviewTaskView(
         UUID id,
@@ -1699,6 +1753,10 @@ public record TaskStatusView(          // PATCH 응답
 
 `sideProjectId`·`readingKey` 저장 규칙: `PROJECT_TASK`는 생성 시점의 `ACTIVE` 사이드 프로젝트 중 `updated_at`이 가장 최근인 것 하나를 `learning_task.side_project_id`에 저장한다(SP-3, `06-learning-engine-rules.md` §5.3). `ACTIVE` 프로젝트가 없으면 `PROJECT_TASK`를 제안하지 않는다(SP-1). `READ_CODE`는 고른 reading의 key를 `learning_task.reading_key`에 저장한다(`CuratedReadingRegistry`, `19-content-spec.md` §3 `curated-repos.yaml`). 두 값은 **생성 시점에 고정**되고 조회 때 다시 계산하지 않는다(`reasons`와 같은 원칙). 프로젝트가 삭제되면 `side_project_id`는 `null`이 되고(§19.6) task는 그대로 남는다.
 
+`tipExperiment` 규칙: `WILL_TRY`로 표시한 팁(`user_daily_tip.feedback = WILL_TRY`) 중 `shown_on` DESC → `tip_key` ASC로 **하나만** 붙인다. 표시한 그날은 붙이지 않고 다음 plan-day부터 보인다. **`learning_task`를 만들지 않고 planner에도 들어가지 않는다** — 점수·제안·시간 배분과 무관한 표시용 후보다(`06` §5.12 TIP-6). 없으면 `null`이다.
+
+`whyItMatters`·`checklist` 규칙: 둘 다 **저장하지 않고 응답을 만들 때 콘텐츠에서 읽는다**(`reasons[].text`와 같은 방식이지만 값은 콘텐츠 최신본이다). `whyItMatters`는 task의 `skill_id`에 해당하는 기술 트리 값이다(§6.4). `checklist`는 `content/checklists/*.yaml` 중 `taskTypes`에 그 task의 `taskType`이 있고 `skillCodes`가 task의 skill과 겹치는 항목이며, 둘 이상이면 `key` ASC 첫 번째다. 맞는 항목이 없거나 task에 skill이 없으면 `null`이다(`19-content-spec.md`). 두 값은 `mainTask`와 `earlierMainTasks[]`에만 있다 — `reviewTask`는 skill이 없다.
+
 `learning_task.milestone_id` 저장 규칙: 선택된 skill이 오늘을 포함하는 milestone에 있으면 그 milestone(여러 개면 `end_date` ASC, `id` ASC 첫 번째), 아니면 다음 milestone(`06-learning-engine-rules.md` §5.2의 2번), 둘 다 아니면 null.
 
 ### 8.2 `POST /today/generate` — 오늘 계획 생성·재생성
@@ -1714,9 +1772,9 @@ public record TaskStatusView(          // PATCH 응답
 
 ```java
 public record TodayGenerateRequest(
-        @Min(5) @Max(720) int availableMinutes,
+        @NotNull @Min(5) @Max(720) Integer availableMinutes,   // 생략하면 400 VALIDATION_FAILED (§1.1)
         @NotNull EnergyLevel energyLevel,
-        boolean force) {}                    // 생략 시 false
+        Boolean force) {}                                      // 생략하거나 null이면 false
 ```
 
 ```json
@@ -1742,6 +1800,8 @@ public record TodayGenerateRequest(
     "challengeId": null,
     "title": "Spring Transaction 내 말로 설명하기",
     "description": "5문장 이내로 설명하고 예시를 하나 드세요.",
+    "whyItMatters": "트랜잭션 경계를 모르면 어디서 데이터가 어긋나는지 설명할 수 없다.",
+    "checklist": null,
     "estimatedMinutes": 15,
     "status": "PLANNED",
     "reasons": [
@@ -1749,11 +1809,16 @@ public record TodayGenerateRequest(
       { "code": "HIGH_PRACTICAL_IMPORTANCE", "text": "실무에서 중요도가 높은 기술" },
       { "code": "LARGE_SKILL_GAP", "text": "목표 수준과 차이가 큼 (구현 1/4)" }
     ],
+    "explainedToPerson": null,
+    "explainedNote": null,
     "completedAt": null,
     "version": 0
   },
   "reviewTask": { "id": "t0…", "estimatedMinutes": 5, "dueReviewCount": 3, "status": "PLANNED", "version": 0 },
-  "earlierMainTasks": []
+  "earlierMainTasks": [],
+  "tipExperiment": { "tipKey": "TIP.LOGGING.LEVELS.001", "title": "로그 레벨은 언제 무엇을 쓰나",
+                     "experiment": "레벨을 한 단계 올리고 같은 요청을 한 번 보내 어떤 줄이 사라지는지 본다.",
+                     "estimatedMinutes": 25 }
 }
 ```
 
@@ -1786,19 +1851,22 @@ public record TodayGenerateRequest(
 | 인증 / IK | Bearer / — |
 | 요청 | `TaskStatusPatchRequest` |
 | 응답 | 200 `TaskStatusView` |
-| 오류 | 400 `VALIDATION_FAILED`(`VALUE_NOT_ALLOWED` — field `readingFeedback`·`redoWithoutAi`, `VALUE_REQUIRED` — field `redoWithoutAi`), 400 `UNKNOWN_ENUM_VALUE`, 404 `RESOURCE_NOT_FOUND`, 409 `INVALID_STATE_TRANSITION`, 409 `CONCURRENT_MODIFICATION` |
-| Sprint · 요구사항 | S2 (`readingFeedback`은 S3, `redoWithoutAi`는 S4) · FR-07, FR-27, FR-28, AC-02, AC-28, AC-31 |
+| 오류 | 400 `VALIDATION_FAILED`(`VALUE_NOT_ALLOWED` — field `readingFeedback`·`redoWithoutAi`·`explainedToPerson`·`explainedNote`, `VALUE_REQUIRED` — field `redoWithoutAi`), 400 `UNKNOWN_ENUM_VALUE`, 404 `RESOURCE_NOT_FOUND`, 409 `INVALID_STATE_TRANSITION`, 409 `CONCURRENT_MODIFICATION`, 422 `SECRET_DETECTED_BLOCKED`(`explainedNote`) |
+| Sprint · 요구사항 | S2 (`readingFeedback`·`explainedToPerson`은 S3, `redoWithoutAi`는 S4) · FR-07, FR-27, FR-28, AC-02, AC-28, AC-31 |
 
 ```java
 public record TaskStatusPatchRequest(
         @NotNull TaskStatus status,
-        ReadingFeedback readingFeedback,   // 선택. READ_CODE 완료 때만: HELPFUL | TOO_HARD | BORING (04 §3)
-        Boolean redoWithoutAi,             // REDO 완료 때 필수. 그 밖에는 금지 (06 §5.10 RE-6)
+        ReadingFeedback readingFeedback,      // 선택. READ_CODE 완료 때만: HELPFUL | TOO_HARD | BORING (04 §3)
+        Boolean redoWithoutAi,                // REDO 완료 때 필수. 그 밖에는 금지 (06 §5.10 RE-6)
+        Boolean explainedToPerson,            // 선택. EXPLAIN | READ_CODE 완료 때만 (I-24)
+        @Size(max = 500) String explainedNote, // 선택. explainedToPerson = true일 때만
         @NotNull Long version) {}
 ```
 
 ```json
-{ "status": "COMPLETED", "readingFeedback": "HELPFUL", "redoWithoutAi": null, "version": 1 }
+{ "status": "COMPLETED", "readingFeedback": "HELPFUL", "redoWithoutAi": null,
+  "explainedToPerson": true, "explainedNote": "팀 동료에게 5분 동안 설명했고 전파 속성에서 막혔다.", "version": 1 }
 ```
 
 - 허용 전이는 `04-domain-model-and-db.md` §4.1 표의 PATCH 행뿐이다: `PLANNED → IN_PROGRESS`, `PLANNED → SKIPPED`, `IN_PROGRESS → COMPLETED`(`completed_at = now`), `IN_PROGRESS → DEFERRED`, `SKIPPED → PLANNED`. 같은 상태로의 변경을 포함해 그 외는 409 `INVALID_STATE_TRANSITION`.
@@ -1808,6 +1876,7 @@ public record TaskStatusPatchRequest(
 - **`READ_CODE` task의 `IN_PROGRESS → COMPLETED`**는 그 task를 대상으로 하는 `COMPLETED` 러버덕 세션(`targetType = CODE_READING`, `targetId = taskId`)이 **1개 이상** 있어야 한다(RC-1, `06-learning-engine-rules.md` §5.3). 없으면 409 `INVALID_STATE_TRANSITION`. 읽었다는 체크만으로는 완료가 아니다. `SKIPPED`·`DEFERRED`에는 이 조건이 없다. 러버덕 정리(§9.8)는 과제 상태를 바꾸지 않으므로 `READ_CODE` 과제도 이 PATCH로 완료한다.
 - **`readingFeedback`(읽기 평가, 선택)**: `READ_CODE` 과제를 `COMPLETED`로 바꾸는 요청에서만 받는다. 값이 있으면 같은 트랜잭션에서 `learning_task.reading_feedback`에 저장한다(`04` §3 `ReadingFeedback`, I-19). 생략하거나 `null`이면 저장하지 않는다(`null` 그대로). 그 밖의 요청(`status ≠ COMPLETED`, 또는 `READ_CODE`가 아닌 task)에 값이 있으면 400 `VALIDATION_FAILED`(field `readingFeedback`, code `VALUE_NOT_ALLOWED`)이고 아무것도 바꾸지 않는다. 검사 순서: 형식(enum) → 소유권(404) → 전이·RC-1(409) → `readingFeedback` 허용 여부(400). 평가는 learning event를 만들지 않고 레벨·planner·budget 규칙의 입력이 아니다(`06` §5.3). 사람이 하는 소스 점검(`19` §8.5)에서 export로 읽는다. 응답 `TaskStatusView`에는 넣지 않는다.
 - **`redoWithoutAi`(재현 결과, S4)**: `REDO` 과제를 `COMPLETED`로 바꾸는 요청에서는 **필수**다(RE-6, I-21). 없거나 `null`이면 400 `VALIDATION_FAILED`(field `redoWithoutAi`, code `VALUE_REQUIRED`)이고 아무것도 바꾸지 않는다. 그 밖의 요청(`status ≠ COMPLETED`, 또는 `REDO`가 아닌 task)에 값이 있으면 400 `VALIDATION_FAILED`(code `VALUE_NOT_ALLOWED`)다. 저장은 같은 트랜잭션에서 `learning_task.redo_without_ai`에 하고, 이어서 `REDO_COMPLETED` 이벤트를 task의 skill로 기록한다(`04` §6). `redoWithoutAi = false`면 같은 트랜잭션에서 복습 카드를 upsert한다(RE-7 — `concept_key = REDO:{sourceTaskId}`, `source_type = REDO_TASK`, due = 다음 plan-day 시작). 이 경로는 AI를 부르지 않는다. 검사 순서: 형식 → 소유권(404) → 전이·RC-1(409) → `readingFeedback`·`redoWithoutAi` 허용·필수 여부(400) → 저장·이벤트.
+- **`explainedToPerson`·`explainedNote`(설명 기록, S3)**: `EXPLAIN` 또는 `READ_CODE` 과제를 `COMPLETED`로 바꾸는 요청에서만 받는다(둘 다 선택). 값이 있으면 같은 트랜잭션에서 `learning_task.explained_to_person`·`explained_note`에 저장한다(I-24). 그 밖의 요청(`status ≠ COMPLETED`, 또는 두 유형이 아닌 task)에 값이 있으면 400 `VALIDATION_FAILED`(code `VALUE_NOT_ALLOWED`)이고 아무것도 바꾸지 않는다. `explainedNote`만 있고 `explainedToPerson`이 `true`가 아니면 같은 400이다 — 메모는 "다른 사람에게 설명했어요"에 붙는 한 줄이다(`02` 러버덕·설명 완료 화면). `explainedNote`는 저장 전에 마스킹한다(§1.11, 차단 시 422). 검사 순서는 `readingFeedback`·`redoWithoutAi`와 같은 단계(400)다. 응답 `TaskStatusView`에는 넣지 않는다 — 값은 `GET /today`의 `MainTaskView`(§8.1)에서 본다. `EXPLAIN` 과제를 `explainedToPerson = true`로 완료하면 그 skill의 `EXPLAIN` 학습 단계가 채워진다(§6.4, `06` §5.11). 학습 이벤트는 만들지 않는다.
 - `REDO` 과제를 `SKIPPED`·`DEFERRED`로 바꿀 때는 `redoWithoutAi`를 받지 않는다. `SKIPPED`는 RE-3의 **시도 1회**로 센다(`DEFERRED`는 아직 오늘 안 한 것이므로 세지 않는다 — `06` §5.10).
 - 이 요청은 learning session을 만들지 않는다. 클라이언트는 `IN_PROGRESS`로 바꾼 뒤 `POST /learning-sessions`(§9.1)를 호출한다.
 
@@ -2045,6 +2114,8 @@ public record RubberDuckTurnResponse(
         String question,                       // AI의 되묻는 질문 (17 §4.10 question)
         boolean suggestHint,                   // RD-3
         int remainingTurns,                    // max-turns − turnNo
+        int vagueReferenceCount,               // 이번 설명의 지시어 수 (06 §9.6). 저장하지 않는다
+        int vagueReferencePer100Words,         // 100어절당 비율, 정수(내림). 어절이 0이면 0
         AiMeta aiMeta,
         long version) {}                       // 갱신된 세션 version
 ```
@@ -2056,6 +2127,7 @@ public record RubberDuckTurnResponse(
 ```json
 { "turnNo": 1, "question": "조회만 한다고 하셨는데, 폼 제출을 처리하는 메서드는 어디에 규칙을 두고 있나요?",
   "suggestHint": false, "remainingTurns": 4,
+  "vagueReferenceCount": 2, "vagueReferencePer100Words": 5,
   "aiMeta": { "model": "deepseek-flash", "promptVersion": "rubber.duck@v1", "guardActions": [] }, "version": 1 }
 ```
 
@@ -2070,6 +2142,7 @@ public record RubberDuckTurnResponse(
 8. tx2 — 세션 `version`이 tx1과 다르면 409 `CONCURRENT_MODIFICATION`(§1.6). `rubber_duck_turn` INSERT(`turn_no = turn_count + 1`, `user_text` = 마스킹본, `ai_question` = `question`, `learner_stuck` = `RubberDuckPolicy.isDontKnow(설명 원문을 마스킹한 값)` — `06` §9.5 RD-3 규칙(문구 목록 + 길이), AI 출력이 아니다, `ai_call_id`), `turn_count += 1`.
 9. `suggestHint` = 이번 턴을 포함한 **마지막 `devpilot.rubberduck.stuck-turns-before-hint`(2)턴의 `learner_stuck`이 모두 true**(RD-3). `turn_count`가 그보다 적으면 항상 `false`.
 
+- **지시어 세기**: `vagueReferenceCount`·`vagueReferencePer100Words`는 **마스킹본 설명에서 응답을 만들 때 세고 저장하지 않는다**(`06` §9.6 — 세는 표현 목록과 어절 기준은 그 절이 기준이다). AI 출력이 아니고 서버의 결정적 계산이며, 규칙 입력이나 레벨 판정에 쓰지 않는다. 7단계가 실패해 턴을 저장하지 않으면 이 응답 자체가 없다. 비율이 `devpilot.rubberduck.vague-reference-warn-per-100`(기본 3) 이상이면 종료 정리(§9.8)의 빈틈에 "용어" 항목 1건이 더해진다.
 - `17-ai-integration.md` §4.10의 `targetsGap`은 응답에도 DB에도 넣지 않는다. 다음 턴 프롬프트에도 들어가지 않는다.
 - `suggestHint = true`일 때 클라이언트 행동: 대상이 `CHALLENGE`면 그 attempt의 Hint Ladder(`POST /challenge-attempts/{attemptId}/hints`, §10.8)로 넘어간다 — `HINT_DISCLOSED` 이벤트는 그 경로에서 정상 기록된다. 그 외 대상은 hint endpoint가 없으므로 §9.8 `complete`로 마무리하도록 안내한다. **러버덕 전용 hint endpoint는 두지 않는다.**
 - 학습 이벤트를 남기지 않는다.
@@ -2194,6 +2267,7 @@ public record ChallengeView(
         String title,                         // 아래 "본문 공개" 규칙
         int difficulty,
         Integer estimatedMinutes,
+        Integer timeLimitMinutes,             // 시간 제한이 있는 문제만 1~120, 없으면 null (challenge.time_limit_minutes, I-25)
         String scenario,
         String prompt,
         List<String> constraints,
@@ -2218,6 +2292,9 @@ public record AttemptView(
         AttemptStatus status,
         String selfExplanation,
         boolean selfExplanationSkipped,
+        Integer vagueReferenceCount,               // selfExplanation이 있을 때만. 응답 시 계산하고 저장하지 않는다 (§9.7과 같은 규칙)
+        Integer vagueReferencePer100Words,         // 〃
+        Integer elapsedSeconds,                    // 마지막 제출이 보낸 경과 시간. 없으면 null (challenge_attempt.elapsed_seconds)
         int submissionCount,
         int maxSubmissions,                        // devpilot.training.max-submissions-per-attempt
         HintLevel maxHintLevel,
@@ -2262,6 +2339,8 @@ public record ScheduledReviewView(UUID reviewItemId, String skillCode, LocalDate
 ```
 
 **본문 공개**: `title`, `scenario`, `prompt`, `constraints`, `estimatedMinutes`는 `status ∈ {VALIDATED, RETIRED}`일 때만 값을 채우고 그 외(`DRAFT`, `REJECTED`)는 null이다. `hints_json`은 어떤 view에도 넣지 않는다(hint endpoint로만 공개, HL-6).
+
+**시간 제한**: `timeLimitMinutes`는 콘텐츠(seed challenge)의 값이고 서버는 이 시간을 강제하지 않는다 — 클라이언트가 경과 시간을 보여 주고(`02` 문제 풀이 화면), 사용자가 제출할 때 `elapsedSeconds`를 함께 보낸다(§10.9). 시간 초과라는 상태는 없고 outcome 계산(`06` §8.2)에도 쓰지 않는다.
 
 **정답 정보 공개**: `answerRevealed = true` ⇔ 요청 사용자가 이 challenge에 대해 `evaluated_outcome IS NOT NULL`인 attempt를 하나 이상 가짐(한 번이라도 평가 완료). 이후 재제출·포기와 무관하게 계속 공개한다.
 
@@ -2460,24 +2539,25 @@ public record SelfExplanationRequest(
 public record SubmissionRequest(
         @Size(max = 5000) String answerText,
         String code,                    // UTF-8 20,000 byte 이하 (초과 시 413 CONTENT_TOO_LARGE, 컨트롤러 검사)
-        CodeLanguage language) {}
+        CodeLanguage language,
+        @Min(0) @Max(86400) Integer elapsedSeconds) {}   // 선택. 문제를 푸는 데 걸린 시간 (§10.1 시간 제한)
 ```
 
 ```json
 { "answerText": "원인 예외를 보존하고, 호출자가 복구할 수 없으니 unchecked 예외로 바꿨다.",
   "code": "public Config load(Path path) {\n  try { … } catch (IOException e) {\n    throw new ConfigLoadException(path, e);\n  }\n}",
-  "language": "JAVA" }
+  "language": "JAVA", "elapsedSeconds": 1520 }
 ```
 
 검사 순서:
-1. Bean Validation → `answerText`, `code` 모두 null이거나 공백이면 `ONE_OF_REQUIRED`(field `answerText`) → `code`가 공백이 아닌데 `language = null`이면 `LANGUAGE_REQUIRED` → `code` 크기 413.
-2. idempotency 후 `answerText`, `code` 마스킹(§1.11, 차단 시 422) → attempt 조회(404) → `status = ABANDONED`이면 409 `INVALID_STATE_TRANSITION`.
+1. Bean Validation(400) → `code` 크기 413 `CONTENT_TOO_LARGE`(컨트롤러, 원문 기준).
+2. `IdempotencyService`(§1.7) → application service 진입: 형태 검사(`answerText`·`code`가 모두 null이거나 공백이면 `ONE_OF_REQUIRED`(field `answerText`), `code`가 공백이 아닌데 `language = null`이면 `LANGUAGE_REQUIRED`) → **`answerText`·`code` 마스킹**(§1.11, 차단 시 422 — 리소스 조회·상태 검사보다 먼저다) → attempt 조회(404) → `status = ABANDONED`이면 409 `INVALID_STATE_TRANSITION`.
 3. `submission_count ≥ devpilot.training.max-submissions-per-attempt`(5) → 409 `SUBMISSION_LIMIT_REACHED`.
 4. 최신 submission이 `PENDING`/`RUNNING` → 409 `EVALUATION_IN_PROGRESS`.
 5. 최신 submission이 `FAILED` → 409 `INVALID_STATE_TRANSITION` (재평가는 §10.10. `SUBMITTED → SUBMITTED`는 전이표에 없다, `04-domain-model-and-db.md` §4.2).
 6. 자기 설명 기록 없음 → 409 `SELF_EXPLANATION_REQUIRED` (`04-domain-model-and-db.md` §4.2 `STARTED → SUBMITTED` 조건).
 7. AI 차단 검사(§1.9.3).
-8. 트랜잭션: `challenge_submission` INSERT(마스킹본 `answer_text`/`code`, `submission_no = submission_count + 1`, `evaluation_status = PENDING`), attempt `status = SUBMITTED`, `submission_count + 1`, `CHALLENGE_SUBMITTED` 이벤트(challenge skill마다).
+8. 트랜잭션: `challenge_submission` INSERT(마스킹본 `answer_text`/`code`, `submission_no = submission_count + 1`, `evaluation_status = PENDING`), attempt `status = SUBMITTED`, `submission_count + 1`, `elapsedSeconds`가 있으면 `challenge_attempt.elapsed_seconds`에 저장(재제출이면 덮어쓴다 — 마지막 제출 기준, I-25), `CHALLENGE_SUBMITTED` 이벤트(challenge skill마다). `elapsedSeconds`는 학습 이벤트 payload에 넣지 않고 규칙 입력도 아니다.
 9. 커밋 후 `SubmissionEvaluationTask`: `CHALLENGE_EVALUATE` → rubric `met` 저장(`04-domain-model-and-db.md` §5.3) → coverage·evaluatedOutcome(`06-learning-engine-rules.md` §8.1, 서버 계산) → attempt `EVALUATED`, outcome(`06-learning-engine-rules.md` §8.2) → `CHALLENGE_EVALUATED` 이벤트 → purpose `DIAGNOSTIC`이면 `DIAGNOSTIC_PASSED/FAILED`(`06-learning-engine-rules.md` §7.4) → review item(`06-learning-engine-rules.md` §8.3). 실패 시 submission `FAILED` + `failureCode`, attempt는 `SUBMITTED` 유지.
 
 ### 10.10 `POST /challenge-attempts/{attemptId}/submissions/{submissionNo}/retry` — 평가 재시도
@@ -2618,8 +2698,8 @@ public record ReviewAnswerRequest(
         @NotNull ReviewRating selfRating,
         @NotNull HintLevel hintLevel,                         // SELF_EXPLAIN | CONCEPT_HINT | FULL_EXAMPLE 만 허용
         @NotNull @Min(0) @Max(86400) Integer responseSeconds,
-        boolean wasVariant,                                   // due 응답의 wasVariant 그대로
-        boolean evaluate) {}
+        Boolean wasVariant,                                   // due 응답의 wasVariant 그대로. 생략하거나 null이면 false (§1.1)
+        Boolean evaluate) {}                                  // 생략하거나 null이면 false
 
 public record ReviewAnswerResponse(
         UUID reviewAnswerId,
@@ -3064,13 +3144,15 @@ Controller: `DashboardController`. Service: `DashboardQueryService`(읽기 전�
 | 인증 / IK | Bearer / — |
 | 응답 | 200 `DashboardView` |
 | 오류 | 공통만 |
-| Sprint · 요구사항 | S2 최소(`today`, `todaySummary`, `dueReviewCount`, `weekStartDate`, `weekStudyMinutes`, `weekCompletedSessions`, `aiStatus`, `replanRecommended`) → S5 완성(`risk`, `milestoneTimeline`, `skillCategories`, `weakThinkingAxes`. S5 전에는 `null`/`[]`) · FR-16, AC-02 |
+| Sprint · 요구사항 | S2 최소(`today`, `todaySummary`, `dueReviewCount`, `weekStartDate`, `weekStudyMinutes`, `weekCompletedSessions`, `aiStatus`, `replanRecommended`) → S3(`streakDays`, `weeklySummary`) → S5 완성(`risk`, `milestoneTimeline`, `skillCategories`, `weakThinkingAxes`. S5 전에는 `null`/`[]`) · FR-16, AC-02 |
 
 ```java
 public record DashboardView(
         LocalDate today,
         TodaySummaryView todaySummary,
         int dueReviewCount,
+        int streakDays,                                 // 연속 학습 일수 (아래 계산)
+        WeeklySummaryView weeklySummary,                // 이번 주 요약 — 만든 것이 먼저다
         LocalDate weekStartDate,
         int weekStudyMinutes,
         int weekCompletedSessions,
@@ -3089,6 +3171,18 @@ public record TodaySummaryView(
         TaskStatus mainTaskStatus,
         Integer mainTaskEstimatedMinutes,
         TaskStatus reviewTaskStatus) {}   // REVIEW task 없으면 null
+
+public record WeeklySummaryView(                    // 필드 순서가 화면 순서다: 만든 것 → 끝낸 것 → 적은 것 → 시간
+        List<BuiltItemView> builtThisWeek,          // 이번 주에 완료한 CHALLENGE · PROJECT_TASK · REDO 과제, 최대 5개
+        int completedTasks,
+        int notesWritten,
+        int studyMinutes) {}                        // = weekStudyMinutes (이번 주 월요일부터)
+
+public record BuiltItemView(
+        UUID taskId,
+        TaskType taskType,
+        String title,
+        LocalDate planDate) {}
 
 public record RiskSummaryView(
         RiskLevel currentRiskLevel,
@@ -3123,7 +3217,9 @@ public record SkillCategorySummaryView(
 |---|---|
 | `dueReviewCount` | `06-learning-engine-rules.md` §6.5 대상 수에 cap 적용 |
 | `weekStartDate` | 오늘이 속한 ISO week의 월요일 |
-| `weekStudyMinutes`, `weekCompletedSessions` | `plan_date ∈ [weekStartDate, today]`인 `COMPLETED` 세션의 `actual_minutes` 합, 개수 (`06-learning-engine-rules.md` §12 정의) |
+| `weekStudyMinutes`, `weekCompletedSessions` | `plan_date ∈ [weekStartDate, today]`인 `COMPLETED` 세션의 `actual_minutes` 합, 개수 (`06-learning-engine-rules.md` §12 정의). 주간 학습 시간의 기준은 **이번 주 월요일부터**다 |
+| `streakDays` | 완료한 `learning_task`가 1건 이상인 plan-day를 오늘부터 거꾸로 세어 **끊기지 않고 이어진 날 수**. 오늘 아직 완료가 없으면 어제부터 센다(오늘은 아직 끊긴 날이 아니다). 어제도 없으면 0. 세는 범위는 최근 366 plan-day까지다 |
+| `weeklySummary` | `builtThisWeek`: `plan_date ∈ [weekStartDate, today]`이고 `status = COMPLETED`인 `CHALLENGE`·`PROJECT_TASK`·`REDO` task를 `plan_date` DESC, `sort_order` DESC로 최대 5개. `completedTasks`: 같은 기간의 `COMPLETED` task 수(REVIEW task 포함). `notesWritten`: 같은 기간에 만든 `side_project_note` 수(`created_at`의 plan-day 기준) — dashboard는 `project`를 직접 의존하지 않고 `evidence`의 지표 경로로 읽는다(`03-system-architecture.md` §2.2, `06-learning-engine-rules.md` §12 `projectNoteCount`). `studyMinutes`: `weekStudyMinutes`와 같은 값 |
 | `risk.trend` | 사용자의 `plan_progress_snapshot`에서 서로 다른 `snapshot_date` 최근 8개. 같은 날짜에 여러 행(replan)이 있으면 `generated_at`이 가장 늦은 행 |
 | `skillCategories` | 활성 plan의 `plan_skill_target` 중 `deferred = false`인 skill을 category별로 묶는다. `n` = skill 수. `avgPlanningLevelMilli = floorDiv(Σ_skill Σ_axis planning × 1000, n × 4)`, `avgTargetLevelMilli = floorDiv(Σ_skill Σ_axis target × 1000, n × 4)` (planning은 `06-learning-engine-rules.md` §7.5). `n ≥ 1`인 category만, `SkillCategory` 선언 순서 |
 | `weakThinkingAxes` | `06-learning-engine-rules.md` §12 `weakThinkingAxes`, 기간 최근 28 plan-day |
@@ -3517,7 +3613,7 @@ public record RequirementDocCreateRequest(
 | `targetCompletionDate` (목표일) | 오늘+1일 ~ 오늘+3년 | 400 | — |
 | milestone 날짜 | 오늘−1년 ~ 오늘+3년, start ≤ end | 400 | CHECK |
 | `focusSkillCodes` | ≤ 10, 유일 | 400 | — |
-| `selfAssessments` | ≤ 13, category 유일, level 0~5 | 400 | CHECK |
+| `selfAssessments` | ≤ 14(= `SkillCategory` 값 수), category 유일, level 0~5 | 400 | CHECK |
 | skill code 문자열 | ≤ 100자 | 400 | `skill.code varchar(100)` |
 | replan `reason` | ≤ 1000자 (commit은 필수) | 400 | `change_reason varchar(1000)` |
 | replan `milestones` | ≤ 24개 | 400 | — |
@@ -3541,6 +3637,11 @@ public record RequirementDocCreateRequest(
 | `redoWithoutAi` | `REDO` 완료 요청에서만·그때는 필수 | 400 | `learning_task.redo_without_ai boolean` CHECK |
 | reading `key` (path) | `^[A-Z0-9][A-Z0-9_.]{2,149}$` | 400 | `learning_task.reading_key varchar(150)` |
 | `readingFeedback` | `HELPFUL`·`TOO_HARD`·`BORING`, `READ_CODE` 완료 요청에서만 | 400 | `learning_task.reading_feedback varchar(20)` CHECK |
+| `explainedToPerson` / `explainedNote` | `EXPLAIN`·`READ_CODE` 완료 요청에서만, 메모는 ≤ 500자이고 `explainedToPerson = true`일 때만 | 400 | `learning_task.explained_to_person boolean`, `explained_note varchar(500)` + CHECK `learning_task_explained_by_type` |
+| challenge `elapsedSeconds` (제출) | 0~86400, 선택 | 400 | `challenge_attempt.elapsed_seconds int` CHECK ≥ 0 |
+| challenge `timeLimitMinutes` (응답 전용, 콘텐츠 값) | 1~120 또는 없음 | — | `challenge.time_limit_minutes int` CHECK |
+| `tipKey` / `termKey` (path) | `^TIP\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\.[0-9]{3}$` / `^TERM\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*$` (≤ 120자) | 400 | `user_daily_tip.tip_key varchar(120)`, `review_item.concept_key varchar(150)`(`TERM:{termKey}`) |
+| 용어 검색 `q` | ≤ 100자 | 400 | — |
 | 세션 조회 기간 | ≤ 366일 | 400 | — |
 | challenge `difficulty` / `targetMinutes` | 1~5 / 5~180 | 400 | CHECK |
 | self-explanation `text` | ≤ 5000자 | 400 | text |
@@ -3581,7 +3682,7 @@ public record RequirementDocCreateRequest(
 | 스냅샷 | `docs/api/openapi.yaml`. `test` profile 통합 테스트가 `/v3/api-docs.yaml`을 받아 스냅샷과 비교한다. 다르면 CI 실패. API를 바꾸는 PR은 스냅샷 갱신을 함께 커밋한다 |
 | 클라이언트 모델 | Flutter는 스냅샷을 기준으로 freezed 모델을 수기 작성한다(DEC-12) |
 | operationId | `<module><Action>` lowerCamelCase. 각 endpoint 절의 값을 `@Operation(operationId = ...)`로 고정한다 |
-| tag | 모듈 이름: `user`, `onboarding`, `goal`, `skill`, `plan`, `today`, `learning`, `rubber-duck`(`rubberduck` 모듈의 `/rubber-duck*`, §9.5~§9.10), `project`(§19.1~§19.6), `training`, `review`, `coach`, `dashboard`, `evidence`, `radar`, `dev`(`devIssueToken`, `devJwks` — `auth-mode=devtoken`일 때만 스키마에 나타난다). `GET /readings/{key}`(§19.7)는 `today` tag를 쓴다 |
+| tag | 모듈 이름: `user`, `onboarding`, `goal`, `skill`, `plan`, `today`, `learning`, `rubber-duck`(`rubberduck` 모듈의 `/rubber-duck*`, §9.5~§9.10), `project`(§19.1~§19.6), `training`, `review`, `coach`, `dashboard`, `evidence`, `radar`, `dev`(`devIssueToken`, `devJwks` — `auth-mode=devtoken`일 때만 스키마에 나타난다). `GET /readings/{key}`(§19.7)는 `today` tag를, `/tips*`(§20.2~§20.4)는 `today`, `/terms*`(§20.5~§20.7)는 `review` tag를 쓴다 |
 | security scheme | `bearerAuth` (HTTP bearer, JWT). 전역 적용, `userGetCalendarFeed`만 `security: []` |
 | 공통 component | header parameter `IdempotencyKey`(IK endpoint에 `required: true`, preview에는 `required: false`), schema `ProblemDetail`(§1.2 확장 필드 포함), `FieldError`, `AsyncStatusView`, `AiMeta`, `SkillRef`, `AxisLevels`, `CursorPage_<T>` |
 | 오류 응답 | 모든 operation에 `default` 응답 `application/problem+json` → `ProblemDetail`. 각 endpoint 표의 오류 status를 명시적으로 나열한다 |
@@ -3610,13 +3711,15 @@ public record SideProjectView(
         String repoUrl,              // null 가능. 서버는 fetch하지 않는다
         String stack,                // null 가능
         SideProjectStatus status,    // ACTIVE | PAUSED | DONE (04 §3)
+        SideProjectKind kind,        // SIDE | PAST_WORK (04 §3, I-23)
         Instant createdAt,
         Instant updatedAt,
         long version) {}
 ```
 
 - 소유권: `sideProjectId`가 본인 것이 아니면 404 `RESOURCE_NOT_FOUND`(§1.1).
-- `updated_at`은 `PATCH`로 값이 실제로 바뀔 때만 갱신한다. planner의 SP-3(가장 최근 `ACTIVE` 하나)이 이 값을 쓴다.
+- `updated_at`은 `PATCH`로 값이 실제로 바뀔 때만 갱신한다. planner의 SP-3(가장 최근 `ACTIVE`·`kind = SIDE` 하나)이 이 값을 쓴다.
+- `kind`는 분류다(`04-domain-model-and-db.md` §4.9). `SIDE`는 지금 만들고 있는 사이드 프로젝트, `PAST_WORK`는 예전에 한 일을 적어 두는 **경험 기록용** 프로젝트다. `PAST_WORK`에는 planner가 `PROJECT_TASK`를 제안하지 않고(SP-3, I-23), 기록(§19.8)·러버덕 `PROJECT_WORK` 대상·내보내기(§19.13)는 두 종류 모두에서 쓸 수 있다.
 
 ### 19.2 `POST /side-projects` — 프로젝트 등록
 
@@ -3634,17 +3737,18 @@ public record SideProjectCreateRequest(
         @NotBlank @Size(max = 100) String name,
         @Size(max = 1000) String description,
         @Size(max = 500) String repoUrl,
-        @Size(max = 300) String stack) {}
+        @Size(max = 300) String stack,
+        SideProjectKind kind) {}          // 생략하거나 null이면 SIDE
 ```
 
 ```json
 { "name": "주문 시스템", "description": "회원가입 · 상품 · 주문 · 취소까지 직접 만드는 학습용 백엔드",
-  "repoUrl": "https://github.com/example/order-service", "stack": "Spring Boot, PostgreSQL" }
+  "repoUrl": "https://github.com/example/order-service", "stack": "Spring Boot, PostgreSQL", "kind": "SIDE" }
 ```
 
 - `repoUrl` 검사: `java.net.URI` 파싱 성공, scheme `http`/`https`, host 존재(`07-security-and-privacy.md` §5.5). 실패하면 400 `VALIDATION_FAILED`, field `repoUrl`, code `URL`.
 - `name`·`description`·`stack`은 마스킹 후 저장한다(§1.11). `repoUrl`은 URL 필드라 마스킹 대상이 아니다.
-- `status = ACTIVE`로 만든다. 사용자는 `ACTIVE`를 여러 개 가질 수 있다(SP-3).
+- `status = ACTIVE`로 만든다. 사용자는 `ACTIVE`를 여러 개 가질 수 있다(SP-3). `kind`를 생략하면 `SIDE`다 — 온보딩이 만드는 첫 프로젝트도 `SIDE`다(§4.1, SP-1).
 - 빈 문자열 `description`·`repoUrl`·`stack`은 `null`로 저장한다.
 
 ### 19.3 `GET /side-projects` — 목록
@@ -3687,6 +3791,7 @@ public record SideProjectPatchRequest(
         @Size(max = 500) String repoUrl,
         @Size(max = 300) String stack,
         SideProjectStatus status,
+        SideProjectKind kind,
         @NotNull Long version) {}
 ```
 
@@ -3694,6 +3799,7 @@ public record SideProjectPatchRequest(
 - 값을 지우려면 `description`·`repoUrl`·`stack`에 **빈 문자열**을 보낸다 → `null`로 저장한다. `name`은 지울 수 없다(공백만이면 400 `NOT_BLANK_IF_PRESENT`).
 - `version`이 다르면 409 `CONCURRENT_MODIFICATION`(§1.6).
 - 상태 전이에는 제약이 없다(`ACTIVE ↔ PAUSED ↔ DONE` 모두 허용). `DONE`으로 바꿔도 이미 만들어진 `PROJECT_TASK`는 그대로 남는다. planner는 다음 생성부터 그 프로젝트를 고르지 않는다(SP-3).
+- `kind`도 같은 방식으로 바꿀 수 있다(`SIDE ↔ PAST_WORK`). `PAST_WORK`로 바꾸면 다음 생성부터 planner가 그 프로젝트를 `PROJECT_TASK` 대상으로 고르지 않고, 이미 있는 과제·기록은 그대로 남는다(I-23, `04-domain-model-and-db.md` §4.9).
 - 실제로 바뀐 필드가 하나도 없으면 `updated_at`과 `version`을 그대로 둔다.
 
 ### 19.6 `DELETE /side-projects/{sideProjectId}` — 삭제
@@ -3907,3 +4013,240 @@ public record SideProjectNotePatchRequest(
 | Sprint · 요구사항 | S3 · FR-29, AC-33 |
 
 - 행을 지운다. 이미 지운 id로 다시 부르면 404다(§19.6과 같은 규칙).
+
+### 19.13 `GET /side-projects/{sideProjectId}/notes/export` — 기록 Markdown 내려받기
+
+| 항목 | 값 |
+|---|---|
+| operationId | `projectExportNotes` |
+| 인증 / IK | Bearer / — |
+| 응답 | 200 `text/markdown; charset=UTF-8`, `Content-Disposition: attachment; filename="notes-{sideProjectId}-{yyyyMMdd}.md"` (날짜 = 오늘 plan-day) |
+| 오류 | 404 `RESOURCE_NOT_FOUND` |
+| Sprint · 요구사항 | S3 · FR-29, AC-33 |
+
+- 경로는 `/side-projects/{sideProjectId}/notes` 아래의 리터럴이며 `{noteId}`(§19.11)보다 우선한다 — `export`는 UUID가 아니므로 충돌하지 않는다.
+- 대상: 그 프로젝트의 모든 기록. 정렬은 `occurredOn` ASC, `id` ASC이고 페이징하지 않는다. 기록이 없어도 200이고 제목만 있는 문서를 돌려준다.
+- 한 개의 read-only 트랜잭션에서 만든다(§3.3과 같은 기준). 감사 로그 `DATA_EXPORTED`를 남긴다. AI를 호출하지 않는다.
+- 모든 텍스트는 저장된 **마스킹본**이다(§19.8). 서버는 내보내기에서 추가 가공을 하지 않는다.
+- 문서 구조: 프로젝트 이름 제목 → 기록마다 `## {occurredOn} {title}` → 유형별 소제목(`DECISION`: 고른 것 / 선택지 / 이유, `INCIDENT`: 증상 / 발견 / 조치 / 재발 방지) → skill이 있으면 마지막 줄에 `기술: {skillCode}`.
+
+```markdown
+# 주문 시스템 — 결정·장애 기록
+
+내보낸 날짜: 2026-11-02 · 기록 12건
+
+## 2026-10-11 주문 번호를 UUID 대신 시퀀스 기반으로
+
+- 유형: 결정 기록
+- 고른 것: yyyyMMdd + 일련번호 형식의 주문 번호를 쓰기로 했다.
+- 선택지: ① UUID v4 ② UUID v7 ③ 날짜 + 시퀀스. …
+- 이유: 주문 목록을 날짜 범위로 조회하는 일이 가장 잦아서 …
+- 기술: DATABASE.INDEX
+```
+
+---
+
+## 20. 오늘의 팁 · 용어 사전 (콘텐츠)
+
+Controller: `TipController`(`/tips*`, `today` 모듈 — 팁 registry를 읽고 `user_daily_tip`을 쓴다), `TermController`(`/terms*`, `review` 모듈 — 용어 registry를 읽고 복습 카드를 만든다). 두 registry는 `CuratedReadingRegistry`와 같은 방식으로 `content` 모듈이 기동 시 등록한다(`03-system-architecture.md` §2.2, `04-domain-model-and-db.md` §9).
+
+팁·용어는 **콘텐츠다**(ADR-041). 본문은 DB에 없고 `content/tips/*.yaml`·`content/terms/*.yaml`에 있다(`19-content-spec.md`). DB에 남는 사용자별 상태는 `user_daily_tip`(어떤 팁을 언제 보여 줬고 무엇을 골랐는지)과 용어에서 만든 `review_item`뿐이다. **이 절의 endpoint는 AI를 호출하지 않는다.**
+
+키 형식: `tipKey`는 `^TIP\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\.[0-9]{3}$`, `termKey`는 `^TERM\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*$`(각 ≤ 120자, §17 — `19-content-spec.md` §3.9·§3.10과 같은 패턴이다). 어긋나면 400 `VALIDATION_FAILED`(field `tipKey`/`termKey`, code `Pattern`). 형식이 맞아도 registry에 없으면 404 `RESOURCE_NOT_FOUND`. 콘텐츠 형식과 검증기 규칙은 `19-content-spec.md`다.
+
+### 20.1 공통 view record
+
+```java
+public record DailyTipView(
+        String tipKey,
+        TipSeries series,
+        TipLevel level,
+        String title,
+        String symptom,              // 실제로 보게 되는 로그·오류 한 토막
+        String cause,                // 왜 그런가
+        String example,              // null 가능
+        String whereToLook,          // 어디를 보면 되는가
+        String experiment,           // 5분 안에 재현하는 방법. null 가능
+        String sourceUrl,            // 공식 문서. null 가능 (experiment가 있으면 없을 수 있다)
+        List<SkillRef> skills,       // skillCodes를 활성 skill로 해석한 것. 없는 code는 뺀다 (§19.7과 같은 규칙)
+        int estimatedMinutes,
+        LocalDate shownOn,           // user_daily_tip.shown_on
+        TipFeedback feedback) {}     // 아직 고르지 않았으면 null
+
+public record TipSummaryView(
+        String tipKey,
+        TipSeries series,
+        TipLevel level,
+        String title,
+        String symptom,
+        int estimatedMinutes,
+        TipFeedback feedback) {}     // 이 사용자가 이미 고른 값. 없으면 null
+
+public record TermView(
+        String termKey,
+        String representative,              // 대표 표기 하나 (저장소 전체가 이 표기를 쓴다, 19)
+        String english,
+        List<String> aliases,               // "이렇게도 부른다"
+        String definition,                  // 한 문장
+        String example,                     // 실무 예문 한 줄
+        List<TermRefView> confusableWith,   // 헷갈리는 짝. 상세에서만 채운다
+        List<SkillRef> skills,
+        TipLevel level,                     // 팁과 같은 난이도 enum (04 §3)
+        String sourceUrl,
+        List<CreatedCardView> cards) {}     // 이 용어로 이미 만든 복습 카드. 없으면 []
+
+public record TermRefView(String termKey, String representative, String english) {}
+
+public record TermSummaryView(
+        String termKey,
+        String representative,
+        String english,
+        String definition,
+        TipLevel level,
+        boolean cardCreated) {}             // 이 용어의 복습 카드를 이미 만들었으면 true
+
+public record CreatedCardView(
+        UUID reviewItemId,
+        String conceptKey,
+        ReviewType reviewType,
+        LocalDate dueDate) {}               // planDate(due_at)
+```
+
+### 20.2 `GET /tips/today` — 오늘의 팁
+
+| 항목 | 값 |
+|---|---|
+| operationId | `todayGetDailyTip` |
+| 인증 / IK | Bearer / — |
+| 응답 | 200 `DailyTipView` |
+| 오류 | 404 `RESOURCE_NOT_FOUND`(더 보여 줄 팁이 없음) |
+| Sprint · 요구사항 | S3 · BL-TIP-01~05 |
+
+처리 (한 트랜잭션, AI 없음):
+1. 오늘 plan-day를 계산한다(`06-learning-engine-rules.md` §2).
+2. `user_daily_tip`에 `shown_on = 오늘`인 행이 있으면 그 팁을 그대로 반환한다(`feedback` 포함). **하루 1개**이므로 같은 날 다시 불러도 같은 팁이다.
+3. 없으면 `06` §5.12의 선택 규칙으로 후보를 고른다(결정적, 제외 조건 포함). 후보가 하나도 없으면 404 `RESOURCE_NOT_FOUND`이고 아무것도 저장하지 않는다.
+4. 고른 팁을 `user_daily_tip`에 INSERT한다(`tip_key`, `shown_on = 오늘`, `feedback = null`). 이 조회는 **표시 기록을 남기는 쓰기**다 — 그래야 하루 동안 같은 팁이 유지되고 같은 팁을 두 번 제안하지 않는다(I-26).
+5. `TIP_VIEWED` 학습 이벤트를 남긴다(`04-domain-model-and-db.md` §6, 팁 `skillCodes`의 첫 활성 skill. 활성 skill이 없으면 `skill_id = null`).
+6. 동시 요청으로 `user_daily_tip_unique`를 위반하면 그 행을 다시 읽어 같은 응답을 돌려준다(오류가 아니다).
+
+- 팁 본문은 registry 최신본이다. 콘텐츠에서 은퇴한 팁(`retired: true`)이라도 이미 보여 준 팁이면 그대로 보여 준다(§19.7 은퇴한 reading과 같은 기준).
+
+### 20.3 `POST /tips/{tipKey}/feedback` — 읽은 뒤 선택
+
+| 항목 | 값 |
+|---|---|
+| operationId | `todaySubmitTipFeedback` |
+| 인증 / IK | Bearer / IK |
+| 요청 | `TipFeedbackRequest` |
+| 응답 | 201 `DailyTipView` (처음 기록) / 200 `DailyTipView` (이미 기록돼 있음) |
+| 오류 | 400 `VALIDATION_FAILED`(`Pattern`), 400 `UNKNOWN_ENUM_VALUE`, 404 `RESOURCE_NOT_FOUND` |
+| Sprint · 요구사항 | S3 · BL-TIP-01~05 |
+
+```java
+public record TipFeedbackRequest(
+        @NotNull TipFeedback feedback) {}   // KNEW_IT | LEARNED | WILL_TRY (04 §3)
+```
+
+```json
+{ "feedback": "LEARNED" }
+```
+
+처리 (한 트랜잭션, AI 없음):
+1. `tipKey` 형식(400) → registry 조회(404).
+2. 그 사용자의 `user_daily_tip` 행을 찾는다. **아직 보여 준 적 없는 팁이면 404** `RESOURCE_NOT_FOUND`다(읽기 전에 고를 수 없다).
+3. `feedback`이 이미 있으면 덮어쓰지 않고 200으로 현재 값을 돌려준다(`04-domain-model-and-db.md` §4.11, §11.5와 같은 규칙). 없으면 저장하고 201이다.
+4. 값에 따른 처리:
+   - `LEARNED` — 같은 트랜잭션에서 복습 카드를 upsert한다. `concept_key = TIP:{tipKey}`, `source_type = TIP`, `origin = MANUAL`, `skill_id` = 팁 `skillCodes`의 첫 활성 skill. 문항 구성과 첫 due는 `06` §5.12 TIP-5를 따른다(기존 개념 카드 규칙을 그대로 쓴다 — 같은 `concept_key`의 활성 카드가 있으면 새로 만들지 않고 due만 당긴다, `06-learning-engine-rules.md` §6.3 마지막 행). 활성 skill이 하나도 없으면 카드를 만들지 않는다(`review_item.skill_id`는 not null).
+   - `WILL_TRY` — 저장만 한다. 다음 plan-day부터 Today 응답에 25분짜리 실험 후보로 붙는다(`06` §5.12 TIP-6, §8.1 `tipExperiment`).
+   - `KNEW_IT` — 저장만 한다. 이 팁은 다시 제안하지 않는다(I-26).
+5. 학습 이벤트는 여기서 만들지 않는다 — `TIP_VIEWED`는 §20.2에서 이미 남겼다.
+
+### 20.4 `GET /tips` — 팁 목록
+
+| 항목 | 값 |
+|---|---|
+| operationId | `todayListTips` |
+| 인증 / IK | Bearer / — |
+| query | `series`: `TipSeries`, 선택 / `level`: `TipLevel`, 선택 / `limit`, `cursor` (§1.5 콘텐츠 목록) |
+| 대상 | `retired = false`인 팁 전체 (사용자별 필터 없음) |
+| 정렬 | `tipKey` ASC |
+| 응답 | 200 `CursorPage<TipSummaryView>` |
+| 오류 | 400 `UNKNOWN_ENUM_VALUE`, 400 `INVALID_CURSOR` |
+| Sprint · 요구사항 | S3 · BL-TIP-01~05 |
+
+- 콘텐츠 조회이므로 사용자 소유 리소스가 아니다 — 모든 사용자가 같은 목록을 본다(§19.7과 같은 취급). `feedback`만 요청 사용자의 값이다.
+- 이미 본 팁도 목록에 남는다. 제외 규칙은 오늘의 팁 선택(§20.2)에만 적용한다.
+
+### 20.4a `GET /tips/{tipKey}` — 팁 1건
+
+| 항목 | 값 |
+|---|---|
+| operationId | `todayGetTip` |
+| 인증 / IK | Bearer / — |
+| path | `tipKey`: `^TIP\.[A-Z0-9_]+\.[A-Z0-9_]+\.[0-9]{3}$` |
+| 응답 | 200 `DailyTipView` (§20.1 — 본문 전체와 요청 사용자의 `feedback`) |
+| 오류 | 400 `VALIDATION_FAILED`(`Pattern`), 404 `RESOURCE_NOT_FOUND` |
+| Sprint · 요구사항 | S3 · BL-TIP-01~05 |
+
+- **§20.4 목록에서 지난 팁을 여는 경로다.** 목록(`TipSummaryView`)에는 제목·증상 요약만 있어 본문(`cause`·`example`·`whereToLook`·`experiment`)을 받을 수 없다.
+- 콘텐츠 조회라 **오늘의 팁이 아니어도 200**이다. 은퇴한 팁(`retired = true`)도 조회된다 — 이미 본 팁의 본문을 다시 열 수 있어야 하기 때문이다(`19` §8.2와 같은 취급). 제안에서만 빠진다(§20.2).
+- `feedback`은 `user_daily_tip`에 행이 있으면 그 값, 없으면 `null`이다. **이 endpoint는 `user_daily_tip` 행을 만들지 않는다**(하루 1개 규칙은 §20.2만 쓴다, `06` §5.12 TIP-3).
+
+### 20.5 `GET /terms` — 용어 검색
+
+| 항목 | 값 |
+|---|---|
+| operationId | `reviewListTerms` |
+| 인증 / IK | Bearer / — |
+| query | `q`: 검색어, 선택(≤ 100자) / `skillId`: UUID, 선택 / `limit`, `cursor` (§1.5 콘텐츠 목록) |
+| 정렬 | `termKey` ASC |
+| 응답 | 200 `CursorPage<TermSummaryView>` |
+| 오류 | 400 `VALIDATION_FAILED`(`TYPE_MISMATCH`, `Size`), 400 `INVALID_CURSOR` |
+| Sprint · 요구사항 | S3 · BL-TRM-01~04 |
+
+- 대상은 `retired = false`인 용어다. 은퇴한 용어는 검색되지 않지만 `GET /terms/{termKey}`로는 조회된다(`19-content-spec.md` §8.2, §19.7의 은퇴한 reading과 같은 기준).
+- `q`는 `representative`·`english`·`aliases[]`에 대한 **부분 일치**이고 대소문자를 구분하지 않는다. 앞뒤 공백은 지우고 비교한다.
+- `skillId`는 용어의 `skillCodes`가 그 skill을 담고 있는지로 거른다. 없는 `skillId`는 오류가 아니라 빈 목록이다(§10.2와 같은 규칙).
+- 두 필터를 모두 주면 AND다. 둘 다 없으면 전체 목록이다.
+
+### 20.6 `GET /terms/{termKey}` — 용어 1건
+
+| 항목 | 값 |
+|---|---|
+| operationId | `reviewGetTerm` |
+| 인증 / IK | Bearer / — |
+| 응답 | 200 `TermView` |
+| 오류 | 400 `VALIDATION_FAILED`(`Pattern`), 404 `RESOURCE_NOT_FOUND` |
+| Sprint · 요구사항 | S3 · BL-TRM-01~04 |
+
+- `confusableWith`는 key 목록을 registry에서 펼쳐 `TermRefView`로 돌려준다. registry에 없는 key는 뺀다(콘텐츠 검증이 막지만 방어한다, `19-content-spec.md`).
+- `cards`는 이 사용자가 이 용어로 만든 `review_item`이다(`concept_key`가 `TERM:{termKey}`로 시작하는 것, `concept_key` ASC). 없으면 `[]`.
+
+### 20.7 `POST /terms/{termKey}/card` — 용어 복습 카드 만들기
+
+| 항목 | 값 |
+|---|---|
+| operationId | `reviewCreateTermCard` |
+| 인증 / IK | Bearer / IK |
+| 요청 | body 없음 |
+| 응답 | 201 `TermCardResponse` (이번에 만든 카드가 있음) / 200 `TermCardResponse` (이미 있어 새로 만들지 않음) |
+| 오류 | 400 `VALIDATION_FAILED`(`Pattern`), 404 `RESOURCE_NOT_FOUND` |
+| Sprint · 요구사항 | S3 · BL-TRM-01~04, FR-11 |
+
+```java
+public record TermCardResponse(
+        String termKey,
+        List<CreatedCardView> cards,   // 이 용어의 카드 전체 (이번에 만든 것 + 이미 있던 것), conceptKey ASC
+        int createdCount) {}           // 이번 요청으로 새로 만든 카드 수
+```
+
+- **양방향 2장**을 만든다. `review_type = RECALL`, `source_type = TERM`, `origin = MANUAL`, `source_id = null`, `skill_id` = 용어 `skillCodes`의 첫 활성 skill.
+  - 정방향 `concept_key = TERM:{termKey}` — 대표 표기를 보고 뜻을 말한다.
+  - 역방향 `concept_key = TERM:{termKey}:REVERSE` — 뜻을 보고 대표 표기를 말한다. `(user_id, concept_key)`가 유일해야 하므로(I-06) 키를 나눈다.
+- 문항은 콘텐츠에서 만든다: 정방향 `prompt` = 대표 표기(+ `english`), `expected_answer` = `definition` + `example`. 역방향은 `prompt` = `definition`, `expected_answer` = 대표 표기(+ `aliases`). `rubric_json`은 항목 1개(`{"id":"R1","criterion":"대표 표기와 뜻을 짝지어 말한다"}`)다 — 복습 화면의 `CONCEPT_HINT`가 rubric 첫 항목을 쓰기 때문이다(§11.5).
+- 첫 `due_at`은 `planDayStart(today + 1)`, `interval_days = 1`이다(`06-learning-engine-rules.md` §6.3 "수동 생성" 행).
+- 이미 있는 `concept_key`는 새로 만들지 않고 그대로 둔다(문항을 덮어쓰지 않는다, §11.5). 두 장 모두 있으면 `createdCount = 0`이고 200이다.
+- 활성 skill이 하나도 없는 용어(은퇴한 skill만 가리키는 경우)는 카드를 만들지 않고 200 + `cards: []`, `createdCount = 0`을 돌려준다.
+- 새로 만든 카드가 있으면 `TERM_CARD_CREATED` 학습 이벤트를 1건 남긴다(`04-domain-model-and-db.md` §6).
+- 자유 텍스트 입력이 없으므로 마스킹 대상이 아니다(§1.11).

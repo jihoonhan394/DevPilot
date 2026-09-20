@@ -1,8 +1,8 @@
 # 06. Learning Engine Rules
 
-> Status: Accepted (v3) · Last updated: 2026-09-20 · Related: ADR-008, ADR-009, ADR-017, ADR-018, ADR-039, ADR-040, `04-domain-model-and-db.md`, `19-content-spec.md`
+> Status: Accepted (v3) · Last updated: 2026-09-20 · Related: ADR-008, ADR-009, ADR-017, ADR-018, ADR-039, ADR-040, ADR-041, ADR-042, `04-domain-model-and-db.md`, `19-content-spec.md`
 >
-> Planner, study budget, deadline risk(축소·확장 양방향), 복습 스케줄(교차 학습 포함), skill 레벨 갱신, attempt 판정, Hint Ladder, 러버덕·코드 읽기, 재현 과제, verification guard, 계획 버전, 지표의 **결정적 규칙**이다. 이 문서의 모든 규칙은 AI 없이 동작한다 — 단, 러버덕(§9.5)과 `READ_CODE` 제안(§5.3)은 AI가 있어야 하므로 `aiStatus`가 불가하면 제안하지 않는다. 재현 과제(§5.10)는 반대로 **AI를 쓰지 않는 것이 목적**이라 `aiStatus`와 무관하게 동작한다.
+> Planner, study budget, deadline risk(축소·확장 양방향), 복습 스케줄(교차 학습 포함), skill 레벨 갱신, attempt 판정, Hint Ladder, 러버덕·코드 읽기, 재현 과제, 학습 단계, 오늘의 팁, 지시어 세기, verification guard, 계획 버전, 지표의 **결정적 규칙**이다. 이 문서의 모든 규칙은 AI 없이 동작한다 — 단, 러버덕(§9.5)과 `READ_CODE` 제안(§5.3)은 AI가 있어야 하므로 `aiStatus`가 불가하면 제안하지 않는다. 재현 과제(§5.10)는 반대로 **AI를 쓰지 않는 것이 목적**이라 `aiStatus`와 무관하게 동작한다.
 >
 > - 숫자(가중치, 임계값, 간격)는 **초기 기본값**이다. 코드에 하드코딩하지 않고 `devpilot.*` 설정으로 둔다(`03-system-architecture.md` §9). 4주 사용 후 조정한다.
 > - 규칙을 구현하는 클래스는 Spring/JPA에 의존하지 않는 순수 Java다. 이름은 `03` §3.2를 따른다.
@@ -225,7 +225,7 @@ ratioBp (저장·표시용) = effective == 0 ? null : floorDiv(requiredMust × 1
 
 ### 5.1 입력
 
-`today`, `availableMinutes`(5~720), `energyLevel`, 활성 plan(milestones, skill targets), planning level, due review 목록, 최근 2 plan-day의 main task, 최근 3 plan-day 세션 기록, risk level, **학습 트랙 기본값**(`trackDefaults` — 학습 목표의 `targetRole`로 고른 `devpilot.tracks.<트랙>`, `03` §9), **재현 후보 목록**(§5.10 RE-2).
+`today`, `availableMinutes`(5~720), `energyLevel`, 활성 plan(milestones, skill targets), planning level, due review 목록, 최근 2 plan-day의 main task, 최근 3 plan-day 세션 기록, risk level, **학습 트랙 기본값**(`trackDefaults` — 학습 목표의 `targetRole`로 고른 `devpilot.tracks.<트랙>`, `03` §9), **재현 후보 목록**(§5.10 RE-2), **후보 skill별 학습 단계 완료 수**(§5.11 ST-5).
 
 ### 5.2 후보 skill
 
@@ -269,7 +269,17 @@ if comebackMode: d = min(d, 2)
 
 **REDO의 자리 (0번)와 그 이유** — 재현 과제는 새로 배우는 과제가 아니라 **이미 한 것을 AI 없이 혼자 다시 만들어 확인하는 과제**다(§5.10). 창(RE-2)이 며칠뿐이고 창을 놓치면 그 기회는 사라지므로, 같은 skill 안에서는 다른 제안보다 앞선다. 다만 **skill 사이의 경쟁은 그대로 점수로 한다** — 재현 후보가 있다고 해서 그 skill이 자동으로 오늘의 main이 되지는 않고, §5.5의 `REDO_DUE` modifier로 가중치만 받는다. AI 상태와 무관하다(재현 과제는 AI를 쓰지 않는다).
 
-**학습 트랙과 난이도 상한** — `d`의 상한은 고정 5가 아니라 학습 목표의 트랙 기본값 `trackDefaults.maxTaskDifficulty`다(`devpilot.tracks.<트랙>`, `03` §9). `JAVA_BACKEND`는 5, `JAVA_BACKEND_STARTER`는 3이다. 같은 planning level이라도 입문 트랙에서는 난이도 4·5 challenge가 제안되지 않는다. 트랙은 `READ_CODE`의 진입 문턱도 정한다(RC-3, `trackDefaults.readCodeMinKnowledge` — `JAVA_BACKEND` 1, `JAVA_BACKEND_STARTER` 2). 그 밖의 planner 규칙(factor, weight, modifier, 시간 배분)은 트랙과 무관하게 같다.
+**학습 트랙 기본값** — `d`의 상한은 고정 5가 아니라 학습 목표의 트랙 기본값 `trackDefaults.maxTaskDifficulty`다(`devpilot.tracks.<트랙>`, `03` §9). 트랙은 `READ_CODE`의 진입 문턱(RC-3, `trackDefaults.readCodeMinKnowledge`)과 오늘의 팁 정렬(§5.12, `trackDefaults.basicTipsFirst`)도 정한다. 그 밖의 planner 규칙(factor, weight, modifier, 시간 배분, 학습 단계)은 트랙과 무관하게 같다.
+
+| 트랙 (`TargetRole`) | `maxTaskDifficulty` | `readCodeMinKnowledge` | `basicTipsFirst` |
+|---|---|---|---|
+| `JAVA_BACKEND` | 5 | 1 | false |
+| `JAVA_BACKEND_STARTER` | 3 | 2 | **true** |
+| `INTEGRATION_ENGINEER` | 4 | 1 | false |
+
+- 같은 planning level이라도 입문 트랙(`JAVA_BACKEND_STARTER`)에서는 난이도 4·5 challenge가, 연동 트랙(`INTEGRATION_ENGINEER`)에서는 난이도 5 challenge가 제안되지 않는다.
+- 설정 키는 `devpilot.tracks.<트랙>.{max-task-difficulty, read-code-min-knowledge, basic-tips-first}`다. `TargetRole` 값마다 항목이 있어야 하고, 없으면 기동 실패다(`03` §9).
+- **트랙별 필수 목표 구성**은 규칙이 아니라 콘텐츠다(`19` §3.3). `INTEGRATION_ENGINEER`의 `role_skill_target`은 MUST를 **기본기 70% / 연동 20% / 배포·운영 10%** 비율로 고르고, 필수 목표 합계(§4.2의 `requiredMinutes` 합)가 **180~220시간**이 되게 맞춘다.
 
 **READ_CODE의 자리 (2번)와 그 이유** — CHALLENGE는 I축·K축 상승 규칙(§7.2)의 증거를 직접 만들므로 1번 자리를 유지한다. READ_CODE를 READING보다 **앞**에 두는 것은 §12의 핵심 루프(읽는다 → 만든다 → 설명한다)를 따르기 위해서다: 무엇인지 조금이라도 아는 상태(KNOWLEDGE ≥ `trackDefaults.readCodeMinKnowledge`)라면 요약 글을 한 번 더 읽는 것보다 검증된 실제 코드를 읽는 편이 낫다. 그 문턱 아래에서 코드를 읽으면 좌절하므로 RC-3이 이를 막고, 그때는 3번 READING으로 내려간다. 결과적으로 READING은 **문턱 미만**이거나 해당 skill에 reading 콘텐츠가 없을 때만 나온다(기본 트랙은 KNOWLEDGE = 0, 입문 트랙은 0~1).
 
@@ -331,12 +341,17 @@ task 제목 템플릿:
 | `milestoneUrgency` | 현재 milestone skill: `length = daysBetween(start, end) + 1`, `daysLeft = daysBetween(today, end)`, `max(200_000, 1_000_000 − floorDiv(daysLeft × 1_000_000, length))` / 다음 milestone skill: `100_000` / 그 외 0 (여러 milestone이면 최댓값) |
 | `projectNeed` | 학습 목표의 focus skill → `1_000_000`, 아니면 0 |
 | `prerequisiteReadiness` | prerequisite 없음 → `1_000_000` / 있음 → `floorDiv(count(planning IMPLEMENTATION ≥ 2) × 1_000_000, count)` |
+| `stageGap` | `floorDiv((6 − 완료한 학습 단계 수) × 1_000_000, 6)` (§5.11 ST-5). **`WEIGHT_BP`에 들어가지 않는다** — 아래 보너스로만 쓴다 |
 
 ```text
 WEIGHT_BP = { practicalImportance: 2500, skillGap: 2000, reviewUrgency: 2000,
-              milestoneUrgency: 1500, projectNeed: 1000, prerequisiteReadiness: 1000 }
-baseScore = floorDiv(Σ factor × WEIGHT_BP, 10_000)
+              milestoneUrgency: 1500, projectNeed: 1000, prerequisiteReadiness: 1000 }   # 합 10_000
+baseScore     = floorDiv(Σ factor × WEIGHT_BP, 10_000)
+stageGapBonus = floorDiv(stageGap × stageGapWeightMicro, 1_000_000)
+score         = baseScore + stageGapBonus          # §5.5 modifier는 이 score에 적용한다
 ```
+
+`stageGapWeightMicro` = `devpilot.planner.weights.stage-gap`(기본 `0.005` → 5_000 micro, N-6). **`stageGap`을 `WEIGHT_BP`에 넣지 않는 이유**: `WEIGHT_BP`는 합이 10_000인 정규화된 가중합이라 한 factor를 더하면 나머지 여섯 개의 비중이 모두 달라진다. 학습 단계는 무엇을 먼저 할지를 뒤집는 근거가 아니라 **비슷한 점수의 후보 사이에서 한 바퀴를 아직 못 돈 skill을 조금 앞세우는** 보너스다(§5.11). 그래서 가중합 위에 얹고 상한을 5_000 micro로 둔다 — factor 가중합의 최댓값(1_000_000)의 0.5%다.
 
 ### 5.5 Modifier (이 순서로 적용)
 
@@ -395,7 +410,7 @@ mainBudget < 10 이면 제안과 무관하게 RECALL(estimated = mainBudget)
 
 ### 5.7 Planner 점수 Test vectors
 
-공통: risk LOW, energy NORMAL, today=2026-10-10.
+공통: risk LOW, energy NORMAL, today=2026-10-10, **`devpilot.planner.weights.stage-gap = 0`**(`stageGapBonus` 없음 — 이 표는 factor 가중합과 modifier만 확인한다. `stageGap`은 §5.11 vector가 따로 확인한다).
 - **A**: MUST, importance 0.90, skillGap 600_000, due 없음, 현재 milestone(2026-10-01~2026-10-20 → daysLeft 10, length 20 → milestoneUrgency 500_000), focus 아님, prerequisite 없음, 제안 EXPLAIN(15, d2)
 - **B**: SHOULD, importance 0.50, skillGap 800_000, 2일 overdue review(reviewUrgency 500_000), milestone 밖, prerequisite 없음, 제안 CHALLENGE(20, d2)
 
@@ -500,6 +515,130 @@ redoCandidates(today, userId):
 | RE-V13 | `false` | `redo_without_ai = false`, `REDO_COMPLETED{ withoutAi: false }` 1행, `concept_key = REDO:{sourceTaskId}` 복습 카드 upsert(due = 다음 plan-day 시작). 독립 구현 증거가 아니다 |
 | RE-V14 | 생략 | 400 `VALIDATION_FAILED`(field `redoWithoutAi`, code `VALUE_REQUIRED`). 상태·이벤트·카드 변화 없음 |
 | RE-V15 | `REDO`가 아닌 task에 `redoWithoutAi` | 400 `VALIDATION_FAILED`(field `redoWithoutAi`, code `VALUE_NOT_ALLOWED`) |
+
+### 5.11 학습 단계 (반복 고리, `LearningStageEvaluator`)
+
+한 skill을 **만들고 → 개념을 읽고 → 실제 코드를 읽고 → 설명하고 → 복습하고 → AI 없이 다시 만들기**까지 한 바퀴 돌아야 그 skill을 할 수 있다고 본다. 단계 순서는 `LearningStage`의 선언 순서이고 **만들기가 먼저다** — 무엇을 만들다 막혀 봐야 읽을 이유가 생긴다.
+
+| 순서 | 단계 | 뜻 |
+|---|---|---|
+| 1 | `BUILD` | 과제로 직접 만들어 본다 |
+| 2 | `READ_CONCEPT` | 개념을 읽는다 |
+| 3 | `READ_CODE` | 검증된 실제 코드를 읽는다 |
+| 4 | `EXPLAIN` | 내 말로 설명한다 |
+| 5 | `REVIEW` | 시간을 두고 다시 떠올린다 |
+| 6 | `REDO` | AI 없이 혼자 다시 만든다 |
+
+**완료 판정** (사용자 1명 · skill 1개 기준, 결정적)
+
+| 단계 | 완료 조건 (그 사용자·그 skill) |
+|---|---|
+| `BUILD` | `CHALLENGE` 또는 `PROJECT_TASK` 과제를 `COMPLETED`한 적이 있다 |
+| `READ_CONCEPT` | `READING` 과제를 `COMPLETED`한 적이 있다 |
+| `READ_CODE` | `READ_CODE` 과제를 `COMPLETED`한 적이 있다 |
+| `EXPLAIN` | 그 skill을 주 대상(`skill_id`)으로 한 러버덕 세션을 `COMPLETED`했거나, `EXPLAIN` 과제를 `explained_to_person = true`로 완료했다 |
+| `REVIEW` | 그 skill의 `review_item`에 답변(`review_answer`)이 1건 이상 있다 |
+| `REDO` | `REDO` 과제를 `redo_without_ai = true`로 `COMPLETED`했다 (§5.10 RE-8) |
+
+**입력은 `learning_event`다.** 위 조건은 읽기 쉬우라고 테이블 이름으로 적었지만, 판정은 그 사용자·그 skill의 **학습 이벤트**만 본다(`04` §6). 모듈 의존 규칙(`03` §2.2) 때문이다 — `skill` 모듈은 `learning`에만 의존하고 `today`·`review`·`rubberduck`의 entity를 직접 읽지 않는다. 대응은 다음과 같다.
+
+| 단계 | 보는 이벤트 |
+|---|---|
+| `BUILD` | `TASK_COMPLETED` (payload `taskType` ∈ {`CHALLENGE`, `PROJECT_TASK`}) |
+| `READ_CONCEPT` | `TASK_COMPLETED` (payload `taskType = READING`) |
+| `READ_CODE` | `TASK_COMPLETED` (payload `taskType = READ_CODE`) |
+| `EXPLAIN` | `RUBBER_DUCK_COMPLETED`, 또는 `TASK_COMPLETED` (payload `taskType = EXPLAIN` 이고 `explainedToPerson = true`) |
+| `REVIEW` | `REVIEW_ANSWERED` |
+| `REDO` | `REDO_COMPLETED` (payload `withoutAi = true`) |
+
+`TASK_COMPLETED` payload에 `taskType`·`explainedToPerson`이, `REDO_COMPLETED` payload에 `withoutAi`가 있어야 한다(`04` §6).
+
+| ID | 규칙 |
+|---|---|
+| ST-1 | **저장하지 않는다.** 조회 시점에 위 표로 파생 계산한다(ADR-042). 단계 상태를 담는 컬럼·테이블·이벤트를 만들지 않는다 |
+| ST-2 | 순서는 **표시 순서**이고 선행 조건이 아니다. 앞 단계를 건너뛰어도 각 단계는 따로 판정된다 — 화면은 6칸을 완료/미완료로만 보인다(`02` SCR-SKILL-DETAIL) |
+| ST-3 | `completedAt` = 그 조건을 만족시킨 기록 중 **가장 이른** 시각(과제·러버덕 세션은 `completed_at`, 복습은 그 답변 시각). 완료가 아니면 null |
+| ST-4 | 기간 제한이 없다. §7.1의 60일 창(`rule-window-days`)은 **레벨 규칙의 창**이고 단계 판정에는 쓰지 않는다 — 한 바퀴를 돌았는지는 계정 전체 기록으로 본다 |
+| ST-5 | `completedStageCount` = 완료한 단계 수(0~6). `stageGap` = `floorDiv((6 − completedStageCount) × 1_000_000, 6)` — 0개면 `1_000_000`, 6개면 `0` |
+| ST-6 | 판정 대상은 `skill.active = true`인 skill뿐이다. retire된 skill은 단계를 계산하지 않는다(§4.1·§5.2와 같은 취급) |
+
+**Today 제안에 주는 영향** — §5.3의 제안 분기(0~5번)는 **바뀌지 않는다.** 학습 단계는 §5.4의 `stageGapBonus`로만 들어간다. 보너스 상한이 5_000 micro라서 factor 가중합을 뒤집지 못하고, 점수가 거의 같은 후보들 사이의 순서만 바꾼다 — 비어 있는 단계가 많은 skill이 조금 앞선다.
+
+**Test vectors** (`06-05-learning-stage.yaml`, `devpilot.planner.weights.stage-gap = 0.005` → 5_000 micro)
+
+| # | 그 사용자·skill의 기록 | 완료 단계 | `stageGap` | `stageGapBonus` |
+|---|---|---|---|---|
+| ST-V1 | 없음 | 0개 | 1_000_000 | 5_000 |
+| ST-V2 | `CHALLENGE` `COMPLETED` 1건 | `BUILD` | 833_333 | 4_166 |
+| ST-V3 | ST-V2 + `READING` `COMPLETED` 1건 | `BUILD`, `READ_CONCEPT` | 666_666 | 3_333 |
+| ST-V4 | ST-V3 + `READ_CODE` `COMPLETED` + 러버덕 세션 `COMPLETED`(`skill_id` = 그 skill) | 앞의 셋 + `EXPLAIN` | 333_333 | 1_666 |
+| ST-V5 | ST-V4 + `review_answer` 1건 | 앞의 넷 + `REVIEW` | 166_666 | 833 |
+| ST-V6 | ST-V5 + `REDO` `COMPLETED`(`redo_without_ai = true`) | 6개 전부 | 0 | 0 |
+| ST-V7 | `PROJECT_TASK` `COMPLETED` 1건만 | `BUILD` | 833_333 | 4_166 |
+| ST-V8 | `EXPLAIN` 과제를 `explained_to_person = true`로 `COMPLETED` | `EXPLAIN` | 833_333 | 4_166 |
+| ST-V9 | `EXPLAIN` 과제 `COMPLETED`이지만 `explained_to_person = false` | 0개 | 1_000_000 | 5_000 |
+| ST-V10 | ST-V2 + `REDO` `COMPLETED`(`redo_without_ai = false`) | `BUILD`만 | 833_333 | 4_166 |
+| ST-V11 | `CHALLENGE` 과제가 `IN_PROGRESS`(완료 기록 없음) | 0개 | 1_000_000 | 5_000 |
+| ST-V12 | 후보 A·B의 `baseScore`가 둘 다 500_000, A는 완료 0개·B는 완료 3개 | — | A 1_000_000 / B 500_000 | A `505_000` > B `502_500` → **A** |
+
+### 5.12 오늘의 팁 (`DailyTipSelector`)
+
+하루에 하나. 실무에서 자주 나오는 증상과 그 원인을 짧게 읽는다. 팁 본문은 콘텐츠이고(`content/tips/*.yaml`, `19` §3.9) 선택은 **결정적이며 AI를 쓰지 않는다.**
+
+**후보에서 빼는 것 (묶음을 나누기 전에 적용)**
+
+| ID | 제외 |
+|---|---|
+| TIP-1 | `retired: true`인 팁 |
+| TIP-2 | 그 사용자의 `user_daily_tip`에 같은 `tip_key` 행이 이미 있는 팁. **한 번 받은 팁은 다시 제안하지 않는다** — `KNEW_IT`을 고른 팁도 행이 남아 있으므로 여기서 빠진다 |
+
+**고르는 순서** — 앞 묶음에 후보가 하나라도 있으면 뒤 묶음은 보지 않는다.
+
+| 묶음 | 후보 |
+|---|---|
+| 1 | 오늘 `daily_plan`의 main task가 가진 skill과 `skillCodes`가 겹치는 팁 |
+| 2 | 최근 7 plan-day(`today − 7` ~ `today − 1`)에 `COMPLETED`한 과제의 skill과 겹치는 팁 |
+| 3 | 활성 plan의 `plan_skill_target`에 있는 skill과 겹치는 팁 (`deferred` 여부와 무관) |
+| 4 | 남은 팁 전부 |
+
+- 묶음 안 정렬: `trackDefaults.basicTipsFirst`(§5.3)가 true인 트랙은 `level`(`BASIC` 먼저 → `PRACTICAL`) → `key` ASC, 그 밖의 트랙은 `key` ASC. **첫 번째**를 고른다.
+- 오늘 `daily_plan`이 없거나 main task가 없으면 1번 묶음은 비어 있다. 네 묶음이 모두 비면 오늘의 팁은 없다(`null`).
+
+**하루 1개와 기록**
+
+| ID | 규칙 |
+|---|---|
+| TIP-3 | 그 사용자에게 `user_daily_tip(shown_on = today)` 행이 이미 있으면 **다시 고르지 않는다.** 그 팁과 저장된 `feedback`을 그대로 돌려준다 |
+| TIP-4 | 새로 고르면 `user_daily_tip(user_id, tip_key, shown_on = today, feedback = null)` 1행을 만들고 `TIP_VIEWED` 학습 이벤트를 남긴다(`skill_id` = 팁 `skillCodes`의 첫 활성 skill, 없으면 null — `04` §6). **이 이벤트는 레벨 규칙의 입력이 아니다**(§7.1) — 팁을 받은 것은 증거가 아니다 |
+
+**읽은 뒤 선택 (`TipFeedback`)**
+
+| 선택 | 효과 |
+|---|---|
+| `KNEW_IT` | 아무것도 만들지 않는다. TIP-2로 다시 제안되지 않는다 |
+| `LEARNED` | 그 팁의 복습 카드를 upsert한다(§6.3 "수동 생성" 경로, due = 다음 plan-day 시작) |
+| `WILL_TRY` | 그 팁이 **실험 후보**가 된다(TIP-6) |
+
+| ID | 규칙 |
+|---|---|
+| TIP-5 | `LEARNED` 카드의 값: `concept_key = TIP:{tipKey}`, `review_type = EXPLAIN`, `origin = MANUAL`, `source_type = TIP`(사용자가 직접 만든 카드가 아니므로 `MANUAL`이 아니다. 용어 카드의 `TERM`과도 구분한다 — 출처를 사실대로 적어 SCR-REVIEW-ITEMS에서 어디서 온 카드인지 보이게 한다), `skill_id` = 그 팁 `skillCodes`의 **첫 활성 skill**(파일에 적힌 순서). 활성 skill이 하나도 없으면 카드를 만들지 않는다(`review_item.skill_id`는 not null). prompt `"{tip.title}" — 이 증상이 왜 생기는지와 어디를 먼저 보면 되는지 설명하세요.`, `expected_answer` = 팁의 `cause` + 줄바꿈 + `whereToLook`, `rubric_json` = `[{"id":"R1","criterion":"증상이 생기는 원인을 짚는다"},{"id":"R2","criterion":"어디를 보면 되는지 설명한다"}]`. 같은 `concept_key`가 이미 있으면 §6.3 마지막 행 그대로 due만 당긴다 |
+| TIP-6 | `WILL_TRY`인 팁은 다음 plan-day부터 Today 응답(`GET /today`와 `POST /today/generate`)에 `estimatedMinutes = devpilot.tips.experiment-minutes`(기본 25)인 **실험 후보 1건**으로 붙는다. 후보는 `WILL_TRY`인 팁 중 `shown_on DESC → tip_key ASC`로 **하나만** 보인다. **planner는 바뀌지 않는다** — 점수(§5.4)·제안 분기(§5.3)·시간 배분(§5.6)에 들어가지 않고 `learning_task`를 만들지 않는다 |
+
+**Test vectors** (`06-05-daily-tip.yaml`) — 공통: today = 2026-10-20, 트랙 `JAVA_BACKEND`(`basicTipsFirst = false`), 팁 목록은 `TIP.DATABASE.INDEX.001`(PRACTICAL, `[DATABASE.INDEX]`), `TIP.LOGGING.LEVELS.001`(PRACTICAL, `[PRACTICAL_ENGINEERING.LOGGING]`), `TIP.LOGGING.LEVELS.002`(BASIC, 같은 skill), `TIP.OPERATIONS.HEALTHCHECK.001`(BASIC, `[DEVOPS.DOCKER]`).
+
+| # | 상황 | 결과 |
+|---|---|---|
+| TIP-V1 | 오늘 main task의 skill = `DATABASE.INDEX`, 받은 팁 없음 | 묶음 1 → **`TIP.DATABASE.INDEX.001`** |
+| TIP-V2 | main task 없음, 최근 7 plan-day에 `PRACTICAL_ENGINEERING.LOGGING` 과제 완료 | 묶음 2 → `key` ASC로 **`TIP.LOGGING.LEVELS.001`** |
+| TIP-V3 | TIP-V2와 같고 트랙만 `JAVA_BACKEND_STARTER`(`basicTipsFirst = true`) | `level` 먼저 → **`TIP.LOGGING.LEVELS.002`**(BASIC) |
+| TIP-V4 | 묶음 1·2가 비고 활성 plan에 `DEVOPS.DOCKER`가 있다 | 묶음 3 → **`TIP.OPERATIONS.HEALTHCHECK.001`** |
+| TIP-V5 | 어느 skill과도 겹치지 않는다 | 묶음 4 → 남은 팁 중 `key` ASC 첫 번째 |
+| TIP-V6 | 묶음 1 후보가 모두 `user_daily_tip`에 있다 | 그 팁들은 TIP-2로 빠지고 **묶음 2**로 내려간다 |
+| TIP-V7 | 남은 팁이 모두 `retired: true`이거나 이미 받았다 | 오늘의 팁 **없음**(`null`). `user_daily_tip` 행·이벤트 없음 |
+| TIP-V8 | 오늘 `user_daily_tip(shown_on = 2026-10-20)` 행이 이미 있다 | 다시 고르지 않고 그 팁 + 저장된 `feedback` 반환. 새 행·새 이벤트 **없음**(TIP-3) |
+| TIP-V9 | `LEARNED` 선택 | `concept_key = TIP:{tipKey}` 카드 upsert, due = `planDayStart(2026-10-21)`, `origin = MANUAL`, `source_type = TIP` |
+| TIP-V10 | `WILL_TRY` 선택 | 다음 plan-day Today에 25분 실험 후보 1건. `learning_task` 없음, main task 선택·점수 변화 없음 |
+| TIP-V11 | `KNEW_IT` 선택 | 카드·후보 없음. 다음 날 그 팁은 TIP-2로 후보에서 빠진다 |
 
 ---
 
@@ -657,6 +796,7 @@ RV-INTERLEAVE(list)                      # list = 1~2단계 결과, 0-based, 무
 
 - 트리거: `LearningEventRecorded`(동기, 같은 트랜잭션). 이벤트의 `skill_id`가 null이면 무시한다.
 - 입력: 해당 사용자·skill의 최근 60일(`rule-window-days`) **무효화되지 않은** 이벤트와 **payload만** 사용한다(`04` §6). 다른 테이블을 조회하지 않는다.
+- **레벨 규칙에서 빼는 이벤트 유형**: `TIP_VIEWED`, `TERM_CARD_CREATED`. `skill_id`가 있어도 §7.2~§7.4의 입력으로 세지 않는다 — 팁을 받은 것과 용어 카드를 만든 것은 **무엇을 할 수 있게 됐다는 증거가 아니다.** 이 둘이 `K1_ANY_EVENT`("이벤트 1개 이상")를 발동시키면 읽기만 해도 KNOWLEDGE가 1이 된다. 기록은 남기고(§12 지표·화면 기록) 레벨 계산에서만 뺀다.
 - 처리 순서:
   1. `DIAGNOSTIC_*` 이벤트면 §7.4를 적용하고 끝낸다.
   2. 축마다 **하락 규칙**(§7.3)을 먼저 확인한다. 적용되면 그 축의 상승 규칙은 건너뛴다.
@@ -884,7 +1024,7 @@ else                                             → MISSED
 | RD-1 | AI는 **질문만** 한다. 정답·수정 코드·"맞습니다/틀렸습니다"를 말하지 않는다. 출력 가드 `CodeLeakGuard`(`17-ai-integration.md` §6)를 그대로 적용한다 |
 | RD-2 | 질문은 **사용자 설명의 빈틈이나 틀린 전제를 겨냥**한다. 일반적인 질문("더 설명해 보세요")은 금지 |
 | RD-3 | 사용자가 "모르겠다"류로 **2턴 연속** 답하면 Hint Ladder로 넘긴다(무한 좌절 방지). 이때 `HINT_DISCLOSED` 이벤트가 정상 기록된다 |
-| RD-4 | 턴 상한에 도달하거나 사용자가 종료하면 정리를 **한 번만** 한다. 정리 후의 세션은 `COMPLETED`이고 턴을 더 받지 않는다 |
+| RD-4 | 턴 상한에 도달하거나 사용자가 종료하면 정리를 **한 번만** 한다. 정리 후의 세션은 `COMPLETED`이고 턴을 더 받지 않는다. 지시어가 많으면 서버가 빈틈 항목 1건을 더한다(§9.6 VR-9) |
 | RD-5 | 정리 AI가 낸 `gaps`가 **가드 적용 전 기준 0개이고**(`rawGapCount = 0` — 가드가 gap을 지워서 0이 된 경우는 인정하지 않는다) **턴이 3 이상**이면 EXPLANATION 증거로 인정한다(`RUBBER_DUCK_COMPLETED`). coverage는 고정값 7000이고 독립은 `hintDisclosed = false`일 때다 — §7.2 "설명 증거와 coverage" |
 | RD-6 | 사용자 입력은 저장·AI 전송 전에 `SecretMasker`를 통과한다(`07-security-and-privacy.md` §8.2). **마스킹 전 원문은 어디에도 저장하지 않는다.** 마스킹본(`rubber_duck_turn.user_text`)은 학습 기록으로 계정 유지 기간 보관한다(`04` §8) |
 | RD-7 | 한 세션은 skill 하나를 주 대상으로 한다(`skill_id`). 없으면 **학습 이벤트를 남기지 않는다**(§7.1이 `skill_id`가 null인 이벤트를 무시하므로, 레벨에도 영향이 없다) |
@@ -930,7 +1070,7 @@ else                                             → MISSED
 |---|---|
 | SP-1 | 온보딩 마지막 단계에서 사이드 프로젝트를 **하나 만든다.** 기본 이름("주문 시스템")은 클라이언트가 채워 보내고 바꿀 수 있다. 건너뛸 수 있으며, `ACTIVE` 프로젝트가 하나도 없으면 §5.3이 `PROJECT_TASK`를 제안하지 않는다 |
 | SP-2 | `PROJECT_TASK` 제안 문구는 프로젝트 이름과 skill 이름을 넣어 구체화한다(§5.8 표 `PROJECT_TASK` 행) |
-| SP-3 | `ACTIVE` 프로젝트는 여러 개일 수 있지만 planner는 `updated_at`이 가장 최근인 `ACTIVE` 하나만 쓴다. 그 id를 생성 시점에 `learning_task.side_project_id`에 고정한다(`05` §8.1) |
+| SP-3 | `ACTIVE` 프로젝트는 여러 개일 수 있지만 planner는 `updated_at`이 가장 최근인 `ACTIVE` **이고 `kind = SIDE`인** 하나만 쓴다. 그 id를 생성 시점에 `learning_task.side_project_id`에 고정한다(`05` §8.1). **`kind = PAST_WORK`는 제외한다** — 지난 실무를 적어 두는 그릇이라 앞으로 할 과제의 대상이 아니다(`04` §4.9) |
 
 **사이드 프로젝트 기록 규칙 (PN-1~PN-4)** — 프로젝트에서 무엇을 왜 골랐고 무엇이 어떻게 깨졌는지는 며칠만 지나도 흐려진다. 그때 적어 두는 것이 나중에 설명할 거리가 된다(`01` FR-29). 이 규칙들은 AI를 쓰지 않는다.
 
@@ -940,6 +1080,58 @@ else                                             → MISSED
 | PN-2 | 유형은 생성 시 고정이고 수정으로 바꿀 수 없다(`04` §4.10). 날짜(`occurredOn`)는 사용자가 적는 **일어난 날**이고 plan-day 계산과 무관하다. 미래 날짜는 받지 않는다(`05` §19.9) |
 | PN-3 | 기록마다 skill 하나를 **선택**으로 붙일 수 있다. 붙이면 나중에 그 skill의 증거 초안(`05` §14.5)과 skill 화면에서 함께 보인다. 붙이지 않아도 기록은 유효하다. **기록은 skill 레벨을 바꾸지 않는다** — 학습 이벤트를 만들지 않고 §7의 입력이 아니다(자기 신고 텍스트이기 때문이다) |
 | PN-4 | 모든 텍스트 항목은 저장 전에 `SecretMasker`를 통과한다(`05` §1.11). 첨부·파일 업로드는 없다 |
+
+### 9.6 지시어 세기 (`VagueReferenceCounter`)
+
+"그거를 이렇게 바꾸면 돼요"는 쓴 사람 머릿속에서만 이어진다. 같은 것을 용어로 바꿔 말할 수 있어야 남에게 설명할 수 있다(§7.2 EXPLANATION 축). 이 규칙은 **세기만 한다** — 점수·레벨·planner·복습 간격 어디에도 들어가지 않는다.
+
+| ID | 규칙 |
+|---|---|
+| VR-1 | 대상은 셋이다: 러버덕 턴 본문(`rubber_duck_turn.user_text`), `EXPLAIN` 과제의 답변, challenge 자기 설명(`challenge_attempt.self_explanation`). **마스킹(RD-6, `07` §8.2) 뒤의 본문**을 센다 |
+| VR-2 | 세는 표현은 **정확히 이 목록**이고 규칙에 고정한다(설정이 아니다). 한 어절: `그거`, `저거`, `이거`, `그것`, `저것`, `이것`, `그렇게`, `이렇게`, `뭐시기`. 두 어절: `그런 식`, `이런 식`, `저런 식`, `그 부분`, `이 부분` |
+| VR-3 | **어절** = 공백(스페이스·탭·줄바꿈)으로 나눈 빈 문자열이 아닌 토큰. `wordCount` = 어절 수 |
+| VR-4 | 앞에서 뒤로 **한 번만** 훑고, 한 어절은 **한 번만** 센다(VR-5 의사코드). 한 어절 표현은 어절이 그 표현으로 **시작하면** 센다(조사·어미가 붙는다: `그거를`, `이것이`). 두 어절 표현은 앞 낱말이 정확히 같고 뒤 낱말이 그 낱말로 시작할 때 센다 |
+| VR-5 | `이렇게`는 **문장 첫 어절이면 세지 않는다**(문장을 여는 접속 표현이다). `문장 첫 어절` = `i == 0`이거나 직전 어절이 `.`, `?`, `!`, `…` 중 하나로 끝나는 경우다 |
+| VR-6 | 표시값은 두 개다. **저장하지 않는다** — 응답에만 넣고 로그에도 남기지 않는다 |
+| VR-7 | 러버덕 요약(RD-4)에서 임계값을 넘으면 빈틈 목록에 서버가 항목 1건을 더한다(VR-9) |
+
+```text
+words = 본문을 공백으로 나눈 빈 문자열이 아닌 토큰 목록
+wordCount = words.length
+count = 0; i = 0
+while i < wordCount:
+    if i + 1 < wordCount and (words[i], words[i+1]) 가 두 어절 표현이면:
+        count += 1; i += 2                       # 한 어절을 두 번 세지 않는다
+    else if words[i] 가 한 어절 표현 중 하나로 시작하면:
+        if words[i] 가 `이렇게`로 시작하고 i 가 문장 첫 어절이면: i += 1     # VR-5
+        else:                                     count += 1; i += 1
+    else:
+        i += 1
+
+vagueReferenceCount       = count
+vagueReferencePer100Words = wordCount == 0 ? 0 : floorDiv(count × 100, wordCount)
+```
+
+| ID | 규칙 |
+|---|---|
+| VR-8 | 임계값 비교는 **나눗셈 없이** 한다: `count × 100 ≥ warnPer100 × wordCount`. 표시값(`vagueReferencePer100Words`)은 `floorDiv`라 버림이 있으므로 비교에 쓰지 않는다(N-1·N-4). `warnPer100` = `devpilot.rubberduck.vague-reference-warn-per-100`(기본 3) |
+| VR-9 | 러버덕 요약에서 VR-8이 참이면(`wordCount`는 그 세션의 **모든 사용자 턴을 이어 붙인** 본문 기준) 빈틈 목록에 **`용어 — 지시어 대신 용어로 바꿔 말해 보기`** 1건을 더한다. 한 세션에 최대 1건이다 |
+| VR-10 | VR-9의 항목은 (a) RD-5의 `rawGapCount`에 **넣지 않고**(AI가 낸 빈틈이 아니라 서버가 센 것이다) (b) **복습 카드를 만들지 않는다**(표현 습관이지 설명의 빈틈이 아니다). 따라서 지시어가 많아도 §7.2의 러버덕 설명 증거 판정은 달라지지 않는다 |
+
+**Test vectors** (`06-09-vague-reference.yaml`, `warnPer100 = 3`)
+
+| # | 본문 | `wordCount` | `count` | per100 | VR-9 빈틈 |
+|---|---|---|---|---|---|
+| VR-V1 | `이거를 그거로 바꾸면 그렇게 동작합니다` | 5 | **3** (`이거를`, `그거로`, `그렇게`) | 60 | 있음 |
+| VR-V2 | `이렇게 하면 트랜잭션 경계가 메서드 안으로 들어옵니다` | 7 | **0** (`이렇게`가 첫 어절, VR-5) | 0 | 없음 |
+| VR-V3 | `저는 이렇게 고쳤습니다` | 3 | **1** (첫 어절이 아니다) | 33 | 있음 |
+| VR-V4 | `문제를 찾았습니다. 이렇게 고치면 됩니다` | 5 | **0** (직전 어절이 `.`로 끝나 문장 첫 어절, VR-5) | 0 | 없음 |
+| VR-V5 | `그 부분을 이런 식으로 고쳤습니다` | 5 | **2** (`그 부분`, `이런 식`) | 40 | 있음 |
+| VR-V6 | `이 부분 이 부분` | 4 | **2** (쌍 두 개, 어절 재사용 없음) | 50 | 있음 |
+| VR-V7 | `이 코드는 커넥션을 반납하지 않습니다` | 5 | **0** (`이`는 한 어절 표현이 아니고 `이 코드는`은 두 어절 표현이 아니다) | 0 | 없음 |
+| VR-V8 | 빈 본문 | 0 | **0** | **0** | 없음 |
+| VR-V9 | `count = 3`, `wordCount = 100`인 본문 | 100 | 3 | 3 | **있음** (`300 ≥ 300`, 경계 포함) |
+| VR-V10 | `count = 3`, `wordCount = 101`인 본문 | 101 | 3 | **2** | **없음** (`300 ≥ 303` 거짓 — 표시값 2와 임계값 3을 비교하는 것이 아니다) |
 
 ---
 
