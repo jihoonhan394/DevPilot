@@ -562,7 +562,7 @@ create table user_daily_tip (
 - **적용된 migration 파일은 수정하지 않는다.** 변경은 새 `V{n}`으로 한다. 이 규칙은 **첫 배포 시점부터** 발효한다 — `V1`~`V9`는 아직 어떤 환경에도 적용된 적이 없으므로(백엔드 코드가 없다) v3 설계로 늘어난 enum 값(`learning_event.event_type`·`source_type`, `learning_task.task_type`, `ai_call_log.operation`)은 `V9`의 `alter ... drop/add constraint`가 아니라 `V4`를 직접 고쳐 반영했다. **`V10`부터는 이 방식을 쓰지 않는다** — `V1`~`V9`는 ADR-038에 따라 확정됐으므로 `V10`은 `alter table … drop constraint if exists <이름>` → `add constraint <같은 이름> check (…)`으로 enum CHECK를 다시 만든다(§10.1). 인라인 CHECK의 자동 이름은 PostgreSQL이 `<table>_<column>_check`로 정하므로 그 이름을 그대로 쓰고, 다시 만들 때 **명시적으로 같은 이름을 붙인다**(다음 migration이 또 찾을 수 있게).
 - Sprint 열은 그 테이블을 **처음 쓰는 단계**다(`11-development-roadmap.md` §3의 `S0`~`S7`). migration 파일은 V1~V9가 이미 저장소에 있고 Flyway는 버전 순서대로 **전부** 적용한다 — 단계별로 파일을 나눠 넣지 않는다. 그래서 `V9`가 `V6`의 `coach_review`를 고쳐도 순서 문제가 없다.
 - **서버 개발 DB와 첫 배포 전 migration 수정**: 2026-09-18 확인 결과 서버 `devpilot` DB에는 SP-2 때의 스키마가 남아 있지 않았고, 첫 `bootRun`이 V1~V9를 적용했다(초기화 불필요). 첫 배포 전에 V1~V9를 다시 고치면 개발 DB의 `flyway_schema_history` checksum과 어긋나 기동이 실패하므로, 그때는 개발 DB의 `devpilot` schema를 지우고 다시 적용한다(실데이터 없음, `18` §5.3 "DB 초기화").
-- 각 migration은 `schema.sql`의 해당 부분과 같아야 한다. `schema.sql`은 전체 migration 적용 결과의 스냅샷이므로 migration을 추가하면 함께 갱신한다.
+- 각 migration은 `schema.sql`의 해당 부분과 같아야 한다. `schema.sql`은 전체 migration 적용 결과의 스냅샷이므로 **migration 파일을 실제로 추가할 때 함께 갱신한다** — 설계만 적어 둔 단계에서 스냅샷을 앞서 고치면 `SchemaSnapshotConsistencyTest`가 실패한다(`09` §8.1).
 - 파괴적 변경(컬럼 삭제, 타입 축소)은 백업 확인 후 2단계로 한다: (1) 코드가 쓰지 않게 배포 (2) 다음 migration에서 삭제.
 - 통합 테스트: 빈 DB → 전체 migration → `ddl-auto=validate` 기동 성공.
 
