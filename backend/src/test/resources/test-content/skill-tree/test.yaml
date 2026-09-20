@@ -1,4 +1,4 @@
-# 테스트 skill tree: root 13 + non-root 10
+# 테스트 skill tree: root 14 + non-root 10
 skills:
   - code: JAVA
     name: Java
@@ -27,6 +27,7 @@ skills:
     category: SPRING
     parent: SPRING
     description: '@Transactional의 적용 범위와 기본 롤백 규칙, 트랜잭션 경계 설계를 이해한다.'
+    whyItMatters: 경계를 잘못 잡으면 절반만 저장된 주문처럼 되돌릴 수 없는 데이터가 남는다.
     minutesPerLevelStep: 150
     prerequisites: [JAVA.EXCEPTION]
   - code: DATABASE
@@ -96,6 +97,10 @@ skills:
     name: Security
     category: SECURITY
     description: 테스트용 Security 카테고리 묶음 노드다.
+  - code: INTEGRATION
+    name: Integration
+    category: INTEGRATION
+    description: 테스트용 연동 카테고리 묶음 노드다.
   - code: PRACTICAL_ENGINEERING
     name: Practical Engineering
     category: PRACTICAL_ENGINEERING

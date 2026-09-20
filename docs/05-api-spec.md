@@ -716,7 +716,7 @@ public record UpdateMeRequest(
 | `plans[]` | array | `learning_plan` (`planVersion` ASC). 항목마다 `milestones[]`(+`skillCodes[]`), `skillTargets[]`, `snapshots[]`(`snapshotDate` ASC) |
 | `skillStates[]` | array | `user_skill_state` (`skillCode` ASC) |
 | `skillStateChanges[]` | array | `skill_state_change` (`changedAt` ASC) |
-| `dailyPlans[]` | array | `daily_plan` + `tasks[]`(`learning_task`, `sortOrder` ASC — `READ_CODE` 행은 `readingKey`·`readingFeedback` 포함(소스 점검 입력 `19` §8.5), `REDO` 행은 `redoSourceTaskId`·`redoWithoutAi` 포함, `EXPLAIN`·`READ_CODE` 행은 `explainedToPerson`·`explainedNote` 포함) (`planDate` ASC) |
+| `dailyPlans[]` | array | `daily_plan` + `tasks[]`(`learning_task`, `sortOrder` ASC — `READ_CODE` 행은 `readingKey`·`readingFeedback` 포함, `READING` 행은 자료가 있으면 `readingKey` 포함(소스 점검 입력 `19` §8.5), `REDO` 행은 `redoSourceTaskId`·`redoWithoutAi` 포함, `EXPLAIN`·`READ_CODE` 행은 `explainedToPerson`·`explainedNote` 포함) (`planDate` ASC) |
 | `learningSessions[]` | array | `learning_session` (`startedAt` ASC) |
 | `learningEvents[]` | array | `learning_event` (`occurredAt` ASC). 무효화된 이벤트도 `invalidatedAt`과 함께 포함 |
 | `hintDisclosures[]` | array | `hint_disclosure` (`disclosedAt` ASC) |
@@ -1685,7 +1685,8 @@ public record MainTaskView(
         UUID milestoneId,              // null 가능
         UUID challengeId,              // taskType = CHALLENGE일 때만
         UUID sideProjectId,            // taskType = PROJECT_TASK일 때만 (learning_task.side_project_id, SP-2, §19)
-        String readingKey,             // taskType = READ_CODE일 때만 (learning_task.reading_key, §19.7)
+        String readingKey,             // taskType = READ_CODE(항상) 또는 READING(자료가 있을 때만). 그 외 null
+                                       // (learning_task.reading_key, §19.7 — kind로 CODE/CONCEPT를 구분한다)
         UUID redoSourceTaskId,         // taskType = REDO일 때만. 다시 만드는 원본 task (06 §5.10 RE-1, I-20)
         TaskType redoSourceTaskType,   // taskType = REDO일 때만. CHALLENGE | PROJECT_TASK (화면 문구·되돌아갈 곳)
         Boolean redoWithoutAi,         // taskType = REDO이고 COMPLETED일 때만. 그 외 null (RE-6)
@@ -1751,7 +1752,7 @@ public record TaskStatusView(          // PATCH 응답
 
 `redoSourceTaskId` 저장 규칙: `REDO` 과제는 생성 시점에 재현 후보의 원본 task id를 `learning_task.redo_source_task_id`에 고정한다(I-20, `06` §5.10 RE-3). `redoSourceTaskType`은 응답을 만들 때 그 원본 행에서 읽는다(저장하지 않는다). 원본 task 행은 사용자 데이터가 지워질 때만 사라지므로 조회에 실패하지 않는다.
 
-`sideProjectId`·`readingKey` 저장 규칙: `PROJECT_TASK`는 생성 시점의 `ACTIVE` 사이드 프로젝트 중 `updated_at`이 가장 최근인 것 하나를 `learning_task.side_project_id`에 저장한다(SP-3, `06-learning-engine-rules.md` §5.3). `ACTIVE` 프로젝트가 없으면 `PROJECT_TASK`를 제안하지 않는다(SP-1). `READ_CODE`는 고른 reading의 key를 `learning_task.reading_key`에 저장한다(`CuratedReadingRegistry`, `19-content-spec.md` §3 `curated-repos.yaml`). 두 값은 **생성 시점에 고정**되고 조회 때 다시 계산하지 않는다(`reasons`와 같은 원칙). 프로젝트가 삭제되면 `side_project_id`는 `null`이 되고(§19.6) task는 그대로 남는다.
+`sideProjectId`·`readingKey` 저장 규칙: `PROJECT_TASK`는 생성 시점의 `ACTIVE` 사이드 프로젝트 중 `updated_at`이 가장 최근인 것 하나를 `learning_task.side_project_id`에 저장한다(SP-3, `06-learning-engine-rules.md` §5.3). `ACTIVE` 프로젝트가 없으면 `PROJECT_TASK`를 제안하지 않는다(SP-1). `READ_CODE`는 고른 코드 읽기의 key를 `learning_task.reading_key`에 **반드시** 저장한다(`CuratedReadingRegistry`, `19-content-spec.md` §3.8). `READING`은 고른 **개념 읽기**의 key를 같은 칸에 저장하고, 그 skill에 후보가 없으면 `null`로 둔다(`ConceptReadingRegistry`, `19-content-spec.md` §3.13 — 자료 없이 제안되는 지금까지의 `READING`과 같다). 두 값은 **생성 시점에 고정**되고 조회 때 다시 계산하지 않는다(`reasons`와 같은 원칙). 그래서 콘텐츠에서 자료가 은퇴해도 지난 과제가 가리키는 자료는 바뀌지 않는다. 프로젝트가 삭제되면 `side_project_id`는 `null`이 되고(§19.6) task는 그대로 남는다.
 
 `tipExperiment` 규칙: `WILL_TRY`로 표시한 팁(`user_daily_tip.feedback = WILL_TRY`) 중 `shown_on` DESC → `tip_key` ASC로 **하나만** 붙인다. 표시한 그날은 붙이지 않고 다음 plan-day부터 보인다. **`learning_task`를 만들지 않고 planner에도 들어가지 않는다** — 점수·제안·시간 배분과 무관한 표시용 후보다(`06` §5.12 TIP-6). 없으면 `null`이다.
 
@@ -3817,17 +3818,47 @@ public record SideProjectPatchRequest(
 - `rubber_duck_session.target_id`에는 FK가 없으므로 지난 러버덕 세션은 그대로 남는다. 조회 시 `targetTitle`이 `null`이 된다(§9.5).
 - 이미 삭제된 id로 다시 부르면 404다(멱등 204를 주지 않는다 — 소유권과 존재를 구분하지 않는 §1.1 규칙과 같다).
 
-### 19.7 `GET /readings/{readingKey}` — 코드 읽기 과제 조회
+### 19.7 `GET /readings/{readingKey}` — 읽기 자료 조회 (코드 읽기 · 개념 읽기)
 
 | 항목 | 값 |
 |---|---|
 | operationId | `todayGetReading` |
 | 인증 / IK | Bearer / — |
-| 응답 | 200 `CuratedReadingView` |
+| 응답 | 200 `ReadingView` |
 | 오류 | 400 `VALIDATION_FAILED`(`Pattern`), 404 `RESOURCE_NOT_FOUND` |
 | Sprint · 요구사항 | S3 · FR-27, AC-28, RC-1~RC-4 |
 
+**두 종류를 한 endpoint가 돌려준다.** `learning_task.reading_key`가 `READ_CODE`의 **코드 읽기**(`curated-repos.yaml`, `19` §3.8)와 `READING`의 **개념 읽기**(`concept-readings.yaml`, `19` §3.13)를 한 칸에 담기 때문이다. key 하나가 어느 쪽인지는 `kind`로 알려 준다 — 클라이언트가 `READ.`·`DOC.` 접두사로 추측하지 않는다.
+
 ```java
+public enum ReadingKind { CODE, CONCEPT }
+
+public record ReadingView(
+        String key,                  // 예: "READ.PETCLINIC.CONTROLLER_SLICE.001", "DOC.GIT.BRANCHING.001"
+        ReadingKind kind,            // CODE = 저장소 코드 읽기, CONCEPT = 공식 문서 개념 읽기
+        List<SkillRef> skills,       // skillCodes를 활성 skill로 해석한 것. 없는 code는 뺀다
+        Integer estimatedMinutes,    // null 가능
+        boolean retired,             // 은퇴한 단위(19 §8.2). true여도 조회는 된다
+        CodeReadingView code,        // kind = CODE일 때만. 그 밖에는 null
+        ConceptReadingView concept) {}  // kind = CONCEPT일 때만. 그 밖에는 null
+
+public record CodeReadingView(
+        CuratedRepoView repo,
+        String path,                 // repo.subPath 기준 상대 경로 (19 §3.8). 로컬 파일은 <clone 위치>/<subPath>/<path>
+        int startLine,
+        int endLine,                 // startLine ≤ endLine
+        String question,             // 읽고 답할 질문 (러버덕 대상이 된다)
+        List<String> lookFor) {}     // 볼 지점 목록
+
+public record ConceptReadingView(
+        String title,                // 문서 제목 그대로. 카드의 "자료" 줄
+        String url,                  // https. 새 탭으로 연다. 서버는 요청하지 않는다
+        String publisher,            // 예: "PostgreSQL Global Development Group"
+        String versionScope,         // 예: "PostgreSQL 16"
+        String whyRead,              // 이 skill에서 무엇을 할 수 있게 되는지 (40~400자)
+        List<String> checkPoints,    // 읽고 스스로 답할 것 정확히 3개 (06 §5.3 "핵심 3가지")
+        LocalDate verifiedAt) {}     // 사람이 이 링크를 열어 확인한 날 (19 §3.13)
+
 public record CuratedRepoView(
         String key,                  // 예: "petclinic"
         String name,
@@ -3840,47 +3871,72 @@ public record CuratedRepoView(
         String cloneHint,            // 로컬로 가져오는 명령 한 줄 (RC-4)
         String pinnedCommit) {}      // 줄 번호의 기준 커밋 SHA. null 가능
 
-public record CuratedReadingView(
-        String key,                  // 예: "READ.PETCLINIC.CONTROLLER_SLICE.001"
-        CuratedRepoView repo,
-        String path,                 // repo.subPath 기준 상대 경로 (19 §3.8). 로컬 파일은 <clone 위치>/<subPath>/<path>
-        int startLine,
-        int endLine,                 // startLine ≤ endLine
-        List<SkillRef> skills,       // skillCodes를 활성 skill로 해석한 것. 없는 code는 뺀다
-        Integer estimatedMinutes,    // null 가능
-        String question,             // 읽고 답할 질문 (러버덕 대상이 된다)
-        List<String> lookFor,        // 볼 지점 목록
-        boolean retired) {}          // 은퇴한 단위(19 §8.2). true여도 좌표는 pinnedCommit 기준으로 유효. planner가 새로 제안하지 않을 뿐이다
 ```
+
+`kind = CODE` (코드 읽기):
 
 ```json
 {
   "key": "READ.PETCLINIC.CONTROLLER_SLICE.001",
-  "repo": { "key": "petclinic", "name": "Spring PetClinic", "url": "https://github.com/spring-projects/spring-petclinic",
-            "subPath": "", "license": "Apache-2.0", "stack": "Spring Boot 4.1, Java 17, Spring Data JPA",
-            "why": "Spring 공식 샘플. 계층 구조와 테스트 작성법의 정석.",
-            "cloneHint": "git clone https://github.com/spring-projects/spring-petclinic.git && cd spring-petclinic && git checkout 818c4136ea971c21674525f9053de0d9c7ad8cfe",
-            "licenseNote": null,
-            "pinnedCommit": "818c4136ea971c21674525f9053de0d9c7ad8cfe" },
-  "path": "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java",
-  "startLine": 48, "endLine": 122,
+  "kind": "CODE",
   "skills": [ { "id": "…", "code": "SPRING.MVC_REST", "name": "Spring MVC REST", "category": "SPRING" } ],
   "estimatedMinutes": 15,
-  "question": "이 컨트롤러는 Repository를 직접 주입받고 Service 계층이 없습니다. 이렇게 두어도 괜찮은 경우와 곤란해지는 경우를 나눠서 설명해 보세요.",
-  "lookFor": ["계층을 나누는 목적", "트랜잭션 경계가 어디에 생기는가", "지금 내 프로젝트는 어느 쪽에 가까운가"],
-  "retired": false
+  "retired": false,
+  "code": {
+    "repo": { "key": "petclinic", "name": "Spring PetClinic", "url": "https://github.com/spring-projects/spring-petclinic",
+              "subPath": "", "license": "Apache-2.0", "stack": "Spring Boot 4.1, Java 17, Spring Data JPA",
+              "why": "Spring 공식 샘플. 계층 구조와 테스트 작성법의 정석.",
+              "cloneHint": "git clone https://github.com/spring-projects/spring-petclinic.git && cd spring-petclinic && git checkout 818c4136ea971c21674525f9053de0d9c7ad8cfe",
+              "licenseNote": null,
+              "pinnedCommit": "818c4136ea971c21674525f9053de0d9c7ad8cfe" },
+    "path": "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java",
+    "startLine": 48, "endLine": 122,
+    "question": "이 컨트롤러는 Repository를 직접 주입받고 Service 계층이 없습니다. 이렇게 두어도 괜찮은 경우와 곤란해지는 경우를 나눠서 설명해 보세요.",
+    "lookFor": ["계층을 나누는 목적", "트랜잭션 경계가 어디에 생기는가", "지금 내 프로젝트는 어느 쪽에 가까운가"]
+  },
+  "concept": null
+}
+```
+
+`kind = CONCEPT` (개념 읽기):
+
+```json
+{
+  "key": "DOC.GIT.BRANCHING.001",
+  "kind": "CONCEPT",
+  "skills": [ { "id": "…", "code": "DEVOPS.GIT", "name": "Git 협업", "category": "DEVOPS" } ],
+  "estimatedMinutes": 25,
+  "retired": false,
+  "code": null,
+  "concept": {
+    "title": "Pro Git — 3.2 Git Branching, Basic Branching and Merging",
+    "url": "https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging",
+    "publisher": "Git",
+    "versionScope": "Pro Git 2nd Edition (버전 없음, 2026-09-21 기준 내용)",
+    "whyRead": "브랜치를 복사본이 아니라 커밋을 가리키는 이름으로 이해하게 된다. …",
+    "checkPoints": [
+      "fast-forward merge와 그렇지 않은 merge가 갈리는 조건을 적어 보세요",
+      "충돌 표시의 위쪽과 아래쪽이 각각 어느 브랜치의 내용인지 적어 보세요",
+      "작업 도중에 급한 수정을 끼워 넣어야 할 때 어떤 순서로 브랜치를 옮길지 적어 보세요"
+    ],
+    "verifiedAt": "2026-09-21"
+  }
 }
 ```
 
 | 항목 | 규칙 |
 |---|---|
-| 출처 | `content/curated-repos.yaml`을 기동 시 적재한 `CuratedReadingRegistry`(`03-system-architecture.md` §2.2, `19-content-spec.md` §3). DB 조회가 아니고 사용자별 데이터도 아니다 |
+| 출처 | `content/curated-repos.yaml`을 적재한 `CuratedReadingRegistry`와 `content/concept-readings.yaml`을 적재한 `ConceptReadingRegistry`(`03-system-architecture.md` §2.2·§3.2, `19-content-spec.md` §3.8·§3.13). 둘 다 기동 시 메모리 등록이고 DB 조회가 아니며 사용자별 데이터도 아니다 |
+| 조회 순서 | key로 `CuratedReadingRegistry` → 없으면 `ConceptReadingRegistry`. 둘 다 없으면 404. **두 registry에 같은 key가 있으면 기동 실패**다(CV-120이 콘텐츠 단계에서 막는다) |
 | 인증 | 필요하다. 하지만 **사용자 소유 리소스가 아니다** — 모든 사용자가 같은 내용을 본다. 권한 격리 catalog에는 `SCOPED_COLLECTION`이 아니라 공용 조회로 넣는다(`09-test-and-quality.md` §9.2 `GET /skills/tree`와 같은 취급) |
-| `readingKey` 형식 | `^[A-Z0-9][A-Z0-9_.]{2,149}$`. 어긋나면 400 `VALIDATION_FAILED`(field `readingKey`, code `Pattern`). 형식이 맞아도 registry에 없으면 404 `RESOURCE_NOT_FOUND`. **은퇴한 reading(`retired: true`)은 registry에 남아 있으므로 200**이다 — 지난 과제·러버덕 세션이 가리키는 단위를 계속 보여 준다(`19` §8.2) |
-| **코드 본문** | **반환하지 않는다.** 이 응답에는 파일 경로와 줄 범위만 있다. 서버는 `repo.url`을 fetch하지 않는다(`07-security-and-privacy.md` §5.5). 사용자가 `cloneHint`로 로컬에 clone해 IDE로 읽는다(RC-4) |
+| `readingKey` 형식 | `^[A-Z0-9][A-Z0-9_.]{2,149}$`(두 종류를 모두 받는다). 어긋나면 400 `VALIDATION_FAILED`(field `readingKey`, code `Pattern`). 형식이 맞아도 registry에 없으면 404 `RESOURCE_NOT_FOUND`. **은퇴한 단위(`retired: true`)는 registry에 남아 있으므로 200**이다 — 지난 과제·러버덕 세션이 가리키는 단위를 계속 보여 준다(`19` §8.2) |
+| **코드 본문·문서 본문** | **반환하지 않는다.** `CODE`는 파일 경로와 줄 범위만, `CONCEPT`은 제목과 링크만 준다. 서버는 `repo.url`도 `concept.url`도 fetch하지 않는다(`07-security-and-privacy.md` §5.5). 사용자가 `cloneHint`로 clone해 IDE로 읽거나 링크를 새 탭으로 연다 |
 | 줄 번호 | `pinnedCommit` 기준이다. 저장소가 바뀌면 줄이 밀리므로 클라이언트는 `pinnedCommit`을 함께 보여준다(`19-content-spec.md`) |
-| 쓰임 | `TaskView.readingKey`(§8.1)와 러버덕 `targetType = CODE_READING`(§9.5)이 이 key를 쓴다. `READ_CODE` 과제의 완료 조건은 러버덕 세션 1개다(RC-1, §8.4) |
+| `verifiedAt` | 사람이 그 링크를 마지막으로 열어 본 날이다. 클라이언트는 그대로 보여 주기만 한다 — 오래됐다고 경고를 만들지 않는다(판단은 소스 점검에서 사람이 한다, `19` §8.5) |
+| 쓰임 | `TaskView.readingKey`(§8.1)가 이 key를 쓴다. `READ_CODE`(`kind = CODE`)는 러버덕 `targetType = CODE_READING`(§9.5)의 대상이기도 하고 완료 조건이 러버덕 세션 1개다(RC-1, §8.4). `READING`(`kind = CONCEPT`)에는 러버덕 대상도 완료 조건도 없다 |
 | AI | 이 endpoint는 AI를 호출하지 않는다. 비용 0이다 |
+
+**기존 응답과의 차이** — S3에 구현된 `CuratedReadingView`는 `repo`·`path`·`startLine`·`endLine`·`question`·`lookFor`를 최상위에 두었다. 위 `ReadingView`는 그 여섯을 `code` 안으로 옮기고 `kind`를 더한다. 구현할 때 backend record와 app의 `reading_models.dart`, OpenAPI 스냅샷(`docs/api/openapi.yaml`)을 **같은 변경에서** 고친다.
 
 ### 19.8 프로젝트 기록 공통 (`side_project_note`)
 

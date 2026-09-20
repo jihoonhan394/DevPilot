@@ -122,6 +122,10 @@ devpilot:
   time:
     default-zone: Asia/Seoul
     default-day-start-hour: 4
+  tracks:                                  # 학습 트랙 기본값. 키는 TargetRole 값 (04 §3). 누락되면 기동 실패
+    JAVA_BACKEND:         { max-task-difficulty: 5, read-code-min-knowledge: 1, basic-tips-first: false }  # 06 §5.3, RC-3
+    JAVA_BACKEND_STARTER: { max-task-difficulty: 3, read-code-min-knowledge: 2, basic-tips-first: true }   # 입문 트랙: 쉬운 기본값, 기초 팁 먼저
+    INTEGRATION_ENGINEER: { max-task-difficulty: 4, read-code-min-knowledge: 1, basic-tips-first: false }  # 연동·구축 트랙 (06 §5.3)
   planner:
     weights: { practical-importance: 0.25, skill-gap: 0.20, review-urgency: 0.20, milestone-urgency: 0.15, project-need: 0.10, prerequisite-readiness: 0.10 }
     modifiers:

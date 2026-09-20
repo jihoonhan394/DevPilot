@@ -1,6 +1,9 @@
 package com.devpilot.learning.domain;
 
-/** 학습 이벤트의 출처 (docs/04 §3). {@code learning_event.source_type}. */
+/**
+ * 학습 이벤트의 출처 (docs/04 §3). {@code learning_event.source_type}. {@code LEARNING_TASK}는 재현 과제
+ * 완료({@code REDO_COMPLETED}, docs/04 §6)다.
+ */
 public enum EventSourceType {
     LEARNING_SESSION,
     CHALLENGE_ATTEMPT,
@@ -10,5 +13,6 @@ public enum EventSourceType {
     COACH_FINDING,
     EVIDENCE,
     LEARNING_PLAN,
-    RUBBER_DUCK_SESSION
+    RUBBER_DUCK_SESSION,
+    LEARNING_TASK
 }

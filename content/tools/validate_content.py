@@ -36,9 +36,10 @@ except ImportError:  # pragma: no cover
 # ---------------------------------------------------------------------------
 SKILL_CATEGORIES = [
     "JAVA", "SPRING", "DATABASE", "WEB_HTTP", "NETWORK", "CS", "ALGORITHM",
-    "TESTING", "DEVOPS", "SECURITY", "PRACTICAL_ENGINEERING", "SYSTEM_DESIGN", "EXPLANATION",
+    "TESTING", "DEVOPS", "SECURITY", "INTEGRATION", "PRACTICAL_ENGINEERING", "SYSTEM_DESIGN",
+    "EXPLANATION",
 ]
-TARGET_ROLES = {"JAVA_BACKEND"}
+TARGET_ROLES = {"JAVA_BACKEND", "INTEGRATION_ENGINEER"}
 PRIORITIES = ["MUST", "SHOULD", "LATER"]
 REVIEW_TYPES = {"RECALL", "BUG_SPOT", "EXPLAIN", "CHOICE"}
 CHALLENGE_PURPOSES = {"PRACTICE", "DIAGNOSTIC"}
@@ -72,6 +73,10 @@ MILESTONE_KEY_RE = re.compile(r"^[A-Z][A-Z0-9_]{2,59}$")
 CURATED_ID_RE = re.compile(r"^CS-[A-Z0-9]+(-[A-Z0-9]+)*$")
 CURATED_REPO_KEY_RE = re.compile(r"^[a-z][a-z0-9-]{1,29}$")
 READING_KEY_RE = re.compile(r"^READ\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\.[0-9]{3}$")
+CONCEPT_READING_KEY_RE = re.compile(r"^DOC\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\.[0-9]{3}$")
+# docs/19-content-spec.md §3.1: files.conceptReadings is optional and defaults to this path.
+# The catalog entry lands in P3 together with ConceptReadingRegistry (§3.13).
+DEFAULT_CONCEPT_READINGS = "concept-readings.yaml"
 COMMIT_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 CHOICE_OPTION_RE = re.compile(r"^\s*([A-E])\)\s+\S", re.MULTILINE)
 # review_item concept keys generated at runtime (06 §8.3, coach findings)
@@ -218,7 +223,7 @@ def place_template(template: dict, today: dt.date, target: dt.date):
 def validate(content_dir: str):
     res = Result()
     data = {"skills": [], "targets": [], "templates": [], "cards": [], "challenges": [],
-            "sources": [], "repos": [], "readings": [], "catalog": None}
+            "sources": [], "repos": [], "readings": [], "conceptReadings": [], "catalog": None}
 
     # ---- CV-01 catalog -----------------------------------------------------
     catalog = load_yaml(os.path.join(content_dir, "catalog.yaml"), res, "catalog.yaml")
@@ -232,7 +237,7 @@ def validate(content_dir: str):
         res.error("CV-01", "catalog.yaml", "catalogVersion must be an integer >= 1")
     files = catalog.get("files") or {}
     check_keys(files, {"skillTrees", "roleTargets", "planTemplates", "reviewCards", "challenges",
-                       "curatedSources", "curatedRepos"},
+                       "curatedSources", "curatedRepos", "conceptReadings"},
                {"skillTrees", "roleTargets", "planTemplates", "reviewCards", "challenges",
                 "curatedSources", "curatedRepos"}, res, "catalog.yaml#files")
     retired = catalog.get("retired") or {}
@@ -260,6 +265,11 @@ def validate(content_dir: str):
     for single in ("curatedSources", "curatedRepos"):
         if isinstance(files.get(single), str):
             listed.append(files[single])
+    # files.conceptReadings is optional and falls back to the default path (docs/19 §3.1, §3.13)
+    concept_readings_rel = files.get("conceptReadings")
+    if not isinstance(concept_readings_rel, str):
+        concept_readings_rel = DEFAULT_CONCEPT_READINGS
+    listed.append(concept_readings_rel)
     if len(set(listed)) != len(listed):
         res.error("CV-02", "catalog.yaml#files", "duplicate file entry")
 
@@ -286,7 +296,7 @@ def validate(content_dir: str):
         for idx, s in enumerate(doc["skills"] or []):
             where = f"{rel}#skills[{idx}]"
             if not check_keys(s, {"code", "name", "category", "parent", "description",
-                                  "minutesPerLevelStep", "prerequisites"},
+                                  "whyItMatters", "minutesPerLevelStep", "prerequisites"},
                               {"code", "name", "category", "description"}, res, where):
                 continue
             code = s["code"]
@@ -336,6 +346,14 @@ def validate(content_dir: str):
             res.error("CV-14", where, "name length 1..200")
         if not str_len_ok(s["description"], 10, 300):
             res.error("CV-14", where, "description length 10..300")
+        # CV-88: whyItMatters is optional here (CV-89 coverage for MUST skills is not
+        # implemented yet — the seed skills predate the field), but when present it must be
+        # a 20..200 char line and root skills must not have one.
+        if "whyItMatters" in s:
+            if parent is None:
+                res.error("CV-88", where, "root skill must not have whyItMatters")
+            elif not str_len_ok(s["whyItMatters"], 20, 200):
+                res.error("CV-88", where, "whyItMatters length 20..200")
         mpls = s.get("minutesPerLevelStep", 120)
         # non-root 60 (docs/19 §7.5 "60 미만은 쓰지 않는다", O-11), root 10
         min_step = 60 if parent is not None else 10
@@ -519,10 +537,10 @@ def validate(content_dir: str):
         for ph in PHASES:
             if ph not in phases_seen:
                 res.error("CV-33", rel, f"phase {ph} needs at least one milestone")
-        if doc["targetRole"] == "JAVA_BACKEND":
-            for sk, t in sorted(tgt.items()):
-                if t["priority"] == "MUST" and sk not in skill_seen:
-                    res.error("CV-36", rel, f"MUST skill {sk} is not in any milestone")
+        # CV-36 is per track: every MUST skill of THIS template's role is in a milestone
+        for sk, t in sorted(targets_by_role.get(doc["targetRole"], {}).items()):
+            if t["priority"] == "MUST" and sk not in skill_seen:
+                res.error("CV-36", rel, f"MUST skill {sk} is not in any milestone")
         doc["_skill_milestone"] = skill_seen
     for role in TARGET_ROLES:
         if template_roles[role] != 1:
@@ -766,6 +784,10 @@ def validate(content_dir: str):
                 data["sources"].append(src)
 
     # ---- curated repos / readings (CV-80..CV-87) --------------------------
+    # reading keys live in ONE namespace: code readings (READ.*) in curated-repos.yaml and
+    # concept readings (DOC.*) in concept-readings.yaml both land in learning_task.reading_key
+    # and are served by GET /readings/{key} (docs/05 §19.7, docs/19 §3.13). Keys must not collide.
+    reading_keys: set[str] = set()
     rel = files.get("curatedRepos")
     if isinstance(rel, str):
         doc = load_yaml(os.path.join(content_dir, rel), res, rel)
@@ -815,7 +837,6 @@ def validate(content_dir: str):
                 data["repos"].append(repo)
 
             repos_by_key = {r["key"]: r for r in data["repos"]}
-            reading_keys: set[str] = set()
             for idx, rd in enumerate(readings):
                 where = f"{rel}#readings[{idx}]"
                 required = {"key", "repo", "path", "lines", "skillCodes", "estimatedMinutes",
@@ -886,18 +907,106 @@ def validate(content_dir: str):
                             res.error("CV-86", where, "lookFor item length 5..200")
                 data["readings"].append(rd)
 
-            # CV-83: every retired key keeps its definition (retired units stay resolvable, §8.2)
-            for key in sorted(retired_readings - reading_keys):
-                res.error("CV-83", "catalog.yaml#retired.readingKeys",
-                          f"{key} has no reading definition in {rel} (keep it with retired: true)")
-
             # CV-87: count only readings that are not retired. A repo kept only for retired
-            # readings (0 active) is not a warning target
+            # readings (0 active) is not a warning target. Range is 3..8 (docs/19 §3.8, CV-87)
             for repo in data["repos"]:
                 active = repo["_readings"]
-                if active and not 3 <= active <= 5:
+                if active and not 3 <= active <= 8:
                     res.warn("CV-87", f"{rel}#{repo['key']}",
-                             f"repo has {active} active readings (expected 3..5)")
+                             f"repo has {active} active readings (expected 3..8)")
+
+    # ---- concept readings (CV-120..CV-125) --------------------------------
+    crel = concept_readings_rel
+    if os.path.isfile(os.path.join(content_dir, crel)):
+        doc = load_yaml(os.path.join(content_dir, crel), res, crel)
+        if doc is not None and check_keys(doc, {"conceptReadings"}, {"conceptReadings"}, res, crel):
+            entries = doc.get("conceptReadings") or []
+            if not isinstance(entries, list) or not entries:
+                res.error("CV-120", crel, "conceptReadings must be a non-empty list")
+                entries = []
+            for idx, cr in enumerate(entries):
+                where = f"{crel}#conceptReadings[{idx}]"
+                required = {"key", "title", "url", "publisher", "versionScope", "skillCodes",
+                            "estimatedMinutes", "whyRead", "checkPoints", "verifiedAt"}
+                # optional: retired (bool, default false) — docs/19 §3.13, §8.2
+                if not check_keys(cr, required | {"retired"}, required, res, where):
+                    continue
+                if "retired" in cr and not isinstance(cr["retired"], bool):
+                    res.error("CV-03", where, "retired must be a boolean")
+                is_retired = cr.get("retired") is True
+                key = cr["key"]
+                where = f"{crel}#{key}"
+                if not (isinstance(key, str) and CONCEPT_READING_KEY_RE.match(key)
+                        and len(key) <= 100):
+                    res.error("CV-120", where, "concept reading key pattern invalid "
+                                               r"(^DOC\.<TOPIC>\.<UNIT>\.NNN$)")
+                if key in reading_keys:
+                    res.error("CV-120", where, "duplicate reading key "
+                                               "(code readings and concept readings share one namespace)")
+                if is_retired and key not in retired_readings:
+                    res.error("CV-120", where,
+                              "retired concept reading key must be listed in retired.readingKeys")
+                if not is_retired and key in retired_readings:
+                    res.error("CV-120", where,
+                              "key is in retired.readingKeys but the concept reading is not retired")
+                reading_keys.add(key)
+
+                u = urlparse(str(cr["url"]))
+                if u.scheme != "https" or not host_allowed(u.hostname or ""):
+                    res.error("CV-121", where,
+                              f"url must be https on a trusted host ({u.hostname})")
+
+                for fld, hi in (("title", 200), ("publisher", 100), ("versionScope", 100)):
+                    if not str_len_ok(cr[fld], 1, hi):
+                        res.error("CV-122", where, f"{fld} length 1..{hi}")
+                va = cr["verifiedAt"]
+                if not isinstance(va, dt.date):
+                    try:
+                        dt.date.fromisoformat(str(va))
+                    except ValueError:
+                        res.error("CV-122", where, "verifiedAt must be YYYY-MM-DD")
+
+                codes = cr["skillCodes"]
+                if not (isinstance(codes, list) and 1 <= len(codes) <= 4):
+                    res.error("CV-123", where, "skillCodes must be a list of 1..4 codes")
+                else:
+                    if len(set(codes)) != len(codes):
+                        res.error("CV-123", where, "duplicate skillCode")
+                    for c in codes:
+                        if c not in tgt:
+                            res.error("CV-123", where, f"skillCode {c} has no role target")
+                em = cr["estimatedMinutes"]
+                if not (is_int(em) and 5 <= em <= 60):
+                    res.error("CV-123", where, "estimatedMinutes must be an integer 5..60")
+
+                if not str_len_ok(cr["whyRead"], 40, 400):
+                    res.error("CV-124", where, "whyRead must be 40..400 chars")
+                cps = cr["checkPoints"]
+                if not (isinstance(cps, list) and len(cps) == 3):
+                    res.error("CV-124", where,
+                              "checkPoints must be exactly 3 items (06 §5.3 \"핵심 3가지\")")
+                else:
+                    for item in cps:
+                        if not str_len_ok(item, 10, 200):
+                            res.error("CV-124", where, "checkPoint length 10..200")
+                    if len(set(cps)) != len(cps):
+                        res.error("CV-124", where, "duplicate checkPoint")
+                if not is_retired:
+                    data["conceptReadings"].append(cr)
+
+    # CV-83/CV-120: every retired key keeps its definition in one of the two reading files
+    # (retired units stay resolvable through GET /readings/{key}, docs/19 §8.2)
+    for key in sorted(retired_readings - reading_keys):
+        res.error("CV-83", "catalog.yaml#retired.readingKeys",
+                  f"{key} has no reading definition (keep it with retired: true)")
+
+    # ---- CV-125 WARN: MUST skills with nothing to read --------------------
+    readable = {c for rd in data["readings"] if not rd.get("retired")
+                for c in (rd.get("skillCodes") or [])}
+    readable |= {c for cr in data["conceptReadings"] for c in (cr.get("skillCodes") or [])}
+    for sk, t in sorted(tgt.items()):
+        if t["priority"] == "MUST" and sk not in readable:
+            res.warn("CV-125", sk, "MUST skill has neither a code reading nor a concept reading")
 
     # ---- WARN: MUST skills without seed card ------------------------------
     carded = {c["skill"] for c in data["cards"]}
@@ -1044,6 +1153,7 @@ def main(argv: list[str]) -> int:
           f"templates={len(data['templates'])} cards={len(data['cards'])} "
           f"challenges={len(data['challenges'])} curatedSources={len(data['sources'])} "
           f"curatedRepos={len(data['repos'])} readings={len(data['readings'])} "
+          f"conceptReadings={len(data['conceptReadings'])} "
           f"catalogVersion={(data['catalog'] or {}).get('catalogVersion')}")
     print(f"result: {'FAIL' if res.errors else 'PASS'} (errors={len(res.errors)}, warnings={len(res.warns)})")
     if "--report" in flags and "skills_by_code" in data:

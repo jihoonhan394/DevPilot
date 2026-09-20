@@ -22,7 +22,7 @@ public record OnboardingRequest(
         @NotNull @Min(0) @Max(720) Integer weekendStudyMinutes,
         @NotNull @Valid LearningGoalInput learningGoal,
         @NotNull Boolean runDiagnostic,
-        @NotNull @Size(max = 13) List<@NotNull @Valid SelfAssessmentInput> selfAssessments,
+        @NotNull @Size(max = 14) List<@NotNull @Valid SelfAssessmentInput> selfAssessments,
         @Nullable @Valid SideProjectInput sideProject,
         @NotNull Boolean useTemplate) {
 

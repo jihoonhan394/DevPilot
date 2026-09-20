@@ -1,6 +1,6 @@
 -- =====================================================================
 -- DevPilot database schema (PostgreSQL 16 — 자체 서버 공용 인스턴스. PG 17 전용 문법 사용 금지)
--- Status: Accepted (v2) · Last updated: 2026-09-18 (v3: side_project, rubber_duck_session/turn, READ_CODE, RUBBER_DUCK*)
+-- Status: Accepted (v2) · Last updated: 2026-09-21 (V10: 학습 트랙 3종, INTEGRATION, REDO, 프로젝트 기록, 오늘의 팁, 설명 기록, 문제 시간 제한)
 -- Related: docs/04-domain-model-and-db.md (enum registry, state machines, JSON schemas)
 --
 -- 이 파일은 설계 기준(최종 형태)이다. 실제 적용은 Flyway migration으로 나눠서 한다
@@ -43,7 +43,7 @@ create table app_user (
 create table learning_goal (
     id                     uuid primary key default gen_random_uuid(),
     user_id                uuid not null unique references app_user(id) on delete cascade,
-    target_role            varchar(40) not null check (target_role in ('JAVA_BACKEND')),
+    target_role            varchar(40) not null check (target_role in ('JAVA_BACKEND','JAVA_BACKEND_STARTER','INTEGRATION_ENGINEER')),
     target_completion_date date not null,
     created_at             timestamptz not null default now(),
     updated_at             timestamptz not null default now(),
@@ -59,7 +59,7 @@ create table skill (
     name                   varchar(200) not null,
     category               varchar(40) not null check (category in (
                               'JAVA','SPRING','DATABASE','WEB_HTTP','NETWORK','CS','ALGORITHM',
-                              'TESTING','DEVOPS','SECURITY','PRACTICAL_ENGINEERING','SYSTEM_DESIGN','EXPLANATION')),
+                              'TESTING','DEVOPS','SECURITY','INTEGRATION','PRACTICAL_ENGINEERING','SYSTEM_DESIGN','EXPLANATION')),
     parent_id              uuid references skill(id),
     description            text,
     minutes_per_level_step integer not null default 120 check (minutes_per_level_step between 10 and 2000),
@@ -78,7 +78,7 @@ create table skill_prerequisite (
 );
 
 create table role_skill_target (                 -- 역할 기본 목표 (전역, seed)
-    target_role                 varchar(40) not null check (target_role in ('JAVA_BACKEND')),
+    target_role                 varchar(40) not null check (target_role in ('JAVA_BACKEND','JAVA_BACKEND_STARTER','INTEGRATION_ENGINEER')),
     skill_id                    uuid not null references skill(id),
     priority                    varchar(10) not null check (priority in ('MUST','SHOULD','LATER')),
     practical_importance        numeric(3,2) not null check (practical_importance between 0 and 1),
@@ -163,10 +163,12 @@ create table learning_event (
                        'RUBBER_DUCK_COMPLETED',
                        'COACH_REVIEW_COMPLETED','COACH_FINDING_CLOSED',
                        'DIAGNOSTIC_PASSED','DIAGNOSTIC_FAILED',
-                       'EVIDENCE_ACCEPTED','PLAN_REPLANNED')),
+                       'EVIDENCE_ACCEPTED','PLAN_REPLANNED',
+                       'REDO_COMPLETED','TIP_VIEWED','TERM_CARD_CREATED')),
     source_type        varchar(30) check (source_type in (
                        'LEARNING_SESSION','CHALLENGE_ATTEMPT','CHALLENGE_SUBMISSION','REVIEW_ITEM',
-                       'COACH_REVIEW','COACH_FINDING','EVIDENCE','LEARNING_PLAN','RUBBER_DUCK_SESSION')),
+                       'COACH_REVIEW','COACH_FINDING','EVIDENCE','LEARNING_PLAN','RUBBER_DUCK_SESSION',
+                       'LEARNING_TASK')),
     source_id          uuid,
     plan_date          date not null,
     payload            jsonb not null default '{}'::jsonb,     -- docs/04 §6 event별 payload 스키마
@@ -320,10 +322,44 @@ create table side_project (
     status      varchar(20) not null default 'ACTIVE' check (status in ('ACTIVE','PAUSED','DONE')),
     created_at  timestamptz not null default now(),
     updated_at  timestamptz not null default now(),
-    version     bigint not null default 0
+    version     bigint not null default 0,
+    kind        varchar(20) not null default 'SIDE',                         -- 분류이지 상태가 아니다 (docs/04 I-23, V10에서 추가)
+    constraint side_project_kind_check check (kind in ('SIDE','PAST_WORK'))
 );
 -- planner는 가장 최근 updated_at인 ACTIVE 프로젝트 하나만 쓴다 (docs/06 SP-3)
 create index idx_side_project_user_status on side_project(user_id, status, updated_at desc);
+
+-- 프로젝트 기록 (결정·장애). note_type마다 채우는 본문 컬럼이 다르다 (docs/04 §4.10, I-22)
+create table side_project_note (
+    id                  uuid primary key default gen_random_uuid(),
+    user_id             uuid not null references app_user(id) on delete cascade,
+    side_project_id     uuid not null references side_project(id) on delete cascade,
+    note_type           varchar(20) not null check (note_type in ('DECISION','INCIDENT')),
+    title               varchar(200) not null,
+    occurred_on         date not null,
+    skill_id            uuid references skill(id),          -- 선택. skill이 비활성화돼도 기록은 남는다
+    decision_choice     text,                                -- DECISION: 무엇을 골랐나
+    decision_options    text,                                -- DECISION: 어떤 선택지가 있었나
+    decision_rationale  text,                                -- DECISION: 왜 그것을 골랐나
+    incident_symptom    text,                                -- INCIDENT: 무엇이 잘못됐나
+    incident_detection  text,                                -- INCIDENT: 어떻게 찾았나
+    incident_fix        text,                                -- INCIDENT: 무엇으로 고쳤나
+    incident_prevention text,                                -- INCIDENT: 무엇으로 다시 막나
+    created_at          timestamptz not null default now(),
+    updated_at          timestamptz not null default now(),
+    version             bigint not null default 0,
+    constraint side_project_note_body_by_type check (
+        (note_type = 'DECISION'
+         and decision_choice is not null and decision_options is not null and decision_rationale is not null
+         and incident_symptom is null and incident_detection is null
+         and incident_fix is null and incident_prevention is null)
+     or (note_type = 'INCIDENT'
+         and incident_symptom is not null and incident_detection is not null
+         and incident_fix is not null and incident_prevention is not null
+         and decision_choice is null and decision_options is null and decision_rationale is null))
+);
+-- 기록 목록·cursor 정렬 (docs/05 §19.10)
+create index idx_side_project_note_project on side_project_note(side_project_id, occurred_on desc, id desc);
 
 create table rubber_duck_session (
     id                  uuid primary key default gen_random_uuid(),
@@ -410,7 +446,9 @@ create table challenge (
     prompt_version         varchar(10),
     rejection_reason       varchar(1000),
     created_at             timestamptz not null default now(),
-    check (status <> 'VALIDATED' or (prompt is not null and rubric_json is not null and expected_concepts_json is not null))
+    time_limit_minutes     integer,                                          -- 문제의 성질. 규칙 입력이 아니다 (docs/04 I-25, V10에서 추가)
+    check (status <> 'VALIDATED' or (prompt is not null and rubric_json is not null and expected_concepts_json is not null)),
+    constraint challenge_time_limit_minutes_check check (time_limit_minutes is null or time_limit_minutes between 1 and 120)
 );
 create index idx_challenge_owner on challenge(owner_user_id, created_at desc);
 
@@ -423,7 +461,7 @@ create table learning_task (
     challenge_id      uuid references challenge(id) on delete set null,
     task_type         varchar(20) not null check (task_type in
                       ('RECALL','REVIEW','CHALLENGE','PROJECT_TASK','COACH_REVIEW',
-                       'READING','READ_CODE','EXPLAIN')),
+                       'READING','READ_CODE','EXPLAIN','REDO')),
     title             varchar(200) not null,
     description       varchar(2000),
     estimated_minutes integer not null check (estimated_minutes between 1 and 720),
@@ -438,17 +476,47 @@ create table learning_task (
     side_project_id   uuid references side_project(id) on delete set null,   -- PROJECT_TASK 대상 프로젝트 (V9에서 추가)
     reading_key       varchar(150),                                          -- READ_CODE 대상 reading key, FK 없음 (V9에서 추가)
     reading_feedback  varchar(20) check (reading_feedback in ('HELPFUL','TOO_HARD','BORING')), -- READ_CODE 읽기 평가, 선택 (V9에서 추가)
-    constraint learning_task_reading_key_type check ((reading_key is not null) = (task_type = 'READ_CODE')),
-    constraint learning_task_reading_feedback_type check (reading_feedback is null or task_type = 'READ_CODE')
+    redo_source_task_id uuid references learning_task(id),                   -- REDO 과제의 원본. cascade 없음 (V10에서 추가)
+    redo_without_ai   boolean,                                               -- REDO 완료 때 "AI 없이 했는가" (V10에서 추가)
+    explained_to_person boolean,                                             -- EXPLAIN·READ_CODE 설명 기록 (V10에서 추가)
+    explained_note    varchar(500),                                          -- 마스킹본 (docs/05 §1.11, V10에서 추가)
+    -- READING도 reading_key를 가질 수 있다 — 개념 읽기를 코드 읽기와 같은 칸에 담는다 (docs/04 I-17)
+    constraint learning_task_reading_key_type check (
+           (task_type = 'READ_CODE' and reading_key is not null)
+        or (task_type = 'READING')
+        or (task_type not in ('READ_CODE', 'READING') and reading_key is null)),
+    constraint learning_task_reading_feedback_type check (reading_feedback is null or task_type = 'READ_CODE'),
+    constraint learning_task_redo_source_type check ((redo_source_task_id is not null) = (task_type = 'REDO')),
+    constraint learning_task_redo_without_ai_type check (redo_without_ai is null or task_type = 'REDO'),
+    constraint learning_task_redo_answer_required
+        check (not (task_type = 'REDO' and status = 'COMPLETED' and redo_without_ai is null)),
+    constraint learning_task_explained_by_type check (
+        (explained_to_person is null and explained_note is null) or task_type in ('EXPLAIN','READ_CODE'))
 );
 create index idx_learning_task_daily_plan on learning_task(daily_plan_id);
 create index idx_learning_task_user on learning_task(user_id);
 -- WIP=1: 진행 가능한(main이면서 PLANNED/IN_PROGRESS) task는 하루 1개
 create unique index uq_learning_task_one_active_main on learning_task(daily_plan_id)
     where is_main and status in ('PLANNED','IN_PROGRESS');
+-- 재현 과제 후보 조회 (docs/06 §5.10 RE-2·RE-5). 부분 인덱스라 READING·EXPLAIN 등은 담지 않는다
+create index idx_learning_task_redo_candidate on learning_task(user_id, task_type, status, completed_at desc)
+    where task_type in ('CHALLENGE','PROJECT_TASK','REDO');
 
 alter table learning_session
     add constraint fk_learning_session_task foreign key (learning_task_id) references learning_task(id) on delete set null;
+
+-- 오늘의 팁 표시 이력. 본문은 DB가 아니라 콘텐츠다 (docs/04 §4.11, I-26, ADR-041)
+create table user_daily_tip (
+    id          uuid primary key default gen_random_uuid(),
+    user_id     uuid not null references app_user(id) on delete cascade,
+    tip_key     varchar(120) not null,               -- content/tips 의 key. FK 없음(코드 읽기 reading_key 선례)
+    shown_on    date not null,                        -- plan-day
+    feedback    varchar(20) check (feedback in ('KNEW_IT','LEARNED','WILL_TRY')),
+    created_at  timestamptz not null default now(),
+    constraint user_daily_tip_unique unique (user_id, tip_key)
+);
+-- 그 plan-day에 이미 보여 준 팁이 있는지와 최근 표시 이력 (docs/05 §20.2)
+create index idx_user_daily_tip_user_shown on user_daily_tip(user_id, shown_on desc);
 
 -- ---------------------------------------------------------------------
 -- 8. Training
@@ -478,7 +546,9 @@ create table challenge_attempt (
     explanation_coverage_bp  integer check (explanation_coverage_bp between 0 and 10000),
     started_at               timestamptz not null default now(),
     completed_at             timestamptz,
-    version                  bigint not null default 0
+    version                  bigint not null default 0,
+    elapsed_seconds          integer,                        -- 시도의 기록. 규칙 입력이 아니다 (docs/04 I-25, V10에서 추가)
+    constraint challenge_attempt_elapsed_seconds_check check (elapsed_seconds is null or elapsed_seconds >= 0)
 );
 create index idx_challenge_attempt_user_time on challenge_attempt(user_id, started_at desc);
 create index idx_challenge_attempt_challenge on challenge_attempt(challenge_id);
@@ -518,7 +588,8 @@ create table review_item (
     skill_id                 uuid not null references skill(id),
     origin                   varchar(20) not null check (origin in ('SEED','MANUAL','AI_GENERATED')),
     source_type              varchar(30) not null check (source_type in
-                             ('SEED_CARD','MANUAL','CHALLENGE_ATTEMPT','COACH_FINDING','EVIDENCE','RUBBER_DUCK')),
+                             ('SEED_CARD','MANUAL','CHALLENGE_ATTEMPT','COACH_FINDING','EVIDENCE','RUBBER_DUCK',
+                              'REDO_TASK','TERM','TIP')),
     source_id                uuid,
     concept_key              varchar(150) not null,
     review_type              varchar(20) not null check (review_type in ('RECALL','BUG_SPOT','EXPLAIN','CHOICE')),

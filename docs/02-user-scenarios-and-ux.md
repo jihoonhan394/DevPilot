@@ -10,6 +10,8 @@
 >
 > **2026-09-20** — 짧게 읽는 것(오늘의 팁)과 말을 고르는 것(용어 사전)을 넣었다. 새 화면은 **SCR-TIPS · SCR-TIP-DETAIL · SCR-TERMS · SCR-TERM-DETAIL**(§3.17)이고, SCR-TODAY(팁 카드·`whyItMatters`·확인 목록)·SCR-SKILL-DETAIL(학습 단계 6칸)·SCR-DASHBOARD(이번 주에 만든 것·연속 학습 일수)·SCR-PROJECT-DETAIL(프로젝트 종류·Markdown 내려받기)을 넓혔다. 팁·용어·확인 목록 본문은 DB가 아니라 **콘텐츠**이고(ADR-041, `19-content-spec.md` §3.9~§3.11) 학습 단계는 저장하지 않고 기존 기록에서 계산한다(ADR-042, `06` §5.11).
 >
+> **2026-09-21** — **개념 읽기**(`READING` 과제)가 무엇을 읽어야 하는지 알려 준다. SCR-TODAY의 `READING` 카드에 자료 제목·출처·"자료 열기"(새 탭)·"읽고 답할 3가지"를 붙였다(§3.5). **새 화면은 없다** — 자료 블록은 Today 카드 안에 있고 `GET /readings/{readingKey}`가 코드 읽기(`kind = CODE`)와 개념 읽기(`kind = CONCEPT`) 두 종류를 돌려준다(`05` §19.7). 자료 본문은 DB가 아니라 콘텐츠다(`19` §3.13). 자료가 없는 skill의 `READING`은 전과 똑같이 보인다.
+>
 > 클라이언트 스택: Flutter web(PWA), Riverpod, go_router, dio, freezed(DEC-10, DEC-12). 인증은 `AUTH_MODE` dart-define으로 고른다 — `dev`(기본: `POST /api/v1/dev/token`) / `supabase`(Later: `supabase_flutter`).
 
 ---
@@ -690,7 +692,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 #### SCR-TODAY
 
-- **목적**: 오늘 가능 시간·컨디션을 받아 main task 1개를 보여주고 시작·완료를 기록한다(FR-07, FR-08, FR-21). 핵심 루프의 출발점이다 — `READ_CODE`는 SCR-READ-CODE로, `PROJECT_TASK`는 사이드 프로젝트 구현과 러버덕으로 이어진다(FR-26, FR-27). **진입**: 로그인 후 기본 화면, 하단 탭 Today, Training·Review·러버덕 종료 후 복귀. **Sprint**: S2 (READ_CODE 카드·러버덕 진입 S3).
+- **목적**: 오늘 가능 시간·컨디션을 받아 main task 1개를 보여주고 시작·완료를 기록한다(FR-07, FR-08, FR-21). 핵심 루프의 출발점이다 — `READ_CODE`는 SCR-READ-CODE로, `PROJECT_TASK`는 사이드 프로젝트 구현과 러버덕으로 이어진다(FR-26, FR-27). `READING`은 **카드 안에서** 읽을 자료를 보여주고 새 탭으로 연다(별도 화면 없음). **진입**: 로그인 후 기본 화면, 하단 탭 Today, Training·Review·러버덕 종료 후 복귀. **Sprint**: S2 (READ_CODE 카드·READING 자료 블록·러버덕 진입 S3).
 - **레이아웃 (생성 전 — `404 TODAY_NOT_GENERATED`)**
 
 ```text
@@ -805,6 +807,45 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
   - 제목·예상 시간·설명은 `MainTaskView`의 `title`, `estimatedMinutes`, `description`(서버가 `06` §5.3 템플릿으로 만든 값)을 그대로 쓴다. 파일·줄 범위를 클라이언트가 다시 조합하지 않는다.
   - description은 reading의 `question` + "읽고 나서 러버덕으로 설명하면 완료입니다."(`06` §5.3)이다. 카드에서는 2줄로 접고 펼쳐 볼 수 있다. 그 아래 보조 줄 `today.readCode.local`로 코드는 사용자 컴퓨터에서 읽는다는 것을 알린다(서버는 코드를 가져오지 않는다).
+
+- **main 카드 — `READING`** (개념 읽기, S3. `06` §5.3, 콘텐츠 `19` §3.13)
+
+```text
+│ ┌────────────────────────────┐ │
+│ │ [개념 읽기]  Git 협업          │ │
+│ │ Git 협업 개념 읽기 —          │ │  title (06 §5.3 템플릿)
+│ │ Pro Git — 3.2 Git Branching, │ │
+│ │ Basic Branching and Merging  │ │
+│ │ 약 25분                        │ │
+│ │ 브랜치를 복사본이 아니라 커밋을 │ │  description 2줄 + 펼치기
+│ │ 가리키는 이름으로 이해하게…  ▾ │ │  (whyRead + 완료 안내)
+│ │                              │ │
+│ │ 자료                          │ │  today.reading.material
+│ │ Pro Git — 3.2 Git Branching, │ │  concept.title
+│ │ Basic Branching and Merging  │ │
+│ │ Git · Pro Git 2nd Edition     │ │  publisher · versionScope
+│ │ ┌──────────────────────────┐ │ │
+│ │ │      자료 열기  ↗         │ │ │  → concept.url (새 탭)
+│ │ └──────────────────────────┘ │ │
+│ │ ▸ 읽고 답할 3가지             │ │  today.reading.checkPoints (접힘)
+│ │                              │ │
+│ │ 왜 오늘?                      │ │
+│ │ • 기반 다지기 milestone 핵심 항목│
+│ │ ┌──────────────────────────┐ │ │
+│ │ │          시작            │ │ │
+│ │ └──────────────────────────┘ │ │
+│ │         오늘은 건너뛰기       │ │
+│ └────────────────────────────┘ │
+```
+
+  - **이 카드가 푸는 문제**: 전에는 `READING` 카드에 제목과 "공식 문서를 읽고 핵심 3가지를 스스로 적어 보세요"만 있어서 **무엇을 읽어야 하는지 알 수 없었다.** 자료 블록이 그 자리를 채운다.
+  - **데이터**: `MainTaskView.readingKey`가 있으면 `GET /readings/{readingKey}`(`05` §19.7)로 `kind = CONCEPT` 응답을 받아 `concept`을 쓴다. `READ_CODE`가 같은 endpoint를 쓰는 것과 같은 방식이고 **별도 화면을 만들지 않는다** — 자료 블록은 Today 카드 안에 있다. 조회에 실패하면 자료 블록만 숨기고 과제는 그대로 보인다(제목·설명은 이미 `MainTaskView`에 있다).
+  - **자료 블록**: 머리줄 `today.reading.material` + `concept.title`(최대 3줄) + 보조 줄 `{concept.publisher} · {concept.versionScope}`. 제목은 문서 원문 제목이라 번역하거나 줄이지 않는다.
+  - **"자료 열기"**(`today.reading.open`): `concept.url`을 **새 탭·외부 브라우저**로 연다(앱 안 WebView로 감싸지 않는다 — 공식 문서는 그 사이트에서 읽는 것이 맞고, 서버도 앱도 그 URL을 대신 가져오지 않는다). 카드 안의 secondary 버튼이며 한 화면 primary 1개 규칙(U-1)을 지킨다 — primary는 "시작"이다.
+  - **"읽고 답할 3가지"**(`today.reading.checkPoints`): `concept.checkPoints` 3개를 글머리표로 보여 주는 접힘 줄이다. **체크박스가 아니라 읽는 목록**이고 서버에 답을 보내지 않는다(확인 목록과 같은 취급). `IN_PROGRESS`에서도 접힌 채로 남는다.
+  - **`readingKey`가 `null`일 때**(그 skill에 개념 읽기가 없다): 자료 블록과 "자료 열기", "읽고 답할 3가지"를 **모두 숨긴다.** 카드는 전과 똑같이 제목 + `skill.description` + "공식 문서를 읽고 핵심 3가지를 스스로 적어 보세요"만 보인다(회귀 없음).
+  - **완료 조건이 없다.** `READ_CODE`와 달리 러버덕 세션 없이도 "완료"를 누를 수 있다. `IN_PROGRESS`에서 보조 버튼 "러버덕으로 설명하기"는 그대로 둔다(권장이지 조건이 아니다).
+  - `verifiedAt`은 카드에 보이지 않는다. 링크가 언제 확인됐는지는 콘텐츠 점검용 값이고 사용자 판단에 쓰이지 않는다(`19` §8.5).
 
 - **main 카드 — `REDO`** (재현 과제, S4. FR-28, `06` §5.10)
 
@@ -927,7 +968,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 - **진행 중 러버덕 줄** (`ActiveRubberDuckTile`, S3): 기기에 저장한 진행 중 세션(`localStorage` `devpilot.rubberduck.active.<externalAuthId>` = `{sessionId, taskId}`, try/catch)이 있고 `GET /rubber-duck/{sessionId}`가 `IN_PROGRESS`이면 복습 줄 위에 `today.duck.continue` + "이어서 설명하기"(→ `/rubber-duck/{sessionId}`)를 한 줄로 보인다. `IN_PROGRESS`가 아니거나 404면 저장값을 지우고 숨긴다. 세션 목록 API가 없어서 다른 기기에서 시작한 세션은 보이지 않는다(`05` §9.10).
 - **`READ_CODE` 완료 확인**: 완료 조건(RC-1)은 서버가 검사한다 — 그 task를 대상으로 한 `COMPLETED` 러버덕 세션이 있어야 `PATCH /today/tasks/{taskId}` `{status: COMPLETED}`가 성공한다(`05` §8.4). 러버덕 정리는 과제 상태를 바꾸지 않는다(`05` §9.8). 클라이언트는 러버덕 정리 화면의 "Today로 돌아가 완료하기"(`/today?complete={taskId}`)로 돌아오면 완료 시트(읽기 평가 칩 포함)를 연다. 그 밖의 진입에서는 기기에 저장한 기록(`devpilot.rubberduck.task.<taskId>`)의 세션이 `COMPLETED`이면 "완료"를, 아니면 "코드 읽기로 돌아가기"와 "설명하기"를 보인다. 러버덕 없이 완료를 누르면 서버가 `409 INVALID_STATE_TRANSITION`을 주고 토스트 `today.readCode.needDuck`.
-- **컴포넌트**: `MinutesChips`, `EnergySegmented`, `MainTaskCard`(유형별 변형: `READ_CODE`·`PROJECT_TASK` 위 와이어프레임), `WhyItMattersLine`, `ChecklistSection`(before 접힘 / after 목록), `ReasonList`, `RiskBadge`(§6.1), `ComebackBanner`, `ActiveRubberDuckTile`, `ReviewTaskTile`, `DailyTipCard`, `TipExperimentTile`, `DiagnosticSuggestionCard`, `CompleteSessionSheet`(`ExplainedToPersonField` 포함), `RegenerateSheet`(시간·컨디션 재입력).
+- **컴포넌트**: `MinutesChips`, `EnergySegmented`, `MainTaskCard`(유형별 변형: `READ_CODE`·`READING`·`PROJECT_TASK`·`REDO` 위 와이어프레임), `ConceptReadingSection`(`READING` 자료 블록 + "자료 열기" + 읽고 답할 3가지), `WhyItMattersLine`, `ChecklistSection`(before 접힘 / after 목록), `ReasonList`, `RiskBadge`(§6.1), `ComebackBanner`, `ActiveRubberDuckTile`, `ReviewTaskTile`, `DailyTipCard`, `TipExperimentTile`, `DiagnosticSuggestionCard`, `CompleteSessionSheet`(`ExplainedToPersonField` 포함), `RegenerateSheet`(시간·컨디션 재입력).
 - **데이터**
 
 | 시점 | API |
@@ -1045,6 +1086,10 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `today.readCode.back` | 코드 읽기로 돌아가기 |
 | `today.readCode.needDuck` | 러버덕으로 설명을 마쳐야 완료할 수 있어요. |
 | `today.readCode.feedback.title` | 이 코드 읽기는 어땠나요? (선택) |
+| `today.reading.material` | 자료 |
+| `today.reading.open` | 자료 열기 |
+| `today.reading.openHint` | 새 탭에서 열려요. |
+| `today.reading.checkPoints` | 읽고 답할 3가지 |
 | `enum.ReadingFeedback.HELPFUL` | 도움 됐어요 |
 | `enum.ReadingFeedback.TOO_HARD` | 어려웠어요 |
 | `enum.ReadingFeedback.BORING` | 지루했어요 |

@@ -262,7 +262,8 @@ if comebackMode: d = min(d, 2)
 2. else if `aiStatus ∉ {DISABLED, BALANCE_EXHAUSTED}`이고(RC-1의 완료 조건이 러버덕이므로),
    **planning KNOWLEDGE ≥ trackDefaults.readCodeMinKnowledge**이고(RC-3), 해당 skill의 선택 가능한 reading이 있으면
    → READ_CODE (estimated = reading.estimatedMinutes, difficulty 2)
-3. else if planning KNOWLEDGE < 2   → READING  (estimated 25, difficulty 1)
+3. else if planning KNOWLEDGE < 2   → READING  (개념 읽기 후보가 있으면 estimated = conceptReading.estimatedMinutes,
+                                                없으면 estimated 25. 두 경우 모두 difficulty 1)
 4. else if projectNeed && energy != LOW && ACTIVE 사이드 프로젝트가 있으면(SP-1) → PROJECT_TASK (estimated 30, difficulty 3)
 5. else                               → EXPLAIN  (estimated 15, difficulty 2)
 ```
@@ -299,6 +300,26 @@ if comebackMode: d = min(d, 2)
 
 `estimatedMinutes`는 **콘텐츠의 `reading.estimatedMinutes`를 그대로 쓴다**(서버가 다시 계산하지 않는다). difficulty는 2로 고정한다 — 범위가 고정되어 있어 §5.5의 `LOW_ENERGY_DEEP_TASK`(difficulty ≥ 4)에도, `HIGH_ENERGY_HARD_TASK`(difficulty ≥ 3)에도 걸리지 않는다.
 
+**개념 읽기 선택 (3번 READING, 결정적)**
+
+`READING`은 planning KNOWLEDGE < 2에서 나오므로 **입문자가 가장 많이 만나는 유형**이다. 그런데 지금까지 이 과제는 "공식 문서를 읽고 핵심 3가지를 스스로 적어 보세요"라고만 하고 **그 공식 문서가 무엇인지 가리키지 못했다.** `content/concept-readings.yaml`(`19` §3.13)이 그 자리를 채운다. 코드 읽기와 **같은 방식**으로 고른다.
+
+```text
+후보: content/concept-readings.yaml의 conceptReadings 중
+      - retired가 true가 아니고 (은퇴한 단위는 조회만 된다, 19 §8.2)
+      - skillCodes에 해당 skill code가 들어 있고
+      - 그 사용자가 COMPLETED한 READING task의 reading key가 아니고
+      - 최근 14 plan-day 안에 제안된 적이 없는 것
+정렬: conceptReading.key ASC
+선택: 첫 번째 → learning_task.reading_key에 그 key를 저장한다
+      후보가 비면 reading_key 없이 READING을 제안한다 (지금까지와 같은 과제, estimated 25)
+```
+
+- `learning_task.reading_key`는 코드 읽기와 **한 칸을 같이 쓴다.** `READ_CODE`는 반드시 값이 있고, `READING`은 있을 수도 없을 수도 있다(I-17, `04` §10.1 13번). key 형태로 두 종류를 구분한다 — `READ.*`는 코드, `DOC.*`는 문서이며 `GET /readings/{key}`가 `kind`로 알려 준다(`05` §19.7).
+- **후보가 없을 때의 동작은 바뀌지 않는다.** 자료가 없는 skill의 `READING`은 전과 똑같이 제안된다(회귀 없음). 어떤 MUST skill이 그 상태인지는 `19` §4.1 CV-125 WARN이 알려 준다.
+- 완료 조건은 없다(러버덕이 필요한 `READ_CODE`와 다르다). 사용자가 읽고 완료를 누른다. `checkPoints` 3개는 화면에만 보이고 서버가 답을 받지 않는다.
+- 읽기 평가(`learning_task.reading_feedback`)는 **`READ_CODE` 전용**이다. 개념 읽기에는 붙이지 않는다 — CHECK `learning_task_reading_feedback_type`을 그대로 둔다(`04` §7 I-17).
+
 task 제목 템플릿:
 
 | TaskType | title | description |
@@ -306,7 +327,8 @@ task 제목 템플릿:
 | REDO | `{원본 과제 title} 혼자 다시 만들기` | "{n}일 전에 한 과제입니다. 이번에는 **AI 도움 없이** 처음부터 혼자 다시 만들어 보세요. 막히면 기록해 두고, 끝나고 혼자 해냈는지 답해 주세요." (`{n}` = `daysBetween(원본 완료 plan-day, today)`) |
 | CHALLENGE | `{challenge.title}` | challenge scenario 요약 (앞 200자) |
 | READ_CODE | `{repo.name} 읽기 — {path의 파일명} {lines[0]}~{lines[1]}줄` | `reading.question` + 줄바꿈 + "읽고 나서 러버덕으로 설명하면 완료입니다." (저장소가 로컬에 없으면 화면이 `cloneHint`를 먼저 보여준다 — RC-4) |
-| READING | `{skill.name} 핵심 개념 정리` | `skill.description` + "공식 문서를 읽고 핵심 3가지를 스스로 적어 보세요." |
+| READING (개념 읽기 있음) | `{skill.name} 개념 읽기 — {conceptReading.title}` | `conceptReading.whyRead` + 줄바꿈 + "읽고 나서 핵심 3가지를 스스로 적어 보세요." (자료 제목·링크·`checkPoints` 3개는 화면이 `GET /readings/{readingKey}`로 가져온다 — `02` SCR-TODAY) |
+| READING (후보 없음) | `{skill.name} 핵심 개념 정리` | `skill.description` + "공식 문서를 읽고 핵심 3가지를 스스로 적어 보세요." |
 | PROJECT_TASK | `{사이드 프로젝트 이름}에 {skill.name} 적용하기` | "{프로젝트}에서 이 개념을 적용할 지점을 찾아 구현하고 이유를 적어 보세요." (SP-2. 등록된 `ACTIVE` 프로젝트가 없으면 PROJECT_TASK를 제안하지 않는다 — SP-1·SP-3) |
 | EXPLAIN | `{skill.name} 내 말로 설명하기` | `skill.description` + "5문장 이내로 설명하고 예시를 하나 드세요." |
 | RECALL | `{skill.name} 5분 떠올리기` | "자료를 보지 않고 기억나는 내용을 적어 보세요." |
@@ -316,9 +338,9 @@ task 제목 템플릿:
 
 | # | planning (K,I) | aiStatus | 선택 가능한 reading | projectNeed | 결과 |
 |---|---|---|---|---|---|
-| T-1 | (0,0) | ENABLED | 있음 | N | **READING** (25, d1) — RC-3이 READ_CODE를 막는다 |
+| T-1 | (0,0) | ENABLED | 있음 | N | **READING** (25, d1) — RC-3이 READ_CODE를 막는다. 개념 읽기 후보도 없어 `readingKey`는 null |
 | T-2 | (1,1) | ENABLED | `READ.PETCLINIC.CONTROLLER_SLICE.001` (15분) | N | **READ_CODE**, estimated **15**, difficulty **2** |
-| T-3 | (1,1) | DISABLED | 있음 | N | **READING** (25, d1) — AI 불가라 CHALLENGE·READ_CODE 모두 제외, KNOWLEDGE < 2 |
+| T-3 | (1,1) | DISABLED | 있음 | N | **READING** (25, d1) — AI 불가라 CHALLENGE·READ_CODE 모두 제외, KNOWLEDGE < 2. 개념 읽기 후보 없음 |
 | T-4 | (3,3) | ENABLED | 없음(전부 완료) | Y | **PROJECT_TASK** (30, d3) |
 | T-5 | (3,3) | ENABLED | 2개(`READ.MODULAR_MONOLITH.SECURITY_CONFIG.001`, `READ.MODULAR_MONOLITH.STOCK_UPDATE.001`) | Y | **READ_CODE** — key ASC로 `READ.MODULAR_MONOLITH.SECURITY_CONFIG.001`, estimated **15**, difficulty 2 |
 
@@ -330,6 +352,19 @@ task 제목 템플릿:
 | T-7 | `JAVA_BACKEND_STARTER` (max d 3, minK 2) | (4,4) | 같음 | **CHALLENGE d3** — `d = clamp(5, 1, 3) = 3`, d3이 없으면 d2 |
 | T-8 | `JAVA_BACKEND_STARTER` | (1,1) | 선택 가능한 reading 있음, CHALLENGE 없음 | **READING** (25, d1) — KNOWLEDGE 1 < `readCodeMinKnowledge` 2 |
 | T-9 | `JAVA_BACKEND_STARTER` | (2,1) | 같음 | **READ_CODE** — KNOWLEDGE 2 ≥ 2 |
+
+**Test vectors (개념 읽기 선택)** — 공통: 3번 분기(READING)로 내려온 상태, 트랙 `JAVA_BACKEND`. `plan-day`는 오늘 기준이다.
+
+| # | skill | 그 skill의 개념 읽기 후보 | 사용자 이력 | 결과 |
+|---|---|---|---|---|
+| C-1 | `DEVOPS.GIT` | `DOC.GIT.BRANCHING.001`(25분), `DOC.GIT.REBASING.001`(25분) | 없음 | `readingKey = DOC.GIT.BRANCHING.001`, estimated **25**, d1 — key ASC 첫 번째 |
+| C-2 | `DEVOPS.GIT` | 같음 | `DOC.GIT.BRANCHING.001`을 COMPLETED | `readingKey = DOC.GIT.REBASING.001`, estimated **25**, d1 |
+| C-3 | `DEVOPS.GIT` | 같음 | `DOC.GIT.BRANCHING.001`을 **13 plan-day 전에 제안**(완료하지 않음) | `readingKey = DOC.GIT.REBASING.001` — 최근 14 plan-day 안에 제안된 것은 제외 |
+| C-4 | `DEVOPS.GIT` | 같음 | `DOC.GIT.BRANCHING.001`을 **14 plan-day 전에 제안**(완료하지 않음) | `readingKey = DOC.GIT.BRANCHING.001` — 창을 벗어나 다시 후보가 된다 |
+| C-5 | `DEVOPS.GIT` | 같음 | 둘 다 COMPLETED | `readingKey = null`, estimated **25**, d1 — 자료 없이 제안(회귀 없음) |
+| C-6 | `DATABASE.INDEX` | `DOC.INDEX.INTRO.001`(15분), `DOC.INDEX.MULTICOLUMN.001`(20분) | 없음 | `readingKey = DOC.INDEX.INTRO.001`, estimated **15**(콘텐츠 값 그대로), d1 |
+| C-7 | `JAVA.OOP` | 없음 | — | `readingKey = null`, estimated **25**, d1 |
+| C-8 | `DEVOPS.GIT` | `DOC.GIT.BRANCHING.001`이 `retired: true` | 없음 | `readingKey = DOC.GIT.REBASING.001` — 은퇴한 단위는 제안하지 않는다(`19` §8.2) |
 
 ### 5.4 Factor (micro, 0 ~ 1_000_000)
 

@@ -1,0 +1,200 @@
+# DevPilot plan template — INTEGRATION_ENGINEER (연동·구축 엔지니어)
+# Spec: docs/19-content-spec.md §3.4 (스키마), §5 (날짜 배치 알고리즘), §10.4 A
+# - milestones 순서 = plan_milestone.sort_order
+# - PREPARATION milestone이 모두 CONSOLIDATION milestone보다 앞에 온다
+# - weightBp 전체 합 = 10000. 단계(phase) 안에서는 해당 단계 합으로 다시 나눠 쓴다
+# - 이 트랙의 MUST role target skill은 정확히 한 milestone에 들어간다(CV-36). 한 skill은 최대 한 milestone
+#
+# milestone은 과목 순서가 아니라 **사이드 프로젝트(주문·실적 관리 시스템)를 만드는 순서**다.
+# 코어를 먼저 세우고, 지키고, 바깥 시스템과 데이터를 붙이고, 내보내고, 운영하고, 확장 지점을 남긴다.
+# milestone 안의 순환은 읽기 → 개념 → 구현 → 러버덕 → 복습이다.
+# milestone priority: 1~6 MUST, 7~9 SHOULD — 기한이 촉박할 때 7~9부터 잘라낸다.
+#   (milestone의 priority는 잘라내는 순서를 정하고, skill의 priority는 role target이 정한다.
+#    SHOULD milestone 안에도 MUST role target skill이 들어갈 수 있다. 위험도 계산은
+#    plan_skill_target.priority를 쓴다 — docs/06-learning-engine-rules.md §4.1)
+# readings 연결은 content/curated-repos.yaml이 skillCodes로 맺는다(06 §5.3 READ_CODE).
+templateKey: INTEGRATION_ENGINEER_DEFAULT
+targetRole: INTEGRATION_ENGINEER
+planTitle: 연동·구축 성장 계획
+placement:
+  minMilestoneDays: 7
+milestones:
+  - key: CORE_DOMAIN
+    title: 코어 도메인
+    description: >-
+      주문 한 건을 받아 저장하고 돌려주는 자리를 만든다. 상태 전이를 표로 먼저 정하고, 요청·응답과 오류 형식을
+      OpenAPI 문서로 적은 뒤 그대로 구현한다. 같은 자리에서 첫 테스트를 쓴다. 요구사항은 입력·출력·예외·완료
+      조건으로 다시 적어 두고 시작한다.
+    priority: MUST
+    weightBp: 1300
+    phase: PREPARATION
+    skillCodes:
+      - PRACTICAL_ENGINEERING.REQUIREMENTS
+      - DEVOPS.GIT
+      - DEVOPS.BUILD_GRADLE
+      - JAVA.OOP
+      - JAVA.MODERN_SYNTAX
+      - SPRING.DI_IOC
+      - SPRING.BOOT_CONFIG
+      - SPRING.MVC_REST
+      - SPRING.VALIDATION
+      - WEB_HTTP.HTTP_BASICS
+      - WEB_HTTP.REST_API_DESIGN
+      - INTEGRATION.API_CONTRACT
+      - DATABASE.MODELING
+      - DATABASE.SQL_BASICS
+      - DATABASE.JPA
+      - SPRING.DATA_JPA
+      - TESTING.JUNIT
+      - TESTING.UNIT_TEST_DESIGN
+      - TESTING.SPRING_TEST
+  - key: AUTH_AND_ACCESS
+    title: 인증과 권한
+    description: >-
+      사람이 쓰는 로그인과 시스템이 쓰는 연동 인증을 나눠서 만든다. API 키와 OAuth2 client credentials 중
+      무엇을 쓸지 스스로 정하고 근거를 남긴다. 자격 증명을 어디에 두고 언제 바꿀지, 남의 데이터에 손이 닿지
+      않게 무엇으로 막을지 정한다.
+    priority: MUST
+    weightBp: 1000
+    phase: PREPARATION
+    skillCodes:
+      - WEB_HTTP.AUTH_SESSION_TOKEN
+      - WEB_HTTP.CORS
+      - SPRING.SECURITY
+      - SPRING.SECURITY.JWT_RESOURCE_SERVER
+      - SECURITY.AUTHN_AUTHZ
+      - SECURITY.OWASP_TOP10
+      - SECURITY.INPUT_VALIDATION
+      - SECURITY.SECRET_MANAGEMENT
+      - SECURITY.SENSITIVE_DATA_LOGGING
+      - INTEGRATION.CLIENT_AUTH
+      - NETWORK.TLS
+  - key: ORDER_RELIABILITY
+    title: 주문 흐름의 안정성
+    description: >-
+      같은 요청이 두 번 와도, 두 사람이 같은 주문을 동시에 고쳐도 결과가 망가지지 않게 만든다. 트랜잭션 경계를
+      어디에 둘지 정하고, 중복 요청과 동시 수정을 직접 재현한 뒤 멱등 키와 잠금으로 막는다. 실패했을 때 무엇이
+      남고 무엇이 되돌아가는지 설명할 수 있어야 한다.
+    priority: MUST
+    weightBp: 1300
+    phase: PREPARATION
+    skillCodes:
+      - WEB_HTTP.IDEMPOTENCY
+      - SPRING.TRANSACTION
+      - SPRING.TRANSACTION.PROPAGATION
+      - SPRING.AOP_PROXY
+      - SPRING.EXCEPTION_HANDLING
+      - DATABASE.TRANSACTION
+      - DATABASE.TRANSACTION.LOCKING
+      - DATABASE.JPA.PERSISTENCE_CONTEXT
+      - JAVA.EXCEPTION
+      - JAVA.CONCURRENCY
+      - JAVA.CONCURRENCY.VIRTUAL_THREAD
+      - PRACTICAL_ENGINEERING.NULL_BOUNDARY
+  - key: LEGACY_DATA_SYNC
+    title: 기존 데이터 연동
+    description: >-
+      이미 쓰고 있던 주문·거래처 데이터를 받아 내 모델로 옮긴다. CSV처럼 형식이 제각각인 입력을 표준 모델로
+      변환하고, 전체 적재와 증분 동기화를 나누고, 깨진 한 건 때문에 전체가 멈추지 않도록 실패를 격리한다.
+      변환 규칙은 인터페이스 명세서로 적고, 바뀌면 골든 회귀 테스트가 먼저 알려 주게 한다.
+    priority: MUST
+    weightBp: 1400
+    phase: PREPARATION
+    skillCodes:
+      - INTEGRATION.LEGACY_DATA
+      - INTEGRATION.BATCH_SYNC
+      - INTEGRATION.INTERFACE_SPEC
+      - DATABASE.MIGRATION
+      - JAVA.EXCEPTION.TRY_WITH_RESOURCES
+      - JAVA.COLLECTION
+      - JAVA.LAMBDA_STREAM
+      - JAVA.OPTIONAL
+      - PRACTICAL_ENGINEERING.RESOURCE_TIMEOUT
+      - TESTING.GOLDEN_REGRESSION
+      - TESTING.TEST_DOUBLE
+      - TESTING.TESTCONTAINERS
+  - key: REPORTING_AND_QUERY
+    title: 실적 집계와 느린 조회
+    description: >-
+      쌓인 주문으로 기간별 실적을 집계한다. 데이터가 늘었을 때 느려지는 지점을 직접 만들고, 실행계획을 읽고
+      인덱스와 페이징으로 고친다. 고친 근거는 남의 글이 아니라 내 측정값으로 쓴다.
+    priority: MUST
+    weightBp: 1000
+    phase: PREPARATION
+    skillCodes:
+      - DATABASE.INDEX
+      - DATABASE.INDEX.EXPLAIN_PLAN
+      - DATABASE.JPA.FETCH_STRATEGY
+      - SYSTEM_DESIGN.CACHING
+      - ALGORITHM.COMPLEXITY
+      - CS.DATA_STRUCTURE
+      - JAVA.GENERICS
+  - key: DEPLOY_PACKAGE
+    title: 배포와 설치 꾸러미
+    description: >-
+      컨테이너로 띄우고 빌드·테스트를 CI에 맡긴다. 그다음 인터넷이 없는 곳에도 같은 것을 올릴 수 있게 이미지와
+      의존성을 미리 모아 설치 절차를 문서로 만든다. 내장 서버 대신 외부 WAS에 올려야 할 때 무엇이 달라지는지도
+      한 번 직접 겪어 둔다.
+    priority: MUST
+    weightBp: 900
+    phase: PREPARATION
+    skillCodes:
+      - DEVOPS.DOCKER
+      - DEVOPS.CI_GITHUB_ACTIONS
+      - DEVOPS.LINUX_BASICS
+      - DEVOPS.OFFLINE_DEPLOY
+      - DEVOPS.WAS_PORTABILITY
+      - DEVOPS.CLOUD_DEPLOY
+      - DEVOPS.AWS_BASICS
+      - DEVOPS.KUBERNETES_BASICS
+  - key: OPERATIONS
+    title: 운영
+    description: >-
+      멈췄다는 사실을 연락받기 전에 알 수 있게 만든다. 구조화 로그와 기본 지표, 헬스체크를 남기고 백업과 롤백
+      절차를 한 번 연습한다. 문제가 났을 때는 현상·영향 범위·원인·조치·재발 방지 형식으로 보고를 써 본다.
+    priority: SHOULD
+    weightBp: 800
+    phase: PREPARATION
+    skillCodes:
+      - DEVOPS.OBSERVABILITY
+      - PRACTICAL_ENGINEERING.LOGGING
+      - PRACTICAL_ENGINEERING.INCIDENT_ANALYSIS
+      - PRACTICAL_ENGINEERING.TROUBLESHOOTING_REPORT
+      - INTEGRATION.SECURITY_APPLIANCE
+      - NETWORK.TCP_IP
+      - NETWORK.DNS
+      - CS.OS_PROCESS_THREAD
+      - CS.IO_MODEL
+  - key: EXTENSION_AND_WEBHOOK
+    title: 확장 구조
+    description: >-
+      고객마다 다른 요구를 코어를 고치지 않고 받아 낸다. 분기 코드 대신 설정과 확장 지점으로 나누고, 주문
+      상태가 바뀌면 바깥 시스템에 Webhook으로 알린다. 보내는 쪽에서는 재시도와 서명을, 받는 쪽에서는 중복
+      수신을 견디는 처리를 만든다.
+    priority: SHOULD
+    weightBp: 1300
+    phase: PREPARATION
+    skillCodes:
+      - INTEGRATION.EXTENSION_DESIGN
+      - INTEGRATION.CUSTOMER_VARIANT
+      - INTEGRATION.WEBHOOK
+      - SYSTEM_DESIGN.MESSAGE_QUEUE
+      - SYSTEM_DESIGN.SCALABILITY
+      - PRACTICAL_ENGINEERING.CODE_REVIEW
+  - key: EXPLAIN_AND_CONSOLIDATE
+    title: 정리와 설명
+    description: >-
+      만든 것과 내린 판단을 다른 사람이 따라올 수 있게 정리한다. 연동 한 건을 골라 문제·선택·근거·결과 순서로
+      설명해 보고, 비어 있는 기초를 골라 메운다.
+    priority: SHOULD
+    weightBp: 1000
+    phase: CONSOLIDATION
+    skillCodes:
+      - EXPLANATION.PROJECT_STORY
+      - EXPLANATION.TECH_DECISION
+      - EXPLANATION.TROUBLESHOOTING_STORY
+      - EXPLANATION.LEARNING_RETROSPECTIVE
+      - JAVA.JVM_MEMORY_GC
+      - ALGORITHM.SORT_SEARCH
+      - ALGORITHM.GRAPH_SEARCH
+      - ALGORITHM.DP_GREEDY

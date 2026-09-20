@@ -135,6 +135,19 @@ class ContentValidatorTest {
                         "non-root step below 60",
                         f -> f.skill("JAVA.COLLECTION").put("minutesPerLevelStep", 59)),
                 error(
+                        "CV-88",
+                        "whyItMatters too short",
+                        f -> f.skill("JAVA.COLLECTION").put("whyItMatters", "짧은 문장이다.")),
+                error(
+                        "CV-88",
+                        "whyItMatters on root skill",
+                        f ->
+                                f.skill("JAVA")
+                                        .put(
+                                                "whyItMatters",
+                                                "묶음 노드에는 이 값을 두지 않는다. 두면 과제 카드가 무엇을 보여야 할지 알 수"
+                                                        + " 없다.")),
+                error(
                         "CV-16",
                         "self prerequisite",
                         f -> f.prerequisites("SPRING.TRANSACTION").add("SPRING.TRANSACTION")),

@@ -36,6 +36,7 @@ class OnboardingToTodayFlowTest extends ApiTestSupport {
                     "TESTING",
                     "DEVOPS",
                     "SECURITY",
+                    "INTEGRATION",
                     "PRACTICAL_ENGINEERING",
                     "SYSTEM_DESIGN",
                     "EXPLANATION");
@@ -57,7 +58,7 @@ class OnboardingToTodayFlowTest extends ApiTestSupport {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("ONBOARDING_REQUIRED"));
 
-        // 3. 온보딩: 자기평가 13개, 사이드 프로젝트 건너뛰기
+        // 3. 온보딩: 자기평가 14개, 사이드 프로젝트 건너뛰기
         Map<String, Object> onboarding = TestApi.onboardingRequest();
         List<Object> assessments = new ArrayList<>();
         for (String category : CATEGORIES) {

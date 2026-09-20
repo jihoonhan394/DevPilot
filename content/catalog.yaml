@@ -2,14 +2,17 @@
 # Spec: docs/19-content-spec.md §3.1
 # - catalogVersion: seed 대상 파일(이 파일에 나열된 모든 파일)이 바뀌면 1 올린다 (§8)
 # - YamlContentReader는 여기 나열된 파일만 읽는다. 나열 순서대로 읽는다
-catalogVersion: 5
+catalogVersion: 6
 files:
   skillTrees:
     - skill-tree/java-backend.yaml
+  # 학습 트랙마다 role target 파일 1개·계획 템플릿 1개 (19 §3.3·§3.4, CV-21·CV-25·CV-30)
   roleTargets:
     - role-targets/java-backend.yaml
+    - role-targets/integration-engineer.yaml
   planTemplates:
     - plan-templates/java-backend.yaml
+    - plan-templates/integration-engineer.yaml
   reviewCards:
     - review-cards/java.yaml
     - review-cards/spring.yaml

@@ -220,11 +220,11 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
     }
 
     @Test
-    void shouldRejectMoreThanThirteenSelfAssessments() throws Exception {
+    void shouldRejectMoreThanFourteenSelfAssessments() throws Exception {
         TestUser user = TestUser.owner();
         Map<String, Object> request = TestApi.onboardingRequest();
         List<Object> assessments = new ArrayList<>();
-        for (int i = 0; i < 14; i++) {
+        for (int i = 0; i < 15; i++) {
             assessments.add(Map.of("category", "JAVA", "level", 1));
         }
         request.put("selfAssessments", assessments);

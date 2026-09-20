@@ -431,7 +431,7 @@ coverage 계산은 서버가 한다(`06` §8.1).
 | I-14 | coach content는 마스킹 후 저장 | `CoachReviewService` 순서 + 테스트 (AC-14) |
 | I-15 | 타 사용자 리소스 접근 불가 | 모든 조회 `userId` 조건 + 권한 격리 테스트 |
 | I-16 | 러버덕 세션 안에서 `turn_no`는 유일하다 (1부터 1씩 증가) | `rubber_duck_turn` `unique (session_id, turn_no)` + `RubberDuckService` (턴 상한은 `devpilot.rubberduck.max-turns`) |
-| I-17 | `READ_CODE` 과제에만 `reading_key`가 있고, `READ_CODE` 과제에는 반드시 있다 | CHECK `learning_task_reading_key_type` + `TaskProposalPolicy`(`06` §5.3). 값은 `content/curated-repos.yaml`의 reading `key`이고 FK가 없다 — 콘텐츠에서 reading이 은퇴해도 과제 행은 남는다(`19` §8.2) |
+| I-17 | `READ_CODE` 과제에는 `reading_key`가 **반드시** 있고, `READING` 과제에는 **있을 수도 없을 수도** 있으며(자료가 없는 skill이면 null), 그 밖의 과제에는 **없다** | CHECK `learning_task_reading_key_type`(V10에서 다시 만든다, §10.1 13번) + `TaskProposalPolicy`(`06` §5.3). 값은 `content/curated-repos.yaml`의 코드 읽기 `key`(`READ.*`) 또는 `content/concept-readings.yaml`의 개념 읽기 `key`(`DOC.*`)이고 FK가 없다 — 콘텐츠에서 은퇴해도 과제 행은 남는다(`19` §8.2). 두 파일은 한 key namespace를 쓴다(`19` §3.13, CV-120) |
 | I-18 | 사용자당 `IN_PROGRESS` 러버덕 세션은 1개다 | partial unique index `uq_rubber_duck_session_one_in_progress` + `RubberDuckService`(시작 시 이전 세션 `ABANDONED` → flush → INSERT, 동시 시작 위반은 409 `CONCURRENT_MODIFICATION`, `05` §9.6). I-05(학습 세션)와 같은 방식 |
 | I-19 | `reading_feedback`은 `READ_CODE` 과제에만 있을 수 있고(nullable), 값은 `ReadingFeedback`이다 | CHECK `learning_task_reading_feedback_type`(`reading_feedback is null or task_type = 'READ_CODE'`) + 값 CHECK + `TodayPlanService`(`status = COMPLETED` PATCH에서만 받는다, 그 외 400 `VALUE_NOT_ALLOWED`, `05` §8.4) |
 | I-20 | `redo_source_task_id`는 `REDO` 과제에만 있고, `REDO` 과제에는 반드시 있다 | CHECK `learning_task_redo_source_type`(`(redo_source_task_id is not null) = (task_type = 'REDO')`) + `TaskProposalPolicy`(`06` §5.10 RE-3). 자기 참조 FK는 `on delete set null`이 아니라 **cascade 없음** — 원본 행은 사용자 삭제 때만 사라진다 |
@@ -494,7 +494,7 @@ coverage 계산은 서버가 한다(`06` §8.1).
 | `V7__evidence_weekly.sql` | S5–S6 | `evidence_candidate`, `weekly_review` |
 | `V8__requirement_radar.sql` | S7 | `requirement_doc`, `requirement_item` |
 | `V9__rubberduck_project.sql` | S1(`side_project`) · S3(러버덕, 읽기 평가) | `side_project`, `rubber_duck_session`, `rubber_duck_turn`, `learning_task.side_project_id`·`reading_key`(+ CHECK `learning_task_reading_key_type`)·`reading_feedback`(`varchar(20)` null, 값 CHECK `HELPFUL`/`TOO_HARD`/`BORING` + CHECK `learning_task_reading_feedback_type`)·`coach_review.side_project_id` 추가 |
-| `V10__track_notes_redo.sql` | S3(학습 트랙 3종, 프로젝트 기록, 경험 기록 분류, 오늘의 팁, 용어 카드, 설명 기록, 문제 시간 제한) · S4(재현 과제) | 아래 §10.1 |
+| `V10__track_notes_redo.sql` | S3(학습 트랙 3종, 프로젝트 기록, 경험 기록 분류, 오늘의 팁, 용어 카드, 설명 기록, 문제 시간 제한, 개념 읽기) · S4(재현 과제) | 아래 §10.1 |
 
 ### 10.1 `V10__track_notes_redo.sql` (내용)
 
@@ -514,6 +514,7 @@ coverage 계산은 서버가 한다(`06` §8.1).
 | 10 | `learning_task`에 `explained_to_person boolean`과 `explained_note varchar(500)` 추가 + CHECK `learning_task_explained_by_type`: `EXPLAIN`·`READ_CODE` 과제에만 값이 있을 수 있다(I-24) |
 | 11 | `challenge`에 `time_limit_minutes int` 추가(null 허용, 있으면 1~120 — CHECK `challenge_time_limit_minutes_check`) + `challenge_attempt`에 `elapsed_seconds int` 추가(null 허용, 0 이상 — CHECK `challenge_attempt_elapsed_seconds_check`)(I-25) |
 | 12 | `user_daily_tip` 테이블 생성(아래 SQL) + 인덱스 `idx_user_daily_tip_user_shown(user_id, shown_on desc)`(§11, I-26) |
+| 13 | `learning_task`의 CHECK `learning_task_reading_key_type`을 **다시 만든다**: `alter table learning_task drop constraint if exists learning_task_reading_key_type` → `add constraint learning_task_reading_key_type check (...)`(아래 SQL). `READING` 과제도 `reading_key`를 가질 수 있게 한다 — 개념 읽기(`19` §3.13, `06` §5.3)를 코드 읽기와 같은 칸에 담는다(I-17). `learning_task_reading_feedback_type`은 **그대로 둔다**(읽기 평가는 `READ_CODE` 전용이다) |
 
 ```sql
 create table side_project_note (
@@ -544,6 +545,15 @@ create table side_project_note (
          and incident_fix is not null and incident_prevention is not null
          and decision_choice is null and decision_options is null and decision_rationale is null))
 );
+```
+
+```sql
+-- §10.1 13번. V9의 CHECK는 (reading_key is not null) = (task_type = 'READ_CODE') 였다
+alter table learning_task drop constraint if exists learning_task_reading_key_type;
+alter table learning_task add constraint learning_task_reading_key_type check (
+       (task_type = 'READ_CODE' and reading_key is not null)                    -- 코드 읽기: 반드시 있다
+    or (task_type = 'READING')                                                  -- 개념 읽기: 있을 수도 없을 수도
+    or (task_type not in ('READ_CODE', 'READING') and reading_key is null));    -- 그 밖: 없다
 ```
 
 ```sql

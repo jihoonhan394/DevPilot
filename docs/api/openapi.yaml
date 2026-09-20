@@ -1330,6 +1330,8 @@ paths:
           default: JAVA_BACKEND
           enum:
           - JAVA_BACKEND
+          - JAVA_BACKEND_STARTER
+          - INTEGRATION_ENGINEER
       responses:
         "200":
           content:
@@ -2153,6 +2155,7 @@ components:
           - TESTING
           - DEVOPS
           - SECURITY
+          - INTEGRATION
           - PRACTICAL_ENGINEERING
           - SYSTEM_DESIGN
           - EXPLANATION
@@ -2342,6 +2345,9 @@ components:
           - DIAGNOSTIC_FAILED
           - EVIDENCE_ACCEPTED
           - PLAN_REPLANNED
+          - REDO_COMPLETED
+          - TIP_VIEWED
+          - TERM_CARD_CREATED
         id:
           type: string
           format: uuid
@@ -2549,6 +2555,8 @@ components:
           type: string
           enum:
           - JAVA_BACKEND
+          - JAVA_BACKEND_STARTER
+          - INTEGRATION_ENGINEER
       required:
       - focusSkillCodes
       - targetCompletionDate
@@ -2571,6 +2579,8 @@ components:
           type: string
           enum:
           - JAVA_BACKEND
+          - JAVA_BACKEND_STARTER
+          - INTEGRATION_ENGINEER
         version:
           type: integer
           format: int64
@@ -2601,6 +2611,8 @@ components:
           type: string
           enum:
           - JAVA_BACKEND
+          - JAVA_BACKEND_STARTER
+          - INTEGRATION_ENGINEER
         updatedAt:
           type: string
           format: date-time
@@ -2668,6 +2680,7 @@ components:
           - READING
           - READ_CODE
           - EXPLAIN
+          - REDO
         title:
           type: string
         version:
@@ -2956,7 +2969,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SelfAssessmentInput"
-          maxItems: 13
+          maxItems: 14
           minItems: 0
         sideProject:
           $ref: "#/components/schemas/SideProjectInput"
@@ -3591,6 +3604,9 @@ components:
           - COACH_FINDING
           - EVIDENCE
           - RUBBER_DUCK
+          - REDO_TASK
+          - TERM
+          - TIP
         status:
           type: string
           enum:
@@ -4119,6 +4135,7 @@ components:
           - TESTING
           - DEVOPS
           - SECURITY
+          - INTEGRATION
           - PRACTICAL_ENGINEERING
           - SYSTEM_DESIGN
           - EXPLANATION
@@ -4345,6 +4362,7 @@ components:
           - TESTING
           - DEVOPS
           - SECURITY
+          - INTEGRATION
           - PRACTICAL_ENGINEERING
           - SYSTEM_DESIGN
           - EXPLANATION
@@ -4372,6 +4390,7 @@ components:
           - TESTING
           - DEVOPS
           - SECURITY
+          - INTEGRATION
           - PRACTICAL_ENGINEERING
           - SYSTEM_DESIGN
           - EXPLANATION
@@ -4425,6 +4444,7 @@ components:
           - TESTING
           - DEVOPS
           - SECURITY
+          - INTEGRATION
           - PRACTICAL_ENGINEERING
           - SYSTEM_DESIGN
           - EXPLANATION
@@ -4515,6 +4535,8 @@ components:
           type: string
           enum:
           - JAVA_BACKEND
+          - JAVA_BACKEND_STARTER
+          - INTEGRATION_ENGINEER
         skills:
           type: array
           items:
@@ -4797,6 +4819,7 @@ components:
           - READING
           - READ_CODE
           - EXPLAIN
+          - REDO
         version:
           type: integer
           format: int64
@@ -4898,6 +4921,7 @@ components:
           - READING
           - READ_CODE
           - EXPLAIN
+          - REDO
         reviewTaskStatus:
           type: string
           enum:

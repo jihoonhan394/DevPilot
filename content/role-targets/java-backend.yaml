@@ -230,6 +230,10 @@ targets:
     priority: SHOULD
     importance: 0.60
     target: { knowledge: 3, implementation: 3, explanation: 2, debugging: 3 }
+  - skill: TESTING.GOLDEN_REGRESSION
+    priority: SHOULD
+    importance: 0.50
+    target: { knowledge: 3, implementation: 3, explanation: 2, debugging: 2 }
 
   # ------------------------------------------------------------------ DEVOPS
   - skill: DEVOPS.GIT
@@ -256,6 +260,26 @@ targets:
     priority: SHOULD
     importance: 0.60
     target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 3 }
+  - skill: DEVOPS.AWS_BASICS
+    priority: SHOULD
+    importance: 0.55
+    target: { knowledge: 3, implementation: 2, explanation: 2, debugging: 2 }
+  - skill: DEVOPS.KUBERNETES_BASICS
+    priority: LATER
+    importance: 0.35
+    target: { knowledge: 2, implementation: 1, explanation: 2, debugging: 1 }
+  - skill: DEVOPS.OFFLINE_DEPLOY
+    priority: LATER
+    importance: 0.25
+    target: { knowledge: 2, implementation: 2, explanation: 2, debugging: 0 }
+  - skill: DEVOPS.WAS_PORTABILITY
+    priority: LATER
+    importance: 0.30
+    target: { knowledge: 2, implementation: 2, explanation: 2, debugging: 1 }
+  - skill: DEVOPS.OBSERVABILITY
+    priority: SHOULD
+    importance: 0.60
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }
 
   # ------------------------------------------------------------------ SECURITY
   - skill: SECURITY.OWASP_TOP10
@@ -279,6 +303,44 @@ targets:
     importance: 0.60
     target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }
 
+  # ------------------------------------------------------------------ INTEGRATION
+  - skill: INTEGRATION.API_CONTRACT
+    priority: SHOULD
+    importance: 0.55
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }
+  - skill: INTEGRATION.INTERFACE_SPEC
+    priority: LATER
+    importance: 0.30
+    target: { knowledge: 2, implementation: 2, explanation: 2, debugging: 0 }
+  - skill: INTEGRATION.CLIENT_AUTH
+    priority: SHOULD
+    importance: 0.45
+    target: { knowledge: 3, implementation: 2, explanation: 2, debugging: 2 }
+  - skill: INTEGRATION.WEBHOOK
+    priority: SHOULD
+    importance: 0.50
+    target: { knowledge: 3, implementation: 2, explanation: 3, debugging: 2 }
+  - skill: INTEGRATION.LEGACY_DATA
+    priority: LATER
+    importance: 0.30
+    target: { knowledge: 2, implementation: 2, explanation: 2, debugging: 1 }
+  - skill: INTEGRATION.BATCH_SYNC
+    priority: LATER
+    importance: 0.35
+    target: { knowledge: 2, implementation: 2, explanation: 2, debugging: 1 }
+  - skill: INTEGRATION.EXTENSION_DESIGN
+    priority: SHOULD
+    importance: 0.45
+    target: { knowledge: 3, implementation: 2, explanation: 3, debugging: 1 }
+  - skill: INTEGRATION.CUSTOMER_VARIANT
+    priority: LATER
+    importance: 0.30
+    target: { knowledge: 2, implementation: 2, explanation: 2, debugging: 1 }
+  - skill: INTEGRATION.SECURITY_APPLIANCE
+    priority: LATER
+    importance: 0.25
+    target: { knowledge: 2, implementation: 2, explanation: 2, debugging: 1 }
+
   # ------------------------------------------------------------------ PRACTICAL_ENGINEERING
   - skill: PRACTICAL_ENGINEERING.LOGGING
     priority: MUST
@@ -300,6 +362,14 @@ targets:
     priority: SHOULD
     importance: 0.60
     target: { knowledge: 3, implementation: 2, explanation: 3, debugging: 3 }
+  - skill: PRACTICAL_ENGINEERING.REQUIREMENTS
+    priority: SHOULD
+    importance: 0.60
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 1 }
+  - skill: PRACTICAL_ENGINEERING.TROUBLESHOOTING_REPORT
+    priority: SHOULD
+    importance: 0.55
+    target: { knowledge: 3, implementation: 2, explanation: 3, debugging: 2 }
 
   # ------------------------------------------------------------------ SYSTEM_DESIGN
   - skill: SYSTEM_DESIGN.CACHING

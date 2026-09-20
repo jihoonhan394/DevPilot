@@ -1,0 +1,247 @@
+# DevPilot concept readings — READING 과제 콘텐츠 (개념 읽기)
+# Spec: docs/19-content-spec.md §3.13 (schema), §4.1 CV-120~CV-125 (검증), §8.2 (은퇴), §8.5 (소스 점검)
+# Rules: docs/06-learning-engine-rules.md §5.3 (READING 제안)
+#
+# - READING 과제가 "무엇을 읽어야 하는지"를 여기서 가져온다. 코드가 아니라 공식 문서다
+#   (코드 읽기 단위는 curated-repos.yaml의 readings, READ_CODE 과제가 쓴다)
+# - 서버는 url을 fetch하지 않는다. 사람이 브라우저로 열어 확인한 날짜를 verifiedAt에 남긴다 (19 §7.6)
+# - url 호스트는 devpilot.ai.trusted-source-hosts에 있어야 한다 (03 §9, 06 §10, CV-121)
+# - 버전을 지킨다: PostgreSQL 16, Spring Boot 4.1 / Spring Framework 7, Java SE 25.
+#   옛 버전 문서를 링크하지 않는다. 번역본이 아니라 원문을 링크한다 (19 §7.6 H-1)
+# - key는 코드 읽기(READ.*)와 같은 namespace다. learning_task.reading_key 한 칸에 둘 다 들어가고
+#   GET /readings/{key}가 둘 다 돌려준다 (05 §19.7). 두 파일을 통틀어 key가 겹치면 안 된다 (CV-120)
+# - 은퇴한 개념 읽기는 지우지 않고 retired: true로 남긴다. key는 catalog.yaml retired.readingKeys에도 있다 (19 §8.2)
+# - checkPoints는 "핵심 3가지"다 (06 §5.3 READING 설명 템플릿). 문서 목차를 옮겨 적지 않는다
+conceptReadings:
+  # ------------------------------------------------------- DATABASE.SQL_BASICS
+  - key: DOC.SQL.JOIN.001
+    title: PostgreSQL 16 Documentation — 7.2. Table Expressions
+    url: https://www.postgresql.org/docs/16/queries-table-expressions.html
+    publisher: PostgreSQL Global Development Group
+    versionScope: PostgreSQL 16
+    skillCodes: [DATABASE.SQL_BASICS]
+    estimatedMinutes: 25
+    whyRead: |-
+      조인을 감으로 고르지 않게 된다. FROM이 만드는 중간 결과가 무엇이고 LEFT JOIN이 왜 왼쪽 행을 남기는지,
+      WHERE가 그 결과를 언제 거르는지를 순서로 잡아 두면 "왜 행이 늘었지"를 스스로 설명할 수 있다.
+    checkPoints:
+      - 같은 데이터에서 INNER JOIN과 LEFT OUTER JOIN의 결과 행 수가 달라지는 이유를 한 문장으로 적어 보세요
+      - LEFT JOIN한 오른쪽 테이블의 조건을 WHERE에 쓰면 왜 INNER JOIN처럼 되는지 적어 보세요
+      - FROM · WHERE · GROUP BY · HAVING이 적용되는 순서를 적고, 그 순서로 설명되는 현상을 하나 들어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.SQL.AGGREGATE.001
+    title: PostgreSQL 16 Documentation — 2.7. Aggregate Functions
+    url: https://www.postgresql.org/docs/16/tutorial-agg.html
+    publisher: PostgreSQL Global Development Group
+    versionScope: PostgreSQL 16
+    skillCodes: [DATABASE.SQL_BASICS]
+    estimatedMinutes: 20
+    whyRead: |-
+      집계 결과가 이상할 때 WHERE와 HAVING 중 어디를 고쳐야 하는지 바로 고를 수 있게 된다.
+      두 절이 각각 그룹을 만들기 전과 후에 걸린다는 것만 잡으면 대부분의 GROUP BY 오류가 설명된다.
+    checkPoints:
+      - WHERE와 HAVING이 각각 언제 적용되는지 쓰고, 둘을 바꿔 쓰면 무엇이 달라지는지 적어 보세요
+      - WHERE 절에 집계 함수를 쓸 수 없는 이유를 적어 보세요
+      - 같은 조건을 WHERE로도 HAVING으로도 쓸 수 있을 때 어느 쪽이 나은지와 그 이유를 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ----------------------------------------------------------- DATABASE.INDEX
+  - key: DOC.INDEX.INTRO.001
+    title: PostgreSQL 16 Documentation — 11.1. Introduction (Indexes)
+    url: https://www.postgresql.org/docs/16/indexes-intro.html
+    publisher: PostgreSQL Global Development Group
+    versionScope: PostgreSQL 16
+    skillCodes: [DATABASE.INDEX]
+    estimatedMinutes: 15
+    whyRead: |-
+      인덱스를 "조회가 느리면 추가하는 것"으로만 알고 있으면 쓰기가 느려지는 이유를 설명할 수 없다.
+      인덱스를 테이블과 맞춰 두는 비용과, 쓰이지 않는 인덱스를 지워야 하는 이유를 근거로 들 수 있게 된다.
+    checkPoints:
+      - 인덱스를 하나 더 만들면 INSERT · UPDATE · DELETE에 무엇이 더 붙는지 적어 보세요
+      - 쓰이지 않는 인덱스를 지워야 하는 이유를 조회 쪽과 변경 쪽으로 나눠 적어 보세요
+      - 내가 만든 테이블 하나를 골라 지금 있는 인덱스가 각각 어떤 쿼리를 위한 것인지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.INDEX.MULTICOLUMN.001
+    title: PostgreSQL 16 Documentation — 11.3. Multicolumn Indexes
+    url: https://www.postgresql.org/docs/16/indexes-multicolumn.html
+    publisher: PostgreSQL Global Development Group
+    versionScope: PostgreSQL 16
+    skillCodes: [DATABASE.INDEX]
+    estimatedMinutes: 20
+    whyRead: |-
+      복합 인덱스의 컬럼 순서를 근거를 갖고 정할 수 있게 된다. 선두 컬럼에 조건이 없으면 인덱스가
+      사실상 쓰이지 못한다는 규칙 하나가 "인덱스를 만들었는데 안 타요"의 상당수를 설명한다.
+    checkPoints:
+      - (a, b, c) 인덱스가 있을 때 b 조건만 있는 쿼리에서 무슨 일이 일어나는지 적어 보세요
+      - 등호 조건과 부등호 조건이 인덱스 스캔 범위에 주는 영향이 어떻게 다른지 적어 보세요
+      - 내가 자주 쓰는 조회 조건 하나를 골라 복합 인덱스의 컬럼 순서를 정하고 그 이유를 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # --------------------------------------------------- SPRING.EXCEPTION_HANDLING
+  - key: DOC.SPRING.ERROR_RESPONSE.001
+    title: Spring Framework Reference — Error Responses (Spring MVC)
+    url: https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-ann-rest-exceptions.html
+    publisher: Spring (Broadcom)
+    versionScope: Spring Framework 7.0.x
+    skillCodes: [SPRING.EXCEPTION_HANDLING]
+    estimatedMinutes: 25
+    whyRead: |-
+      오류 응답을 예외마다 손으로 만들지 않게 된다. ProblemDetail과 ResponseEntityExceptionHandler가
+      무엇을 대신 해 주는지 알면 오류 처리를 한 곳에 모으고 내부 정보 노출을 막는 틀을 잡을 수 있다.
+    checkPoints:
+      - ProblemDetail이 스스로 채우는 값과 내가 직접 넣어야 하는 값을 나눠 적어 보세요
+      - ResponseEntityExceptionHandler를 상속한 @ControllerAdvice가 어떤 예외를 맡아 주는지 적어 보세요
+      - 내 API에서 클라이언트에게 보여도 되는 오류 정보와 보이면 안 되는 것을 각각 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.HTTP.PROBLEM_DETAILS.001
+    title: "RFC 9457: Problem Details for HTTP APIs"
+    url: https://www.rfc-editor.org/rfc/rfc9457.html
+    publisher: IETF (RFC Editor)
+    versionScope: RFC 9457 (2023-07, RFC 7807을 대체)
+    skillCodes: [SPRING.EXCEPTION_HANDLING, WEB_HTTP.REST_API_DESIGN]
+    estimatedMinutes: 25
+    whyRead: |-
+      오류 형식을 프로젝트마다 새로 만들지 않게 된다. type · title · status · detail · instance 다섯 칸이
+      각각 무엇을 담는지 정해 두면 클라이언트가 문구가 아니라 값으로 분기할 수 있는 오류 응답을 설계할 수 있다.
+    checkPoints:
+      - type · title · status · detail · instance가 각각 무엇을 담는지 한 줄씩 적어 보세요
+      - 사람이 읽는 문구와 기계가 분기하는 값 중 무엇으로 오류를 구분해야 하는지 이유와 함께 적어 보세요
+      - 내 API 오류 하나를 골라 problem detail로 바꿔 적어 보고, 확장 필드가 필요한지 판단해 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ---------------------------------------------------- WEB_HTTP.REST_API_DESIGN
+  - key: DOC.REST.STATUS_CODES.001
+    title: RFC 9110 HTTP Semantics — 15. Status Codes
+    url: https://www.rfc-editor.org/rfc/rfc9110.html#name-status-codes
+    publisher: IETF (RFC Editor)
+    versionScope: RFC 9110 (2022-06)
+    skillCodes: [WEB_HTTP.REST_API_DESIGN]
+    estimatedMinutes: 30
+    whyRead: |-
+      상태 코드를 200과 500 둘로만 쓰지 않게 된다. 다섯 분류와 자주 쓰는 코드의 정의를 근거로 두면
+      "이건 400인가 409인가"를 취향이 아니라 명세로 정할 수 있다.
+    checkPoints:
+      - 400 · 401 · 403 · 404 · 409가 각각 언제 맞는지 한 줄씩 적어 보세요
+      - 클라이언트가 같은 요청을 그대로 다시 보내도 되는 코드와 그러면 안 되는 코드를 나눠 적어 보세요
+      - 내 API에서 지금 잘못 쓰고 있는 상태 코드를 하나 찾아 무엇으로 바꿀지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.REST.WEB_LINKING.001
+    title: "RFC 8288: Web Linking"
+    url: https://www.rfc-editor.org/rfc/rfc8288.html
+    publisher: IETF (RFC Editor)
+    versionScope: RFC 8288 (2017-10)
+    skillCodes: [WEB_HTTP.REST_API_DESIGN]
+    estimatedMinutes: 20
+    whyRead: |-
+      목록 응답에서 다음 페이지를 어떻게 가리킬지 정할 수 있게 된다. 링크를 본문에 섞는 대신 Link 헤더로
+      관계(rel)를 붙이는 방법과, 관계 이름이 아무 문자열이 아니라 등록된 값이라는 것을 알게 된다.
+    checkPoints:
+      - Link 헤더가 담는 세 가지(대상 URI · 관계 이름 · 부가 파라미터)를 예시 한 줄로 적어 보세요
+      - 관계 이름을 프로젝트 마음대로 정하면 안 되는 이유를 적어 보세요
+      - 내 목록 API의 다음 페이지를 본문으로 줄지 Link 헤더로 줄지 정하고 이유를 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # --------------------------------------------------------------- DEVOPS.GIT
+  - key: DOC.GIT.BRANCHING.001
+    title: Pro Git — 3.2 Git Branching, Basic Branching and Merging
+    url: https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging
+    publisher: Git
+    versionScope: Pro Git 2nd Edition (버전 없음, 2026-09-21 기준 내용)
+    skillCodes: [DEVOPS.GIT]
+    estimatedMinutes: 25
+    whyRead: |-
+      브랜치를 복사본이 아니라 커밋을 가리키는 이름으로 이해하게 된다. fast-forward와 그렇지 않은 merge가
+      언제 갈라지는지, 충돌 표시가 무엇을 뜻하는지 알면 merge를 피하지 않고 쓸 수 있다.
+    checkPoints:
+      - fast-forward merge와 그렇지 않은 merge가 갈리는 조건을 적어 보세요
+      - 충돌 표시의 위쪽과 아래쪽이 각각 어느 브랜치의 내용인지 적어 보세요
+      - 작업 도중에 급한 수정을 끼워 넣어야 할 때 어떤 순서로 브랜치를 옮길지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.GIT.REBASING.001
+    title: Pro Git — 3.6 Git Branching, Rebasing
+    url: https://git-scm.com/book/en/v2/Git-Branching-Rebasing
+    publisher: Git
+    versionScope: Pro Git 2nd Edition (버전 없음, 2026-09-21 기준 내용)
+    skillCodes: [DEVOPS.GIT]
+    estimatedMinutes: 25
+    whyRead: |-
+      merge와 rebase 중 무엇을 쓸지 스스로 정할 수 있게 된다. rebase가 커밋을 다시 만든다는 사실 하나에서
+      "이미 올린 커밋은 rebase하지 않는다"는 규칙이 따라 나온다는 것을 이해한다.
+    checkPoints:
+      - rebase가 merge와 달리 무엇을 바꾸는지(커밋 자체인지 이력의 모양인지) 적어 보세요
+      - 이미 원격에 올린 커밋을 rebase하면 같은 브랜치를 받은 사람에게 무슨 일이 생기는지 적어 보세요
+      - 지금 내 브랜치를 merge로 합칠지 rebase로 정리한 뒤 합칠지 정하고 이유를 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ------------------------------------------------------------- EXPLANATION
+  # EXPLANATION은 "설명하는 법"을 다룬 공식 문서가 없다(19 §7.6 H-1이 블로그·강의 사이트를 막는다).
+  # 그래서 OpenJDK가 자기 결정을 남기는 방식(JEP)을 본보기로 읽는다 — 규칙이 아니라 틀로 쓴다
+  - key: DOC.EXPLAIN.PROPOSAL_TEMPLATE.001
+    title: "JEP 2: JEP Template"
+    url: https://openjdk.org/jeps/2
+    publisher: OpenJDK
+    versionScope: JEP 2 (버전 없음, 2026-09-21 기준 내용)
+    skillCodes: [EXPLANATION.PROJECT_STORY]
+    estimatedMinutes: 15
+    whyRead: |-
+      내가 만든 것을 남이 판단할 수 있게 적으려면 어떤 칸이 필요한지 본보기로 본다. 요약 · 동기 · 목표 ·
+      비목표 · 설명이 각각 다른 질문에 답한다는 것을 알면 "무엇을 왜 만들었고 결과가 무엇인지"를 순서대로 말할 수 있다.
+    checkPoints:
+      - 요약(Summary)과 동기(Motivation)가 각각 어떤 질문에 답하는지 나눠 적어 보세요
+      - 비목표(Non-Goals)를 따로 적는 것이 듣는 사람에게 무엇을 더해 주는지 적어 보세요
+      - 내가 만든 것 하나를 골라 요약 · 동기 · 목표 · 결과 네 칸을 각각 두 문장으로 채워 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.EXPLAIN.ALTERNATIVES.001
+    title: "JEP 444: Virtual Threads"
+    url: https://openjdk.org/jeps/444
+    publisher: OpenJDK
+    versionScope: JEP 444 (JDK 21에서 확정)
+    skillCodes: [EXPLANATION.TECH_DECISION, JAVA.CONCURRENCY.VIRTUAL_THREAD]
+    estimatedMinutes: 30
+    whyRead: |-
+      기술 선택을 "좋아 보여서 골랐다"가 아니라 비교로 말할 수 있게 된다. 이 문서는 고르지 않은 선택지와
+      그것을 버린 이유까지 적어 두었다. 그 구조(동기 → 목표 → 비목표 → 대안 → 감수한 위험)를 내 설명에 그대로 쓴다.
+    checkPoints:
+      - 이 문서가 버린 선택지 하나를 고르고 무엇 때문에 버렸는지 한 문장으로 적어 보세요
+      - 목표(Goals)와 비목표(Non-Goals)가 선택의 근거를 어떻게 좁히는지 적어 보세요
+      - 내가 최근에 고른 기술 하나를 골라 대안 · 감수한 단점 · 그래도 고른 이유를 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.EXPLAIN.ROOT_CAUSE.001
+    title: "JEP 358: Helpful NullPointerExceptions"
+    url: https://openjdk.org/jeps/358
+    publisher: OpenJDK
+    versionScope: JEP 358 (JDK 14에서 확정)
+    skillCodes: [EXPLANATION.TROUBLESHOOTING_STORY]
+    estimatedMinutes: 20
+    whyRead: |-
+      문제 해결 경험을 "고쳤습니다"로 끝내지 않게 된다. 이 문서는 증상(어느 값이 null인지 알 수 없다) →
+      왜 진단이 어려운지 → 무엇으로 고쳤는지 → 그래서 새로 생긴 위험까지 한 줄기로 적혀 있어 설명의 뼈대로 쓸 수 있다.
+    checkPoints:
+      - 이 문서가 말하는 증상과, 그 증상이 왜 원인 찾기를 어렵게 하는지 나눠 적어 보세요
+      - 고친 방법과 그 방법이 새로 만든 위험(Risks)을 함께 적어 보세요
+      - 내가 겪은 문제 하나를 증상 · 가설 · 검증 · 원인 · 해결 · 재발 방지 순서로 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.EXPLAIN.FEEDBACK_LOOP.001
+    title: "JEP 12: Preview Features"
+    url: https://openjdk.org/jeps/12
+    publisher: OpenJDK
+    versionScope: JEP 12 (버전 없음, 2026-09-21 기준 내용)
+    skillCodes: [EXPLANATION.LEARNING_RETROSPECTIVE]
+    estimatedMinutes: 15
+    whyRead: |-
+      되돌아보는 일이 개인의 습관이 아니라 절차가 될 수 있다는 것을 본다. 미리보기 기능이 피드백을 받아
+      다듬어지거나 사라지는 고리를 보고, 내 학습에도 "다시 보고 다르게 한다"는 단계를 만들어 둔다.
+    checkPoints:
+      - 미리보기 기능이 다음 릴리스에서 갈 수 있는 세 갈래를 적어 보세요
+      - 확정 전에 미리보기를 여러 번 두는 것이 무엇을 줄이려는 장치인지 적어 보세요
+      - 최근 한 달에 배운 것 하나를 골라 그 뒤 무엇을 다르게 하게 되었는지와 다음에 무엇을 이어 배울지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false

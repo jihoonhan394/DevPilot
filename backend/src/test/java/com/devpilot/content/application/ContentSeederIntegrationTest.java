@@ -38,9 +38,9 @@ class ContentSeederIntegrationTest {
 
     @Test
     void shouldSeedTestCatalogAndRegisterTemplateOnStartup() {
-        assertThat(count("select count(*) from devpilot.skill where active")).isEqualTo(23);
+        assertThat(count("select count(*) from devpilot.skill where active")).isEqualTo(24);
         assertThat(count("select count(*) from devpilot.skill where parent_id is null"))
-                .isEqualTo(13);
+                .isEqualTo(14);
         assertThat(
                         count(
                                 "select count(*) from devpilot.role_skill_target where target_role"
@@ -65,7 +65,7 @@ class ContentSeederIntegrationTest {
                                 "select id, code, parent_id, active from devpilot.skill order by"
                                         + " code"))
                 .isEqualTo(before);
-        assertThat(count("select count(*) from devpilot.role_skill_target")).isEqualTo(10);
+        assertThat(count("select count(*) from devpilot.role_skill_target")).isEqualTo(20);
     }
 
     @Test

@@ -19,6 +19,14 @@ final class RoleTargetChecks {
     static final List<String> AXES =
             List.of("knowledge", "implementation", "explanation", "debugging");
 
+    /**
+     * 콘텐츠가 덮어야 하는 학습 트랙. {@link TargetRole}의 부분집합이다 — {@code JAVA_BACKEND_STARTER}의 role target·계획
+     * 템플릿은 아직 쓰지 않았다(BL-CNT-17). 기준 검증기({@code content/tools/validate_content.py}의 {@code
+     * TARGET_ROLES})와 같은 집합을 쓴다. 트랙 콘텐츠를 추가하면 여기에 더한다.
+     */
+    static final Set<String> CONTENT_TRACKS =
+            Set.of(TargetRole.JAVA_BACKEND.name(), TargetRole.INTEGRATION_ENGINEER.name());
+
     private static final Set<String> TARGET_KEYS =
             Set.of("skill", "priority", "importance", "target");
     private static final Set<String> ROLE_NAMES =
@@ -55,7 +63,7 @@ final class RoleTargetChecks {
                 checkTarget(context, file, index, entries.get(index), targets);
             }
         }
-        for (String role : new TreeSet<>(ROLE_NAMES)) {
+        for (String role : new TreeSet<>(CONTENT_TRACKS)) {
             Map<String, Map<String, Object>> targets = byRole.getOrDefault(role, Map.of());
             for (String code : new TreeSet<>(context.nonRootCodes)) {
                 if (!targets.containsKey(code)) {

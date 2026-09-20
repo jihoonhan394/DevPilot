@@ -6,8 +6,10 @@ files:
     - skill-tree/test.yaml
   roleTargets:
     - role-targets/test.yaml
+    - role-targets/test-integration.yaml
   planTemplates:
     - plan-templates/test.yaml
+    - plan-templates/test-integration.yaml
   reviewCards:
     - review-cards/test.yaml
   challenges:

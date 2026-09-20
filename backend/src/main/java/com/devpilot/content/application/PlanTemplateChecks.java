@@ -50,7 +50,7 @@ final class PlanTemplateChecks {
                 context.validTemplates.add(template);
             }
         }
-        for (String role : new TreeSet<>(ROLE_NAMES)) {
+        for (String role : new TreeSet<>(RoleTargetChecks.CONTENT_TRACKS)) {
             if (roleCounts.getOrDefault(role, 0) != 1) {
                 context.error(
                         "CV-30", "planTemplates", "exactly one template required for " + role);

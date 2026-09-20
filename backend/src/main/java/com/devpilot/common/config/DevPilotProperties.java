@@ -32,6 +32,7 @@ public record DevPilotProperties(
         @Valid @NotNull Security security,
         @Valid @NotNull Web web,
         @Valid @NotNull Time time,
+        @NotNull Map<String, @Valid @NotNull TrackDefaults> tracks,
         @Valid @NotNull Planner planner,
         @Valid @NotNull Budget budget,
         @Valid @NotNull Review review,
