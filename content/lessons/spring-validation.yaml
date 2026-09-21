@@ -1,0 +1,561 @@
+# DevPilot 개념 노트 — Spring 입력 검증
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 버전을 우리 것에 맞춘다: Spring Boot 4.1 / Spring Framework 7 / Hibernate Validator 9.1
+# - "Not* 이 아닌 제약은 null 을 통과시킨다"는 hibernate-validator 9.1.3 으로 직접 돌려 확인했다
+#   (@Size·@Min·@Email 에 null → 위반 0건, @NotBlank 만 1건)
+lessons:
+  - key: LESSON.SPRING.VALIDATION.001
+    skillCode: SPRING.VALIDATION
+    title: 잘못된 값을 문 앞에서 막기 (입력 검증)
+    whyItMatters: |-
+      클라이언트가 보낸 값은 믿을 수 없다. 화면에서 막아 뒀더라도 API는 직접 부를 수 있고,
+      배치나 다른 서비스가 같은 주소를 부르기도 한다.
+      검증을 서비스 깊숙한 곳에서 하면 같은 검사가 여기저기 흩어지고, 어느 칸이 문제인지 알려 주지도 못한다.
+      주문 시스템에서 수량 0짜리 주문이나 빈 주소가 들어오는 자리를 여기서 막는다.
+    oneLine: 검증은 "모양이 맞는가"를 요청이 들어오는 자리에서 한 번에 보고, 어느 칸이 왜 틀렸는지 돌려주는 일이다.
+    units:
+      - key: LESSON.SPRING.VALIDATION.001.U1
+        title: 요청을 받는 자리에서 막기
+        minutes: 10
+        core: true
+        explain: |-
+          요청 본문을 받는 record에 제약을 적고, 컨트롤러 파라미터에 `@Valid`를 붙인다.
+          그러면 메서드 본문이 시작되기 **전에** 검사가 끝난다 — 서비스는 이미 걸러진 값만 본다.
+
+          자주 쓰는 제약은 몇 개 안 된다.
+
+          | 제약 | 무엇을 본다 |
+          |---|---|
+          | `@NotNull` | "값이 `null`이 아닌가" |
+          | `@NotBlank` | "`null`이 아니고 공백을 지운 길이가 0보다 큰가" |
+          | `@NotEmpty` | "`null`이 아니고 비어 있지 않은가" |
+          | `@Size(min, max)` | 문자열 길이나 컬렉션 크기 |
+          | `@Min` · `@Max` · `@Positive` | 수의 범위 |
+          | `@Pattern` · `@Email` | 글자 모양 |
+
+          record 안의 객체까지 함께 보려면 그 필드에도 `@Valid`를 붙인다 — **한 겹만 자동으로 내려가지 않는다.**
+          목록 원소에 걸려면 `List<@Valid LineRequest>`처럼 원소 자리에 적는다.
+
+          여기서 거르는 것은 **모양**이다. "재고가 있는가" 같은 것은 아니다(U4).
+        example:
+          language: java
+          code: |-
+            public record OrderRequest(
+                    @NotNull Long customerId,
+                    @NotEmpty @Size(max = 20) List<@Valid OrderLineRequest> lines,
+                    @NotBlank @Size(max = 200) String address,
+                    @Size(max = 500) String memo) { }          // 선택 — 없어도 된다
+
+            public record OrderLineRequest(
+                    @NotNull Long productId,
+                    @NotNull @Min(1) @Max(99) Integer quantity) { }
+
+            @PostMapping("/orders")
+            public OrderView place(@Valid @RequestBody OrderRequest request) {
+                return orderService.place(request);            // 여기 오면 이미 걸러졌다
+            }
+          output: |-
+            {"customerId": null, "lines": [], "address": " "}
+              → customerId  NotNull
+              → lines       NotEmpty
+              → address     NotBlank
+              세 가지가 한 번에 나온다 (첫 번째에서 멈추지 않는다)
+
+            lines 안의 quantity 0 도 잡힌다 — List<@Valid ...> 라서
+          note: |-
+            - '`@Valid`가 파라미터에 있어야 검사가 돈다. 제약만 적고 `@Valid`를 빼면 아무 일도 안 일어난다'
+            - '`List<@Valid OrderLineRequest>` — 원소 안까지 보려면 원소 자리에 적는다'
+            - '`memo`에는 `@NotBlank`가 없다. 없어도 되는 값이다'
+        predict:
+          question: '`@Valid`를 빼고 `@RequestBody OrderRequest request`로만 두면?'
+          choices:
+            - 검사가 돌지 않는다. 수량 0짜리 주문도 그대로 들어온다
+            - 그래도 검사한다. 제약이 붙어 있으니까
+            - 컴파일 오류가 난다
+            - 기동이 실패한다
+          answer: 검사가 돌지 않는다. 수량 0짜리 주문도 그대로 들어온다
+          explanation: |-
+            제약 표시는 "이런 조건이 있다"를 적어 둔 것일 뿐이고, **검사를 시작하라고 말하는 것이 `@Valid`** 다.
+            빠뜨려도 컴파일되고 기동도 되고 테스트도 통과할 수 있어서, 잘못된 값이 들어와 봐야 안다.
+            그래서 "요청 record에 제약, 파라미터에 `@Valid`"를 한 쌍으로 외운다.
+        complete:
+          question: 상품 이름이 비어 있지 않고 200자 이하가 되도록 빈칸을 채우세요.
+          code: |-
+            public record ProductRequest(
+                    @___ @Size(max = 200) String name,
+                    @NotNull @___(0) Integer price) { }
+          answers:
+            - [NotBlank]
+            - [Min]
+          explanation: |-
+            공백만 있는 이름도 막아야 하므로 `@NotBlank`다(`@NotNull`은 `" "`를 통과시킨다).
+            가격은 0원을 허용하므로 `@Min(0)`이다 — 괄호에 값을 받는다.
+            인자 없이 쓰는 `@PositiveOrZero`로도 같은 뜻을 적을 수 있다.
+        problem:
+          prompt: |-
+            회원 가입 요청을 받는 record와 컨트롤러 메서드를 백지에서 작성하세요.
+
+            - 이메일: 반드시 있고, 이메일 모양이어야 하고, 254자 이하
+            - 비밀번호: 반드시 있고, 8~64자
+            - 닉네임: 반드시 있고(공백만 있는 것도 안 됨), 2~20자
+            - 가입 경로(`referrer`): **없어도 된다**. 있다면 100자 이하
+            - 약관 동의 목록: 최소 1개
+          deliverables:
+            - record와 컨트롤러 메서드
+            - '`referrer`에 제약을 어떻게 걸었는지와 그 이유 한 줄'
+          hints:
+            - '"반드시 있다"와 "비어 있으면 안 된다"는 다른 제약입니다. 닉네임은 어느 쪽일까요?'
+            - 없어도 되는 값에 `@NotNull`을 붙이면 어떻게 될까요?
+            - 검사를 **시작하게** 하는 표시를 빠뜨리지 마세요.
+          modelAnswer: |-
+            ```java
+            public record SignUpRequest(
+                    @NotBlank @Email @Size(max = 254) String email,
+                    @NotBlank @Size(min = 8, max = 64) String password,
+                    @NotBlank @Size(min = 2, max = 20) String nickname,
+                    @Size(max = 100) String referrer,                  // 없어도 된다
+                    @NotEmpty List<@NotBlank String> agreedTerms) { }
+
+            @PostMapping("/users")
+            public UserView signUp(@Valid @RequestBody SignUpRequest request) {
+                return userService.signUp(request);
+            }
+            ```
+
+            - '`referrer`에는 `@Size(max = 100)`만 걸었다. `@NotNull`이나 `@NotBlank`를 붙이면 **없으면 안 되는 값**이 되어 버린다. 길이 제약은 값이 있을 때만 보므로(U2) 이대로 두면 "없어도 되지만 있다면 100자 이하"가 된다.'
+          selfChecks:
+            - 닉네임이 `@NotNull`이 아니라 `@NotBlank`인가 (공백만 있는 닉네임을 막는가)
+            - '`referrer`에 `@NotNull`·`@NotBlank`가 **없는가**'
+            - 컨트롤러 파라미터에 `@Valid`가 붙어 있는가
+
+      - key: LESSON.SPRING.VALIDATION.001.U2
+        title: null은 누가 막나
+        minutes: 10
+        core: true
+        prerequisiteUnits:
+          - LESSON.SPRING.VALIDATION.001.U1
+        explain: |-
+          가장 많이 당하는 자리다. **`Not*`이 아닌 제약은 값이 `null`이면 그냥 통과시킨다.**
+
+          `@Size(min = 2, max = 5) String name`에 `null`이 들어오면 위반이 아니다.
+          `@Min(1) Integer quantity`도, `@Email String email`도 마찬가지다.
+          "값이 없는 것"과 "값이 틀린 것"은 다른 규칙이고, 앞엣것을 보는 제약은 `Not*` 뿐이다.
+
+          이 성질은 **일부러** 그렇게 되어 있다. 덕분에 "없어도 되지만 있다면 100자 이하"를
+          `@Size(max = 100)` 하나로 적을 수 있다(U1의 `referrer`).
+          반대로 반드시 있어야 하는 값에는 **`@NotNull`을 함께** 걸어야 한다.
+
+          `Not*` 세 형제의 차이를 정확히 보자. 공식 문서의 정의는 이렇다.
+
+          | 제약 | 정의 | `null` | `""` | `" "` |
+          |---|---|---|---|---|
+          | `@NotNull` | "값이 `null`이 아닌지 본다" | 위반 | 통과 | 통과 |
+          | `@NotEmpty` | "`null`도 아니고 비어 있지도 않은지 본다" | 위반 | 위반 | 통과 |
+          | `@NotBlank` | "`null`이 아니고 **공백을 지운 길이**가 0보다 큰지 본다" | 위반 | 위반 | 위반 |
+
+          DB 쪽과 같은 이야기다 — `CHECK`도 `null`을 통과시켜서 `NOT NULL`과 짝으로 건다.
+          **"있어야 한다"와 "맞아야 한다"는 다른 제약이다.**
+        example:
+          language: java
+          code: |-
+            public record Form(
+                    @Size(min = 2, max = 5) String name,        // null 통과
+                    @Min(1) Integer quantity,                   // null 통과
+                    @Email String email,                        // null 통과
+                    @NotBlank String title) { }                 // null 위반
+
+            // 네 칸을 모두 null 로 두고 검사하면
+            //   위반 1건 — title 뿐이다
+
+            // 반드시 있어야 하면 짝으로 건다
+            public record Fixed(
+                    @NotNull @Size(min = 2, max = 5) String name,
+                    @NotNull @Min(1) Integer quantity) { }
+          output: |-
+            new Form(null, null, null, null)
+              VIOLATION title -> 공백일 수 없습니다
+              violations=1          ← name · quantity · email 은 통과
+
+            new Fixed(null, null)
+              violations=2          ← 둘 다 NotNull 위반
+          note: |-
+            - '`Not*`만 "없음"을 본다. 나머지는 전부 "있다면 이래야 한다"다'
+            - '`int quantity`처럼 원시형으로 받으면 `null`이 아예 못 들어와 다른 문제가 된다 — 빠뜨린 값이 0이 된다'
+            - 'DB의 `CHECK` + `NOT NULL` 짝과 같은 규칙이다'
+        predict:
+          question: '`@Size(min = 2, max = 5) String name`에 `null`이 들어오면?'
+          choices:
+            - 통과한다. Not* 이 아닌 제약은 null 을 보지 않는다
+            - 위반이다. 길이가 0이므로 min 에 걸린다
+            - 빈 문자열로 바뀐다
+            - 예외가 난다
+          answer: 통과한다. Not* 이 아닌 제약은 null 을 보지 않는다
+          explanation: |-
+            `null`은 "길이가 0인 문자열"이 아니라 **값이 없는 것**이다. 길이를 볼 대상 자체가 없으므로
+            `@Size`는 판단하지 않고 통과시킨다.
+            그래서 `null`이 그대로 서비스까지 내려가 `name.length()`에서 터진다 —
+            검증을 붙였는데도 NullPointerException이 나는 전형적인 경로다. `@NotNull`을 함께 건다.
+        complete:
+          question: 배송 메모는 없어도 되고, 받는 사람 이름은 반드시 있어야 합니다. 빈칸을 채우세요.
+          code: |-
+            public record DeliveryRequest(
+                    @___ @Size(min = 1, max = 50) String receiverName,
+                    @Size(max = 200) String ___) { }
+          answers:
+            - [NotBlank, NotNull]
+            - [memo]
+          explanation: |-
+            받는 사람 이름은 반드시 있어야 하므로 `@NotBlank`(공백만 있는 이름도 막는다)를 함께 건다.
+            메모는 길이 제약만 있으므로 그대로 두면 "없어도 되지만 있다면 200자 이하"가 된다.
+        problem:
+          prompt: |-
+            아래 record로 받는데 서비스에서 `NullPointerException`이 납니다.
+            왜 검증을 통과했는지 설명하고 고치세요.
+
+            ```java
+            public record CouponRequest(
+                    @Size(min = 4, max = 20) String code,
+                    @Min(1) @Max(50) Integer discountRate,
+                    @Email String contactEmail) { }   // 알림용 — 없어도 된다
+
+            // 서비스
+            String upper = request.code().toUpperCase();   // 여기서 NPE
+            ```
+          deliverables:
+            - 왜 통과했는지 (제약의 null 처리로 설명)
+            - 고친 record (세 칸의 의도를 각각 지키면서)
+          hints:
+            - 세 제약 중 "값이 없음"을 보는 것이 하나라도 있나요?
+            - 세 칸의 **의도**가 서로 다릅니다. 전부 똑같이 고치면 안 됩니다.
+            - 없어도 되는 칸에 `@NotNull`을 붙이면 무엇이 깨질까요?
+          modelAnswer: |-
+            **왜 통과했나**
+
+            `@Size`·`@Min`·`@Email`은 **`Not*`이 아니므로 `null`을 통과시킨다.**
+            세 칸 모두 값이 없어도 위반이 아니고, `code`가 `null`인 채 서비스까지 내려가 `toUpperCase()`에서 터졌다.
+            검증이 "돌지 않은" 것이 아니라 **"없음"을 보는 제약이 하나도 없었던** 것이다.
+
+            ```java
+            public record CouponRequest(
+                    @NotBlank @Size(min = 4, max = 20) String code,
+                    @NotNull @Min(1) @Max(50) Integer discountRate,
+                    @Email String contactEmail) { }   // 그대로 — 없어도 된다
+            ```
+
+            - '`code`: 반드시 있어야 하고 공백만 있는 코드도 막아야 하므로 `@NotBlank`.'
+            - '`discountRate`: 반드시 있어야 하므로 `@NotNull`. 숫자에는 `@NotBlank`를 쓸 수 없다.'
+            - '`contactEmail`: **그대로 둔다.** 없어도 되는 값이라 `@Email`만으로 "있다면 이메일 모양"이 된다.'
+          selfChecks:
+            - 원인을 "`@Size`가 `null`을 통과시킨다"로 짚었는가
+            - 세 칸을 똑같이 고치지 않고 의도대로 갈랐는가
+            - '`contactEmail`에 `@NotNull`을 붙이지 않았는가'
+
+      - key: LESSON.SPRING.VALIDATION.001.U3
+        title: 어디서 터지고 무엇으로 받나
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.SPRING.VALIDATION.001.U1
+        explain: |-
+          검증이 실패하면 예외가 난다. 그런데 **어디에 제약을 붙였느냐에 따라 예외가 다르다.**
+
+          | 어디 | 예 | 예외 |
+          |---|---|---|
+          | `@Valid`가 붙은 객체 파라미터 | `@Valid @RequestBody OrderRequest` | `MethodArgumentNotValidException` |
+          | 파라미터에 직접 붙은 제약 | `@PathVariable @Min(1) long id` | `HandlerMethodValidationException` |
+
+          공식 문서는 못 박는다 — **"애플리케이션은 두 예외를 모두 다뤄야 한다. 컨트롤러 메서드 서명에 따라
+          어느 쪽이든 날 수 있기 때문이다."** 하나만 처리해 두면 나머지 경우에 500이 나간다 —
+          사용자 잘못인데 서버 잘못으로 답하는 셈이다. 둘은 아주 비슷해서 거의 같은 코드로 다룰 수 있다.
+
+          **무엇으로 받나.** `@RestControllerAdvice`에 `@ExceptionHandler`를 두고 한 형식으로 바꾼다 —
+          `application/problem+json`에 기계가 읽을 `code`와 **어느 칸이 왜 틀렸는지**를 담는다(REST 설계 노트 U2).
+
+          서비스 메서드에 제약을 걸면 또 다르다. 클래스에 `@Validated`가 필요하고 `ConstraintViolationException`이 난다.
+        example:
+          language: java
+          code: |-
+            @RestControllerAdvice
+            public class ValidationExceptionHandler {
+
+                @ExceptionHandler(MethodArgumentNotValidException.class)
+                ProblemDetail onBody(MethodArgumentNotValidException exception) {
+                    return problem(
+                            exception.getBindingResult().getFieldErrors().stream()
+                                    .map(e -> new FieldError(e.getField(), e.getCode()))
+                                    .toList());
+                }
+
+                @ExceptionHandler(HandlerMethodValidationException.class)
+                ProblemDetail onParameters(HandlerMethodValidationException exception) {
+                    return problem(toFieldErrors(exception));   // 거의 같은 코드
+                }
+
+                private ProblemDetail problem(List<FieldError> errors) {
+                    ProblemDetail detail =
+                            ProblemDetail.forStatusAndDetail(BAD_REQUEST, "요청한 값을 확인해 주세요.");
+                    detail.setProperty("code", "VALIDATION_FAILED");
+                    detail.setProperty("errors", errors);
+                    return detail;
+                }
+            }
+          output: |-
+            POST /orders  {"quantity": 0}
+              → MethodArgumentNotValidException
+              → 400 application/problem+json
+                 {"code":"VALIDATION_FAILED",
+                  "errors":[{"field":"lines[0].quantity","code":"Min"}]}
+
+            GET /orders/0   (@PathVariable @Min(1))
+              → HandlerMethodValidationException
+              → 같은 모양의 400
+          note: |-
+            - '두 예외를 **둘 다** 다룬다. 하나만 다루면 나머지가 500으로 나간다'
+            - '`field`에 `lines[0].quantity`처럼 경로가 찍힌다 — 화면이 그 칸에 표시할 수 있다'
+            - '서비스 메서드 제약은 `ConstraintViolationException`이다. 필요하면 그것도 같은 형식으로 바꾼다'
+        predict:
+          question: '`MethodArgumentNotValidException`만 처리해 두고 `@PathVariable @Min(1) long id`에 0이 오면?'
+          choices:
+            - 처리되지 않아 500이 나간다. 사용자 잘못인데 서버 잘못으로 답한다
+            - 같은 400이 나간다
+            - 검증이 돌지 않는다
+            - 컴파일 오류가 난다
+          answer: 처리되지 않아 500이 나간다. 사용자 잘못인데 서버 잘못으로 답한다
+          explanation: |-
+            파라미터에 직접 붙은 제약은 `HandlerMethodValidationException`을 던진다.
+            그 핸들러가 없으면 아무도 잡지 않아 500으로 떨어진다.
+            클라이언트는 "서버가 고장났다"로 읽고 재시도하지만 몇 번을 보내도 같다 —
+            사실은 **요청을 고쳐야** 하는 400이었다. 그래서 두 예외를 모두 다뤄야 한다.
+        complete:
+          question: 두 검증 예외를 모두 잡도록 빈칸을 채우세요.
+          code: |-
+            @ExceptionHandler(___.class)
+            ProblemDetail onBody(MethodArgumentNotValidException exception) { ... }
+
+            @ExceptionHandler(___.class)
+            ProblemDetail onParameters(HandlerMethodValidationException exception) { ... }
+          answers:
+            - [MethodArgumentNotValidException]
+            - [HandlerMethodValidationException]
+          explanation: |-
+            `@Valid`가 붙은 객체는 `MethodArgumentNotValidException`,
+            파라미터에 직접 붙은 제약은 `HandlerMethodValidationException`이다.
+            둘 다 잡아야 어느 서명이든 400으로 답한다.
+        problem:
+          prompt: |-
+            아래 컨트롤러의 검증 실패 응답을 설계하세요.
+
+            ```java
+            @GetMapping("/orders")
+            public OrderPage list(@RequestParam @Min(1) @Max(100) int size) { ... }
+
+            @PostMapping("/orders")
+            public OrderView place(@Valid @RequestBody OrderRequest request) { ... }
+            ```
+
+            1. 각 메서드가 실패하면 어떤 예외가 나는지
+            2. 두 경우 모두 같은 모양의 400을 주는 핸들러를 쓰세요
+            3. 응답 본문에 **담지 않을 것** 하나와 그 이유
+          deliverables:
+            - 두 예외 이름과 어느 메서드에서 나는지
+            - 핸들러 코드 (두 개)
+            - 담지 않을 것과 이유
+          hints:
+            - 제약이 **객체 안에** 있는지 **파라미터 자리에** 있는지를 보세요.
+            - 두 핸들러의 본문은 거의 같아도 됩니다 — 공식 문서도 그렇게 말합니다.
+            - REST 설계 노트에서 오류 본문에 담지 말라고 한 것이 있었습니다.
+          modelAnswer: |-
+            **1. 예외**
+
+            - '`list(@RequestParam @Min(1) @Max(100) int size)` — 제약이 파라미터 자리에 있으므로 `HandlerMethodValidationException`.'
+            - '`place(@Valid @RequestBody OrderRequest request)` — `@Valid`가 붙은 객체이므로 `MethodArgumentNotValidException`.'
+
+            **2. 핸들러**
+
+            ```java
+            @RestControllerAdvice
+            public class ValidationExceptionHandler {
+
+                @ExceptionHandler(MethodArgumentNotValidException.class)
+                ProblemDetail onBody(MethodArgumentNotValidException exception) {
+                    return problem(fieldErrors(exception.getBindingResult()));
+                }
+
+                @ExceptionHandler(HandlerMethodValidationException.class)
+                ProblemDetail onParameters(HandlerMethodValidationException exception) {
+                    return problem(fieldErrors(exception));
+                }
+
+                private ProblemDetail problem(List<FieldError> errors) {
+                    ProblemDetail detail =
+                            ProblemDetail.forStatusAndDetail(BAD_REQUEST, "요청한 값을 확인해 주세요.");
+                    detail.setProperty("code", "VALIDATION_FAILED");
+                    detail.setProperty("errors", errors);   // field + code
+                    return detail;
+                }
+            }
+            ```
+
+            **3. 담지 않을 것**
+
+            **사용자가 보낸 값 원문**(`rejectedValue`). 비밀번호나 개인정보가 그대로 응답과 로그에 실릴 수 있다.
+            어느 칸이 왜 틀렸는지(`field`, `code`)만 있으면 화면은 충분히 표시할 수 있다.
+            스택 트레이스도 마찬가지다.
+          selfChecks:
+            - 두 예외를 메서드 서명으로 정확히 갈랐는가
+            - 핸들러 둘이 **같은 모양**의 본문을 만드는가
+            - 담지 않을 것으로 값 원문이나 스택 트레이스를 들었는가
+
+      - key: LESSON.SPRING.VALIDATION.001.U4
+        title: 모양 검사와 업무 규칙은 다르다
+        minutes: 12
+        core: false
+        prerequisiteUnits:
+          - LESSON.SPRING.VALIDATION.001.U2
+        explain: |-
+          `@Min(1)`은 "수량이 1 이상인가"를 본다. 그런데 "**재고가 있는가**"는 어떻게 하나.
+          제약 표시로는 할 수 없다. DB를 봐야 알기 때문이다.
+
+          그래서 검사를 두 종류로 나눈다.
+
+          | | 모양 검사 (Bean Validation) | 업무 규칙 |
+          |---|---|---|
+          | 무엇을 보나 | **요청만 보고** 알 수 있는 것 | 다른 데이터를 봐야 아는 것 |
+          | 예 | 수량 ≥ 1, 이메일 모양, 200자 이하 | 재고 부족, 이미 쓴 쿠폰, 이메일 중복 |
+          | 어디서 | 컨트롤러 진입 전 (`@Valid`) | 서비스(도메인) 안 |
+          | 실패하면 | 400 `VALIDATION_FAILED` | 409 `CONFLICT` 등 상황에 맞게 |
+
+          가르는 기준 한 줄: **요청 하나만 들고 판단할 수 있으면 모양 검사, 아니면 업무 규칙이다.**
+
+          업무 규칙을 제약 표시로 억지로 밀어 넣으려고 커스텀 validator에서 리포지터리를 부르는 경우가 있다.
+          되긴 하지만 **검증이 DB를 부르기 시작하면** 트랜잭션 밖에서 읽게 되고,
+          읽은 순간과 저장하는 순간 사이에 값이 바뀌어도 모른다(재고가 그 사이 0이 될 수 있다).
+          업무 규칙은 **바꾸는 그 트랜잭션 안에서** 보는 것이 맞다.
+
+          그리고 업무 규칙은 **도메인 객체 안**에 두면 가장 좋다 — 모델링 노트의 "규칙은 한 곳에"와 같은 이야기다.
+        example:
+          language: java
+          code: |-
+            // 모양 검사 — 요청만 보고 안다
+            public record OrderRequest(
+                    @NotNull Long productId,
+                    @NotNull @Min(1) @Max(99) Integer quantity) { }
+
+            // 업무 규칙 — 다른 데이터를 봐야 안다
+            @Service
+            public class OrderService {
+
+                @Transactional
+                public OrderView place(Long customerId, OrderRequest request) {
+                    Product product = productRepository.findById(request.productId())
+                            .orElseThrow(() -> new BusinessValidationException(
+                                    "productId", "REFERENCE_NOT_FOUND"));
+
+                    // 재고 차감과 확인을 같은 트랜잭션 안에서
+                    product.reduceStock(request.quantity());   // 모자라면 도메인이 던진다
+
+                    return OrderView.of(orderRepository.save(
+                            new Order(customerId, product, request.quantity())));
+                }
+            }
+          output: |-
+            quantity = 0        → 컨트롤러 진입 전 400 VALIDATION_FAILED
+            productId = 99999   → 400 REFERENCE_NOT_FOUND (가리킨 것이 없다)
+            재고 2개인데 5개 주문 → 409 OUT_OF_STOCK      (지금 상태와 부딪힌다)
+
+            셋 다 "잘못된 요청"이지만 알 수 있는 시점과 코드가 다르다
+          note: |-
+            - '기준: **요청 하나만 들고 판단할 수 있나**'
+            - '재고 확인을 검증 단계에서 하면 읽은 뒤 저장 전까지 값이 바뀔 수 있다'
+            - '재고 규칙은 `Product` 안에 둔다 — 그래야 다른 경로로 차감해도 같은 규칙을 지난다'
+        predict:
+          question: 커스텀 validator 안에서 리포지터리를 불러 재고를 확인하면 무엇이 문제인가?
+          choices:
+            - 확인한 뒤 저장하기 전에 재고가 바뀔 수 있다. 같은 트랜잭션이 아니다
+            - 느려질 뿐 문제는 없다
+            - 컴파일되지 않는다
+            - 검증이 아예 돌지 않는다
+          answer: 확인한 뒤 저장하기 전에 재고가 바뀔 수 있다. 같은 트랜잭션이 아니다
+          explanation: |-
+            검증은 컨트롤러에 들어가기 **전에** 돌고, 저장은 그 뒤 서비스의 트랜잭션 안에서 일어난다.
+            그 사이에 다른 주문이 재고를 가져갈 수 있다. 확인은 통과했는데 저장할 때는 없는 것이다.
+            "읽고 나서 쓰기까지" 사이가 벌어질수록 이런 틈이 커진다 —
+            그래서 업무 규칙은 **바꾸는 그 트랜잭션 안에서** 본다.
+        complete:
+          question: 각 검사를 어디서 할지 채우세요.
+          code: |-
+            수량이 1 이상인가        → ___ 검사 (@Valid)
+            그 쿠폰을 이미 썼는가    → ___ 규칙 (서비스·도메인)
+          answers:
+            - [모양, 형식]
+            - [업무, 비즈니스]
+          explanation: |-
+            수량은 **요청만 보고** 알 수 있으므로 모양 검사,
+            쿠폰 사용 여부는 저장된 상태를 봐야 하므로 업무 규칙이다.
+        problem:
+          prompt: |-
+            회원 가입에 필요한 검사 여섯 가지를 **모양 검사**와 **업무 규칙**으로 나누고,
+            업무 규칙은 각각 어떤 상태 코드로 답할지 정하세요.
+
+            1. 이메일이 이메일 모양인가
+            2. 이미 가입된 이메일인가
+            3. 비밀번호가 8자 이상인가
+            4. 비밀번호가 이메일과 같지 않은가
+            5. 초대 코드가 유효한가 (DB에 있고 만료되지 않았나)
+            6. 약관 동의가 1개 이상인가
+
+            4번이 어느 쪽인지 특히 잘 생각해 보세요.
+          deliverables:
+            - 여섯 가지의 분류 (업무 규칙은 상태 코드까지)
+            - 4번을 그렇게 분류한 이유
+          hints:
+            - 기준은 "요청 하나만 들고 판단할 수 있나"입니다.
+            - 4번은 DB를 봐야 하나요? 요청 안에 둘 다 있지 않나요?
+            - 중복과 "지금 상태와 부딪힘"에 어울리는 상태 코드가 무엇이었나요?
+          modelAnswer: |-
+            | # | 분류 | 어떻게 |
+            |---|---|---|
+            | 1 이메일 모양 | 모양 | `@Email` |
+            | 2 이미 가입된 이메일 | **업무** | 저장된 회원을 봐야 안다 → `409 EMAIL_ALREADY_USED` |
+            | 3 비밀번호 8자 이상 | 모양 | `@Size(min = 8)` |
+            | 4 비밀번호 ≠ 이메일 | **모양** | 아래 참조 |
+            | 5 초대 코드 유효 | **업무** | DB와 만료 시각을 봐야 안다 → `400 REFERENCE_NOT_FOUND`(없는 코드) / `409 INVITE_EXPIRED`(만료) |
+            | 6 약관 동의 1개 이상 | 모양 | `@NotEmpty` |
+
+            **4번을 모양 검사로 분류한 이유**: 비교할 두 값이 **요청 안에 둘 다 있다.**
+            다른 데이터를 보지 않으므로 요청만 들고 판단할 수 있다.
+            칸 하나에 붙는 제약으로는 표현할 수 없으니 **record(클래스) 수준의 커스텀 제약**으로 만든다 —
+            여러 칸을 함께 보는 검사는 원래 그 자리다(DB의 표 수준 `CHECK`과 같다).
+
+            5번을 "없는 코드"와 "만료"로 나눈 이유: 앞엣것은 **가리킨 것이 없는** 것이고,
+            뒤엣것은 요청은 맞지만 **지금 상태가 안 받아 주는** 것이다.
+          selfChecks:
+            - 2번과 5번만 업무 규칙으로 갈랐는가 (4번을 업무로 넘기지 않았는가)
+            - 4번의 이유가 "요청 안에 두 값이 다 있다"인가
+            - 업무 규칙에 붙인 상태 코드가 409와 400으로 갈렸고 그 근거가 있는가
+
+    commonMistakes:
+      - '제약만 적고 파라미터의 `@Valid`를 빠뜨린다. 검사가 아예 돌지 않고 컴파일도 기동도 된다 (U1)'
+      - '`@Size`·`@Min`에 `@NotNull`을 짝으로 걸지 않는다. `null`이 통과해 서비스에서 NPE가 난다 (U2)'
+      - '두 검증 예외 중 하나만 다뤄 나머지가 500으로 나간다. 사용자 잘못인데 서버 잘못으로 답한다 (U3)'
+    inProject: |-
+      주문 시스템에서 요청 record를 만들 때마다 이 순서로 한다.
+      먼저 "요청만 보고 알 수 있는 것"을 제약으로 적고 `@Valid`를 붙이고(U1),
+      반드시 있어야 하는 칸에 `Not*`을 짝으로 거는지 확인한다(U2).
+      `@RestControllerAdvice`는 프로젝트에 **한 번만** 만들어 두고 두 예외를 모두 잡는다(U3).
+      재고·중복처럼 저장된 상태를 봐야 하는 것은 서비스의 트랜잭션 안으로 내리고,
+      규칙 자체는 도메인 객체에 둔다(U4).
+    sources:
+      - title: Spring Framework Reference — Validation (Jakarta Bean Validation)
+        url: https://docs.spring.io/spring-framework/reference/core/validation/beanvalidation.html
+        versionScope: Spring Framework 7
+      - title: Spring Framework Reference — Web MVC Validation
+        url: https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-controller/ann-validation.html
+        versionScope: Spring Framework 7
+      - title: Hibernate Validator Reference — Built-in constraints
+        url: https://docs.hibernate.org/stable/validator/reference/en-US/html_single/
+        versionScope: Hibernate Validator 9.1
+    verifiedAt: 2026-09-22
