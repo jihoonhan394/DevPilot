@@ -225,7 +225,7 @@ ratioBp (저장·표시용) = effective == 0 ? null : floorDiv(requiredMust × 1
 
 ### 5.1 입력
 
-`today`, `availableMinutes`(5~720), `energyLevel`, 활성 plan(milestones, skill targets), planning level, due review 목록, 최근 2 plan-day의 main task, 최근 3 plan-day 세션 기록, risk level, **학습 트랙 기본값**(`trackDefaults` — 학습 목표의 `targetRole`로 고른 `devpilot.tracks.<트랙>`, `03` §9), **재현 후보 목록**(§5.10 RE-2), **후보 skill별 학습 단계 완료 수**(§5.11 ST-5).
+`today`, `availableMinutes`(5~720), `energyLevel`, 활성 plan(milestones, skill targets), planning level, due review 목록, **최근 5 plan-day의 main task**(어제·그제는 skill과 상태 — §5.5 3a·3b, 다섯 날은 과제 유형 — §5.5 4번), 최근 3 plan-day 세션 기록, risk level, **학습 트랙 기본값**(`trackDefaults` — 학습 목표의 `targetRole`로 고른 `devpilot.tracks.<트랙>`, `03` §9. 학습 목표가 없으면 `JAVA_BACKEND`), **재현 후보 목록**(§5.10 RE-2), **후보 skill별 학습 단계 완료 수**(§5.11 ST-5).
 
 ### 5.2 후보 skill
 
@@ -399,10 +399,28 @@ score         = baseScore + stageGapBonus          # §5.5 modifier는 이 score
 | 3a | 어제 main task가 같은 skill이고 상태가 IN_PROGRESS 또는 DEFERRED | 11_500 | `CONTINUATION` (3b 적용 안 함) |
 | 3b | 어제와 그제 main task가 모두 같은 skill (상태 무관) | 6_000 | `FATIGUE_TWO_DAYS` |
 | 3b | 어제 main task만 같은 skill | 8_000 | `FATIGUE_ONE_DAY` |
-| 4 | comebackMode, difficulty ≥ 3 | 7_000 | `COMEBACK_HARD_TASK` |
-| 5 | 제안이 `REDO`다 (§5.10 RE-2 창 안) | 13_000 | `REDO_DUE` |
+| 4 | 제안의 **과제 유형**이 최근 5 plan-day 연속 main과 같다 | 4_000 | `MONOTONY_FIVE_DAYS` |
+| 4 | 제안의 **과제 유형**이 최근 3 plan-day 연속 main과 같다 | 7_000 | `MONOTONY_THREE_DAYS` |
+| 5 | comebackMode, difficulty ≥ 3 | 7_000 | `COMEBACK_HARD_TASK` |
+| 6 | 제안이 `REDO`다 (§5.10 RE-2 창 안) | 13_000 | `REDO_DUE` |
 
 `REDO_DUE`를 마지막에 두는 이유: 앞의 modifier(특히 `FATIGUE_*`)가 재현 과제에도 그대로 적용돼야 한다. 같은 skill을 이틀 연속 main으로 잡았다면 재현이라도 하루 쉬는 편이 낫고, 창(RE-2)이 하루 밀릴 뿐이다.
+
+**4번 과제 유형 단조로움 (`MONOTONY_*`)의 계산과 근거**
+
+```text
+recentMainTypes = [today−1, today−2, …, today−5]의 main task 유형
+                  main task가 없는 plan-day에서 목록을 끊는다 (쉰 날 뒤에는 이어지지 않는다)
+run = recentMainTypes 앞쪽에서 오늘 제안의 taskType과 같은 유형이 이어진 날 수
+if run ≥ 5 → MONOTONY_FIVE_DAYS (4_000)      # 둘 중 하나만 적용한다
+elif run ≥ 3 → MONOTONY_THREE_DAYS (7_000)
+```
+
+- **왜 필요한가** — `FATIGUE_*`는 **같은 skill**만 억제하고 **같은 과제 유형**은 보지 않는다. 그래서 §5.3의 마지막 분기(`EXPLAIN`)로 떨어지는 skill이 여럿이면 skill은 매일 바뀌어도 하는 일은 "내 말로 설명하기"만 몇 주씩 이어질 수 있다. 12주 시뮬레이션(`StudyJourneySimulationTest`)에서 실제로 **20 plan-day 연속 `EXPLAIN`**이 나왔다. 읽지도 만들지도 않고 설명만 하는 구간은 §12의 학습 루프(읽는다 → 만든다 → 설명한다)가 끊긴 상태다.
+- **왜 3일부터인가** — 같은 skill을 이어 하는 것(`FATIGUE_ONE_DAY`, 1일)보다 같은 유형을 이어 하는 것은 덜 해롭다. 유형이 같아도 다루는 기술이 다르면 새 내용을 배운다. 이틀 연속은 정상 범위로 두고(예: 이틀에 걸친 코드 읽기), **사흘째부터** 누른다.
+- **왜 7_000 / 4_000인가** — 7_000은 `LOW_ENERGY_DEEP_TASK`·`COMEBACK_HARD_TASK`와 같은 세기의 "조금 미루자"다. 점수가 크게 앞서는 후보는 그대로 선택된다. 닷새 연속이면 재료가 고갈됐다는 신호이므로 4_000으로 내려 **1위가 2.5배 앞서지 않는 한 다른 유형이 뒤집도록** 한다. 20일 연속이 나온 이상 뒤집을 수 있는 세기가 필요하다.
+- **한계** — 이 modifier는 후보 **사이**의 순서만 바꾼다. 모든 후보의 제안이 같은 유형이면(그 skill들에 challenge·reading 재료가 하나도 없는 경우) 아무것도 바뀌지 않는다. 그때는 콘텐츠를 채우는 것이 답이다(`19` §4.1 CV-125 WARN).
+- 배율은 `devpilot.planner.modifiers.{monotony-three-days, monotony-five-days}`다. 일수 3·5는 `FATIGUE_*`의 1·2일과 같이 규칙에 고정한다.
 
 `comebackMode = (최근 3 plan-day(today−3 ~ today−1)에 COMPLETED 세션 없음) && (그 이전에 COMPLETED 세션이 1개 이상 있음)`
 
@@ -443,9 +461,43 @@ mainBudget < 10 이면 제안과 무관하게 RECALL(estimated = mainBudget)
 | 120 | 40 | N | dueCount 20 → min(30, 30, 115) = **30** | 90 | 99 |
 | 60 | 40 | Y | dueCount 10 → min(15, 15, 55) = **15** | 45 | 49 |
 
+**추가 과제 (남는 시간 채우기)**
+
+main 1개와 REVIEW 1개만 만들면 **선언한 시간의 절반 이상이 비는 날이 생긴다.** 평일 60분에 main 25~40분 + 복습 8분이면 55~80%지만, 주말 270분에 25분짜리 하나면 **18%**다. 그 결과 §3.3의 `completionRateBp = Σactual / Σavail`이 매일 빠짐없이 완주해도 하한(3_000)에 붙고, 기한 위험도가 내려오지 않아 신호 역할을 못 한다. 그래서 남는 예산이 의미 있게 크면 **순위 다음 후보로 추가 과제를 만들어 하루를 채운다.**
+
+```text
+remaining = mainBudget − (조정까지 끝난 main의 estimated)      # 음수면 0
+순위 2위 후보부터 차례로:
+  추가 과제가 maxExtraTasks개가 됐거나 remaining < extraTaskMinMinutes 이면 멈춘다
+  limit = floorDiv(remaining × 11_000, 10_000)                # main과 같은 초과 허용 10%
+  그 후보의 §5.3 제안을 limit에 맞춘다:
+    estimated ≤ limit 이고 그 재료를 오늘 아직 안 썼으면 → 그대로
+    아니면 CHALLENGE는 같은 skill에서 difficulty를 낮춰, READ_CODE는 같은 skill의 다음 reading을
+      key ASC로 이어 보며 estimated ≤ limit이고 오늘 안 쓴 것을 찾는다
+    그래도 없으면 EXPLAIN(15)이 limit 이하일 때 EXPLAIN. 아니면 그 후보를 건너뛴다
+  remaining −= 고른 과제의 estimated
+```
+
+- `extraTaskMinMinutes` = `devpilot.planner.extra-task-min-minutes`(기본 **15**). **15분인 이유**: `EXPLAIN`(15)이 §5.3이 만드는 가장 짧은 정규 제안이다. 그보다 적게 남았으면 어떤 제안도 넣을 수 없다. `RECALL`로는 내려가지 않는다 — `RECALL`은 예산이 모자랄 때 main을 대신하는 예비 과제이지 **덧붙이는** 과제가 아니다.
+- `maxExtraTasks` = `devpilot.planner.max-extra-tasks`(기본 **3**, 하루 main 성격의 과제 최대 4개). **3인 이유**: 평일 60분이면 문턱 때문에 실제로는 1~2개만 붙고, 주말 270분이면 4개가 된다. 상한을 더 올리면 주말에 6~8개가 되어 **다 못 하면 실패로 보이는 목록**이 된다 — U-3(죄책감을 주는 UI 금지, `02` §1)을 어긴다. 하루를 끝까지 채우는 것보다 **끝낼 수 있는 하루**가 먼저다.
+- **같은 skill은 하루에 한 번만.** 후보 목록에 skill은 한 번씩만 들어가므로(§5.2) 순위대로 훑는 것만으로 지켜진다. **같은 재료(challenge·reading)도 하루에 한 번만** 쓴다 — 하나의 reading이 여러 skill에 걸릴 수 있기 때문이다(`19` §3.8·§3.13).
+- **저장**: 추가 과제는 `is_main=false`, `sort_order = main의 sort_order + 1, +2, …`다. daily plan당 활성 main은 1개여야 하므로(I-04, `uq_learning_task_one_active_main`) **main으로 저장할 수 없다.** `score_breakdown.rank`는 2·3·4이고 나머지 값(factor·modifier·reason)은 main과 같은 방식으로 저장한다.
+- **응답**: 새 필드를 만들지 않는다. `TodayView.earlierMainTasks`(`05` §8.1)가 "`mainTask`를 뺀 같은 날의 다른 학습 과제"가 되어 추가 과제를 함께 싣는다. `REVIEW`만 `reviewTask`로 따로 나간다.
+- **재생성**(§5.9): 추가 과제도 `PLANNED`라 같은 daily plan의 PLANNED 삭제 대상이고, 새로 만들 때 다시 붙는다.
+
+**Test vectors (추가 과제)** — 공통: `extra-task-min-minutes` 15, `max-extra-tasks` 3, 초과 허용 10%.
+
+| # | available / due | main | 후보 (순위 순서) | 결과 |
+|---|---|---|---|---|
+| E-1 | 60 / 0 | READ_CODE 25 | B·C·D 모두 EXPLAIN 15 | **B, C** — 35 → 20 → 5분이 남아 멈춘다 |
+| E-2 | 270 / 20 | CHALLENGE 40 | B·C·D·E 모두 EXPLAIN 15 | **B, C, D** — 예산이 남아도 3개까지 |
+| E-3 | 45 / 0 | CHALLENGE 40 | B EXPLAIN 15 | **없음** — 남은 5분 < 15 |
+| E-4 | 120 / 0 | EXPLAIN 15 | B CHALLENGE d3 130분(같은 skill에 d2 60분), C·D·E EXPLAIN 15 | **B CHALLENGE 60, C, D** — 긴 문제는 난이도를 낮춰 담는다 |
+| E-5 | 60 / 0 | READ_CODE `READ.SHARED.001` 25 | B의 제안도 `READ.SHARED.001`(같은 skill에 `READ.OTHER.001` 20분), C·D EXPLAIN 15 | **B READ_CODE `READ.OTHER.001` 20, C** — 같은 재료는 다시 쓰지 않는다 |
+
 ### 5.7 Planner 점수 Test vectors
 
-공통: risk LOW, energy NORMAL, today=2026-10-10, **`devpilot.planner.weights.stage-gap = 0`**(`stageGapBonus` 없음 — 이 표는 factor 가중합과 modifier만 확인한다. `stageGap`은 §5.11 vector가 따로 확인한다).
+공통: risk LOW, energy NORMAL, today=2026-10-10, 최근 main 과제 유형 없음(§5.5 4번 미적용), **`devpilot.planner.weights.stage-gap = 0`**(`stageGapBonus` 없음 — 이 표는 factor 가중합과 modifier만 확인한다. `stageGap`은 §5.11 vector가 따로 확인한다).
 - **A**: MUST, importance 0.90, skillGap 600_000, due 없음, 현재 milestone(2026-10-01~2026-10-20 → daysLeft 10, length 20 → milestoneUrgency 500_000), focus 아님, prerequisite 없음, 제안 EXPLAIN(15, d2)
 - **B**: SHOULD, importance 0.50, skillGap 800_000, 2일 overdue review(reviewUrgency 500_000), milestone 밖, prerequisite 없음, 제안 CHALLENGE(20, d2)
 
@@ -457,6 +509,12 @@ mainBudget < 10 이면 제안과 무관하게 RECALL(estimated = mainBudget)
 | 4 | A가 어제 main, IN_PROGRESS | 598_000 | 485_000 | **A** |
 | 5 | A가 어제 main만 COMPLETED | 416_000 | 485_000 | **B** |
 | 6 | energy LOW, B 제안 CHALLENGE(40분, d2) | 520_000 | 339_500 | **A** |
+| 7 | 최근 main 유형 `[EXPLAIN, EXPLAIN, EXPLAIN]` (A의 제안 유형과 3일 연속) | 364_000 | 485_000 | **B** |
+| 8 | 최근 main 유형 `EXPLAIN` 5일 연속 | 208_000 | 485_000 | **B** |
+| 9 | 최근 main 유형 `[EXPLAIN, EXPLAIN]` (2일은 누르지 않는다) | 520_000 | 485_000 | **A** |
+| 10 | 최근 main 유형 `[EXPLAIN, EXPLAIN, READING, EXPLAIN, EXPLAIN]` (run = 2로 끊긴다) | 520_000 | 485_000 | **A** |
+
+7~10행의 A 제안 유형은 `EXPLAIN`, B는 `CHALLENGE`다 — 그래서 `MONOTONY_*`는 A에만 걸린다.
 
 ### 5.8 Reason (`ReasonTemplates`)
 
@@ -491,7 +549,7 @@ mainBudget < 10 이면 제안과 무관하게 RECALL(estimated = mainBudget)
 | main `IN_PROGRESS` | `409 TODAY_ALREADY_STARTED` | 기존 main `DEFERRED` → PLANNED 상태 REVIEW task 삭제 → flush → 새 main·REVIEW task INSERT (REVIEW task가 IN_PROGRESS/COMPLETED면 유지하고 새로 만들지 않음) |
 | main `COMPLETED` (active main 없음) | `409 TODAY_ALREADY_COMPLETED` | 추가 main INSERT (COMPLETED 유지) |
 
-행 판정 순서(한 daily_plan에 main task가 여러 개일 수 있으므로): `IN_PROGRESS` main이 하나라도 있으면 3행 → 없고 `COMPLETED` main이 하나라도 있으면 4행 → 그 외(PLANNED·SKIPPED·DEFERRED만 있거나 main 없음)는 2행.
+행 판정 순서(한 daily_plan에 main task가 여러 개일 수 있으므로): `IN_PROGRESS` main이 하나라도 있으면 3행 → 없고 `COMPLETED` main이 하나라도 있으면 4행 → 그 외(PLANNED·SKIPPED·DEFERRED만 있거나 main 없음)는 2행. **판정은 `is_main` task만 본다** — §5.6의 추가 과제는 `is_main = false`라 판정에 들어가지 않고, `PLANNED`면 다른 PLANNED task와 함께 지워졌다가 새로 만들어진다.
 
 ### 5.10 재현 과제 (`RedoTaskPolicy`)
 
@@ -1195,7 +1253,7 @@ AI 출력 파싱 직후 finding마다 순서대로 적용한다.
 ```
 
 - **서버는 URL을 fetch하지 않는다.** 호스트 문자열만 검사한다.
-- allowlist (`devpilot.ai.trusted-source-hosts`): `docs.spring.io`, `spring.io`, `docs.oracle.com`, `openjdk.org`, `www.postgresql.org`, `owasp.org`, `cheatsheetseries.owasp.org`, `www.kisa.or.kr`, `supabase.com`, `dart.dev`, `docs.flutter.dev`, `api.flutter.dev`, `pmd.github.io`, `spotbugs.readthedocs.io`, `checkstyle.org`, `junit.org`, `hibernate.org`, `docs.jboss.org`, `developer.mozilla.org`, `www.rfc-editor.org`, `git-scm.com`, `spec.openapis.org`, `docs.gradle.org`, `man7.org`
+- allowlist (`devpilot.ai.trusted-source-hosts`): `docs.spring.io`, `spring.io`, `docs.oracle.com`, `openjdk.org`, `www.postgresql.org`, `owasp.org`, `cheatsheetseries.owasp.org`, `www.kisa.or.kr`, `supabase.com`, `dart.dev`, `docs.flutter.dev`, `api.flutter.dev`, `pmd.github.io`, `spotbugs.readthedocs.io`, `checkstyle.org`, `junit.org`, `hibernate.org`, `docs.jboss.org`, `developer.mozilla.org`, `www.rfc-editor.org`, `git-scm.com`, `spec.openapis.org`, `docs.gradle.org`, `man7.org`, `docs.docker.com`
 - DB CHECK로 이중 방어한다(`schema.sql` coach_finding).
 
 **Test vectors**

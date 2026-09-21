@@ -132,7 +132,7 @@
 - And `ai_call_log` 새 행 0
 
 **S2. 결정적 규칙 vector**
-- `06` §5.6 표 6행(reviewMinutes·mainBudget·limit), §5.7 표 6행(A/B 선택), §5.8 최소 1개 보장이 모두 통과한다
+- `06` §5.6 표 6행(reviewMinutes·mainBudget·limit)과 추가 과제 표 5행(E-1~E-5), §5.7 표 10행(A/B 선택 — 7~10행은 `MONOTONY_*`), §5.8 최소 1개 보장이 모두 통과한다
 
 **S3. 입력 경계**
 - `availableMinutes` 4 또는 721 → 400 `VALIDATION_FAILED`
@@ -189,6 +189,17 @@
 - And 두 값은 **저장되지 않는다** — `learning_task`에 해당 컬럼이 없고, 콘텐츠의 문구를 바꾸고 재기동하면 같은 task의 응답이 바뀐다
 - Given 맞는 체크리스트가 둘(`CHK.A.B`, `CHK.A.C`) → `key` ASC로 `CHK.A.B` 하나만 붙는다
 - Given 맞는 체크리스트가 없거나 task에 `skill_id`가 없다 → `checklist = null`(`whyItMatters`도 skill이 없으면 `null`)
+
+**S12. 추가 과제로 하루 채우기 (`06` §5.6, ADR-043)**
+- Given 후보 skill이 4개 이상이고 due review가 없다
+- When `POST /today/generate` `{ "availableMinutes": 240, "energyLevel": "NORMAL" }`
+- Then `is_main = true` task는 여전히 **정확히 1개**(`PLANNED`)이고, `is_main = false`이며 `task_type != REVIEW`인 task가 **1~3개** 생긴다(`sort_order`는 main 다음부터 1씩)
+- And 그 task들의 skill은 서로 다르고 main의 skill과도 다르며, `challenge_id`·`reading_key`가 같은 task가 둘 이상 없다
+- And 모든 task의 `estimated_minutes` 합 ≤ `floorDiv(240 × 11_000, 10_000)`
+- And `GET /today`의 `earlierMainTasks`에 그 task들이 `sortOrder` ASC로 들어가고 각각 `reasons` 1~3개를 갖는다. `reviewTask`에는 들어가지 않는다
+- And `score_breakdown.rank`가 main 1, 추가 과제 2·3·4다
+- When `availableMinutes = 30`(남은 예산 < 15) → 추가 과제 0개
+- When 재생성(`force = false`) → 이전 추가 과제(`PLANNED`)는 삭제되고 새로 만들어진다
 
 ---
 

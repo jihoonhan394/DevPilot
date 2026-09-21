@@ -1,5 +1,6 @@
 package com.devpilot.today.domain;
 
+import com.devpilot.common.config.TrackDefaults;
 import com.devpilot.common.web.AxisLevels;
 import java.util.Comparator;
 import java.util.List;
@@ -11,15 +12,18 @@ import org.jspecify.annotations.Nullable;
  * 후보 skill마다 main 과제 1개를 제안한다 (docs/06 §5.3, BL-TDY-03). 순수 규칙 클래스다(ARCH-12).
  *
  * <pre>
- * d = clamp(planning IMPLEMENTATION + 1, 1, 5), 복귀 모드면 min(d, 2)
+ * d = clamp(planning IMPLEMENTATION + 1, 1, trackDefaults.maxTaskDifficulty), 복귀 모드면 min(d, 2)
  * 1. AI 가능 + 조건을 만족하는 challenge(difficulty d, 없으면 d−1) → CHALLENGE
- * 2. AI 가능 + planning KNOWLEDGE ≥ 1 + 선택 가능한 reading → READ_CODE (reading 시간, difficulty 2)
+ * 2. AI 가능 + planning KNOWLEDGE ≥ trackDefaults.readCodeMinKnowledge + 선택 가능한 reading
+ *    → READ_CODE (reading 시간, difficulty 2)
  * 3. planning KNOWLEDGE &lt; 2 → READING (개념 읽기 후보가 있으면 그 시간, 없으면 25. 둘 다 difficulty 1)
  * 4. projectNeed + energy != LOW + ACTIVE 사이드 프로젝트 → PROJECT_TASK (30, 3)
  * 5. 그 외 → EXPLAIN (15, 2)
  * </pre>
  *
- * challenge·reading·개념 읽기 후보의 조건 확인(14 plan-day 안 시도·제안, 해결 여부, 완료한 reading)은 호출자가 하고({@link
+ * 난이도 상한과 {@code READ_CODE} 문턱은 학습 트랙 기본값이 정한다({@link TrackDefaults}, docs/06 §5.3 표, BL-GOL-18).
+ *
+ * <p>challenge·reading·개념 읽기 후보의 조건 확인(14 plan-day 안 시도·제안, 해결 여부, 완료한 reading)은 호출자가 하고({@link
  * ConceptReadingSelection}), 이 클래스는 순서와 선택만 정한다. S2 빌드는 후보 목록을 비워 둔다(BL-TDY-14·BL-TDY-16은 S3).
  */
 public final class TaskProposalPolicy {
@@ -32,9 +36,7 @@ public final class TaskProposalPolicy {
     static final int PROJECT_TASK_DIFFICULTY = 3;
     static final int EXPLAIN_DIFFICULTY = 2;
 
-    private static final int MAX_DIFFICULTY = 5;
     private static final int COMEBACK_MAX_DIFFICULTY = 2;
-    private static final int READ_CODE_MIN_KNOWLEDGE = 1;
     private static final int READING_MAX_KNOWLEDGE = 2;
     private static final int TITLE_MAX = 200;
     private static final int DESCRIPTION_MAX = 2000;
@@ -49,7 +51,8 @@ public final class TaskProposalPolicy {
     public Proposal propose(ProposalInput input) {
         SkillContext skill = input.skill();
         AxisLevels planning = skill.planning();
-        int difficulty = Math.clamp(planning.implementation() + 1L, 1, MAX_DIFFICULTY);
+        TrackDefaults track = input.trackDefaults();
+        int difficulty = Math.clamp(planning.implementation() + 1L, 1, track.maxTaskDifficulty());
         if (input.comebackMode()) {
             difficulty = Math.min(difficulty, COMEBACK_MAX_DIFFICULTY);
         }
@@ -58,7 +61,7 @@ public final class TaskProposalPolicy {
             if (challenge.isPresent()) {
                 return challenge(challenge.get());
             }
-            if (planning.knowledge() >= READ_CODE_MIN_KNOWLEDGE) {
+            if (planning.knowledge() >= track.readCodeMinKnowledge()) {
                 Optional<ReadingOption> reading = firstReading(input.readings());
                 if (reading.isPresent()) {
                     return readCode(reading.get());
@@ -289,6 +292,7 @@ public final class TaskProposalPolicy {
      * 제안 입력.
      *
      * @param aiAvailable {@code aiStatus ∉ {DISABLED, BALANCE_EXHAUSTED}}
+     * @param trackDefaults 학습 목표의 트랙 기본값 (docs/06 §5.1·§5.3 표, {@code devpilot.tracks.<트랙>})
      * @param conceptReadings 3번 분기가 쓸 개념 읽기 후보 (key ASC, {@link ConceptReadingSelection}). AI 상태와
      *     무관하다 — 개념 읽기는 AI를 쓰지 않는다
      * @param activeSideProject 없으면 null (SP-1: PROJECT_TASK를 제안하지 않는다)
@@ -298,6 +302,7 @@ public final class TaskProposalPolicy {
             EnergyLevel energy,
             boolean comebackMode,
             boolean aiAvailable,
+            TrackDefaults trackDefaults,
             List<ChallengeOption> challenges,
             List<ReadingOption> readings,
             List<ConceptReading> conceptReadings,

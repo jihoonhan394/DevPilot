@@ -158,6 +158,8 @@ public record DevPilotProperties(
             @NotNull BigDecimal overrunTolerance,
             @Positive int minMainTaskMinutes,
             @Positive int minAvailableMinutes,
+            @Positive int extraTaskMinMinutes,
+            @Min(0) @Max(5) int maxExtraTasks,
             @Positive int challengeRepeatExclusionDays,
             @Positive int comebackInactiveDays,
             @NotNull BigDecimal reviewMinutesPerCard,
@@ -226,7 +228,9 @@ public record DevPilotProperties(
             @NotNull BigDecimal fatigueOneDay,
             @NotNull BigDecimal fatigueTwoDays,
             @NotNull BigDecimal continuationBonus,
-            @NotNull BigDecimal comebackHardTask) {
+            @NotNull BigDecimal comebackHardTask,
+            @NotNull BigDecimal monotonyThreeDays,
+            @NotNull BigDecimal monotonyFiveDays) {
 
         public Modifiers {
             requireBasisPoints(riskHighMust, "modifiers.risk-high-must");
@@ -237,6 +241,8 @@ public record DevPilotProperties(
             requireBasisPoints(fatigueTwoDays, "modifiers.fatigue-two-days");
             requireBasisPoints(continuationBonus, "modifiers.continuation-bonus");
             requireBasisPoints(comebackHardTask, "modifiers.comeback-hard-task");
+            requireBasisPoints(monotonyThreeDays, "modifiers.monotony-three-days");
+            requireBasisPoints(monotonyFiveDays, "modifiers.monotony-five-days");
         }
     }
 

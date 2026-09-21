@@ -997,7 +997,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
   - 시간 기본값: 오늘이 토·일이면 `weekendStudyMinutes`, 아니면 `weekdayStudyMinutes`(`/me`). 0이면 30. 칩에 없는 값이면 "직접 입력" 칩에 값을 표시한다.
   - "직접 입력": 숫자 대화상자 5~720.
   - 날짜 헤더는 `GET /today.planDate`, 생성 전에는 `GET /me.today`를 쓴다.
-  - `earlierMainTasks`(같은 날 먼저 끝냈거나 미룬 main)가 있으면 main 카드 아래 `today.earlier` 접힘 목록(제목·상태 라벨)으로 보여준다.
+  - `earlierMainTasks`(같은 날의 다른 학습 과제 — 먼저 끝냈거나 미룬 main과 §5.6의 추가 과제)가 있으면 main 카드 아래 `today.earlier` 접힘 목록(제목·상태 라벨·예상 시간)으로 보여준다. **기본은 접힘이고 개수 배지·진행률·퍼센트를 붙이지 않는다** — 오늘 시간이 남을 때 이어서 할 수 있는 것이지 할당량이 아니다(U-3). `PLANNED`인 항목은 눌러 바로 시작할 수 있다.
   - `aiStatus`가 `DISABLED`/`BALANCE_EXHAUSTED`면 서버가 CHALLENGE task를 제안하지 않는다(`06` §5.3). 이미 만들어진 CHALLENGE task는 시작할 수 있지만 문제 화면에서 제출이 막힌다.
   - main `PLANNED`에서 재생성: 확인 없이 `force=false`.
   - main `IN_PROGRESS`에서 "변경"(재생성): 대화상자 `today.regenerate.startedDialog` → 확인 시 `force=true`.

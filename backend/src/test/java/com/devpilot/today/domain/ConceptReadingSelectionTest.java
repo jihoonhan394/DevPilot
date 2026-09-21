@@ -2,6 +2,7 @@ package com.devpilot.today.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.devpilot.common.config.TrackDefaults;
 import com.devpilot.common.web.AxisLevels;
 import com.devpilot.testsupport.UnitTest;
 import com.devpilot.testsupport.VectorLoader;
@@ -34,6 +35,9 @@ class ConceptReadingSelectionTest {
     /** 3번 분기(READING)로 내려오는 상태: KNOWLEDGE 0, challenge·코드 읽기 후보 없음. */
     private static final AxisLevels BEGINNER = new AxisLevels(0, 0, 0, 0);
 
+    /** {@code devpilot.tracks.JAVA_BACKEND} (docs/06 §5.3 표). */
+    private static final TrackDefaults BASE_TRACK = new TrackDefaults(5, 1, false);
+
     private final TaskProposalPolicy policy = new TaskProposalPolicy();
 
     @ParameterizedTest(name = "[{index}] {0} {1}")
@@ -53,6 +57,7 @@ class ConceptReadingSelectionTest {
                                 EnergyLevel.NORMAL,
                                 false,
                                 true,
+                                BASE_TRACK,
                                 List.of(),
                                 List.of(),
                                 candidates,

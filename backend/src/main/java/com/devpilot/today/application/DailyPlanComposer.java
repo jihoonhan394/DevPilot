@@ -36,13 +36,14 @@ import com.devpilot.today.domain.TaskProposalPolicy.ReadingOption;
 import com.devpilot.today.domain.TaskProposalPolicy.SkillContext;
 import com.devpilot.today.domain.TimeAllocator;
 import com.devpilot.today.domain.TimeAllocator.Allocation;
+import com.devpilot.today.domain.TimeAllocator.ExtraCandidate;
+import com.devpilot.today.domain.TimeAllocator.FittedExtra;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -109,11 +110,13 @@ public class DailyPlanComposer {
                         due);
         ProposalOptionCollector.ProposalOptions options =
                 proposalOptionCollector.collect(userId, today, user.zoneId(), user.dayStartHour());
-        Optional<LearningTask.MainValues> main = chooseMain(inputs, options, allocation);
-        return new Composition(plan.id(), risk, comebackMode, allocation, main.orElse(null));
+        Chosen chosen = chooseTasks(inputs, options, allocation);
+        return new Composition(
+                plan.id(), risk, comebackMode, allocation, chosen.main(), chosen.extras());
     }
 
-    private Optional<LearningTask.MainValues> chooseMain(
+    /** 1위 후보로 main을 만들고, 남는 예산이 크면 다음 후보로 추가 과제를 만든다 (docs/06 §5.6). */
+    private Chosen chooseTasks(
             Inputs inputs, ProposalOptionCollector.ProposalOptions options, Allocation allocation) {
         List<MilestoneSpan> current =
                 PlannerScoring.currentMilestones(inputs.today(), inputs.milestones());
@@ -133,7 +136,7 @@ public class DailyPlanComposer {
                                 inputs.targets(),
                                 inputs.profiles()));
         if (candidates.isEmpty()) {
-            return Optional.empty();
+            return new Chosen(null, List.of());
         }
         List<Evaluated> evaluated = new ArrayList<>();
         for (String code : candidates) {
@@ -141,9 +144,30 @@ public class DailyPlanComposer {
         }
         Map<ScoredCandidate, Evaluated> byScore = new HashMap<>();
         evaluated.forEach(candidate -> byScore.put(candidate.scored(), candidate));
-        ScoredCandidate best =
-                scoring.rank(evaluated.stream().map(Evaluated::scored).toList()).getFirst();
-        return Optional.of(toMain(byScore.get(best), inputs, allocation));
+        List<Evaluated> ranked =
+                scoring.rank(evaluated.stream().map(Evaluated::scored).toList()).stream()
+                        .map(byScore::get)
+                        .toList();
+        Evaluated best = ranked.getFirst();
+        Proposal main =
+                timeAllocator.fit(
+                        best.proposal(),
+                        allocation,
+                        best.skill(),
+                        best.challenges(),
+                        best.readings());
+        Map<String, Evaluated> bySkillCode = new HashMap<>();
+        ranked.forEach(candidate -> bySkillCode.put(candidate.skill().code(), candidate));
+        List<ExtraCandidate> extraCandidates =
+                ranked.subList(1, ranked.size()).stream().map(Evaluated::asExtraCandidate).toList();
+        List<LearningTask.TaskValues> extras = new ArrayList<>();
+        int rank = 2;
+        for (FittedExtra extra : timeAllocator.fitExtras(allocation, main, extraCandidates)) {
+            extras.add(
+                    toTask(bySkillCode.get(extra.skill().code()), inputs, extra.proposal(), rank));
+            rank++;
+        }
+        return new Chosen(toTask(best, inputs, main, 1), List.copyOf(extras));
     }
 
     private Evaluated evaluate(
@@ -170,6 +194,7 @@ public class DailyPlanComposer {
                                 inputs.context().energy(),
                                 inputs.context().comebackMode(),
                                 options.aiAvailable(),
+                                inputs.trackDefaults(),
                                 options.challengesFor(code),
                                 options.readingsFor(code),
                                 options.conceptReadingsFor(code),
@@ -180,6 +205,7 @@ public class DailyPlanComposer {
                                 code,
                                 target == null ? null : target.priority(),
                                 factors,
+                                proposal.taskType(),
                                 proposal.estimatedMinutes(),
                                 proposal.difficulty(),
                                 profile.lastPracticedAt(),
@@ -188,7 +214,8 @@ public class DailyPlanComposer {
                         new PlannerScoring.Context(
                                 inputs.context().risk(),
                                 inputs.context().energy(),
-                                inputs.context().comebackMode()));
+                                inputs.context().comebackMode(),
+                                inputs.recentMainTaskTypes()));
         return new Evaluated(
                 scored,
                 proposal,
@@ -199,14 +226,9 @@ public class DailyPlanComposer {
                 options.readingsFor(code));
     }
 
-    private LearningTask.MainValues toMain(Evaluated chosen, Inputs inputs, Allocation allocation) {
-        Proposal fitted =
-                timeAllocator.fit(
-                        chosen.proposal(),
-                        allocation,
-                        chosen.skill(),
-                        chosen.challenges(),
-                        chosen.readings());
+    /** 조정까지 끝난 제안을 저장할 값으로 바꾼다. {@code rank}는 main 1, 추가 과제 2·3·4다 (docs/04 §5.1). */
+    private LearningTask.TaskValues toTask(
+            Evaluated chosen, Inputs inputs, Proposal fitted, int rank) {
         ScoredCandidate scored = chosen.scored();
         Factors factors = scored.input().factors();
         String code = scored.input().skillCode();
@@ -246,9 +268,9 @@ public class DailyPlanComposer {
                         scored.baseScore(),
                         scored.modifiers(),
                         scored.finalScore(),
-                        1,
+                        rank,
                         params);
-        return new LearningTask.MainValues(
+        return new LearningTask.TaskValues(
                 fitted.taskType(),
                 inputs.skillIdsByCode().get(code),
                 reasonMilestone == null ? null : reasonMilestone.id(),
@@ -276,13 +298,24 @@ public class DailyPlanComposer {
      *
      * @param deadlineRisk 요청 시점 risk. 학습 목표가 없으면 null
      * @param main 후보가 없으면 null (REVIEW 과제만 만들 수 있다)
+     * @param extras 남는 예산을 채우는 추가 과제 (docs/06 §5.6, sort_order 순서). 없으면 빈 목록
      */
     public record Composition(
             UUID learningPlanId,
             @Nullable RiskLevel deadlineRisk,
             boolean comebackMode,
             Allocation allocation,
-            LearningTask.@Nullable MainValues main) {}
+            LearningTask.@Nullable TaskValues main,
+            List<LearningTask.TaskValues> extras) {
+
+        public Composition {
+            extras = List.copyOf(extras);
+        }
+    }
+
+    /** 오늘 만들 과제. */
+    private record Chosen(
+            LearningTask.@Nullable TaskValues main, List<LearningTask.TaskValues> extras) {}
 
     /** 후보 1개의 계산 결과. */
     private record Evaluated(
@@ -292,5 +325,10 @@ public class DailyPlanComposer {
             SkillContext skill,
             @Nullable SkillTarget target,
             List<ChallengeOption> challenges,
-            List<ReadingOption> readings) {}
+            List<ReadingOption> readings) {
+
+        ExtraCandidate asExtraCandidate() {
+            return new ExtraCandidate(skill, proposal, challenges, readings);
+        }
+    }
 }

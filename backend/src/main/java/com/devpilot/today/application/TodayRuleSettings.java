@@ -32,7 +32,9 @@ public final class TodayRuleSettings {
                         bp(modifiers.fatigueOneDay()),
                         bp(modifiers.fatigueTwoDays()),
                         bp(modifiers.continuationBonus()),
-                        bp(modifiers.comebackHardTask())),
+                        bp(modifiers.comebackHardTask()),
+                        bp(modifiers.monotonyThreeDays()),
+                        bp(modifiers.monotonyFiveDays())),
                 new PlannerScoring.FactorSettings(
                         FixedPointMath.toMicros(planner.defaultPracticalImportance()),
                         FixedPointMath.toMicros(planner.minPrerequisiteReadiness()),
@@ -52,6 +54,8 @@ public final class TodayRuleSettings {
                 planner.minAvailableMinutes(),
                 bp(planner.overrunTolerance()),
                 planner.minMainTaskMinutes(),
+                planner.extraTaskMinMinutes(),
+                planner.maxExtraTasks(),
                 properties.review().maxPerDay(),
                 properties.review().comebackMaxPerDay());
     }

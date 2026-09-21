@@ -1678,7 +1678,8 @@ public record TodayView(
         Instant generatedAt,
         MainTaskView mainTask,                  // 규칙 아래. 후보가 없으면 null
         ReviewTaskView reviewTask,              // REVIEW task가 없으면 null (due가 없거나 reviewMinutes = 0)
-        List<MainTaskView> earlierMainTasks,    // mainTask를 뺀 같은 날의 다른 main task, sortOrder ASC
+        List<MainTaskView> earlierMainTasks,    // mainTask를 뺀 같은 날의 다른 학습 과제, sortOrder ASC
+                                                // (재생성이 남긴 지난 main + 06 §5.6 추가 과제. REVIEW는 빠진다)
         TipExperimentView tipExperiment) {}     // WILL_TRY로 표시한 팁의 실험 후보 1건. 없으면 null (06 §5.12 TIP-6)
 
 public record MainTaskView(
@@ -1740,6 +1741,8 @@ public record TaskStatusView(          // PATCH 응답
 ```
 
 `mainTask` 선택: 그 daily_plan의 `is_main` task 중 `PLANNED`/`IN_PROGRESS`인 것(I-04로 최대 1개). 없으면 `sort_order`가 가장 큰 main task. main task가 하나도 없으면 `null`.
+
+`earlierMainTasks` 선택: 그 daily_plan의 task 중 `taskType != REVIEW`이고 `mainTask`가 아닌 것을 **모두** `sort_order` ASC로 싣는다. 두 종류가 들어간다 — (a) 재생성이 남긴 지난 main(`COMPLETED`·`DEFERRED`), (b) 남는 시간을 채우는 **추가 과제**(`06` §5.6, `is_main = false`, `sort_order`는 main 다음). 추가 과제를 main으로 저장할 수 없는 이유는 daily plan당 활성 main이 1개이기 때문이다(I-04). 화면은 상태로 둘을 구분한다 — `PLANNED`면 아직 할 일, `COMPLETED`/`DEFERRED`면 지난 기록이다.
 
 `reasons[].text` 생성: 저장된 `reason_codes` 순서대로 `ReasonTemplates`(`06-learning-engine-rules.md` §5.8 문구)를 **응답 생성 시** 적용한다. 변수 값은 생성 시점에 저장한 `score_breakdown.reasonParams`(`04-domain-model-and-db.md` §5.1)에서 읽는다. 조회 시점의 plan·skill state로 다시 계산하지 않는다.
 
@@ -1832,7 +1835,8 @@ public record TodayGenerateRequest(
 2. 기존 daily_plan과 main task 상태에 따라 `06-learning-engine-rules.md` §5.9 표를 적용한다(409 두 가지 포함). 삭제·`DEFERRED` 전환 뒤에는 새 task INSERT 전에 flush한다.
 3. 입력 계산: `aiStatus`(§1.9.1 — `DISABLED`/`BALANCE_EXHAUSTED`이면 `TaskProposalPolicy`가 `CHALLENGE` 제안을 건너뛴다, `06-learning-engine-rules.md` §5.3), risk(`06-learning-engine-rules.md` §3~§4.3, 요청 시점 계산 → `deadline_risk`. budget·risk 규칙은 Today와 같은 S2에 들어온다 — 사용자가 등록한 목표일이 첫 Today부터 우선순위에 반영된다), comebackMode(`06-learning-engine-rules.md` §5.5), 후보·제안·점수·modifier·reason(`06-learning-engine-rules.md` §5.2~§5.5, §5.8), 시간 배분(`06-learning-engine-rules.md` §5.6), due review(`06-learning-engine-rules.md` §6.5).
 4. `daily_plan` INSERT 또는 갱신: `available_minutes`, `energy_level`, `deadline_risk`, `comeback_mode`, `learning_plan_id`, `generated_at = now`, 재생성이면 `generation_count + 1`.
-5. main task INSERT: `is_main = true`, `sort_order` = 그 daily_plan main task의 최대 `sort_order` + 1 (처음이면 1), `reason_codes`, `score_breakdown`(`reasonParams` 포함, `04-domain-model-and-db.md` §5.1). 후보 skill이 하나도 없으면 main task를 만들지 않고 `mainTask = null`이다(`06-learning-engine-rules.md` §5.2). 이때 6단계 조건을 만족하면 REVIEW task만 만든다.
+5. main task INSERT: `is_main = true`, `sort_order` = 그 daily_plan에 남은 task의 최대 `sort_order` + 1 (처음이면 1), `reason_codes`, `score_breakdown`(`reasonParams` 포함, `04-domain-model-and-db.md` §5.1). 후보 skill이 하나도 없으면 main task를 만들지 않고 `mainTask = null`이다(`06-learning-engine-rules.md` §5.2). 이때 6단계 조건을 만족하면 REVIEW task만 만든다.
+5-1. 추가 task INSERT(`06-learning-engine-rules.md` §5.6 "추가 과제"): main 다음 순위 후보로 최대 `devpilot.planner.max-extra-tasks`개. `is_main = false`(활성 main은 1개여야 한다 — I-04), `sort_order` = main의 `sort_order` + 1, +2, …, `score_breakdown.rank` = 2·3·4. main을 만들지 않았으면 추가 task도 만들지 않는다.
 6. REVIEW task: `reviewMinutes ≥ 1`이고(`06-learning-engine-rules.md` §5.6, `learning_task.estimated_minutes` CHECK ≥ 1), 그 daily_plan에 `PLANNED`가 아닌 REVIEW task가 없을 때만 INSERT(`is_main = false`, `sort_order = 0`, `estimated = reviewMinutes`). `reviewMinutes = 0`이면(예: `availableMinutes = 5`) due review가 있어도 만들지 않고 `reviewTask = null`이다. 기존 `PLANNED` REVIEW task는 2단계에서 삭제된 상태다.
 7. 동시 요청으로 `unique(user_id, plan_date)` 또는 `uq_learning_task_one_active_main` 위반이 나면 409 `CONCURRENT_MODIFICATION`.
 

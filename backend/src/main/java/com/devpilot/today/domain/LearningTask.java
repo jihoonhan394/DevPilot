@@ -109,7 +109,22 @@ public class LearningTask implements Persistable<UUID> {
 
     /** main 과제 (docs/05 §8.2 5단계). */
     public static LearningTask main(
-            UUID dailyPlanId, UUID userId, MainValues values, int sortOrder) {
+            UUID dailyPlanId, UUID userId, TaskValues values, int sortOrder) {
+        return planned(dailyPlanId, userId, values, sortOrder, true);
+    }
+
+    /**
+     * 추가 과제 (docs/06 §5.6 "추가 과제"): main과 같은 값을 갖지만 {@code is_main = false}다. 활성 main은 daily plan당
+     * 1개여야 하므로(I-04, {@code uq_learning_task_one_active_main}) 남는 시간을 채우는 과제는 main이 아니다. {@code
+     * sort_order}는 main 다음이다.
+     */
+    public static LearningTask extra(
+            UUID dailyPlanId, UUID userId, TaskValues values, int sortOrder) {
+        return planned(dailyPlanId, userId, values, sortOrder, false);
+    }
+
+    private static LearningTask planned(
+            UUID dailyPlanId, UUID userId, TaskValues values, int sortOrder, boolean main) {
         LearningTask task = base(dailyPlanId, userId, values.taskType(), values.title());
         task.skillId = values.skillId();
         task.milestoneId = values.milestoneId();
@@ -118,7 +133,7 @@ public class LearningTask implements Persistable<UUID> {
         task.readingKey = values.readingKey();
         task.description = values.description();
         task.estimatedMinutes = values.estimatedMinutes();
-        task.main = true;
+        task.main = main;
         task.reasonCodes = values.reasonCodes().stream().map(ReasonCode::name).toList();
         task.scoreBreakdown = values.scoreBreakdown();
         task.sortOrder = sortOrder;
@@ -315,11 +330,11 @@ public class LearningTask implements Persistable<UUID> {
     }
 
     /**
-     * main 과제 값.
+     * 계획이 만든 과제 값 (main과 추가 과제가 같은 값을 쓴다).
      *
      * @param reasonCodes 1~3개 (docs/06 §5.8)
      */
-    public record MainValues(
+    public record TaskValues(
             TaskType taskType,
             @Nullable UUID skillId,
             @Nullable UUID milestoneId,
@@ -332,7 +347,7 @@ public class LearningTask implements Persistable<UUID> {
             List<ReasonCode> reasonCodes,
             ScoreBreakdown scoreBreakdown) {
 
-        public MainValues {
+        public TaskValues {
             reasonCodes = List.copyOf(reasonCodes);
         }
     }

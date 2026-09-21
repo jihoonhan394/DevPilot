@@ -17,7 +17,8 @@ import org.jspecify.annotations.Nullable;
  * @param deadlineRisk 생성 요청 시점 risk. 학습 목표가 없으면 null
  * @param mainTask 활성 main(PLANNED·IN_PROGRESS), 없으면 sort_order가 가장 큰 main. main이 하나도 없으면 null
  * @param reviewTask REVIEW 과제가 없으면 null
- * @param earlierMainTasks mainTask를 뺀 같은 날의 다른 main (sortOrder ASC)
+ * @param earlierMainTasks mainTask를 뺀 같은 날의 다른 학습 과제 — 재생성이 남긴 지난 main과 §5.6의 추가 과제 (sortOrder
+ *     ASC). REVIEW는 들어가지 않는다
  */
 public record TodayView(
         UUID dailyPlanId,

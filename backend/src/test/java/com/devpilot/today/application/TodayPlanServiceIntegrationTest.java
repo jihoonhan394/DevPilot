@@ -160,6 +160,49 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
     }
 
     @Test
+    void shouldFillLeftoverBudgetWithExtraTasks() throws Exception {
+        // docs/06 §5.6 "추가 과제": 남는 시간이 15분 이상이면 다음 후보로 최대 3개를 더 만든다
+        TestUser user = onboardedOwner();
+
+        JsonNode today = api.generateToday(user, 240, "NORMAL");
+
+        JsonNode main = today.path("mainTask");
+        List<JsonNode> extras = new ArrayList<>();
+        today.path("earlierMainTasks").forEach(extras::add);
+        assertThat(extras).hasSizeBetween(1, 3);
+        assertThat(extras)
+                .extracting(task -> task.path("skillCode").asString())
+                .doesNotContain(main.path("skillCode").asString())
+                .doesNotHaveDuplicates();
+        extras.forEach(
+                task -> {
+                    assertThat(task.path("taskType").asString()).isNotEqualTo("REVIEW");
+                    assertThat(task.path("status").asString()).isEqualTo("PLANNED");
+                    assertThat(task.path("reasons").size()).isBetween(1, 3);
+                });
+        int planned =
+                main.path("estimatedMinutes").asInt()
+                        + extras.stream()
+                                .mapToInt(task -> task.path("estimatedMinutes").asInt())
+                                .sum();
+        int reviewMinutes = today.path("reviewTask").path("estimatedMinutes").asInt();
+        assertThat(planned).isLessThanOrEqualTo(240 - reviewMinutes);
+        // 추가 과제는 main이 아니다 (I-04 활성 main 1개)
+        assertThat(activeMainCount(user)).isEqualTo(1);
+        assertThat(mainTaskCount(user)).isEqualTo(1);
+    }
+
+    @Test
+    void shouldNotAddExtraTasksWhenNoBudgetIsLeft() throws Exception {
+        // docs/06 §5.6: 남은 예산이 extra-task-min-minutes(15) 미만이면 추가 과제를 만들지 않는다
+        TestUser user = onboardedOwner();
+
+        JsonNode today = api.generateToday(user, 30, "NORMAL");
+
+        assertThat(today.path("earlierMainTasks")).isEmpty();
+    }
+
+    @Test
     void shouldRegeneratePlannedMainAndIncreaseGenerationCount() throws Exception {
         // docs/06 §5.9 1행
         TestUser user = onboardedOwner();
@@ -173,12 +216,16 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
         assertThat(second.path("generationCount").asInt()).isEqualTo(2);
         assertThat(second.path("availableMinutes").asInt()).isEqualTo(60);
         assertThat(second.path("mainTask").path("id").asString()).isNotEqualTo(firstMain);
-        assertThat(second.path("earlierMainTasks")).isEmpty();
+        // earlierMainTasks에는 §5.6 추가 과제가 들어갈 수 있다. 지운 main이 남으면 안 된다
+        assertThat(second.path("earlierMainTasks"))
+                .extracting(task -> task.path("id").asString())
+                .doesNotContain(firstMain, first.path("mainTask").path("id").asString());
         assertThat(
                         count(
                                 "select count(*) from devpilot.learning_task where id = ?::uuid",
                                 firstMain))
                 .isZero();
+        assertThat(mainTaskCount(user)).isEqualTo(1);
         assertThat(activeMainCount(user)).isEqualTo(1);
     }
 
@@ -503,6 +550,13 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
                 "select status from devpilot.learning_task where id = ?::uuid",
                 String.class,
                 taskId);
+    }
+
+    /** 재생성이 지난 main을 지웠는지 본다 (추가 과제는 {@code is_main = false}라 세지 않는다). */
+    private int mainTaskCount(TestUser user) {
+        return count(
+                "select count(*) from devpilot.learning_task where user_id = ? and is_main",
+                userId(user));
     }
 
     private int activeMainCount(TestUser user) {

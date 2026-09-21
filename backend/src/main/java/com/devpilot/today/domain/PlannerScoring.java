@@ -25,7 +25,8 @@ import org.jspecify.annotations.Nullable;
  *
  * <pre>
  * baseScore  = floorDiv(Σ factor × WEIGHT_BP, 10_000)
- * finalScore = baseScore에 modifier를 1(risk) → 2(energy) → 3(이어하기·피로) → 4(복귀 모드) 순서로 floorDiv(× bp, 10_000)
+ * finalScore = baseScore에 modifier를 1(risk) → 2(energy) → 3(이어하기·피로) → 4(과제 유형 단조로움) → 5(복귀 모드)
+ *              순서로 floorDiv(× bp, 10_000)
  * 동점       = finalScore DESC → practicalImportance DESC → last_practiced_at ASC(null 먼저) → skill.code ASC
  * </pre>
  */
@@ -33,6 +34,12 @@ public final class PlannerScoring {
 
     /** {@code daily_plan.planner_version}, {@code score_breakdown.plannerVersion}. */
     public static final String PLANNER_VERSION = "RULE_V1";
+
+    /** docs/06 §5.5 4번: 같은 과제 유형이 이만큼 이어지면 누른다. */
+    public static final int MONOTONY_DAYS = 3;
+
+    /** docs/06 §5.5 4번: 같은 과제 유형이 이만큼 이어지면 더 세게 누른다. */
+    public static final int MONOTONY_STRONG_DAYS = 5;
 
     private static final long MICRO = FixedPointMath.MICRO_SCALE;
     private static final int READY_IMPLEMENTATION_LEVEL = 2;
@@ -283,6 +290,7 @@ public final class PlannerScoring {
         riskModifier(input.priority(), context.risk()).ifPresent(modifiers::add);
         energyModifier(input, context.energy()).ifPresent(modifiers::add);
         historyModifier(input).ifPresent(modifiers::add);
+        monotonyModifier(input.taskType(), context.recentMainTaskTypes()).ifPresent(modifiers::add);
         if (context.comebackMode() && input.difficulty() >= HARD_TASK_DIFFICULTY) {
             modifiers.add(modifier(PlannerModifier.COMEBACK_HARD_TASK));
         }
@@ -352,6 +360,37 @@ public final class PlannerScoring {
         return Optional.of(modifier(PlannerModifier.FATIGUE_ONE_DAY));
     }
 
+    /**
+     * 4번 과제 유형 단조로움 (docs/06 §5.5). 오늘 제안과 같은 유형이 최근 plan-day에 몇 번 이어졌는지로 정한다. 5일 이상이면 강한 쪽 하나만
+     * 적용한다.
+     */
+    private Optional<AppliedModifier> monotonyModifier(
+            TaskType proposed, List<TaskType> recentMainTaskTypes) {
+        int run = sameTaskTypeRun(recentMainTaskTypes, proposed);
+        if (run >= MONOTONY_STRONG_DAYS) {
+            return Optional.of(modifier(PlannerModifier.MONOTONY_FIVE_DAYS));
+        }
+        if (run >= MONOTONY_DAYS) {
+            return Optional.of(modifier(PlannerModifier.MONOTONY_THREE_DAYS));
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * {@code recentMainTaskTypes}(가장 최근이 앞, main 과제가 없는 plan-day에서 이미 끊긴 목록) 앞쪽에서 {@code proposed}와
+     * 같은 유형이 이어진 날 수.
+     */
+    public static int sameTaskTypeRun(List<TaskType> recentMainTaskTypes, TaskType proposed) {
+        int run = 0;
+        for (TaskType type : recentMainTaskTypes) {
+            if (type != proposed) {
+                return run;
+            }
+            run++;
+        }
+        return run;
+    }
+
     private AppliedModifier modifier(PlannerModifier code) {
         return new AppliedModifier(code, settings.modifiers().of(code));
     }
@@ -418,7 +457,9 @@ public final class PlannerScoring {
             int fatigueOneDay,
             int fatigueTwoDays,
             int continuation,
-            int comebackHardTask) {
+            int comebackHardTask,
+            int monotonyThreeDays,
+            int monotonyFiveDays) {
 
         int of(PlannerModifier modifier) {
             return switch (modifier) {
@@ -429,6 +470,8 @@ public final class PlannerScoring {
                 case CONTINUATION -> continuation;
                 case FATIGUE_TWO_DAYS -> fatigueTwoDays;
                 case FATIGUE_ONE_DAY -> fatigueOneDay;
+                case MONOTONY_THREE_DAYS -> monotonyThreeDays;
+                case MONOTONY_FIVE_DAYS -> monotonyFiveDays;
                 case COMEBACK_HARD_TASK -> comebackHardTask;
             };
         }
@@ -539,6 +582,7 @@ public final class PlannerScoring {
     /**
      * 후보 1개의 점수 입력.
      *
+     * @param taskType 제안 과제의 유형 (docs/06 §5.5 4번)
      * @param estimatedMinutes 제안 과제의 예상 시간 (docs/06 §5.3)
      * @param difficulty 제안 과제의 난이도
      */
@@ -546,14 +590,29 @@ public final class PlannerScoring {
             String skillCode,
             @Nullable Priority priority,
             Factors factors,
+            TaskType taskType,
             int estimatedMinutes,
             int difficulty,
             @Nullable Instant lastPracticedAt,
             @Nullable RecentMain yesterday,
             @Nullable RecentMain dayBefore) {}
 
-    /** 오늘의 공통 입력. */
-    public record Context(RiskLevel risk, EnergyLevel energy, boolean comebackMode) {}
+    /**
+     * 오늘의 공통 입력.
+     *
+     * @param recentMainTaskTypes 최근 plan-day의 main 과제 유형 (가장 최근이 앞, 최대 {@link
+     *     #MONOTONY_STRONG_DAYS}개). main 과제가 없는 plan-day에서 끊어진 목록이다 (docs/06 §5.5 4번)
+     */
+    public record Context(
+            RiskLevel risk,
+            EnergyLevel energy,
+            boolean comebackMode,
+            List<TaskType> recentMainTaskTypes) {
+
+        public Context {
+            recentMainTaskTypes = List.copyOf(recentMainTaskTypes);
+        }
+    }
 
     /** 적용한 modifier ({@code score_breakdown.modifiers[]}). */
     public record AppliedModifier(PlannerModifier code, int multiplierBp) {}

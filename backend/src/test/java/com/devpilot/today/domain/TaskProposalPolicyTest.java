@@ -2,6 +2,7 @@ package com.devpilot.today.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.devpilot.common.config.TrackDefaults;
 import com.devpilot.common.web.AxisLevels;
 import com.devpilot.testsupport.UnitTest;
 import com.devpilot.testsupport.VectorLoader;
@@ -23,14 +24,17 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /**
- * docs/06 §5.3 제안 분기 vector ({@code 06-05-task-proposal.yaml}, 13행 — 분기 5개, fallback, 복귀 모드, SP-1,
- * T-1~T-5), AC-02, AC-27 S7, AC-28 S1.
+ * docs/06 §5.3 제안 분기 vector ({@code 06-05-task-proposal.yaml}, 17행 — 분기 5개, fallback, 복귀 모드, SP-1,
+ * T-1~T-5, 학습 트랙 T-6~T-9), AC-02, AC-27 S7, AC-28 S1.
  */
 @UnitTest
 class TaskProposalPolicyTest {
 
     private static final String VECTOR_FILE = "06-05-task-proposal.yaml";
     private static final UUID PROJECT_ID = UUID.fromString("00000000-0000-0000-0000-00000000000a");
+
+    /** {@code devpilot.tracks.JAVA_BACKEND} (docs/06 §5.3 표). track을 적지 않은 vector가 쓴다. */
+    private static final TrackDefaults BASE_TRACK = new TrackDefaults(5, 1, false);
 
     private final TaskProposalPolicy policy = new TaskProposalPolicy();
 
@@ -113,6 +117,39 @@ class TaskProposalPolicyTest {
     }
 
     @Test
+    void shouldStepDownFromTrackCeilingAndFallThroughWhenNoChallengeFits() {
+        // docs/09 §5.3 학습 트랙 추가 케이스: 상한 3에서 d3이 없으면 d2, d2·d1도 없으면 다음 분기
+        TrackDefaults starter = new TrackDefaults(3, 2, true);
+        SkillContext skill =
+                new SkillContext("S", "Skill S", "설명", new AxisLevels(2, 4, 0, 0), false);
+        ChallengeOption hard =
+                new ChallengeOption(challengeId("S.D5"), "S.D5", "어려운 문제", null, 5, 40);
+        ChallengeOption easier =
+                new ChallengeOption(challengeId("S.D2"), "S.D2", "쉬운 문제", null, 2, 20);
+
+        Proposal steppedDown = policy.propose(input(skill, starter, List.of(hard, easier)));
+        Proposal fellThrough = policy.propose(input(skill, starter, List.of(hard)));
+
+        assertThat(steppedDown.taskType()).isEqualTo(TaskType.CHALLENGE);
+        assertThat(steppedDown.difficulty()).isEqualTo(2);
+        assertThat(fellThrough.taskType()).isEqualTo(TaskType.READ_CODE);
+    }
+
+    private static ProposalInput input(
+            SkillContext skill, TrackDefaults track, List<ChallengeOption> challenges) {
+        return new ProposalInput(
+                skill,
+                EnergyLevel.NORMAL,
+                false,
+                true,
+                track,
+                challenges,
+                List.of(new ReadingOption("READ.R.A.001", "Repo", "src/A.java", 1, 40, 15, "질문")),
+                List.of(),
+                null);
+    }
+
+    @Test
     void shouldUseGuideOnlyWhenSkillDescriptionIsBlank() {
         SkillContext skill = new SkillContext("S", "Skill", " ", AxisLevels.ZERO, false);
 
@@ -135,10 +172,20 @@ class TaskProposalPolicyTest {
                 EnergyLevel.valueOf((String) row.get("energy")),
                 (Boolean) row.get("comebackMode"),
                 (Boolean) row.get("aiAvailable"),
+                track(row.get("track")),
                 challenges(row.get("challenges")),
                 readings(row.get("readings")),
                 List.of(),
                 sideProject == null ? null : new SideProjectRef(PROJECT_ID, sideProject));
+    }
+
+    private static TrackDefaults track(Object value) {
+        if (value == null) {
+            return BASE_TRACK;
+        }
+        Map<String, Object> track = map(value);
+        return new TrackDefaults(
+                (Integer) track.get("maxDifficulty"), (Integer) track.get("minKnowledge"), false);
     }
 
     private static List<ChallengeOption> challenges(Object value) {

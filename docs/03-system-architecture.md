@@ -513,6 +513,8 @@ devpilot:
       fatigue-two-days: 0.60
       continuation-bonus: 1.15
       comeback-hard-task: 0.70             # 06 §5.5 COMEBACK_HARD_TASK (7_000bp)
+      monotony-three-days: 0.70            # 06 §5.5 MONOTONY_THREE_DAYS — 같은 과제 유형 3일 연속 (7_000bp)
+      monotony-five-days: 0.40             # 06 §5.5 MONOTONY_FIVE_DAYS — 5일 연속 (4_000bp)
       redo-due: 1.30                       # 06 §5.5 REDO_DUE (13_000bp)
     redo:                                  # 06 §5.10 재현 과제
       min-days-after: 3                    # RE-2 창 시작 (원본 완료·지난 재현 이후 일수, 경계 포함)
@@ -523,6 +525,8 @@ devpilot:
     overrun-tolerance: 1.10
     min-main-task-minutes: 10
     min-available-minutes: 5
+    extra-task-min-minutes: 15             # 06 §5.6 추가 과제를 만드는 최소 잔여 예산 (EXPLAIN 15분)
+    max-extra-tasks: 3                     # 06 §5.6 하루 추가 과제 상한 (main 1 + 추가 3, U-3)
     challenge-repeat-exclusion-days: 14
     comeback-inactive-days: 3
     review-minutes-per-card: 1.5
@@ -611,7 +615,7 @@ devpilot:
       REQUIREMENT_EXTRACT:     { mode: ASYNC, thinking: false, max-tokens: 8000,  timeout: 120s, max-retries: 1, input-token-budget: 8000 }
       RUBBER_DUCK:             { mode: SYNC,  thinking: false, max-tokens: 1500,  timeout: 20s,  max-retries: 0, input-token-budget: 6000 }
       RUBBER_DUCK_SUMMARY:     { mode: SYNC,  thinking: true,  reasoning-effort: low, max-tokens: 4000, timeout: 30s, max-retries: 0, input-token-budget: 8000 }
-    trusted-source-hosts: [docs.spring.io, spring.io, docs.oracle.com, openjdk.org, www.postgresql.org, owasp.org, cheatsheetseries.owasp.org, www.kisa.or.kr, supabase.com, dart.dev, docs.flutter.dev, api.flutter.dev, pmd.github.io, spotbugs.readthedocs.io, checkstyle.org, junit.org, hibernate.org, docs.jboss.org, developer.mozilla.org, www.rfc-editor.org, git-scm.com, spec.openapis.org, docs.gradle.org, man7.org]
+    trusted-source-hosts: [docs.spring.io, spring.io, docs.oracle.com, openjdk.org, www.postgresql.org, owasp.org, cheatsheetseries.owasp.org, www.kisa.or.kr, supabase.com, dart.dev, docs.flutter.dev, api.flutter.dev, pmd.github.io, spotbugs.readthedocs.io, checkstyle.org, junit.org, hibernate.org, docs.jboss.org, developer.mozilla.org, www.rfc-editor.org, git-scm.com, spec.openapis.org, docs.gradle.org, man7.org, docs.docker.com]
     curated-sources-location: classpath:content/curated-sources.yaml
     pricing:                                             # USD per 1M tokens, 2026-09-18 확인 (17-ai-integration.md §8.4)
       peak-multiplier: 2                                 # 결정 F: 피크 시간대 판정 없이 항상 곱한다 (보수 계산)

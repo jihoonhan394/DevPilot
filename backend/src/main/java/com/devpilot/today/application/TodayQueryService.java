@@ -36,6 +36,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 오늘 계획 조회 (docs/05 §8.3, BL-TDY-08)와 다른 모듈(dashboard)에 공개하는 오늘 요약. 조회 시점의 plan-day로 daily plan을
  * 찾는다 — {@code dayStartHour}가 지나면 전날 계획은 돌려주지 않는다(AC-17). reason 문구는 저장된 변수로 응답 때 채운다.
+ *
+ * <p>{@code earlierMainTasks}에는 {@code mainTask}를 뺀 그날의 다른 학습 과제가 모두 들어간다(docs/05 §8.1) — 재생성이 남긴
+ * 지난 main과 §5.6의 추가 과제다. {@code REVIEW}만 {@code reviewTask}로 따로 나간다.
  */
 @Service
 @Transactional(readOnly = true)
@@ -109,10 +112,12 @@ public class TodayQueryService {
     /** 응답 view. 같은 모듈의 생성 서비스가 저장 직후 응답을 만들 때도 쓴다. */
     TodayView toView(DailyPlan plan, ZoneId zone, int dayStartHour) {
         List<LearningTask> tasks = tasks(plan);
-        List<LearningTask> mains = tasks.stream().filter(LearningTask::isMain).toList();
-        LearningTask main = selectMain(mains).orElse(null);
+        List<LearningTask> studyTasks =
+                tasks.stream().filter(task -> task.getTaskType() != TaskType.REVIEW).toList();
+        LearningTask main =
+                selectMain(studyTasks.stream().filter(LearningTask::isMain).toList()).orElse(null);
         Set<UUID> skillIds = new HashSet<>();
-        mains.forEach(
+        studyTasks.forEach(
                 task -> {
                     if (task.getSkillId() != null) {
                         skillIds.add(task.getSkillId());
@@ -120,7 +125,7 @@ public class TodayQueryService {
                 });
         Map<UUID, SkillRef> skills = skillCatalogQueryService.findRefs(skillIds);
         List<MainTaskView> earlier =
-                mains.stream()
+                studyTasks.stream()
                         .filter(task -> !task.equals(main))
                         .sorted(Comparator.comparingInt(LearningTask::getSortOrder))
                         .map(task -> toMainView(task, skills))

@@ -1,7 +1,8 @@
-# source: 06 §5.7, rows: 6
+# source: 06 §5.7, rows: 10
 # 공통: today=2026-10-10. A = MUST, importance 0.90, skillGap 600000, due 없음, 현재 milestone(2026-10-01~2026-10-20 →
 # milestoneUrgency 500000), focus 아님, 선행 없음. B = SHOULD, importance 0.50, skillGap 800000, 2일 연체 복습(reviewUrgency
 # 500000), milestone 밖, 선행 없음. 제안 기본값: A EXPLAIN(15, d2), B CHALLENGE(20, d2). 어제 main은 2026-10-09, 그제는 2026-10-08.
+# recentMainTypes는 최근 plan-day의 main 과제 유형(가장 최근이 앞, main이 없는 날에서 끊긴 목록)이다 — §5.5 4번.
 common:
   today: "2026-10-10"
   a: { code: A, priority: MUST, importanceBp: 9000, skillGap: 600000, overdueDays: null, milestoneStart: "2026-10-01", milestoneEnd: "2026-10-20" }
@@ -72,4 +73,52 @@ vectors:
     bProposal: { estimated: 40, difficulty: 2 }
     expectedA: 520000
     expectedB: 339500
+    selected: A
+  - id: V07
+    condition: A 제안 유형(EXPLAIN)이 최근 3 plan-day 연속 → MONOTONY_THREE_DAYS
+    risk: LOW
+    energy: NORMAL
+    yesterday: null
+    dayBefore: null
+    recentMainTypes: [EXPLAIN, EXPLAIN, EXPLAIN]
+    aProposal: { estimated: 15, difficulty: 2 }
+    bProposal: { estimated: 20, difficulty: 2 }
+    expectedA: 364000
+    expectedB: 485000
+    selected: B
+  - id: V08
+    condition: A 제안 유형이 최근 5 plan-day 연속 → MONOTONY_FIVE_DAYS
+    risk: LOW
+    energy: NORMAL
+    yesterday: null
+    dayBefore: null
+    recentMainTypes: [EXPLAIN, EXPLAIN, EXPLAIN, EXPLAIN, EXPLAIN]
+    aProposal: { estimated: 15, difficulty: 2 }
+    bProposal: { estimated: 20, difficulty: 2 }
+    expectedA: 208000
+    expectedB: 485000
+    selected: B
+  - id: V09
+    condition: 2 plan-day 연속은 아직 누르지 않는다
+    risk: LOW
+    energy: NORMAL
+    yesterday: null
+    dayBefore: null
+    recentMainTypes: [EXPLAIN, EXPLAIN]
+    aProposal: { estimated: 15, difficulty: 2 }
+    bProposal: { estimated: 20, difficulty: 2 }
+    expectedA: 520000
+    expectedB: 485000
+    selected: A
+  - id: V10
+    condition: 중간에 다른 유형이 끼면 연속이 끊긴다 (run = 2)
+    risk: LOW
+    energy: NORMAL
+    yesterday: null
+    dayBefore: null
+    recentMainTypes: [EXPLAIN, EXPLAIN, READING, EXPLAIN, EXPLAIN]
+    aProposal: { estimated: 15, difficulty: 2 }
+    bProposal: { estimated: 20, difficulty: 2 }
+    expectedA: 520000
+    expectedB: 485000
     selected: A

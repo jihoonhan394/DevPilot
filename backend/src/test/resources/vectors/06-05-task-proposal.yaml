@@ -1,5 +1,6 @@
-# source: 06 §5.3, rows: 13
-# 분기 5개(CHALLENGE·READ_CODE·READING·PROJECT_TASK·EXPLAIN) + d−1 fallback + 복귀 모드 + ACTIVE 프로젝트 없음 + 제안 분기 T-1~T-5.
+# source: 06 §5.3, rows: 17
+# 분기 5개(CHALLENGE·READ_CODE·READING·PROJECT_TASK·EXPLAIN) + d−1 fallback + 복귀 모드 + ACTIVE 프로젝트 없음 + 제안 분기 T-1~T-5
+# + 학습 트랙 T-6~T-9. track을 적지 않으면 JAVA_BACKEND(maxDifficulty 5, minKnowledge 1)다.
 # planning은 K|I. challenges·readings는 호출자가 조건(14 plan-day 안 시도·제안, 해결, 완료)을 거른 뒤의 후보다.
 vectors:
   - id: V01
@@ -158,3 +159,58 @@ vectors:
       - { key: READ.MODULAR_MONOLITH.STOCK_UPDATE.001, estimated: 15 }
       - { key: READ.MODULAR_MONOLITH.SECURITY_CONFIG.001, estimated: 15 }
     expected: { type: READ_CODE, estimated: 15, difficulty: 2, readingKey: READ.MODULAR_MONOLITH.SECURITY_CONFIG.001 }
+  - id: V14
+    case: T-6 JAVA_BACKEND(max d 5) planning (4,4) → d = clamp(5,1,5) = 5
+    planning: "4|4"
+    track: { maxDifficulty: 5, minKnowledge: 1 }
+    energy: NORMAL
+    comebackMode: false
+    aiAvailable: true
+    projectNeed: false
+    sideProject: null
+    challenges:
+      - { seedKey: TRACK.D5, difficulty: 5, estimated: 40 }
+      - { seedKey: TRACK.D4, difficulty: 4, estimated: 30 }
+    readings: []
+    expected: { type: CHALLENGE, estimated: 40, difficulty: 5, challengeSeedKey: TRACK.D5 }
+  - id: V15
+    case: T-7 JAVA_BACKEND_STARTER(max d 3) 같은 상황 → d = clamp(5,1,3) = 3
+    planning: "4|4"
+    track: { maxDifficulty: 3, minKnowledge: 2 }
+    energy: NORMAL
+    comebackMode: false
+    aiAvailable: true
+    projectNeed: false
+    sideProject: null
+    challenges:
+      - { seedKey: TRACK.D5, difficulty: 5, estimated: 40 }
+      - { seedKey: TRACK.D4, difficulty: 4, estimated: 30 }
+      - { seedKey: TRACK.D3, difficulty: 3, estimated: 25 }
+    readings: []
+    expected: { type: CHALLENGE, estimated: 25, difficulty: 3, challengeSeedKey: TRACK.D3 }
+  - id: V16
+    case: T-8 JAVA_BACKEND_STARTER planning (1,1) → KNOWLEDGE 1 < minKnowledge 2라 READ_CODE를 막는다
+    planning: "1|1"
+    track: { maxDifficulty: 3, minKnowledge: 2 }
+    energy: NORMAL
+    comebackMode: false
+    aiAvailable: true
+    projectNeed: false
+    sideProject: null
+    challenges: []
+    readings:
+      - { key: READ.PETCLINIC.CONTROLLER_SLICE.001, estimated: 15 }
+    expected: { type: READING, estimated: 25, difficulty: 1 }
+  - id: V17
+    case: T-9 JAVA_BACKEND_STARTER planning (2,1) → KNOWLEDGE 2 ≥ minKnowledge 2라 READ_CODE
+    planning: "2|1"
+    track: { maxDifficulty: 3, minKnowledge: 2 }
+    energy: NORMAL
+    comebackMode: false
+    aiAvailable: true
+    projectNeed: false
+    sideProject: null
+    challenges: []
+    readings:
+      - { key: READ.PETCLINIC.CONTROLLER_SLICE.001, estimated: 15 }
+    expected: { type: READ_CODE, estimated: 15, difficulty: 2, readingKey: READ.PETCLINIC.CONTROLLER_SLICE.001 }

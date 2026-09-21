@@ -5,10 +5,14 @@ import com.devpilot.today.domain.TaskProposalPolicy.ChallengeOption;
 import com.devpilot.today.domain.TaskProposalPolicy.Proposal;
 import com.devpilot.today.domain.TaskProposalPolicy.ReadingOption;
 import com.devpilot.today.domain.TaskProposalPolicy.SkillContext;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * 오늘 시간 배분 (docs/06 §5.6, BL-TDY-04). 순수 규칙 클래스다(ARCH-12).
@@ -24,6 +28,9 @@ import java.util.Optional;
  * 1위 후보를 고른 뒤 그 후보의 과제만 조정한다: 예상 시간이 limit을 넘으면 CHALLENGE는 난이도를 낮추고, READ_CODE는 다음 reading을 찾고, 없으면
  * EXPLAIN(15) → RECALL(min(10, mainBudget)) 순서로 내린다. {@code mainBudget < 10}이면 제안과 무관하게
  * RECALL(mainBudget)이다.
+ *
+ * <p>main을 정하고도 {@code extra-task-min-minutes} 이상이 남으면 2위 후보부터 차례로 추가 과제를 만든다({@link #fitExtras},
+ * docs/06 §5.6 "추가 과제"). 같은 skill·같은 재료는 하루에 한 번만 쓰고, 추가 과제는 최대 {@code max-extra-tasks}개다.
  */
 public final class TimeAllocator {
 
@@ -117,6 +124,108 @@ public final class TimeAllocator {
         return Optional.empty();
     }
 
+    // ---------------------------------------------------------------------------------------------
+    // docs/06 §5.6 추가 과제
+    // ---------------------------------------------------------------------------------------------
+
+    /**
+     * main을 뺀 남은 예산을 2위 후보부터 채운다 (docs/06 §5.6 "추가 과제"). 순위 순서대로 훑으며 남은 예산에 들어가는 제안만 고르고, 남은 예산이
+     * {@code extra-task-min-minutes} 미만이 되거나 {@code max-extra-tasks}개를 채우면 멈춘다. 같은 skill과 같은
+     * 재료(challenge·reading)는 하루에 한 번만 쓴다. RECALL로는 내려가지 않는다 — RECALL은 남는 시간을 메우는 예비 과제이지 추가로 붙일 과제가
+     * 아니다.
+     *
+     * @param main 이미 정해진(조정까지 끝난) main 과제
+     * @param ranked main을 뺀 나머지 후보 (docs/06 §5.5 순위 순서)
+     * @return 고른 추가 과제 (고른 순서 = sort_order 순서)
+     */
+    public List<FittedExtra> fitExtras(
+            Allocation allocation, Proposal main, List<ExtraCandidate> ranked) {
+        int remaining = Math.max(0, allocation.mainBudget() - main.estimatedMinutes());
+        if (settings.maxExtraTasks() <= 0) {
+            return List.of();
+        }
+        Set<String> usedMaterials = new LinkedHashSet<>();
+        materialKey(main).ifPresent(usedMaterials::add);
+        List<FittedExtra> extras = new ArrayList<>();
+        for (ExtraCandidate candidate : ranked) {
+            if (extras.size() >= settings.maxExtraTasks()
+                    || remaining < settings.extraTaskMinMinutes()) {
+                break;
+            }
+            Optional<Proposal> extra = fitExtra(candidate, remaining, usedMaterials);
+            if (extra.isEmpty()) {
+                continue;
+            }
+            Proposal chosen = extra.get();
+            materialKey(chosen).ifPresent(usedMaterials::add);
+            extras.add(new FittedExtra(candidate.skill(), chosen));
+            remaining = Math.max(0, remaining - chosen.estimatedMinutes());
+        }
+        return List.copyOf(extras);
+    }
+
+    /** 후보 1개를 남은 예산에 맞춘다. 맞출 수 없으면 empty(그 후보를 건너뛴다). */
+    private Optional<Proposal> fitExtra(
+            ExtraCandidate candidate, int remaining, Set<String> usedMaterials) {
+        int limit =
+                (int)
+                        FixedPointMath.floorDiv(
+                                (long) remaining * settings.overrunToleranceBp(),
+                                FixedPointMath.BP_SCALE);
+        Proposal proposal = candidate.proposal();
+        boolean reusesMaterial = materialKey(proposal).filter(usedMaterials::contains).isPresent();
+        if (!reusesMaterial && proposal.estimatedMinutes() <= limit) {
+            return Optional.of(proposal);
+        }
+        Optional<Proposal> sameKind = sameKindForExtra(candidate, limit, usedMaterials);
+        if (sameKind.isPresent()) {
+            return sameKind;
+        }
+        Proposal explain = TaskProposalPolicy.explain(candidate.skill());
+        return explain.estimatedMinutes() <= limit ? Optional.of(explain) : Optional.empty();
+    }
+
+    /** 같은 유형의 다른 재료로 바꿔 본다. 이미 쓴 재료는 뺀다. */
+    private static Optional<Proposal> sameKindForExtra(
+            ExtraCandidate candidate, int limit, Set<String> usedMaterials) {
+        Proposal proposal = candidate.proposal();
+        if (proposal.taskType() == TaskType.CHALLENGE) {
+            List<ChallengeOption> options =
+                    candidate.challenges().stream()
+                            .filter(option -> !usedMaterials.contains(challengeKey(option.id())))
+                            .toList();
+            return TaskProposalPolicy.challengeWithin(options, proposal.difficulty(), limit)
+                    .map(TaskProposalPolicy::challenge);
+        }
+        if (proposal.taskType() == TaskType.READ_CODE) {
+            return candidate.readings().stream()
+                    .filter(reading -> !usedMaterials.contains(readingKey(reading.key())))
+                    .filter(reading -> reading.estimatedMinutes() <= limit)
+                    .min(Comparator.comparing(ReadingOption::key))
+                    .map(TaskProposalPolicy::readCode);
+        }
+        return Optional.empty();
+    }
+
+    /** 하루 안에서 재료가 겹치는지 보는 키. 재료가 없는 과제는 empty. */
+    private static Optional<String> materialKey(Proposal proposal) {
+        if (proposal.challengeId() != null) {
+            return Optional.of(challengeKey(proposal.challengeId()));
+        }
+        if (proposal.readingKey() != null) {
+            return Optional.of(readingKey(proposal.readingKey()));
+        }
+        return Optional.empty();
+    }
+
+    private static String challengeKey(UUID challengeId) {
+        return "CHALLENGE:" + challengeId;
+    }
+
+    private static String readingKey(String key) {
+        return "READING:" + key;
+    }
+
     /**
      * {@code devpilot.planner.*}·{@code devpilot.review.*}를 정수로 바꾼 값.
      *
@@ -125,6 +234,8 @@ public final class TimeAllocator {
      * @param minAvailableMinutes {@code min-available-minutes} (5)
      * @param overrunToleranceBp {@code overrun-tolerance} (11_000)
      * @param minMainTaskMinutes {@code min-main-task-minutes} (10)
+     * @param extraTaskMinMinutes {@code extra-task-min-minutes} (15)
+     * @param maxExtraTasks {@code max-extra-tasks} (3)
      * @param maxPerDay {@code review.max-per-day} (20)
      * @param comebackMaxPerDay {@code review.comeback-max-per-day} (10)
      */
@@ -134,6 +245,8 @@ public final class TimeAllocator {
             int minAvailableMinutes,
             int overrunToleranceBp,
             int minMainTaskMinutes,
+            int extraTaskMinMinutes,
+            int maxExtraTasks,
             int maxPerDay,
             int comebackMaxPerDay) {}
 
@@ -143,4 +256,24 @@ public final class TimeAllocator {
      * @param dueCount 상한을 적용한 due 수
      */
     public record Allocation(int cap, int dueCount, int reviewMinutes, int mainBudget, int limit) {}
+
+    /**
+     * 추가 과제 후보 (docs/06 §5.6). main을 뺀 나머지 후보를 순위 순서로 넘긴다.
+     *
+     * @param proposal 그 skill의 §5.3 제안 (조정 전)
+     */
+    public record ExtraCandidate(
+            SkillContext skill,
+            Proposal proposal,
+            List<ChallengeOption> challenges,
+            List<ReadingOption> readings) {
+
+        public ExtraCandidate {
+            challenges = List.copyOf(challenges);
+            readings = List.copyOf(readings);
+        }
+    }
+
+    /** 예산에 맞춘 추가 과제와 그 후보 skill (docs/06 §5.6). */
+    public record FittedExtra(SkillContext skill, Proposal proposal) {}
 }

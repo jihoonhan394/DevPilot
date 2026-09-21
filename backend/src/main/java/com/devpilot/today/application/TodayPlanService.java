@@ -206,16 +206,14 @@ public class TodayPlanService {
     private static List<LearningTask> newTasks(
             DailyPlan plan, UUID userId, Composition composition, List<LearningTask> kept) {
         List<LearningTask> added = new ArrayList<>();
-        LearningTask.MainValues main = composition.main();
+        LearningTask.TaskValues main = composition.main();
         if (main != null) {
-            int sortOrder =
-                    kept.stream()
-                                    .filter(LearningTask::isMain)
-                                    .mapToInt(LearningTask::getSortOrder)
-                                    .max()
-                                    .orElse(0)
-                            + 1;
+            int sortOrder = kept.stream().mapToInt(LearningTask::getSortOrder).max().orElse(0) + 1;
             added.add(LearningTask.main(plan.getId(), userId, main, sortOrder));
+            for (LearningTask.TaskValues extra : composition.extras()) {
+                sortOrder++;
+                added.add(LearningTask.extra(plan.getId(), userId, extra, sortOrder));
+            }
         }
         int reviewMinutes = composition.allocation().reviewMinutes();
         boolean reviewKept =

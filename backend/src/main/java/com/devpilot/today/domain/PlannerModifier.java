@@ -1,8 +1,9 @@
 package com.devpilot.today.domain;
 
 /**
- * planner modifier (docs/06 §5.5). 적용 순서는 1(risk) → 2(energy) → 3(이어하기·피로) → 4(복귀 모드)이고, 같은 순서 번호
- * 안에서는 하나만 적용된다. {@code score_breakdown.modifiers[].code}에 이 이름을 저장한다(docs/04 §5.1).
+ * planner modifier (docs/06 §5.5). 적용 순서는 1(risk) → 2(energy) → 3(이어하기·피로) → 4(과제 유형 단조로움) → 5(복귀
+ * 모드)이고, 같은 순서 번호 안에서는 하나만 적용된다. {@code score_breakdown.modifiers[].code}에 이 이름을 저장한다(docs/04
+ * §5.1).
  */
 public enum PlannerModifier {
     RISK_HIGH_MUST,
@@ -12,5 +13,7 @@ public enum PlannerModifier {
     CONTINUATION,
     FATIGUE_TWO_DAYS,
     FATIGUE_ONE_DAY,
+    MONOTONY_THREE_DAYS,
+    MONOTONY_FIVE_DAYS,
     COMEBACK_HARD_TASK
 }

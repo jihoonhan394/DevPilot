@@ -265,7 +265,8 @@ CoachReview `status`: `PENDING → RUNNING → COMPLETED | FAILED`. `COMPLETED` 
 - `reasonParams`는 reason 문구 템플릿(`06-learning-engine-rules.md` §5.8)의 변수 값이다. 응답을 만들 때 이 값으로 문구를 채운다. 값이 없는 변수는 null이다.
 - 점수와 factor는 **micro 단위 정수**(1.0 = 1,000,000)다.
 - `ReasonCode`: `MILESTONE_CORE`, `MILESTONE_NEXT`, `HIGH_PRACTICAL_IMPORTANCE`, `LARGE_SKILL_GAP`, `REVIEW_OVERDUE`, `RECENT_RECALL_FAILURE`, `PROJECT_FOCUS`, `READ_REAL_CODE`, `REDO_WITHOUT_AI`, `CONTINUE_YESTERDAY`, `DEADLINE_RISK_MUST`, `LOW_ENERGY_LIGHT_TASK`, `COMEBACK_EASY_START`
-- `modifiers[].code`: `RISK_HIGH_MUST`, `RISK_HIGH_SHOULD`, `LOW_ENERGY_DEEP_TASK`, `HIGH_ENERGY_HARD_TASK`, `CONTINUATION`, `FATIGUE_TWO_DAYS`, `FATIGUE_ONE_DAY`, `COMEBACK_HARD_TASK`, `REDO_DUE` (`06` §5.5)
+- `modifiers[].code`: `RISK_HIGH_MUST`, `RISK_HIGH_SHOULD`, `LOW_ENERGY_DEEP_TASK`, `HIGH_ENERGY_HARD_TASK`, `CONTINUATION`, `FATIGUE_TWO_DAYS`, `FATIGUE_ONE_DAY`, `MONOTONY_THREE_DAYS`, `MONOTONY_FIVE_DAYS`, `COMEBACK_HARD_TASK`, `REDO_DUE` (`06` §5.5)
+- `rank`: 그날 후보 순위. main은 1, 추가 과제는 2·3·4다 (`06` §5.6)
 
 ### 5.2 `challenge.*_json`
 
@@ -418,7 +419,7 @@ coverage 계산은 서버가 한다(`06` §8.1).
 | I-01 | 사용자당 학습 목표 1개 | `learning_goal.user_id unique` |
 | I-02 | 사용자당 ACTIVE plan 1개 | partial unique index + `ReplanService` 순서 (SUPERSEDED flush 후 INSERT) |
 | I-03 | plan-day당 daily_plan 1개 | `unique(user_id, plan_date)` |
-| I-04 | daily_plan당 활성 main task(PLANNED/IN_PROGRESS) 1개 | partial unique index + `TodayPlanService` |
+| I-04 | daily_plan당 활성 main task(PLANNED/IN_PROGRESS) 1개. 남는 시간을 채우는 추가 과제(`06` §5.6)는 `is_main = false`다 | partial unique index + `TodayPlanService` |
 | I-05 | 사용자당 IN_PROGRESS 세션 1개 | partial unique index. 새 세션 시작 시 기존 세션 ABANDONED 처리 후 flush |
 | I-06 | 사용자·개념당 review item 1개 | `unique(user_id, concept_key)` — 같은 개념이면 기존 항목 갱신. conceptKey 패턴 `^[A-Z0-9_.:-]{3,150}$`은 seed·수동 카드에만 적용하고, 시스템 생성 키(`CHALLENGE:{uuid}`, `COACH:{skillCode}:{category}`)는 예외 |
 | I-07 | VERIFIED는 도구·검수 근거만 | CHECK + `VerificationGuard` |

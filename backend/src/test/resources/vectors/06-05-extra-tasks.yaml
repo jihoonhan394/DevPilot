@@ -1,0 +1,83 @@
+# source: 06 §5.6 "추가 과제", rows: 5
+# main을 정하고 남은 예산(mainBudget − main estimated)을 순위 2위 후보부터 채운다. extra-task-min-minutes = 15,
+# max-extra-tasks = 3, overrun-tolerance = 1.10. candidates는 순위 순서(main을 뺀 나머지)다.
+vectors:
+  - id: V01
+    case: 평일 60분 — 남은 35분을 15분짜리 둘로 채우고 5분이 남아 멈춘다
+    available: 60
+    due: 0
+    comeback: false
+    main: { type: READ_CODE, estimated: 25, readingKey: READ.MAIN.001 }
+    candidates:
+      - { skill: B, type: EXPLAIN, estimated: 15, difficulty: 2 }
+      - { skill: C, type: EXPLAIN, estimated: 15, difficulty: 2 }
+      - { skill: D, type: EXPLAIN, estimated: 15, difficulty: 2 }
+    expected:
+      - { skill: B, type: EXPLAIN, estimated: 15 }
+      - { skill: C, type: EXPLAIN, estimated: 15 }
+  - id: V02
+    case: 주말 270분 — 예산이 남아도 하루 추가 과제는 3개까지다 (U-3)
+    available: 270
+    due: 20
+    comeback: false
+    main: { type: CHALLENGE, estimated: 40, challengeSeedKey: MAIN.D3 }
+    candidates:
+      - { skill: B, type: EXPLAIN, estimated: 15, difficulty: 2 }
+      - { skill: C, type: EXPLAIN, estimated: 15, difficulty: 2 }
+      - { skill: D, type: EXPLAIN, estimated: 15, difficulty: 2 }
+      - { skill: E, type: EXPLAIN, estimated: 15, difficulty: 2 }
+    expected:
+      - { skill: B, type: EXPLAIN, estimated: 15 }
+      - { skill: C, type: EXPLAIN, estimated: 15 }
+      - { skill: D, type: EXPLAIN, estimated: 15 }
+  - id: V03
+    case: 남은 예산이 15분 미만이면 추가 과제를 만들지 않는다
+    available: 45
+    due: 0
+    comeback: false
+    main: { type: CHALLENGE, estimated: 40, challengeSeedKey: MAIN.D2 }
+    candidates:
+      - { skill: B, type: EXPLAIN, estimated: 15, difficulty: 2 }
+    expected: []
+  - id: V04
+    case: 남은 예산을 넘는 challenge는 같은 skill의 쉬운 문제로 내려간다
+    available: 120
+    due: 0
+    comeback: false
+    main: { type: EXPLAIN, estimated: 15 }
+    candidates:
+      - skill: B
+        type: CHALLENGE
+        estimated: 130
+        difficulty: 3
+        challengeSeedKey: B.D3
+        challenges:
+          - { seedKey: B.D3, difficulty: 3, estimated: 130 }
+          - { seedKey: B.D2, difficulty: 2, estimated: 60 }
+      - { skill: C, type: EXPLAIN, estimated: 15, difficulty: 2 }
+      - { skill: D, type: EXPLAIN, estimated: 15, difficulty: 2 }
+      - { skill: E, type: EXPLAIN, estimated: 15, difficulty: 2 }
+    expected:
+      - { skill: B, type: CHALLENGE, estimated: 60, challengeSeedKey: B.D2 }
+      - { skill: C, type: EXPLAIN, estimated: 15 }
+      - { skill: D, type: EXPLAIN, estimated: 15 }
+  - id: V05
+    case: main이 쓴 재료는 다시 쓰지 않고 같은 skill의 다음 reading으로 간다
+    available: 60
+    due: 0
+    comeback: false
+    main: { type: READ_CODE, estimated: 25, readingKey: READ.SHARED.001 }
+    candidates:
+      - skill: B
+        type: READ_CODE
+        estimated: 25
+        difficulty: 2
+        readingKey: READ.SHARED.001
+        readings:
+          - { key: READ.SHARED.001, estimated: 25 }
+          - { key: READ.OTHER.001, estimated: 20 }
+      - { skill: C, type: EXPLAIN, estimated: 15, difficulty: 2 }
+      - { skill: D, type: EXPLAIN, estimated: 15, difficulty: 2 }
+    expected:
+      - { skill: B, type: READ_CODE, estimated: 20, readingKey: READ.OTHER.001 }
+      - { skill: C, type: EXPLAIN, estimated: 15 }

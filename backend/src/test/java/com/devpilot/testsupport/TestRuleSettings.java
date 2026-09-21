@@ -34,14 +34,14 @@ public final class TestRuleSettings {
         return new PlannerScoring.Settings(
                 new PlannerScoring.Weights(2_500, 2_000, 2_000, 1_500, 1_000, 1_000),
                 new PlannerScoring.Modifiers(
-                        12_000, 8_000, 7_000, 11_000, 8_000, 6_000, 11_500, 7_000),
+                        12_000, 8_000, 7_000, 11_000, 8_000, 6_000, 11_500, 7_000, 7_000, 4_000),
                 new PlannerScoring.FactorSettings(
                         300_000, 500_000, 200_000, 100_000, 300_000, 100_000, 1_000_000),
                 30);
     }
 
     public static TimeAllocator.Settings timeAllocation() {
-        return new TimeAllocator.Settings(15_000, 2_500, 5, 11_000, 10, 20, 10);
+        return new TimeAllocator.Settings(15_000, 2_500, 5, 11_000, 10, 15, 3, 20, 10);
     }
 
     public static ReasonTemplates.Settings reasons() {

@@ -32,7 +32,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-/** docs/06 §5.2·§5.4·§5.5 규칙과 §5.7 vector ({@code 06-05-planner-score.yaml}, 6행), AC-02 S2. */
+/** docs/06 §5.2·§5.4·§5.5 규칙과 §5.7 vector ({@code 06-05-planner-score.yaml}, 10행), AC-02 S2. */
 @UnitTest
 class PlannerScoringTest {
 
@@ -51,18 +51,20 @@ class PlannerScoringTest {
             EnergyLevel energy,
             @Nullable RecentMain yesterday,
             @Nullable RecentMain dayBefore,
+            List<TaskType> recentMainTypes,
             int[] aProposal,
             int[] bProposal,
             long expectedA,
             long expectedB,
             String selected) {
-        Context context = new Context(risk, energy, false);
+        Context context = new Context(risk, energy, false, recentMainTypes);
         ScoredCandidate a =
                 scoring.score(
                         new ScoreInput(
                                 "A",
                                 Priority.MUST,
                                 factorsOfA(),
+                                TaskType.EXPLAIN,
                                 aProposal[0],
                                 aProposal[1],
                                 null,
@@ -75,6 +77,7 @@ class PlannerScoringTest {
                                 "B",
                                 Priority.SHOULD,
                                 factorsOfB(),
+                                TaskType.CHALLENGE,
                                 bProposal[0],
                                 bProposal[1],
                                 null,
@@ -236,13 +239,14 @@ class PlannerScoringTest {
     void shouldBreakTiesByImportanceThenLastPracticedThenCode() {
         Factors same = new Factors(500_000, 500_000, 0, 0, 0, 1_000_000);
         Factors moreImportant = new Factors(600_000, 375_000, 0, 0, 0, 1_000_000);
-        Context context = new Context(RiskLevel.LOW, EnergyLevel.NORMAL, false);
+        Context context = new Context(RiskLevel.LOW, EnergyLevel.NORMAL, false, List.of());
         ScoredCandidate practiced =
                 scoring.score(
                         new ScoreInput(
                                 "T.A",
                                 null,
                                 same,
+                                TaskType.EXPLAIN,
                                 15,
                                 2,
                                 Instant.parse("2026-10-01T00:00:00Z"),
@@ -250,13 +254,28 @@ class PlannerScoringTest {
                                 null),
                         context);
         ScoredCandidate neverPracticed =
-                scoring.score(new ScoreInput("T.B", null, same, 15, 2, null, null, null), context);
+                scoring.score(
+                        new ScoreInput(
+                                "T.B", null, same, TaskType.EXPLAIN, 15, 2, null, null, null),
+                        context);
         ScoredCandidate important =
                 scoring.score(
-                        new ScoreInput("T.C", null, moreImportant, 15, 2, null, null, null),
+                        new ScoreInput(
+                                "T.C",
+                                null,
+                                moreImportant,
+                                TaskType.EXPLAIN,
+                                15,
+                                2,
+                                null,
+                                null,
+                                null),
                         context);
         ScoredCandidate sameNeverPracticed =
-                scoring.score(new ScoreInput("T.D", null, same, 15, 2, null, null, null), context);
+                scoring.score(
+                        new ScoreInput(
+                                "T.D", null, same, TaskType.EXPLAIN, 15, 2, null, null, null),
+                        context);
 
         assertThat(important.finalScore()).isEqualTo(practiced.finalScore());
         assertThat(
@@ -276,12 +295,15 @@ class PlannerScoringTest {
     @Test
     void shouldApplyEnergyAndComebackModifiersToHardTasks() {
         Factors factors = new Factors(500_000, 500_000, 0, 0, 0, 1_000_000);
-        ScoreInput hard = new ScoreInput("H", Priority.LATER, factors, 30, 4, null, null, null);
+        ScoreInput hard =
+                new ScoreInput(
+                        "H", Priority.LATER, factors, TaskType.CHALLENGE, 30, 4, null, null, null);
 
         ScoredCandidate high =
-                scoring.score(hard, new Context(RiskLevel.CRITICAL, EnergyLevel.HIGH, false));
+                scoring.score(
+                        hard, new Context(RiskLevel.CRITICAL, EnergyLevel.HIGH, false, List.of()));
         ScoredCandidate low =
-                scoring.score(hard, new Context(RiskLevel.LOW, EnergyLevel.LOW, true));
+                scoring.score(hard, new Context(RiskLevel.LOW, EnergyLevel.LOW, true, List.of()));
 
         assertThat(high.modifiers())
                 .extracting(PlannerScoring.AppliedModifier::code)
@@ -292,6 +314,65 @@ class PlannerScoringTest {
                         PlannerModifier.LOW_ENERGY_DEEP_TASK, PlannerModifier.COMEBACK_HARD_TASK);
         assertThat(low.finalScore()).isEqualTo(low.baseScore() * 7 / 10 * 7 / 10);
         assertThat(low.applied(PlannerModifier.COMEBACK_HARD_TASK)).isTrue();
+    }
+
+    @Test
+    void shouldPressSameTaskTypeOnlyAfterThreeConsecutiveDays() {
+        Factors factors = new Factors(500_000, 500_000, 0, 0, 0, 1_000_000);
+        ScoreInput explain =
+                new ScoreInput("E", null, factors, TaskType.EXPLAIN, 15, 2, null, null, null);
+
+        assertThat(modifiers(explain, List.of(TaskType.EXPLAIN, TaskType.EXPLAIN))).isEmpty();
+        assertThat(
+                        modifiers(
+                                explain,
+                                List.of(TaskType.EXPLAIN, TaskType.EXPLAIN, TaskType.EXPLAIN)))
+                .containsExactly(PlannerModifier.MONOTONY_THREE_DAYS);
+        assertThat(
+                        modifiers(
+                                explain,
+                                List.of(
+                                        TaskType.EXPLAIN,
+                                        TaskType.EXPLAIN,
+                                        TaskType.EXPLAIN,
+                                        TaskType.EXPLAIN,
+                                        TaskType.EXPLAIN)))
+                .containsExactly(PlannerModifier.MONOTONY_FIVE_DAYS);
+        assertThat(
+                        modifiers(
+                                explain,
+                                List.of(
+                                        TaskType.EXPLAIN,
+                                        TaskType.EXPLAIN,
+                                        TaskType.READING,
+                                        TaskType.EXPLAIN,
+                                        TaskType.EXPLAIN)))
+                .isEmpty();
+        assertThat(
+                        modifiers(
+                                new ScoreInput(
+                                        "C",
+                                        null,
+                                        factors,
+                                        TaskType.CHALLENGE,
+                                        20,
+                                        2,
+                                        null,
+                                        null,
+                                        null),
+                                List.of(TaskType.EXPLAIN, TaskType.EXPLAIN, TaskType.EXPLAIN)))
+                .isEmpty();
+    }
+
+    private List<PlannerModifier> modifiers(ScoreInput input, List<TaskType> recentMainTypes) {
+        return scoring
+                .score(
+                        input,
+                        new Context(RiskLevel.LOW, EnergyLevel.NORMAL, false, recentMainTypes))
+                .modifiers()
+                .stream()
+                .map(PlannerScoring.AppliedModifier::code)
+                .toList();
     }
 
     private Factors factorsOfA() {
@@ -340,6 +421,7 @@ class PlannerScoringTest {
                                         EnergyLevel.valueOf((String) row.get("energy")),
                                         recentMain(row.get("yesterday")),
                                         recentMain(row.get("dayBefore")),
+                                        recentMainTypes(row.get("recentMainTypes")),
                                         proposal(row.get("aProposal")),
                                         proposal(row.get("bProposal")),
                                         ((Number) row.get("expectedA")).longValue(),
@@ -354,6 +436,13 @@ class PlannerScoringTest {
         Map<?, ?> map = (Map<?, ?>) value;
         return new RecentMain(
                 (String) map.get("code"), TaskStatus.valueOf((String) map.get("status")));
+    }
+
+    private static List<TaskType> recentMainTypes(@Nullable Object value) {
+        if (value == null) {
+            return List.of();
+        }
+        return ((List<?>) value).stream().map(type -> TaskType.valueOf((String) type)).toList();
     }
 
     private static int[] proposal(Object value) {
