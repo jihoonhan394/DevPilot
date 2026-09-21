@@ -1,0 +1,507 @@
+# DevPilot 개념 노트 — SQL 기초
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 버전은 우리가 쓰는 PostgreSQL 16 기준이다. PG 17 전용 문법은 쓰지 않는다 (AGENTS.md §0)
+# - 예제는 주문 시스템(orders / order_lines / products) 상황으로 쓴다 (CV-134)
+lessons:
+  - key: LESSON.DATABASE.SQL_BASICS.001
+    skillCode: DATABASE.SQL_BASICS
+    title: 여러 표에 흩어진 것을 한 번에 묻기 (SQL)
+    whyItMatters: |-
+      데이터는 한 표에 다 들어 있지 않다. 주문은 `orders`에, 담긴 상품은 `order_lines`에,
+      상품 이름은 `products`에 나뉘어 있다. 이걸 이어 붙이고 묶어서 묻지 못하면
+      자바 코드에서 표를 하나씩 읽어 와 반복문으로 합치게 되고, 그 순간 느려지고 틀리기 시작한다.
+      주문 시스템의 "이번 달 많이 팔린 상품" 같은 질문은 전부 이 한 문장으로 끝난다.
+    oneLine: SELECT는 어느 표에서(FROM) 어떤 줄을(WHERE) 어떻게 묶어(GROUP BY) 무엇을 보여 줄지(SELECT) 적는 문장이다.
+    units:
+      - key: LESSON.DATABASE.SQL_BASICS.001.U1
+        title: 필요한 줄만 골라 보기
+        minutes: 10
+        core: true
+        explain: |-
+          `SELECT`는 **무엇을 보여 줄지**, `FROM`은 **어디서**, `WHERE`는 **어느 줄만**을 적는다.
+
+          `SELECT *`는 모든 칸을 뜻한다. 편하지만 실제 코드에서는 쓰지 않는 편이 낫다 —
+          표에 칸이 하나 늘면 조용히 결과가 달라지고, 읽는 사람도 무엇이 오는지 모른다.
+          **필요한 칸만 적는다.**
+
+          `WHERE`에서 헷갈리는 자리가 셋 있다.
+
+          - **`NULL`은 `=`로 비교되지 않는다.** `WHERE canceled_at = NULL`은 아무것도 못 찾는다.
+            `IS NULL` / `IS NOT NULL`을 쓴다. `NULL`은 "값이 없다"이지 어떤 값이 아니기 때문이다
+          - **문자열 비교는 대소문자를 가린다.** `'Keyboard'`와 `'keyboard'`는 다르다
+          - **`LIKE`의 `%`는 아무 글자 몇 개든**, `_`는 한 글자다
+
+          정렬은 `ORDER BY`, 개수 제한은 `LIMIT`이다. **`ORDER BY` 없는 `LIMIT`은 위험하다** —
+          어느 줄이 올지 정해져 있지 않아서 같은 질의가 실행할 때마다 다른 답을 줄 수 있다.
+        example:
+          language: sql
+          code: |-
+            -- 취소되지 않은 주문 중 최근 것부터 10건
+            SELECT id, customer_id, total_amount, ordered_at
+            FROM orders
+            WHERE canceled_at IS NULL
+              AND total_amount >= 30000
+            ORDER BY ordered_at DESC
+            LIMIT 10;
+          output: |-
+            id   | customer_id | total_amount | ordered_at
+            -----+-------------+--------------+---------------------
+            1024 |          17 |        42000 | 2026-09-21 14:02:11
+            1019 |           3 |        30000 | 2026-09-21 09:41:05
+            (2 rows)
+          note: |-
+            - '`canceled_at IS NULL` — `= NULL`로 쓰면 한 줄도 안 나온다'
+            - '`ORDER BY ... DESC` + `LIMIT` — 이 둘은 짝으로 다닌다'
+            - '칸 이름을 적었으므로 나중에 표에 칸이 늘어도 결과가 그대로다'
+        predict:
+          question: '`WHERE canceled_at = NULL`로 쓰면 결과가 어떻게 되나?'
+          choices:
+            - 한 줄도 나오지 않는다. NULL은 =로 비교되지 않는다
+            - 취소되지 않은 주문이 나온다
+            - 취소된 주문이 나온다
+            - 문법 오류가 난다
+          answer: 한 줄도 나오지 않는다. NULL은 =로 비교되지 않는다
+          explanation: |-
+            `NULL`은 "값이 없다"는 표시이지 어떤 값이 아니다. `NULL = NULL`의 결과도 참이 아니라
+            **알 수 없음**이고, `WHERE`는 참인 줄만 통과시키므로 아무것도 나오지 않는다.
+            문법은 맞아서 오류도 나지 않는다 — **조용히 0건**이라 더 위험하다. `IS NULL`을 쓴다.
+        complete:
+          question: 이름에 '키보드'가 들어간 상품을 비싼 순으로 5개 찾도록 빈칸을 채우세요.
+          code: |-
+            SELECT id, name, price
+            FROM products
+            WHERE name ___ '%키보드%'
+            ORDER BY price ___
+            LIMIT 5;
+          answers:
+            - [LIKE]
+            - [DESC]
+          explanation: |-
+            일부만 맞춰 찾는 것은 `LIKE`이고 `%`가 아무 글자 몇 개든을 뜻한다.
+            비싼 순은 내림차순이므로 `DESC`다.
+        problem:
+          prompt: |-
+            `orders` 표가 이렇습니다.
+
+            ```text
+            orders(id, customer_id, total_amount, status, ordered_at, canceled_at)
+            ```
+
+            **"지난 7일 동안 들어온 주문 중 아직 취소되지 않았고 5만원 이상인 것을, 금액이 큰 순으로 20건"**
+            을 찾는 질의를 백지에서 작성하세요. 필요한 칸만 고르세요.
+          deliverables:
+            - SQL 한 문장
+            - 취소 여부를 그 조건으로 쓴 이유 한 줄
+          hints:
+            - 지금부터 7일 전은 `now() - interval '7 days'`로 적을 수 있습니다.
+            - 취소 여부를 확인하는 조건은 `=`가 아니었습니다.
+            - '`ORDER BY` 없이 `LIMIT`만 쓰면 무엇이 문제였나요?'
+          modelAnswer: |-
+            ```sql
+            SELECT id, customer_id, total_amount, ordered_at
+            FROM orders
+            WHERE ordered_at >= now() - interval '7 days'
+              AND canceled_at IS NULL
+              AND total_amount >= 50000
+            ORDER BY total_amount DESC
+            LIMIT 20;
+            ```
+
+            - '`canceled_at IS NULL`을 쓴 이유: 취소 시각이 비어 있다는 것이 곧 "취소되지 않았다"다. `= NULL`로 쓰면 문법은 맞지만 **조용히 0건**이 된다.'
+          selfChecks:
+            - '`SELECT *`가 아니라 필요한 칸만 적었는가'
+            - 취소 조건이 `IS NULL`인가
+            - '`ORDER BY total_amount DESC`와 `LIMIT 20`이 함께 있는가'
+
+      - key: LESSON.DATABASE.SQL_BASICS.001.U2
+        title: 두 표를 이어 붙이기
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.DATABASE.SQL_BASICS.001.U1
+        explain: |-
+          표가 나뉘어 있으면 이어서 봐야 한다. 공식 문서는 조인을 이렇게 설명한다 —
+          **"한 표의 줄과 다른 표의 줄을 합치되, 어떤 줄끼리 짝지을지를 식으로 지정한다."**
+
+          짝이 없는 줄을 어떻게 할지에 따라 두 갈래다.
+
+          **`JOIN`(inner join)** — 양쪽에 짝이 있는 줄만 남는다.
+          공식 문서의 예에서 Hayward가 결과에 없는 이유를 **"`cities`에 맞는 줄이 없어서 짝이 없는 줄을 무시한다"**
+          고 설명한다.
+
+          **`LEFT OUTER JOIN`** — **"왼쪽 표의 줄은 적어도 한 번씩 결과에 나오고, 오른쪽은 왼쪽과 맞는 줄만 나온다."**
+          짝이 없으면 **"오른쪽 칸에 빈 값(null)을 채운다."**
+
+          그래서 고르는 기준이 분명해진다.
+
+          - "주문과 그 주문의 상품" → `JOIN` (상품 없는 주문은 볼 일이 없다)
+          - "**모든** 회원과 그 회원의 주문 수" → `LEFT JOIN` (주문이 없는 회원도 0으로 나와야 한다)
+
+          여기서 자주 하는 실수가 있다. `LEFT JOIN`을 해 놓고 오른쪽 표의 칸을 `WHERE`에서 거르면,
+          `null`인 줄이 걸러져 **결국 inner join과 같아진다.** 오른쪽 조건은 `ON` 쪽에 둔다.
+        example:
+          language: sql
+          code: |-
+            -- 주문에 담긴 상품 이름까지 함께 (짝 있는 것만)
+            SELECT o.id, p.name, ol.quantity
+            FROM orders o
+            JOIN order_lines ol ON ol.order_id = o.id
+            JOIN products p ON p.id = ol.product_id
+            WHERE o.id = 1024;
+
+            -- 모든 회원과 그 회원의 주문 (주문이 없는 회원도 나온다)
+            SELECT c.id, c.name, o.id AS order_id
+            FROM customers c
+            LEFT JOIN orders o ON o.customer_id = c.id;
+          output: |-
+            첫 질의
+            id   |  name  | quantity
+            1024 | 키보드  |        1
+            1024 | 마우스  |        2
+
+            둘째 질의
+            id |  name  | order_id
+             3 | 한지훈  |     1019
+            17 | 한채원  |     1024
+            42 | 김영희  |     NULL   ← 주문이 없는 회원. LEFT JOIN 이라 남는다
+          note: |-
+            - '`o`·`ol`·`p`는 별칭이다. 표가 셋이 되면 칸 이름이 겹쳐서 별칭 없이는 읽기 어렵다'
+            - '`ON`에 **어떤 칸끼리 짝인지**를 적는다. 여기를 빠뜨리면 모든 조합이 나온다'
+            - '`order_id`가 `NULL`이라는 것은 짝이 없었다는 뜻이다'
+        predict:
+          question: '`LEFT JOIN orders o ON o.customer_id = c.id` 뒤에 `WHERE o.total_amount >= 10000`을 붙이면?'
+          choices:
+            - 주문이 없는 회원이 사라진다. 사실상 inner join이 된다
+            - 주문이 없는 회원은 그대로 남는다
+            - 문법 오류가 난다
+            - 모든 회원이 나오고 금액 조건은 무시된다
+          answer: 주문이 없는 회원이 사라진다. 사실상 inner join이 된다
+          explanation: |-
+            주문이 없는 회원은 `o.total_amount`가 `NULL`이다.
+            `NULL >= 10000`은 참이 아니므로 `WHERE`가 그 줄을 걸러 버린다.
+            결국 `LEFT JOIN`을 쓴 의미가 사라진다. 금액 조건을 `ON` 쪽으로 옮기거나
+            `OR o.id IS NULL`을 더해야 한다.
+        complete:
+          question: 주문 1024에 담긴 상품 이름을 보도록 빈칸을 채우세요.
+          code: |-
+            SELECT p.name, ol.quantity
+            FROM order_lines ol
+            ___ products p ___ p.id = ol.product_id
+            WHERE ol.order_id = 1024;
+          answers:
+            - [JOIN, "INNER JOIN"]
+            - [ON]
+          explanation: |-
+            상품이 없는 주문 항목은 볼 일이 없으므로 `JOIN`(inner join)이고,
+            짝 조건을 적는 자리는 `ON`이다.
+        problem:
+          prompt: |-
+            표가 셋입니다.
+
+            ```text
+            customers(id, name)
+            orders(id, customer_id, total_amount, canceled_at)
+            order_lines(id, order_id, product_id, quantity)
+            ```
+
+            **"모든 회원의 이름과, 그 회원이 취소하지 않은 주문의 건수"** 를 구하는 질의를 작성하세요.
+            주문이 한 건도 없는 회원도 **0으로** 나와야 합니다.
+          deliverables:
+            - SQL 한 문장
+            - 취소 조건을 WHERE가 아니라 ON에 둔 이유 한 줄
+          hints:
+            - 주문이 없는 회원도 나와야 한다면 어느 조인일까요?
+            - 취소 조건을 `WHERE`에 두면 주문 없는 회원에게 무슨 일이 생길지 U2의 예측 문제를 다시 보세요.
+            - 건수를 셀 때 `count(*)`와 `count(어떤 칸)`은 `NULL` 앞에서 다르게 움직입니다.
+          modelAnswer: |-
+            ```sql
+            SELECT c.id, c.name, count(o.id) AS order_count
+            FROM customers c
+            LEFT JOIN orders o
+                   ON o.customer_id = c.id
+                  AND o.canceled_at IS NULL
+            GROUP BY c.id, c.name
+            ORDER BY order_count DESC;
+            ```
+
+            - '취소 조건을 `ON`에 둔 이유: `WHERE`에 두면 주문이 없는 회원의 `o.canceled_at`이 `NULL`이라 그 줄이 걸러지고, 0건인 회원이 사라진다. `ON`에 두면 "짝지을 주문"만 좁히므로 회원은 남는다.'
+            - '`count(o.id)`를 쓴 이유: `count(*)`는 줄 수를 세므로 주문 없는 회원도 1이 된다. 칸을 세면 `NULL`은 세지 않아 0이 나온다.'
+          selfChecks:
+            - '`LEFT JOIN`을 쓰고 취소 조건이 `ON` 쪽에 있는가'
+            - '`count(*)`가 아니라 `count(o.id)`인가 (0이 제대로 나오는가)'
+            - '`GROUP BY`에 `SELECT`의 비집계 칸이 모두 들어 있는가'
+
+      - key: LESSON.DATABASE.SQL_BASICS.001.U3
+        title: 묶어서 세고 합치기
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.DATABASE.SQL_BASICS.001.U2
+        explain: |-
+          공식 문서는 집계 함수를 **"여러 입력 줄에서 하나의 결과를 계산하는 함수"** 라고 설명한다.
+          `count`·`sum`·`avg`·`max`·`min`이 그것이다.
+
+          `GROUP BY`는 줄을 묶고, 집계 함수는 **묶음마다 한 번씩** 계산된다.
+          여기서 반드시 지켜야 할 규칙이 하나 있다 — **`SELECT`에 적은 칸 중 집계가 아닌 것은
+          모두 `GROUP BY`에 있어야 한다.** 없으면 그 묶음의 어느 줄 값을 보여 줄지 정할 수 없다.
+
+          거르는 자리가 둘이라 헷갈린다. 공식 문서의 설명이 가장 정확하다 —
+          **"`WHERE`는 묶음과 집계가 계산되기 **전에** 입력 줄을 고르고, `HAVING`은 묶음과 집계가
+          계산된 **뒤에** 묶음을 고른다. 따라서 `WHERE`에는 집계 함수가 들어갈 수 없다."**
+
+          그래서 `WHERE total_amount >= max(total_amount)` 같은 것은 쓸 수 없다.
+          **계산되기 전에는 최댓값을 알 수 없기 때문이다.**
+
+          순서로 외우면 쉽다: `FROM` → `WHERE` → `GROUP BY` → `HAVING` → `SELECT` → `ORDER BY`.
+        example:
+          language: sql
+          code: |-
+            -- 상품별로 몇 개나 팔렸나, 10개 넘게 팔린 것만
+            SELECT p.id, p.name, sum(ol.quantity) AS sold
+            FROM order_lines ol
+            JOIN products p ON p.id = ol.product_id
+            JOIN orders o ON o.id = ol.order_id
+            WHERE o.canceled_at IS NULL            -- 묶기 전에 줄을 거른다
+            GROUP BY p.id, p.name
+            HAVING sum(ol.quantity) > 10           -- 묶은 뒤에 묶음을 거른다
+            ORDER BY sold DESC;
+          output: |-
+            id |  name  | sold
+            ---+--------+------
+             7 | 키보드  |   42
+            12 | 마우스  |   19
+            (2 rows)
+
+            WHERE  → 취소된 주문의 줄을 미리 버린다
+            HAVING → 합계가 10 이하인 상품 묶음을 버린다
+          note: |-
+            - '`WHERE`는 줄을, `HAVING`은 **묶음**을 거른다'
+            - '`p.id, p.name`이 둘 다 `GROUP BY`에 있다 — `SELECT`에 적었기 때문이다'
+            - '`sold`라는 별칭은 `ORDER BY`에서는 쓸 수 있지만 `HAVING`에서는 쓸 수 없다(계산 순서 때문)'
+        predict:
+          question: '`SELECT p.name, sum(ol.quantity) ... GROUP BY p.id`처럼 name을 GROUP BY에서 빼면?'
+          choices:
+            - 오류가 난다. 집계가 아닌 칸은 GROUP BY에 있어야 한다
+            - 아무 이름이나 하나 골라 보여 준다
+            - name이 NULL로 나온다
+            - 이름별로 다시 묶인다
+          answer: 오류가 난다. 집계가 아닌 칸은 GROUP BY에 있어야 한다
+          explanation: |-
+            한 묶음 안에 이름이 여럿일 수 있으므로 어느 것을 보여 줄지 정할 수 없다.
+            그래서 PostgreSQL은 **오류로 막는다**.
+            (`p.id`가 기본 키라면 이름이 하나로 정해지므로 PostgreSQL은 이 경우를 허용하지만,
+            헷갈리지 않으려면 `SELECT`에 적은 비집계 칸을 전부 `GROUP BY`에 적는 습관이 안전하다.)
+        complete:
+          question: 회원별 주문 금액 합계를 구하되 합계가 10만원 넘는 회원만 보도록 빈칸을 채우세요.
+          code: |-
+            SELECT customer_id, sum(total_amount) AS amount
+            FROM orders
+            WHERE canceled_at IS NULL
+            ___ customer_id
+            ___ sum(total_amount) > 100000;
+          answers:
+            - ["GROUP BY"]
+            - [HAVING]
+          explanation: |-
+            묶는 것은 `GROUP BY`, **묶은 뒤** 집계 결과로 거르는 것은 `HAVING`이다.
+            `WHERE`에는 집계 함수를 넣을 수 없다 — 집계는 아직 계산되지 않았다.
+        problem:
+          prompt: |-
+            동료가 쓴 질의가 오류를 냅니다. 무엇이 잘못됐는지 설명하고 고치세요.
+
+            ```sql
+            SELECT p.name, sum(ol.quantity) AS sold
+            FROM order_lines ol
+            JOIN products p ON p.id = ol.product_id
+            WHERE sum(ol.quantity) > 10
+            ORDER BY sold DESC;
+            ```
+
+            원하는 결과는 **"10개 넘게 팔린 상품의 이름과 판매 수량, 많이 팔린 순"** 입니다.
+          deliverables:
+            - 무엇이 왜 잘못됐는지 (계산 순서를 써서)
+            - 고친 SQL
+          hints:
+            - '`WHERE`가 계산되는 시점과 집계가 계산되는 시점 중 어느 쪽이 먼저인가요?'
+            - 묶는 문장 자체가 빠져 있습니다.
+            - '`SELECT`에 적은 비집계 칸이 어디에 또 있어야 했나요?'
+          modelAnswer: |-
+            **무엇이 잘못됐나**
+
+            두 가지다.
+
+            1. `WHERE`에 집계 함수를 썼다. `WHERE`는 **묶음과 집계가 계산되기 전에** 줄을 고르므로,
+               그 시점에는 `sum(...)` 값이 존재하지 않는다. 집계 결과로 거르려면 `HAVING`이다.
+            2. `GROUP BY`가 없다. 무엇을 기준으로 묶을지 적지 않았다.
+
+            ```sql
+            SELECT p.name, sum(ol.quantity) AS sold
+            FROM order_lines ol
+            JOIN products p ON p.id = ol.product_id
+            GROUP BY p.id, p.name
+            HAVING sum(ol.quantity) > 10
+            ORDER BY sold DESC;
+            ```
+          selfChecks:
+            - '`WHERE`의 집계 조건이 `HAVING`으로 옮겨졌는가'
+            - '`GROUP BY`가 생겼고 `SELECT`의 비집계 칸이 거기 들어 있는가'
+            - 설명에 "집계가 계산되기 전/후"라는 순서가 들어 있는가
+
+      - key: LESSON.DATABASE.SQL_BASICS.001.U4
+        title: 바꾸기 전에 세어 보기
+        minutes: 10
+        core: false
+        prerequisiteUnits:
+          - LESSON.DATABASE.SQL_BASICS.001.U1
+        explain: |-
+          `UPDATE`와 `DELETE`에는 되돌리기 버튼이 없다. 그리고 가장 무서운 실수는 문법 오류가 아니라
+          **`WHERE`를 빠뜨리는 것**이다. `DELETE FROM orders;`는 문법이 완벽하고 표를 비운다.
+
+          그래서 순서를 몸에 붙인다.
+
+          1. 같은 `WHERE`로 **먼저 `SELECT`** 해서 몇 줄이 걸리는지 본다
+          2. 줄 수가 생각과 같으면 그때 `UPDATE`/`DELETE`로 바꾼다
+          3. 되도록 **트랜잭션 안에서** 한다 — `BEGIN` → 실행 → 확인 → `COMMIT` 또는 `ROLLBACK`
+
+          트랜잭션은 "여러 문장을 전부 되거나 전부 안 되게 묶는 것"이다.
+          `BEGIN` 뒤에 실행한 것은 `COMMIT` 전까지 **나만 보이고**, `ROLLBACK`하면 없던 일이 된다.
+
+          `RETURNING`을 붙이면 바꾼 줄을 그 자리에서 돌려준다 — 몇 줄이 바뀌었는지 눈으로 확인할 수 있다.
+
+          하나 더. 실수로 지우지 않으려면 애초에 **지우지 않는 설계**가 낫다.
+          주문 취소를 `DELETE`가 아니라 `canceled_at`을 채우는 것으로 두면(U1의 예) 이력이 남는다.
+        example:
+          language: sql
+          code: |-
+            -- 1. 먼저 센다
+            SELECT count(*) FROM orders
+            WHERE canceled_at IS NULL AND ordered_at < now() - interval '1 year';
+            --  count
+            --  ------
+            --     37     ← 생각한 수와 같은가?
+
+            -- 2. 트랜잭션 안에서 바꾼다
+            BEGIN;
+
+            UPDATE orders
+            SET status = 'ARCHIVED'
+            WHERE canceled_at IS NULL AND ordered_at < now() - interval '1 year'
+            RETURNING id;
+
+            -- 37 rows 가 맞으면
+            COMMIT;
+            -- 아니면
+            -- ROLLBACK;
+          output: |-
+            SELECT count(*)  → 37
+            UPDATE ... RETURNING id → 37 rows
+            COMMIT → 확정
+
+            WHERE 를 빠뜨렸다면
+              UPDATE ... RETURNING id → 12043 rows
+              → 숫자가 다르므로 ROLLBACK 한다
+          note: |-
+            - '`SELECT`와 `UPDATE`의 `WHERE`가 **글자 그대로 같아야** 의미가 있다'
+            - '`RETURNING`이 바꾼 줄 수를 눈앞에 보여 준다 — 커밋 전에 알아챌 마지막 기회다'
+            - '`ROLLBACK`은 `COMMIT` 전까지만 쓸 수 있다'
+        predict:
+          question: '`BEGIN;` 뒤에 `DELETE FROM orders;`를 실행했는데 아직 `COMMIT`하지 않았다. 다른 접속에서 조회하면?'
+          choices:
+            - 주문이 그대로 보인다. 커밋 전에는 남에게 보이지 않는다
+            - 표가 비어 보인다
+            - 조회가 막혀 기다린다
+            - 오류가 난다
+          answer: 주문이 그대로 보인다. 커밋 전에는 남에게 보이지 않는다
+          explanation: |-
+            트랜잭션 안의 변경은 `COMMIT` 전까지 **그 접속 안에서만** 보인다.
+            그래서 `ROLLBACK`하면 남들은 아무 일도 없었던 것처럼 된다.
+            이것이 "먼저 실행해 보고 숫자를 확인한 뒤 결정"할 수 있는 이유다.
+        complete:
+          question: 바꾼 줄을 눈으로 확인할 수 있도록 빈칸을 채우세요.
+          code: |-
+            BEGIN;
+
+            UPDATE products
+            SET price = price * 11 / 10
+            WHERE id = 7
+            ___ id, price;
+
+            ___;
+          answers:
+            - [RETURNING]
+            - [COMMIT]
+          explanation: |-
+            바꾼 줄을 그 자리에서 돌려받는 것은 `RETURNING`,
+            확인한 뒤 확정하는 것은 `COMMIT`이다(되돌리려면 `ROLLBACK`).
+        problem:
+          prompt: |-
+            동료가 운영 DB에서 이 문장을 실행하려고 합니다.
+
+            ```sql
+            UPDATE products SET price = price * 9 / 10;
+            ```
+
+            의도는 **"이벤트 대상 상품(`event_target = true`)만 10% 할인"** 이었습니다.
+
+            1. 이 문장이 그대로 실행되면 무슨 일이 생기는지 쓰세요
+            2. 안전한 순서로 바꿔 쓰세요 (확인 → 실행 → 확정)
+          deliverables:
+            - 그대로 실행하면 생기는 일 한 줄
+            - 안전한 순서의 SQL 전체 (확인용 문장 포함)
+          hints:
+            - 이 문장에 없는 절이 무엇인지 보세요.
+            - 바꾸기 전에 **몇 줄이 걸리는지** 먼저 아는 방법이 있었습니다.
+            - 숫자가 이상할 때 되돌릴 수 있으려면 무엇으로 감싸야 할까요?
+          modelAnswer: |-
+            **1. 무슨 일이 생기나**
+
+            `WHERE`가 없으므로 **모든 상품의 가격이 10% 내려간다.** 문법은 완벽해서 오류도 나지 않고,
+            `UPDATE`는 되돌리기 버튼이 없다.
+
+            **2. 안전한 순서**
+
+            ```sql
+            -- 확인: 몇 개가 대상인가
+            SELECT count(*) FROM products WHERE event_target = true;
+            --  count
+            --  ------
+            --     12
+
+            BEGIN;
+
+            UPDATE products
+            SET price = price * 9 / 10
+            WHERE event_target = true
+            RETURNING id, price;
+            -- 12 rows 가 나오는지 본다
+
+            COMMIT;   -- 숫자가 다르면 ROLLBACK;
+            ```
+          selfChecks:
+            - 원인을 "`WHERE`가 없다"로 짚었는가
+            - 바꾸기 전에 같은 조건으로 세는 문장이 있는가
+            - '`BEGIN` … `COMMIT`으로 감쌌고, 숫자가 다르면 `ROLLBACK`한다고 적었는가'
+
+    commonMistakes:
+      - '`= NULL`로 비교한다. 오류가 아니라 **조용히 0건**이라 더 오래 헤맨다 (U1)'
+      - '`LEFT JOIN` 해 놓고 오른쪽 표 칸을 `WHERE`에서 걸러 inner join이 되어 버린다 (U2)'
+      - '`WHERE`에 집계 함수를 쓴다. 집계는 그 시점에 아직 계산되지 않았다 — `HAVING`이다 (U3)'
+    inProject: |-
+      주문 시스템의 화면 대부분이 이 넷의 조합이다. 주문 목록은 U1,
+      주문 상세(상품 이름까지)는 U2, 통계 화면("이번 달 많이 팔린 상품")은 U3다.
+      운영 중에 값을 고쳐야 할 때는 U4의 순서를 그대로 지킨다 — 세고, 트랜잭션 안에서 바꾸고, 숫자를 보고 확정한다.
+      나중에 JPA를 쓰더라도 느린 화면을 고치려면 결국 여기로 돌아온다.
+    sources:
+      - title: PostgreSQL 16 Documentation — Joins Between Tables
+        url: https://www.postgresql.org/docs/16/tutorial-join.html
+        versionScope: PostgreSQL 16
+      - title: PostgreSQL 16 Documentation — Aggregate Functions
+        url: https://www.postgresql.org/docs/16/tutorial-agg.html
+        versionScope: PostgreSQL 16
+      - title: PostgreSQL 16 Documentation — Transactions
+        url: https://www.postgresql.org/docs/16/tutorial-transactions.html
+        versionScope: PostgreSQL 16
+    verifiedAt: 2026-09-22
