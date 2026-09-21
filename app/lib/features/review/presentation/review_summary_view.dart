@@ -82,7 +82,8 @@ Future<bool> openReviewRecordSheet(
       title: partial ? l10n.todayPartialTitle : l10n.todayCompleteSheetTitle,
       initialMinutes: SessionTimeRules.defaultActualMinutes(startedAt, now),
       maxMinutes: SessionTimeRules.maxActualMinutes(startedAt, now),
-      onSubmit: (minutes, reflection, _) => container
+      // 복습 세션은 묻지 않는다 — 안다/모른다는 카드마다 이미 답했다.
+      onSubmit: (minutes, reflection, _, {understood}) => container
           .read(provider.notifier)
           .record(actualMinutes: minutes, reflection: reflection, partial: partial),
     );

@@ -44,6 +44,7 @@ void main() {
     expect(find.text('35분'), findsOneWidget);
     await tapKey(tester, 'completeSheet.increaseButton');
     await enterTextByKey(tester, 'completeSheet.reflectionField', '전파 속성을 정리했다');
+    await tapKey(tester, 'completeSheet.understood');
     await tapKey(tester, 'completeSheet.submitButton');
 
     final complete = backend.sessionRepository.completes.single;
@@ -51,6 +52,50 @@ void main() {
     expect(backend.todayRepository.patches.last.request.status, TaskStatus.completed);
     expect(find.text('오늘의 핵심을 마쳤어요'), findsOneWidget);
     expect(find.text('40분 공부했어요'), findsOneWidget);
+  });
+
+  /// 시간을 썼다는 것과 알게 되었다는 것은 다르다. 모른 채로 "완료"가 되면 그 개념은 다시 나오지 않는다.
+  testWidgets('shouldDeferTheTaskWhenTheLearnerStillDoesNotKnowIt', (tester) async {
+    backend.todayRepository.today = testTodayView();
+    await pumpApp(tester, backend: backend);
+    await tapKey(tester, 'today.startButton');
+    backend.clock.advance(const Duration(minutes: 20));
+
+    await tapKey(tester, 'today.completeButton');
+    await tapKey(tester, 'completeSheet.notYet');
+
+    expect(find.byKey(const Key('completeSheet.notYetNote')), findsOneWidget);
+    expect(find.text('내일 이어서 하기'), findsOneWidget);
+    await tapKey(tester, 'completeSheet.submitButton');
+
+    // 시간은 그대로 기록한다 — 쓴 시간은 사실이다.
+    expect(backend.sessionRepository.completes.single.request.actualMinutes, 20);
+    expect(backend.todayRepository.patches.last.request.status, TaskStatus.deferred);
+  });
+
+  /// 고르기 전에는 보낼 수 없다 — 기본값이 "완료"면 또 모른 채로 완료된다.
+  testWidgets('shouldWaitForTheAnswerBeforeLettingTheSheetSubmit', (tester) async {
+    backend.todayRepository.today = testTodayView();
+    await pumpApp(tester, backend: backend);
+    await tapKey(tester, 'today.startButton');
+
+    await tapKey(tester, 'today.completeButton');
+
+    final submit = tester.widget<FilledButton>(
+      find.byKey(const Key('completeSheet.submitButton')),
+    );
+    expect(submit.onPressed, isNull);
+  });
+
+  /// "여기까지 기록"은 이미 못 끝냈다고 말한 것이다 — 한 번 더 묻지 않는다.
+  testWidgets('shouldNotAskAgainWhenTheLearnerAlreadySaidTheyStopped', (tester) async {
+    backend.todayRepository.today = testTodayView();
+    await pumpApp(tester, backend: backend);
+    await tapKey(tester, 'today.startButton');
+
+    await tapKey(tester, 'today.partialButton');
+
+    expect(find.byKey(const Key('completeSheet.understanding')), findsNothing);
   });
 
   testWidgets('shouldNotAllowMoreMinutesThanOneAndAHalfTimesTheSession', (tester) async {
@@ -175,6 +220,7 @@ void main() {
     backend.todayRepository.patchFailures.addAll([internalError(), internalError()]);
 
     await tapKey(tester, 'today.completeButton');
+    await tapKey(tester, 'completeSheet.understood');
     await tapKey(tester, 'completeSheet.submitButton');
     expect(find.text('다시 시도'), findsOneWidget);
     await tester.tap(find.text('다시 시도'));

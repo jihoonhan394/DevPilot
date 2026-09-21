@@ -157,14 +157,18 @@ Future<void> openCompleteSheet(BuildContext context, WidgetRef ref, {required bo
     initialMinutes: SessionTimeRules.defaultActualMinutes(session.startedAt, now),
     maxMinutes: SessionTimeRules.maxActualMinutes(session.startedAt, now),
     askReadingFeedback: !partial && data?.mainTask?.taskType == TaskType.readCode,
-    onSubmit: (minutes, reflection, feedback) async {
+    // "완료"를 누른 경우에만 묻는다. "여기까지 기록"은 이미 못 끝냈다고 말한 것이다.
+    askUnderstanding: !partial,
+    onSubmit: (minutes, reflection, feedback, {understood}) async {
+      // 모른 채로 "완료"하면 그 개념은 다시 나오지 않는다 — 미룸으로 두어 내일 이어 가게 한다.
+      final stillStuck = understood == false;
       final result = await ref
           .read(todayControllerProvider.notifier)
           .finish(
             actualMinutes: minutes,
             reflection: reflection,
-            partial: partial,
-            readingFeedback: feedback,
+            partial: partial || stillStuck,
+            readingFeedback: stillStuck ? null : feedback,
           );
       outcome = result;
       return result is TodayActionFailed ? result.error : null;

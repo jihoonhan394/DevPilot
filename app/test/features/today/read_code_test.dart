@@ -163,6 +163,7 @@ void main() {
 
     expect(find.text('이 코드 읽기는 어땠나요? (선택)'), findsOneWidget);
     await tapKey(tester, 'completeSheet.feedback.tooHard');
+    await tapKey(tester, 'completeSheet.understood');
     await tapKey(tester, 'completeSheet.submitButton');
 
     expect(backend.todayRepository.patches.last.request.toJson(), {
@@ -185,6 +186,7 @@ void main() {
     await tapKey(tester, 'today.completeButton');
     await tapKey(tester, 'completeSheet.feedback.helpful');
     await tapKey(tester, 'completeSheet.feedback.helpful');
+    await tapKey(tester, 'completeSheet.understood');
     await tapKey(tester, 'completeSheet.submitButton');
 
     expect(backend.todayRepository.patches.last.request.toJson(), {
@@ -207,6 +209,7 @@ void main() {
     await open(tester, AppRoutes.today);
 
     await tapKey(tester, 'today.completeButton');
+    await tapKey(tester, 'completeSheet.understood');
     await tapKey(tester, 'completeSheet.submitButton');
 
     expect(find.text('러버덕으로 설명을 마쳐야 완료할 수 있어요.'), findsOneWidget);

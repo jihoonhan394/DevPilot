@@ -177,6 +177,15 @@
 - When `POST /learning-sessions/{id}/complete` `{ actualMinutes: 25, selfReflection: "…" }` → `COMPLETED`, `SESSION_COMPLETED.payload.actualMinutes = 25`
 - When `actualMinutes = 721` → 400 `VALIDATION_FAILED`, 세션 상태 변경 없음
 
+**S9b. 모른 채로 완료되지 않는다 (UI, `02` SCR-TODAY 완료 시트)**
+- Given main task를 시작해 20분이 지났고 "완료"로 완료 시트를 열었다
+- Then "지금 이 개념을 설명할 수 있나요?"가 보이고, **고르기 전에는 보내는 버튼이 비활성**이다
+- When "아직 모르겠어요"를 고른다
+- Then 버튼 글이 "내일 이어서 하기"로 바뀌고 무슨 일이 생기는지 한 줄이 보인다
+- When 보낸다
+- Then 세션은 `actualMinutes = 20`으로 완료되고(쓴 시간은 사실이다) 과제는 `COMPLETED`가 아니라 **`DEFERRED`**다 — 다음 날 같은 skill이 `CONTINUATION`으로 이어진다(`06` §5.4 3a)
+- And "여기까지 기록"으로 연 시트에는 이 질문이 **없다**(이미 못 끝냈다고 말한 것이다)
+
 **S10. Dashboard 최소 (FR-16)**
 - Given S1·S9 수행 후
 - When `GET /dashboard`
