@@ -1,0 +1,334 @@
+# DevPilot 개념 노트 — DevOps
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 문제는 예제의 복사가 아니라 주문 시스템 작업 상황으로 바꾼 변형이다 (CV-134)
+# - 힌트는 답을 그대로 말하지 않는다 (CV-133)
+lessons:
+  - key: LESSON.DEVOPS.GIT.001
+    skillCode: DEVOPS.GIT
+    title: 둘이서 같은 저장소 쓰기 (Git 협업)
+    whyItMatters: |-
+      혼자 쓸 때는 add와 commit만 알아도 된다. 둘이 되는 순간 "내 것이 사라졌다", "왜 push가 거절되지",
+      "충돌 표시가 뭔지 모르겠다"가 시작된다. 주문 시스템을 둘이 만들려면 이 네 가지가 먼저다.
+    oneLine: 브랜치(branch)는 커밋을 가리키는 이름이고, 병합(merge)은 두 갈래를 다시 하나로 모으는 일이다.
+    units:
+      - key: LESSON.DEVOPS.GIT.001.U1
+        title: 무엇이 커밋에 들어가나
+        minutes: 10
+        core: true
+        explain: |-
+          Git은 파일을 **추적한다/안 한다**로 먼저 나눈다. 추적하는 파일은 다시 **안 바뀜 · 바뀜 · 올림(staged)** 셋 중 하나다.
+
+          `git add`는 **그 순간의 내용을 올린다.** 올린 뒤에 파일을 또 고치면 그 고친 내용은 아직 올라가지 않은 상태다.
+          그래서 `git status`에 같은 파일이 "올림"과 "안 올림" 양쪽에 함께 보일 수 있다 — 고장이 아니라 그 뜻이다.
+
+          `git commit`은 **올린 것만** 담는다. "저장"이 아니라 "여기까지를 한 덩어리로 묶는다"에 가깝다.
+        example:
+          language: bash
+          code: |-
+            $ git add README
+            $ vi README          # add 뒤에 또 고쳤다
+            $ git status
+            Changes to be committed:
+                new file:   README
+            Changes not staged for commit:
+                modified:   README
+          output: |-
+            같은 파일이 양쪽에 보인다.
+            지금 commit하면 add한 시점의 내용만 들어가고, 그 뒤 고친 것은 남는다.
+          note: |-
+            - '`add`는 "지금 이 내용을 담을 목록에 넣어 줘"다'
+            - 그 뒤 수정은 목록에 자동으로 따라가지 않는다 — 다시 `add`해야 한다
+        predict:
+          question: "`git add a.txt` 뒤에 a.txt를 한 줄 더 고치고 `git commit`을 하면 커밋에 들어가는 것은?"
+          choices:
+            - add한 시점의 내용
+            - 마지막으로 고친 내용
+            - 두 내용이 모두 들어간다
+          answer: add한 시점의 내용
+          explanation: |-
+            `git add`는 그 순간의 내용을 올린다. 그 뒤의 수정은 올라가지 않았으므로 커밋에 들어가지 않고
+            "바뀜" 상태로 남는다. 그 수정까지 담으려면 `git add`를 한 번 더 한다.
+        complete:
+          question: 바뀐 파일을 커밋에 담기까지의 두 명령을 채우세요.
+          code: |-
+            $ git ___ order.java
+            $ git ___ -m "주문 취소 규칙 추가"
+          answers:
+            - [add]
+            - [commit]
+          explanation: |-
+            담을 것을 고르고(`add`) 한 덩어리로 묶는다(`commit`).
+        problem:
+          prompt: |-
+            주문 시스템에서 `OrderService.java`와 `README.md` 둘 다 고쳤는데, 이번 커밋에는
+            `OrderService.java`만 담고 싶습니다. 어떤 명령을 어떤 순서로 쓸지 적고,
+            커밋 뒤 `git status`가 `README.md`를 어떤 상태로 보여 줄지 쓰세요.
+          deliverables:
+            - 실행할 명령을 순서대로
+            - 커밋 뒤 README.md의 상태와 그 이유 한 줄
+          hints:
+            - 담을 것을 고르는 명령과 묶는 명령이 따로 있습니다.
+            - 고르지 않은 파일은 묶일 수 없습니다. 그러면 그 파일은 어떤 상태로 남을까요.
+          modelAnswer: |-
+            ```bash
+            $ git add OrderService.java
+            $ git commit -m "주문 취소 규칙 추가"
+            $ git status
+            Changes not staged for commit:
+                modified:   README.md
+            ```
+
+            `add`로 고른 파일만 커밋에 들어간다. `README.md`는 고르지 않았으므로 커밋되지 않고
+            **바뀜(modified)** 상태로 남는다. 다음 커밋에 담고 싶으면 그때 `add`한다.
+          selfChecks:
+            - add에 담을 파일만 정확히 적었는가
+            - commit 뒤 README.md가 "바뀜"으로 남는다고 적었는가
+            - '"저장"이 아니라 "고른 것을 묶는다"로 설명했는가'
+
+      - key: LESSON.DEVOPS.GIT.001.U2
+        title: 브랜치를 왜 나누나
+        minutes: 10
+        core: true
+        explain: |-
+          브랜치는 **커밋을 가리키는 이름표**다. 새로 만드는 데 드는 비용이 거의 없다.
+
+          둘이 같은 파일을 각자 고치면 서로의 작업이 섞인다. 각자 브랜치에서 하면 끝날 때까지 서로를 건드리지 않는다.
+          하나를 고치는 동안 급한 수정이 들어와도, 하던 것을 커밋하고 다른 이름표로 옮겨 가면 된다.
+
+          요즘 명령은 `git switch`다. `-c`를 붙이면 **만들면서 옮긴다** — `git branch`로 만들고 `git switch`로 옮기는 것을
+          한 번에 하는 것과 같다. 예전 책에는 `git checkout -b`로 나오는데 같은 일을 한다.
+        example:
+          language: bash
+          code: |-
+            $ git switch -c order-cancel
+            Switched to a new branch 'order-cancel'
+
+            $ git switch main
+            Switched to branch 'main'
+          output: |-
+            order-cancel에서 한 커밋은 main에 보이지 않는다.
+            합치기 전까지 서로 영향을 주지 않는다.
+          note: |-
+            - '`-c`는 create다. 만들면서 옮긴다'
+            - 옮기면 작업 폴더의 파일이 그 브랜치의 내용으로 바뀐다
+        predict:
+          question: order-cancel 브랜치에서 커밋을 하나 하고 main으로 옮기면 그 커밋은?
+          choices:
+            - main에도 그대로 보인다
+            - order-cancel에만 있고 main에는 보이지 않는다
+            - 사라진다
+          answer: order-cancel에만 있고 main에는 보이지 않는다
+          explanation: |-
+            브랜치는 각자 자기가 가리키는 커밋이 있다. 합치기 전까지 main은 그 커밋을 모른다.
+            사라진 것이 아니라 다른 이름표 아래에 있다.
+        complete:
+          question: order-cancel 브랜치를 만들면서 바로 옮겨 가도록 빈칸을 채우세요.
+          code: |-
+            $ git switch ___ order-cancel
+          answers:
+            - ["-c", "--create"]
+          explanation: |-
+            `-c`(또는 `--create`)를 붙이면 만들면서 옮긴다.
+        problem:
+          prompt: |-
+            주문 시스템의 main에서 작업하던 중, 급한 결제 오류를 먼저 고쳐야 합니다.
+            하던 작업을 잃지 않고 `hotfix-payment` 브랜치에서 고치기 시작하려면 어떤 명령을 어떤 순서로 쓸지 적으세요.
+          deliverables:
+            - 명령을 순서대로
+            - 하던 작업을 왜 그 순서로 지키는지 한 줄
+          hints:
+            - 옮기기 전에 하던 것을 어떻게 해야 안 잃을지 생각해 보세요.
+            - 만들면서 옮기는 방법이 있습니다.
+          modelAnswer: |-
+            ```bash
+            $ git add .
+            $ git commit -m "주문 취소 작업 중간 저장"
+            $ git switch -c hotfix-payment
+            ```
+
+            옮기기 전에 하던 것을 **커밋해 둔다.** 커밋하지 않은 변경은 브랜치를 옮길 때 따라다니거나 막힌다.
+            커밋해 두면 그 브랜치에 남고, `-c`로 새 이름표를 만들면서 바로 옮겨 간다.
+          selfChecks:
+            - 옮기기 전에 하던 작업을 커밋했는가
+            - 브랜치를 만들면서 옮기는 형태로 적었는가
+            - 왜 먼저 커밋해야 하는지 한 줄로 적었는가
+
+      - key: LESSON.DEVOPS.GIT.001.U3
+        title: 합칠 때 나는 충돌 읽기
+        minutes: 12
+        core: true
+        explain: |-
+          합치기(`git merge`)에는 두 가지가 있다.
+
+          한쪽이 다른 쪽보다 **앞서 있기만 하면** Git은 이름표만 앞으로 옮긴다. 이것을 fast-forward라고 한다.
+          양쪽이 각자 나아갔으면 둘을 엮은 커밋을 새로 만든다.
+
+          같은 줄을 양쪽이 다르게 고쳤으면 Git은 **고르지 못하고 멈춘다.** 그때 파일 안에 표시를 남긴다:
+          `<<<<<<<`와 `=======` 사이가 지금 브랜치의 것, `=======`와 `>>>>>>>` 사이가 합쳐 오는 브랜치의 것이다.
+          표시를 지우고 남길 내용을 직접 만든 뒤 `add`하고 커밋하면 합치기가 끝난다.
+        example:
+          language: bash
+          code: |-
+            $ git merge order-cancel
+            Auto-merging OrderService.java
+            CONFLICT (content): Merge conflict in OrderService.java
+            Automatic merge failed; fix conflicts and then commit the result.
+          output: |-
+            OrderService.java 안에는 이렇게 남는다:
+
+            <<<<<<< HEAD
+                validateCancelable(order);
+            =======
+                order.requireCancelable();
+            >>>>>>> order-cancel
+          note: |-
+            - '`HEAD` 쪽이 지금 있는 브랜치의 내용이다'
+            - 표시 세 줄(`<<<<<<<`, `=======`, `>>>>>>>`)은 **반드시 지운다**
+            - 둘 중 하나를 고를 수도 있고, 둘을 합친 새 코드를 쓸 수도 있다
+        predict:
+          question: 충돌 표시에서 `<<<<<<< HEAD`와 `=======` 사이에 있는 것은?
+          choices:
+            - 지금 있는 브랜치의 내용
+            - 합쳐 오는 브랜치의 내용
+            - Git이 추천하는 내용
+          answer: 지금 있는 브랜치의 내용
+          explanation: |-
+            `HEAD`는 지금 있는 곳을 가리킨다. 그래서 위쪽이 내 브랜치, 아래쪽이 합쳐 오는 브랜치의 것이다.
+        complete:
+          question: 충돌을 해결한 뒤 합치기를 끝내는 두 명령을 채우세요.
+          code: |-
+            # 표시를 지우고 남길 내용을 만든 다음
+            $ git ___ OrderService.java
+            $ git ___
+          answers:
+            - [add]
+            - [commit]
+          explanation: |-
+            해결한 파일을 올리고(`add`) 커밋하면 합치기가 끝난다.
+        problem:
+          prompt: |-
+            동생과 각자 브랜치에서 `OrderService.java`의 같은 메서드를 고쳤고, 합치려다 충돌이 났습니다.
+            충돌이 난 뒤 무엇을 어떤 순서로 하는지 적고, 파일에서 무엇을 반드시 지워야 하는지 쓰세요.
+          deliverables:
+            - 충돌 해결 순서
+            - 파일에서 반드시 지워야 하는 것
+            - 어느 쪽 내용을 남길지 정하는 기준 한 줄
+          hints:
+            - Git이 멈춘 이유는 고르지 못해서입니다. 누가 골라야 할까요.
+            - 파일 안에 Git이 남긴 표시가 있습니다. 그것이 코드로 남으면 어떻게 될까요.
+          modelAnswer: |-
+            ```bash
+            # 1) 충돌 난 파일을 연다
+            # 2) <<<<<<< , ======= , >>>>>>> 세 표시를 지우고 남길 내용을 만든다
+            $ git add OrderService.java
+            $ git commit
+            ```
+
+            표시 세 줄은 **반드시 지운다.** 남으면 컴파일되지 않거나 그대로 커밋되어 다른 사람에게 넘어간다.
+            어느 쪽을 남길지는 "둘 중 하나"가 아니라 **두 변경의 의도를 모두 지키는 코드**를 새로 쓰는 쪽이 보통 맞다.
+            판단이 서지 않으면 상대에게 무엇을 하려던 것인지 묻는 편이 빠르다.
+          selfChecks:
+            - 표시 세 줄을 지운다고 적었는가
+            - 해결 뒤 add와 commit으로 끝낸다고 적었는가
+            - 남길 내용을 고르는 기준을 한 줄로 적었는가
+
+      - key: LESSON.DEVOPS.GIT.001.U4
+        title: 남의 작업과 맞추기
+        minutes: 12
+        core: true
+        explain: |-
+          `git fetch`는 **가져오기만 한다.** 내 작업을 건드리지 않고 원격에 무엇이 생겼는지만 받아 온다.
+          `git pull`은 가져온 뒤 **합치기까지** 한다.
+
+          동생이 먼저 push했는데 내가 push하면 **거절된다.** 내 이력에 동생의 커밋이 없기 때문이다.
+          그때는 먼저 받아서 내 작업에 반영한 다음 다시 push한다.
+
+          거절을 "오류"로 보지 않는 편이 낫다. **"당신이 모르는 커밋이 저기 있습니다"** 라는 알림이다.
+        example:
+          language: bash
+          code: |-
+            $ git push origin main
+            ! [rejected]        main -> main (fetch first)
+
+            $ git pull
+            $ git push origin main
+          output: |-
+            거절 → 받아서 합치기 → 다시 push. 이 순서로 풀린다.
+            pull에서 충돌이 나면 U3의 방법으로 해결한 뒤 push한다.
+          note: |-
+            - '`fetch`는 보기만, `pull`은 보고 합치기까지'
+            - 거절은 내 잘못이 아니라 "먼저 받으라"는 뜻이다
+        predict:
+          question: "`git fetch`만 실행하면 내 현재 브랜치의 파일은?"
+          choices:
+            - 그대로다
+            - 원격 내용으로 바뀐다
+            - 충돌 표시가 생긴다
+          answer: 그대로다
+          explanation: |-
+            `fetch`는 받아 두기만 하고 합치지 않는다. 내 작업 폴더는 그대로다.
+            합치려면 `merge`를 하거나 처음부터 `pull`을 쓴다.
+        complete:
+          question: push가 거절됐을 때 먼저 할 일을 채우세요.
+          code: |-
+            $ git push origin main
+            ! [rejected]  main -> main (fetch first)
+            $ git ___
+            $ git push origin main
+          answers:
+            - [pull]
+          explanation: |-
+            받아서 합친 다음 다시 push한다. `fetch` + `merge`로 나눠 해도 된다.
+        problem:
+          prompt: |-
+            주문 시스템 저장소에 push하려는데 거절됐습니다. 동생이 먼저 push한 상태입니다.
+            이때 할 일을 순서대로 적고, `fetch`만 했을 때와 `pull`을 했을 때 무엇이 다른지 쓰세요.
+          deliverables:
+            - 해결 순서
+            - fetch와 pull의 차이 한 줄
+            - 도중에 충돌이 나면 어떻게 하는지 한 줄
+          hints:
+            - 거절된 이유는 내 이력에 없는 커밋이 원격에 있기 때문입니다.
+            - 받는 것과 합치는 것이 다른 명령입니다.
+          modelAnswer: |-
+            ```bash
+            $ git pull                 # 받아서 합친다 (fetch + merge)
+            # 충돌이 나면 표시를 지우고 해결한 뒤
+            $ git add .
+            $ git commit
+            $ git push origin main
+            ```
+
+            `fetch`는 **받기만** 하므로 내 파일은 그대로다. `pull`은 받은 뒤 **합치기까지** 해서 내 브랜치가 움직인다.
+            도중에 충돌이 나면 U3과 같은 방법으로 표시를 지우고 해결한 뒤 커밋하고 push한다.
+          selfChecks:
+            - pull(또는 fetch + merge) 뒤에 push한다고 적었는가
+            - fetch는 합치지 않는다는 차이를 적었는가
+            - 충돌이 나면 해결 후 커밋한다고 적었는가
+        prerequisiteUnits:
+          - LESSON.DEVOPS.GIT.001.U3
+    commonMistakes:
+      - "`git add` 뒤에 파일을 또 고치고 커밋해서 마지막 수정이 빠진다. `git status`에 같은 파일이 양쪽에 보이면 그 상태다."
+      - "충돌 표시(`<<<<<<<`, `=======`, `>>>>>>>`)를 지우지 않고 커밋해서 컴파일이 깨진다."
+      - "push 거절을 오류로 보고 강제로 밀어 남의 커밋을 덮는다. 거절은 먼저 받으라는 알림이다."
+    inProject: |-
+      주문 시스템을 둘이 만들 때 이 순서가 기본이 된다. 각자 브랜치를 만들어 작업하고(U2),
+      끝나면 main에 합치면서 충돌을 읽고(U3), push가 거절되면 먼저 받아서 맞춘다(U4).
+      커밋 하나에 무엇을 담을지는 U1대로 고른다 — 한 커밋에 한 가지 일만 담으면 나중에 되돌리기 쉽다.
+    sources:
+      - title: Pro Git — 2.2 Recording Changes to the Repository
+        url: https://git-scm.com/book/en/v2/Git-Basics-Recording-Changes-to-the-Repository
+        versionScope: Pro Git 2판
+      - title: Pro Git — 3.2 Basic Branching and Merging
+        url: https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging
+        versionScope: Pro Git 2판
+      - title: Pro Git — 2.5 Working with Remotes
+        url: https://git-scm.com/book/en/v2/Git-Basics-Working-with-Remotes
+        versionScope: Pro Git 2판
+      - title: git switch Documentation
+        url: https://git-scm.com/docs/git-switch
+        versionScope: Git 2.23 이상
+    verifiedAt: 2026-09-21
+    retired: false
