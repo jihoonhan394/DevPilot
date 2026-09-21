@@ -1,0 +1,548 @@
+# DevPilot 개념 노트 — CORS
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - HTTP 기초 노트가 요청·응답의 생김새를 다룬다. 여기서는 "브라우저에서만 막히는 이유"를 다룬다
+# - 실제 값(도메인·포트)은 예시용 자리표시자만 쓴다
+lessons:
+  - key: LESSON.WEB_HTTP.CORS.001
+    skillCode: WEB_HTTP.CORS
+    title: 브라우저에서만 막히는 이유 (CORS)
+    whyItMatters: |-
+      서버와 화면을 따로 만들면 반드시 만난다. curl로는 되는데 브라우저에서만
+      "blocked by CORS policy"가 뜨고, 서버 로그에는 아무 오류도 없다.
+      그래서 서버가 멀쩡한데 서버를 뒤지느라 한나절을 쓴다.
+      **막는 주체가 서버가 아니라 브라우저**라는 것 하나만 알아도 찾는 자리가 달라진다.
+    oneLine: CORS는 다른 출처의 응답을 스크립트가 읽어도 되는지를 **서버가 헤더로 허락**하고 브라우저가 지키는 약속이다.
+    units:
+      - key: LESSON.WEB_HTTP.CORS.001.U1
+        title: 누가 막는 것인가
+        minutes: 10
+        core: true
+        explain: |-
+          먼저 **출처(origin)** 를 정확히 보자. 출처는 **스킴 + 호스트 + 포트** 셋이다.
+          하나라도 다르면 다른 출처다 — `http`와 `https`, `localhost:5173`과 `localhost:8080`도 서로 다르다.
+
+          공식 문서는 CORS를 **"서버가 자기 출처 외에 어느 출처에서 자원을 불러오도록 브라우저가 허용할지를
+          알려 주는 HTTP 헤더 기반 장치"** 라고 정의한다.
+          그리고 `fetch()`와 `XMLHttpRequest`는 **동일 출처 정책**을 따라,
+          **"응답에 알맞은 CORS 헤더가 없으면 자기가 불러온 출처의 자원만 요청할 수 있다."**
+
+          여기서 두 가지를 분명히 해야 한다.
+
+          - **막는 것은 브라우저다.** 서버는 요청을 받아 정상 처리하고 200을 돌려준다.
+            브라우저가 **응답을 스크립트에게 주지 않을** 뿐이다
+          - 그래서 **서버 로그에는 오류가 없다.** 오류는 브라우저 콘솔에만 있다
+
+          curl·Postman은 브라우저가 아니므로 이 정책과 무관하다.
+          **"curl로는 되는데 브라우저에서만 안 된다"가 곧 CORS 문제의 증상**이다.
+
+          고치는 자리도 정해진다 — 화면 코드가 아니라 **서버가 응답 헤더를 더해야** 한다.
+        example:
+          language: http
+          code: |-
+            # 화면은 http://localhost:5173, API 는 http://localhost:8080
+            # 포트가 달라 다른 출처다
+
+            GET /api/v1/orders HTTP/1.1
+            Host: localhost:8080
+            Origin: http://localhost:5173        ← 브라우저가 자동으로 붙인다
+
+            # 서버 응답에 허락이 없으면
+            HTTP/1.1 200 OK
+            Content-Type: application/json
+
+            {"items": []}
+          output: |-
+            서버   → 200 을 정상으로 돌려줬다. 로그에 오류 없음
+            브라우저 → Access-Control-Allow-Origin 이 없다
+                     → 응답을 스크립트에 주지 않고 콘솔에 CORS 오류
+
+            curl http://localhost:8080/api/v1/orders
+              → 정상 동작 (브라우저가 아니다)
+          note: |-
+            - '출처 = **스킴 + 호스트 + 포트.** 포트만 달라도 다른 출처다'
+            - '`Origin` 헤더는 **브라우저가 자동으로** 붙인다. 화면 코드가 넣는 것이 아니다'
+            - '서버 로그가 깨끗한데 브라우저만 막히면 거의 CORS다'
+        predict:
+          question: 브라우저에서 CORS 오류가 났을 때 서버 로그에는 무엇이 보이나?
+          choices:
+            - 아무 오류도 없다. 서버는 정상 처리하고 200을 돌려줬다
+            - 403 오류가 기록된다
+            - CORS 거부 로그가 남는다
+            - 요청 자체가 서버에 도달하지 않는다
+          answer: 아무 오류도 없다. 서버는 정상 처리하고 200을 돌려줬다
+          explanation: |-
+            요청은 서버까지 **갔고** 서버는 평소대로 처리했다. 막은 것은 응답을 받은 **브라우저**다.
+            그래서 서버 로그만 보면 아무 문제가 없어 보인다 —
+            여기서 "서버는 멀쩡한데 왜 안 되지" 하며 서버를 뒤지게 된다.
+            (예외: 사전 요청이 필요한 경우엔 `OPTIONS` 요청이 로그에 남는다 — U2)
+        complete:
+          question: 브라우저가 요청에 자동으로 붙이는 헤더 이름을 쓰세요.
+          code: |-
+            GET /api/v1/orders HTTP/1.1
+            Host: localhost:8080
+            ___: http://localhost:5173
+          answers:
+            - [Origin]
+          explanation: |-
+            `Origin`이다. 브라우저가 "이 요청은 여기서 나갔다"를 붙여 주고,
+            서버는 그 값을 보고 허락할지 정한다. 화면 코드가 넣는 헤더가 아니다.
+        problem:
+          prompt: |-
+            동료가 말합니다. **"프런트에서 CORS 오류가 나요. 프런트 코드를 어떻게 고쳐야 하죠?"**
+
+            1. 왜 프런트 코드로는 고칠 수 없는지 설명하세요
+            2. 정말 CORS 문제인지 **확인하는 방법**을 쓰세요
+            3. `http://localhost:5173` 화면이 `http://localhost:8080` API를 부르는 것이 왜 다른 출처인지
+          deliverables:
+            - 세 물음에 대한 답
+            - 2번은 구체적인 확인 절차로
+          hints:
+            - 막는 주체가 누구인지부터 다시 생각해 보세요.
+            - 브라우저가 아닌 것으로 같은 요청을 보내 보면 무엇을 알 수 있을까요?
+            - 출처를 이루는 것이 셋이었습니다.
+          modelAnswer: |-
+            **1. 프런트 코드로는 고칠 수 없다**
+
+            막는 것은 **브라우저**이고, 브라우저가 막는 이유는 **서버 응답에 허락 헤더가 없기 때문**이다.
+            화면 코드가 헤더를 더 붙이거나 설정을 바꿔서 풀 수 있는 것이 아니다
+            (풀 수 있다면 보안 장치로서 의미가 없다). 고칠 자리는 **서버의 응답 헤더**다.
+
+            **2. 확인 방법**
+
+            - '같은 요청을 `curl`로 보낸다. 정상이면 서버는 멀쩡하다는 뜻이고, 브라우저만 막는 것이므로 CORS다.'
+            - '브라우저 개발자도구 Network에서 그 요청의 **응답 헤더에 `Access-Control-Allow-Origin`이 있는지** 본다. 없으면 확정이다.'
+            - '콘솔 메시지를 읽는다. 어떤 출처가 거부됐는지, 사전 요청에서 막혔는지까지 적혀 있다.'
+
+            **3. 왜 다른 출처인가**
+
+            출처는 **스킴 + 호스트 + 포트** 셋으로 이루어진다.
+            `http://localhost:5173`과 `http://localhost:8080`은 스킴과 호스트가 같지만 **포트가 다르다.**
+            호스트가 같은 `localhost`라 헷갈리지만 브라우저에게는 남남이다.
+          selfChecks:
+            - 고칠 자리가 서버라는 것과 그 이유(막는 주체가 브라우저)를 연결했는가
+            - 확인 방법에 "브라우저가 아닌 것으로 보내 보기"가 들어 있는가
+            - 출처가 스킴·호스트·**포트** 셋이라고 정확히 적었는가
+
+      - key: LESSON.WEB_HTTP.CORS.001.U2
+        title: 왜 OPTIONS가 먼저 오나
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.WEB_HTTP.CORS.001.U1
+        explain: |-
+          서버 로그에 요청 하나를 보냈는데 `OPTIONS`가 먼저 찍히는 것을 본 적이 있을 것이다.
+          그것이 **사전 요청(preflight)** 이다.
+
+          브라우저는 요청을 두 갈래로 나눈다. 공식 문서가 드는 **단순 요청**의 조건은 이렇다.
+
+          - 메서드가 `GET`·`HEAD`·`POST` 중 하나
+          - 안전 목록 헤더만 씀 (`Accept`, `Accept-Language`, `Content-Language`, `Content-Type`, `Range`)
+          - `Content-Type`이 `application/x-www-form-urlencoded`·`multipart/form-data`·`text/plain` 중 하나
+
+          **조건을 하나라도 벗어나면 사전 요청이 붙는다.** 그래서 우리가 매일 겪는다 —
+          `Content-Type: application/json`도, `Authorization` 헤더도, `PATCH`·`DELETE`도 전부 벗어난다.
+
+          사전 요청은 `OPTIONS`로 가며 두 가지를 묻는다.
+
+          - `Access-Control-Request-Method` — "이 메서드를 써도 되나"
+          - `Access-Control-Request-Headers` — "이 헤더들을 써도 되나"
+
+          서버가 허락 헤더로 답하면 그때 **진짜 요청**이 나간다. 허락하지 않으면 진짜 요청은 **아예 보내지지 않는다.**
+
+          그래서 `Access-Control-Max-Age`가 있다 — **"사전 요청 결과를 몇 초 동안 캐시할지"** 다.
+          없으면 요청마다 두 번씩 왕복한다.
+        example:
+          language: http
+          code: |-
+            # 1. 사전 요청 — 브라우저가 스스로 보낸다
+            OPTIONS /api/v1/orders HTTP/1.1
+            Origin: http://localhost:5173
+            Access-Control-Request-Method: POST
+            Access-Control-Request-Headers: content-type, authorization
+
+            # 2. 서버의 허락
+            HTTP/1.1 204 No Content
+            Access-Control-Allow-Origin: http://localhost:5173
+            Access-Control-Allow-Methods: GET, POST, PATCH, DELETE
+            Access-Control-Allow-Headers: Content-Type, Authorization
+            Access-Control-Max-Age: 3600
+
+            # 3. 그제서야 진짜 요청
+            POST /api/v1/orders HTTP/1.1
+            Origin: http://localhost:5173
+            Content-Type: application/json
+            Authorization: Bearer ...
+          output: |-
+            서버 로그
+              OPTIONS /api/v1/orders  204
+              POST    /api/v1/orders  201
+
+            Max-Age: 3600 이면
+              한 시간 동안 같은 조합은 OPTIONS 없이 바로 간다
+
+            Allow-Headers 에 authorization 이 빠져 있으면
+              → 진짜 요청은 보내지지도 않는다
+          note: |-
+            - '`application/json` 하나만으로도 사전 요청이 붙는다 — 사실상 우리 API 는 늘 붙는다'
+            - '사전 요청이 거절되면 진짜 요청은 **나가지 않는다.** 서버 로그에 POST 가 없다'
+            - '`Access-Control-Max-Age` 가 없으면 매 요청마다 왕복이 두 번이다'
+        predict:
+          question: '`Content-Type: application/json`으로 POST를 보내면 사전 요청이 붙나?'
+          choices:
+            - 붙는다. json 은 단순 요청이 허용하는 Content-Type 셋에 없다
+            - 안 붙는다. POST 는 단순 요청 메서드다
+            - 안 붙는다. Content-Type 은 안전 목록 헤더다
+            - 브라우저마다 다르다
+          answer: 붙는다. json 은 단순 요청이 허용하는 Content-Type 셋에 없다
+          explanation: |-
+            메서드가 `POST`라 첫 조건은 통과하지만, 단순 요청이 허용하는 `Content-Type`은
+            `application/x-www-form-urlencoded`·`multipart/form-data`·`text/plain` 셋뿐이다.
+            `application/json`은 거기 없으므로 사전 요청이 붙는다.
+            **요즘 API는 거의 전부 json이라 사실상 항상 붙는다**고 보면 된다.
+        complete:
+          question: 사전 요청 결과를 한 시간 동안 캐시하도록 빈칸을 채우세요.
+          code: |-
+            HTTP/1.1 204 No Content
+            Access-Control-Allow-Origin: https://shop.example.com
+            Access-Control-Allow-Methods: GET, POST
+            ___: 3600
+          answers:
+            - ["Access-Control-Max-Age"]
+          explanation: |-
+            `Access-Control-Max-Age`는 사전 요청 결과를 몇 초 동안 다시 쓸지를 정한다.
+            없으면 요청마다 `OPTIONS`가 한 번씩 더 나가 왕복이 두 배가 된다.
+        problem:
+          prompt: |-
+            화면에서 `PATCH /api/v1/orders/{id}` 를 `Content-Type: application/json` 과
+            `Authorization: Bearer ...` 로 부릅니다. 서버 로그에는 **`OPTIONS` 만 찍히고 `PATCH` 는 안 찍힙니다.**
+
+            1. 무슨 일이 일어난 것인지 설명하세요
+            2. 서버가 사전 요청에 돌려줘야 할 응답을 **헤더까지** 쓰세요
+            3. 이 상황에서 서버 로그에 `PATCH` 가 없는 것이 왜 **단서**인지
+          deliverables:
+            - 무슨 일이 일어났는지
+            - 사전 요청 응답 (헤더 포함)
+            - PATCH 가 로그에 없는 것이 왜 단서인지
+          hints:
+            - 사전 요청이 거절되면 진짜 요청은 어떻게 되나요?
+            - 브라우저가 물어본 것이 둘이었습니다. 서버는 둘 다 답해야 합니다.
+            - U1 에서는 서버 로그가 **깨끗했습니다.** 지금은 다릅니다.
+          modelAnswer: |-
+            **1. 무슨 일이 일어났나**
+
+            `PATCH` + `application/json` + `Authorization` 은 단순 요청 조건을 셋 다 벗어나므로
+            브라우저가 먼저 `OPTIONS` 사전 요청을 보냈다. 서버가 그 요청에 **필요한 허락 헤더로 답하지 않았고**,
+            그래서 브라우저는 진짜 `PATCH` 를 **아예 보내지 않았다.**
+
+            **2. 서버가 돌려줘야 할 응답**
+
+            ```http
+            HTTP/1.1 204 No Content
+            Access-Control-Allow-Origin: https://shop.example.com
+            Access-Control-Allow-Methods: GET, POST, PATCH, DELETE
+            Access-Control-Allow-Headers: Content-Type, Authorization
+            Access-Control-Max-Age: 3600
+            ```
+
+            `Allow-Methods` 에 `PATCH` 가, `Allow-Headers` 에 `Authorization` 이 들어 있어야 한다 —
+            브라우저가 물어본 것이 정확히 그 둘이다.
+
+            **3. `PATCH` 가 없는 것이 왜 단서인가**
+
+            U1의 증상(서버 로그가 완전히 깨끗함)과 **다르다.** `OPTIONS` 는 찍혔으니 요청은 서버에 닿고 있고,
+            진짜 요청만 안 온다는 것은 **사전 요청 단계에서 막혔다**는 뜻이다.
+            그래서 찾을 자리가 "CORS 설정 전체"가 아니라 **`Allow-Methods`·`Allow-Headers` 두 줄**로 좁혀진다.
+          selfChecks:
+            - 진짜 요청이 "보내지지 않았다"고 정확히 적었는가 (거절당했다가 아니라)
+            - 응답에 `Allow-Methods`의 `PATCH`와 `Allow-Headers`의 `Authorization`이 둘 다 있는가
+            - 3번에서 `OPTIONS`만 찍힌 것이 범위를 좁혀 준다고 설명했는가
+
+      - key: LESSON.WEB_HTTP.CORS.001.U3
+        title: 로그인이 걸리면 규칙이 엄해진다
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.WEB_HTTP.CORS.001.U2
+        explain: |-
+          쿠키나 인증 정보를 함께 보내는 요청을 **자격 증명 요청**이라 한다.
+          화면 쪽에서 `fetch(url, { credentials: "include" })` 로 켜고, 서버는
+          `Access-Control-Allow-Credentials: true` 로 허락한다. 공식 문서는 이 헤더에
+          **"값은 `true` 만 유효하고, 헤더가 없으면 자격 증명은 허용되지 않는다"** 고 적는다.
+
+          그리고 여기서 규칙이 **엄해진다.** 공식 문서의 표현은 분명하다 —
+          **"자격 증명 요청에 답할 때 서버는 CORS 응답 헤더에 `*` 와일드카드를 쓰면 안 된다.
+          명시적인 출처를 적어야 한다."** 이는 `Allow-Origin` 뿐 아니라
+          `Allow-Headers`·`Allow-Methods`·`Expose-Headers` 에도 적용된다.
+
+          어기면 어떻게 되나 — **"요청에 자격 증명이 있고 응답에 `Access-Control-Allow-Origin: *` 이 있으면
+          브라우저는 응답 접근을 막고 CORS 오류를 낸다."**
+
+          그래서 `*` 로 대충 열어 두고 "왜 로그인만 안 되지" 하는 상황이 생긴다.
+
+          **`*` 를 아예 쓰지 않는 편이 낫다.** 이유가 둘이다.
+
+          1. 자격 증명을 쓰는 순간 어차피 못 쓴다
+          2. `*` 는 **모든 출처에 API를 여는 것**이다. 허용 목록을 적는 편이 안전하다
+
+          그리고 자격 증명 요청에는 **브라우저가 `Origin` 을 보내 주므로**,
+          서버는 그 값이 허용 목록에 있을 때만 그대로 되돌려 주는 방식으로 답한다.
+        example:
+          language: http
+          code: |-
+            # 화면
+            # fetch("https://api.example.com/orders", { credentials: "include" })
+
+            GET /orders HTTP/1.1
+            Origin: https://shop.example.com
+            Cookie: session=...
+
+            # 나쁘다 — 자격 증명인데 와일드카드
+            HTTP/1.1 200 OK
+            Access-Control-Allow-Origin: *
+            Access-Control-Allow-Credentials: true
+
+            # 좋다 — 허용 목록에 있으면 그 출처를 그대로
+            HTTP/1.1 200 OK
+            Access-Control-Allow-Origin: https://shop.example.com
+            Access-Control-Allow-Credentials: true
+            Vary: Origin
+          output: |-
+            나쁜 쪽
+              브라우저가 응답 접근을 막는다
+              "The value of the 'Access-Control-Allow-Origin' header
+               must not be the wildcard '*' when credentials mode is 'include'"
+
+            좋은 쪽
+              통과. Vary: Origin 이 있어야 캐시가 출처별로 갈린다
+          note: |-
+            - '자격 증명이 걸리면 `*` 는 **어느 CORS 응답 헤더에서도** 못 쓴다'
+            - '출처를 되돌려 줄 때는 **허용 목록에 있을 때만** — 받은 값을 그대로 반사하면 아무 출처나 허용하는 것이다'
+            - '`Vary: Origin` 이 없으면 캐시가 다른 출처에 엉뚱한 헤더를 줄 수 있다'
+        predict:
+          question: '`credentials: "include"` 로 부르는데 서버가 `Access-Control-Allow-Origin: *` 를 주면?'
+          choices:
+            - 브라우저가 응답 접근을 막는다. 자격 증명 요청에는 와일드카드를 쓸 수 없다
+            - 정상 동작한다. * 는 모든 출처를 뜻한다
+            - 쿠키만 빠지고 나머지는 동작한다
+            - 서버에서 500 이 난다
+          answer: 브라우저가 응답 접근을 막는다. 자격 증명 요청에는 와일드카드를 쓸 수 없다
+          explanation: |-
+            `*` 는 "아무나 와도 좋다"는 뜻인데, 쿠키가 실린 요청에까지 그렇게 열어 주면
+            아무 사이트나 남의 로그인 상태로 API를 부르고 **응답까지 읽을 수 있게** 된다.
+            그래서 규격이 이 조합을 금지하고 브라우저가 막는다.
+            "왜 다른 API는 되는데 로그인 쪽만 안 되지"의 흔한 원인이다.
+        complete:
+          question: 자격 증명 요청에 올바르게 답하도록 빈칸을 채우세요.
+          code: |-
+            Access-Control-Allow-Origin: ___
+            Access-Control-Allow-Credentials: ___
+            Vary: Origin
+          answers:
+            - ["https://shop.example.com"]
+            - ["true"]
+          explanation: |-
+            와일드카드 대신 **명시적인 출처**를 적고, 자격 증명 허용은 `true`다(다른 값은 없다).
+            `Vary: Origin`은 캐시가 출처별로 갈리게 해 준다.
+        problem:
+          prompt: |-
+            API 서버의 CORS 설정이 이렇습니다.
+
+            ```text
+            Access-Control-Allow-Origin: *
+            Access-Control-Allow-Methods: *
+            Access-Control-Allow-Headers: *
+            ```
+
+            이제 세션 쿠키로 로그인을 붙이려고 합니다.
+            화면은 `https://shop.example.com`, 관리자 화면은 `https://admin.example.com` 입니다.
+
+            1. 지금 설정으로 로그인을 붙이면 무슨 일이 생기는지
+            2. 고친 설정을 쓰세요 (두 화면 모두 되어야 합니다)
+            3. 받은 `Origin` 을 **그대로 되돌려 주는** 구현이 왜 위험한지
+          deliverables:
+            - 지금 설정의 문제
+            - 고친 설정 (두 출처 처리 방법 포함)
+            - Origin 반사가 위험한 이유
+          hints:
+            - 자격 증명이 걸리면 어느 헤더까지 와일드카드를 못 쓰나요?
+            - 허용할 출처가 둘인데 `Allow-Origin` 에는 하나만 적을 수 있습니다. 어떻게 할까요?
+            - '"받은 값을 그대로 돌려준다"면 결국 무엇을 허용하는 것일까요?'
+          modelAnswer: |-
+            **1. 무슨 일이 생기나**
+
+            브라우저가 모든 요청의 응답 접근을 막는다. 자격 증명 요청에는 `Allow-Origin` 뿐 아니라
+            `Allow-Methods`·`Allow-Headers` 에도 `*` 를 쓸 수 없다. 로그인 전에는 되던 것이 로그인을 붙이는 순간 전부 깨진다.
+
+            **2. 고친 설정**
+
+            서버에 **허용 목록**을 두고, 요청의 `Origin` 이 그 목록에 있을 때만 그 값을 돌려준다.
+
+            ```text
+            허용 목록: https://shop.example.com, https://admin.example.com
+
+            (Origin: https://shop.example.com 인 요청에 대해)
+            Access-Control-Allow-Origin: https://shop.example.com
+            Access-Control-Allow-Methods: GET, POST, PATCH, DELETE
+            Access-Control-Allow-Headers: Content-Type, Authorization
+            Access-Control-Allow-Credentials: true
+            Access-Control-Max-Age: 3600
+            Vary: Origin
+            ```
+
+            `Allow-Origin` 에는 하나만 적을 수 있으므로 **요청마다 목록을 보고 골라** 적는다.
+            그래서 `Vary: Origin` 이 반드시 필요하다 — 없으면 캐시가 한 출처의 응답을 다른 출처에 줄 수 있다.
+
+            **3. `Origin` 반사가 위험한 이유**
+
+            목록 검사 없이 받은 값을 그대로 돌려주면, 어떤 출처가 오든 그 출처를 허용하게 된다.
+            결국 **`*` 와 같으면서, 자격 증명까지 허용되는** 상태다 —
+            공격자의 사이트가 사용자의 로그인 쿠키로 API를 부르고 응답을 읽을 수 있다.
+            반드시 **허용 목록과 대조한 뒤**에만 돌려준다.
+          selfChecks:
+            - 와일드카드가 세 헤더 모두에서 문제라는 것을 짚었는가
+            - 두 출처를 허용 목록 + 요청별 선택으로 처리했고 `Vary: Origin` 을 넣었는가
+            - 반사가 "사실상 `*` 인데 자격 증명까지 허용"이라는 점을 설명했는가
+
+      - key: LESSON.WEB_HTTP.CORS.001.U4
+        title: 어디에 설정할 것인가
+        minutes: 10
+        core: false
+        prerequisiteUnits:
+          - LESSON.WEB_HTTP.CORS.001.U3
+        explain: |-
+          CORS 헤더를 붙일 수 있는 자리는 여럿이다. **여러 곳에 겹쳐 두는 것이 가장 흔한 사고**다.
+
+          | 자리 | 특징 |
+          |---|---|
+          | 리버스 프록시(nginx 등) | 앱과 무관하게 붙는다. 앱에도 설정하면 **헤더가 두 번** 붙는다 |
+          | 앱 전역 설정 | 한 곳에서 관리된다. 대개 여기가 맞다 |
+          | 컨트롤러별 설정 | 예외가 있는 자리에만 |
+
+          헤더가 두 번 붙으면 브라우저는 **거부한다** — `Access-Control-Allow-Origin` 값이 둘이면
+          어느 것을 믿을지 정할 수 없기 때문이다. "설정을 더 했는데 더 안 된다"의 원인이 대개 이것이다.
+
+          **환경마다 허용 출처가 다르다.** 개발은 `http://localhost:5173`, 운영은 진짜 도메인이다.
+          그러니 출처 목록은 코드에 박지 말고 **설정으로 빼서 환경마다 다르게** 준다
+          (Spring Boot 설정 노트 U2·U3의 그 방법이다).
+
+          보안 검토에서 볼 것도 정해져 있다.
+
+          - 운영에 `localhost` 가 남아 있지 않은가
+          - `*` 를 쓰고 있지 않은가 (자격 증명이 없더라도 API 를 전 세계에 여는 것이다)
+          - 허용 목록에 **쓰지 않는 옛 도메인**이 남아 있지 않은가
+
+          마지막 하나. **CORS는 인증이 아니다.** 브라우저에서 읽는 것을 제한할 뿐,
+          서버가 누구인지 확인하고 권한을 보는 일은 **따로** 해야 한다.
+        example:
+          language: yaml
+          code: |-
+            # application.yaml — 공통에는 이름만
+            shop:
+              cors:
+                allowed-origins: ${SHOP_ALLOWED_ORIGINS}
+
+            # application-local.yaml
+            shop:
+              cors:
+                allowed-origins: http://localhost:5173
+
+            # application-prod.yaml — 진짜 값은 환경 변수로
+            # SHOP_ALLOWED_ORIGINS=https://shop.example.com,https://admin.example.com
+          output: |-
+            설정이 한 곳 (앱 전역) + 환경마다 다른 값
+              → 프록시와 앱 양쪽에 두지 않는다
+              → 운영에 localhost 가 섞일 일이 없다
+
+            헤더가 두 번 붙으면
+              "The 'Access-Control-Allow-Origin' header contains multiple values"
+              → 브라우저가 거부한다
+          note: |-
+            - '헤더는 **한 곳에서만** 붙인다. 프록시와 앱 양쪽은 사고다'
+            - '허용 출처는 프로필·환경 변수로 — 운영에 `localhost` 가 남지 않게'
+            - 'CORS 는 인증이 아니다. 권한 검사는 따로 한다'
+        predict:
+          question: nginx와 스프링 양쪽에 CORS 헤더를 설정하면?
+          choices:
+            - 헤더가 두 번 붙어 브라우저가 거부한다
+            - 더 안전해진다
+            - 나중 것이 앞의 것을 덮는다
+            - 아무 차이 없다
+          answer: 헤더가 두 번 붙어 브라우저가 거부한다
+          explanation: |-
+            `Access-Control-Allow-Origin` 이 두 줄(또는 값이 둘)이면 브라우저는 어느 것을 믿을지 정할 수 없어
+            **거부한다.** "설정을 더 했는데 더 안 된다"가 되는 전형적인 경로다.
+            한 곳에서만 붙이고, 어디서 붙는지를 팀이 알고 있어야 한다.
+        complete:
+          question: 환경마다 허용 출처를 다르게 주도록 빈칸을 채우세요.
+          code: |-
+            # application-prod.yaml
+            shop:
+              cors:
+                allowed-origins: ${___}
+          answers:
+            - [SHOP_ALLOWED_ORIGINS]
+          explanation: |-
+            진짜 도메인을 파일에 적지 않고 환경 변수로 받는다.
+            설정 노트 U2에서 본 것처럼 **환경 변수가 파일을 덮으므로**, 저장소에는 이름만 남는다.
+        problem:
+          prompt: |-
+            운영 서버의 응답 헤더가 이렇습니다.
+
+            ```text
+            Access-Control-Allow-Origin: http://localhost:5173
+            Access-Control-Allow-Origin: https://shop.example.com
+            Access-Control-Allow-Credentials: true
+            ```
+
+            1. 브라우저에서 무슨 일이 생기는지
+            2. 왜 이런 응답이 나왔을지 **가장 그럴듯한 원인**
+            3. 고치는 방법과, 이런 일이 다시 생기지 않게 하는 방법
+          deliverables:
+            - 세 물음에 대한 답
+            - 3번은 "지금 고치기"와 "다시 안 생기게" 둘 다
+          hints:
+            - 같은 헤더가 두 줄입니다. 브라우저가 어느 것을 믿을까요?
+            - 두 값이 각각 어디서 왔을지 생각해 보세요 — 하나는 개발용입니다.
+            - 운영에 개발용 값이 남아 있는 것 자체도 문제입니다.
+          modelAnswer: |-
+            **1. 무슨 일이 생기나**
+
+            브라우저가 거부한다. `Access-Control-Allow-Origin` 값이 둘이면 어느 것을 믿을지 정할 수 없어서,
+            허용된 출처인 `https://shop.example.com` 에서 불러도 막힌다.
+
+            **2. 가장 그럴듯한 원인**
+
+            **두 곳에서 헤더를 붙이고 있다.** 프록시(또는 게이트웨이)가 하나를 붙이고 앱이 또 하나를 붙였다.
+            게다가 `localhost` 값이 운영에 살아 있는 것을 보면 **개발용 설정이 그대로 배포됐다** —
+            허용 출처가 환경별로 갈리지 않고 코드나 공통 설정에 박혀 있을 가능성이 크다.
+
+            **3. 고치기와 예방**
+
+            - '**지금**: 헤더를 붙이는 자리를 **한 곳으로** 줄인다(대개 앱 전역 설정). 다른 쪽 설정은 지운다.'
+            - '**다시 안 생기게**: ① 허용 출처를 프로필·환경 변수로 빼서 운영에 `localhost` 가 들어갈 수 없게 한다. ② 배포 후 스모크 점검에 **응답 헤더 확인**을 넣는다 — `curl -I` 로 `Access-Control-Allow-Origin` 이 한 줄인지, 값이 운영 도메인인지 본다.'
+          selfChecks:
+            - 브라우저가 "거부한다"고 답했는가 (하나를 고른다가 아니라)
+            - 원인으로 **두 곳에서 붙임**과 **개발용 값 배포** 둘 다 짚었는가
+            - 예방책에 설정 분리와 배포 후 확인이 들어 있는가
+
+    commonMistakes:
+      - CORS 오류를 보고 프런트 코드를 고치려 한다. 막는 것은 브라우저이고 고칠 자리는 서버 응답 헤더다 (U1)
+      - 자격 증명을 쓰면서 `*` 를 둔다. 로그인 붙이는 순간 전부 깨진다 (U3)
+      - 프록시와 앱 양쪽에 설정해 헤더가 두 번 붙는다. "설정을 더 했는데 더 안 된다" (U4)
+    inProject: |-
+      주문 시스템의 화면과 API를 다른 포트에서 띄우는 순간 바로 만난다.
+      먼저 증상으로 가린다 — curl 로는 되는데 브라우저만 막히면 CORS다(U1).
+      서버 로그에 `OPTIONS` 만 찍혔는지 보면 사전 요청 단계인지까지 좁혀진다(U2).
+      로그인을 붙일 때는 `*` 를 버리고 허용 목록 + `Allow-Credentials: true` + `Vary: Origin` 으로 간다(U3).
+      허용 출처는 프로필과 환경 변수로 갈라 두고 헤더는 한 곳에서만 붙인다(U4).
+    sources:
+      - title: MDN — Cross-Origin Resource Sharing (CORS)
+        url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS
+        versionScope: Fetch Standard
+      - title: MDN — HTTP request methods
+        url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods
+        versionScope: HTTP/1.1
+    verifiedAt: 2026-09-22
