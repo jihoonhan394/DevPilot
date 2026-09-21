@@ -1,0 +1,600 @@
+# DevPilot 개념 노트 — Spring 테스트
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - JUnit 노트(LESSON.TESTING.JUNIT.001)는 테스트 하나의 생김새를 다룬다.
+#   여기서는 "스프링이 끼어든 테스트"를 다룬다 — 겹치지 않게 쓴다
+# - 버전을 우리 것에 맞춘다: Spring Boot 4.1 / PostgreSQL 16 / Testcontainers
+lessons:
+  - key: LESSON.TESTING.SPRING_TEST.001
+    skillCode: TESTING.SPRING_TEST
+    title: 스프링이 낀 코드를 테스트하기
+    whyItMatters: |-
+      순수 자바 클래스는 `new` 해서 테스트하면 된다. 그런데 컨트롤러·리포지터리는 혼자 돌지 않는다 —
+      컨테이너가 빈을 만들어 주고, 요청을 메서드에 잇고, DB에 연결해 줘야 한다.
+      그걸 다 띄우면 테스트 하나에 수십 초가 걸리고, 안 띄우면 정작 확인하고 싶은 것을 확인하지 못한다.
+      **얼마나 띄울지 고르는 것**이 이 단원의 전부다.
+    oneLine: 스프링 테스트는 "무엇을 확인하려는가"에 따라 컨테이너를 통째로 띄울지, 한 겹만 띄울지, 아예 안 띄울지를 고르는 일이다.
+    units:
+      - key: LESSON.TESTING.SPRING_TEST.001.U1
+        title: 얼마나 띄울지 고르기
+        minutes: 12
+        core: true
+        explain: |-
+          선택지는 셋이다. 위로 갈수록 빠르고 아래로 갈수록 진짜에 가깝다.
+
+          | 방식 | 띄우는 것 | 언제 |
+          |---|---|---|
+          | 순수 단위 테스트 | 아무것도 안 띄움 (`new`) | 규칙·계산 — **대부분이 여기여야 한다** |
+          | 슬라이스 (`@WebMvcTest` 등) | 그 겹만 | 컨트롤러의 매핑·검증·오류 응답 |
+          | `@SpringBootTest` | 전부 | 여러 겹이 맞물린 흐름, 설정이 맞는지 |
+
+          공식 문서는 `@SpringBootTest`를 **"`SpringApplication`을 통해 테스트가 쓸 `ApplicationContext`를 만든다"** 고
+          설명하고, 설정 클래스는 **"테스트가 든 패키지에서 위로 올라가며 `@SpringBootApplication`이나
+          `@SpringBootConfiguration`이 붙은 클래스를 찾는다"** 고 밝힌다. 그래서 대개 아무것도 적지 않아도 된다.
+
+          서버를 띄울지는 `webEnvironment`로 정한다. **기본은 `MOCK`이라 서버를 띄우지 않는다** —
+          `@AutoConfigureMockMvc`와 함께 쓰면 실제 포트 없이 요청을 흉내 낼 수 있다.
+          진짜 포트가 필요하면 `RANDOM_PORT`다.
+
+          가장 중요한 것은 **개수**다. `@SpringBootTest`가 수십 개면 빌드가 몇 분씩 걸린다.
+          **규칙은 순수 단위 테스트로 내리고**, 스프링이 정말 필요한 것만 위로 올린다.
+        example:
+          language: java
+          code: |-
+            // 1. 순수 — 스프링 없음. 밀리초 단위
+            class DeliveryFeeTest {
+                @Test
+                void shouldBeFreeOverThreshold() {
+                    assertEquals(0, new DeliveryFee(3_000, 30_000).feeFor(30_000));
+                }
+            }
+
+            // 2. 슬라이스 — 웹 겹만
+            @WebMvcTest(OrderController.class)
+            class OrderControllerTest {
+                @Autowired MockMvc mvc;
+                @MockitoBean OrderService orderService;      // 아래 겹은 가짜로
+            }
+
+            // 3. 전체 — 설정까지 진짜
+            @SpringBootTest                                   // webEnvironment 기본 = MOCK
+            @AutoConfigureMockMvc
+            class OrderFlowTest {
+                @Autowired MockMvc mvc;
+            }
+          output: |-
+            1 순수        → 컨텍스트 0개. 수 밀리초
+            2 슬라이스     → 웹 겹만. 수백 밀리초
+            3 SpringBootTest → 전부. 수 초 (첫 번째는 더)
+
+            같은 설정이면 컨텍스트를 **재사용**한다
+              → 설정이 조금씩 다른 테스트를 늘리면 그만큼 다시 띄운다
+          note: |-
+            - '설정 클래스를 적지 않아도 된다 — 패키지를 위로 올라가며 찾는다'
+            - '`@SpringBootTest`의 기본은 서버를 띄우지 않는다(`MOCK`)'
+            - '테스트마다 `@TestPropertySource`로 설정을 달리하면 컨텍스트가 그만큼 늘어난다'
+        predict:
+          question: '`@SpringBootTest`만 붙이면 톰캣이 실제 포트에서 뜨나?'
+          choices:
+            - 아니다. 기본은 MOCK 이라 서버를 띄우지 않는다
+            - 그렇다. 항상 8080 에서 뜬다
+            - 그렇다. 임의 포트에서 뜬다
+            - 설정에 따라 다르고 기본값은 없다
+          answer: 아니다. 기본은 MOCK 이라 서버를 띄우지 않는다
+          explanation: |-
+            기본 `webEnvironment`는 `MOCK`이다 — 웹 컨텍스트는 만들지만 **내장 서버는 띄우지 않는다.**
+            그래서 `@AutoConfigureMockMvc`와 함께 쓰면 포트 없이 요청을 흉내 낼 수 있고 훨씬 빠르다.
+            진짜 포트가 필요할 때(외부 클라이언트로 부르는 테스트)만 `RANDOM_PORT`를 쓴다.
+        complete:
+          question: 컨트롤러 한 겹만 띄우고 서비스는 가짜로 두도록 빈칸을 채우세요.
+          code: |-
+            @___(OrderController.class)
+            class OrderControllerTest {
+
+                @Autowired MockMvc mvc;
+
+                @___ OrderService orderService;
+            }
+          answers:
+            - [WebMvcTest]
+            - [MockitoBean]
+          explanation: |-
+            웹 겹만 띄우는 슬라이스는 `@WebMvcTest`이고,
+            컨텍스트 안의 빈을 가짜로 바꾸는 것은 `@MockitoBean`이다.
+        problem:
+          prompt: |-
+            아래 셋을 각각 어느 방식으로 테스트할지 정하고 이유를 쓰세요.
+
+            1. 배송비 계산 규칙 (3만원 이상 무료, 미만 3000원)
+            2. `POST /orders` 가 수량 0이면 400과 `errors[0].field = "quantity"` 를 주는가
+            3. 주문을 넣으면 재고가 줄고 주문 이력이 남는가 (여러 서비스와 DB가 맞물린다)
+
+            그리고 **팀의 테스트가 전부 `@SpringBootTest`라면** 무엇이 문제인지 쓰세요.
+          deliverables:
+            - 셋의 방식과 이유
+            - 전부 @SpringBootTest 일 때의 문제
+          hints:
+            - 1번에 스프링이 필요한가요? 무엇을 `new` 하면 되나요?
+            - 2번에서 확인하려는 것은 컨트롤러의 무엇인가요? 서비스 내부가 필요한가요?
+            - 빌드 시간과 "실패했을 때 원인을 좁히기" 둘 다 생각해 보세요.
+          modelAnswer: |-
+            | # | 방식 | 이유 |
+            |---|---|---|
+            | 1 | **순수 단위 테스트** | 규칙은 값만 넣으면 확인된다. 스프링이 전혀 필요 없고, 경계값을 여럿 돌려도 밀리초다 |
+            | 2 | **`@WebMvcTest`** | 확인하려는 것은 매핑·검증·오류 응답 **형식**이지 서비스 내부가 아니다. `@MockitoBean`으로 서비스를 가짜로 두면 컨트롤러만 남는다 |
+            | 3 | **`@SpringBootTest`** | 여러 겹과 트랜잭션이 맞물린 흐름이다. 이건 통째로 띄워야 "정말 되는지"를 본다 |
+
+            **전부 `@SpringBootTest`라면**
+
+            - '**느리다.** 컨텍스트를 띄우는 비용이 테스트마다 붙고, 설정이 조금씩 다르면 컨텍스트가 여러 개 만들어진다. 빌드가 몇 분이 되면 사람들이 테스트를 안 돌리게 된다.'
+            - '**실패했을 때 원인이 안 좁혀진다.** 규칙이 틀린 건지, 매핑이 틀린 건지, 설정이 틀린 건지 한 번에 알 수 없다. 순수 단위 테스트가 먼저 빨갛게 되면 원인이 그 규칙 하나로 좁혀진다.'
+          selfChecks:
+            - 1번을 스프링 없이 하기로 했는가
+            - 2번에서 서비스를 가짜로 두는 방식을 골랐는가
+            - 문제로 **속도**와 **원인 좁히기** 둘 다 들었는가
+
+      - key: LESSON.TESTING.SPRING_TEST.001.U2
+        title: 컨트롤러 한 겹만 확인하기
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.TESTING.SPRING_TEST.001.U1
+        explain: |-
+          `@WebMvcTest`는 **웹 겹만** 띄운다. 공식 문서가 밝히는 포함·제외가 분명하다.
+
+          - 들어오는 것: `@Controller`, **`@ControllerAdvice`**, `Filter`, `HandlerInterceptor`,
+            `WebMvcConfigurer`, 메시지 변환 관련 빈
+          - 들어오지 **않는** 것: 보통의 `@Component`(서비스·리포지터리), `@ConfigurationProperties`
+
+          그래서 컨트롤러가 기대는 서비스는 **내가 채워 줘야** 한다 — `@MockitoBean`이다.
+          공식 문서는 이것을 **"`ApplicationContext` 안의 빈을 Mockito mock으로 정의하는 애너테이션"** 이라 설명한다.
+          채워 주지 않으면 빈이 없어서 컨텍스트가 뜨지 않는다.
+
+          `@ControllerAdvice`가 함께 들어온다는 점이 중요하다. 그래서 **검증 실패가 정말 400과
+          그 본문 형식으로 나가는지**를 여기서 확인할 수 있다 — 입력 검증 노트(U3)에서 만든 그 핸들러다.
+
+          확인할 것은 셋이다.
+
+          1. **매핑** — 그 주소·메서드가 이 메서드로 오는가
+          2. **읽고 쓰기** — 요청 JSON이 record로 들어오고 응답 JSON 모양이 맞는가
+          3. **오류** — 잘못된 요청이 약속한 상태 코드와 본문으로 나가는가
+
+          **서비스가 무엇을 계산하는지는 여기서 확인하지 않는다.** 그건 순수 단위 테스트의 몫이다.
+        example:
+          language: java
+          code: |-
+            @WebMvcTest(OrderController.class)
+            class OrderControllerTest {
+
+                @Autowired MockMvc mvc;
+                @MockitoBean OrderService orderService;
+
+                @Test
+                @DisplayName("수량이 0이면 400과 어느 칸이 틀렸는지를 준다")
+                void shouldRejectZeroQuantity() throws Exception {
+                    mvc.perform(post("/orders")
+                                    .contentType(APPLICATION_JSON)
+                                    .content("""
+                                             {"customerId": 1, "quantity": 0}
+                                             """))
+                            .andExpect(status().isBadRequest())
+                            .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                            .andExpect(jsonPath("$.errors[0].field").value("quantity"));
+
+                    verifyNoInteractions(orderService);      // 서비스까지 가지도 않았다
+                }
+            }
+          output: |-
+            서비스는 가짜 → 계산 로직이 섞이지 않는다
+            @ControllerAdvice 는 진짜 → 오류 형식이 진짜로 확인된다
+
+            verifyNoInteractions
+              "걸러졌다"를 눈에 보이게 만든다
+              (400 만 보면 서비스가 던진 400 일 수도 있다)
+          note: |-
+            - '`@MockitoBean`을 빠뜨리면 빈이 없어 **컨텍스트가 뜨지 않는다**'
+            - '`@ControllerAdvice`가 함께 뜨므로 오류 본문 형식을 여기서 본다'
+            - '`verifyNoInteractions`로 "서비스 전에 걸러졌다"를 분명히 한다'
+        predict:
+          question: '`@WebMvcTest`에서 `@MockitoBean OrderService`를 빠뜨리면?'
+          choices:
+            - 컨텍스트가 뜨지 않는다. 컨트롤러가 기대는 빈이 없다
+            - null 이 주입되고 테스트는 돈다
+            - 진짜 OrderService 가 들어온다
+            - 컴파일 오류가 난다
+          answer: 컨텍스트가 뜨지 않는다. 컨트롤러가 기대는 빈이 없다
+          explanation: |-
+            `@WebMvcTest`는 보통의 `@Component`를 **띄우지 않는다.** 그래서 진짜 `OrderService`는 없고,
+            컨트롤러 생성자가 그것을 요구하므로 컨텍스트를 만들 수 없다.
+            테스트가 실패하는 게 아니라 **뜨지도 못하고** 죽는다 — 슬라이스를 쓸 때 가장 먼저 만나는 오류다.
+        complete:
+          question: 잘못된 요청이 서비스까지 가지 않았음을 확인하도록 빈칸을 채우세요.
+          code: |-
+            mvc.perform(post("/orders").contentType(APPLICATION_JSON).content("{}"))
+                    .andExpect(status().___());
+
+            ___(orderService);
+          answers:
+            - [isBadRequest]
+            - [verifyNoInteractions]
+          explanation: |-
+            검증 실패는 400이므로 `isBadRequest()`,
+            서비스가 한 번도 불리지 않았음을 확인하는 것은 `verifyNoInteractions`다.
+        problem:
+          prompt: |-
+            `GET /orders/{orderId}` 컨트롤러를 `@WebMvcTest`로 확인하세요.
+
+            - 있는 주문이면 200과 주문 JSON
+            - 없는 주문이면 서비스가 `OrderNotFoundException`을 던지고, `@ControllerAdvice`가 404 `ORDER_NOT_FOUND`로 바꾼다
+            - `orderId`가 UUID 모양이 아니면 400
+
+            **테스트 세 개**를 작성하고, 각각이 **무엇을 확인하는 것인지** 한 줄씩 쓰세요.
+          deliverables:
+            - 테스트 클래스 (테스트 3개)
+            - 각 테스트가 확인하는 것 한 줄씩
+          hints:
+            - 가짜 서비스가 예외를 던지게 하려면 어떻게 할까요?
+            - 세 번째는 서비스에 닿기 전에 갈립니다. 무엇을 확인해야 할까요?
+            - 확인하는 것이 "서비스의 계산"이 되지 않게 조심하세요.
+          modelAnswer: |-
+            ```java
+            @WebMvcTest(OrderController.class)
+            class OrderControllerTest {
+
+                @Autowired MockMvc mvc;
+                @MockitoBean OrderService orderService;
+
+                private static final String ID = "5a1d7c1e-3f4b-4f39-9a0b-6e9f4c2b8d10";
+
+                @Test
+                void shouldReturnOrder() throws Exception {
+                    given(orderService.get(UUID.fromString(ID)))
+                            .willReturn(new OrderView(ID, 42_000, "PAID"));
+
+                    mvc.perform(get("/orders/{id}", ID))
+                            .andExpect(status().isOk())
+                            .andExpect(jsonPath("$.id").value(ID))
+                            .andExpect(jsonPath("$.totalAmount").value(42_000));
+                }
+
+                @Test
+                void shouldTranslateNotFound() throws Exception {
+                    given(orderService.get(any())).willThrow(new OrderNotFoundException());
+
+                    mvc.perform(get("/orders/{id}", ID))
+                            .andExpect(status().isNotFound())
+                            .andExpect(jsonPath("$.code").value("ORDER_NOT_FOUND"));
+                }
+
+                @Test
+                void shouldRejectMalformedId() throws Exception {
+                    mvc.perform(get("/orders/{id}", "not-a-uuid"))
+                            .andExpect(status().isBadRequest());
+
+                    verifyNoInteractions(orderService);
+                }
+            }
+            ```
+
+            - '첫째: **매핑과 응답 JSON 모양.** 금액이 42000인지가 아니라 `totalAmount` 칸으로 나오는지를 본다.'
+            - '둘째: **`@ControllerAdvice`가 예외를 약속한 응답으로 바꾸는가.** 서비스가 무엇 때문에 던졌는지는 상관없다.'
+            - '셋째: **서비스에 닿기 전에 걸러지는가.** `verifyNoInteractions`가 "컨트롤러 앞단에서 막혔다"를 분명히 한다.'
+          selfChecks:
+            - 세 테스트가 각각 매핑·오류 변환·앞단 차단을 보는가 (서비스의 계산을 보지 않는가)
+            - 가짜 서비스가 값을 주거나 예외를 던지도록 세워 뒀는가
+            - 세 번째에 `verifyNoInteractions`가 있는가
+
+      - key: LESSON.TESTING.SPRING_TEST.001.U3
+        title: 진짜 DB로 확인하기
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.TESTING.SPRING_TEST.001.U1
+        explain: |-
+          리포지터리 테스트를 **메모리 DB(H2)** 로 하면 빠르지만 거짓 안심을 준다.
+          운영은 PostgreSQL인데 H2는 문법도 타입도 인덱스 동작도 다르다 —
+          H2에서 통과한 질의가 운영에서 깨진다.
+
+          그래서 **진짜 DB를 컨테이너로 띄운다.** Testcontainers다.
+
+          Spring Boot는 이것을 `@ServiceConnection`으로 이어 준다. 공식 문서의 설명은 이렇다 —
+          **"서비스 연결은 원격 서비스로의 연결이다. Spring Boot의 자동 구성이 그 정보를 받아 연결을 맺고,
+          이때 연결 정보가 연결 관련 설정 속성보다 우선한다."**
+
+          즉 컨테이너를 선언만 하면 **URL·계정을 손으로 넘기지 않아도** 된다.
+          옛 방식(`@DynamicPropertySource`)은 속성을 하나씩 등록해 줘야 했다.
+
+          여기서 꼭 지킬 것이 둘 있다.
+
+          - **컨테이너는 한 번만 띄운다.** 테스트 클래스마다 새로 띄우면 빌드가 몇 배로 길어진다.
+            `static` 필드로 두고 공유한다
+          - **테스트끼리 데이터를 공유하지 않는다.** 앞 테스트가 넣은 줄이 남아 있으면 순서에 따라 결과가 달라진다
+            (JUnit 노트 U4와 같은 이야기다). 트랜잭션 롤백이나 정리로 끊는다
+
+          마이그레이션도 여기서 확인된다. 진짜 PostgreSQL에 Flyway가 실제로 돌아 보므로,
+          **마이그레이션이 깨졌으면 테스트가 먼저 안다.**
+        example:
+          language: java
+          code: |-
+            @SpringBootTest
+            @Testcontainers
+            class OrderRepositoryTest {
+
+                @Container
+                @ServiceConnection                              // URL·계정을 손으로 안 넘긴다
+                static PostgreSQLContainer<?> postgres =
+                        new PostgreSQLContainer<>("postgres:16");
+
+                @Autowired OrderRepository orderRepository;
+
+                @Test
+                void shouldFindActiveOrdersOfCustomer() {
+                    orderRepository.save(new Order(17L, 42_000));
+
+                    assertThat(orderRepository.findByCustomerIdAndCanceledAtIsNull(17L))
+                            .hasSize(1);
+                }
+            }
+          output: |-
+            postgres:16 컨테이너가 뜬다 → Flyway 가 실제로 돈다 → 테스트
+
+            H2 였다면
+              "select ... limit ?" 는 되는데
+              PostgreSQL 전용 문법·타입에서 운영에서만 깨진다
+
+            static 컨테이너
+              클래스가 여럿이어도 한 번만 띄운다
+          note: |-
+            - '`postgres:16` — **운영과 같은 버전**을 적는다. 버전이 다르면 확인의 의미가 준다'
+            - '`@ServiceConnection` 하나로 연결 정보가 자동으로 이어진다'
+            - '컨테이너는 `static`으로 공유하고, **데이터는 테스트마다 끊는다**'
+        predict:
+          question: 리포지터리 테스트를 H2로 하고 운영은 PostgreSQL이면 무엇이 위험한가?
+          choices:
+            - H2 에서 통과한 질의가 운영에서 깨질 수 있다. 문법·타입·동작이 다르다
+            - 테스트가 느려진다
+            - 아무 문제 없다. JPA 가 다 가려 준다
+            - 컴파일이 안 된다
+          answer: H2 에서 통과한 질의가 운영에서 깨질 수 있다. 문법·타입·동작이 다르다
+          explanation: |-
+            JPA가 많은 것을 가려 주지만 전부는 아니다. 네이티브 질의, 타입(배열·JSON·`timestamptz`),
+            잠금과 격리 수준, 마이그레이션 SQL은 DB마다 다르게 동작한다.
+            **초록색인데 운영에서 깨지는 것**이 빨간색보다 나쁘다 — 믿고 배포하기 때문이다.
+        complete:
+          question: 컨테이너의 연결 정보가 자동으로 이어지도록 빈칸을 채우세요.
+          code: |-
+            @Container
+            @___
+            static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:___");
+          answers:
+            - [ServiceConnection]
+            - ["16"]
+          explanation: |-
+            `@ServiceConnection`이 연결 정보를 자동으로 이어 준다(옛 방식은 `@DynamicPropertySource`).
+            이미지 태그는 **운영과 같은 16**을 적는다.
+        problem:
+          prompt: |-
+            동료의 리포지터리 테스트가 이렇습니다.
+
+            ```java
+            @SpringBootTest
+            @Testcontainers
+            class OrderRepositoryTest {
+
+                @Container
+                @ServiceConnection
+                PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16");
+
+                @Autowired OrderRepository orderRepository;
+
+                @Test
+                void shouldSaveOrder() {
+                    orderRepository.save(new Order(17L, 42_000));
+                    assertThat(orderRepository.count()).isEqualTo(1);
+                }
+
+                @Test
+                void shouldFindByCustomer() {
+                    orderRepository.save(new Order(17L, 10_000));
+                    assertThat(orderRepository.findByCustomerId(17L)).hasSize(1);
+                }
+            }
+            ```
+
+            문제를 **둘** 찾아 고치세요.
+          deliverables:
+            - 찾은 문제 2가지와 각각 무슨 증상이 나는지
+            - 고친 코드
+          hints:
+            - 컨테이너 필드에 `static`이 있나요? 없으면 언제 뜰까요?
+            - 두 테스트를 순서를 바꿔 돌려 보면 어떻게 될까요?
+            - JUnit 노트 U4에서 본 것과 같은 함정입니다.
+          modelAnswer: |-
+            **문제 1 — 컨테이너가 `static`이 아니다**
+
+            JUnit은 테스트 메서드마다 인스턴스를 새로 만든다. 필드가 인스턴스 필드이므로
+            **테스트마다 컨테이너가 새로 뜨고 내려간다.** 두 개면 두 번, 스무 개면 스무 번이다.
+            빌드가 몇 분씩 길어진다.
+
+            **문제 2 — 테스트끼리 데이터가 남는다**
+
+            `count()`가 1이라고 단정했는데, 앞 테스트가 넣은 줄이 남아 있으면 2가 된다.
+            **실행 순서에 따라 결과가 달라지는 테스트**는 믿을 수 없다.
+
+            ```java
+            @SpringBootTest
+            @Testcontainers
+            @Transactional                                   // 각 테스트가 끝나면 롤백된다
+            class OrderRepositoryTest {
+
+                @Container
+                @ServiceConnection
+                static PostgreSQLContainer<?> postgres =     // 한 번만 뜬다
+                        new PostgreSQLContainer<>("postgres:16");
+
+                @Autowired OrderRepository orderRepository;
+
+                @Test
+                void shouldSaveOrder() {
+                    orderRepository.save(new Order(17L, 42_000));
+
+                    assertThat(orderRepository.count()).isEqualTo(1);
+                }
+
+                @Test
+                void shouldFindByCustomer() {
+                    orderRepository.save(new Order(17L, 10_000));
+
+                    assertThat(orderRepository.findByCustomerId(17L)).hasSize(1);
+                }
+            }
+            ```
+
+            (`@Transactional` 대신 `@BeforeEach`에서 지우는 방법도 있다. 중요한 것은 **끊는다**는 것이다.)
+          selfChecks:
+            - 컨테이너 필드에 `static`을 붙였고 그 이유가 "한 번만 띄운다"인가
+            - 테스트 사이의 데이터를 끊는 장치를 넣었는가
+            - 두 테스트를 어느 순서로 돌려도 통과하는가
+
+      - key: LESSON.TESTING.SPRING_TEST.001.U4
+        title: 느린 테스트를 되돌리기
+        minutes: 10
+        core: false
+        prerequisiteUnits:
+          - LESSON.TESTING.SPRING_TEST.001.U3
+        explain: |-
+          테스트가 느려지는 원인은 대개 **테스트 개수가 아니라 컨텍스트 개수**다.
+
+          스프링은 **설정이 같으면 컨텍스트를 재사용한다.** 그런데 클래스마다 조금씩 다르게 적으면
+          그때마다 새로 띄운다. 무엇이 "다름"을 만드는지 알아 두면 된다.
+
+          - `@TestPropertySource`·`properties = {...}` 의 값이 다르다
+          - `@MockitoBean`으로 바꾸는 빈의 조합이 다르다
+          - `@ActiveProfiles`가 다르다
+          - 슬라이스 종류가 다르다
+
+          그래서 **설정을 공통 부모나 공용 애너테이션 하나로 모으면** 컨텍스트가 하나로 줄어든다.
+          이 저장소가 `@IntegrationTest` 같은 합성 애너테이션을 쓰는 이유다.
+
+          줄이는 순서는 이렇다.
+
+          1. **위로 올려 둔 것을 내린다** — `@SpringBootTest`로 하던 규칙 확인을 순수 단위 테스트로
+          2. **설정을 모은다** — 공용 애너테이션 하나. `@MockitoBean` 조합도 되도록 통일
+          3. **컨테이너를 공유한다** — `static` + 재사용(U3)
+          4. 그래도 느리면 **어디가 느린지 본다** — `--profile` 이나 테스트 리포트의 소요 시간
+
+          마지막이 중요하다. **느낌으로 고치지 않는다.** 대개 소수의 클래스가 대부분의 시간을 쓴다.
+        example:
+          language: java
+          code: |-
+            // 공용 애너테이션 하나 — 설정이 같아 컨텍스트가 하나다
+            @Target(ElementType.TYPE)
+            @Retention(RetentionPolicy.RUNTIME)
+            @SpringBootTest
+            @AutoConfigureMockMvc
+            @ActiveProfiles("test")
+            @Tag("integration")
+            public @interface IntegrationTest { }
+
+            @IntegrationTest
+            class OrderFlowTest { }
+
+            @IntegrationTest
+            class PaymentFlowTest { }      // 같은 컨텍스트를 쓴다
+          output: |-
+            공용 애너테이션 전
+              클래스 12개 × 조금씩 다른 설정 → 컨텍스트 9개 → 느리다
+
+            공용 애너테이션 후
+              컨텍스트 1~2개 → 첫 클래스만 띄우고 나머지는 재사용
+
+            어디가 느린지 보기
+              build/reports/tests/... 의 소요 시간 정렬
+          note: |-
+            - '컨텍스트 재사용의 열쇠는 **설정이 글자 그대로 같은가**다'
+            - '`@Tag`로 갈라 두면 빠른 것만 따로 돌릴 수 있다'
+            - '느린 원인은 **재 보고** 고친다. 느낌으로 고치면 엉뚱한 데를 만진다'
+        predict:
+          question: 테스트 클래스마다 `@TestPropertySource`로 다른 값을 주면?
+          choices:
+            - 설정이 달라 컨텍스트가 클래스마다 새로 만들어져 느려진다
+            - 아무 차이 없다. 컨텍스트는 항상 하나다
+            - 마지막 값이 전체에 적용된다
+            - 컴파일 오류가 난다
+          answer: 설정이 달라 컨텍스트가 클래스마다 새로 만들어져 느려진다
+          explanation: |-
+            스프링은 **설정 조합을 열쇠로** 컨텍스트를 캐시한다. 속성 하나만 달라도 다른 열쇠가 되어
+            새로 띄운다. 클래스 수만큼 컨텍스트가 생기면 빌드 시간이 그만큼 곱해진다.
+            정말 다른 설정이 필요한 테스트만 따로 두고, 나머지는 공용 설정으로 모은다.
+        complete:
+          question: 여러 테스트가 같은 컨텍스트를 쓰도록 공용 애너테이션을 만드는 빈칸을 채우세요.
+          code: |-
+            @Target(ElementType.TYPE)
+            @Retention(RetentionPolicy.___)
+            @SpringBootTest
+            @ActiveProfiles("test")
+            public @___ IntegrationTest { }
+          answers:
+            - [RUNTIME]
+            - [interface]
+          explanation: |-
+            애너테이션을 실행 중에 읽어야 하므로 `RUNTIME`,
+            애너테이션 선언은 `@interface`다.
+        problem:
+          prompt: |-
+            팀의 backend 테스트가 12분 걸립니다. 조사해 보니 이렇습니다.
+
+            - `@SpringBootTest` 클래스 40개, 순수 단위 테스트 15개
+            - 그중 18개는 계산 규칙만 확인한다 (스프링 빈을 안 쓴다)
+            - 클래스마다 `@TestPropertySource`로 값을 조금씩 다르게 준다
+            - Testcontainers 컨테이너가 클래스마다 뜬다
+
+            **줄이는 순서**를 정하고 각각 무엇을 기대하는지 쓰세요. 그리고 **가장 먼저 할 일 하나**를 고르세요.
+          deliverables:
+            - 줄이는 순서와 각 단계의 기대 효과
+            - 가장 먼저 할 일과 그 이유
+          hints:
+            - 40개 중 18개가 스프링을 안 쓴다는 사실이 무엇을 뜻할까요?
+            - 컨텍스트가 몇 개 만들어지고 있을지 세어 보세요.
+            - 효과가 가장 크고 위험이 가장 작은 것부터 고르세요.
+          modelAnswer: |-
+            **순서**
+
+            1. **스프링이 필요 없는 18개를 순수 단위 테스트로 내린다** — 컨텍스트를 아예 안 쓰므로
+               그 18개의 시간이 거의 0이 된다. 실패했을 때 원인도 좁아진다
+            2. **컨테이너를 `static`으로 공유한다** — 클래스마다 뜨던 것이 한 번으로 준다.
+               컨테이너 기동이 클래스당 수 초씩이면 여기서 가장 큰 덩어리가 빠진다
+            3. **`@TestPropertySource`를 공용 애너테이션 하나로 모은다** — 설정이 같아져 컨텍스트가
+               여러 개에서 한두 개로 준다. 정말 다른 설정이 필요한 클래스만 예외로 남긴다
+            4. **남은 것을 재 본다** — 테스트 리포트에서 오래 걸리는 순으로 정렬해 상위 몇 개만 손본다
+
+            **가장 먼저 할 일: 1번.**
+
+            효과가 크면서 **위험이 가장 작다.** 18개를 내리는 것은 그 테스트 안의 단언을 그대로 옮기는 일이라
+            보장하는 내용이 바뀌지 않는다. 2·3번은 공유 자원과 설정을 건드리므로 다른 테스트에 영향이 갈 수 있어,
+            1번으로 확보한 시간으로 여유를 두고 하는 편이 낫다.
+          selfChecks:
+            - 네 단계가 각각 다른 원인을 겨누는가 (개수·컨테이너·컨텍스트·측정)
+            - 마지막 단계가 "재 본다"인가 (느낌으로 끝내지 않는가)
+            - 가장 먼저 할 일의 이유에 **위험**이 들어 있는가
+
+    commonMistakes:
+      - 규칙 확인까지 `@SpringBootTest`로 한다. 느려지고 실패했을 때 원인도 좁혀지지 않는다 (U1)
+      - 리포지터리 테스트를 H2로 한다. 초록색인데 운영에서 깨지는 것이 빨간색보다 나쁘다 (U3)
+      - 컨테이너를 인스턴스 필드로 둬 테스트마다 새로 띄운다 (U3)
+    inProject: |-
+      주문 시스템의 테스트를 이렇게 나눈다. 배송비·할인·상태 전이 같은 규칙은 **스프링 없이**(U1),
+      컨트롤러의 매핑·검증·오류 형식은 `@WebMvcTest` + `@MockitoBean`으로(U2),
+      리포지터리와 마이그레이션은 `postgres:16` 컨테이너로(U3) 확인한다.
+      통합 테스트는 공용 애너테이션 하나로 묶어 컨텍스트를 하나로 유지한다(U4) —
+      이 저장소가 `@IntegrationTest`를 쓰는 이유가 그것이다.
+    sources:
+      - title: Spring Boot Reference — Testing Spring Boot Applications
+        url: https://docs.spring.io/spring-boot/reference/testing/spring-boot-applications.html
+        versionScope: Spring Boot 4.1
+      - title: Spring Boot Reference — Testcontainers
+        url: https://docs.spring.io/spring-boot/reference/testing/testcontainers.html
+        versionScope: Spring Boot 4.1
+    verifiedAt: 2026-09-22
