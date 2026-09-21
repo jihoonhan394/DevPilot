@@ -1,0 +1,548 @@
+# DevPilot 개념 노트 — Spring Core (의존성 주입 · 컨테이너)
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 버전을 우리 것에 맞춘다: Spring Boot 4.1 / Spring Framework 7, Java 25
+# - 예외 이름은 spring-beans-7.0.9.jar 로 확인했다 (NoSuchBeanDefinition/NoUniqueBeanDefinition/
+#   UnsatisfiedDependency/BeanCurrentlyInCreation)
+lessons:
+  - key: LESSON.SPRING.DI_IOC.001
+    skillCode: SPRING.DI_IOC
+    title: 필요한 것을 남이 넣어 주게 하기 (의존성 주입)
+    whyItMatters: |-
+      스프링으로 만든 코드에는 `new`가 거의 없다. 처음 보면 "그럼 이 객체는 대체 누가 만들었나"가 안 보여서
+      나머지 전부가 마법처럼 느껴진다. 컨트롤러도 서비스도 리포지터리도 전부 이 규칙 위에 올라가 있으므로,
+      여기를 모르면 스프링의 어느 화면을 봐도 "왜 되는지"를 말할 수 없다.
+      주문 시스템에서 컨트롤러가 서비스를 부르고 서비스가 리포지터리를 부르는 그 연결이 전부 이것이다.
+    oneLine: 객체를 내가 만들지 않고 컨테이너(container)가 만들어 넣어 주는 것을 의존성 주입(DI)이라고 하고, 컨테이너가 관리하는 객체를 빈(bean)이라고 한다.
+    units:
+      - key: LESSON.SPRING.DI_IOC.001.U1
+        title: 내가 만들지 않고 받아 쓰기
+        minutes: 10
+        core: true
+        explain: |-
+          공식 문서는 빈(bean)을 이렇게 정의한다 — **"스프링 IoC 컨테이너가 만들고, 조립하고, 관리하는 객체"**.
+          그 밖의 객체는 그냥 자바 객체다.
+
+          왜 직접 `new` 하지 않나. `OrderService`가 안에서 `new OrderRepository()`를 하면
+          **그 둘이 붙어 버린다.** 리포지터리를 바꾸려면 서비스 코드를 고쳐야 하고, 테스트에서 가짜 리포지터리를
+          끼워 넣을 수도 없다.
+
+          그래서 스프링은 순서를 뒤집는다. 필요한 것을 **생성자 파라미터로 적어 두기만** 하면,
+          컨테이너가 그 타입의 빈을 찾아 만들어 넣어 준다. 이 뒤집기를 제어의 역전(IoC)이라고 한다.
+
+          클래스에 `@Service`를 붙이면 "이 클래스를 빈으로 관리해 달라"는 표시다.
+        example:
+          language: java
+          code: |-
+            @Service
+            public class OrderService {
+
+                private final OrderRepository orderRepository;
+
+                // 생성자가 하나뿐이면 @Autowired를 붙이지 않아도 된다
+                public OrderService(OrderRepository orderRepository) {
+                    this.orderRepository = orderRepository;
+                }
+
+                public long countOrders() {
+                    return orderRepository.count();
+                }
+            }
+          output: |-
+            기동할 때 컨테이너가 하는 일
+            1. OrderRepository 빈을 만든다
+            2. 그것을 인자로 넣어 new OrderService(...) 를 부른다
+            3. 만들어진 OrderService 를 빈으로 보관한다
+          note: |-
+            - '`@Service` — 이 클래스를 빈으로 관리한다는 표시'
+            - '`private final` — 한 번 받으면 바뀌지 않는다'
+            - '생성자 파라미터 — "이게 있어야 나는 일할 수 있다"는 선언. 어디서 오는지는 내가 몰라도 된다'
+        predict:
+          question: 이 코드를 기동하면 `OrderService`를 만드는 것은 누구인가?
+          code: |-
+            @Service
+            public class OrderService {
+
+                private final OrderRepository orderRepository;
+
+                public OrderService(OrderRepository orderRepository) {
+                    this.orderRepository = orderRepository;
+                }
+            }
+          choices:
+            - 컨테이너가 만들고 OrderRepository 빈을 찾아 넣어 준다
+            - 아무도 만들지 않는다. 직접 new 해야 한다
+            - OrderRepository가 만든다
+            - 처음 호출될 때 자바가 알아서 만든다
+          answer: 컨테이너가 만들고 OrderRepository 빈을 찾아 넣어 준다
+          explanation: |-
+            `@Service`가 붙었으니 컨테이너가 이 클래스를 빈으로 관리한다.
+            생성자에 `OrderRepository`가 적혀 있으므로 컨테이너가 **그 타입의 빈을 먼저 찾아** 인자로 넣고 만든다.
+            생성자가 하나뿐이면 `@Autowired`를 적지 않아도 이렇게 동작한다.
+        complete:
+          question: 상품 서비스가 상품 리포지터리를 받아 쓰도록 빈칸을 채우세요.
+          code: |-
+            @___
+            public class ProductService {
+
+                private final ProductRepository productRepository;
+
+                public ProductService(ProductRepository ___) {
+                    this.productRepository = productRepository;
+                }
+            }
+          answers:
+            - [Service]
+            - [productRepository]
+          explanation: |-
+            클래스에는 `@Service`(빈으로 관리해 달라), 생성자 파라미터 이름은 필드에 넣는 이름과 같은 `productRepository`다.
+        problem:
+          prompt: |-
+            주문 시스템에 쿠폰을 확인하는 `CouponService`를 만들려고 합니다.
+            이 서비스는 `CouponRepository`가 있어야 일할 수 있고, 쿠폰 코드를 받아 쓸 수 있는지(`boolean`)
+            돌려주는 `isUsable(String code)` 메서드를 갖습니다.
+            리포지터리에는 `boolean existsByCode(String code)`가 이미 있다고 가정하세요.
+            **`new`를 쓰지 않고** 백지에서 작성하세요.
+          deliverables:
+            - 클래스 전체 코드 (import는 생략해도 됩니다)
+            - 리포지터리를 필드로 직접 new 하지 않고 생성자로 받은 이유 한 줄
+          starterCode: |-
+            public class CouponService {
+
+                // 여기에 작성하세요
+            }
+          hints:
+            - 클래스에 표시가 하나 필요합니다. 컨테이너에게 "이걸 관리해 달라"고 말하는 자리입니다.
+            - 필요한 것을 안에서 만들지 말고 **밖에서 받으세요**. 받는 자리가 어디였는지 예제를 다시 보세요.
+            - 받은 것을 다시 바꿀 일이 없다면 필드에 어떤 제어자를 붙이는 것이 좋을까요?
+          modelAnswer: |-
+            ```java
+            @Service
+            public class CouponService {
+
+                private final CouponRepository couponRepository;
+
+                public CouponService(CouponRepository couponRepository) {
+                    this.couponRepository = couponRepository;
+                }
+
+                public boolean isUsable(String code) {
+                    return couponRepository.existsByCode(code);
+                }
+            }
+            ```
+
+            - '생성자로 받은 이유: 안에서 `new`를 하면 `CouponService`가 특정 구현에 붙어 버린다. 밖에서 받으면 컨테이너가 넣어 주고, 테스트에서는 가짜를 넣을 수 있다.'
+          selfChecks:
+            - 클래스에 `@Service`(또는 `@Component`)를 붙였는가
+            - 리포지터리를 생성자 파라미터로 받고 `private final` 필드에 넣었는가
+            - 어디에도 `new CouponRepository()`가 없는가
+
+      - key: LESSON.SPRING.DI_IOC.001.U2
+        title: 컨테이너는 어떻게 찾아내나
+        minutes: 10
+        core: true
+        explain: |-
+          `@Service`를 붙였다고 저절로 빈이 되지는 않는다. 누군가 **찾아다녀야** 한다.
+          그 찾는 일을 컴포넌트 스캔(component scan)이라고 한다.
+
+          공식 문서는 `@Component`를 "스프링이 관리하는 컴포넌트를 가리키는 일반 표시"라고 하고,
+          `@Repository`·`@Service`·`@Controller`를 각각 **저장·서비스·표현 계층을 위한 `@Component`의 특수형**이라고 설명한다.
+          즉 넷 다 스캔에 걸린다. 이름이 다른 이유는 사람이 읽을 때 계층이 드러나게 하려는 것이다.
+
+          Spring Boot에서는 `@SpringBootApplication`이 붙은 클래스의 **그 패키지와 하위 패키지**를 스캔한다.
+          그래서 클래스를 그 바깥 패키지에 두면 표시를 붙여도 빈이 되지 않는다 — 처음에 자주 막히는 자리다.
+
+          이름을 따로 주지 않으면 빈 이름은 **클래스 이름의 첫 글자를 소문자로 바꾼 것**이다
+          (`OrderService` → `orderService`). `@Service("주문서비스자리")`처럼 직접 줄 수도 있다.
+        example:
+          language: java
+          code: |-
+            // com.shop.OrderApplication
+            @SpringBootApplication
+            public class OrderApplication { }
+
+            // com.shop.order.OrderService   → 스캔됨 (하위 패키지)
+            @Service
+            public class OrderService { }
+
+            // com.other.CouponService       → 스캔 안 됨 (바깥 패키지)
+            @Service
+            public class CouponService { }
+          output: |-
+            등록되는 빈: orderService
+            CouponService 를 주입받으려 하면 기동 실패
+              → NoSuchBeanDefinitionException
+          note: |-
+            - '스캔의 시작점은 `@SpringBootApplication`이 있는 패키지다'
+            - '빈 이름은 기본이 `orderService`(첫 글자만 소문자)'
+            - '표시를 붙여도 **범위 밖이면** 없는 것과 같다'
+        predict:
+          question: '`com.shop`에 `@SpringBootApplication`이 있고 `com.tools.MailSender`에 `@Component`가 붙어 있다. 기동하면?'
+          choices:
+            - mailSender 빈이 등록된다
+            - 스캔 범위 밖이라 빈이 되지 않는다
+            - 컴파일 오류가 난다
+            - 빈은 되지만 이름이 MailSender가 된다
+          answer: 스캔 범위 밖이라 빈이 되지 않는다
+          explanation: |-
+            기본 스캔 범위는 `@SpringBootApplication`이 있는 패키지와 **그 하위**다.
+            `com.tools`는 `com.shop`의 하위가 아니므로 찾지 못한다.
+            굳이 쓰려면 `@ComponentScan`에 그 패키지를 더하거나, 설정 클래스에서 빈으로 직접 등록한다.
+        complete:
+          question: 저장 계층임이 드러나도록 표시를 붙이고, 빈 이름을 기본값으로 두세요.
+          code: |-
+            package com.shop.order;
+
+            @___
+            public class OrderRepository {
+                // 기본 빈 이름: ___
+            }
+          answers:
+            - [Repository, Component]
+            - [orderRepository]
+          explanation: |-
+            저장 계층이므로 `@Repository`가 알맞다(일반형인 `@Component`도 스캔은 된다).
+            이름을 따로 주지 않았으므로 빈 이름은 클래스 이름의 첫 글자를 내린 `orderRepository`다.
+        problem:
+          prompt: |-
+            동료가 "`@Service`를 붙였는데 주입이 안 되고 기동이 실패한다"고 합니다.
+            패키지는 이렇습니다.
+
+            - `com.shop.ShopApplication` — `@SpringBootApplication`
+            - `com.shop.order.OrderController` — 생성자로 `PaymentService`를 받는다
+            - `com.payment.PaymentService` — `@Service`가 붙어 있다
+
+            무엇이 문제이고 **고치는 방법 두 가지**를 쓰세요. 코드는 바꿀 부분만 적으면 됩니다.
+          deliverables:
+            - 왜 실패하는지 한두 줄
+            - 서로 다른 해결 방법 2가지 (각각 어떻게 하는지 한 줄씩)
+          hints:
+            - 표시가 붙어 있어도 아무도 그 클래스를 **보러 가지 않았다면** 어떻게 될까요?
+            - 스캔은 어디서 시작해서 어디까지 내려가는지 예제의 패키지 이름을 다시 보세요.
+            - 방법은 "찾아가게 만들기"와 "직접 등록하기" 두 갈래로 생각해 보세요.
+          modelAnswer: |-
+            **왜 실패하나**: 스캔 범위는 `com.shop`과 그 하위인데 `com.payment`는 그 밖이다.
+            그래서 `PaymentService`가 빈으로 등록되지 않고, 주입할 것이 없어 기동이 실패한다
+            (`NoSuchBeanDefinitionException`).
+
+            **방법 1 — 스캔 범위를 넓힌다**
+
+            ```java
+            @SpringBootApplication
+            @ComponentScan(basePackages = {"com.shop", "com.payment"})
+            public class ShopApplication { }
+            ```
+
+            **방법 2 — 설정 클래스에서 직접 빈으로 등록한다**
+
+            ```java
+            @Configuration
+            public class PaymentConfig {
+
+                @Bean
+                PaymentService paymentService() {
+                    return new PaymentService();
+                }
+            }
+            ```
+
+            (셋째 방법: `PaymentService`를 `com.shop` 아래로 옮긴다. 보통 이게 제일 깔끔하다.)
+          selfChecks:
+            - 원인을 "표시가 없어서"가 아니라 "스캔 범위 밖이라서"로 짚었는가
+            - 두 방법이 서로 다른 갈래인가 (범위 넓히기 / 직접 등록)
+            - 적은 코드가 실제로 그 클래스를 빈으로 만드는가
+
+      - key: LESSON.SPRING.DI_IOC.001.U3
+        title: 생성자로 받기와 세터로 받기
+        minutes: 12
+        core: true
+        explain: |-
+          받는 자리는 두 가지다. 공식 문서는 이렇게 나눈다.
+
+          - **생성자 주입** — "컨테이너가 인자를 넣어 생성자를 부른다". 인자 하나가 의존 하나다.
+          - **세터 주입** — "컨테이너가 인자 없는 생성자로 만든 **뒤에** 세터를 부른다".
+
+          어느 쪽을 쓰나. 공식 문서의 권고는 분명하다 — **"스프링 팀은 일반적으로 생성자 주입을 권한다.
+          컴포넌트를 불변 객체로 만들 수 있고, 필요한 의존이 `null`이 아님을 보장하기 때문이다."**
+          덧붙여 **"필수 의존은 생성자로, 선택 의존은 세터로"** 라고 안내한다.
+
+          실제로 생성자 주입은 필드를 `final`로 둘 수 있어 나중에 바뀌지 않고, 객체가 만들어진 순간 이미
+          쓸 준비가 끝나 있다. 세터 주입은 "세터가 불리기 전"이라는 반쪽 상태가 생긴다.
+
+          다만 대가가 하나 있다. A가 B를, B가 A를 생성자로 받으면 **먼저 만들 수 있는 쪽이 없다.**
+          컨테이너는 이 순환을 알아채고 `BeanCurrentlyInCreationException`을 던진다.
+          세터 주입이면 순환이 가능하지만 공식 문서도 권하지 않는다 — 순환이 보이면 보통 설계를 나눌 때다.
+        example:
+          language: java
+          code: |-
+            // 권장: 생성자 주입 — final, 만들어진 순간 완성
+            @Service
+            public class OrderService {
+
+                private final OrderRepository orderRepository;
+
+                public OrderService(OrderRepository orderRepository) {
+                    this.orderRepository = orderRepository;
+                }
+            }
+
+            // 순환: 서로를 생성자로 받으면 먼저 만들 수 있는 쪽이 없다
+            @Service
+            class A { A(B b) { } }
+
+            @Service
+            class B { B(A a) { } }
+          output: |-
+            OrderService  → 정상 등록
+            A 와 B        → 기동 실패
+              BeanCurrentlyInCreationException
+          note: |-
+            - '`final` 은 생성자 주입에서만 쓸 수 있다 — 세터 주입은 나중에 넣으므로 불가'
+            - '순환은 오류 메시지가 아니라 **설계 신호**다. 공통 부분을 셋째 클래스로 빼는 것이 보통의 답'
+        predict:
+          question: 세터 주입으로 바꾸면 `private final OrderRepository orderRepository;`는 어떻게 되나?
+          choices:
+            - 그대로 쓸 수 있다
+            - final을 빼야 한다. 나중에 넣으므로 final일 수 없다
+            - 세터에도 final을 붙여야 한다
+            - static으로 바꿔야 한다
+          answer: final을 빼야 한다. 나중에 넣으므로 final일 수 없다
+          explanation: |-
+            `final` 필드는 **생성자가 끝나기 전에** 값이 정해져야 한다.
+            세터 주입은 인자 없는 생성자로 만든 뒤에 값을 넣으므로 `final`을 쓸 수 없다.
+            이것이 생성자 주입을 권하는 이유 중 하나다 — 불변으로 둘 수 있다.
+        complete:
+          question: 필수 의존은 생성자로, 선택 의존은 세터로 받도록 빈칸을 채우세요.
+          code: |-
+            @Service
+            public class OrderService {
+
+                private ___ OrderRepository orderRepository;   // 필수
+                private DiscountPolicy discountPolicy;          // 선택
+
+                public OrderService(OrderRepository orderRepository) {
+                    this.orderRepository = orderRepository;
+                }
+
+                @Autowired(required = ___)
+                public void setDiscountPolicy(DiscountPolicy discountPolicy) {
+                    this.discountPolicy = discountPolicy;
+                }
+            }
+          answers:
+            - [final]
+            - ["false"]
+          explanation: |-
+            필수 의존은 생성자로 받으므로 `final`로 둘 수 있다.
+            선택 의존은 없어도 기동해야 하므로 `@Autowired(required = false)`다 —
+            공식 문서는 "없으면 그 메서드는 아예 불리지 않는다"고 설명한다.
+        problem:
+          prompt: |-
+            아래 코드는 기동에 실패합니다. 왜 실패하는지 말하고, **클래스를 하나 더 만들어** 고치세요.
+
+            ```java
+            @Service
+            class OrderService {
+                OrderService(NotificationService notificationService) { }
+                void place() { /* 주문을 저장하고 알림을 보낸다 */ }
+            }
+
+            @Service
+            class NotificationService {
+                NotificationService(OrderService orderService) { }
+                void notifyPlaced() { /* 주문 정보를 읽어 문자를 보낸다 */ }
+            }
+            ```
+          deliverables:
+            - 실패하는 이유와 예외 이름
+            - 고친 구조 (클래스 3개의 생성자만 보여도 됩니다)
+          hints:
+            - 둘 중 **어느 쪽을 먼저 만들 수 있는지** 손으로 따라가 보세요.
+            - 서로가 서로를 필요로 한다는 것은, 사실 두 클래스가 같은 일을 나눠 갖고 있다는 뜻일 때가 많습니다.
+            - 알림이 주문을 알아야 하는 게 아니라, **누군가가 둘을 순서대로 부르면** 되는 것은 아닐까요?
+          modelAnswer: |-
+            **이유**: 서로를 생성자로 받으므로 먼저 만들 수 있는 쪽이 없다. 컨테이너가 순환을 알아채고
+            `BeanCurrentlyInCreationException`을 던진다.
+
+            **고친 구조** — 순서를 아는 쪽을 위에 하나 두고, 아래 둘은 서로를 모르게 한다.
+
+            ```java
+            @Service
+            class OrderService {                       // 저장만 한다
+                OrderService(OrderRepository orderRepository) { }
+            }
+
+            @Service
+            class NotificationService {                // 보내기만 한다
+                NotificationService(MessageSender messageSender) { }
+            }
+
+            @Service
+            class PlaceOrderUseCase {                  // 순서를 아는 자리
+                PlaceOrderUseCase(OrderService orderService,
+                                  NotificationService notificationService) { }
+            }
+            ```
+
+            이제 `OrderService`와 `NotificationService`는 서로를 모르고, 둘 다 먼저 만들 수 있다.
+          selfChecks:
+            - 예외 이름을 `BeanCurrentlyInCreationException`으로 적었는가
+            - 고친 구조에서 두 클래스가 **서로를 생성자로 받지 않는가**
+            - 새로 만든 클래스가 둘을 순서대로 부르는 역할인가
+
+      - key: LESSON.SPRING.DI_IOC.001.U4
+        title: 못 찾을 때와 둘 이상일 때
+        minutes: 12
+        core: false
+        prerequisiteUnits:
+          - LESSON.SPRING.DI_IOC.001.U1
+        explain: |-
+          주입은 **타입으로** 찾는다. 그래서 어긋나는 경우는 둘뿐이다.
+
+          **하나도 없을 때** — 공식 문서는 "맞는 후보 빈이 없으면 기본적으로 자동 주입은 실패한다"고 적는다.
+          이때 나오는 것이 `NoSuchBeanDefinitionException`이고, 주입 자리를 알려 주는
+          `UnsatisfiedDependencyException`에 감싸여 올라온다. 없어도 되는 의존이면 방법이 셋 있다 —
+          `@Autowired(required = false)`, 파라미터 타입을 `Optional<T>`로, 또는 `@Nullable`.
+
+          **둘 이상일 때** — 어느 것인지 정할 수 없으므로 `NoUniqueBeanDefinitionException`이다. 고르는 방법은 셋.
+
+          | 방법 | 어디에 쓰나 |
+          |---|---|
+          | `@Primary` | 기본으로 쓸 것을 **빈 쪽에** 하나 정한다 |
+          | `@Qualifier("이름")` | **받는 쪽에서** 매번 골라 쓴다 |
+          | 이름 맞추기 | 파라미터 이름이 빈 이름과 같으면 그것을 고른다 |
+
+          이름 맞추기는 `@Qualifier` 없이도 되지만 컴파일 옵션(`-parameters`)이 필요하고, 이름을 바꾸면 조용히
+          깨진다. **읽는 사람에게 보이는 것은 `@Primary`와 `@Qualifier`다.**
+        example:
+          language: java
+          code: |-
+            public interface DiscountPolicy { }
+
+            @Component
+            @Primary                                   // 아무 말 없으면 이것
+            class RateDiscountPolicy implements DiscountPolicy { }
+
+            @Component
+            class FixedDiscountPolicy implements DiscountPolicy { }
+
+            @Service
+            class OrderService {
+                // @Primary 가 붙은 RateDiscountPolicy 가 들어온다
+                OrderService(DiscountPolicy discountPolicy) { }
+            }
+
+            @Service
+            class EventService {
+                // 여기서는 콕 집어 고른다
+                EventService(@Qualifier("fixedDiscountPolicy") DiscountPolicy policy) { }
+            }
+          output: |-
+            OrderService ← RateDiscountPolicy   (@Primary)
+            EventService ← FixedDiscountPolicy  (@Qualifier)
+
+            @Primary 와 @Qualifier 를 둘 다 빼면
+              NoUniqueBeanDefinitionException
+          note: |-
+            - '`@Primary`는 빈 쪽에 한 번, `@Qualifier`는 받는 쪽에 매번'
+            - '`@Qualifier`에 적은 `fixedDiscountPolicy`는 기본 빈 이름(첫 글자 소문자)'
+            - '둘 다 있으면 받는 쪽의 `@Qualifier`가 이긴다 — 더 구체적인 지정이다'
+        predict:
+          question: '`DiscountPolicy` 구현이 둘인데 `@Primary`도 `@Qualifier`도 없으면 기동하면 어떻게 되나?'
+          choices:
+            - 먼저 등록된 것이 들어온다
+            - 둘 다 들어온다
+            - NoUniqueBeanDefinitionException으로 기동이 실패한다
+            - null이 들어온다
+          answer: NoUniqueBeanDefinitionException으로 기동이 실패한다
+          explanation: |-
+            타입으로 찾았는데 후보가 둘이면 컨테이너는 **고르지 않는다.** 조용히 하나를 집으면
+            어느 것이 들어왔는지 아무도 모르게 되기 때문이다. 그래서 기동 시점에 실패시킨다.
+            등록 순서나 파일 순서로 정해지지 않는다.
+        complete:
+          question: 받는 쪽에서 고정 할인 정책을 콕 집어 받도록 빈칸을 채우세요.
+          code: |-
+            @Service
+            public class EventService {
+
+                public EventService(@___("fixedDiscountPolicy") DiscountPolicy policy) {
+                    // ...
+                }
+            }
+          answers:
+            - [Qualifier]
+          explanation: |-
+            받는 쪽에서 고르는 것은 `@Qualifier`다. 괄호 안은 고를 빈의 이름이고,
+            이름을 따로 주지 않았다면 클래스 이름의 첫 글자를 내린 `fixedDiscountPolicy`다.
+        problem:
+          prompt: |-
+            주문 시스템에 결제 수단이 둘 생겼습니다 — `CardPayment`와 `TransferPayment`.
+            둘 다 `PaymentMethod`를 구현합니다.
+
+            - 평소 결제(`OrderService`)는 **카드**를 쓴다
+            - 정산 배치(`SettlementService`)는 **계좌이체**를 쓴다
+
+            두 서비스가 각각 맞는 것을 받도록 백지에서 작성하세요. 네 클래스의 **표시와 생성자만** 적으면 됩니다.
+          deliverables:
+            - 네 클래스의 표시(애너테이션)와 생성자
+            - 왜 한쪽은 표시 없이 받게 하고 다른 쪽은 콕 집었는지 한 줄
+          hints:
+            - '"평소 쓰는 쪽"과 "가끔 쓰는 쪽"이 있습니다. 어느 쪽을 기본으로 두는 것이 읽기 좋을까요?'
+            - 기본은 **빈 쪽에** 한 번 표시하고, 예외는 **받는 쪽에서** 고릅니다.
+            - 콕 집을 때 괄호에 적는 이름이 무엇인지 U2의 빈 이름 규칙을 다시 보세요.
+          modelAnswer: |-
+            ```java
+            @Component
+            @Primary
+            class CardPayment implements PaymentMethod { }
+
+            @Component
+            class TransferPayment implements PaymentMethod { }
+
+            @Service
+            class OrderService {
+                OrderService(PaymentMethod paymentMethod) { }        // 카드가 들어온다
+            }
+
+            @Service
+            class SettlementService {
+                SettlementService(@Qualifier("transferPayment") PaymentMethod paymentMethod) { }
+            }
+            ```
+
+            - '평소 쓰는 카드를 `@Primary`로 한 번만 정해 두면, 나머지 자리는 아무것도 쓰지 않아도 맞는 것이 들어온다. 예외인 정산만 `@Qualifier`로 콕 집으면 "여기만 다르다"가 코드에 드러난다.'
+          selfChecks:
+            - '`CardPayment`에 `@Primary`를 붙이고 `OrderService`는 아무 표시 없이 받는가'
+            - '`SettlementService`가 `@Qualifier`로 `transferPayment`를 고르는가'
+            - 두 구현 클래스 모두 빈으로 등록되는 표시가 붙어 있는가
+
+    commonMistakes:
+      - '`@Service`를 붙였는데 스캔 범위 밖 패키지에 두고 "주입이 안 된다"고 한다 (U2)'
+      - 필드에 `@Autowired`를 붙이는 필드 주입을 쓴다. 짧지만 `final`을 못 쓰고 테스트에서 넣기도 어렵다
+      - 구현이 둘인데 `@Primary`도 `@Qualifier`도 없이 두고 "실행할 때마다 다르다"고 생각한다. 실제로는 기동부터 실패한다
+    inProject: |-
+      주문 시스템의 계층이 전부 이 규칙으로 이어진다. `OrderController`가 `OrderService`를,
+      `OrderService`가 `OrderRepository`를 생성자로 받는다 — 세 자리 모두 `new`가 없다.
+      할인·결제처럼 **방식이 여러 개인 자리**를 만들 때 U4가 그대로 쓰인다:
+      인터페이스 하나를 두고 구현을 늘린 뒤, 평소 쓰는 것에 `@Primary`를 붙이면
+      나중에 방식을 더해도 기존 코드를 고치지 않는다.
+    sources:
+      - title: Spring Framework Reference — Introduction to the Spring IoC Container and Beans
+        url: https://docs.spring.io/spring-framework/reference/core/beans/introduction.html
+        versionScope: Spring Framework 7
+      - title: Spring Framework Reference — Dependency Injection
+        url: https://docs.spring.io/spring-framework/reference/core/beans/dependencies/factory-collaborators.html
+        versionScope: Spring Framework 7
+      - title: Spring Framework Reference — Classpath Scanning and Managed Components
+        url: https://docs.spring.io/spring-framework/reference/core/beans/classpath-scanning.html
+        versionScope: Spring Framework 7
+      - title: Spring Framework Reference — Using @Autowired
+        url: https://docs.spring.io/spring-framework/reference/core/beans/annotation-config/autowired.html
+        versionScope: Spring Framework 7
+      - title: Spring Framework Reference — Fine-tuning Annotation-based Autowiring with Qualifiers
+        url: https://docs.spring.io/spring-framework/reference/core/beans/annotation-config/autowired-qualifiers.html
+        versionScope: Spring Framework 7
+    verifiedAt: 2026-09-22
