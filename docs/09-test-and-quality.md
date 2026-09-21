@@ -68,14 +68,15 @@ public class PostgresTestcontainersConfig {
     }
 
     @Bean
-    @ServiceConnection
-    PostgreSQLContainer postgres() {
-        return POSTGRES;
+    JdbcConnectionDetails jdbcConnectionDetails() {
+        return connectionDetails(POSTGRES.getDatabaseName());
     }
 }
 ```
 
 - 모든 DB 테스트는 이 설정을 `@Import`한다(직접 `@Container` 필드를 만들지 않는다). Spring context 캐시가 재사용되도록 **통합 테스트 설정 조합을 `@IntegrationTest` 메타 애노테이션 하나로 고정**한다(§3.3).
+- **컨테이너를 bean으로 두지 않는다.** 컨테이너를 `@Bean`(+`@ServiceConnection`)으로 두면 Spring이 **context를 닫을 때 컨테이너도 멈춘다**(reuse가 켜져 있을 때만 예외). context 하나가 기동에 실패하면 그 context를 닫으며 컨테이너까지 멈춰 **이후 모든 테스트가 `ConnectException`으로 무너진다** — 2026-09-21에 진짜 실패 1건이 288건으로 보였다. 컨테이너는 static으로 JVM 수명 동안 살리고 context에는 **접속 정보(`JdbcConnectionDetails`)만** 준다.
+- **콘텐츠 catalog가 다른 context를 만들면 데이터베이스도 나눈다.** 통합 테스트는 소형 `test-content`로 seed한다. 다른 catalog(예: 저장소 루트 `content/`)를 쓰는 context가 같은 DB를 보면 (1) 같은 seed key를 구조가 다르게 정의할 때 `ChallengeSeedService`가 기동을 거부하고 (2) 한쪽 `ContentSeeder`가 상대의 seed를 `RETIRED`로 만든다. 같은 컨테이너 안에 DB를 하나 더 만들어 그 context에만 `@Primary JdbcConnectionDetails`로 물린다.
 - 로컬 Windows: `%USERPROFILE%\.testcontainers.properties`에 `testcontainers.reuse.enable=true`. CI는 reuse를 켜지 않는다.
 - Docker Desktop이 실행 중이 아니면 `integrationTest`는 실패한다(건너뛰지 않음).
 
@@ -207,11 +208,12 @@ V10,10,GOOD,CORRECT,SELF_EXPLAIN,GOOD,,5,4
 | §5.3 | `06-05-task-proposal.yaml` (분기 6개(REDO·READ_CODE 포함) + comeback + 제안 분기 T-1~T-5, 학습 트랙 T-6~T-9. §5.3·§5.4) | `TaskProposalPolicyTest` | unit |
 | §5.10 RE-1~RE-3 | `06-05-redo-candidate.yaml` (RE-V1~RE-V11. §5.4) | `RedoTaskPolicyTest` | unit |
 | §5.10 RE-6~RE-8 | — (RE-V12~RE-V15. §5.4) | `TodayPlanServiceIntegrationTest` | integration |
-| §5.4–5.5, §5.7 | `06-05-planner-score.yaml` (6행 — `devpilot.planner.weights.stage-gap = 0`으로 돌린다. §5.7 공통 조건) | `PlannerScoringTest` | unit |
+| §5.4–5.5, §5.7 | `06-05-planner-score.yaml` (10행 — 1~6행은 factor·modifier, 7~10행은 `MONOTONY_*`. `devpilot.planner.weights.stage-gap = 0`으로 돌린다. §5.7 공통 조건) | `PlannerScoringTest` | unit |
 | §5.11 | `06-05-learning-stage.yaml` (ST-V1~ST-V12) | `LearningStageEvaluatorTest` | unit |
 | §5.12 | `06-05-daily-tip.yaml` (TIP-V1~TIP-V11) | `DailyTipSelectorTest` | unit |
 | §5.5 comebackMode | `06-05-comeback-mode.csv` | `ComebackModePolicyTest` | unit |
 | §5.6 | `06-05-time-allocation.csv` (6행) | `TimeAllocatorTest` | unit |
+| §5.6 추가 과제 | `06-05-extra-tasks.yaml` (E-1~E-5) | `TimeAllocatorTest` | unit |
 | §5.8 | `06-05-reasons.yaml` (최소 1개 보장, modifier 우선, 최대 3개) | `ReasonTemplatesTest` | unit |
 | §5.9 | — (상태 조합 표 7칸) | `TodayPlanServiceIntegrationTest` | integration |
 | §6.1 | `06-06-review-schedule.csv`의 final·adjustedBy 컬럼 | `FinalRatingPolicyTest` | unit |
