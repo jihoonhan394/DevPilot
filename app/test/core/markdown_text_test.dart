@@ -28,6 +28,22 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// 개념 노트의 `explain` 은 거의 전부 표를 쓴다. 360px 에서 표가 화면을 넓히면 안 된다(docs/02 §2.4).
+  testWidgets('shouldKeepAWideTableInside360Pixels', (tester) async {
+    const table = '''
+| 제약 | 정의 | 비었을 때 | 공백만 | 값 있음 |
+|---|---|---|---|---|
+| `@NotNull` | 값이 `null` 이 아닌지 본다 | 위반 | 통과 | 통과 |
+| `@NotEmpty` | `null` 도 아니고 비어 있지도 않은지 본다 | 위반 | 통과 | 통과 |
+| `@NotBlank` | `null` 이 아니고 공백을 지운 길이가 0보다 큰지 본다 | 위반 | 위반 | 통과 |
+''';
+
+    await pump(tester, const ScreenBody(child: MarkdownText(table)), size: const Size(360, 800));
+
+    expect(tester.takeException(), isNull);
+    expect(tester.getSize(find.byType(ScreenBody)).width, lessThanOrEqualTo(360));
+  });
+
   testWidgets('shouldDrawAFenceAsACodeBlockInsteadOfLetters', (tester) async {
     await pump(
       tester,
