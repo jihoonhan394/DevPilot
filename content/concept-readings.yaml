@@ -542,3 +542,586 @@ conceptReadings:
       - 내 서비스에서 장애가 났을 때 어떤 조건으로 로그를 꺼낼지 명령 한 줄을 미리 적어 두세요
     verifiedAt: 2026-09-21
     retired: false
+  # --------------------------------------- PRACTICAL_ENGINEERING.REQUIREMENTS
+  - key: DOC.REQUIREMENT.SPEC_CHECKLIST.001
+    title: RFC 2360 Guide for Internet Standards Writers — 4. Document Checklist
+    url: https://www.rfc-editor.org/rfc/rfc2360.html#section-4
+    publisher: IETF (RFC Editor)
+    versionScope: RFC 2360 (1998-06, BCP 22)
+    skillCodes: [PRACTICAL_ENGINEERING.REQUIREMENTS]
+    estimatedMinutes: 20
+    whyRead: |-
+      받은 요구를 그대로 구현하지 않고 빠진 것을 먼저 찾을 수 있게 된다. 목적 · 대상 · 예외 동작 · 선택 항목 ·
+      용어가 적혀 있는지 묻는 점검 목록을 그대로 내 요구사항 정리에 옮겨 쓸 수 있다.
+    checkPoints:
+      - 설명하는 대목과 요구하는 대목을 갈라 적으라는 항목이 무엇을 막으려는 것인지 적어 보세요
+      - 선택 항목이 여럿일 때 이 목록이 확인하라고 하는 것을 적어 보세요
+      - 지금 내가 받은 요구 하나를 이 목록으로 점검하고 빠진 항목 세 개를 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.REQUIREMENT.OUT_OF_SPEC.001
+    title: RFC 2360 Guide for Internet Standards Writers — 2.8. Response to Out of Specification Behavior
+    url: https://www.rfc-editor.org/rfc/rfc2360.html#section-2.8
+    publisher: IETF (RFC Editor)
+    versionScope: RFC 2360 (1998-06, BCP 22)
+    skillCodes: [PRACTICAL_ENGINEERING.REQUIREMENTS]
+    estimatedMinutes: 15
+    whyRead: |-
+      정상 흐름만 적힌 요구사항을 내놓지 않게 된다. 규격을 벗어난 입력이 왔을 때 무엇을 할지 미리 정해 두는 것이
+      왜 규격의 일부인지 알면, 예외와 한계값에 대한 동작을 요구사항 단계에서 적게 된다.
+    checkPoints:
+      - 규격을 벗어난 입력을 받았을 때 고를 수 있는 처리 방향을 두 가지 적어 보세요
+      - 그 처리를 정하지 않고 구현하는 사람에게 맡기면 무엇이 어긋나는지 적어 보세요
+      - 내가 정리하는 요구 하나를 골라 잘못된 입력과 한계 초과에 대한 동작을 한 줄씩 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ---------------------------------------------------------- WEB_HTTP.HTTP_BASICS
+  - key: DOC.HTTP.METHODS.001
+    title: RFC 9110 HTTP Semantics — 9. Methods
+    url: https://www.rfc-editor.org/rfc/rfc9110.html#name-methods
+    publisher: IETF (RFC Editor)
+    versionScope: RFC 9110 (2022-06)
+    skillCodes: [WEB_HTTP.HTTP_BASICS]
+    estimatedMinutes: 30
+    whyRead: |-
+      메서드를 이름 느낌으로 고르지 않게 된다. 안전 · 멱등 · 캐시 가능이라는 성질이 메서드마다 정해져 있고
+      그 성질이 클라이언트가 재시도해도 되는지를 정한다는 것을 알면 조회와 변경을 갈라 설계할 수 있다.
+    checkPoints:
+      - GET · POST · PUT · DELETE가 각각 무엇을 하기로 정해진 메서드인지 한 줄씩 적어 보세요
+      - 안전한 메서드와 멱등한 메서드의 정의가 어떻게 다른지 적어 보세요
+      - 내 API에서 성질과 맞지 않게 쓰인 메서드를 하나 찾아 무엇으로 바꿀지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.HTTP.OVERVIEW.001
+    title: Overview of HTTP — MDN Web Docs
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Overview
+    publisher: MDN Web Docs (Mozilla)
+    versionScope: 버전 없음 (2026-09-21 기준 내용, HTTP/1.1~HTTP/3)
+    skillCodes: [WEB_HTTP.HTTP_BASICS]
+    estimatedMinutes: 25
+    whyRead: |-
+      요청 한 번에 무엇이 오가는지 그림으로 잡게 된다. 요청과 응답이 각각 어떤 줄로 이루어지고 중간에 누가
+      끼어들 수 있는지 알면, 브라우저 개발자 도구에 찍힌 내용을 보고 어디가 문제인지 좁힐 수 있다.
+    checkPoints:
+      - 요청 메시지와 응답 메시지를 이루는 부분을 각각 나눠 적어 보세요
+      - 클라이언트와 서버 사이에 끼어들 수 있는 중간 참여자를 하나 들고 무엇을 하는지 적어 보세요
+      - 내 서비스의 요청 하나를 개발자 도구로 열어 헤더 세 개가 무엇을 하는지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ------------------------------------------------------------ DEVOPS.BUILD_GRADLE
+  - key: DOC.GRADLE.BUILD_LIFECYCLE.001
+    title: Gradle User Manual — Build Lifecycle
+    url: https://docs.gradle.org/current/userguide/build_lifecycle.html
+    publisher: Gradle
+    versionScope: Gradle 9.7.1 (current, 2026-09-21 확인)
+    skillCodes: [DEVOPS.BUILD_GRADLE]
+    estimatedMinutes: 25
+    whyRead: |-
+      빌드 스크립트가 언제 실행되는지 알게 된다. 초기화 · 구성 · 실행 세 단계가 나뉘어 있고 태스크 본문은
+      실행 단계에서야 돈다는 것을 잡으면, 스크립트에 적은 코드가 매번 도는 이유를 설명할 수 있다.
+    checkPoints:
+      - 초기화 · 구성 · 실행 세 단계가 각각 무엇을 하는지 한 줄씩 적어 보세요
+      - 태스크를 등록하는 코드와 태스크가 할 일을 적은 코드가 각각 어느 단계에서 도는지 적어 보세요
+      - 내 빌드 스크립트에서 구성 단계에 도는 코드를 하나 찾아 실행 단계로 옮길 수 있는지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.GRADLE.DEPENDENCY_BASICS.001
+    title: Gradle User Manual — Dependencies and Dependency Management Basics
+    url: https://docs.gradle.org/current/userguide/dependency_management_basics.html
+    publisher: Gradle
+    versionScope: Gradle 9.7.1 (current, 2026-09-21 확인)
+    skillCodes: [DEVOPS.BUILD_GRADLE]
+    estimatedMinutes: 25
+    whyRead: |-
+      의존성을 한 자리에 몰아 넣지 않게 된다. 구성(configuration)이 "언제 어디서 쓰이는 의존성인가"를 나눈다는 것과
+      버전을 한곳에 모으는 버전 카탈로그를 알면 빌드 파일을 읽고 고칠 수 있다.
+    checkPoints:
+      - implementation · compileOnly · runtimeOnly가 각각 언제 쓰이는지 한 줄씩 적어 보세요
+      - 지금 프로젝트가 실제로 끌어오는 의존성 목록을 무엇으로 확인하는지 적어 보세요
+      - 내 빌드 파일의 의존성 하나를 골라 구성이 맞는지 보고 버전을 어디에 둘지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ---------------------------------------------------------- SECURITY.OWASP_TOP10
+  - key: DOC.OWASP.ACCESS_CONTROL.001
+    title: "OWASP Top 10:2025 — A01 Broken Access Control"
+    url: https://top10.owasp.org/2025/A01_2025-Broken_Access_Control/
+    publisher: OWASP Foundation
+    versionScope: "OWASP Top 10:2025"
+    skillCodes: [SECURITY.OWASP_TOP10, SECURITY.AUTHN_AUTHZ]
+    estimatedMinutes: 25
+    whyRead: |-
+      권한 검사를 화면에서 버튼을 숨기는 것으로 끝내지 않게 된다. 접근 통제가 서버에서 기본 거부로 서야 하는
+      이유와, 요청에 실린 식별자를 그대로 믿어 뚫리는 형태를 알면 내 API의 소유권 검사를 점검할 수 있다.
+    checkPoints:
+      - 기본 거부가 무엇을 뜻하고 왜 열어 줄 것만 적는 방식이어야 하는지 적어 보세요
+      - 요청 값에 든 식별자를 그대로 믿어서 생기는 취약점의 형태를 적어 보세요
+      - 내 API 끝점 하나를 골라 남의 자원을 요청했을 때 무엇으로 막는지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.OWASP.INJECTION_PREVENTION.001
+    title: Injection Prevention Cheat Sheet — OWASP Cheat Sheet Series
+    url: https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html
+    publisher: OWASP Foundation
+    versionScope: 버전 없음 (2026-09-21 기준 내용)
+    skillCodes: [SECURITY.OWASP_TOP10, SECURITY.INPUT_VALIDATION]
+    estimatedMinutes: 25
+    whyRead: |-
+      입력을 문자열로 막으려다 뚫리는 길을 닫게 된다. 해석기에 값을 붙이지 않고 넘기는 방법이 첫째이고
+      이스케이프가 마지막 수단인 이유를 알면, 질의나 명령을 문자열로 조립한 코드를 찾아 고칠 수 있다.
+    checkPoints:
+      - 값을 질의문에 이어 붙이지 않고 넘기는 방법이 왜 가장 먼저인지 적어 보세요
+      - 허용 목록 검증과 이스케이프가 각각 어디까지 막아 주는지 나눠 적어 보세요
+      - 내 코드에서 문자열을 이어 붙여 만든 질의나 명령을 하나 찾아 어떻게 바꿀지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ------------------------------------------------------------- SPRING.VALIDATION
+  - key: DOC.SPRING.BEAN_VALIDATION.001
+    title: Spring Framework Reference — Java Bean Validation
+    url: https://docs.spring.io/spring-framework/reference/core/validation/beanvalidation.html
+    publisher: Spring (Broadcom)
+    versionScope: Spring Framework 7.0.x
+    skillCodes: [SPRING.VALIDATION]
+    estimatedMinutes: 30
+    whyRead: |-
+      검증 코드를 서비스 앞머리의 조건문 뭉치로 두지 않게 된다. 제약을 필드에 선언하고 검증기를 컨테이너가
+      만들어 주는 구조를 알면 입력 검증을 한 자리에 모으고 메서드 인자까지 같은 방식으로 검사할 수 있다.
+    checkPoints:
+      - 제약 애노테이션으로 선언한 검증이 실제로 도는 시점이 언제인지 적어 보세요
+      - 메서드 인자와 반환값 검증을 켜려면 무엇이 필요한지 적어 보세요
+      - 내 DTO 하나를 골라 지금 코드로 하는 검사를 제약 선언으로 바꿔 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.SPRING.BOOT_VALIDATION.001
+    title: Spring Boot Reference — Validation
+    url: https://docs.spring.io/spring-boot/reference/io/validation.html
+    publisher: Spring (Broadcom)
+    versionScope: Spring Boot 4.1.x
+    skillCodes: [SPRING.VALIDATION]
+    estimatedMinutes: 15
+    whyRead: |-
+      검증이 어떤 자리에서는 돌고 어떤 자리에서는 조용히 넘어가는 이유를 알게 된다. 스타터가 무엇을 자동으로
+      등록해 주는지와 메서드 검증을 켜는 표시를 알면 검증이 동작하지 않을 때 확인할 곳을 좁힐 수 있다.
+    checkPoints:
+      - 검증 구현체가 있을 때 자동으로 등록되는 것이 무엇인지 적어 보세요
+      - 메서드 인자 검증을 쓰려면 빈에 무엇을 붙여야 하는지 적어 보세요
+      - 내 프로젝트에서 검증이 돌지 않는 자리를 하나 찾아 어디부터 확인할지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ----------------------------------------------------------------- NETWORK.TCP_IP
+  - key: DOC.TCP.CONNECTION_SETUP.001
+    title: RFC 9293 Transmission Control Protocol (TCP) — 3.5. Establishing a Connection
+    url: https://www.rfc-editor.org/rfc/rfc9293.html#name-establishing-a-connection
+    publisher: IETF (RFC Editor)
+    versionScope: RFC 9293 (2022-08, RFC 793을 대체)
+    skillCodes: [NETWORK.TCP_IP]
+    estimatedMinutes: 30
+    whyRead: |-
+      연결이 맺어지는 과정을 외운 그림이 아니라 상태로 설명할 수 있게 된다. 세 번 오가는 동안 양쪽이 무엇을
+      확인하고 어떤 상태로 넘어가는지 알면 연결 지연과 연결 거부를 갈라 볼 수 있다.
+    checkPoints:
+      - 세 번의 교환에서 각 쪽이 무엇을 보내고 무엇을 확인하는지 순서대로 적어 보세요
+      - 처음에 양쪽이 순서 번호를 맞추는 이유를 적어 보세요
+      - 내 서비스가 연결되지 않을 때 어느 단계에서 멈췄는지 무엇으로 확인할지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # -------------------------------------------------------------------- NETWORK.TLS
+  - key: DOC.TLS.PROTOCOL_OVERVIEW.001
+    title: RFC 8446 The Transport Layer Security (TLS) Protocol Version 1.3 — 2. Protocol Overview
+    url: https://www.rfc-editor.org/rfc/rfc8446.html#section-2
+    publisher: IETF (RFC Editor)
+    versionScope: RFC 8446 (2018-08, TLS 1.3)
+    skillCodes: [NETWORK.TLS]
+    estimatedMinutes: 30
+    whyRead: |-
+      HTTPS를 "암호화되니까 안전하다"로 두지 않게 된다. 핸드셰이크가 키 합의 · 신원 확인 · 마무리 확인을
+      어떤 순서로 끝내는지 알면 인증서 오류와 암호 방식 불일치를 갈라 읽을 수 있다.
+    checkPoints:
+      - 핸드셰이크가 끝날 때까지 양쪽이 합의하는 것을 세 가지 적어 보세요
+      - 서버의 신원을 확인하는 단계가 키 합의와 어떻게 다른지 적어 보세요
+      - 내 서비스의 TLS 연결이 실패했을 때 어느 단계의 문제인지 가르는 기준을 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.TLS.SERVER_CONFIG.001
+    title: Transport Layer Security Cheat Sheet — OWASP Cheat Sheet Series
+    url: https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Security_Cheat_Sheet.html
+    publisher: OWASP Foundation
+    versionScope: 버전 없음 (2026-09-21 기준 내용)
+    skillCodes: [NETWORK.TLS]
+    estimatedMinutes: 25
+    whyRead: |-
+      서버의 TLS 설정을 기본값 그대로 두지 않게 된다. 어떤 버전을 끄고 인증서에서 무엇을 확인하며 평문 요청을
+      어떻게 다룰지 정해 두면 "HTTPS는 켰는데 무엇이 안전한가"에 답할 수 있다.
+    checkPoints:
+      - 지금 쓰면 안 된다고 적힌 프로토콜 버전과 그 이유를 적어 보세요
+      - 인증서를 받을 때 확인하라고 한 항목을 두 가지 이상 적어 보세요
+      - 내 서비스가 평문 요청을 받았을 때 무엇을 할지 정하고 이유를 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ------------------------------------------------------------- DATABASE.MODELING
+  - key: DOC.DDL.CONSTRAINTS.001
+    title: PostgreSQL 16 Documentation — 5.4. Constraints
+    url: https://www.postgresql.org/docs/16/ddl-constraints.html
+    publisher: PostgreSQL Global Development Group
+    versionScope: PostgreSQL 16
+    skillCodes: [DATABASE.MODELING]
+    estimatedMinutes: 30
+    whyRead: |-
+      데이터 규칙을 애플리케이션 코드에만 두지 않게 된다. 검사 · 유일 · 기본키 · 외래키 제약이 각각 무엇을
+      막아 주는지 알면 표 구조를 그릴 때 어떤 규칙을 DB에 맡길지 정할 수 있다.
+    checkPoints:
+      - NOT NULL · UNIQUE · CHECK가 각각 어떤 잘못된 데이터를 막는지 한 줄씩 적어 보세요
+      - 외래키가 가리키는 행이 지워질 때 고를 수 있는 동작을 두 가지 이상 적어 보세요
+      - 내 테이블 하나를 골라 코드로만 막고 있는 규칙을 제약으로 옮겨 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ---------------------------------------------------------- DATABASE.TRANSACTION
+  - key: DOC.TRANSACTION.BASICS.001
+    title: PostgreSQL 16 Documentation — 3.4. Transactions
+    url: https://www.postgresql.org/docs/16/tutorial-transactions.html
+    publisher: PostgreSQL Global Development Group
+    versionScope: PostgreSQL 16
+    skillCodes: [DATABASE.TRANSACTION]
+    estimatedMinutes: 20
+    whyRead: |-
+      트랜잭션을 "오류 나면 되돌리는 것"으로만 알고 있으면 부분 성공을 설명할 수 없다. 여러 문장이 하나로
+      묶이는 단위와 세이브포인트로 일부만 되돌리는 방법을 알면 경계를 어디에 둘지 정할 수 있다.
+    checkPoints:
+      - 트랜잭션 블록 안의 문장 하나가 실패하면 나머지가 어떻게 되는지 적어 보세요
+      - 세이브포인트가 무엇을 할 수 있게 해 주는지 적어 보세요
+      - 내 기능 하나를 골라 트랜잭션을 어디에서 열고 닫을지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.TRANSACTION.MVCC.001
+    title: PostgreSQL 16 Documentation — 13.1. Introduction (Concurrency Control)
+    url: https://www.postgresql.org/docs/16/mvcc-intro.html
+    publisher: PostgreSQL Global Development Group
+    versionScope: PostgreSQL 16
+    skillCodes: [DATABASE.TRANSACTION]
+    estimatedMinutes: 15
+    whyRead: |-
+      읽기가 왜 쓰기를 기다리지 않는지 설명할 수 있게 된다. 각 문장이 자기 시점의 스냅샷을 본다는 다중 버전
+      방식의 기본을 잡으면, 동시 접근 문제에 잠금부터 떠올리는 습관을 바꿀 수 있다.
+    checkPoints:
+      - 읽는 쪽과 쓰는 쪽이 서로 막지 않는다는 말을 한 문장으로 옮겨 적어 보세요
+      - 그래도 잠금이 필요한 상황을 하나 들어 보세요
+      - 내 기능에서 같은 행을 동시에 고치는 곳이 있는지 찾아 무엇으로 막을지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ------------------------------------------------------------------ DEVOPS.DOCKER
+  - key: DOC.DOCKER.CONTAINER_BASICS.001
+    title: What is a container? — Docker Docs
+    url: https://docs.docker.com/get-started/docker-concepts/the-basics/what-is-a-container/
+    publisher: Docker, Inc.
+    versionScope: 버전 없음 (2026-09-21 기준 내용)
+    skillCodes: [DEVOPS.DOCKER]
+    estimatedMinutes: 15
+    whyRead: |-
+      컨테이너를 가벼운 가상 머신으로 이해하지 않게 된다. 호스트 커널을 함께 쓰는 격리된 프로세스라는 정의를
+      잡으면 컨테이너가 왜 빨리 뜨는지, 무엇을 이미지에 담아야 하는지 설명할 수 있다.
+    checkPoints:
+      - 컨테이너와 가상 머신이 각각 무엇까지 따로 갖는지 나눠 적어 보세요
+      - 컨테이너가 호스트와 함께 쓰는 것이 무엇인지 적어 보세요
+      - 내 애플리케이션을 컨테이너로 띄운다면 무엇을 담고 무엇을 밖에서 넣어 줄지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.DOCKER.BUILD_CACHE.001
+    title: Docker build cache — Docker Docs
+    url: https://docs.docker.com/build/cache/
+    publisher: Docker, Inc.
+    versionScope: 버전 없음 (2026-09-21 기준 내용)
+    skillCodes: [DEVOPS.DOCKER]
+    estimatedMinutes: 25
+    whyRead: |-
+      이미지를 만들 때마다 처음부터 다시 받지 않게 만든다. 각 지시가 층을 만들고 앞 층이 바뀌면 뒤가 모두
+      다시 만들어진다는 규칙을 알면 Dockerfile의 줄 순서를 근거를 갖고 정할 수 있다.
+    checkPoints:
+      - 어떤 층이 다시 만들어지는지 무엇으로 판단하는지 적어 보세요
+      - 의존성을 먼저 받고 소스를 나중에 복사하라고 하는 이유를 적어 보세요
+      - 내 Dockerfile의 줄 순서를 캐시 기준으로 다시 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ----------------------------------------------------------------- JAVA.EXCEPTION
+  - key: DOC.JAVA.EXCEPTIONS.001
+    title: The Java Language Specification, Java SE 25 Edition — Chapter 11. Exceptions
+    url: https://docs.oracle.com/javase/specs/jls/se25/html/jls-11.html
+    publisher: Oracle
+    versionScope: Java SE 25 (JLS)
+    skillCodes: [JAVA.EXCEPTION]
+    estimatedMinutes: 30
+    whyRead: |-
+      예외를 "try로 감싸는 것"이 아니라 언어가 정한 규칙으로 보게 된다. 컴파일러가 처리를 요구하는 예외와
+      그렇지 않은 예외가 갈리는 기준과 전파되는 경로를 알면 무엇을 잡고 무엇을 올려보낼지 정할 수 있다.
+    checkPoints:
+      - 컴파일러가 처리하라고 요구하는 예외와 그렇지 않은 예외가 무엇으로 갈리는지 적어 보세요
+      - 잡히지 않은 예외가 어디까지 올라가고 그 뒤 무엇이 일어나는지 적어 보세요
+      - 내 코드에서 잡아서 삼키고 있는 예외를 하나 찾아 어떻게 바꿀지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # --------------------------------------------------------------- SPRING.BOOT_CONFIG
+  - key: DOC.SPRING.EXTERNAL_CONFIG.001
+    title: Spring Boot Reference — Externalized Configuration
+    url: https://docs.spring.io/spring-boot/reference/features/external-config.html
+    publisher: Spring (Broadcom)
+    versionScope: Spring Boot 4.1.x
+    skillCodes: [SPRING.BOOT_CONFIG]
+    estimatedMinutes: 30
+    whyRead: |-
+      설정값이 어디에서 왔는지 추측하지 않게 된다. 명령행 인자 · 환경변수 · 프로필별 파일이 서로를 덮는 순서가
+      정해져 있다는 것을 알면 "서버에서만 값이 다른" 문제를 순서대로 짚을 수 있다.
+    checkPoints:
+      - 같은 키가 여러 곳에 있을 때 이기는 순서를 위에서 세 가지 적어 보세요
+      - 환경변수 이름과 속성 이름이 어떻게 대응되는지 예시 한 줄로 적어 보세요
+      - 내 프로젝트에서 환경마다 달라야 하는 값을 하나 고르고 어디에 둘지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ------------------------------------------------------------------ SPRING.DATA_JPA
+  - key: DOC.JPA.QUERY_METHODS.001
+    title: Spring Data JPA Reference — JPA Query Methods
+    url: https://docs.spring.io/spring-data/jpa/reference/jpa/query-methods.html
+    publisher: Spring (Broadcom)
+    versionScope: Spring Data JPA 4.1.x
+    skillCodes: [SPRING.DATA_JPA]
+    estimatedMinutes: 30
+    whyRead: |-
+      조회 메서드를 만들 때 무엇이 자동으로 되고 무엇이 안 되는지 알게 된다. 메서드 이름이 질의로 번역되는
+      규칙과 질의를 직접 적어야 하는 경계를 잡으면 리포지토리가 읽기 어려워지는 것을 막을 수 있다.
+    checkPoints:
+      - 메서드 이름에서 조건과 정렬이 각각 어느 부분으로 적히는지 적어 보세요
+      - 이름으로 만들기 어려운 조회를 직접 적는 방법을 하나 적어 보세요
+      - 내 리포지토리의 긴 메서드 이름 하나를 골라 그대로 둘지 질의로 옮길지 정하고 이유를 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # --------------------------------------------------------------------- SPRING.DI_IOC
+  - key: DOC.SPRING.DEPENDENCY_INJECTION.001
+    title: Spring Framework Reference — Dependency Injection
+    url: https://docs.spring.io/spring-framework/reference/core/beans/dependencies/factory-collaborators.html
+    publisher: Spring (Broadcom)
+    versionScope: Spring Framework 7.0.x
+    skillCodes: [SPRING.DI_IOC]
+    estimatedMinutes: 25
+    whyRead: |-
+      의존성을 받는 방식을 근거를 갖고 고르게 된다. 생성자 주입과 설정자 주입이 각각 무엇을 보장하는지,
+      두 빈이 서로를 필요로 할 때 어떤 일이 생기는지 알면 객체 사이의 관계를 스스로 설계할 수 있다.
+    checkPoints:
+      - 생성자 주입과 설정자 주입이 각각 어떤 의존성에 맞는지 나눠 적어 보세요
+      - 두 빈이 서로를 필요로 할 때 무슨 일이 생기고 어떻게 푸는지 적어 보세요
+      - 내 클래스 하나를 골라 주입 방식을 정하고 그 이유를 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # -------------------------------------------------------------------- SPRING.MVC_REST
+  - key: DOC.SPRING.REQUEST_MAPPING.001
+    title: Spring Framework Reference — Mapping Requests
+    url: https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-controller/ann-requestmapping.html
+    publisher: Spring (Broadcom)
+    versionScope: Spring Framework 7.0.x
+    skillCodes: [SPRING.MVC_REST]
+    estimatedMinutes: 30
+    whyRead: |-
+      요청이 어느 메서드로 가는지 규칙으로 설명할 수 있게 된다. 경로 · 메서드 · 헤더 · 미디어 타입으로 좁히는
+      방법과 겹치는 매핑에서 무엇이 뽑히는지 알면 404와 415를 만났을 때 원인을 좁힐 수 있다.
+    checkPoints:
+      - 같은 경로에 매핑이 둘 있을 때 무엇을 기준으로 하나가 뽑히는지 적어 보세요
+      - consumes와 produces가 각각 요청의 어느 헤더를 보는지 적어 보세요
+      - 내 컨트롤러 하나를 골라 매핑 조건을 다시 적고 더 좁힐 수 있는지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ----------------------------------------------------------------- SPRING.TRANSACTION
+  - key: DOC.SPRING.TRANSACTIONAL.001
+    title: Spring Framework Reference — Using @Transactional
+    url: https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html
+    publisher: Spring (Broadcom)
+    versionScope: Spring Framework 7.0.x
+    skillCodes: [SPRING.TRANSACTION, SPRING.AOP_PROXY]
+    estimatedMinutes: 30
+    whyRead: |-
+      트랜잭션 표시를 붙였는데 되돌아가지 않는 상황을 설명할 수 있게 된다. 프록시를 거쳐야 적용된다는 것과
+      기본 롤백 규칙을 알면 같은 클래스 안의 호출이나 잡아 버린 예외 때문에 생기는 문제를 짚을 수 있다.
+    checkPoints:
+      - 기본 설정에서 어떤 예외가 되돌리고 어떤 예외가 되돌리지 않는지 적어 보세요
+      - 같은 클래스의 다른 메서드를 직접 부르면 트랜잭션이 어떻게 되는지 이유와 함께 적어 보세요
+      - 내 서비스 메서드 하나를 골라 트랜잭션이 실제로 걸리는지 무엇으로 확인할지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.SPRING.TX_PROPAGATION.001
+    title: Spring Framework Reference — Transaction Propagation
+    url: https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/tx-propagation.html
+    publisher: Spring (Broadcom)
+    versionScope: Spring Framework 7.0.x
+    skillCodes: [SPRING.TRANSACTION]
+    estimatedMinutes: 25
+    whyRead: |-
+      트랜잭션 안에서 다른 트랜잭션 메서드를 부를 때 무엇이 일어날지 고를 수 있게 된다. 기존 것에 합류할지
+      새로 열지에 따라 실패했을 때 되돌아가는 범위가 달라진다는 것을 알게 된다.
+    checkPoints:
+      - 기존 트랜잭션이 있을 때 REQUIRED와 REQUIRES_NEW가 각각 무엇을 하는지 적어 보세요
+      - 안쪽이 실패했을 때 바깥까지 되돌아가는 경우와 그렇지 않은 경우를 나눠 적어 보세요
+      - 내 기능 중 실패해도 기록은 남겨야 하는 부분을 골라 어떤 전파 방식이 맞는지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # --------------------------------------------------------------------- TESTING.JUNIT
+  - key: DOC.JUNIT.ASSERTIONS.001
+    title: Assertions — JUnit User Guide
+    url: https://docs.junit.org/current/writing-tests/assertions.html
+    publisher: JUnit Team
+    versionScope: JUnit 6.1.3 (current, 2026-09-21 확인)
+    skillCodes: [TESTING.JUNIT]
+    estimatedMinutes: 20
+    whyRead: |-
+      테스트 실패 메시지만 보고 원인을 찾을 수 있게 된다. 어떤 단언이 무엇을 비교해 보여 주는지, 여러 확인을
+      한 번에 보고하는 방법과 예외를 기대하는 방법을 알면 테스트가 진단 도구가 된다.
+    checkPoints:
+      - 값 하나를 비교하는 단언과 여러 단언을 묶어 한 번에 보고하는 방법을 나눠 적어 보세요
+      - 예외가 던져지는 것을 확인하는 단언이 무엇을 돌려주는지 적어 보세요
+      - 내 테스트 하나를 일부러 실패시켜 메시지만으로 원인을 알 수 있는지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.JUNIT.PARAMETERIZED.001
+    title: Parameterized Classes and Tests — JUnit User Guide
+    url: https://docs.junit.org/current/writing-tests/parameterized-classes-and-tests.html
+    publisher: JUnit Team
+    versionScope: JUnit 6.1.3 (current, 2026-09-21 확인)
+    skillCodes: [TESTING.JUNIT]
+    estimatedMinutes: 30
+    whyRead: |-
+      같은 테스트를 값만 바꿔 복사하지 않게 된다. 입력 묶음을 밖에서 넣어 주는 방법을 알면 경계값과 잘못된
+      입력을 한 테스트로 덮을 수 있고, 실패했을 때 어떤 입력이었는지 그대로 보인다.
+    checkPoints:
+      - 값 묶음을 테스트에 넣어 주는 방법을 두 가지 이상 적어 보세요
+      - 입력이 여러 칸일 때 테스트 메서드가 그 값을 어떻게 받는지 적어 보세요
+      - 내 테스트 중 값만 다른 것 두 개를 골라 하나로 합쳐 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ------------------------------------------------------- WEB_HTTP.AUTH_SESSION_TOKEN
+  - key: DOC.COOKIE.SET_COOKIE.001
+    title: "RFC 6265 HTTP State Management Mechanism — 4.1. Set-Cookie"
+    url: https://www.rfc-editor.org/rfc/rfc6265.html#section-4.1
+    publisher: IETF (RFC Editor)
+    versionScope: RFC 6265 (2011-04)
+    skillCodes: [WEB_HTTP.AUTH_SESSION_TOKEN]
+    estimatedMinutes: 25
+    whyRead: |-
+      세션 쿠키의 속성을 기본값으로 두지 않게 된다. 유효기간 · 경로 · 도메인 · Secure · HttpOnly가 각각 무엇을
+      정하는지 알면 로그인 상태가 언제까지 어디까지 따라다니는지 스스로 설계할 수 있다.
+    checkPoints:
+      - Secure와 HttpOnly가 각각 무엇을 막는지 나눠 적어 보세요
+      - 만료 시각을 주지 않은 쿠키가 언제까지 남아 있는지 적어 보세요
+      - 내 서비스의 인증 쿠키에 어떤 속성을 붙일지 정하고 이유를 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.SESSION.MANAGEMENT.001
+    title: Session Management Cheat Sheet — OWASP Cheat Sheet Series
+    url: https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html
+    publisher: OWASP Foundation
+    versionScope: 버전 없음 (2026-09-21 기준 내용)
+    skillCodes: [WEB_HTTP.AUTH_SESSION_TOKEN, SECURITY.AUTHN_AUTHZ]
+    estimatedMinutes: 30
+    whyRead: |-
+      로그인 뒤의 상태를 어떻게 유지할지 규칙으로 정할 수 있게 된다. 세션 식별자를 어떻게 만들고 언제 새로
+      발급하며 언제 끊을지 알면 탈취와 고정 공격을 막는 기준을 세울 수 있다.
+    checkPoints:
+      - 로그인에 성공한 직후 세션 식별자를 새로 발급하라고 하는 이유를 적어 보세요
+      - 세션을 끝내야 하는 시점을 두 가지 이상 적어 보세요
+      - 내 서비스의 로그아웃이 서버에서 무엇을 지우는지 확인하고 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ------------------------------------------------------------- WEB_HTTP.IDEMPOTENCY
+  - key: DOC.HTTP.PUT_SEMANTICS.001
+    title: RFC 9110 HTTP Semantics — 9.3.4. PUT
+    url: https://www.rfc-editor.org/rfc/rfc9110.html#name-put
+    publisher: IETF (RFC Editor)
+    versionScope: RFC 9110 (2022-06)
+    skillCodes: [WEB_HTTP.IDEMPOTENCY]
+    estimatedMinutes: 20
+    whyRead: |-
+      같은 요청을 다시 보내도 되는 끝점을 스스로 만들 수 있게 된다. 대상 자원을 보낸 값으로 만든다는 정의를
+      잡으면 왜 두 번 보내도 결과가 같은지, 왜 새로 만들기만 하는 끝점은 그렇지 않은지 설명된다.
+    checkPoints:
+      - 이 메서드가 서버에 남기는 결과가 새로 만들기만 하는 요청과 어떻게 다른지 적어 보세요
+      - 같은 요청을 두 번 보냈을 때 자원과 응답이 각각 어떻게 되는지 적어 보세요
+      - 내 API에서 재시도되면 값이 두 번 쌓이는 끝점을 찾아 어떻게 바꿀지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  - key: DOC.HTTP.CONDITIONAL_REQUESTS.001
+    title: RFC 9110 HTTP Semantics — 13. Conditional Requests
+    url: https://www.rfc-editor.org/rfc/rfc9110.html#name-conditional-requests
+    publisher: IETF (RFC Editor)
+    versionScope: RFC 9110 (2022-06)
+    skillCodes: [WEB_HTTP.IDEMPOTENCY]
+    estimatedMinutes: 30
+    whyRead: |-
+      재시도와 동시 수정이 겹칠 때 덮어쓰기를 막을 수 있게 된다. 자원의 현재 상태를 가리키는 값을 받아
+      조건이 맞을 때만 바꾸는 방법을 알면 늦게 도착한 요청이 앞선 변경을 지우는 일을 미리 막는다.
+    checkPoints:
+      - 자원의 상태를 가리키는 검증자 값이 무엇을 뜻하는지 한 줄로 적어 보세요
+      - 조건이 맞지 않을 때 서버가 돌려주는 상태 코드와 그 뜻을 적어 보세요
+      - 내 수정 API 하나를 골라 조건부 요청을 어떻게 적용할지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ------------------------------------------------------- PRACTICAL_ENGINEERING.LOGGING
+  - key: DOC.SPRING.LOGGING.001
+    title: Spring Boot Reference — Logging
+    url: https://docs.spring.io/spring-boot/reference/features/logging.html
+    publisher: Spring (Broadcom)
+    versionScope: Spring Boot 4.1.x
+    skillCodes: [PRACTICAL_ENGINEERING.LOGGING]
+    estimatedMinutes: 25
+    whyRead: |-
+      로그 수준을 감으로 정하지 않게 된다. 수준마다 무엇을 남기고 어느 묶음만 더 자세히 볼지 설정으로 바꾸는
+      방법을 알면 평소에는 조용하다가 장애 때 필요한 줄만 켤 수 있다.
+    checkPoints:
+      - 로그 수준을 패키지나 묶음마다 다르게 주는 방법을 적어 보세요
+      - 평소에 켜 둘 수준과 문제를 볼 때만 올릴 수준을 나눠 적어 보세요
+      - 내 서비스에서 지금 너무 많이 남는 로그를 하나 찾아 어떻게 바꿀지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # --------------------------------------------------- PRACTICAL_ENGINEERING.CODE_REVIEW
+  - key: DOC.REVIEW.RESPONSIBILITIES.001
+    title: OpenJDK Developers' Guide — Responsibilities of a Reviewer
+    url: https://openjdk.org/guide/#responsibilities-of-a-reviewer
+    publisher: OpenJDK
+    versionScope: 버전 없음 (2026-09-21 기준 내용)
+    skillCodes: [PRACTICAL_ENGINEERING.CODE_REVIEW]
+    estimatedMinutes: 15
+    whyRead: |-
+      리뷰를 오타 찾기로 두지 않게 된다. 승인한 사람이 그 변경의 결과까지 책임진다는 전제에서 무엇을 보고,
+      잘 모르는 영역이면 어떻게 해야 하는지 적혀 있어 내 리뷰 기준을 세울 수 있다.
+    checkPoints:
+      - 승인한 변경에 대해 리뷰어가 어디까지 책임진다고 적혀 있는지 적어 보세요
+      - 잘 모르는 영역의 변경을 받았을 때 리뷰어가 할 일을 적어 보세요
+      - 내가 다음 리뷰에서 코드 말고 함께 볼 것을 정하고 이유를 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ---------------------------------------------------------------- JAVA.COLLECTION
+  - key: DOC.JAVA.OBJECT_CONTRACT.001
+    title: Java SE 25 API Documentation — Class Object (java.lang)
+    url: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Object.html
+    publisher: Oracle
+    versionScope: Java SE 25
+    skillCodes: [JAVA.COLLECTION]
+    estimatedMinutes: 20
+    whyRead: |-
+      Set과 Map이 왜 내 객체를 중복으로 담는지 설명할 수 있게 된다. equals와 hashCode가 지켜야 한다고 적힌
+      약속을 읽으면, 자료구조가 값을 찾는 방식과 그 약속을 어겼을 때 생기는 일을 이을 수 있다.
+    checkPoints:
+      - equals가 지켜야 하는 성질을 세 가지 이상 적어 보세요
+      - equals가 같다고 본 두 객체의 hashCode는 어때야 하는지, 그 반대도 성립하는지 적어 보세요
+      - 내 클래스 하나를 골라 Set에 넣어도 되는지 판단하고 이유를 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+  # ----------------------------------------------------------------------- JAVA.OOP
+  - key: DOC.JAVA.OVERRIDING.001
+    title: The Java Language Specification, Java SE 25 Edition — 8.4.8. Inheritance, Overriding, and Hiding
+    url: https://docs.oracle.com/javase/specs/jls/se25/html/jls-8.html#jls-8.4.8
+    publisher: Oracle
+    versionScope: Java SE 25 (JLS)
+    skillCodes: [JAVA.OOP]
+    estimatedMinutes: 25
+    whyRead: |-
+      상속을 쓸 때 무엇이 바뀌고 무엇이 그대로인지 규칙으로 말할 수 있게 된다. 재정의가 성립하는 조건과
+      정적 메서드가 가려지는 것의 차이를 알면 부모 타입으로 불렀을 때 어느 코드가 도는지 설명할 수 있다.
+    checkPoints:
+      - 재정의한 메서드가 부모보다 좁게 만들 수 없는 것이 무엇인지 적어 보세요
+      - 인스턴스 메서드의 재정의와 정적 메서드의 가리기가 호출 때 어떻게 다른지 적어 보세요
+      - 내 코드에서 상속으로 푼 것 하나를 골라 구성으로 바꿀 수 있는지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
