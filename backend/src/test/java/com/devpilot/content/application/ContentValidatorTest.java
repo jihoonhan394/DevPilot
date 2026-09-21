@@ -507,6 +507,29 @@ class ContentValidatorTest {
         assertThat(report.errors()).isEmpty();
     }
 
+    /**
+     * CV-131은 정확히 일치하는 호스트뿐 아니라 **하위 도메인**도 받아들인다 (docs/19 §7.6, docs/03 §9).
+     *
+     * <p>한때 이 검사만 정확 일치였다. 다른 검사(CV-121·CV-71)와 python 검증기는 하위 도메인을 받아들였으므로 두 검증기가 같은 콘텐츠를 두고 다른 답을
+     * 냈다.
+     */
+    @Test
+    void shouldAcceptSourceOnSubdomainOfTrustedHost() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        fixture.lessonSources().getFirst().put("url", "https://docs.junit.org/current/user-guide/");
+
+        assertThat(validator.validate(fixture.content).errors()).isEmpty();
+    }
+
+    @Test
+    void shouldRejectSourceOnUntrustedHost() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        fixture.lessonSources().getFirst().put("url", "https://junit.org.example.invalid/guide");
+
+        assertThat(validator.validate(fixture.content).errors())
+                .anyMatch(issue -> "CV-131".equals(issue.rule()));
+    }
+
     @Test
     void shouldAcceptOptionalRetiredFlagOnReading() {
         Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
@@ -655,6 +678,14 @@ class ContentValidatorTest {
 
         List<Object> milestoneSkills(String key) {
             return rawList(milestone(key).get("skillCodes"));
+        }
+
+        List<Map<String, Object>> lessons() {
+            return maps(document("lessons/test.yaml").get("lessons"));
+        }
+
+        List<Map<String, Object>> lessonSources() {
+            return maps(lessons().getFirst().get("sources"));
         }
 
         List<Map<String, Object>> cards() {

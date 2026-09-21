@@ -209,7 +209,8 @@ final class LessonChecks {
         String host = host(source.get("url"));
         if (host == null) {
             context.error("CV-131", where, "source url must be https");
-        } else if (!context.trustedSourceHosts().contains(host)) {
+            // 하위 도메인도 허용한다 (docs/19 §7.6, docs/03 §9) — 다른 검사와 같은 규칙이다
+        } else if (!CuratedSourceChecks.hostAllowed(context.trustedSourceHosts(), host)) {
             context.error("CV-131", where, "source host is not trusted: " + host);
         }
     }

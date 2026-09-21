@@ -1,0 +1,589 @@
+# DevPilot 개념 노트 — JUnit 테스트
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 이 저장소가 쓰는 junit-jupiter-api 6.0.3 의 클래스·시그니처를 jar 로 확인했다
+#   (assertThrows 가 던진 예외를 돌려주는 것, assertAll 이 Executable... 을 받는 것 포함)
+# - 예제는 주문 시스템 상황으로 쓴다 (CV-134)
+lessons:
+  - key: LESSON.TESTING.JUNIT.001
+    skillCode: TESTING.JUNIT
+    title: 고쳐도 무섭지 않게 만들기 (JUnit)
+    whyItMatters: |-
+      테스트가 없으면 코드를 고칠 때마다 "다른 데가 깨졌을까"를 손으로 확인해야 한다.
+      그래서 결국 고치지 않게 되고, 코드는 점점 손댈 수 없는 것이 된다.
+      테스트는 품질 활동이라기보다 **고칠 자유를 사는 일**이다.
+      주문 시스템의 할인·배송비 같은 규칙은 눈으로 검산하기 어려워서 특히 그렇다.
+    oneLine: 테스트는 "이 입력이면 이 결과"를 코드로 적어 두고 기계가 매번 확인하게 하는 것이다.
+    units:
+      - key: LESSON.TESTING.JUNIT.001.U1
+        title: 테스트 하나의 생김새
+        minutes: 10
+        core: true
+        explain: |-
+          테스트 메서드에는 `@Test`를 붙인다. `public`일 필요도 없고 값을 돌려주지도 않는다.
+
+          안은 늘 세 토막이다. 흔히 **준비 - 실행 - 확인**(given-when-then)이라고 부른다.
+          준비에서 재료를 만들고, 실행에서 **딱 한 가지 동작**을 부르고, 확인에서 결과를 견준다.
+          토막 사이에 빈 줄을 하나씩 두면 남이 읽기 쉽다.
+
+          확인에 쓰는 것이 `Assertions`의 static 메서드들이다. 공식 javadoc은 이 클래스를
+          **"테스트에서 조건을 단언하는 것을 돕는 유틸리티 메서드 모음"** 이라고 설명하고,
+          단언이 실패하면 `AssertionFailedError`(또는 그 하위)가 던져진다고 적는다.
+
+          `@DisplayName`으로 사람이 읽을 이름을 붙일 수 있다. 메서드 이름에 한글을 쓸 수는 없으니
+          **무엇을 보장하는지**를 여기에 적는다 — 실패했을 때 보고서에 그대로 나온다.
+
+          중요한 성질이 하나 있다. JUnit은 **테스트 메서드마다 인스턴스를 새로 만든다**(기본 수명주기).
+          그래서 한 테스트가 필드를 더럽혀도 다음 테스트는 깨끗하게 시작한다.
+        example:
+          language: java
+          code: |-
+            class DeliveryFeeTest {
+
+                @Test
+                @DisplayName("3만원 이상이면 배송비가 없다")
+                void shouldBeFreeOverThreshold() {
+                    DeliveryFee fee = new DeliveryFee(3_000, 30_000);   // 준비
+
+                    int actual = fee.feeFor(30_000);                    // 실행
+
+                    assertEquals(0, actual);                            // 확인
+                }
+
+                @Test
+                @DisplayName("3만원 미만이면 3000원이다")
+                void shouldChargeUnderThreshold() {
+                    DeliveryFee fee = new DeliveryFee(3_000, 30_000);
+
+                    assertEquals(3_000, fee.feeFor(29_999));
+                }
+            }
+          output: |-
+            DeliveryFeeTest
+              ✓ 3만원 이상이면 배송비가 없다
+              ✓ 3만원 미만이면 3000원이다
+
+            실패하면
+              expected: <0> but was: <3000>
+          note: |-
+            - '`assertEquals(기대값, 실제값)` — **기대값이 앞**이다. 뒤집으면 실패 메시지가 거꾸로 읽힌다'
+            - '경계값 29_999와 30_000을 나란히 둔 것이 핵심이다. 딱 그 자리에서 규칙이 갈린다'
+            - '테스트마다 `new DeliveryFee(...)`를 다시 하는 것이 이상해 보여도, 인스턴스가 매번 새로 만들어지므로 자연스럽다'
+        predict:
+          question: '`assertEquals(fee.feeFor(30_000), 0)`처럼 인자 순서를 바꿔 쓰면?'
+          choices:
+            - 통과·실패는 같지만 실패 메시지의 기대값과 실제값이 뒤바뀐다
+            - 컴파일 오류가 난다
+            - 항상 실패한다
+            - 아무 차이도 없다
+          answer: 통과·실패는 같지만 실패 메시지의 기대값과 실제값이 뒤바뀐다
+          explanation: |-
+            비교 자체는 같으므로 통과 여부는 달라지지 않는다. 그런데 실패했을 때
+            `expected: <3000> but was: <0>`처럼 **거꾸로** 찍힌다.
+            원인을 찾는 사람이 코드를 한참 들여다보게 되므로, 기대값을 앞에 두는 습관을 들인다.
+        complete:
+          question: 빈 장바구니의 합계가 0인지 확인하는 테스트의 빈칸을 채우세요.
+          code: |-
+            @___
+            void shouldBeZeroWhenEmpty() {
+                Cart cart = new Cart();
+
+                ___(0, cart.total());
+            }
+          answers:
+            - [Test]
+            - [assertEquals]
+          explanation: |-
+            테스트 메서드임을 알리는 것은 `@Test`, 값이 같은지 견주는 것은 `assertEquals`다.
+            기대값 `0`이 앞에 온다.
+        problem:
+          prompt: |-
+            주문 시스템의 `Coupon` 클래스에 테스트를 붙이세요.
+
+            ```java
+            public class Coupon {
+                private final int discountRate;   // 1~50
+                public Coupon(int discountRate) { /* 범위 밖이면 IllegalArgumentException */ }
+                public int discountFor(int amount) { return amount * discountRate / 100; }
+            }
+            ```
+
+            **`discountFor`에 대한 테스트 3개**를 백지에서 작성하세요. 경계와 나누어떨어지지 않는 경우를 포함하세요.
+          deliverables:
+            - 테스트 클래스 전체 코드 (테스트 메서드 3개)
+            - 세 가지를 고른 이유 한 줄씩
+          hints:
+            - 세 토막(준비·실행·확인)이 각 테스트에 다 보이게 써 보세요.
+            - 정수 나눗셈은 소수점을 버립니다. 그 버림이 드러나는 금액이 있을까요?
+            - 규칙이 갈리는 자리(1%와 50%)를 그냥 지나치지 마세요.
+          modelAnswer: |-
+            ```java
+            class CouponTest {
+
+                @Test
+                @DisplayName("10% 쿠폰은 1만원에서 1000원을 깎는다")
+                void shouldDiscountByRate() {
+                    Coupon coupon = new Coupon(10);
+
+                    assertEquals(1_000, coupon.discountFor(10_000));
+                }
+
+                @Test
+                @DisplayName("나누어떨어지지 않으면 원 단위를 버린다")
+                void shouldRoundDown() {
+                    Coupon coupon = new Coupon(10);
+
+                    assertEquals(999, coupon.discountFor(9_999));   // 999.9 → 999
+                }
+
+                @Test
+                @DisplayName("최대 할인율 50%에서도 정확히 절반이다")
+                void shouldDiscountHalfAtMaxRate() {
+                    Coupon coupon = new Coupon(50);
+
+                    assertEquals(5_000, coupon.discountFor(10_000));
+                }
+            }
+            ```
+
+            - '첫째: 평범한 경우 — 규칙이 기본적으로 맞는지.'
+            - '둘째: 정수 나눗셈의 버림 — 돈 계산에서 제일 자주 어긋나는 자리다.'
+            - '셋째: 허용 범위의 끝(50%) — 경계는 언제나 따로 본다.'
+          selfChecks:
+            - 세 테스트가 각각 다른 것을 확인하는가 (같은 것을 숫자만 바꿔 세 번 하지 않았는가)
+            - 나누어떨어지지 않는 경우가 들어 있고 기대값이 버림 결과인가
+            - '`assertEquals`의 기대값이 앞에 있는가'
+
+      - key: LESSON.TESTING.JUNIT.001.U2
+        title: 예외가 나는 것도 규칙이다
+        minutes: 10
+        core: true
+        prerequisiteUnits:
+          - LESSON.TESTING.JUNIT.001.U1
+        explain: |-
+          "잘못된 값을 넣으면 예외가 난다"도 지켜야 할 규칙이다. 그런데 예외가 나면 테스트가 실패하므로
+          평범하게는 확인할 수 없다. 그래서 `assertThrows`가 있다.
+
+          공식 javadoc은 이것을 **"주어진 실행이 지정한 타입의 예외를 던지는지 단언한다"** 고 설명한다.
+          모양은 이렇다.
+
+          ```java
+          assertThrows(IllegalArgumentException.class, () -> new Coupon(0));
+          ```
+
+          두 번째 인자의 `() -> …`는 **아직 실행하지 않은 코드 조각**이다. JUnit이 이것을 대신 실행해 보고
+          예외가 났는지 본다. 여기에 그냥 `new Coupon(0)`을 적으면 그 자리에서 터져 버린다.
+
+          중요한 점이 하나 더 있다. **`assertThrows`는 잡은 예외를 돌려준다.**
+          그래서 메시지까지 이어서 확인할 수 있다.
+
+          여러 가지를 한꺼번에 볼 때는 `assertAll`을 쓴다. javadoc은 **"주어진 실행들이 모두 예외를 던지지
+          않음을 단언한다"** 고 적는데, 핵심은 **하나가 실패해도 나머지를 끝까지 확인한다**는 것이다.
+          `assertEquals`를 줄줄이 쓰면 첫 줄에서 멈춰 나머지는 보지 못한다.
+        example:
+          language: java
+          code: |-
+            @Test
+            @DisplayName("할인율이 범위를 벗어나면 만들 수 없다")
+            void shouldRejectRateOutOfRange() {
+                IllegalArgumentException thrown =
+                        assertThrows(IllegalArgumentException.class, () -> new Coupon(0));
+
+                assertTrue(thrown.getMessage().contains("1~50"));
+            }
+
+            @Test
+            @DisplayName("주문 요약의 세 값을 한 번에 본다")
+            void shouldSummarizeOrder() {
+                OrderSummary summary = order.summarize();
+
+                assertAll(
+                        () -> assertEquals(2, summary.itemCount()),
+                        () -> assertEquals(19_000, summary.total()),
+                        () -> assertEquals(0, summary.deliveryFee()));
+            }
+          output: |-
+            assertThrows 가 예외를 돌려준다
+              → 메시지까지 이어서 확인할 수 있다
+
+            assertAll 에서 total 만 틀리면
+              → itemCount 와 deliveryFee 도 확인한 뒤
+                 "1 of 3 assertions failed" 로 알려 준다
+          note: |-
+            - '`() -> new Coupon(0)` — 괄호 안이 아니라 **화살표 뒤**에 둬야 한다. 그래야 JUnit이 실행 시점을 정한다'
+            - '`assertThrows`의 반환값을 받아 두면 메시지·원인까지 볼 수 있다'
+            - '`assertAll`은 한 번 돌려 **전부** 알려 준다 — 고치고 다시 돌리기를 반복하지 않아도 된다'
+        predict:
+          question: '`assertThrows(IllegalArgumentException.class, new Coupon(0));`처럼 화살표 없이 쓰면?'
+          choices:
+            - 컴파일되지 않는다. 두 번째 인자는 실행할 코드 조각이어야 한다
+            - 통과한다
+            - 통과하지만 느려진다
+            - 예외 메시지를 볼 수 없다
+          answer: 컴파일되지 않는다. 두 번째 인자는 실행할 코드 조각이어야 한다
+          explanation: |-
+            `assertThrows`의 두 번째 자리는 `Executable`, 즉 **나중에 실행할 코드**를 받는다.
+            `new Coupon(0)`은 `Coupon` 값이지 실행할 코드가 아니므로 타입이 맞지 않아 컴파일이 막힌다.
+            (설령 통과했더라도 그 줄에서 바로 예외가 나 테스트가 실패했을 것이다.)
+        complete:
+          question: 이미 쓴 쿠폰을 또 쓰면 IllegalStateException이 나는지 확인하도록 빈칸을 채우세요.
+          code: |-
+            Coupon coupon = new Coupon(10);
+            coupon.use();
+
+            ___(IllegalStateException.class, ___ coupon.use());
+          answers:
+            - [assertThrows]
+            - ["() ->"]
+          explanation: |-
+            예외가 나는지 보는 것은 `assertThrows`이고, 두 번째 인자는 `() -> coupon.use()`처럼
+            **실행을 미룬 코드 조각**으로 적는다.
+        problem:
+          prompt: |-
+            아래 테스트는 실패하면 무엇이 잘못됐는지 한 번에 알기 어렵고, 예외 규칙을 확인하지 않습니다.
+            두 가지를 모두 고치세요.
+
+            ```java
+            @Test
+            void orderTest() {
+                Order order = new Order();
+                order.add(new Product("키보드", 30_000), 1);
+
+                assertEquals(1, order.itemCount());
+                assertEquals(30_000, order.total());
+                assertEquals(0, order.deliveryFee());
+                // 수량 0으로 담으면 IllegalArgumentException 이 나야 한다 — 확인 안 함
+            }
+            ```
+          deliverables:
+            - 고친 테스트 코드 (테스트를 나눠도 됩니다)
+            - 무엇을 왜 바꿨는지 두 줄
+          hints:
+            - 확인이 셋인데 첫 줄에서 실패하면 나머지 둘은 어떻게 될까요?
+            - 예외를 보는 단언은 두 번째 인자의 모양이 특별했습니다.
+            - 테스트 이름이 `orderTest`면 보고서에서 무엇이 깨졌는지 알 수 있을까요?
+          modelAnswer: |-
+            ```java
+            @Test
+            @DisplayName("상품 하나를 담으면 개수·합계·배송비가 맞는다")
+            void shouldSummarizeAfterAdding() {
+                Order order = new Order();
+                order.add(new Product("키보드", 30_000), 1);
+
+                assertAll(
+                        () -> assertEquals(1, order.itemCount()),
+                        () -> assertEquals(30_000, order.total()),
+                        () -> assertEquals(0, order.deliveryFee()));
+            }
+
+            @Test
+            @DisplayName("수량 0으로는 담을 수 없다")
+            void shouldRejectZeroQuantity() {
+                Order order = new Order();
+
+                assertThrows(IllegalArgumentException.class,
+                        () -> order.add(new Product("키보드", 30_000), 0));
+            }
+            ```
+
+            - '세 확인을 `assertAll`로 묶었다: 하나가 틀려도 나머지를 끝까지 확인해 한 번에 전부 알려 준다.'
+            - '예외 규칙을 별도 테스트로 떼고 `assertThrows`로 확인했다. 이름도 무엇을 보장하는지로 바꿨다.'
+          selfChecks:
+            - 세 확인이 `assertAll`로 묶였는가
+            - 예외 확인이 `assertThrows`이고 두 번째 인자가 `() -> …` 모양인가
+            - 테스트 이름(또는 `@DisplayName`)이 무엇을 보장하는지 말해 주는가
+
+      - key: LESSON.TESTING.JUNIT.001.U3
+        title: 같은 테스트를 값만 바꿔 여러 번
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.TESTING.JUNIT.001.U1
+        explain: |-
+          규칙 하나에 확인할 값이 여럿일 때가 있다. 배송비라면 0원·29,999원·30,000원·10만원.
+          똑같은 테스트를 네 번 복사하면 규칙이 바뀔 때 네 곳을 고쳐야 한다.
+
+          `@ParameterizedTest`는 **같은 테스트를 값만 바꿔 여러 번** 돌린다.
+          값을 어디서 가져올지는 따로 적는다.
+
+          | 값의 출처 | 언제 |
+          |---|---|
+          | `@ValueSource` | 값이 **한 줄**일 때 (`ints = {1, 2, 3}`) |
+          | `@CsvSource` | **입력과 기대값이 짝**일 때 (`"29999, 3000"`) |
+          | `@MethodSource` | 값을 코드로 만들어야 할 때 |
+
+          `@Test`와 함께 쓰지 않는다 — `@ParameterizedTest`가 그 자리를 대신한다.
+
+          이름에 `{0}`·`{1}`을 넣으면 그 회차의 값이 들어간다. 어느 값에서 깨졌는지 보고서에 바로 보인다.
+
+          경험칙이 하나 있다. **값 목록이 곧 규칙 표가 되게** 쓰면 좋다.
+          그러면 테스트가 문서 역할을 하고, 규칙이 바뀔 때 표만 고치면 된다.
+        example:
+          language: java
+          code: |-
+            @ParameterizedTest(name = "{0}원이면 배송비 {1}원")
+            @CsvSource({
+                    "0,     3000",
+                    "29999, 3000",
+                    "30000,    0",
+                    "100000,   0"
+            })
+            void shouldChargeByThreshold(int amount, int expectedFee) {
+                DeliveryFee fee = new DeliveryFee(3_000, 30_000);
+
+                assertEquals(expectedFee, fee.feeFor(amount));
+            }
+
+            @ParameterizedTest
+            @ValueSource(ints = {0, -1, 51})
+            void shouldRejectRateOutOfRange(int rate) {
+                assertThrows(IllegalArgumentException.class, () -> new Coupon(rate));
+            }
+          output: |-
+            shouldChargeByThreshold
+              ✓ 0원이면 배송비 3000원
+              ✓ 29999원이면 배송비 3000원
+              ✓ 30000원이면 배송비 0원
+              ✓ 100000원이면 배송비 0원
+
+            29999 줄만 틀리면 그 줄만 빨갛게 표시된다
+          note: |-
+            - 'CSV 네 줄이 곧 **배송비 규칙 표**다. 규칙이 바뀌면 이 표만 고친다'
+            - '`@ValueSource`는 기대값이 늘 같을 때(여기서는 "예외가 난다") 쓴다'
+            - '`name = "{0}원이면 배송비 {1}원"` — 어느 줄에서 깨졌는지 이름만 봐도 안다'
+        predict:
+          question: '`@ParameterizedTest`와 `@Test`를 한 메서드에 함께 붙이면?'
+          choices:
+            - 잘못된 사용이다. @ParameterizedTest 하나만 붙인다
+            - 값마다 두 번씩 실행된다
+            - 값 없이 한 번만 실행된다
+            - 아무 문제 없다
+          answer: 잘못된 사용이다. @ParameterizedTest 하나만 붙인다
+          explanation: |-
+            `@ParameterizedTest`는 "이것도 테스트 메서드다"를 이미 말하고 있다.
+            `@Test`를 같이 붙이면 인자를 받지 않는 테스트로도 실행하려 해서 어긋난다.
+            **둘 중 하나만** 붙인다.
+        complete:
+          question: 수량이 1·5·99일 때 모두 담기는지 확인하도록 빈칸을 채우세요.
+          code: |-
+            @___
+            @ValueSource(___ = {1, 5, 99})
+            void shouldAcceptValidQuantity(int quantity) {
+                Cart cart = new Cart();
+
+                cart.add(new Product("키보드", 30_000), quantity);
+
+                assertEquals(quantity, cart.quantityOf("키보드"));
+            }
+          answers:
+            - [ParameterizedTest]
+            - [ints]
+          explanation: |-
+            값만 바꿔 여러 번 도는 테스트는 `@ParameterizedTest`이고,
+            정수 목록을 주는 칸은 `@ValueSource(ints = {...})`다.
+        problem:
+          prompt: |-
+            아래 네 테스트를 하나로 합치세요. 그리고 **지금 빠져 있는 경계값 하나**를 찾아 추가하세요.
+
+            ```java
+            @Test void vipIsTen()     { assertEquals(10, rateOf("VIP")); }
+            @Test void vvipIsTwenty() { assertEquals(20, rateOf("VVIP")); }
+            @Test void normalIsZero() { assertEquals(0,  rateOf("NORMAL")); }
+            @Test void unknownIsZero(){ assertEquals(0,  rateOf("XXXX")); }
+            ```
+          deliverables:
+            - 합친 테스트 하나 (값 목록 포함)
+            - 추가한 경계값과 그것을 고른 이유
+          hints:
+            - 입력과 기대값이 **짝**으로 다닙니다. 어느 출처가 어울릴까요?
+            - 등급 이름이 문자열입니다. 비어 있거나 없을 때는 어떻게 될까요?
+            - 이름에 `{0}`을 넣으면 실패한 줄을 바로 알 수 있습니다.
+          modelAnswer: |-
+            ```java
+            @ParameterizedTest(name = "{0} 등급의 할인율은 {1}%")
+            @CsvSource({
+                    "VIP,    10",
+                    "VVIP,   20",
+                    "NORMAL,  0",
+                    "XXXX,    0",
+                    "'',      0"      // 추가: 빈 문자열
+            })
+            void shouldGiveRateByGrade(String grade, int expectedRate) {
+                assertEquals(expectedRate, rateOf(grade));
+            }
+            ```
+
+            - '추가한 경계값: **빈 문자열**. "모르는 등급"은 확인하면서 "등급이 비어 있는 경우"는 아무도 확인하지 않았다. 값이 안 들어온 채로 호출되는 일은 실제로 자주 생긴다.'
+
+            (`null`까지 보려면 `@CsvSource`의 빈 칸이 `null`로 들어가는 규칙을 쓰거나
+            `@MethodSource`로 값을 만들어 준다.)
+          selfChecks:
+            - 네 테스트가 `@ParameterizedTest` 하나로 합쳐졌는가
+            - 입력과 기대값이 짝인 출처(`@CsvSource`)를 골랐는가
+            - 추가한 값이 **원래 목록에 없던 종류**의 경우인가 (숫자만 바꾼 것이 아닌가)
+
+      - key: LESSON.TESTING.JUNIT.001.U4
+        title: 준비를 나눠 쓰기
+        minutes: 10
+        core: false
+        prerequisiteUnits:
+          - LESSON.TESTING.JUNIT.001.U1
+        explain: |-
+          테스트마다 같은 준비를 반복하게 되면 `@BeforeEach`로 뺄 수 있다. **테스트 메서드마다 한 번씩** 실행된다.
+          짝이 되는 `@AfterEach`는 끝난 뒤에 실행된다.
+
+          클래스 전체에서 딱 한 번만 하고 싶으면 `@BeforeAll`·`@AfterAll`이다.
+          기본 수명주기가 **메서드마다 새 인스턴스**이므로, 이 둘은 인스턴스가 없을 때도 불려야 해서 `static`이어야 한다.
+
+          여기서 주의할 점이 있다. `@BeforeEach`에 준비를 몰아넣으면 **테스트만 봐서는 무엇이 준비됐는지 모른다.**
+          읽는 사람이 위아래로 오가야 한다. 그래서 기준을 이렇게 둔다.
+
+          - **모든 테스트가 똑같이 쓰는 것** → `@BeforeEach` (예: 매번 새로 만드는 빈 장바구니)
+          - **테스트마다 다른 것** → 그 테스트 안에 둔다 (예: 담는 상품과 수량)
+
+          `@BeforeAll`에서 만든 것을 여러 테스트가 **고쳐 쓰면** 순서에 따라 결과가 달라진다.
+          한 번만 만들 것은 바뀌지 않는 것으로 한정한다.
+
+          잠시 끄고 싶은 테스트에는 `@Disabled`를 붙인다. **이유를 반드시 적는다** —
+          이유 없는 `@Disabled`는 영원히 꺼진 채로 남는다.
+        example:
+          language: java
+          code: |-
+            class CartTest {
+
+                private Cart cart;                      // 테스트마다 새 인스턴스라 공유되지 않는다
+
+                @BeforeEach
+                void setUp() {
+                    cart = new Cart();                  // 모두가 똑같이 쓰는 준비
+                }
+
+                @Test
+                void shouldSumTwoProducts() {
+                    cart.add(new Product("키보드", 30_000), 1);   // 이 테스트만의 준비
+                    cart.add(new Product("마우스", 12_000), 2);
+
+                    assertEquals(54_000, cart.total());
+                }
+
+                @Test
+                void shouldBeEmptyAtFirst() {
+                    assertEquals(0, cart.total());      // 앞 테스트의 상품이 남아 있지 않다
+                }
+            }
+          output: |-
+            shouldSumTwoProducts  → setUp() → 새 Cart → 상품 2개 → 54000
+            shouldBeEmptyAtFirst  → setUp() → 새 Cart → 0
+
+            두 테스트의 실행 순서를 바꿔도 결과가 같다
+          note: |-
+            - '`cart` 필드를 공유해도 되는 이유: 인스턴스가 메서드마다 새로 만들어진다'
+            - '`@BeforeEach`에는 **빈 장바구니**까지만. 담는 상품은 각 테스트가 정한다'
+            - '`@BeforeAll`은 `static`이어야 한다 — 인스턴스보다 먼저 불린다'
+        predict:
+          question: '`@BeforeEach` 없이 필드에서 바로 `private Cart cart = new Cart();`로 두면 테스트 사이에 장바구니가 공유되나?'
+          choices:
+            - 공유되지 않는다. 인스턴스가 메서드마다 새로 만들어진다
+            - 공유된다. 필드는 한 번만 초기화된다
+            - 컴파일 오류가 난다
+            - 첫 테스트에서만 만들어진다
+          answer: 공유되지 않는다. 인스턴스가 메서드마다 새로 만들어진다
+          explanation: |-
+            기본 수명주기가 **테스트 메서드마다 새 인스턴스**이므로 필드 초기화도 매번 다시 일어난다.
+            그래서 이 경우에는 `@BeforeEach` 없이도 안전하다.
+            `@BeforeEach`가 꼭 필요해지는 때는 준비가 한 줄로 끝나지 않거나, 만든 뒤 손질이 필요할 때다.
+        complete:
+          question: 각 테스트 전에 빈 주문을 준비하도록 빈칸을 채우세요.
+          code: |-
+            private Order order;
+
+            @___
+            void setUp() {
+                order = new Order();
+            }
+          answers:
+            - [BeforeEach]
+          explanation: |-
+            테스트 **하나하나 전에** 실행되는 것은 `@BeforeEach`다.
+            클래스에서 한 번만 실행되는 `@BeforeAll`은 `static`이어야 하고, 매번 새로 만드는 준비에는 맞지 않는다.
+        problem:
+          prompt: |-
+            아래 테스트 클래스는 실행 순서에 따라 결과가 달라질 수 있습니다.
+            무엇이 문제인지 설명하고 고치세요.
+
+            ```java
+            class OrderTest {
+                static Order order = new Order();
+
+                @Test
+                void shouldAddItem() {
+                    order.add(new Product("키보드", 30_000), 1);
+                    assertEquals(1, order.itemCount());
+                }
+
+                @Test
+                void shouldBeEmptyAtFirst() {
+                    assertEquals(0, order.itemCount());
+                }
+            }
+            ```
+          deliverables:
+            - 무엇이 문제인지 한두 줄
+            - 고친 코드
+          hints:
+            - '`static` 필드는 인스턴스가 새로 만들어져도 어떻게 될까요?'
+            - 두 테스트의 실행 순서를 바꿔 보면 무슨 일이 생기는지 손으로 따라가 보세요.
+            - 테스트는 **어떤 순서로 돌려도** 같은 결과가 나와야 합니다.
+          modelAnswer: |-
+            **문제**: `order`가 `static`이라 **모든 테스트가 같은 객체를 공유한다.**
+            `shouldAddItem`이 먼저 돌면 상품이 남아 `shouldBeEmptyAtFirst`가 실패하고,
+            순서가 반대면 둘 다 통과한다. **실행 순서에 따라 결과가 달라지는 테스트**는 믿을 수 없다.
+
+            ```java
+            class OrderTest {
+                private Order order;
+
+                @BeforeEach
+                void setUp() {
+                    order = new Order();      // 테스트마다 새로 만든다
+                }
+
+                @Test
+                void shouldAddItem() {
+                    order.add(new Product("키보드", 30_000), 1);
+
+                    assertEquals(1, order.itemCount());
+                }
+
+                @Test
+                void shouldBeEmptyAtFirst() {
+                    assertEquals(0, order.itemCount());
+                }
+            }
+            ```
+          selfChecks:
+            - '`static`을 없애고 테스트마다 새로 만들도록 바꿨는가'
+            - 문제를 "순서에 따라 결과가 달라진다"로 짚었는가
+            - 고친 뒤 두 테스트를 어느 순서로 돌려도 통과하는가
+
+    commonMistakes:
+      - '`assertEquals`의 인자를 뒤집어 쓴다. 통과 여부는 같지만 실패 메시지가 거꾸로 읽힌다 (U1)'
+      - 확인을 줄줄이 늘어놓아 첫 실패에서 멈춘다. 한 번에 다 보려면 `assertAll`이다 (U2)
+      - 테스트끼리 `static` 필드나 DB 상태를 공유해 실행 순서에 따라 결과가 달라진다 (U4)
+    inProject: |-
+      주문 시스템에서 눈으로 검산하기 어려운 규칙부터 테스트를 붙인다 —
+      배송비 경계, 쿠폰 할인의 정수 나눗셈, 등급별 할인율. 이런 것들은 값 표가 곧 규칙이므로
+      `@ParameterizedTest` + `@CsvSource`가 그대로 맞는다(U3).
+      잘못된 입력을 막는 규칙은 `assertThrows`로 따로 확인하고(U2),
+      준비는 모두가 똑같이 쓰는 것만 `@BeforeEach`에 둔다(U4).
+      이렇게 해 두면 나중에 할인 정책을 고칠 때 **표만 고치고 돌려 보면 된다.**
+    sources:
+      - title: JUnit User Guide
+        url: https://docs.junit.org/current/user-guide/
+        versionScope: JUnit Jupiter 6.0
+      - title: JUnit Javadoc — org.junit.jupiter.api.Assertions
+        url: https://docs.junit.org/current/api/org.junit.jupiter.api/org/junit/jupiter/api/Assertions.html
+        versionScope: JUnit Jupiter 6.0
+    verifiedAt: 2026-09-22

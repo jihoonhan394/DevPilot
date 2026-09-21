@@ -836,7 +836,7 @@ Severity `ERROR`는 기동 실패와 CI 실패, `WARN`은 로그만 남긴다. J
 | CV-128 | ERROR | 단위마다 `example`·`predict`·`complete`·`problem`이 모두 있다. `complete.code`의 빈칸(`___`) 개수와 `answers` 개수가 같고, 각 빈칸의 허용 표기가 1개 이상이다 |
 | CV-129 | ERROR | `predict.choices`가 있으면 2~4개이고 `answer`가 그중 하나다. 없으면 `answer`가 비어 있지 않다 |
 | CV-130 | ERROR | `problem.hints`가 2~3개, `deliverables`가 2~4개, `selfChecks`가 2~4개다. `variants`는 0~2개이고 있으면 `problem`과 같은 필수 필드를 갖는다 |
-| CV-131 | ERROR | `sources`가 1개 이상이고 각 `url`이 https이며 호스트가 trusted host allowlist에 있다. `readMore`의 `url`도 같다. `verifiedAt`이 미래가 아니다 |
+| CV-131 | ERROR | `sources`가 1개 이상이고 각 `url`이 https이며 호스트가 trusted host allowlist에 있다(**정확 일치 또는 하위 도메인** — CV-121·CV-71과 같은 규칙이다). `readMore`의 `url`도 같다. `verifiedAt`이 미래가 아니다 |
 | CV-132 | ERROR | `prerequisiteUnits`의 항목이 단위 key 형식이다. **아직 없는 key도 허용한다**(다음에 만들 목록) — 다만 자기 자신과 같은 단위를 가리키지 않는다 |
 | CV-133 | WARN | `problem.hints`나 `deliverables`에 `modelAnswer`의 코드 줄이 **그대로** 들어 있다. 답을 미리 보여 주는 것이다 |
 | CV-134 | WARN | `problem.prompt`가 `example.code`와 **80% 이상 같다**. 예제를 그대로 다시 쓰게 하는 문제다(§3.14 작성 가이드) |
