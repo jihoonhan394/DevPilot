@@ -530,6 +530,42 @@ class ContentValidatorTest {
                 .anyMatch(issue -> "CV-131".equals(issue.rule()));
     }
 
+    /**
+     * CV-136은 <b>그 트랙에서</b> MUST인 것만 본다 (docs/19 CV-136).
+     *
+     * <p>한때 "어느 트랙에서든 MUST면" 경고했다. 같은 skill이 `JAVA_BACKEND`에서는 MUST여도 학습 트랙에서는 SHOULD일 수 있어서, 쓸 필요가
+     * 없는 노트를 계속 쓰라고 알려 주고 있었다. python 검증기와 답이 달랐다.
+     */
+    @Test
+    void shouldNotWarnWhenTheSkillIsOnlyMustForAnotherRole() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        // 두 학습 트랙에서는 SHOULD로 낮추고, JAVA_BACKEND 에서는 MUST 그대로 둔다
+        fixture.trackTarget("test-integration.yaml", "TESTING.JUNIT").put("priority", "SHOULD");
+        fixture.trackTarget("test-starter.yaml", "TESTING.JUNIT").put("priority", "SHOULD");
+        fixture.lessons().removeIf(lesson -> "TESTING.JUNIT".equals(lesson.get("skillCode")));
+
+        ContentValidationReport report = validator.validate(fixture.content);
+
+        assertThat(report.warnings())
+                .filteredOn(issue -> "CV-136".equals(issue.rule()))
+                .extracting(ContentValidationReport.Issue::message)
+                .noneMatch(message -> message.contains("TESTING.JUNIT"));
+    }
+
+    /** 반대로 그 트랙에서 MUST인데 노트가 없으면 여전히 알려 준다. */
+    @Test
+    void shouldWarnWhenAFirstMilestoneMustSkillOfTheTrackHasNoLesson() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        fixture.lessons().removeIf(lesson -> "TESTING.JUNIT".equals(lesson.get("skillCode")));
+
+        ContentValidationReport report = validator.validate(fixture.content);
+
+        assertThat(report.warnings())
+                .filteredOn(issue -> "CV-136".equals(issue.rule()))
+                .extracting(ContentValidationReport.Issue::message)
+                .anyMatch(message -> message.contains("TESTING.JUNIT"));
+    }
+
     @Test
     void shouldAcceptOptionalRetiredFlagOnReading() {
         Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
@@ -654,6 +690,11 @@ class ContentValidatorTest {
 
         List<Map<String, Object>> targets() {
             return maps(document("role-targets/test.yaml").get("targets"));
+        }
+
+        /** 학습 트랙의 role target (CV-136은 트랙별 우선순위를 본다). */
+        Map<String, Object> trackTarget(String roleFile, String skill) {
+            return find(maps(document("role-targets/" + roleFile).get("targets")), "skill", skill);
         }
 
         Map<String, Object> target(String skill) {

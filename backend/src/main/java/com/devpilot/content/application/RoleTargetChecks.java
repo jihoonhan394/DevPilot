@@ -85,6 +85,7 @@ final class RoleTargetChecks {
     /** skill code → 트랙별 role target. 진단 준비(CV-59)는 어느 트랙에서든 MUST면 된다. */
     private static void collectTargetsBySkill(
             ValidationContext context, Map<String, Map<String, Map<String, Object>>> byRole) {
+        context.targetsByRole.putAll(byRole);
         for (Map<String, Map<String, Object>> trackTargets : byRole.values()) {
             trackTargets.forEach(
                     (code, target) ->

@@ -501,7 +501,7 @@ final class LessonChecks {
             for (Object code :
                     RawYaml.asList(RawYaml.asMap(milestones.getFirst()).get("skillCodes"))) {
                 String skillCode = String.valueOf(code);
-                if (!withLesson.contains(skillCode) && isMust(context, skillCode)) {
+                if (!withLesson.contains(skillCode) && isMustFor(context, role, skillCode)) {
                     context.warn(
                             "CV-136",
                             "lessons",
@@ -514,9 +514,16 @@ final class LessonChecks {
         }
     }
 
-    private static boolean isMust(ValidationContext context, String skillCode) {
-        return context.targetsBySkill.getOrDefault(skillCode, List.of()).stream()
-                .anyMatch(target -> "MUST".equals(String.valueOf(target.get("priority"))));
+    /**
+     * 그 <b>트랙에서</b> MUST인가 (docs/19 CV-136).
+     *
+     * <p>어느 트랙에서든 MUST면 되는 것이 아니다 — 같은 skill이 `JAVA_BACKEND`에서는 MUST여도 학습 트랙에서는 SHOULD일 수 있고, 그러면 그
+     * 트랙의 첫 milestone에 노트가 없어도 경고할 일이 아니다.
+     */
+    private static boolean isMustFor(ValidationContext context, String role, String skillCode) {
+        Map<String, Object> target =
+                context.targetsByRole.getOrDefault(role, Map.of()).get(skillCode);
+        return target != null && "MUST".equals(String.valueOf(target.get("priority")));
     }
 
     private static int lines(String text) {

@@ -53,6 +53,14 @@ final class ValidationContext {
     /** 트랙 전체의 role target: skill code → 트랙별 원본 목록. 진단 준비(CV-59)는 어느 트랙이든 보면 된다. */
     final Map<String, List<Map<String, Object>>> targetsBySkill = new LinkedHashMap<>();
 
+    /**
+     * role → skill code → 그 트랙의 role target.
+     *
+     * <p>{@link #targetsBySkill}은 트랙을 잃어버린다. 우선순위가 <b>트랙마다 다른</b> skill이 있으므로(같은 skill이 어느 트랙에서는
+     * MUST, 다른 트랙에서는 SHOULD), 트랙을 지정해 보는 검사(CV-136)는 이쪽을 쓴다.
+     */
+    final Map<String, Map<String, Map<String, Object>>> targetsByRole = new LinkedHashMap<>();
+
     /** 구조 검사를 통과한 plan template(CV-61 대상). */
     final List<Map<String, Object>> validTemplates = new ArrayList<>();
 
