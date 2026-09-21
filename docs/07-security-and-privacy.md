@@ -704,6 +704,7 @@ S0에서는 공급망 통제를 **gitleaks + Action SHA 고정 + Dependabot(grad
 
 - CI `security` job: `gitleaks git --log-opts="<base>..<head>" --redact --exit-code 1`. 주 1회 전체 이력.
 - 설정 `.gitleaks.toml`은 기본 규칙 + `sb_secret_`, `sb_publishable_`(정보 등급), `sk-ant-` 규칙을 쓴다. **allowlist 경로를 두지 않는다.**
+- 값의 모양으로만 제외하는 allowlist는 둔다. 지금은 콘텐츠의 seed key 하나다 — `PRACTICE.DEVOPS.OBSERVABILITY.L2.001`처럼 대문자·점·밑줄만 쓰는 식별자인데 필드 이름에 "key"가 들어가 기본 `generic-api-key` 규칙이 엔트로피만 보고 잡는다(`docs/04` §9). **경로가 아니라 값의 모양으로 제외하므로** 그 모양에 소문자 16진수·`sk-`·PEM이 들어갈 수 없고, 같은 줄에 진짜 키가 있으면 그 finding은 그대로 걸린다(2026-09-21 확인). 새 allowlist를 더할 때도 같은 기준을 지킨다 — 파일·디렉터리 단위 제외는 금지다.
 - `SecretMaskerTest` 등 테스트의 가짜 secret은 소스에 리터럴로 쓰지 않고 런타임에 조합한다. 예: `"sk-ant-" + "api03-" + "a".repeat(80)`. push protection과 gitleaks가 테스트 파일에서 오탐하지 않게 하기 위해서다.
 
 ### 11.4 GitHub Actions SHA 고정
