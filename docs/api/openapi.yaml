@@ -1576,6 +1576,31 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - skill
+  /api/v1/skills/{skillId}/lesson:
+    get:
+      operationId: lessonGetForSkill
+      parameters:
+      - in: path
+        name: skillId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LessonView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
   /api/v1/today:
     get:
       operationId: todayGet
@@ -3098,6 +3123,9 @@ components:
           format: uuid
         skillCode:
           type: string
+        skillId:
+          type: string
+          format: uuid
         skillName:
           type: string
         status:
@@ -3136,6 +3164,7 @@ components:
       - reasons
       - sideProjectId
       - skillCode
+      - skillId
       - skillName
       - status
       - taskType

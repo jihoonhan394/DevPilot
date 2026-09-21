@@ -1685,6 +1685,7 @@ public record TodayView(
 public record MainTaskView(
         UUID id,
         TaskType taskType,
+        UUID skillId,                  // null 가능. 화면이 §21.3으로 그 개념의 노트를 찾는 열쇠다
         String skillCode,              // null 가능
         String skillName,              // null 가능
         UUID milestoneId,              // null 가능

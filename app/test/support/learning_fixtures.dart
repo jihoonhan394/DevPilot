@@ -9,6 +9,7 @@ import 'package:devpilot_app/features/today/data/learning_session_models.dart';
 import 'package:devpilot_app/features/today/data/today_models.dart';
 
 import 'fixtures.dart';
+import 'rubber_duck_fakes.dart';
 
 // Today, review, dashboard and budget data shaped like the docs/05 §7~§13 examples.
 // The test clock is [testNow]: 2026-09-19 12:00 in Seoul, plan-day [testToday].
@@ -35,6 +36,7 @@ MainTaskView testMainTask({
 }) => MainTaskView(
   id: id,
   taskType: taskType,
+  skillId: springTransactionRef.id,
   skillCode: 'SPRING.TRANSACTION',
   skillName: 'Spring Transaction',
   milestoneId: milestoneFoundationId,

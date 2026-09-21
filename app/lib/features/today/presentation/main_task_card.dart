@@ -1,3 +1,4 @@
+import 'package:devpilot_app/app/explain_with_duck_button.dart' show ExplainButtonStyle;
 import 'package:devpilot_app/core/api/learning_enums.dart';
 import 'package:devpilot_app/core/l10n/display_format.dart';
 import 'package:devpilot_app/core/l10n/enum_labels.dart';
@@ -5,6 +6,7 @@ import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/theme/devpilot_colors.dart';
 import 'package:devpilot_app/core/widgets/markdown_text.dart';
 import 'package:devpilot_app/core/widgets/status_badge.dart';
+import 'package:devpilot_app/features/lesson/presentation/lesson_entry_button.dart';
 import 'package:devpilot_app/features/today/data/today_models.dart';
 import 'package:devpilot_app/features/today/presentation/concept_reading_section.dart';
 import 'package:devpilot_app/features/today/presentation/main_task_actions.dart';
@@ -55,6 +57,15 @@ class MainTaskCard extends StatelessWidget {
               const SizedBox(height: AppSpacing.md),
               _ReasonList(reasons: task.reasons),
             ],
+            // 문제부터 나오지 않게 노트로 가는 길을 과제 옆에 둔다 (docs/01 §4 Teach before test).
+            // 이미 마친 과제에는 없다 — 그때 필요한 것은 복습이다.
+            if (task.status != TaskStatus.completed)
+              LessonEntryButton(
+                buttonKey: const Key('today.lessonButton'),
+                skillId: task.skillId,
+                label: AppLocalizations.of(context).todayLearnConcept,
+                style: ExplainButtonStyle.outlined,
+              ),
             const SizedBox(height: AppSpacing.lg),
             MainTaskActions(task: task, data: data),
           ],

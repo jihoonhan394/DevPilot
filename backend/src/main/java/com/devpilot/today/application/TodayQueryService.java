@@ -208,6 +208,7 @@ public class TodayQueryService {
         return new MainTaskView(
                 task.getId(),
                 task.getTaskType(),
+                skill == null ? null : skill.id(),
                 skill == null ? null : skill.code(),
                 skill == null ? null : skill.name(),
                 task.getMilestoneId(),

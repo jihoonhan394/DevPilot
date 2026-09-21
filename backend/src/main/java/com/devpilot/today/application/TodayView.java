@@ -48,6 +48,7 @@ public record TodayView(
     public record MainTaskView(
             UUID id,
             TaskType taskType,
+            @Nullable UUID skillId,
             @Nullable String skillCode,
             @Nullable String skillName,
             @Nullable UUID milestoneId,

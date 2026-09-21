@@ -49,6 +49,9 @@ class AuthorizationIsolationTest extends ApiTestSupport {
      */
     private static final int FIRST_SUBMISSION_NO = 1;
 
+    /** fixture 개념 노트가 붙은 skill code (test-content/lessons/test.yaml). */
+    private static final String LESSON_SKILL_CODE = "WEB_HTTP.HTTP_BASICS";
+
     private @Nullable State state;
 
     @ParameterizedTest(name = "[{index}] {0}")
@@ -317,6 +320,15 @@ class AuthorizationIsolationTest extends ApiTestSupport {
                         .path("skill")
                         .path("id")
                         .asString();
+        // 노트가 붙은 skill — SHARED_CONTENT는 두 사용자가 같은 본문을 받는지 보므로 404면 확인이 되지 않는다
+        String lessonSkillId =
+                api.body(api.get(owner, "/api/v1/skills/tree"))
+                        .path("skills")
+                        .valueStream()
+                        .filter(skill -> LESSON_SKILL_CODE.equals(skill.path("code").asString()))
+                        .map(skill -> skill.path("id").asString())
+                        .findFirst()
+                        .orElseThrow();
         Map<String, Object> learningGoalBody = new LinkedHashMap<>();
         learningGoalBody.put("targetRole", "JAVA_BACKEND");
         learningGoalBody.put("targetCompletionDate", "2027-04-01");
@@ -337,6 +349,7 @@ class AuthorizationIsolationTest extends ApiTestSupport {
                         attemptId,
                         FIRST_SUBMISSION_NO,
                         skillId,
+                        lessonSkillId,
                         replanRequest(plan, "격리 확인"),
                         TestApi.onboardingRequest(),
                         TestApi.sideProjectRequest("새 프로젝트"),

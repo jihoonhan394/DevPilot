@@ -2102,3 +2102,13 @@
 - When key 형식이 어긋나면 400 `VALIDATION_FAILED`(code `Pattern`)
 - And 토큰이 없으면 401 `UNAUTHORIZED`
 
+**S8. 막힌 자리에서 노트로 간다 (§21.3, UI)**
+- Given `SPRING.MVC_REST`에 노트가 있고 `DATABASE.INDEX`에는 없다
+- When `GET /skills/{skillId}/lesson`을 노트가 있는 skill로 부른다
+- Then 200이고 그 skill의 `LessonView`다. 노트가 없는 skill과 없는 skill id는 404 `RESOURCE_NOT_FOUND`다
+- And 두 사용자가 같은 skill로 부르면 같은 본문을 받는다(콘텐츠다 — `09` §9.2 SHARED_CONTENT)
+- Given 러버덕 결과 화면(SCR-RUBBER-DUCK ④)에서 그 세션의 skill에 노트가 있다
+- Then "그래서 답이 뭔가요"가 보이고 누르면 SCR-LESSON으로 간다 — **러버덕은 답을 말하지 않으므로 답은 여기에만 있다**
+- And 오늘 과제 카드(SCR-TODAY)에서 과제의 skill에 노트가 있으면 "먼저 개념 익히기"가 보인다. 마친 과제에는 보이지 않는다
+- And 노트가 없는 skill이면 두 자리 모두 **버튼 자체가 없다**
+

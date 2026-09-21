@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../support/fake_backend.dart';
 import '../../support/fixtures.dart';
 import '../../support/learning_fixtures.dart';
+import '../../support/lesson_fakes.dart';
 import '../../support/test_app.dart';
 import '../../support/widget_actions.dart';
 
@@ -178,6 +179,32 @@ void main() {
     expect(find.text('복습 카드 1장을 만들었어요. 내일부터 복습에 나와요.'), findsOneWidget);
     await tapKey(tester, 'rubberDuck.toTodayButton');
     expect(locationOf(tester), AppRoutes.todayComplete(mainTaskId));
+  });
+
+  /// 러버덕은 끝까지 답을 말하지 않는다. 노트가 있으면 답까지 가는 길이 결과 화면에 남아야 한다.
+  testWidgets('shouldLeadToTheLessonWhenTheDuckEndsWithoutAnAnswer', (tester) async {
+    backend.lessonRepository.lessonsBySkill[springTransactionRef.id] = testLesson();
+    backend.rubberDuckRepository.sessions[duckSessionId] = testDuckSession(
+      turns: [for (var turn = 1; turn <= 5; turn++) testDuckTurn(turn)],
+    );
+    await open(tester, AppRoutes.rubberDuckSession(duckSessionId));
+
+    await tapKey(tester, 'rubberDuck.summarizeButton');
+
+    await tapKey(tester, 'rubberDuck.toLessonButton');
+    expect(locationOf(tester), AppRoutes.lesson(testLessonKey));
+  });
+
+  /// 노트가 없는 skill이면 누를 곳도 없다 — 눌러서 404를 보는 것보다 낫다.
+  testWidgets('shouldHideTheLessonExitWhenTheSkillHasNoNote', (tester) async {
+    backend.rubberDuckRepository.sessions[duckSessionId] = testDuckSession(
+      turns: [for (var turn = 1; turn <= 5; turn++) testDuckTurn(turn)],
+    );
+    await open(tester, AppRoutes.rubberDuckSession(duckSessionId));
+
+    await tapKey(tester, 'rubberDuck.summarizeButton');
+
+    expect(find.byKey(const Key('rubberDuck.toLessonButton')), findsNothing);
   });
 
   testWidgets('shouldSayTheConversationWasKeptWhenTheSummaryFails', (tester) async {

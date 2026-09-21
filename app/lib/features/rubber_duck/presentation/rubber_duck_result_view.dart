@@ -4,6 +4,7 @@ import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/widgets/badges.dart';
 import 'package:devpilot_app/core/widgets/markdown_text.dart';
 import 'package:devpilot_app/core/widgets/screen_body.dart';
+import 'package:devpilot_app/features/lesson/presentation/lesson_entry_button.dart';
 import 'package:devpilot_app/features/rubber_duck/data/rubber_duck_enums.dart';
 import 'package:devpilot_app/features/rubber_duck/data/rubber_duck_models.dart';
 import 'package:devpilot_app/features/rubber_duck/presentation/rubber_duck_conversation.dart';
@@ -63,6 +64,7 @@ class RubberDuckResultView extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
         _SummaryButtons(
           taskId: taskId,
+          skillId: session.skill?.id,
           hasGaps: summary?.gaps.isNotEmpty ?? false,
           onClose: onClose,
         ),
@@ -205,9 +207,18 @@ class _SummaryNotes extends StatelessWidget {
 /// One primary: back to Today's completion sheet with a task, otherwise "닫기"; "복습하러 가기"
 /// when gaps became cards.
 class _SummaryButtons extends StatelessWidget {
-  const _SummaryButtons({required this.taskId, required this.hasGaps, required this.onClose});
+  const _SummaryButtons({
+    required this.taskId,
+    required this.skillId,
+    required this.hasGaps,
+    required this.onClose,
+  });
 
   final String? taskId;
+
+  /// 노트로 가는 길. 러버덕은 끝까지 답을 말하지 않으므로 답은 여기에만 있다.
+  final String? skillId;
+
   final bool hasGaps;
   final VoidCallback onClose;
 
@@ -230,6 +241,12 @@ class _SummaryButtons extends StatelessWidget {
             onPressed: onClose,
             child: Text(l10n.rubberDuckClose),
           ),
+        // 러버덕은 질문만 한다 — 여기서 끝나면 답을 모른 채로 끝난다. 노트가 있으면 답까지 가는 길을 남긴다.
+        LessonEntryButton(
+          buttonKey: const Key('rubberDuck.toLessonButton'),
+          skillId: skillId,
+          label: l10n.rubberDuckToLesson,
+        ),
         if (hasGaps)
           TextButton(
             key: const Key('rubberDuck.toReviewButton'),

@@ -59,6 +59,8 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
         main.path("reasons")
                 .forEach(reason -> assertThat(reason.path("text").asString()).isNotBlank());
         assertThat(main.path("skillCode").asString()).isNotBlank();
+        // 화면은 이 id로 그 개념의 노트를 찾는다 (docs/05 §21.3) — code만으로는 노트에 닿지 못한다
+        assertThat(UUID.fromString(main.path("skillId").asString())).isNotNull();
         JsonNode review = today.path("reviewTask");
         assertThat(review.path("estimatedMinutes").asInt()).isEqualTo(7);
         assertThat(review.path("dueReviewCount").asInt()).isEqualTo(5);

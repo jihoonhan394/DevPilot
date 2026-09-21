@@ -25,6 +25,12 @@ class LessonControllerIntegrationTest extends ApiTestSupport {
     private static final String UNIT_KEY = LESSON_KEY + ".U1";
     private static final String LESSON = "/api/v1/lessons/{lessonKey}";
     private static final String UNIT = "/api/v1/lessons/{lessonKey}/units/{unitKey}";
+    private static final String SKILL_LESSON = "/api/v1/skills/{skillId}/lesson";
+
+    /** fixture 노트가 붙은 skill (test-content/lessons/test.yaml). */
+    private static final String LESSON_SKILL_CODE = "WEB_HTTP.HTTP_BASICS";
+
+    private static final String SKILL_CODE_WITHOUT_LESSON = "DATABASE.INDEX";
 
     /** AC-37 S1: 노트를 조회해도 답이 오지 않는다. */
     @Test
@@ -180,6 +186,39 @@ class LessonControllerIntegrationTest extends ApiTestSupport {
                         org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
                                 "/api/v1/lessons/{lessonKey}", LESSON_KEY))
                 .andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * AC-37 S8: skill에서 노트로 바로 간다 (docs/05 §21.3).
+     *
+     * <p>막혔을 때 화면이 들고 있는 것은 skill이다. 노트가 없는 skill은 404여서 화면이 진입점을 숨길 수 있다.
+     */
+    @Test
+    void shouldFindTheLessonFromTheSkillAndSayWhenThereIsNone() throws Exception {
+        TestUser user = onboardedUser();
+
+        JsonNode lesson =
+                api.body(
+                        api.get(user, SKILL_LESSON, skillId(user, LESSON_SKILL_CODE))
+                                .andExpect(status().isOk()));
+
+        assertThat(lesson.path("lessonKey").asString()).isEqualTo(LESSON_KEY);
+        assertThat(lesson.path("skillCode").asString()).isEqualTo(LESSON_SKILL_CODE);
+
+        api.get(user, SKILL_LESSON, skillId(user, SKILL_CODE_WITHOUT_LESSON))
+                .andExpect(status().isNotFound());
+        api.get(user, SKILL_LESSON, UUID.randomUUID()).andExpect(status().isNotFound());
+    }
+
+    /** 공용 catalog에서 code로 skill id를 찾는다. 노트는 code로 붙으므로 id는 테스트가 들고 있지 않다. */
+    private UUID skillId(TestUser user, String code) throws Exception {
+        JsonNode tree = api.body(api.get(user, "/api/v1/skills/tree").andExpect(status().isOk()));
+        for (JsonNode skill : tree.path("skills")) {
+            if (code.equals(skill.path("code").asString())) {
+                return UUID.fromString(skill.path("id").asString());
+            }
+        }
+        throw new IllegalStateException("catalog에 " + code + "가 없다");
     }
 
     private TestUser onboardedUser() throws Exception {

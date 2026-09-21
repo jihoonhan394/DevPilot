@@ -67,6 +67,8 @@ public final class UserOwnedEndpoints {
      *     §10.10)
      * @param skillId 공용 catalog skill id ({@code GET /skills/&#123;skillId&#125;/history}용, docs/09
      *     §9.2)
+     * @param lessonSkillId fixture 개념 노트가 붙은 skill id ({@code GET
+     *     /skills/&#123;skillId&#125;/lesson}용, docs/05 §21.3)
      */
     public record IsolationFixture(
             long invitedMeVersion,
@@ -82,6 +84,7 @@ public final class UserOwnedEndpoints {
             String attemptId,
             int submissionNo,
             String skillId,
+            String lessonSkillId,
             Map<String, Object> replanBody,
             Map<String, Object> onboardingBody,
             Map<String, Object> sideProjectBody,
@@ -419,6 +422,15 @@ public final class UserOwnedEndpoints {
                         Kind.SHARED_CONTENT,
                         fixture -> new Object[] {SHARED_LESSON_KEY, SHARED_UNIT_KEY},
                         fixture -> Map.of("helpLevel", "NONE"),
+                        null),
+                // skill → 노트 (docs/05 §21.3). skill id는 공용 catalog 값이고 본문도 모두에게 같다.
+                new EndpointCase(
+                        "E68",
+                        HttpMethod.GET,
+                        "/api/v1/skills/{skillId}/lesson",
+                        Kind.SHARED_CONTENT,
+                        fixture -> new Object[] {fixture.lessonSkillId()},
+                        NO_BODY,
                         null),
                 // ACCOUNT_ACTION
                 account("E30", HttpMethod.DELETE, "/api/v1/me", NO_BODY),

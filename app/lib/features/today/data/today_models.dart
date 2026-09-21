@@ -39,6 +39,9 @@ abstract class MainTaskView with _$MainTaskView {
   const factory MainTaskView({
     required String id,
     @JsonKey(unknownEnumValue: TaskType.unknown) required TaskType taskType,
+
+    /// 그 개념의 노트를 찾는 열쇠 (docs/05 §21.3). skill이 없는 과제면 null이다.
+    String? skillId,
     String? skillCode,
     String? skillName,
     String? milestoneId,

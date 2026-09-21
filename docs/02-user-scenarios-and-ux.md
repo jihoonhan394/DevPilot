@@ -2437,7 +2437,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 - 3·4의 채점은 **즉시**다(AI 없음). 틀려도 다음으로 간다 — 해설을 보여 주고 그 단위를 복습 대상으로 둔다.
 - 6번의 체크박스는 채점이 아니라 **스스로 견주기**다. 레벨을 올리지 않는다(`01` 원칙 4).
 
-**들어오는 길**: SCR-SKILL-DETAIL의 "개념 익히기", SCR-TODAY의 `READING` 과제 카드.
+**들어오는 길**: SCR-SKILL-DETAIL의 "개념 익히기", SCR-TODAY 과제 카드의 "먼저 개념 익히기"(마친 과제에는 없다), SCR-RUBBER-DUCK ④의 "그래서 답이 뭔가요". 세 자리 모두 `GET /skills/{skillId}/lesson`(`05` §21.3)으로 노트를 찾고, **없으면 버튼을 그리지 않는다**.
 
 **중간에 나가기**: 걸음은 로컬에 기억한다(어느 단위 몇 번째 걸음인지). 서버에 남는 것은 6번을 마친 단위뿐이다.
 
@@ -3006,6 +3006,9 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ ┌────────────────────────────┐ │
 │ │    Today로 돌아가 완료하기      │ │  taskId 있을 때
 │ └────────────────────────────┘ │
+│ ┌────────────────────────────┐ │
+│ │     그래서 답이 뭔가요          │ │  skill에 노트가 있을 때
+│ └────────────────────────────┘ │
 │ 복습하러 가기                      │
 └────────────────────────────────┘
 ```
@@ -3018,6 +3021,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
   - `summarySkippedReason`이 있으면(정리 AI 실패·차단): gap·잘한 것·한 줄 정리 영역 대신 `rubberDuck.summary.skipped` + 사유 한 줄 `asyncFailure.<CODE>`(§5.2). **다시 정리하는 버튼은 없다**(`05` §9.8). 대화는 "대화 다시 보기"로 남아 있다. `CODE_READING`이면 이 경우에도 세션이 `COMPLETED`라 과제 완료 조건(RC-1)을 만족한다.
   - `status = ABANDONED`(턴 0개로 끝냄, 그만두기, 하루 이상 방치): 결과 대신 `rubberDuck.abandoned` + 대화 기록(있으면) 읽기 전용.
   - 버튼(primary 하나): `taskId`가 있으면 "Today로 돌아가 완료하기"(→ `/today?complete={taskId}` — `CODE_READING`은 이 경로로 완료 기록에 들어간다), 없으면 "닫기"(→ 뒤로, 히스토리가 없으면 `/today`). gap이 있으면 보조 "복습하러 가기"(→ `/review`).
+  - **"그래서 답이 뭔가요"**: `skill`에 노트가 있으면(`GET /skills/{skillId}/lesson` 200, `05` §21.3) SCR-LESSON으로 가는 보조 버튼을 둔다. 러버덕은 끝까지 답을 말하지 않고(NA-4) 빈틈 카드에 담기는 것도 "답이 다뤄야 할 것"이지 답이 아니다 — 답까지 가는 길이 없으면 **답을 모른 채로 끝난다**. 노트가 없는 skill이면 버튼 자체가 없다(누를 곳이 있는데 404가 나는 것보다 낫다).
   - 정리 응답을 받으면 기기의 진행 중 세션 기록을 지우고, `targetType = CODE_READING`이면 `devpilot.rubberduck.task.<taskId>` = `sessionId`를 저장한다(§3.5 `READ_CODE` 완료 확인).
 
 - **컴포넌트**: `RubberDuckTargetCard`(유형 라벨 + 제목 + 요약, 접기/펼치기), `ChatBubble`(나 / 질문 두 변형, 질문은 `AiBadge`), `ThinkingIndicator`, `ExplanationField`(여러 줄, 글자 수, private key 즉시 검사), `RemainingTurnsText`, `StuckHintCallout`, `RubberDuckSummaryView`(`GapCard`, `ConfirmedList`, `OverallNote`), `AiUnavailableBanner`, `BudgetWarningNote`, `RubberDuckMenu`(그만두기).

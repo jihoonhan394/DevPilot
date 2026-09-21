@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:devpilot_app/app/routes.dart';
 import 'package:devpilot_app/core/api/api_enums.dart';
 import 'package:devpilot_app/core/api/api_exception.dart';
 import 'package:devpilot_app/core/api/learning_enums.dart';
@@ -10,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fake_backend.dart';
 import '../../support/learning_fixtures.dart';
+import '../../support/lesson_fakes.dart';
 import '../../support/test_app.dart';
 import '../../support/widget_actions.dart';
 
@@ -87,6 +89,33 @@ void main() {
     expect(find.text('복습 3장 · 약 5분'), findsOneWidget);
     expect(find.text('다시 시작해도 괜찮아요. 오늘은 가볍게 시작해요.'), findsNothing);
     semantics.dispose();
+  });
+
+  /// 문제부터 나오지 않게 노트로 가는 길이 과제 옆에 있어야 한다 (docs/01 §4 Teach before test).
+  testWidgets('shouldOfferTheLessonBesideTheTaskWhenTheSkillHasANote', (tester) async {
+    backend.lessonRepository.lessonsBySkill[springTransactionRef.id] = testLesson();
+    backend.todayRepository.today = testTodayView();
+    await pumpApp(tester, backend: backend);
+
+    await tapKey(tester, 'today.lessonButton');
+
+    expect(locationOf(tester), AppRoutes.lesson(testLessonKey));
+  });
+
+  testWidgets('shouldHideTheLessonEntryWhenTheSkillHasNoNote', (tester) async {
+    backend.todayRepository.today = testTodayView();
+    await pumpApp(tester, backend: backend);
+
+    expect(find.byKey(const Key('today.lessonButton')), findsNothing);
+  });
+
+  /// 마친 과제에 필요한 것은 노트가 아니라 복습이다.
+  testWidgets('shouldHideTheLessonEntryOnACompletedTask', (tester) async {
+    backend.lessonRepository.lessonsBySkill[springTransactionRef.id] = testLesson();
+    backend.todayRepository.today = testTodayView(mainTask: testMainTask(status: TaskStatus.completed));
+    await pumpApp(tester, backend: backend);
+
+    expect(find.byKey(const Key('today.lessonButton')), findsNothing);
   });
 
   testWidgets('shouldShowComebackBannerAndHideMissingReviewRow', (tester) async {
