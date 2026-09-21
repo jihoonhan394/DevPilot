@@ -1,0 +1,547 @@
+# DevPilot 개념 노트 — API 계약
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - REST 설계 노트(LESSON.WEB_HTTP.REST_DESIGN.001)는 "응답을 어떻게 생기게 할까"를 다룬다.
+#   여기서는 "그 약속을 어떻게 적고 지킬까"를 다룬다 — 겹치지 않게 쓴다
+# - 예제는 주문 시스템 상황으로 쓴다 (CV-134)
+lessons:
+  - key: LESSON.INTEGRATION.API_CONTRACT.001
+    skillCode: INTEGRATION.API_CONTRACT
+    title: 말로 한 약속은 깨진다 (API 계약)
+    whyItMatters: |-
+      "주문 조회는 이렇게 주기로 했잖아요"가 통하지 않는 순간이 온다.
+      서버와 화면을 다른 사람이 만들면 각자 기억한 모양이 다르고, 같은 사람이 만들어도 한 달 뒤엔 다르다.
+      그래서 약속을 **기계가 읽을 수 있는 파일**로 적고, 그 파일과 코드가 어긋나면 빌드가 실패하게 만든다.
+      주문 시스템의 서버와 앱을 따로 만들 때 이게 없으면 화면은 늘 "서버가 뭘 주는지 몰라서" 멈춘다.
+    oneLine: API 계약은 요청과 응답의 모양을 기계가 읽는 규격으로 적어 두고, 코드가 그것과 어긋나지 않게 지키는 일이다.
+    units:
+      - key: LESSON.INTEGRATION.API_CONTRACT.001.U1
+        title: 약속을 어디에 적을 것인가
+        minutes: 10
+        core: true
+        explain: |-
+          약속을 적는 자리는 셋 중 하나다.
+
+          | 어디 | 문제 |
+          |---|---|
+          | 말·메신저 | 남지 않는다. 한 달 뒤엔 둘 다 다르게 기억한다 |
+          | 사람이 읽는 문서(위키) | 남지만 **코드와 따로 논다.** 고치는 것을 잊으면 조용히 거짓말이 된다 |
+          | **기계가 읽는 규격 파일** | 남고, **어긋나면 기계가 알려 준다** |
+
+          셋째가 API 계약이다. 대표적인 형식이 OpenAPI다.
+          공식 규격은 OpenAPI 문서를 **"API 또는 API의 일부를 정의하거나 기술하는, 그 자체로 완결된
+          (또는 여러 조각으로 이루어진) 자원"** 이라고 정의한다.
+
+          왜 "기계가 읽는"이 중요한가. 사람이 읽는 문서는 틀려도 아무 일이 없다.
+          기계가 읽는 규격은 이런 것들을 자동으로 할 수 있다.
+
+          - 규격과 실제 응답이 다르면 **테스트가 실패**한다
+          - 규격에서 클라이언트 코드를 **생성**한다
+          - 규격이 바뀌면 무엇이 바뀌었는지 **줄 단위로 보인다**
+
+          마지막이 특히 크다. 계약 파일을 저장소에 넣어 두면, API 변경이 코드 리뷰에 **눈에 보이는 차이**로 올라온다.
+          "이 필드 언제 없어졌어요?"가 사라진다.
+        example:
+          language: yaml
+          code: |-
+            openapi: 3.1.0
+            info:
+              title: Shop API
+              version: 1.0.0
+            paths:
+              /orders/{orderId}:
+                get:
+                  operationId: getOrder
+                  parameters:
+                    - name: orderId
+                      in: path
+                      required: true
+                      schema: { type: string, format: uuid }
+                  responses:
+                    "200":
+                      content:
+                        application/json:
+                          schema:
+                            $ref: "#/components/schemas/OrderView"
+          output: |-
+            이 파일 하나로 할 수 있는 것
+              · 응답이 규격과 다르면 테스트 실패
+              · 앱에서 쓸 클라이언트 코드 생성
+              · 필드가 사라지면 diff 에 빨간 줄
+
+            위키 문서로는 셋 다 안 된다
+          note: |-
+            - '`openapi`와 `info`는 필수다 — 어느 규격 버전인지, 무슨 API인지'
+            - '`operationId`는 그 동작의 이름이다. 생성된 코드의 메서드 이름이 된다'
+            - '`$ref`로 같은 모양을 여러 곳에서 쓴다 (U2)'
+        predict:
+          question: API 모양을 위키 문서로만 적어 두면 무엇이 문제인가?
+          choices:
+            - 코드가 바뀌어도 문서는 그대로라 조용히 거짓말이 된다
+            - 사람이 읽기 어렵다
+            - 저장 공간을 많이 쓴다
+            - 검색이 안 된다
+          answer: 코드가 바뀌어도 문서는 그대로라 조용히 거짓말이 된다
+          explanation: |-
+            위키 문서는 **아무도 검사하지 않는다.** 필드 하나를 지우고 문서 고치는 것을 잊어도
+            빌드는 통과하고 테스트도 통과한다. 그 거짓말은 화면을 만드는 사람이 한참 헤맨 뒤에 발견된다.
+            기계가 읽는 규격은 코드와 어긋나면 **그 자리에서** 알려 줄 수 있다.
+        complete:
+          question: OpenAPI 문서의 필수 최상위 칸 둘을 채우세요.
+          code: |-
+            ___: 3.1.0
+            ___:
+              title: Shop API
+              version: 1.0.0
+          answers:
+            - [openapi]
+            - [info]
+          explanation: |-
+            `openapi`는 **규격 버전**(이 문서가 어떤 규칙을 따르는지), `info`는 **API 메타 정보**다.
+            둘 다 필수이고, 도구들이 제일 먼저 읽는 칸이다.
+        problem:
+          prompt: |-
+            팀에서 이런 일이 반복됩니다.
+
+            - 서버가 응답에서 `memo` 필드를 없앴는데 앱은 모르고 있다가 배포 후에 깨졌다
+            - 앱 개발자가 "`status`에 어떤 값들이 오나요?"를 매번 물어본다
+            - 위키의 API 문서가 3개월 전 모양이다
+
+            **계약 파일을 도입해서** 셋을 각각 어떻게 막을지 쓰세요.
+          deliverables:
+            - 세 가지를 각각 어떻게 막는지
+            - 계약 파일을 저장소 어디에 두고 언제 갱신할지
+          hints:
+            - 필드가 사라진 것이 **코드 리뷰에 보이려면** 그 파일이 어디에 있어야 할까요?
+            - 값의 목록을 규격에 적을 수 있다면 물어볼 일이 있을까요?
+            - 문서가 낡지 않게 하려면 누가 갱신해야 할까요 — 사람일까요?
+          modelAnswer: |-
+            | 문제 | 계약 파일로 막는 법 |
+            |---|---|
+            | `memo` 필드가 조용히 사라짐 | 계약 파일을 **저장소에 커밋**해 두면 필드 삭제가 diff에 한 줄로 보인다. 리뷰에서 "이거 앱에서 쓰지 않나요?"가 나온다 |
+            | `status` 값이 뭔지 매번 물음 | 규격의 스키마에 `enum: [PAID, SHIPPED, CANCELED]`로 적어 둔다. 물어볼 필요가 없고, 값이 늘면 diff에 보인다 |
+            | 위키 문서가 낡음 | 문서를 **손으로 쓰지 않는다.** 코드에서 규격을 뽑아내고(U3), 뽑은 것과 커밋된 파일이 다르면 빌드를 실패시킨다 |
+
+            **어디에 두고 언제 갱신하나**: 저장소 안(`docs/api/openapi.yaml` 같은 자리)에 두고,
+            **API를 바꾸는 그 PR에서 함께 갱신**한다. 갱신을 잊으면 빌드가 실패하므로 잊을 수가 없다.
+          selfChecks:
+            - 세 문제에 각각 다른 답을 냈는가 (하나로 뭉뚱그리지 않았는가)
+            - 문서를 손으로 쓰지 않고 **코드에서 뽑는** 방향을 골랐는가
+            - 갱신 시점을 "API를 바꾸는 그 PR"로 잡았는가
+
+      - key: LESSON.INTEGRATION.API_CONTRACT.001.U2
+        title: 규격 읽는 법
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.INTEGRATION.API_CONTRACT.001.U1
+        explain: |-
+          규격 파일은 길어 보이지만 뼈대는 넷이다.
+
+          | 칸 | 무엇 |
+          |---|---|
+          | `openapi` | 규격 버전 (필수) |
+          | `info` | API 이름·버전 (필수) |
+          | `paths` | **어떤 주소에 어떤 동작이 있나** |
+          | `components` | 재사용할 조각들 (공식 규격은 "문서의 여러 스키마를 담는 요소"라고 적는다) |
+
+          `paths` 아래 주소 하나가 **Path Item**이고, 그 아래 `get`·`post` 같은 메서드 하나가 **Operation**이다.
+          Operation에는 `parameters`(무엇을 받나)·`requestBody`(본문)·`responses`(무엇을 주나)가 들어간다.
+
+          같은 모양이 여러 곳에 나오면 `components/schemas`에 한 번 적고 `$ref`로 가리킨다.
+          그래서 **모양을 고칠 때 한 곳만 고치면 된다.**
+
+          읽을 때는 **위에서 아래가 아니라 안에서 밖으로** 읽는 것이 빠르다.
+          먼저 `components/schemas`에서 데이터 모양을 보고, 그다음 `paths`에서 어느 주소가 그것을 주는지 본다.
+
+          `required`를 꼭 본다. 스키마에 칸이 적혀 있어도 `required` 목록에 없으면 **안 올 수도 있다.**
+          이걸 놓치면 화면에서 `null` 때문에 터진다.
+        example:
+          language: yaml
+          code: |-
+            paths:
+              /orders:
+                get:
+                  operationId: listOrders
+                  parameters:
+                    - { name: limit, in: query, schema: { type: integer, maximum: 100 } }
+                  responses:
+                    "200":
+                      content:
+                        application/json:
+                          schema: { $ref: "#/components/schemas/OrderPage" }
+            components:
+              schemas:
+                OrderPage:
+                  type: object
+                  required: [items]
+                  properties:
+                    items: { type: array, items: { $ref: "#/components/schemas/OrderView" } }
+                    nextCursor: { type: string, nullable: true }
+                OrderView:
+                  type: object
+                  required: [id, totalAmount, status]
+                  properties:
+                    id: { type: string, format: uuid }
+                    totalAmount: { type: integer }
+                    status: { type: string, enum: [PAID, SHIPPED, CANCELED] }
+                    memo: { type: string, nullable: true }
+          output: |-
+            읽는 순서
+              1. OrderView — 주문 하나가 어떻게 생겼나
+                 id · totalAmount · status 는 반드시 온다 (required)
+                 memo 는 안 올 수도 있다
+              2. OrderPage — 목록은 items 로 감싸여 온다
+              3. paths /orders get — 그 목록을 여기서 준다
+
+            status 에 올 수 있는 값이 enum 에 다 적혀 있다
+          note: |-
+            - '`required`에 없는 칸은 **없을 수도 있다** — 화면에서 반드시 대비한다'
+            - '`enum`이 있으면 값 목록을 물어볼 필요가 없다'
+            - '`$ref`로 같은 모양을 나눠 쓰면 고칠 자리가 하나다'
+        predict:
+          question: 스키마의 `properties`에 `memo`가 있는데 `required` 목록에는 없다. 응답에 `memo`가 반드시 오나?
+          choices:
+            - 아니다. 안 올 수도 있다. 화면은 그 경우를 대비해야 한다
+            - 온다. properties 에 있으면 필수다
+            - 빈 문자열로 온다
+            - 규격이 잘못된 것이다
+          answer: 아니다. 안 올 수도 있다. 화면은 그 경우를 대비해야 한다
+          explanation: |-
+            `properties`는 "이런 칸이 있을 수 있다"이고, `required`가 "반드시 온다"를 정한다.
+            둘을 같은 것으로 읽으면 실제 응답에 그 칸이 없을 때 화면이 터진다.
+            **규격을 읽을 때 `required`부터 보는 습관**이 이 사고를 막는다.
+        complete:
+          question: 같은 모양을 여러 곳에서 쓰도록 빈칸을 채우세요.
+          code: |-
+            responses:
+              "200":
+                content:
+                  application/json:
+                    schema:
+                      ___: "#/components/___/OrderView"
+          answers:
+            - ["$ref"]
+            - [schemas]
+          explanation: |-
+            다른 곳에 정의한 것을 가리키는 것은 `$ref`이고,
+            재사용할 데이터 모양은 `components/schemas` 아래에 둔다.
+        problem:
+          prompt: |-
+            아래 규격 조각을 읽고 물음에 답하세요.
+
+            ```yaml
+            paths:
+              /orders/{orderId}/cancel:
+                post:
+                  operationId: cancelOrder
+                  parameters:
+                    - { name: orderId, in: path, required: true,
+                        schema: { type: string, format: uuid } }
+                  responses:
+                    "204": { description: No Content }
+                    "409":
+                      content:
+                        application/problem+json:
+                          schema: { $ref: "#/components/schemas/Problem" }
+            components:
+              schemas:
+                Problem:
+                  type: object
+                  required: [status, code]
+                  properties:
+                    status: { type: integer }
+                    code: { type: string }
+                    detail: { type: string }
+            ```
+
+            1. 이 동작을 부르는 요청은 어떻게 생겼나요 (메서드·주소·본문)
+            2. 성공했을 때 화면은 무엇을 받나요
+            3. 409가 왔을 때 화면이 **믿고 써도 되는 칸**은 무엇인가요
+          deliverables:
+            - 세 물음에 대한 답
+            - 3번의 근거 (규격의 어느 부분을 봤는지)
+          hints:
+            - 메서드는 `paths` 아래 어느 칸에 적혀 있나요?
+            - '`204`에 `content`가 없다는 것은 무엇을 뜻할까요?'
+            - '`required` 목록과 `properties` 목록을 나란히 놓고 보세요.'
+          modelAnswer: |-
+            **1. 요청**
+
+            ```http
+            POST /orders/{orderId}/cancel
+            ```
+
+            `orderId`는 경로에 들어가고 UUID 형식이다. `requestBody`가 없으므로 **본문은 보내지 않는다.**
+
+            **2. 성공 응답**
+
+            `204 No Content` — `content`가 없으므로 **본문이 없다.** 화면은 "성공했다"만 알고,
+            바뀐 주문을 보려면 다시 조회해야 한다.
+
+            **3. 409에서 믿고 써도 되는 칸**
+
+            `status`와 `code`다. `Problem` 스키마의 `required`에 이 둘만 있기 때문이다.
+            `detail`은 `properties`에는 있지만 `required`에 없으므로 **안 올 수도 있다** —
+            화면에서 `detail`을 그대로 띄우려면 없을 때 보여 줄 기본 문구를 준비해야 한다.
+            그리고 분기는 `code`로 한다(`detail`은 사람이 읽는 글이다).
+          selfChecks:
+            - 본문을 보내지 않는다는 것을 `requestBody`가 없다는 근거로 말했는가
+            - '`204`에 본문이 없다는 것을 `content` 유무로 읽었는가'
+            - 3번의 근거가 `required` 목록인가
+
+      - key: LESSON.INTEGRATION.API_CONTRACT.001.U3
+        title: 규격과 코드가 어긋나지 않게
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.INTEGRATION.API_CONTRACT.001.U2
+        explain: |-
+          규격 파일을 손으로 쓰면 U1의 위키 문서와 같은 운명이 된다 — **고치는 것을 잊는다.**
+          그래서 방향을 정해야 한다.
+
+          | 방식 | 어떻게 | 어울리는 때 |
+          |---|---|---|
+          | **코드 우선** | 코드에서 규격을 **뽑아낸다** | 서버를 내가 만들고 앱이 따라갈 때 |
+          | **규격 우선** | 규격을 먼저 쓰고 코드를 맞춘다 | 여러 팀이 동시에 만들 때 |
+
+          어느 쪽이든 **어긋남을 기계가 잡아야** 의미가 있다. 방법이 셋 있다.
+
+          1. **스냅샷 비교** — 코드에서 뽑은 규격을 저장소의 파일과 견준다. 다르면 빌드 실패.
+             API를 바꾸면 스냅샷도 같은 PR에서 갱신되므로 **변경이 리뷰에 보인다**
+          2. **응답 검증** — 통합 테스트에서 실제 응답이 규격을 만족하는지 본다
+          3. **생성** — 규격에서 클라이언트 코드를 만든다. 규격에 없는 필드는 아예 못 쓴다
+
+          1번이 가장 값싸고 효과가 크다. 하는 일은 두 줄이다 —
+          **"규격을 다시 뽑는다"**와 **"커밋된 것과 같은지 본다"**.
+
+          여기서 자주 하는 실수가 있다. 스냅샷이 깨졌을 때 **그냥 갱신해 버리는 것**이다.
+          스냅샷이 바뀌었다는 것은 **계약이 바뀌었다**는 뜻이다. 갱신하기 전에 물어야 한다 —
+          "이거 깨는 변경인가? 쓰는 쪽에 알렸나?"
+        example:
+          language: bash
+          code: |-
+            # 1. 코드에서 규격을 뽑아 저장소 파일을 갱신한다
+            ./gradlew openApiUpdate
+
+            # 2. 빌드할 때마다 뽑은 것과 커밋된 것을 견준다
+            ./gradlew check
+            #   → openApiCheck 가 다르면:
+            #      "OpenAPI 스냅샷 불일치. openApiUpdate 실행 후 커밋한다"
+
+            # 3. PR 에는 이런 diff 가 올라온다
+            #    - memo:
+            #    -   type: string
+            #    → 리뷰어: "이 필드 앱에서 쓰지 않나요?"
+          output: |-
+            API 를 바꿨는데 스냅샷을 갱신 안 함
+              → 빌드 실패. 잊을 수가 없다
+
+            스냅샷을 갱신함
+              → diff 로 무엇이 바뀌었는지 줄 단위로 보인다
+
+            스냅샷이 안 바뀜
+              → 계약은 그대로다. 안심하고 병합
+          note: |-
+            - '스냅샷 파일은 **사람이 손으로 고치지 않는다** — 뽑아낸 결과다'
+            - '스냅샷이 바뀌었으면 "왜 바뀌었나"를 먼저 묻는다. 그냥 갱신하면 검사가 무의미해진다'
+            - '이 저장소도 같은 방식이다 (`docs/api/openapi.yaml`)'
+        predict:
+          question: 스냅샷 검사가 실패했을 때 바로 `openApiUpdate`를 돌려 갱신하고 커밋하면?
+          choices:
+            - 검사가 무의미해진다. 깨는 변경인지 확인하는 절차를 건너뛴 것이다
+            - 올바른 처리다. 원래 그러라고 있는 명령이다
+            - 빌드가 다시 실패한다
+            - 규격이 손상된다
+          answer: 검사가 무의미해진다. 깨는 변경인지 확인하는 절차를 건너뛴 것이다
+          explanation: |-
+            이 검사의 목적은 "갱신을 잊지 않게 하는 것"만이 아니라
+            **"계약이 바뀐 것을 사람이 보게 하는 것"** 이다.
+            보지 않고 갱신하면 필드가 사라진 것도, 타입이 바뀐 것도 그대로 통과한다.
+            명령을 돌리기 전에 **diff를 읽는 것**까지가 한 동작이다.
+        complete:
+          question: 계약이 어긋났을 때 빌드가 실패하도록 빈칸을 채우세요.
+          code: |-
+            # 코드에서 뽑은 규격과 저장소의 파일이 다르면 실패
+            tasks.check {
+                dependsOn(___)
+            }
+          answers:
+            - [openApiCheck]
+          explanation: |-
+            `check`가 `openApiCheck`에 의존하게 하면 평소 빌드에서 매번 견준다.
+            사람이 따로 기억해서 돌려야 하는 검사는 결국 안 돌게 된다 — **기본 경로에 넣는다.**
+        problem:
+          prompt: |-
+            주문 시스템의 서버는 내가, 앱은 동생이 만듭니다. 지금은 이렇습니다.
+
+            - 서버에 OpenAPI 규격이 없다
+            - 동생은 내가 보내 준 스크린샷을 보고 모델 클래스를 손으로 만든다
+            - 내가 필드를 바꾸면 동생은 앱이 깨지고 나서 안다
+
+            **계약을 지키는 장치**를 설계하세요. 무엇을 어디에 두고, 언제 무엇이 실패해야 하는지 쓰세요.
+          deliverables:
+            - 코드 우선과 규격 우선 중 무엇을 고를지와 이유
+            - 장치 (무엇이 언제 실패하나)
+            - 동생 쪽(앱)에서 할 일
+          hints:
+            - 서버가 먼저 있고 앱이 따라가는 상황입니다. 어느 방식이 맞을까요?
+            - 사람이 기억해야 하는 절차는 결국 안 지켜집니다. 어디에 넣어야 할까요?
+            - 앱이 규격을 **읽기만** 하는 것과 **거기서 코드를 만드는 것**은 다릅니다.
+          modelAnswer: |-
+            **코드 우선을 고른다.** 서버가 먼저 있고 앱이 따라가는 구조이므로,
+            서버 코드가 곧 사실이고 규격은 거기서 뽑는 것이 어긋날 일이 없다.
+            (여러 팀이 동시에 만드는 상황이었다면 규격 우선이 맞다.)
+
+            **장치**
+
+            1. 서버 저장소에 `docs/api/openapi.yaml`을 커밋한다 (코드에서 뽑은 결과)
+            2. `./gradlew check`가 규격을 다시 뽑아 커밋된 파일과 견주고, 다르면 **빌드를 실패**시킨다
+            3. CI에서도 같은 `check`를 돌린다 — 내 PC에서만 도는 검사는 결국 안 돌게 된다
+            4. 스냅샷 diff가 있는 PR은 **계약 변경**으로 보고, 깨는 변경이면 동생에게 먼저 알린다
+
+            **앱 쪽**
+
+            - 스크린샷 보고 손으로 만들지 않고 `openapi.yaml`에서 모델 코드를 **생성**한다
+            - 규격에 없는 필드는 앱 코드에 존재할 수 없게 되고, 서버가 필드를 지우면 **앱 빌드가 깨진다** —
+              배포 후가 아니라 빌드 때 아는 것이 핵심이다
+          selfChecks:
+            - 코드 우선을 고르고 이유를 "서버가 먼저 있고 앱이 따라간다"로 댔는가
+            - 검사가 **기본 빌드와 CI 양쪽**에 들어갔는가
+            - 앱이 규격에서 코드를 생성해 "배포 후가 아니라 빌드 때" 알게 되는가
+
+      - key: LESSON.INTEGRATION.API_CONTRACT.001.U4
+        title: 남의 API를 부를 때의 약속
+        minutes: 12
+        core: false
+        prerequisiteUnits:
+          - LESSON.INTEGRATION.API_CONTRACT.001.U1
+        explain: |-
+          지금까지는 내가 주는 쪽이었다. 이번엔 **내가 부르는 쪽**이다.
+          결제사·배송사처럼 남의 API를 부르면 내가 통제할 수 없는 것이 생긴다 —
+          느려지고, 끊기고, 어느 날 응답 모양이 바뀐다.
+
+          정해 둬야 할 것이 넷이다.
+
+          **1. 타임아웃** — 반드시 건다. 없으면 상대가 느려질 때 내 스레드가 거기 묶이고,
+          요청이 쌓이면 **내 서비스가 같이 죽는다.** 연결 타임아웃과 읽기 타임아웃을 따로 둔다.
+
+          **2. 재시도** — 아무 때나 하면 안 된다. **멱등한 것만** 재시도한다(HTTP 노트 U2).
+          `GET`은 괜찮고 결제 `POST`는 위험하다. 재시도 간격은 점점 늘린다(백오프) —
+          상대가 힘들어서 느린 것이면 바로 다시 보내는 것이 상황을 더 나쁘게 만든다.
+
+          **3. 두 번 보내도 한 번만** — 재시도해야 하는데 멱등이 아니라면 **멱등 키**를 함께 보낸다.
+          상대가 그 키를 기억하고 같은 키에는 처음 응답을 그대로 돌려준다.
+
+          **4. 상대가 죽었을 때 내가 할 일** — 응답을 못 받으면 내 기능은 어떻게 되나.
+          결제가 안 되면 주문을 받지 않는 것이 맞고, 배송 추적이 안 되면 "조회 실패"만 보이고
+          나머지 화면은 살아 있어야 한다. **어디까지 같이 죽을지 미리 정한다.**
+
+          그리고 상대의 응답을 **내 모델로 바꿔서** 안쪽에 넘긴다. 상대의 JSON을 그대로 서비스 전체에
+          흘려보내면, 상대가 필드 이름 하나 바꿀 때 내 코드 여기저기가 깨진다.
+        example:
+          language: java
+          code: |-
+            // 타임아웃을 반드시 건다
+            RestClient paymentClient = RestClient.builder()
+                    .baseUrl(properties.baseUrl())
+                    .requestFactory(timeouts(Duration.ofSeconds(2), Duration.ofSeconds(5)))
+                    .build();
+
+            public PaymentResult pay(Order order, String idempotencyKey) {
+                PaymentResponse response = paymentClient.post()
+                        .uri("/payments")
+                        .header("Idempotency-Key", idempotencyKey)   // 두 번 보내도 한 번만
+                        .body(new PaymentRequest(order.getId(), order.getTotalAmount()))
+                        .retrieve()
+                        .body(PaymentResponse.class);
+
+                return toResult(response);   // 상대 모델을 내 모델로 바꿔서 넘긴다
+            }
+          output: |-
+            타임아웃 없음
+              상대가 30초 걸림 → 내 스레드 30초 묶임 → 요청 쌓임 → 내 서비스도 죽음
+
+            타임아웃 2초/5초
+              5초에 끊고 "결제 확인 중" 으로 처리 → 내 서비스는 산다
+
+            Idempotency-Key 있음
+              네트워크가 끊겨 재시도해도 결제는 한 번
+          note: |-
+            - '타임아웃은 **선택이 아니다.** 안 걸면 기본값이 무한인 경우가 많다'
+            - '재시도는 멱등한 것만. 아니면 멱등 키를 함께'
+            - '상대의 응답 클래스를 서비스 안쪽까지 들고 다니지 않는다'
+        predict:
+          question: 결제 API 호출에 타임아웃을 걸지 않았는데 결제사가 느려지면?
+          choices:
+            - 내 스레드가 묶이고 요청이 쌓여 내 서비스까지 멈출 수 있다
+            - 내 서비스는 멀쩡하고 그 요청만 느리다
+            - 자동으로 취소된다
+            - 오류 응답이 온다
+          answer: 내 스레드가 묶이고 요청이 쌓여 내 서비스까지 멈출 수 있다
+          explanation: |-
+            응답을 기다리는 동안 그 요청을 처리하던 스레드는 아무것도 못 한다.
+            상대가 30초씩 걸리면 그 사이 들어온 요청이 쌓이고, 스레드가 바닥나면
+            **결제와 상관없는 화면까지 멈춘다.** 남의 문제가 내 문제가 되는 전형적인 경로다.
+            타임아웃은 "빨리 포기해서 나를 지키는" 장치다.
+        complete:
+          question: 재시도해도 결제가 한 번만 되도록 빈칸을 채우세요.
+          code: |-
+            .header("___", idempotencyKey)
+          answers:
+            - ["Idempotency-Key"]
+          explanation: |-
+            같은 요청임을 알리는 값을 `Idempotency-Key` 헤더로 보낸다.
+            상대가 이 키를 기억해 두고 같은 키에는 처음 응답을 그대로 돌려주므로,
+            네트워크가 끊겨 재시도해도 결제는 한 번이다.
+        problem:
+          prompt: |-
+            주문 시스템이 외부 API 둘을 부릅니다.
+
+            - **결제 승인** (`POST /payments`) — 실패하면 주문을 받을 수 없다
+            - **배송 추적 조회** (`GET /tracking/{id}`) — 주문 상세 화면의 한 영역이다
+
+            각각에 대해 **타임아웃·재시도·실패했을 때의 처리**를 정하세요. 왜 둘의 답이 다른지도 쓰세요.
+          deliverables:
+            - 두 호출의 타임아웃·재시도·실패 처리
+            - 둘의 답이 다른 이유
+          hints:
+            - 하나는 멱등이고 하나는 아닙니다.
+            - 하나는 실패하면 기능 전체가 멈춰야 하고, 하나는 그 영역만 비면 됩니다.
+            - 재시도를 못 하는 쪽에는 다른 장치가 있었습니다.
+          modelAnswer: |-
+            | | 결제 승인 | 배송 추적 조회 |
+            |---|---|---|
+            | 타임아웃 | 연결 2초 / 읽기 5초 | 연결 1초 / 읽기 2초 |
+            | 재시도 | **자동 재시도 안 함.** 대신 `Idempotency-Key`를 보내고, 응답을 못 받으면 같은 키로 **조회**해 결과를 확인한다 | 2회까지 재시도 (백오프 0.5초 → 1초) |
+            | 실패 처리 | 주문을 만들지 않고 사용자에게 실패를 알린다 | 그 영역만 "배송 정보를 불러오지 못했어요"로 두고 나머지 화면은 그대로 |
+
+            **왜 다른가**
+
+            - '`POST /payments`는 **멱등이 아니다.** 응답을 못 받았을 때 "닿았는지"를 알 수 없으므로 그냥 다시 보내면 두 번 결제될 수 있다. 그래서 재시도 대신 멱등 키 + 결과 조회로 간다.'
+            - '`GET /tracking`은 **안전하고 멱등**이라 몇 번 불러도 상관없다. 그래서 짧은 타임아웃 + 재시도가 맞는다.'
+            - '중요도도 다르다. 결제는 주문의 필수 단계라 실패하면 멈춰야 하고, 배송 추적은 **없어도 주문 상세를 볼 수 있다.** 한 영역의 실패가 화면 전체를 못 쓰게 만들면 안 된다.'
+          selfChecks:
+            - 두 호출의 재시도 정책이 **멱등 여부**로 갈렸는가
+            - 결제 쪽에 재시도 대신 멱등 키(또는 결과 조회)를 뒀는가
+            - 실패 처리가 "전체 중단"과 "그 영역만"으로 갈렸는가
+
+    commonMistakes:
+      - 규격을 손으로 쓰고 코드와 따로 둔다. 고치는 것을 잊으면 조용히 거짓말이 된다 (U1·U3)
+      - 스냅샷 검사가 깨지면 diff를 읽지 않고 그냥 갱신한다. 검사가 무의미해진다 (U3)
+      - 외부 API 호출에 타임아웃을 걸지 않는다. 남의 느림이 내 서비스를 멈춘다 (U4)
+    inProject: |-
+      주문 시스템에서 서버와 앱을 따로 만드는 순간 이 넷이 필요해진다.
+      서버 코드에서 OpenAPI를 뽑아 저장소에 커밋하고(U1), 앱은 그 파일을 읽어 모델을 만든다(U2).
+      빌드마다 뽑은 것과 커밋된 것을 견줘 어긋나면 실패시키면(U3) "언제 필드가 사라졌는지"를 묻는 일이 없어진다.
+      결제처럼 남의 API를 부를 때는 타임아웃을 먼저 걸고 멱등 여부로 재시도를 가른다(U4).
+    sources:
+      - title: OpenAPI Specification v3.1.0
+        url: https://spec.openapis.org/oas/v3.1.0.html
+        versionScope: OpenAPI 3.1
+      - title: MDN — HTTP request methods
+        url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods
+        versionScope: HTTP/1.1
+    verifiedAt: 2026-09-22
