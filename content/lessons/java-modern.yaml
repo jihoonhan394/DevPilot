@@ -1,0 +1,581 @@
+# DevPilot 개념 노트 — 현대 자바 문법
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 버전은 이 저장소의 toolchain 기준이다 (build.gradle.kts: JavaLanguageVersion.of(25))
+# - 읽는 사람은 옛 문법에 익숙하다고 가정한다. 무엇이 좋아지는지를 옛 코드와 나란히 보인다
+lessons:
+  - key: LESSON.JAVA.MODERN_SYNTAX.001
+    skillCode: JAVA.MODERN_SYNTAX
+    title: 같은 일을 짧고 안전하게 (현대 자바 문법)
+    whyItMatters: |-
+      요즘 스프링 코드와 남의 예제는 record·switch 식·패턴 매칭으로 쓰여 있다.
+      이 문법을 모르면 **남의 코드가 읽히지 않고**, 읽지 못하면 배울 수도 없다.
+      게다가 이것들은 단순히 짧아지는 것이 아니라 **컴파일러가 실수를 잡아 주게** 만드는 장치다 —
+      빠뜨린 경우, 바뀌면 안 되는 값, 잘못된 캐스팅을 컴파일 단계에서 막는다.
+    oneLine: 현대 자바 문법은 반복해 쓰던 코드를 줄이고, 그렇게 줄인 자리에서 컴파일러가 실수를 대신 잡아 준다.
+    units:
+      - key: LESSON.JAVA.MODERN_SYNTAX.001.U1
+        title: 데이터를 담는 클래스는 record로
+        minutes: 10
+        core: true
+        explain: |-
+          공식 문서는 record를 **"보통 클래스보다 적은 격식으로 단순한 데이터 묶음을 표현하도록 돕는 특별한 클래스"** 라고 정의한다.
+
+          헤더에 칸만 적으면 컴파일러가 이것들을 **자동으로 만들어 준다.**
+
+          - 칸마다 `private final` 필드
+          - 칸마다 같은 이름의 접근자 (`getName()`이 아니라 **`name()`**)
+          - 헤더와 같은 서명의 생성자(정규 생성자)
+          - `equals`·`hashCode` — **같은 타입이고 칸 값이 모두 같으면 같다**
+          - `toString` — 칸 이름과 값이 모두 들어간다
+
+          문서가 밝히듯 **"record의 필드는 final이다. 단순한 '데이터 운반체'로 쓰려는 클래스이기 때문"** 이다.
+          그래서 만든 뒤에는 바뀌지 않는다 — DTO·설정값·값 객체에 딱 맞는다.
+
+          검사를 넣고 싶으면 **compact 생성자**를 쓴다. 서명과 필드 대입을 생략한 형태이고,
+          문서의 설명대로 **"compact 생성자가 끝날 때 암묵적 파라미터가 대응하는 필드에 대입된다."**
+
+          못 하는 것도 분명하다 — **인스턴스 필드를 따로 선언할 수 없고**, record는 암묵적으로 `final`이라 **상속할 수 없다.**
+        example:
+          language: java
+          code: |-
+            // 옛 방식: 필드 + 생성자 + getter + equals + hashCode + toString ≈ 60줄
+            public record OrderLine(Long productId, int quantity) {
+
+                // compact 생성자 — 서명과 대입을 적지 않는다
+                public OrderLine {
+                    if (quantity < 1) {
+                        throw new IllegalArgumentException("수량은 1개 이상이어야 한다");
+                    }
+                }
+
+                public int amountAt(int unitPrice) {
+                    return unitPrice * quantity;      // 메서드는 얼마든지 더할 수 있다
+                }
+            }
+          output: |-
+            new OrderLine(7L, 2).quantity()   → 2        (getQuantity() 가 아니다)
+            new OrderLine(7L, 2).toString()   → OrderLine[productId=7, quantity=2]
+            new OrderLine(7L, 2).equals(new OrderLine(7L, 2))  → true
+            new OrderLine(7L, 0)              → IllegalArgumentException
+          note: |-
+            - '접근자 이름이 `name()`이다 — `getName()`이 아니다'
+            - '`equals`가 칸 값 비교라서 DTO 비교 테스트가 그냥 된다'
+            - 'compact 생성자에 검사를 넣으면 **잘못된 값으로는 만들어지지 않는다**'
+        predict:
+          question: '`record OrderLine(Long productId, int quantity)`에서 수량을 읽는 메서드 이름은?'
+          choices:
+            - quantity()
+            - getQuantity()
+            - quantity 필드를 직접 읽는다
+            - readQuantity()
+          answer: quantity()
+          explanation: |-
+            record의 접근자는 **칸 이름과 같다.** `getQuantity()`가 아니라 `quantity()`다.
+            처음에는 낯설지만 규칙이 하나뿐이라 헷갈릴 일이 없다.
+            필드는 `private final`이라 직접 읽을 수 없다.
+        complete:
+          question: 상품 정보를 담는 record를 만들고 가격이 음수면 막도록 빈칸을 채우세요.
+          code: |-
+            public ___ Product(Long id, String name, int price) {
+
+                public ___ {
+                    if (price < 0) {
+                        throw new IllegalArgumentException("가격은 0원 이상이어야 한다");
+                    }
+                }
+            }
+          answers:
+            - [record]
+            - [Product]
+          explanation: |-
+            데이터 묶음이므로 `record`이고, compact 생성자는 **클래스 이름만** 적고 괄호를 쓰지 않는다 —
+            `public Product { ... }`. 괄호를 적으면 정규 생성자가 되어 필드 대입까지 직접 써야 한다.
+        problem:
+          prompt: |-
+            아래 옛 방식 클래스를 record로 바꾸세요.
+
+            ```java
+            public class Coupon {
+                private final String code;
+                private final int discountRate;
+
+                public Coupon(String code, int discountRate) {
+                    if (discountRate < 1 || discountRate > 50) {
+                        throw new IllegalArgumentException("할인율은 1~50");
+                    }
+                    this.code = code;
+                    this.discountRate = discountRate;
+                }
+
+                public String getCode() { return code; }
+                public int getDiscountRate() { return discountRate; }
+
+                @Override public boolean equals(Object o) { /* code, discountRate 비교 */ }
+                @Override public int hashCode() { /* ... */ }
+                @Override public String toString() { /* ... */ }
+
+                public int discountFor(int amount) { return amount * discountRate / 100; }
+            }
+            ```
+
+            그리고 **이 클래스를 쓰던 코드에서 무엇을 고쳐야 하는지** 쓰세요.
+          deliverables:
+            - record로 바꾼 코드
+            - 쓰던 쪽에서 고쳐야 할 것
+          hints:
+            - 컴파일러가 자동으로 만들어 주는 것이 무엇이었는지 목록을 다시 보세요.
+            - 검사를 넣는 자리가 따로 있었습니다.
+            - 접근자 **이름**이 달라집니다.
+          modelAnswer: |-
+            ```java
+            public record Coupon(String code, int discountRate) {
+
+                public Coupon {
+                    if (discountRate < 1 || discountRate > 50) {
+                        throw new IllegalArgumentException("할인율은 1~50");
+                    }
+                }
+
+                public int discountFor(int amount) {
+                    return amount * discountRate / 100;
+                }
+            }
+            ```
+
+            지운 것: 필드 선언, 정규 생성자의 대입, getter 둘, `equals`·`hashCode`·`toString`.
+            남긴 것: 검사(compact 생성자로)와 업무 메서드 `discountFor`.
+
+            **쓰던 쪽에서 고칠 것**: `getCode()` → `code()`, `getDiscountRate()` → `discountRate()`.
+            그 밖에는 그대로다 — `equals`·`hashCode`의 뜻이 같고(칸 값 비교), 생성자 서명도 같다.
+          selfChecks:
+            - 검사가 compact 생성자 안에 있고 필드 대입을 직접 쓰지 않았는가
+            - getter·equals·hashCode·toString을 전부 지웠는가
+            - 쓰던 쪽에서 고칠 것으로 **접근자 이름**을 들었는가
+
+      - key: LESSON.JAVA.MODERN_SYNTAX.001.U2
+        title: switch를 값으로 쓰기
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.JAVA.MODERN_SYNTAX.001.U1
+        explain: |-
+          옛 `switch`는 문장이라 값을 만들 수 없었다. 변수를 먼저 선언하고 각 `case`에서 대입하고
+          `break`를 빠뜨리면 아래로 흘러내렸다. 이제 **switch가 값을 낸다.**
+
+          바뀐 것은 셋이다.
+
+          **화살표 형태** — `case A -> 값;`. 공식 문서가 밝히듯 **"어떤 라벨에 맞으면 화살표 오른쪽을 실행하고
+          다른 case로 흘러내리지 않는다."** `break`가 필요 없다. 여러 라벨은 `case A, B ->`로 묶는다.
+
+          **`yield`** — 중괄호 블록에서 값을 낼 때 쓴다. `return`이 아니다(그건 메서드를 끝낸다).
+
+          **빠짐없음(exhaustive)** — **"switch 식은 빠짐없어야 한다. 가능한 모든 값에 대해 맞는 라벨이 있어야 한다."**
+          보통 `default`가 필요하지만, **enum의 모든 상수를 덮으면 컴파일러가 암묵적 `default`를 넣는다.**
+
+          마지막이 핵심이다. enum에 값을 하나 추가했는데 어딘가 처리하지 않았으면 **컴파일이 실패한다.**
+          옛 `switch` 문장이었다면 조용히 `default`로 빠지거나 아무것도 하지 않았다.
+          `default`를 굳이 적지 않는 편이 나을 때가 있는 이유다 — 빠뜨림을 컴파일러가 알려 주게 하려고.
+        example:
+          language: java
+          code: |-
+            enum OrderStatus { CREATED, PAID, SHIPPED, CANCELED }
+
+            // 옛 방식
+            String label;
+            switch (status) {
+                case CREATED: label = "주문 접수"; break;
+                case PAID:    label = "결제 완료"; break;
+                default:      label = "알 수 없음";      // 새 값이 조용히 여기로
+            }
+
+            // switch 식
+            String label = switch (status) {
+                case CREATED -> "주문 접수";
+                case PAID -> "결제 완료";
+                case SHIPPED, CANCELED -> {
+                    log.debug("종료 상태 {}", status);
+                    yield status == OrderStatus.SHIPPED ? "배송 중" : "취소됨";
+                }
+            };      // default 가 없다 — 모든 상수를 덮었기 때문
+          output: |-
+            enum 에 REFUNDED 를 추가하면
+              옛 방식   → 컴파일 성공. 실행하면 "알 수 없음" 이 나온다
+              switch 식 → 컴파일 실패
+                          "the switch expression does not cover all possible input values"
+
+            빠뜨림을 배포 전에 아는가, 사용자가 보고 아는가의 차이다
+          note: |-
+            - '`break`가 없다 — 흘러내리지 않는다'
+            - '블록에서 값을 낼 때는 `yield`. `return`은 메서드를 끝내 버린다'
+            - 'enum을 모두 덮으면 `default`를 쓰지 않는다 — 새 값이 늘 때 컴파일러가 알려 주게 한다'
+        predict:
+          question: enum 상수를 모두 덮은 switch 식에서 `default`를 일부러 쓰지 않는 이유는?
+          choices:
+            - enum에 값이 추가되면 컴파일이 실패해 빠뜨림을 바로 안다
+            - default를 쓰면 느려진다
+            - 문법상 쓸 수 없다
+            - 코드가 짧아 보이기 때문이다
+          answer: enum에 값이 추가되면 컴파일이 실패해 빠뜨림을 바로 안다
+          explanation: |-
+            `default`가 있으면 새 상수도 거기로 흘러가 **컴파일이 통과한다.**
+            없으면 "모든 값을 덮지 못한다"며 컴파일이 실패해서, 그 enum을 쓰는 모든 자리를 컴파일러가 짚어 준다.
+            외부 입력처럼 정말 모르는 값이 올 수 있는 자리에서는 `default`가 맞다 — **상황에 따라 고른다.**
+        complete:
+          question: 상태에 따라 안내 문구를 만드는 switch 식이 되도록 빈칸을 채우세요.
+          code: |-
+            String message = ___ (status) {
+                case CREATED -> "결제를 기다리고 있어요";
+                case PAID -> {
+                    int days = deliveryEstimator.days(order);
+                    ___ days + "일 안에 도착해요";
+                }
+                case SHIPPED, CANCELED -> "종료된 주문이에요";
+            };
+          answers:
+            - [switch]
+            - [yield]
+          explanation: |-
+            값을 내는 `switch` 식이고, 중괄호 블록에서 값을 내보내는 것은 `yield`다.
+            `return`을 쓰면 메서드 자체가 끝나 버린다.
+        problem:
+          prompt: |-
+            아래 코드를 switch 식으로 바꾸고, **enum에 값이 추가될 때 컴파일러가 알려 주도록** 만드세요.
+
+            ```java
+            enum PaymentMethod { CARD, TRANSFER, POINT }
+
+            int feeRate(PaymentMethod method) {
+                int rate;
+                switch (method) {
+                    case CARD:
+                        rate = 250;
+                        break;
+                    case TRANSFER:
+                        rate = 0;
+                    case POINT:
+                        rate = 100;
+                        break;
+                    default:
+                        rate = 0;
+                }
+                return rate;
+            }
+            ```
+
+            원래 코드에 **버그가 하나** 숨어 있습니다. 찾아서 함께 설명하세요.
+          deliverables:
+            - switch 식으로 바꾼 코드
+            - 원래 코드의 버그와 왜 생겼는지
+          hints:
+            - 각 `case`가 `break`로 끝나는지 하나씩 확인해 보세요.
+            - 새 결제 수단이 추가될 때 무엇이 알려 주어야 할까요?
+            - 모든 상수를 덮으면 적지 않아도 되는 것이 있습니다.
+          modelAnswer: |-
+            **버그**: `case TRANSFER`에 `break`가 없어 `case POINT`로 **흘러내린다.**
+            계좌이체 수수료가 0이 아니라 100으로 계산된다. 컴파일도 되고 테스트도 통과할 수 있어서
+            정산이 안 맞을 때에야 발견된다 — 옛 `switch` 문장의 대표적인 함정이다.
+
+            ```java
+            int feeRate(PaymentMethod method) {
+                return switch (method) {
+                    case CARD -> 250;
+                    case TRANSFER -> 0;
+                    case POINT -> 100;
+                };      // default 없음 — 모든 상수를 덮었다
+            }
+            ```
+
+            화살표 형태는 흘러내리지 않으므로 그 버그가 **문법적으로 불가능**해진다.
+            `default`를 적지 않았으므로 `PaymentMethod`에 `GIFT_CARD`를 추가하면 이 메서드가 컴파일되지 않고,
+            컴파일러가 고칠 자리를 짚어 준다.
+          selfChecks:
+            - 버그를 "`break` 누락으로 인한 흘러내림"으로 정확히 짚었는가
+            - 화살표 형태로 바꿔 그 버그가 불가능해졌는가
+            - '`default`를 적지 않았고 그 이유를 설명했는가'
+
+      - key: LESSON.JAVA.MODERN_SYNTAX.001.U3
+        title: 타입을 확인하면서 바로 꺼내기
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.JAVA.MODERN_SYNTAX.001.U2
+        explain: |-
+          `instanceof`로 확인하고 캐스팅해서 변수에 담는 세 줄이 한 줄이 된다 —
+          `if (s instanceof Rectangle r) { ... }`. `r`을 **패턴 변수**라고 한다.
+
+          범위 규칙이 중요하다. 공식 문서는 **"패턴 변수의 범위는 `instanceof`가 참일 때에만 프로그램이 닿을 수 있는 자리"**
+          라고 적는다. 그래서 `&&`로 이으면 되고(`s instanceof Rectangle r && r.length() > 5`),
+          `||`로 이으면 컴파일되지 않는다 — 거짓일 때도 뒤에 닿기 때문이다.
+
+          record와 함께 쓰면 한 걸음 더 간다. **record 패턴**은 칸까지 바로 꺼낸다 —
+          `if (obj instanceof Point(double x, double y))`. 접근자를 컴파일러가 대신 부른다.
+          중첩도 되고 `var`도 쓸 수 있다. 다만 **`null`은 어떤 record 패턴에도 맞지 않는다.**
+
+          switch에서도 같은 패턴을 쓴다. `sealed`로 구현을 못 박아 두면 빠짐없음까지 컴파일러가 확인해 준다.
+        example:
+          language: java
+          code: |-
+            sealed interface Event permits OrderPlaced, OrderCanceled, PaymentFailed { }
+
+            record OrderPlaced(Long orderId, int amount) implements Event { }
+            record OrderCanceled(Long orderId, String reason) implements Event { }
+            record PaymentFailed(Long orderId, String code) implements Event { }
+
+            String describe(Event event) {
+                return switch (event) {
+                    case OrderPlaced(Long id, int amount) -> id + "번 주문 " + amount + "원";
+                    case OrderCanceled(Long id, String reason) -> id + "번 취소: " + reason;
+                    case PaymentFailed(Long id, String code) -> id + "번 결제 실패(" + code + ")";
+                };
+            }
+          output: |-
+            describe(new OrderPlaced(1024L, 42000))
+              → "1024번 주문 42000원"
+
+            Event 에 구현을 하나 더 허용하면(permits 에 추가)
+              → describe 가 컴파일되지 않는다. 새 경우를 처리하라고 알려 준다
+
+            null 을 넣으면 어떤 패턴에도 맞지 않는다
+          note: |-
+            - '`sealed`가 "구현은 이 셋뿐"을 선언해서 switch가 빠짐없음을 확인할 수 있다'
+            - 'record 패턴이 칸을 바로 꺼낸다 — `event.orderId()`를 따로 부르지 않는다'
+            - '`null`은 어떤 record 패턴에도 맞지 않으므로 앞에서 따로 막는다'
+        predict:
+          question: '`if (shape instanceof Rectangle r || r.length() > 0)` 은 컴파일되나?'
+          choices:
+            - 안 된다. instanceof 가 거짓일 때도 r 에 닿을 수 있다
+            - 된다. r 은 어디서나 쓸 수 있다
+            - 된다. 다만 r 이 null 이다
+            - 실행할 때 예외가 난다
+          answer: 안 된다. instanceof 가 거짓일 때도 r 에 닿을 수 있다
+          explanation: |-
+            패턴 변수는 **`instanceof`가 참일 때 닿는 자리에서만** 쓸 수 있다.
+            `||`는 앞이 **거짓일 때** 뒤를 평가하므로, `r`이 만들어지지 않은 채 `r.length()`에 닿는다.
+            그래서 컴파일러가 막는다. `&&`는 앞이 참일 때만 뒤로 가므로 괜찮다.
+        complete:
+          question: 타입을 확인하면서 바로 꺼내 쓰도록 빈칸을 채우세요.
+          code: |-
+            // 옛 방식
+            // if (event instanceof OrderPlaced) {
+            //     OrderPlaced placed = (OrderPlaced) event;
+            //     return placed.orderId();
+            // }
+
+            if (event ___ OrderPlaced placed) {
+                return placed.___();
+            }
+          answers:
+            - [instanceof]
+            - [orderId]
+          explanation: |-
+            `instanceof` 뒤에 변수 이름을 적으면 확인·캐스팅·선언이 한 번에 된다.
+            record의 접근자는 칸 이름과 같으므로 `orderId()`다(U1).
+        problem:
+          prompt: |-
+            아래 `if-else` 사슬을 sealed 인터페이스 + record 패턴 switch로 바꾸세요.
+
+            ```java
+            int amountOf(Object event) {
+                if (event instanceof OrderPlaced) {
+                    return ((OrderPlaced) event).getAmount();
+                } else if (event instanceof OrderCanceled) {
+                    return -((OrderCanceled) event).getRefund();
+                } else if (event instanceof PaymentFailed) {
+                    return 0;
+                }
+                throw new IllegalArgumentException("모르는 이벤트");
+            }
+            ```
+
+            그리고 **바꾼 뒤에 얻는 것 두 가지**를 쓰세요.
+          deliverables:
+            - sealed 선언 + record 셋 + 바꾼 메서드
+            - 바꾼 뒤 얻는 것 2가지
+          hints:
+            - 파라미터 타입이 `Object`인 것부터 보세요. 무엇이 올 수 있는지 아무도 모릅니다.
+            - '"구현은 이 셋뿐"을 컴파일러에게 알려 주는 표시가 있었습니다.'
+            - 마지막 `throw`가 계속 필요할까요?
+          modelAnswer: |-
+            ```java
+            sealed interface Event permits OrderPlaced, OrderCanceled, PaymentFailed { }
+
+            record OrderPlaced(Long orderId, int amount) implements Event { }
+            record OrderCanceled(Long orderId, int refund) implements Event { }
+            record PaymentFailed(Long orderId, String code) implements Event { }
+
+            int amountOf(Event event) {
+                return switch (event) {
+                    case OrderPlaced(Long id, int amount) -> amount;
+                    case OrderCanceled(Long id, int refund) -> -refund;
+                    case PaymentFailed(Long id, String code) -> 0;
+                };
+            }
+            ```
+
+            **얻는 것**
+
+            - '**빠뜨림을 컴파일러가 잡는다.** `permits`에 이벤트를 하나 더 넣으면 이 메서드가 컴파일되지 않는다. 옛 코드는 `IllegalArgumentException`을 **실행할 때** 던졌다 — 사용자가 먼저 만난다.'
+            - '**캐스팅이 사라진다.** `((OrderPlaced) event)`가 없어져 타입을 두 번 적을 일도, 잘못 캐스팅할 일도 없다. 파라미터 타입도 `Object`가 아니라 `Event`라 아무것이나 들어오지 못한다.'
+          selfChecks:
+            - '`sealed ... permits`로 구현을 셋으로 못 박았는가'
+            - 파라미터 타입이 `Object`가 아니라 `Event`인가
+            - 마지막 `throw`를 지웠고, 지워도 되는 이유를 빠짐없음으로 설명했는가
+
+      - key: LESSON.JAVA.MODERN_SYNTAX.001.U4
+        title: var와 텍스트 블록은 골라 쓴다
+        minutes: 10
+        core: false
+        prerequisiteUnits:
+          - LESSON.JAVA.MODERN_SYNTAX.001.U1
+        explain: |-
+          앞의 셋과 달리 이 둘은 **"항상 쓰면 좋다"가 아니다.** 판단이 필요하다.
+
+          **`var`** — 지역 변수의 타입을 컴파일러가 추론한다. 지역 변수, 향상된 `for`의 원소,
+          전통 `for`의 인덱스, try-with-resources에 쓸 수 있다.
+          필드·메서드 파라미터·반환 타입에는 **쓸 수 없다.**
+
+          공식 문서의 안내가 정확하다 — **"지역 변수 선언은 중복된 정보를 없애 코드를 읽기 쉽게 만들 수 있다.
+          그러나 쓸모 있는 정보를 감춰 오히려 읽기 어렵게 만들 수도 있다."** 그리고 **"엄격한 규칙은 없다."**
+
+          그래서 기준을 이렇게 둔다.
+
+          | 쓰기 좋다 | 피한다 |
+          |---|---|
+          | `var order = new Order(...)` — 오른쪽에 타입이 이미 보인다 | `var result = service.process(x)` — 무엇인지 알 수 없다 |
+          | `var entry : map.entrySet()` — 제네릭이 길다 | 숫자 타입이 중요한 자리(`var count = getCount()`) |
+
+          **텍스트 블록** — `"""`로 시작해 여러 줄을 그대로 적는다.
+          공식 문서는 들여쓰기 처리를 이렇게 설명한다 — **"가장 적게 들여 쓴 줄에 들여쓰기가 없어질 때까지
+          전체 내용을 왼쪽으로 민다."** 즉 **기준선은 가장 왼쪽 줄**이고, 그보다 더 들여 쓴 만큼만 남는다.
+          닫는 `"""`의 위치도 그 계산에 들어간다.
+
+          JPQL·SQL·JSON처럼 **원래 여러 줄인 것**에 쓴다. 한 줄짜리 문자열에는 쓰지 않는다.
+        example:
+          language: java
+          code: |-
+            // var — 오른쪽에 타입이 보이면 좋다
+            var orders = new ArrayList<Order>();          // ArrayList<Order>
+            for (var order : orders) { ... }              // Order
+
+            var result = orderService.process(request);   // 무엇이 오는지 안 보인다 → 타입을 적는다
+            OrderResult result2 = orderService.process(request);
+
+            // 텍스트 블록 — 원래 여러 줄인 것
+            @Query("""
+                   select o from Order o
+                   where o.customerId = :customerId
+                     and o.canceledAt is null
+                   """)
+            List<Order> findActive(Long customerId);
+          output: |-
+            텍스트 블록의 들여쓰기
+              가장 적게 들여 쓴 줄(select · where · 닫는 따옴표)을 기준으로 그만큼 잘린다
+              → select o from Order o
+                where o.customerId = :customerId
+                  and o.canceledAt is null
+              select 와 where 앞은 0칸, and 앞만 2칸이 남는다
+              (and 만 기준선보다 두 칸 더 들여 썼기 때문)
+
+            var 는 지역 변수에만. 필드·파라미터·반환 타입에는 못 쓴다
+          note: |-
+            - '`var`의 기준: **오른쪽만 보고 타입을 알 수 있나**'
+            - '텍스트 블록의 기준선은 가장 적게 들여 쓴 줄이다 — 닫는 `"""` 위치도 센다'
+            - '이 저장소의 JPQL이 전부 텍스트 블록으로 쓰여 있다'
+        predict:
+          question: '`var` 를 메서드 파라미터 타입으로 쓸 수 있나?'
+          choices:
+            - 없다. 지역 변수·for 원소·try-with-resources 등에만 쓴다
+            - 있다. 어디서나 쓸 수 있다
+            - 있다. 다만 public 메서드에서만
+            - 있다. 컴파일러가 호출부에서 추론한다
+          answer: 없다. 지역 변수·for 원소·try-with-resources 등에만 쓴다
+          explanation: |-
+            `var`는 **초기화 값을 보고** 타입을 정한다. 메서드 파라미터에는 초기화 값이 없으므로 추론할 근거가 없다.
+            필드와 반환 타입도 같은 이유로 안 된다.
+            (예외적으로 람다의 파라미터에는 쓸 수 있지만, 그때는 전부 `var`로 통일해야 한다.)
+        complete:
+          question: 여러 줄 SQL을 텍스트 블록으로 적도록 빈칸을 채우세요.
+          code: |-
+            String sql = ___
+                         select id, total_amount
+                         from orders
+                         where canceled_at is null
+                         ___;
+          answers:
+            - ['"""']
+            - ['"""']
+          explanation: |-
+            텍스트 블록은 `"""`로 열고 `"""`로 닫는다. 여는 `"""` 뒤에는 줄바꿈이 와야 한다.
+            닫는 `"""`의 들여쓰기도 기준선 계산에 들어가므로, 본문과 같은 열에 두면 본문의 왼쪽 공백이 모두 잘린다.
+        problem:
+          prompt: |-
+            아래 코드에서 `var`를 **쓰는 편이 나은 곳**과 **쓰지 않는 편이 나은 곳**을 갈라 고치세요.
+            그리고 문자열을 텍스트 블록으로 바꾸세요.
+
+            ```java
+            Map<String, List<OrderLine>> linesByProduct = groupLines(order);
+            int total = calculate(order);
+            ArrayList<String> names = new ArrayList<String>();
+            String query = "select o from Order o " +
+                           "where o.customerId = :customerId " +
+                           "  and o.canceledAt is null";
+            ```
+          deliverables:
+            - 고친 코드
+            - 각 줄에서 `var`를 쓰거나 쓰지 않은 이유
+          hints:
+            - 기준은 "오른쪽만 보고 타입을 알 수 있나"였습니다.
+            - 메서드 이름만으로 반환 타입을 짐작할 수 있는 줄이 있나요?
+            - 텍스트 블록에서 닫는 `"""`을 어디에 둘지도 생각해 보세요.
+          modelAnswer: |-
+            ```java
+            Map<String, List<OrderLine>> linesByProduct = groupLines(order);   // 타입을 적는다
+            int total = calculate(order);                                      // 타입을 적는다
+            var names = new ArrayList<String>();                               // var
+
+            String query = """
+                           select o from Order o
+                           where o.customerId = :customerId
+                             and o.canceledAt is null
+                           """;
+            ```
+
+            - '`linesByProduct`: `groupLines`만 보고는 무엇이 오는지 알 수 없다. 제네릭이 길어도 **타입이 곧 설명**이므로 적는 편이 낫다.'
+            - '`total`: 반환이 `int`인지 `long`인지 `BigDecimal`인지가 계산에 중요하다. 숫자 타입은 적는다.'
+            - '`names`: 오른쪽에 `new ArrayList<String>()`이 그대로 보인다. 왼쪽에 또 적는 것은 **중복된 정보**다.'
+            - '텍스트 블록: 세 줄을 이어 붙이던 것이 그대로 보인다. 줄 끝 공백을 빠뜨려 `o where`처럼 붙는 사고도 사라진다.'
+          selfChecks:
+            - '`var`를 쓴 줄이 "오른쪽에 타입이 보이는" 줄인가'
+            - 숫자 타입과 긴 제네릭 반환에는 타입을 적었는가
+            - 텍스트 블록에서 문자열 이어 붙이기와 끝 공백이 사라졌는가
+
+    commonMistakes:
+      - 'record의 접근자를 `getName()`으로 부르려다 컴파일 오류를 본다. 이름은 칸 이름 그대로 `name()`이다 (U1)'
+      - 'enum을 모두 덮은 switch 식에 습관적으로 `default`를 넣는다. 새 상수가 조용히 거기로 빠져 컴파일러가 알려 주지 못한다 (U2)'
+      - '`var`를 아무 데나 쓴다. 오른쪽만 보고 타입을 알 수 없으면 읽는 사람이 메서드를 찾아가야 한다 (U4)'
+    inProject: |-
+      주문 시스템에서 이 넷이 바로 쓰인다. 요청·응답 DTO와 값 객체는 전부 record로 쓰고(U1),
+      주문 상태별 문구나 수수료율처럼 경우가 갈리는 계산은 switch 식으로 써서
+      상태를 추가할 때 컴파일러가 고칠 자리를 짚게 한다(U2).
+      이벤트나 결과 타입이 여러 개면 `sealed` + record 패턴으로 묶는다(U3).
+      JPQL은 텍스트 블록으로 적고, `var`는 오른쪽에 타입이 보이는 줄에만 쓴다(U4).
+    sources:
+      - title: Java Language Updates — Record Classes
+        url: https://docs.oracle.com/en/java/javase/21/language/records.html
+        versionScope: Java SE 21+
+      - title: Java Language Updates — Switch Expressions
+        url: https://docs.oracle.com/en/java/javase/21/language/switch-expressions.html
+        versionScope: Java SE 21+
+      - title: Java Language Updates — Pattern Matching for instanceof
+        url: https://docs.oracle.com/en/java/javase/21/language/pattern-matching-instanceof.html
+        versionScope: Java SE 21+
+      - title: Java Language Updates — Record Patterns
+        url: https://docs.oracle.com/en/java/javase/21/language/record-patterns.html
+        versionScope: Java SE 21+
+      - title: Programmer's Guide to Text Blocks
+        url: https://docs.oracle.com/en/java/javase/21/text-blocks/index.html
+        versionScope: Java SE 21+
+    verifiedAt: 2026-09-22
