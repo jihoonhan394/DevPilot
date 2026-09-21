@@ -1,0 +1,570 @@
+# DevPilot 개념 노트 — 데이터 모델링
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 버전은 우리가 쓰는 PostgreSQL 16 기준이다 (AGENTS.md §0)
+# - SQL 기초(LESSON.DATABASE.SQL_BASICS.001)는 "묻는 법"을 다룬다.
+#   여기서는 "표를 어떻게 만들 것인가"를 다룬다 — 겹치지 않게 쓴다
+lessons:
+  - key: LESSON.DATABASE.MODELING.001
+    skillCode: DATABASE.MODELING
+    title: 표를 어떻게 나눌 것인가 (데이터 모델링)
+    whyItMatters: |-
+      코드는 고치면 되지만 **데이터는 고치기 어렵다.** 잘못 쌓인 채로 한 달이 지나면
+      표를 바꾸는 일이 곧 그 데이터를 옮기는 일이 되고, 그 사이 서비스는 돌아가고 있어야 한다.
+      그래서 처음에 표를 어떻게 나누고 무엇을 DB가 막게 할지가 오래 간다.
+      주문 시스템에서 "주문을 지웠더니 매출 통계가 사라졌다" 같은 일이 여기서 갈린다.
+    oneLine: 모델링은 무엇을 한 표로 볼지 나누고, 지켜야 할 규칙을 DB가 직접 막게 하는 일이다.
+    units:
+      - key: LESSON.DATABASE.MODELING.001.U1
+        title: 반복되는 것은 표를 나눈다
+        minutes: 10
+        core: true
+        explain: |-
+          표 하나에 다 넣고 싶어지는 순간이 온다. 주문에 상품 이름을 넣고, 상품이 둘이니
+          `product_name1`·`product_name2`를 만들고, 셋째가 생기면 또 하나를 더한다.
+
+          이때가 **표를 나눌 때**다. 기준은 단순하다 — **개수가 정해지지 않고 반복되면 나눈다.**
+
+          주문 하나에 항목이 여럿이므로 `orders`와 `order_lines`로 나눈다.
+          이런 관계를 1:N이라고 하고, **N 쪽이 1 쪽의 키를 들고 있는다.**
+          즉 `order_lines`에 `order_id`가 있고, `orders`에는 항목 칸이 없다.
+
+          같은 값이 여러 줄에 반복되는 것도 나눌 신호다.
+          주문마다 회원 이름을 적어 두면 회원이 이름을 바꿀 때 **모든 주문을 고쳐야** 한다.
+          회원은 `customers` 표에 한 번만 두고 주문은 그 키만 들고 있는다.
+
+          다만 **일부러 복사해 두는 경우**가 있다. 주문한 시점의 가격이 그렇다 — U4에서 다룬다.
+          지금은 "반복되면 나눈다"를 기본으로 잡는다.
+        example:
+          language: sql
+          code: |-
+            -- 나쁘다: 항목 수가 정해지지 않는데 칸으로 만들었다
+            CREATE TABLE orders_bad (
+                id            bigint PRIMARY KEY,
+                customer_name text,
+                product_name1 text,
+                quantity1     integer,
+                product_name2 text,   -- 셋째 상품을 담으면?
+                quantity2     integer
+            );
+
+            -- 좋다: 반복되는 것을 표로 나눈다
+            CREATE TABLE customers (
+                id   bigint PRIMARY KEY,
+                name text NOT NULL
+            );
+
+            CREATE TABLE orders (
+                id          bigint PRIMARY KEY,
+                customer_id bigint NOT NULL,
+                ordered_at  timestamptz NOT NULL
+            );
+
+            CREATE TABLE order_lines (
+                id         bigint PRIMARY KEY,
+                order_id   bigint NOT NULL,      -- N 쪽이 1 쪽의 키를 든다
+                product_id bigint NOT NULL,
+                quantity   integer NOT NULL
+            );
+          output: |-
+            항목이 3개든 30개든 order_lines 에 줄이 늘 뿐이다
+            회원이 이름을 바꿔도 customers 한 줄만 고친다
+
+            orders 에는 항목 칸이 없다
+              → 1:N 에서 키를 드는 쪽은 언제나 N 이다
+          note: |-
+            - '칸 이름 끝에 숫자가 붙기 시작하면 표를 나눌 때다'
+            - '`order_lines`가 `order_id`를 든다. 반대로 `orders`가 항목 목록을 들 수는 없다'
+            - '`timestamptz`를 쓴다 — 시간대 없는 `timestamp`는 나중에 반드시 문제가 된다'
+        predict:
+          question: '`orders` 표에 `product_name1`·`product_name2` 칸을 두면 상품 세 개를 담을 때 어떻게 되나?'
+          choices:
+            - 칸을 하나 더 만들어야 한다. 표를 고치는 일이라 서비스 중에는 위험하다
+            - 자동으로 늘어난다
+            - 두 개까지만 담기고 셋째는 무시된다
+            - 오류가 나서 알 수 있다
+          answer: 칸을 하나 더 만들어야 한다. 표를 고치는 일이라 서비스 중에는 위험하다
+          explanation: |-
+            개수가 정해지지 않은 것을 칸으로 만들면, 개수가 늘 때마다 **표 구조를 바꿔야** 한다.
+            그때마다 그 칸을 읽는 코드와 질의를 전부 고쳐야 하고, 데이터가 쌓인 뒤에는 더 어렵다.
+            "셋째는 그냥 무시" 같은 조용한 손실이 생기기도 한다. 처음부터 줄로 늘어나게 나눈다.
+        complete:
+          question: 상품에 여러 장의 사진을 붙이려고 합니다. 빈칸을 채우세요.
+          code: |-
+            CREATE TABLE product_images (
+                id         bigint PRIMARY KEY,
+                ___        bigint NOT NULL,      -- 어느 상품의 사진인가
+                url        text NOT NULL,
+                sort_order integer NOT NULL
+            );
+          answers:
+            - [product_id]
+          explanation: |-
+            사진이 N 쪽이므로 **사진이 상품의 키를 든다** — `product_id`다.
+            반대로 `products`에 `image_url1`·`image_url2`를 두면 장수가 늘 때마다 표를 고쳐야 한다.
+        problem:
+          prompt: |-
+            동료가 만든 표입니다.
+
+            ```sql
+            CREATE TABLE reviews (
+                id             bigint PRIMARY KEY,
+                product_name   text,
+                product_price  integer,
+                writer_name    text,
+                writer_email   text,
+                content        text,
+                tag1           text,
+                tag2           text,
+                tag3           text
+            );
+            ```
+
+            나눌 곳을 찾아 표를 다시 설계하세요. 상품과 회원은 이미 `products`·`customers` 표가 있습니다.
+          deliverables:
+            - 다시 설계한 CREATE TABLE 문들
+            - 각 표를 나눈 이유 한 줄씩
+          hints:
+            - 칸 이름 끝에 숫자가 붙은 것부터 보세요.
+            - 이미 다른 표에 있는 것을 여기에 또 적어 두면, 그 값이 바뀔 때 어떻게 될까요?
+            - 태그는 한 후기에 몇 개까지 달릴지 정해져 있나요?
+          modelAnswer: |-
+            ```sql
+            CREATE TABLE reviews (
+                id          bigint PRIMARY KEY,
+                product_id  bigint NOT NULL,      -- 이름·가격 대신 키만
+                writer_id   bigint NOT NULL,      -- 이름·이메일 대신 키만
+                content     text NOT NULL,
+                created_at  timestamptz NOT NULL
+            );
+
+            CREATE TABLE review_tags (
+                id        bigint PRIMARY KEY,
+                review_id bigint NOT NULL,        -- 태그가 후기의 키를 든다
+                tag       text NOT NULL
+            );
+            ```
+
+            - '`product_name`·`product_price` → `product_id`: 이미 `products`에 있는 값을 복사해 두면 상품 이름이 바뀔 때 모든 후기를 고쳐야 한다.'
+            - '`writer_name`·`writer_email` → `writer_id`: 같은 이유다. 이메일 같은 개인정보가 여러 표에 흩어지는 것도 위험하다.'
+            - '`tag1`~`tag3` → `review_tags` 표: 개수가 정해지지 않았다. 넷째 태그가 필요해지면 표를 고쳐야 한다.'
+          selfChecks:
+            - 숫자가 붙은 칸이 별도 표의 줄로 바뀌었는가
+            - 다른 표에 이미 있는 값을 복사하지 않고 키만 들고 있는가
+            - 새로 만든 표에서 **N 쪽이 키를 들고** 있는가
+
+      - key: LESSON.DATABASE.MODELING.001.U2
+        title: 잘못된 값을 DB가 막게
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.DATABASE.MODELING.001.U1
+        explain: |-
+          자바 코드에서 검사하면 되지 않나. 되지만 **문이 하나가 아니다.**
+          배치, 운영 중 손으로 실행한 UPDATE, 나중에 붙는 다른 서비스가 같은 표에 값을 넣는다.
+          DB에 걸어 둔 규칙은 **모든 문에 걸린다.**
+
+          공식 문서의 정의로 넷을 정리하면 이렇다.
+
+          | 제약 | 정의 |
+          |---|---|
+          | `NOT NULL` | "그 칸이 null 값을 가질 수 없다" |
+          | `CHECK` | "그 칸의 값이 불리언 식을 만족해야 한다" |
+          | `UNIQUE` | "그 칸(또는 칸 묶음)의 데이터가 표의 모든 줄에서 유일하다" |
+          | `PRIMARY KEY` | "줄을 가리키는 유일한 식별자. **유일하면서 null이 아니어야** 한다" |
+
+          함정이 둘 있다.
+
+          **`CHECK`는 `null` 앞에서 통과한다.** 문서가 못 박는다 —
+          **"체크 제약은 식이 참이거나 **null 값**으로 평가되면 만족한 것이다."**
+          그래서 `CHECK (price > 0)`만 걸고 `NOT NULL`을 빼면 `price = NULL`인 줄이 들어온다.
+          **둘은 짝으로 건다.**
+
+          **`UNIQUE`에서 `null`은 서로 다른 것으로 본다.** 문서는
+          **"기본적으로 두 null 값은 이 비교에서 같다고 보지 않는다. 그래서 유일 제약이 있어도
+          제약 대상 칸에 null이 든 중복 줄을 저장할 수 있다"** 고 적는다.
+          PostgreSQL 15부터는 `UNIQUE NULLS NOT DISTINCT`로 이 동작을 바꿀 수 있다.
+        example:
+          language: sql
+          code: |-
+            CREATE TABLE products (
+                id     bigint PRIMARY KEY,
+                code   text NOT NULL UNIQUE,
+                name   text NOT NULL,
+                price  integer NOT NULL CHECK (price >= 0),
+                status text NOT NULL
+                       CONSTRAINT products_status_check
+                       CHECK (status IN ('DRAFT', 'ON_SALE', 'SOLD_OUT'))
+            );
+
+            -- 한 회원이 같은 상품에 후기를 하나만
+            CREATE TABLE reviews (
+                id         bigint PRIMARY KEY,
+                product_id bigint NOT NULL,
+                writer_id  bigint NOT NULL,
+                UNIQUE (product_id, writer_id)
+            );
+          output: |-
+            INSERT ... price = -100        → CHECK 위반
+            INSERT ... status = 'PAUSED'   → CHECK 위반 (목록에 없다)
+            같은 (product_id, writer_id) 둘 → UNIQUE 위반
+
+            price 에 NOT NULL 이 없었다면
+              INSERT ... price = NULL      → 통과한다 (CHECK 은 null 을 막지 않는다)
+          note: |-
+            - '`CHECK`과 `NOT NULL`은 짝이다 — `CHECK`만으로는 `null`이 새어 들어온다'
+            - '제약에 이름을 주면(`CONSTRAINT products_status_check`) 위반 메시지에 그 이름이 나와 원인을 바로 안다'
+            - '상태 목록을 `CHECK`으로 두면 앱이 모르는 값이 DB에 쌓이지 않는다'
+        predict:
+          question: '`price integer CHECK (price > 0)`만 걸고 `NOT NULL`을 빼면 `price = NULL`인 줄이 들어오나?'
+          choices:
+            - 들어온다. CHECK 은 식이 null 이면 만족한 것으로 본다
+            - 막힌다. CHECK 이 null 도 거른다
+            - 0으로 바뀌어 들어간다
+            - 문법 오류가 난다
+          answer: 들어온다. CHECK 은 식이 null 이면 만족한 것으로 본다
+          explanation: |-
+            공식 문서가 "체크 제약은 식이 **참이거나 null 값**으로 평가되면 만족한 것"이라고 적는다.
+            `NULL > 0`은 참도 거짓도 아닌 **알 수 없음**이라 막히지 않는다.
+            그래서 값이 반드시 있어야 하는 칸에는 `NOT NULL`을 **함께** 건다.
+        complete:
+          question: 수량이 반드시 있고 1 이상이도록 빈칸을 채우세요.
+          code: |-
+            quantity integer ___ ___ (quantity >= 1)
+          answers:
+            - ["NOT NULL"]
+            - [CHECK]
+          explanation: |-
+            값이 반드시 있어야 하므로 `NOT NULL`, 범위를 막는 것은 `CHECK`이다.
+            둘을 함께 걸어야 `NULL`도 0도 들어오지 못한다.
+        problem:
+          prompt: |-
+            아래 표에는 잘못된 값이 들어올 구멍이 여럿 있습니다. 구멍을 찾아 제약을 더하세요.
+
+            ```sql
+            CREATE TABLE coupons (
+                id            bigint PRIMARY KEY,
+                code          text,
+                discount_rate integer,
+                issued_to     bigint,
+                used_at       timestamptz,
+                expires_at    timestamptz
+            );
+            ```
+
+            규칙은 이렇습니다.
+            - 쿠폰 코드는 비어 있을 수 없고 **서로 달라야** 한다
+            - 할인율은 1~50이고 반드시 있어야 한다
+            - 만료 시각은 반드시 있어야 한다
+            - 사용 시각은 비어 있을 수 있다(아직 안 씀). 있다면 만료 시각보다 **이전**이어야 한다
+          deliverables:
+            - 제약을 더한 CREATE TABLE 문
+            - '`used_at`을 `NOT NULL`로 하지 않은 이유, 그리고 그 칸의 CHECK 을 어떻게 썼는지'
+          hints:
+            - 값이 반드시 있어야 하는 칸과 없어도 되는 칸을 먼저 갈라 보세요.
+            - 범위를 막는 제약은 `null` 앞에서 어떻게 동작했나요?
+            - 두 칸을 함께 보는 조건은 칸 하나에 붙일 수 없습니다. 표 수준 제약으로 씁니다.
+          modelAnswer: |-
+            ```sql
+            CREATE TABLE coupons (
+                id            bigint PRIMARY KEY,
+                code          text NOT NULL UNIQUE,
+                discount_rate integer NOT NULL
+                              CONSTRAINT coupons_rate_check
+                              CHECK (discount_rate BETWEEN 1 AND 50),
+                issued_to     bigint NOT NULL,
+                used_at       timestamptz,
+                expires_at    timestamptz NOT NULL,
+
+                CONSTRAINT coupons_used_before_expiry
+                CHECK (used_at IS NULL OR used_at < expires_at)
+            );
+            ```
+
+            - '`used_at`을 `NOT NULL`로 하지 않은 이유: **아직 쓰지 않은 상태**를 표현해야 한다. 비어 있음이 곧 "미사용"이다.'
+            - '그래서 `CHECK`을 `used_at IS NULL OR used_at < expires_at`로 썼다. `used_at < expires_at`만 쓰면 `null`일 때도 통과하므로 결과는 같지만, **의도를 드러내려고** 앞의 조건을 적어 둔다 — 읽는 사람이 "비어 있어도 된다"를 바로 안다.'
+          selfChecks:
+            - 반드시 있어야 하는 칸 넷에 `NOT NULL`이 걸렸는가
+            - 할인율 범위가 `CHECK`으로 막혔고 `NOT NULL`과 짝인가
+            - 두 칸을 함께 보는 조건이 표 수준 제약으로 쓰였는가
+
+      - key: LESSON.DATABASE.MODELING.001.U3
+        title: 표를 잇는 끈이 끊기지 않게
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.DATABASE.MODELING.001.U1
+        explain: |-
+          `order_lines.order_id`에 없는 주문 번호가 들어가면 어떻게 되나. **아무 일도 안 일어난다** —
+          제약이 없다면. 그리고 그 줄은 영영 주인 없는 줄로 남는다.
+
+          공식 문서는 외래 키를 이렇게 정의한다 —
+          **"외래 키 제약은 어떤 칸의 값이 다른 표의 어느 줄에 나타나는 값과 일치해야 함을 지정한다.
+          이를 두 관련 표 사이의 **참조 무결성**을 지킨다고 말한다."**
+
+          외래 키를 걸면 두 가지가 생긴다.
+
+          1. 없는 값을 넣으면 **INSERT가 막힌다**
+          2. 가리켜지고 있는 줄을 지우려 하면 **어떻게 할지 정해야 한다**
+
+          둘째가 `ON DELETE`다. 문서의 설명으로 정리하면 이렇다.
+
+          | 옵션 | 동작 |
+          |---|---|
+          | `NO ACTION` | "참조하는 줄이 남아 있으면 오류" — **기본값** |
+          | `RESTRICT` | "참조된 줄의 삭제를 막는다" |
+          | `CASCADE` | "참조된 줄이 지워지면 참조하던 줄도 함께 지운다" |
+          | `SET NULL` | "참조하던 칸을 null 로 만든다" |
+
+          고르는 기준은 **"부모 없이 혼자 의미가 있나"** 다.
+          주문 항목은 주문 없이 의미가 없으므로 `CASCADE`.
+          상품은 주문 항목이 가리키고 있으므로 함부로 지우면 안 된다 — `RESTRICT`.
+
+          하나 더. **참조 칸이 `null`이면 제약을 비켜 간다.** 문서가 적는다 —
+          "참조하는 칸 중 하나라도 null이면 보통 그 줄은 외래 키 제약을 만족할 필요가 없다."
+          그래서 반드시 있어야 하는 관계에는 `NOT NULL`을 함께 건다.
+        example:
+          language: sql
+          code: |-
+            CREATE TABLE order_lines (
+                id         bigint PRIMARY KEY,
+                order_id   bigint NOT NULL
+                           REFERENCES orders (id) ON DELETE CASCADE,
+                product_id bigint NOT NULL
+                           REFERENCES products (id) ON DELETE RESTRICT,
+                quantity   integer NOT NULL CHECK (quantity >= 1)
+            );
+          output: |-
+            INSERT ... order_id = 99999 (없는 주문)
+              → 막힌다: violates foreign key constraint
+
+            DELETE FROM orders WHERE id = 1024
+              → 그 주문의 order_lines 도 함께 지워진다 (CASCADE)
+
+            DELETE FROM products WHERE id = 7  (주문된 적 있는 상품)
+              → 막힌다 (RESTRICT)
+          note: |-
+            - '`CASCADE`와 `RESTRICT`가 한 표 안에 같이 있는 것이 자연스럽다 — 방향마다 답이 다르다'
+            - '`ON DELETE`를 안 적으면 `NO ACTION`이다. 즉 기본은 "막는다"'
+            - '`NOT NULL`이 없으면 `order_id = NULL`인 줄이 제약을 비켜 간다'
+        predict:
+          question: '`order_id bigint REFERENCES orders(id)`에 `NOT NULL`이 없을 때 `order_id = NULL`인 줄을 넣으면?'
+          choices:
+            - 들어간다. 참조 칸이 null 이면 외래 키 제약을 비켜 간다
+            - 막힌다. 외래 키가 null 도 검사한다
+            - 0으로 바뀌어 들어간다
+            - 문법 오류가 난다
+          answer: 들어간다. 참조 칸이 null 이면 외래 키 제약을 비켜 간다
+          explanation: |-
+            외래 키는 "**값이 있다면** 그 값이 저쪽에 있어야 한다"는 규칙이다.
+            값이 없으면(`null`) 검사할 것이 없으므로 통과한다.
+            그래서 "반드시 어느 주문엔가 속한다"를 지키려면 `NOT NULL`을 함께 걸어야 한다.
+            제약 둘이 각각 다른 것을 막는다 — 하나는 "있어야 한다", 하나는 "있다면 진짜여야 한다".
+        complete:
+          question: 후기가 지워진 상품을 가리키지 않도록, 그리고 상품을 함부로 못 지우도록 빈칸을 채우세요.
+          code: |-
+            product_id bigint NOT NULL
+                       ___ products (id) ON DELETE ___
+          answers:
+            - [REFERENCES]
+            - [RESTRICT]
+          explanation: |-
+            다른 표를 가리키는 것은 `REFERENCES`이고,
+            가리켜지는 동안 지우지 못하게 막는 것은 `ON DELETE RESTRICT`다.
+            (후기를 함께 지우고 싶다면 `CASCADE`지만, 상품은 보통 지우지 않고 판매 중지로 둔다.)
+        problem:
+          prompt: |-
+            주문 시스템에 표가 넷 있습니다.
+
+            ```text
+            customers(id, name)
+            orders(id, customer_id, ordered_at)
+            order_lines(id, order_id, product_id, quantity)
+            products(id, name, price)
+            ```
+
+            네 개의 외래 키에 각각 어떤 `ON DELETE`를 줄지 정하고 이유를 쓰세요.
+            그리고 **"회원 탈퇴"** 를 어떻게 처리할지 정하세요 — 회원을 지우면 주문도 지워져야 할까요?
+          deliverables:
+            - 외래 키 3개(orders→customers, order_lines→orders, order_lines→products)의 ON DELETE와 이유
+            - 회원 탈퇴 처리 방식과 그 이유
+          hints:
+            - 기준은 "부모 없이 혼자 의미가 있나"였습니다.
+            - 주문은 회원의 것이지만, 동시에 **매출 기록**이기도 합니다.
+            - 지우는 것 말고 다른 방법이 있는지 생각해 보세요.
+          modelAnswer: |-
+            | 외래 키 | ON DELETE | 이유 |
+            |---|---|---|
+            | `order_lines.order_id → orders` | `CASCADE` | 주문 항목은 주문 없이 의미가 없다. 주문이 사라지면 함께 사라지는 것이 맞다 |
+            | `order_lines.product_id → products` | `RESTRICT` | 주문된 적 있는 상품을 지우면 과거 주문이 무엇이었는지 알 수 없게 된다 |
+            | `orders.customer_id → customers` | `RESTRICT` | 아래 참조 |
+
+            **회원 탈퇴**: 회원을 **지우지 않는다.** `customers`에 `withdrawn_at` 칸을 두고 채운다.
+
+            주문은 회원의 것이기도 하지만 동시에 **매출 기록**이다. 회원을 지우고 주문까지 `CASCADE`로
+            지우면 지난달 매출이 조용히 줄어든다. 되돌릴 수도 없다.
+            그래서 `RESTRICT`로 막아 두고, 탈퇴는 "지움"이 아니라 **상태**로 다룬다.
+
+            개인정보를 지워야 한다면 줄을 지우는 대신 이름·이메일 같은 칸만 비우거나 가린다
+            (주문과의 연결은 남기고 신원만 지운다).
+          selfChecks:
+            - 세 외래 키가 각각 다른 판단을 받았고 그 기준이 "부모 없이 의미가 있나"인가
+            - 회원 탈퇴를 `DELETE`가 아니라 상태로 다뤘는가
+            - 주문을 지우면 안 되는 이유가 "매출 기록"에 닿아 있는가
+
+      - key: LESSON.DATABASE.MODELING.001.U4
+        title: 일부러 복사해 두는 값
+        minutes: 12
+        core: false
+        prerequisiteUnits:
+          - LESSON.DATABASE.MODELING.001.U1
+        explain: |-
+          U1에서 "같은 값이 반복되면 나눈다"고 했다. 그런데 **일부러 복사해 두어야 하는 값**이 있다.
+
+          주문 항목이 `product_id`만 들고 있다고 하자. 주문 상세 화면은 `products`에서 가격을 읽어 온다.
+          그런데 상품 가격이 올랐다. 그러면 **지난달 주문의 금액이 오늘 바뀐다.**
+          영수증을 다시 열었더니 액수가 달라져 있는 셈이다.
+
+          그래서 **그때의 값**을 함께 적어 둔다. `order_lines`에 `unit_price`를 두고 주문 시점의 가격을 복사한다.
+          이것은 중복이 아니라 **다른 사실**이다 — `products.price`는 "지금 가격",
+          `order_lines.unit_price`는 "그때 팔린 가격"이다.
+
+          기준은 이렇게 잡는다.
+
+          | 어느 것을 참조하나 | 어떻게 |
+          |---|---|
+          | **지금 상태**를 알고 싶다 | 키만 들고 그때그때 읽는다 |
+          | **그때의 사실**이 남아야 한다 | 그 시점 값을 복사해 둔다 |
+
+          이름도 마찬가지다. 상품 이름이 바뀌어도 지난 주문 영수증에는 그때 이름이 남아야 한다.
+
+          시간 칸도 같은 이야기다. `created_at`·`updated_at`·`canceled_at` 같은 칸은 **언제 그랬는지**를 남긴다.
+          상태를 `status` 하나로만 두면 "취소된 것은 알겠는데 언제?"에 답할 수 없다.
+          지우는 대신 **시각 칸을 채우는 방식**(U3의 탈퇴 처리)이 이력을 지키는 기본 도구다.
+        example:
+          language: sql
+          code: |-
+            CREATE TABLE order_lines (
+                id           bigint PRIMARY KEY,
+                order_id     bigint NOT NULL REFERENCES orders (id) ON DELETE CASCADE,
+                product_id   bigint NOT NULL REFERENCES products (id) ON DELETE RESTRICT,
+
+                -- 주문 시점의 사실 (지금 값이 아니다)
+                product_name text NOT NULL,
+                unit_price   integer NOT NULL CHECK (unit_price >= 0),
+                quantity     integer NOT NULL CHECK (quantity >= 1)
+            );
+
+            CREATE TABLE orders (
+                id          bigint PRIMARY KEY,
+                customer_id bigint NOT NULL REFERENCES customers (id) ON DELETE RESTRICT,
+                ordered_at  timestamptz NOT NULL,
+                canceled_at timestamptz,            -- 지우지 않고 시각을 채운다
+                created_at  timestamptz NOT NULL,
+                updated_at  timestamptz NOT NULL
+            );
+          output: |-
+            상품 가격이 30000 → 35000 으로 올라도
+              지난 주문의 unit_price 는 30000 그대로
+              products.price 는 35000 (지금 가격)
+
+            주문을 취소하면
+              DELETE 하지 않고 canceled_at 에 시각을 채운다
+              → "언제 취소됐나"에 답할 수 있고 통계도 남는다
+          note: |-
+            - '`product_id`와 `product_name`을 **둘 다** 둔다 — 하나는 연결, 하나는 그때의 사실'
+            - '`canceled_at IS NULL`이 "취소되지 않음"이다 (SQL 노트 U1과 같은 규칙)'
+            - '`created_at`·`updated_at`은 거의 모든 표에 둔다. 나중에 반드시 필요해진다'
+        predict:
+          question: '`order_lines`에 `unit_price` 없이 `product_id`만 두면 상품 가격이 오른 뒤 지난달 주문 금액은?'
+          choices:
+            - 함께 올라간다. 지난 영수증의 금액이 오늘 바뀐다
+            - 그대로다. 주문 시점 가격이 기억된다
+            - 오류가 난다
+            - 0으로 나온다
+          answer: 함께 올라간다. 지난 영수증의 금액이 오늘 바뀐다
+          explanation: |-
+            금액을 화면에서 `products.price`로 계산한다면, 그 값은 **지금 가격**이다.
+            상품 가격이 바뀌는 순간 과거 주문의 금액도 따라 바뀐다.
+            이것은 버그처럼 보이지 않아서 한참 뒤 정산이 안 맞을 때 발견된다.
+            **그때의 사실이 남아야 하는 값은 복사해 둔다.**
+        complete:
+          question: 주문 취소를 이력이 남는 방식으로 처리하도록 빈칸을 채우세요.
+          code: |-
+            -- 지우지 않는다
+            UPDATE orders
+            SET ___ = now()
+            WHERE id = 1024;
+          answers:
+            - [canceled_at]
+          explanation: |-
+            줄을 `DELETE` 하지 않고 `canceled_at`에 시각을 채운다.
+            그러면 "취소됐다"와 "언제 취소됐다"를 함께 남길 수 있고, 매출 통계에서도 사라지지 않는다.
+        problem:
+          prompt: |-
+            배송 정보를 설계합니다. 요구는 이렇습니다.
+
+            - 주문 하나에 배송 정보가 하나 붙는다
+            - 받는 사람 이름·전화·주소가 필요하다. 이 정보는 회원 정보에서 가져오지만,
+              **회원이 나중에 주소를 바꿔도 지난 배송지는 그대로 남아야** 한다
+            - 배송 상태(준비중·발송·완료)가 바뀔 때마다 **언제 바뀌었는지** 알아야 한다
+
+            표를 설계하고, **어느 값을 복사해 두고 어느 값을 참조할지** 정하세요.
+          deliverables:
+            - CREATE TABLE 문
+            - 복사한 값과 참조한 값을 각각 고른 이유
+          hints:
+            - '"지금 상태"와 "그때의 사실" 중 어느 쪽인지 칸마다 물어보세요.'
+            - 상태 하나만 두면 "언제 바뀌었나"에 답할 수 있을까요?
+            - 주문과 1:1이라면 키를 어느 쪽이 들어야 할까요?
+          modelAnswer: |-
+            ```sql
+            CREATE TABLE deliveries (
+                id           bigint PRIMARY KEY,
+                order_id     bigint NOT NULL UNIQUE      -- 1:1 이므로 UNIQUE
+                             REFERENCES orders (id) ON DELETE CASCADE,
+
+                -- 그때의 사실 (복사)
+                receiver_name  text NOT NULL,
+                receiver_phone text NOT NULL,
+                address        text NOT NULL,
+
+                -- 상태와 그때의 시각
+                status       text NOT NULL
+                             CHECK (status IN ('READY', 'SHIPPED', 'DELIVERED')),
+                shipped_at   timestamptz,
+                delivered_at timestamptz,
+                created_at   timestamptz NOT NULL,
+                updated_at   timestamptz NOT NULL
+            );
+            ```
+
+            - '복사한 값: 받는 사람 이름·전화·주소. **그때 어디로 보냈는지**가 남아야 한다. 회원 주소를 참조하면 회원이 이사한 순간 지난 배송 기록이 새 주소로 바뀐다.'
+            - '참조한 값: `order_id`. 어느 주문의 배송인지는 **지금도 앞으로도 같은 사실**이라 키로 충분하다.'
+            - '`shipped_at`·`delivered_at`을 따로 둔 이유: `status`만으로는 "언제 발송됐나"에 답할 수 없다. 상태가 바뀔 때 해당 시각을 채운다.'
+          selfChecks:
+            - 받는 사람 정보를 회원 참조가 아니라 **복사**로 뒀고 그 이유를 적었는가
+            - 1:1 관계를 `UNIQUE`로 표현했는가
+            - 상태 변화 시각을 남길 칸이 있는가
+
+    commonMistakes:
+      - 칸 이름에 숫자를 붙여 반복을 표현한다(`tag1`·`tag2`). 개수가 늘면 표를 고쳐야 한다 (U1)
+      - '`CHECK`만 걸고 `NOT NULL`을 빠뜨린다. `null`은 `CHECK`을 통과한다 (U2)'
+      - 주문 시점 가격을 복사해 두지 않는다. 상품 가격이 바뀌면 지난 영수증 금액이 따라 바뀐다 (U4)
+    inProject: |-
+      주문 시스템의 표를 만들 때 이 순서로 간다. 먼저 반복되는 것을 나누고(U1),
+      각 칸에 `NOT NULL`·`CHECK`·`UNIQUE`를 걸어 **앱을 거치지 않는 문까지** 막는다(U2).
+      표 사이는 외래 키로 잇고 방향마다 `CASCADE`/`RESTRICT`를 따로 정한다(U3).
+      마지막으로 영수증처럼 **그때의 사실**이 남아야 하는 값을 골라 복사해 두고,
+      지우는 대신 시각 칸을 채우는 방식으로 이력을 남긴다(U4).
+      여기까지 해 두면 나중에 통계 화면을 만들 때 고칠 것이 거의 없다.
+    sources:
+      - title: PostgreSQL 16 Documentation — Constraints
+        url: https://www.postgresql.org/docs/16/ddl-constraints.html
+        versionScope: PostgreSQL 16
+      - title: PostgreSQL 16 Documentation — Table Basics
+        url: https://www.postgresql.org/docs/16/ddl-basics.html
+        versionScope: PostgreSQL 16
+    verifiedAt: 2026-09-22
