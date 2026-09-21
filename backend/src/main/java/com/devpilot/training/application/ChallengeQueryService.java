@@ -61,20 +61,35 @@ public class ChallengeQueryService {
         this.cursorCodec = cursorCodec;
     }
 
-    /** {@code GET /challenges} (docs/05 §10.2). */
+    /**
+     * {@code GET /challenges} (docs/05 §10.2).
+     *
+     * <p>{@code skillId}는 <b>그 skill과 아래 모든 하위 skill</b>을 뜻한다. 문제는 말단 skill에만 붙어 있어서, 화면에서 `JAVA`
+     * 같은 상위를 고르면 예전에는 언제나 0건이었다. 없는 id는 오류가 아니라 빈 목록이다(§10.2).
+     */
     public CursorPage<ChallengeSummaryView> list(
             UUID userId,
             @Nullable UUID skillId,
             @Nullable ChallengePurpose purpose,
             int limit,
             @Nullable String cursor) {
+        Set<UUID> skillIds =
+                skillId == null ? null : skillCatalogQueryService.selfAndDescendantIds(skillId);
+        if (skillIds != null && skillIds.isEmpty()) {
+            return new CursorPage<>(List.of(), null);
+        }
         CursorCodec.Position<Instant> position = cursorCodec.decodeInstant(cursor);
         Limit fetch = Limit.of(limit + 1);
         List<Challenge> challenges =
                 position == null
-                        ? challengeRepository.findValidatedPage(userId, skillId, purpose, fetch)
+                        ? challengeRepository.findValidatedPage(userId, skillIds, purpose, fetch)
                         : challengeRepository.findValidatedPageAfter(
-                                userId, skillId, purpose, position.sortKey(), position.id(), fetch);
+                                userId,
+                                skillIds,
+                                purpose,
+                                position.sortKey(),
+                                position.id(),
+                                fetch);
         boolean hasNext = challenges.size() > limit;
         List<Challenge> page = hasNext ? challenges.subList(0, limit) : challenges;
         String nextCursor = null;

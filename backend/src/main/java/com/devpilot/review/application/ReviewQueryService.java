@@ -131,7 +131,12 @@ public class ReviewQueryService {
                 .map(item -> new ReviewItemRef(item.getId(), item.getSkillId(), item.getPrompt()));
     }
 
-    /** {@code GET /review-items} (docs/05 §11.4): {@code dueAt} ASC, {@code id} ASC. */
+    /**
+     * {@code GET /review-items} (docs/05 §11.4): {@code dueAt} ASC, {@code id} ASC.
+     *
+     * <p>{@code skillId}는 <b>그 skill과 아래 모든 하위 skill</b>을 뜻한다 — 카드는 말단 skill에 붙으므로 상위를 고르면 예전에는
+     * 0건이었다. 문제 목록(docs/05 §10.2)과 같은 규칙이다.
+     */
     public CursorPage<ReviewItemView> listItems(
             CurrentUser user,
             @Nullable UUID skillId,
@@ -139,13 +144,18 @@ public class ReviewQueryService {
             int limit,
             @Nullable String cursor) {
         UUID userId = user.userId();
+        Set<UUID> skillIds =
+                skillId == null ? null : skillCatalogQueryService.selfAndDescendantIds(skillId);
+        if (skillIds != null && skillIds.isEmpty()) {
+            return new CursorPage<>(List.of(), null);
+        }
         CursorCodec.Position<Instant> position = cursorCodec.decodeInstant(cursor);
         Limit fetch = Limit.of(limit + 1);
         List<ReviewItem> items =
                 position == null
-                        ? reviewItemRepository.findItemPage(userId, skillId, status, fetch)
+                        ? reviewItemRepository.findItemPage(userId, skillIds, status, fetch)
                         : reviewItemRepository.findItemPageAfter(
-                                userId, skillId, status, position.sortKey(), position.id(), fetch);
+                                userId, skillIds, status, position.sortKey(), position.id(), fetch);
         boolean hasNext = items.size() > limit;
         List<ReviewItem> page = hasNext ? items.subList(0, limit) : items;
         String nextCursor = null;

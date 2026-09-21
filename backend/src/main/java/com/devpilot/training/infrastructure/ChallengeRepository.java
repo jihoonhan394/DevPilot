@@ -36,12 +36,12 @@ public interface ChallengeRepository extends JpaRepository<Challenge, UUID> {
              where (c.ownerUserId is null or c.ownerUserId = :userId)
                and c.status = com.devpilot.training.domain.ChallengeStatus.VALIDATED
                and (:purpose is null or c.purpose = :purpose)
-               and (:skillId is null or :skillId member of c.skillIds)
+               and (:skillIds is null or exists (select 1 from c.skillIds s where s in :skillIds))
              order by c.createdAt desc, c.id desc
             """)
     List<Challenge> findValidatedPage(
             @Param("userId") UUID userId,
-            @Param("skillId") @Nullable UUID skillId,
+            @Param("skillIds") @Nullable Collection<UUID> skillIds,
             @Param("purpose") @Nullable ChallengePurpose purpose,
             Limit limit);
 
@@ -52,13 +52,13 @@ public interface ChallengeRepository extends JpaRepository<Challenge, UUID> {
              where (c.ownerUserId is null or c.ownerUserId = :userId)
                and c.status = com.devpilot.training.domain.ChallengeStatus.VALIDATED
                and (:purpose is null or c.purpose = :purpose)
-               and (:skillId is null or :skillId member of c.skillIds)
+               and (:skillIds is null or exists (select 1 from c.skillIds s where s in :skillIds))
                and (c.createdAt < :createdAt or (c.createdAt = :createdAt and c.id < :id))
              order by c.createdAt desc, c.id desc
             """)
     List<Challenge> findValidatedPageAfter(
             @Param("userId") UUID userId,
-            @Param("skillId") @Nullable UUID skillId,
+            @Param("skillIds") @Nullable Collection<UUID> skillIds,
             @Param("purpose") @Nullable ChallengePurpose purpose,
             @Param("createdAt") Instant createdAt,
             @Param("id") UUID id,

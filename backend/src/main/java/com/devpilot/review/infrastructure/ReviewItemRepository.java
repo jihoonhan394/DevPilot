@@ -59,13 +59,13 @@ public interface ReviewItemRepository extends JpaRepository<ReviewItem, UUID> {
             """
             select i from ReviewItem i
              where i.userId = :userId
-               and (:skillId is null or i.skillId = :skillId)
+               and (:skillIds is null or i.skillId in :skillIds)
                and (:status is null or i.status = :status)
              order by i.dueAt asc, i.id asc
             """)
     List<ReviewItem> findItemPage(
             @Param("userId") UUID userId,
-            @Param("skillId") @Nullable UUID skillId,
+            @Param("skillIds") @Nullable Collection<UUID> skillIds,
             @Param("status") @Nullable ReviewItemStatus status,
             Limit limit);
 
@@ -74,14 +74,14 @@ public interface ReviewItemRepository extends JpaRepository<ReviewItem, UUID> {
             """
             select i from ReviewItem i
              where i.userId = :userId
-               and (:skillId is null or i.skillId = :skillId)
+               and (:skillIds is null or i.skillId in :skillIds)
                and (:status is null or i.status = :status)
                and (i.dueAt > :dueAt or (i.dueAt = :dueAt and i.id > :id))
              order by i.dueAt asc, i.id asc
             """)
     List<ReviewItem> findItemPageAfter(
             @Param("userId") UUID userId,
-            @Param("skillId") @Nullable UUID skillId,
+            @Param("skillIds") @Nullable Collection<UUID> skillIds,
             @Param("status") @Nullable ReviewItemStatus status,
             @Param("dueAt") Instant dueAt,
             @Param("id") UUID id,

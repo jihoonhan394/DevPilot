@@ -450,6 +450,42 @@ class ChallengeAttemptIntegrationTest extends ApiTestSupport {
 
     // ------------------------------------------------------------------------------- 헬퍼
 
+    /**
+     * 상위 skill로 걸러도 아래 문제가 나온다 (docs/05 §10.2).
+     *
+     * <p>문제는 말단 skill에만 붙는다. 예전에는 `SPRING` 같은 상위를 고르면 언제나 0건이어서, 화면의 "문제 풀기"가 늘 비어 있었다 — 소유자가 실제로
+     * 겪은 일이다.
+     */
+    @Test
+    void shouldListChallengesOfDescendantSkillsWhenFilteringByAParent() throws Exception {
+        TestUser user = onboardedOwner();
+        String challengeId = practiceChallengeId();
+
+        JsonNode byLeaf =
+                api.body(api.get(user, CHALLENGES + "?skillId=" + skillId("SPRING.TRANSACTION")));
+        assertThat(codes(byLeaf.path("items"), "id")).contains(challengeId);
+
+        JsonNode byParent = api.body(api.get(user, CHALLENGES + "?skillId=" + skillId("SPRING")));
+        assertThat(codes(byParent.path("items"), "id")).contains(challengeId);
+
+        // 관계없는 가지에는 안 나온다 — 필터가 넓어졌지 사라진 것이 아니다
+        JsonNode other = api.body(api.get(user, CHALLENGES + "?skillId=" + skillId("DATABASE")));
+        assertThat(codes(other.path("items"), "id")).doesNotContain(challengeId);
+
+        // 없는 skill id는 오류가 아니라 빈 목록이다 (§10.2)
+        JsonNode unknown =
+                api.body(
+                        api.get(user, CHALLENGES + "?skillId=" + UUID.randomUUID())
+                                .andExpect(status().isOk()));
+        assertThat(unknown.path("items")).isEmpty();
+    }
+
+    /** 공용 catalog에서 code로 skill id를 찾는다. */
+    private String skillId(String code) {
+        return jdbc.queryForObject(
+                "select id::text from devpilot.skill where code = ?", String.class, code);
+    }
+
     private String practiceChallengeId() {
         return jdbc.queryForObject(
                 "select id::text from devpilot.challenge where seed_key = ?",

@@ -29,11 +29,41 @@ import tools.jackson.databind.JsonNode;
 class ReviewServiceIntegrationTest extends ApiTestSupport {
 
     private static final String DUE = "/api/v1/reviews/due";
+    private static final String ITEMS = "/api/v1/review-items";
     private static final String ANSWER = "/api/v1/reviews/{reviewItemId}/answer";
 
     /** {@code due_at}을 ISO-8601 UTC 문자열로 (JDBC 날짜 타입 없이 비교한다). */
     private static final String DUE_AT_UTC =
             "to_char(due_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')";
+
+    /**
+     * 상위 skill로 걸러도 아래 카드가 나온다 (docs/05 §11.4, §10.2와 같은 규칙).
+     *
+     * <p>카드는 말단 skill에 붙는다. 예전에는 `SPRING` 같은 상위를 고르면 0건이어서 skill 화면의 "복습 카드"가 비어 있었다.
+     */
+    @Test
+    void shouldListItemsOfDescendantSkillsWhenFilteringByAParent() throws Exception {
+        TestUser user = onboardedOwner();
+
+        JsonNode byLeaf =
+                api.body(api.get(user, ITEMS + "?skillId=" + skillId("SPRING.TRANSACTION")));
+        assertThat(byLeaf.path("items")).isNotEmpty();
+
+        JsonNode byParent = api.body(api.get(user, ITEMS + "?skillId=" + skillId("SPRING")));
+        assertThat(byParent.path("items").size())
+                .isGreaterThanOrEqualTo(byLeaf.path("items").size());
+
+        JsonNode unknown =
+                api.body(
+                        api.get(user, ITEMS + "?skillId=" + UUID.randomUUID())
+                                .andExpect(status().isOk()));
+        assertThat(unknown.path("items")).isEmpty();
+    }
+
+    private String skillId(String code) {
+        return jdbc.queryForObject(
+                "select id::text from devpilot.skill where code = ?", String.class, code);
+    }
 
     @Test
     void shouldReturnDueSeedCardsWithAnswerAndRubric() throws Exception {

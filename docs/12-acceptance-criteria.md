@@ -275,6 +275,14 @@
 - `GET /challenges?skillId=…`는 `VALIDATED` challenge만 반환한다(`DRAFT`, `REJECTED`, `RETIRED` 0건)
 - A가 해당 challenge의 평가 완료 attempt를 갖기 전 `GET /challenges/{id}` 응답에는 rubric·expectedConcepts 내용이 없다. 평가 완료 후에는 포함된다
 
+**S2b. `skillId`는 하위 skill을 포함한다 (`05` §10.2)**
+- Given 문제가 말단 skill `SPRING.TRANSACTION`에만 붙어 있고 그 상위가 `SPRING`이다
+- When `GET /challenges?skillId={SPRING.TRANSACTION}`과 `GET /challenges?skillId={SPRING}`
+- Then **둘 다** 그 문제를 포함한다 — 사용자가 보는 것은 트리이고, 상위를 고르면 아래 것이 나와야 한다
+- And 관계없는 가지(`DATABASE`)로 부르면 그 문제가 없다 — 필터가 넓어진 것이지 사라진 것이 아니다
+- And 없는 skill id는 오류가 아니라 빈 목록이다(비활성 skill도 같다)
+- And `GET /review-items?skillId=…`(`05` §11.4)도 같은 규칙이다
+
 **S3. AI 생성 (S5)**
 - When `POST /challenges/generate` `{ skillId, difficulty: 2, … }` → 202 `status = PENDING`
 - Then fake fixture(정상) 완료 후 `generationStatus = COMPLETED`, challenge `status = VALIDATED`, `difficulty` 1~5, rubric `weightBp` 합 10000, expectedConcepts ≥ 1개, `hints_json`에 `QUESTION_ONLY`·`CONCEPT_HINT`·`DIRECTION` 3개

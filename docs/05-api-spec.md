@@ -2362,14 +2362,15 @@ public record ScheduledReviewView(UUID reviewItemId, String skillCode, LocalDate
 |---|---|
 | operationId | `trainingListChallenges` |
 | 인증 / IK | Bearer / — |
-| query | `skillId`: UUID, 선택(`challenge_skill` 필터) / `purpose`: `ChallengePurpose`, 선택(없으면 둘 다) / `limit`, `cursor` |
+| query | `skillId`: UUID, 선택(`challenge_skill` 필터. **그 skill과 하위 skill 전체**) / `purpose`: `ChallengePurpose`, 선택(없으면 둘 다) / `limit`, `cursor` |
 | 대상 | `status = VALIDATED`, 접근 규칙 통과 |
 | 정렬 | `createdAt` DESC, `id` DESC |
 | 응답 | 200 `CursorPage<ChallengeSummaryView>` |
 | 오류 | 400 `UNKNOWN_ENUM_VALUE`, 400 `VALIDATION_FAILED`(`TYPE_MISMATCH`), 400 `INVALID_CURSOR` |
 | Sprint · 요구사항 | S3 · FR-09 |
 
-- 없는 `skillId`는 오류가 아니라 빈 목록이다.
+- 없는 `skillId`는 오류가 아니라 빈 목록이다(비활성 skill도 같다).
+- **`skillId`는 하위 skill까지 포함한다.** 문제는 말단 skill에만 붙으므로 `JAVA` 같은 상위 skill로 거르면 언제나 0건이었다 — 사용자가 보는 것은 트리이고, 상위를 고르면 그 아래 것이 나와야 한다. `GET /review-items`(§11.4)도 같은 규칙이다.
 
 ### 10.3 `POST /challenges/generate` — AI challenge 생성 요청
 
@@ -2769,11 +2770,13 @@ public record ReviewRubricResultView(String id, String criterion, boolean met) {
 |---|---|
 | operationId | `reviewListItems` |
 | 인증 / IK | Bearer / — |
-| query | `skillId`: UUID, 선택 / `status`: `ReviewItemStatus`, 선택 / `limit`, `cursor` |
+| query | `skillId`: UUID, 선택(**그 skill과 하위 skill 전체**) / `status`: `ReviewItemStatus`, 선택 / `limit`, `cursor` |
 | 정렬 | `dueAt` ASC, `id` ASC |
 | 응답 | 200 `CursorPage<ReviewItemView>` |
 | 오류 | 400 `UNKNOWN_ENUM_VALUE`, 400 `VALIDATION_FAILED`(`TYPE_MISMATCH`), 400 `INVALID_CURSOR` |
 | Sprint · 요구사항 | S3 (2026-09-18 범위 축소: 수동 카드 관리는 S2에서 제외) · FR-11 |
+
+- `skillId`는 §10.2와 같은 규칙이다 — 하위 skill까지 포함하고, 없거나 비활성인 id는 오류가 아니라 빈 목록이다.
 
 ### 11.5 `POST /review-items` — 수동 카드 생성
 
