@@ -1,0 +1,540 @@
+# DevPilot 개념 노트 — Spring Boot 설정
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 버전을 우리 것에 맞춘다: Spring Boot 4.1, Java 25
+# - 비밀 값은 어디에도 진짜를 적지 않는다. 자리표시자만 쓴다
+lessons:
+  - key: LESSON.SPRING.BOOT_CONFIG.001
+    skillCode: SPRING.BOOT_CONFIG
+    title: 환경마다 다른 값을 밖에서 넣기 (Spring Boot 설정)
+    whyItMatters: |-
+      내 노트북에서 되던 것이 서버에서 안 되는 이유는 대개 코드가 아니라 **설정**이다.
+      DB 주소도, 로그 수준도, 외부 API 키도 환경마다 다른데 이걸 코드에 박아 두면
+      환경이 바뀔 때마다 다시 빌드해야 하고, 키를 저장소에 올리는 사고가 난다.
+      주문 시스템을 내 PC와 서버 양쪽에서 돌리려면 이 분리가 먼저다.
+    oneLine: 바뀌는 값은 코드 밖에 두고, 같은 빌드가 환경에 따라 다른 값을 읽게 하는 것이 외부 설정이다.
+    units:
+      - key: LESSON.SPRING.BOOT_CONFIG.001.U1
+        title: 값을 코드 밖으로 빼기
+        minutes: 10
+        core: true
+        explain: |-
+          Spring Boot는 기동할 때 `application.properties`(또는 `application.yaml`)를 **자동으로** 찾아 읽는다.
+          기본으로 보는 자리는 클래스패스 루트, 클래스패스의 `/config`, 실행한 디렉터리, 그 아래 `config/`다.
+
+          읽은 값을 코드에서 꺼내는 가장 단순한 방법이 `@Value`다.
+          `@Value("${주문.배송비}")`처럼 적으면 그 이름의 값이 들어온다.
+          콜론 뒤에 기본값을 둘 수 있다 — `@Value("${주문.배송비:3000}")`은 "없으면 3000".
+
+          **기본값을 두는 것이 왜 중요한가.** 기본값이 없는데 값도 없으면 **기동 자체가 실패한다.**
+          설정이 빠진 것을 빨리 아는 것이 좋을 때도 있고(DB 주소), 없어도 돌아가야 할 때도 있다(선택 기능).
+          둘 중 어느 쪽인지 정해서 쓰는 것이 이 단위의 핵심이다.
+
+          참고로 `.properties`와 `.yaml`이 같은 자리에 둘 다 있으면 **`.properties`가 이긴다.**
+          공식 문서는 애플리케이션 전체에서 한 형식만 쓰기를 권한다.
+        example:
+          language: yaml
+          code: |-
+            # src/main/resources/application.yaml
+            shop:
+              delivery-fee: 3000
+              free-threshold: 30000
+          output: |-
+            @Value("${shop.delivery-fee}")    → 3000
+            @Value("${shop.free-threshold}")  → 30000
+            @Value("${shop.unknown}")         → 기동 실패 (그런 이름이 없다)
+            @Value("${shop.unknown:0}")       → 0   (기본값을 줬다)
+          note: |-
+            - 'YAML의 중첩은 점으로 이어 읽는다: `shop:` 아래 `delivery-fee` → `shop.delivery-fee`'
+            - '기본값이 없는 이름이 비면 **기동 시점에** 실패한다 — 실행 중에 터지는 것보다 낫다'
+            - '`.properties`와 `.yaml`을 섞지 않는다'
+        predict:
+          question: '`application.yaml`에 `shop.delivery-fee`가 없는데 `@Value("${shop.delivery-fee}")`를 쓰면?'
+          choices:
+            - 기동이 실패한다. 채울 값이 없다
+            - null이 들어온다
+            - 0이 들어온다
+            - 컴파일 오류가 난다
+          answer: 기동이 실패한다. 채울 값이 없다
+          explanation: |-
+            기본값(`:` 뒤)을 주지 않으면 스프링은 그 이름을 **반드시 찾아야** 한다.
+            못 찾으면 빈을 만들 수 없으므로 기동이 멈춘다.
+            설정이 빠졌다는 것을 배포 직후에 아는 편이, 한참 뒤 그 코드가 실행될 때 아는 것보다 낫다.
+        complete:
+          question: 무료 배송 기준이 없으면 50000으로 두도록 빈칸을 채우세요.
+          code: |-
+            @Value("${shop.free-threshold___50000}")
+            private int freeThreshold;
+          answers:
+            - [":"]
+          explanation: |-
+            이름 뒤에 `:`를 붙이고 기본값을 적는다 — `${shop.free-threshold:50000}`.
+            이러면 설정에 그 이름이 없어도 기동한다.
+        problem:
+          prompt: |-
+            주문 시스템에 "장바구니에 담을 수 있는 최대 개수"와 "주문 취소 가능 시간(분)"을 설정으로 빼려고 합니다.
+
+            - 최대 개수는 **반드시 설정에 있어야** 한다 (없으면 기동이 실패해야 한다)
+            - 취소 가능 시간은 없으면 **30분**으로 본다
+
+            `application.yaml`과 이 값을 읽는 클래스를 백지에서 작성하세요.
+          deliverables:
+            - application.yaml 조각
+            - 두 값을 읽는 클래스 코드
+            - 왜 한쪽만 기본값을 줬는지 한 줄
+          hints:
+            - 두 값의 차이는 "없으면 어떻게 되나"입니다. 그 차이를 문법으로 어떻게 표현했었나요?
+            - YAML의 중첩과 점으로 이어 읽는 이름을 맞춰 보세요.
+            - 기본값을 주면 빠진 설정을 **알아채지 못하게 된다**는 점도 생각해 보세요.
+          modelAnswer: |-
+            ```yaml
+            # src/main/resources/application.yaml
+            shop:
+              cart:
+                max-items: 20
+            ```
+
+            ```java
+            @Component
+            public class CartPolicy {
+
+                private final int maxItems;
+                private final int cancelWindowMinutes;
+
+                public CartPolicy(
+                        @Value("${shop.cart.max-items}") int maxItems,
+                        @Value("${shop.cart.cancel-window-minutes:30}") int cancelWindowMinutes) {
+                    this.maxItems = maxItems;
+                    this.cancelWindowMinutes = cancelWindowMinutes;
+                }
+            }
+            ```
+
+            - '최대 개수에 기본값을 주지 않은 이유: 이 값이 빠진 채로 도는 것은 사고다. 기동 때 바로 알아야 한다. 취소 시간은 없어도 30분으로 돌아가면 되므로 기본값을 뒀다.'
+          selfChecks:
+            - 최대 개수에는 기본값이 **없고** 취소 시간에는 있는가
+            - YAML의 중첩과 `@Value`의 이름이 정확히 맞는가
+            - 기본값 유무를 "없으면 기동이 실패해야 하는가"로 설명했는가
+
+      - key: LESSON.SPRING.BOOT_CONFIG.001.U2
+        title: 값이 여러 곳에 있을 때 누가 이기나
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.SPRING.BOOT_CONFIG.001.U1
+        explain: |-
+          같은 이름의 값이 여러 곳에 있을 수 있다. 파일에도 있고, 환경 변수에도 있고, 실행 인자로도 준다.
+          스프링은 이때 **정해진 순서로 이긴 쪽을 쓴다.** 공식 문서의 목록에서 우리가 실제로 쓰는 부분만 추리면 이렇다.
+
+          | 약함 → 강함 | 어디 |
+          |---|---|
+          | 1 | `application.yaml` 같은 설정 파일 |
+          | 2 | OS 환경 변수 |
+          | 3 | 자바 시스템 속성 (`-Dshop.delivery-fee=0`) |
+          | 4 | **명령줄 인자** (`--shop.delivery-fee=0`) |
+
+          **아래쪽이 위쪽을 덮는다.** 그래서 이미지를 다시 굽지 않고도 서버에서 값 하나만 바꿔 띄울 수 있다.
+
+          환경 변수에는 점을 못 쓰는 OS가 많다. 그래서 스프링이 느슨하게 맞춰 준다(relaxed binding) —
+          공식 문서는 `spring.config.name` 대신 **`SPRING_CONFIG_NAME`** 을 쓰면 된다고 안내한다.
+          규칙은 간단하다: **점과 하이픈을 밑줄로, 전부 대문자로.**
+          `shop.delivery-fee` → `SHOP_DELIVERY_FEE`.
+
+          이 순서 덕분에 **비밀 값을 파일에 적지 않아도 된다.** 저장소에는 자리표시자만 두고,
+          진짜 값은 서버의 환경 변수로 넣으면 환경 변수가 이긴다.
+        example:
+          language: bash
+          code: |-
+            # application.yaml 에는 3000 이 적혀 있다고 하자
+            # shop.delivery-fee: 3000
+
+            java -jar shop.jar
+            # → 3000  (파일)
+
+            SHOP_DELIVERY_FEE=2000 java -jar shop.jar
+            # → 2000  (환경 변수가 파일을 덮는다)
+
+            SHOP_DELIVERY_FEE=2000 java -jar shop.jar --shop.delivery-fee=0
+            # → 0     (명령줄 인자가 제일 세다)
+          output: |-
+            파일        3000
+            환경 변수   2000   ← 파일을 덮는다
+            명령줄         0   ← 전부 덮는다
+
+            SHOP_DELIVERY_FEE  ↔  shop.delivery-fee
+            (점·하이픈 → 밑줄, 대문자)
+          note: |-
+            - '같은 빌드를 환경마다 다르게 띄울 수 있는 이유가 이 순서다'
+            - '비밀 값은 파일이 아니라 환경 변수로 — 저장소에는 진짜 값이 남지 않는다'
+            - '환경 변수 이름을 지을 때 대문자·밑줄만 기억하면 된다'
+        predict:
+          question: '`application.yaml`에 `shop.api-timeout: 5`가 있고 환경 변수 `SHOP_API_TIMEOUT=10`을 주고 띄우면?'
+          choices:
+            - 10이다. 환경 변수가 파일을 덮는다
+            - 5다. 파일이 우선이다
+            - 이름이 달라 둘 다 무시된다
+            - 기동이 실패한다
+          answer: 10이다. 환경 변수가 파일을 덮는다
+          explanation: |-
+            환경 변수는 설정 파일보다 **강하다.**
+            `SHOP_API_TIMEOUT`은 느슨한 규칙에 따라 `shop.api-timeout`으로 읽히므로 이름도 맞는다
+            (점·하이픈을 밑줄로 바꾸고 대문자). 그래서 10이 이긴다.
+        complete:
+          question: '`shop.payment.secret-key`를 덮어쓸 환경 변수 이름을 쓰세요.'
+          code: |-
+            # 설정 이름:   shop.payment.secret-key
+            # 환경 변수:   ___
+          answers:
+            - [SHOP_PAYMENT_SECRET_KEY]
+          explanation: |-
+            점과 하이픈을 모두 밑줄로 바꾸고 전부 대문자로 쓴다 — `SHOP_PAYMENT_SECRET_KEY`.
+            이렇게 두면 진짜 키를 파일에 적지 않고 서버의 환경 변수로만 넣을 수 있다.
+        problem:
+          prompt: |-
+            결제 API 키를 쓰는 주문 시스템을 **공개 저장소**에 올립니다.
+            키는 저장소에 절대 남으면 안 되고, 개발할 때는 내 PC에서도 돌아가야 합니다.
+
+            1. `application.yaml`에 무엇을 적을지 쓰세요 (진짜 키는 적지 않습니다)
+            2. 서버에서 진짜 키를 넣는 방법을 쓰세요
+            3. 키가 빠진 채로 배포되면 어떻게 되는 것이 좋은지 정하고, 그렇게 되도록 적으세요
+          deliverables:
+            - application.yaml 조각과 그것을 읽는 코드
+            - 서버에서 진짜 값을 넣는 방법 (명령 한 줄)
+            - 키가 빠졌을 때 어떻게 되어야 하는지와 그 이유
+          hints:
+            - 파일보다 강한 자리가 어디였는지 표를 다시 보세요.
+            - 진짜 값을 적지 않으면서도 "이 이름이 필요하다"를 남기는 방법이 있습니다.
+            - 비밀이 빠진 채 도는 것과 기동이 멈추는 것 중 어느 쪽이 덜 위험할까요?
+          modelAnswer: |-
+            **1. 파일에는 이름만 남긴다 — 값은 비워 둔다**
+
+            ```yaml
+            # src/main/resources/application.yaml
+            shop:
+              payment:
+                secret-key: ${SHOP_PAYMENT_SECRET_KEY}
+            ```
+
+            ```java
+            @Value("${shop.payment.secret-key}")
+            private String secretKey;     // 기본값을 주지 않는다
+            ```
+
+            **2. 서버에서는 환경 변수로 넣는다**
+
+            ```bash
+            SHOP_PAYMENT_SECRET_KEY=<진짜 키> java -jar shop.jar
+            ```
+
+            (`--shop.payment.secret-key=...`처럼 명령줄로 주면 **프로세스 목록에 그대로 보인다.**
+            비밀 값은 환경 변수가 낫다.)
+
+            **3. 빠지면 기동이 실패하는 것이 낫다**
+
+            기본값을 주지 않았으므로 키가 없으면 기동이 멈춘다.
+            키 없이 뜬 서버가 결제 요청을 받아 실패시키는 것보다, **아예 뜨지 않는 편이** 사고가 작다.
+          selfChecks:
+            - 저장소에 올라가는 파일에 **진짜 키가 없는가**
+            - 서버에서 넣는 방법이 파일보다 강한 자리인가 (환경 변수 또는 명령줄)
+            - 키가 없을 때 기동이 실패하도록 기본값을 주지 않았는가
+
+      - key: LESSON.SPRING.BOOT_CONFIG.001.U3
+        title: 환경마다 다른 묶음 (프로필)
+        minutes: 12
+        core: true
+        explain: |-
+          값 하나가 아니라 **한 묶음**이 환경마다 다를 때가 있다. 내 PC는 로컬 DB에 로그를 자세히,
+          서버는 운영 DB에 로그를 적게. 이럴 때 쓰는 것이 프로필이다.
+
+          공식 문서는 프로필을 **"애플리케이션 설정의 일부를 갈라 두고 특정 환경에서만 쓰이게 하는 방법"**
+          이라고 설명한다. 쓰는 법은 두 갈래다.
+
+          **파일을 나눈다** — `application-local.yaml`, `application-prod.yaml`처럼 이름 뒤에 프로필을 붙인다.
+          이 파일들은 자동으로 읽히고 **기본 `application.yaml`을 덮는다.**
+          공통은 `application.yaml`에 두고 다른 것만 프로필 파일에 적는 것이 보통이다.
+
+          **빈을 가른다** — `@Component`·`@Configuration`에 `@Profile("local")`을 붙이면 그 프로필일 때만 만들어진다.
+
+          켜는 법은 `spring.profiles.active`다. 이 값도 **다른 값과 같은 순서 규칙을 따른다**(U2) —
+          그래서 파일에 적어 두고 서버에서는 명령줄이나 환경 변수로 덮는다.
+          아무것도 켜지 않으면 `default`라는 이름의 프로필이 쓰인다.
+        example:
+          language: yaml
+          code: |-
+            # application.yaml — 공통
+            shop:
+              delivery-fee: 3000
+
+            # application-local.yaml — 내 PC
+            spring:
+              datasource:
+                url: jdbc:postgresql://localhost:5432/shop
+            logging:
+              level:
+                com.shop: DEBUG
+
+            # application-prod.yaml — 서버
+            spring:
+              datasource:
+                url: ${SHOP_DB_URL}
+            logging:
+              level:
+                com.shop: INFO
+          output: |-
+            java -jar shop.jar --spring.profiles.active=local
+              → application.yaml 을 읽고 application-local.yaml 로 덮는다
+              → delivery-fee 3000, localhost DB, DEBUG 로그
+
+            java -jar shop.jar --spring.profiles.active=prod
+              → delivery-fee 3000, 환경 변수 DB, INFO 로그
+          note: |-
+            - '공통은 `application.yaml`에, 다른 것만 프로필 파일에 — 중복을 줄인다'
+            - '프로필 파일이 기본 파일을 **덮는다**. 지우는 것이 아니라 얹는 것이다'
+            - '`--spring.profiles.active=prod`도 U2의 순서를 따른다'
+        predict:
+          question: '`application.yaml`에 `shop.delivery-fee: 3000`, `application-prod.yaml`에는 그 값이 없다. prod로 띄우면?'
+          choices:
+            - 3000이다. 프로필 파일은 있는 것만 덮는다
+            - 기동이 실패한다. prod 파일에 없다
+            - 0이 들어온다
+            - 프로필 파일에 없으면 그 값은 사라진다
+          answer: 3000이다. 프로필 파일은 있는 것만 덮는다
+          explanation: |-
+            프로필 파일은 기본 파일을 **대체하는 것이 아니라 얹는 것**이다.
+            `application.yaml`을 먼저 읽고 `application-prod.yaml`에 적힌 이름만 덮어쓴다.
+            그래서 공통 값을 기본 파일에 모아 두면 프로필마다 다시 적지 않아도 된다.
+        complete:
+          question: 로컬에서만 만들어지는 가짜 결제 빈이 되도록 빈칸을 채우세요.
+          code: |-
+            @Component
+            @___("local")
+            public class FakePaymentGateway implements PaymentGateway {
+                // 실제로 결제하지 않고 성공만 돌려준다
+            }
+          answers:
+            - [Profile]
+          explanation: |-
+            `@Profile("local")`을 붙이면 `local` 프로필일 때만 이 빈이 만들어진다.
+            운영에서는 아예 존재하지 않으므로, 실수로 가짜 결제가 쓰일 일이 없다.
+        problem:
+          prompt: |-
+            주문 시스템을 **내 PC(local)** 와 **서버(prod)** 두 곳에서 돌리려고 합니다.
+
+            - DB 주소: 내 PC는 `jdbc:postgresql://localhost:5432/shop`, 서버는 환경 변수로 받는다
+            - 로그 수준: 내 PC는 `DEBUG`, 서버는 `INFO`
+            - 배송비 3000원은 양쪽이 같다
+            - 메일 발송은 서버에서만 진짜로 보낸다. 내 PC에서는 보내지 않고 로그만 남긴다
+
+            파일 구성과 빈 구성을 백지에서 설계하세요.
+          deliverables:
+            - 파일 3개의 이름과 각 파일에 들어갈 내용
+            - 메일 발송을 가르는 방법 (클래스 2개의 표시만)
+            - 서버에서 띄우는 명령 한 줄
+          hints:
+            - 양쪽이 같은 값은 어느 파일에 두는 것이 좋을까요?
+            - 값이 아니라 **동작**이 다른 것은 파일로 못 가릅니다. 다른 방법이 있었습니다.
+            - 프로필을 켜는 값도 다른 값과 같은 순서를 따릅니다(U2).
+          modelAnswer: |-
+            **파일 3개**
+
+            ```yaml
+            # application.yaml — 공통
+            shop:
+              delivery-fee: 3000
+
+            # application-local.yaml
+            spring:
+              datasource:
+                url: jdbc:postgresql://localhost:5432/shop
+            logging:
+              level:
+                com.shop: DEBUG
+
+            # application-prod.yaml
+            spring:
+              datasource:
+                url: ${SHOP_DB_URL}
+            logging:
+              level:
+                com.shop: INFO
+            ```
+
+            **메일 발송 — 값이 아니라 동작이 다르므로 빈을 가른다**
+
+            ```java
+            public interface MailSender { void send(String to, String body); }
+
+            @Component
+            @Profile("local")
+            class LoggingMailSender implements MailSender { }   // 로그만 남긴다
+
+            @Component
+            @Profile("prod")
+            class SmtpMailSender implements MailSender { }      // 진짜로 보낸다
+            ```
+
+            **서버에서 띄우기**
+
+            ```bash
+            SHOP_DB_URL=<서버 DB 주소> java -jar shop.jar --spring.profiles.active=prod
+            ```
+          selfChecks:
+            - 배송비 3000이 공통 파일에 한 번만 적혀 있는가
+            - 메일 발송을 값이 아니라 `@Profile`로 갈랐고, 두 구현이 같은 인터페이스를 쓰는가
+            - 서버 DB 주소가 파일에 직접 적히지 않고 환경 변수로 들어가는가
+
+      - key: LESSON.SPRING.BOOT_CONFIG.001.U4
+        title: 설정을 타입 있는 덩어리로 받기
+        minutes: 12
+        core: false
+        prerequisiteUnits:
+          - LESSON.SPRING.BOOT_CONFIG.001.U1
+        explain: |-
+          `@Value`는 값 하나를 꺼내는 데는 편하지만, 설정이 늘면 같은 접두사를 여기저기 문자열로 적게 된다.
+          오타가 나도 **그 코드가 실행될 때까지 모른다.**
+
+          공식 문서는 다른 길을 준다 — **"속성을 다루는 또 하나의 방법으로, 타입이 분명한 빈이 설정을
+          관장하고 검증하게 한다."** 그것이 `@ConfigurationProperties`다.
+          접두사를 한 번만 적고 그 아래를 통째로 객체에 받는다.
+
+          자바 record로 받으면 불변이 된다. 공식 문서는 **"생성자 바인딩은 record와 함께 쓸 수 있고,
+          생성자가 여러 개가 아니면 `@ConstructorBinding`을 쓸 필요가 없다"** 고 적는다.
+
+          이름 맞추기는 느슨하다(U2) — YAML의 `delivery-fee`가 record의 `deliveryFee`에 들어간다.
+
+          등록하는 방법은 둘이다. `@SpringBootApplication`에 `@ConfigurationPropertiesScan`을 붙이거나,
+          설정 클래스에 `@EnableConfigurationProperties(ShopProperties.class)`를 적는다.
+          값에 조건을 걸고 싶으면 `@Validated`와 함께 `@Min` 같은 표시를 쓴다 — **잘못된 값이면 기동이 멈춘다.**
+        example:
+          language: java
+          code: |-
+            @ConfigurationProperties("shop")
+            @Validated
+            public record ShopProperties(
+                    @Min(0) int deliveryFee,
+                    @Min(1) int freeThreshold,
+                    @DefaultValue("30") int cancelWindowMinutes) { }
+
+            @SpringBootApplication
+            @ConfigurationPropertiesScan
+            public class ShopApplication { }
+
+            @Service
+            public class DeliveryService {
+                private final ShopProperties shop;
+
+                public DeliveryService(ShopProperties shop) {   // 통째로 주입받는다
+                    this.shop = shop;
+                }
+
+                public int feeFor(int amount) {
+                    return amount >= shop.freeThreshold() ? 0 : shop.deliveryFee();
+                }
+            }
+          output: |-
+            shop:
+              delivery-fee: 3000       →  deliveryFee = 3000   (느슨한 이름 맞추기)
+              free-threshold: 30000    →  freeThreshold = 30000
+                                       →  cancelWindowMinutes = 30  (기본값)
+
+            delivery-fee: -1 로 두면
+              → 기동 실패 (@Min(0) 위반)
+          note: |-
+            - '접두사 `shop`을 **한 번만** 적는다. 오타가 날 자리가 줄어든다'
+            - 'record라서 만들어진 뒤 바뀌지 않는다'
+            - '`@Validated` + `@Min` — 잘못된 값은 실행 중이 아니라 **기동 때** 걸린다'
+        predict:
+          question: 'YAML에 `shop.delivery-fee: 3000`이라고 적으면 record의 어느 칸에 들어가나?'
+          choices:
+            - deliveryFee. 하이픈 표기가 camelCase에 맞춰진다
+            - delivery-fee라는 이름의 칸이 따로 있어야 한다
+            - 아무 데도 안 들어간다. 이름이 다르다
+            - deliveryfee (전부 소문자)
+          answer: deliveryFee. 하이픈 표기가 camelCase에 맞춰진다
+          explanation: |-
+            스프링은 설정 이름과 자바 속성 이름이 **정확히 같지 않아도** 맞춰 준다.
+            공식 문서가 예로 드는 것이 `context-path` → `contextPath`이고, 우리 경우도 같다.
+            그래서 YAML에는 읽기 좋은 하이픈 표기를, 자바에는 자바다운 camelCase를 쓸 수 있다.
+        complete:
+          question: 설정 접두사를 한 번만 적고 통째로 받도록 빈칸을 채우세요.
+          code: |-
+            @___("shop.payment")
+            public record PaymentProperties(String secretKey, int timeoutSeconds) { }
+          answers:
+            - [ConfigurationProperties]
+          explanation: |-
+            `@ConfigurationProperties("shop.payment")`를 붙이면 그 접두사 아래의 값들이
+            record의 칸에 이름으로 맞춰 들어간다 — `shop.payment.secret-key` → `secretKey`.
+        problem:
+          prompt: |-
+            `@Value`로 흩어져 있는 아래 설정을 `@ConfigurationProperties`로 모으세요.
+
+            ```java
+            @Service
+            public class OrderService {
+                @Value("${shop.order.max-items}") private int maxItems;
+                @Value("${shop.order.cancel-window-minutes:30}") private int cancelWindow;
+                @Value("${shop.order.auto-confirm-days:7}") private int autoConfirmDays;
+            }
+            ```
+
+            `maxItems`는 1 이상이어야 하고, 잘못된 값이면 **기동이 멈춰야** 합니다.
+          deliverables:
+            - 설정을 받는 record와 그 등록 방법
+            - 바꾼 OrderService
+            - '`@Value` 세 줄일 때보다 나아진 점 두 가지'
+          hints:
+            - 세 줄에 같은 접두사가 반복됩니다. 그것을 한 번만 적을 방법이 있었습니다.
+            - 기본값이 있던 두 값은 record에서 어떻게 표현할까요?
+            - 값에 조건을 걸어 기동 때 막으려면 표시 두 개가 함께 필요합니다.
+          modelAnswer: |-
+            ```java
+            @ConfigurationProperties("shop.order")
+            @Validated
+            public record OrderProperties(
+                    @Min(1) int maxItems,
+                    @DefaultValue("30") int cancelWindowMinutes,
+                    @DefaultValue("7") int autoConfirmDays) { }
+
+            @SpringBootApplication
+            @ConfigurationPropertiesScan
+            public class ShopApplication { }
+
+            @Service
+            public class OrderService {
+                private final OrderProperties order;
+
+                public OrderService(OrderProperties order) {
+                    this.order = order;
+                }
+            }
+            ```
+
+            **나아진 점**
+
+            - '접두사 `shop.order`를 한 번만 적는다 — 문자열 오타가 날 자리가 셋에서 하나로 줄었다.'
+            - '`@Validated` + `@Min(1)` 덕분에 잘못된 값이 **기동 때** 걸린다. `@Value`였다면 그 값을 쓰는 코드가 실행될 때까지 몰랐다.'
+          selfChecks:
+            - 접두사가 한 곳에만 적혀 있는가
+            - 기본값 두 개가 `@DefaultValue`로 옮겨졌는가
+            - '`OrderService`가 값 셋이 아니라 **덩어리 하나**를 주입받는가'
+
+    commonMistakes:
+      - 진짜 키를 `application.yaml`에 적어 저장소에 올린다. 환경 변수로 넣으면 파일을 덮는다 (U2)
+      - 꼭 있어야 하는 설정에 기본값을 줘 둔다. 빠진 것을 모른 채 잘못된 값으로 돈다 (U1)
+      - 프로필 파일에 공통 값까지 전부 복사해 둔다. 한쪽만 고치면 두 환경이 어긋난다 (U3)
+    inProject: |-
+      주문 시스템을 내 PC와 서버 양쪽에서 돌리는 순간 이 넷이 한꺼번에 필요해진다.
+      DB 주소·로그 수준은 프로필 파일로 가르고(U3), 결제 키는 환경 변수로만 넣고(U2),
+      배송비·장바구니 한도처럼 규칙에 해당하는 값은 record 하나로 모아 `@Min`으로 지킨다(U4).
+      그러면 **같은 jar 하나**를 두 환경에 그대로 올릴 수 있다.
+    sources:
+      - title: Spring Boot Reference — Externalized Configuration
+        url: https://docs.spring.io/spring-boot/reference/features/external-config.html
+        versionScope: Spring Boot 4.1
+      - title: Spring Boot Reference — Profiles
+        url: https://docs.spring.io/spring-boot/reference/features/profiles.html
+        versionScope: Spring Boot 4.1
+    verifiedAt: 2026-09-22
