@@ -1,0 +1,581 @@
+# DevPilot 개념 노트 — JPA 연관관계 매핑
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - Spring Data JPA 노트는 리포지터리·질의 메서드·트랜잭션을 다룬다.
+#   여기서는 "객체의 참조와 표의 외래 키를 잇는 법"만 다룬다 — 겹치지 않게 쓴다
+# - fetch 기본값은 jakarta.persistence-api-3.2.0.jar 로 확인했다
+#   (@ManyToOne·@OneToOne = EAGER, @OneToMany·@ManyToMany = LAZY)
+lessons:
+  - key: LESSON.DATABASE.JPA.001
+    skillCode: DATABASE.JPA
+    title: 객체의 참조와 표의 외래 키를 잇기 (JPA 연관관계)
+    whyItMatters: |-
+      객체는 **참조**로 이어지고 표는 **외래 키**로 이어진다. 둘은 생김새가 다르다 —
+      객체는 `order.getLines()` 처럼 한쪽에서 다른 쪽으로 걸어갈 수 있지만, 표에는 방향이 없다.
+      이 차이를 어떻게 메우는지 모르면 매핑이 "왜 되는지 모르겠지만 돌아가는 것"이 되고,
+      어느 날 저장이 안 되거나 목록 화면이 느려질 때 손댈 수가 없다.
+    oneLine: 연관관계 매핑은 객체의 참조를 표의 외래 키에 잇는 일이고, **외래 키를 가진 쪽이 주인**이다.
+    units:
+      - key: LESSON.DATABASE.JPA.001.U1
+        title: 외래 키를 가진 쪽이 주인이다
+        minutes: 12
+        core: true
+        explain: |-
+          표에서 주문 항목은 `order_id` 라는 **외래 키**로 주문을 가리킨다(모델링 노트 U3).
+          객체에서는 `OrderLine` 이 `Order` 를 **참조**로 들고 있다. 이 둘을 잇는 것이 `@ManyToOne` 이다.
+
+          공식 문서는 이 방향을 **"가장 자연스러운 매핑"** 이라고 부른다. 이유는 단순하다 —
+          **외래 키가 실제로 그 표에 있기 때문**이다. `@ManyToOne` 을 붙인 쪽이 곧 그 칸을 관리한다.
+
+          여기서 **연관관계의 주인**이라는 말이 나온다. 외래 키를 가진 쪽, 즉 `@ManyToOne` 쪽이 주인이고,
+          **주인 쪽의 값만 DB에 반영된다.** 반대쪽(U2의 `@OneToMany`)을 아무리 고쳐도 외래 키는 바뀌지 않는다.
+
+          `@JoinColumn` 으로 칸 이름을 적는다. 적지 않으면 규칙대로 만들어지지만,
+          **적어 두는 편이 낫다** — 표를 보는 사람과 코드를 보는 사람이 같은 이름을 본다.
+
+          한 가지 더. 참조를 들지 않고 **키 값만** 들 수도 있다(`private Long orderId;`).
+          단순하고 빠르지만 `line.getOrder().getCustomerId()` 처럼 걸어갈 수 없다.
+          **먼저 `@ManyToOne` 으로 잇고**, 정말 필요할 때만 키 값으로 내린다.
+        example:
+          language: java
+          code: |-
+            @Entity
+            @Table(name = "order_lines")
+            public class OrderLine {
+
+                @Id
+                @GeneratedValue(strategy = GenerationType.IDENTITY)
+                private Long id;
+
+                @ManyToOne(fetch = FetchType.LAZY)        // 외래 키를 가진 쪽 = 주인
+                @JoinColumn(name = "order_id")            // 표의 칸 이름
+                private Order order;
+
+                private int quantity;
+            }
+          output: |-
+            표                     객체
+            order_lines.order_id   OrderLine.order
+
+            line.setOrder(order) → update order_lines set order_id = ?
+              주인 쪽을 바꿨으므로 DB에 반영된다
+
+            @JoinColumn 을 적지 않으면
+              order_id 로 만들어지지만, 이름이 코드에 안 보인다
+          note: |-
+            - '`@ManyToOne` 쪽이 외래 키를 갖고 있고, 그래서 **주인**이다'
+            - '`@JoinColumn(name = ...)` 은 표의 칸 이름 — 적어 두면 표와 코드가 같은 말을 한다'
+            - '`fetch = LAZY` 를 적은 이유는 U3에서 본다'
+        predict:
+          question: 주문 항목이 주문을 가리킬 때 외래 키는 어느 표에 있나?
+          choices:
+            - order_lines 에 order_id 로 있다. 그래서 그쪽이 주인이다
+            - orders 에 line_id 로 있다
+            - 중간 표가 따로 생긴다
+            - 양쪽에 다 있다
+          answer: order_lines 에 order_id 로 있다. 그래서 그쪽이 주인이다
+          explanation: |-
+            1:N에서 키를 드는 쪽은 **언제나 N 쪽**이다(모델링 노트 U1).
+            주문 하나에 항목이 여럿이므로 항목이 `order_id` 를 든다.
+            그래서 객체에서도 `OrderLine` 이 `Order` 를 참조하는 `@ManyToOne` 이 자연스럽고,
+            **그쪽이 주인**이 된다.
+        complete:
+          question: 후기가 상품을 가리키도록 빈칸을 채우세요.
+          code: |-
+            @___(fetch = FetchType.LAZY)
+            @___(name = "product_id")
+            private Product product;
+          answers:
+            - [ManyToOne]
+            - [JoinColumn]
+          explanation: |-
+            후기가 여럿이고 상품이 하나이므로 `@ManyToOne` 이고,
+            외래 키 칸 이름을 적는 것은 `@JoinColumn` 이다.
+        problem:
+          prompt: |-
+            표가 이렇습니다.
+
+            ```text
+            orders(id, customer_id, ordered_at)
+            order_lines(id, order_id, product_id, quantity)
+            products(id, name, price)
+            ```
+
+            `OrderLine` 엔티티를 백지에서 작성하세요. 두 연관관계를 모두 매핑하고,
+            **각각 왜 그 방향인지** 한 줄씩 쓰세요.
+          deliverables:
+            - OrderLine 엔티티
+            - 두 연관관계의 방향을 그렇게 잡은 이유
+          hints:
+            - 외래 키가 어느 표에 있는지부터 보세요.
+            - '"하나에 여럿"에서 키를 드는 쪽이 어느 쪽이었나요?'
+            - 칸 이름을 코드에 드러내는 애너테이션이 있었습니다.
+          modelAnswer: |-
+            ```java
+            @Entity
+            @Table(name = "order_lines")
+            public class OrderLine {
+
+                @Id
+                @GeneratedValue(strategy = GenerationType.IDENTITY)
+                private Long id;
+
+                @ManyToOne(fetch = FetchType.LAZY)
+                @JoinColumn(name = "order_id")
+                private Order order;
+
+                @ManyToOne(fetch = FetchType.LAZY)
+                @JoinColumn(name = "product_id")
+                private Product product;
+
+                private int quantity;
+
+                protected OrderLine() { }
+            }
+            ```
+
+            - '`order` 가 `@ManyToOne` 인 이유: 외래 키 `order_id` 가 `order_lines` 에 있다. 주문 하나에 항목이 여럿이므로 항목 쪽이 키를 든다.'
+            - '`product` 도 같은 이유다. `product_id` 가 `order_lines` 에 있고, 상품 하나가 여러 항목에 담긴다.'
+          selfChecks:
+            - 두 연관관계가 모두 `@ManyToOne` 이고 `@JoinColumn` 이름이 표와 같은가
+            - 이유가 "외래 키가 이 표에 있다"에 닿아 있는가
+            - 기본 생성자가 `protected` 인가 (Spring Data JPA 노트 U1)
+
+      - key: LESSON.DATABASE.JPA.001.U2
+        title: 양쪽에서 보고 싶을 때
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.DATABASE.JPA.001.U1
+        explain: |-
+          `order.getLines()` 로도 걸어가고 싶으면 반대쪽에 `@OneToMany` 를 둔다.
+          이것을 **양방향**이라고 한다. 이때 반드시 `mappedBy` 를 적는다.
+
+          `mappedBy = "order"` 는 **"나는 주인이 아니다. 저쪽의 `order` 필드가 주인이다"** 라는 선언이다.
+          공식 문서의 권고는 분명하다 — **"조금이라도 의심스러우면, 외래 키 관계는 `@ManyToOne` 과
+          `@OneToMany(mappedBy=…)` 로 매핑하라. 더 복잡한 연관관계 매핑보다 이쪽을 택하라."**
+
+          `mappedBy` 를 빠뜨리면 하이버네이트는 **중간 표를 만들려 한다.** 공식 문서도 조인 테이블을 쓰는
+          단방향 `@OneToMany` 를 **"덜 효율적"** 이라고 적는다. 표는 이미 외래 키로 이어져 있는데 표가 하나 더 생기는 것이다.
+
+          양방향의 대가가 하나 있다. **두 쪽을 내가 맞춰 줘야 한다.**
+          `order.getLines().add(line)` 만 하고 `line.setOrder(order)` 를 빠뜨리면
+          **DB에는 반영되지 않는다** — 주인이 아닌 쪽만 고쳤기 때문이다.
+          그래서 공식 문서는 **양쪽을 함께 맞추는 도우미 메서드**를 두라고 안내한다.
+
+          정리하면 이렇다. **양방향은 필요할 때만 만든다.** 한쪽에서만 걸어가면 되면 `@ManyToOne` 하나로 끝이다.
+        example:
+          language: java
+          code: |-
+            @Entity
+            public class Order {
+
+                @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+                private Long id;
+
+                @OneToMany(mappedBy = "order")            // 주인이 아니다 — 읽기용
+                private List<OrderLine> lines = new ArrayList<>();
+
+                // 양쪽을 함께 맞추는 도우미
+                public void addLine(OrderLine line) {
+                    lines.add(line);
+                    line.setOrder(this);                  // 주인 쪽도 반드시
+                }
+            }
+          output: |-
+            order.addLine(line)
+              → lines 에 담기고 line.order 도 채워진다
+              → insert order_lines (..., order_id) 정상
+
+            order.getLines().add(line) 만 하면
+              → 메모리에는 담겨 있는데
+              → order_id 가 null → 저장 안 되거나 제약 위반
+
+            mappedBy 를 빠뜨리면
+              → 중간 표(orders_order_lines)를 만들려 한다
+          note: |-
+            - '`mappedBy` 의 값은 **저쪽 필드 이름**이다. 표의 칸 이름이 아니다'
+            - '주인이 아닌 쪽을 고쳐도 DB는 바뀌지 않는다 — 도우미 메서드로 둘을 묶는다'
+            - '양방향이 필요 없으면 만들지 않는다. 맞출 것이 하나 줄어든다'
+        predict:
+          question: '`order.getLines().add(line)` 만 하고 `line.setOrder(order)` 를 빠뜨리면?'
+          choices:
+            - DB에 반영되지 않는다. 주인이 아닌 쪽만 고쳤다
+            - 정상 저장된다. 양방향이니까
+            - 예외가 난다
+            - 중간 표에 저장된다
+          answer: DB에 반영되지 않는다. 주인이 아닌 쪽만 고쳤다
+          explanation: |-
+            외래 키를 관리하는 것은 `@ManyToOne` 이 붙은 **주인 쪽**이다.
+            `mappedBy` 가 붙은 컬렉션은 **읽기용**이라, 거기에 담아도 `order_id` 는 그대로다.
+            메모리에서는 들어 있는 것처럼 보이는데 저장이 안 되거나 `NOT NULL` 제약에 걸린다 —
+            그래서 헷갈린다. 도우미 메서드로 **둘을 항상 함께** 바꾼다.
+        complete:
+          question: 주문이 항목을 읽을 수 있도록 빈칸을 채우세요.
+          code: |-
+            @OneToMany(___ = "order")
+            private List<OrderLine> lines = new ArrayList<>();
+          answers:
+            - [mappedBy]
+          explanation: |-
+            `mappedBy` 에 **저쪽 필드 이름**(`OrderLine.order`)을 적어 "주인은 저쪽"이라고 알린다.
+            빠뜨리면 중간 표를 만들려 한다.
+        problem:
+          prompt: |-
+            동료의 코드입니다. 주문을 저장했는데 항목의 `order_id` 가 `null` 이라 제약 위반이 납니다.
+
+            ```java
+            @Entity
+            public class Order {
+                @OneToMany
+                private List<OrderLine> lines = new ArrayList<>();
+            }
+
+            // 쓰는 쪽
+            Order order = new Order(17L);
+            order.getLines().add(new OrderLine(product, 2));
+            orderRepository.save(order);
+            ```
+
+            문제를 **둘** 찾아 고치세요.
+          deliverables:
+            - 찾은 문제 2가지와 각각 무슨 증상이 나는지
+            - 고친 코드 (도우미 메서드 포함)
+          hints:
+            - '`@OneToMany` 에 무엇이 빠져 있나요? 빠지면 하이버네이트가 무엇을 만들려 할까요?'
+            - 외래 키를 관리하는 쪽을 누가 바꿨나요?
+            - 컬렉션을 밖에서 직접 만지게 두는 것이 맞을까요?
+          modelAnswer: |-
+            **문제 1 — `mappedBy` 가 없다**
+
+            주인을 밝히지 않아 하이버네이트가 이 연관을 **중간 표**로 매핑하려 한다.
+            표는 이미 `order_lines.order_id` 로 이어져 있는데 쓸데없는 표가 하나 더 생긴다.
+
+            **문제 2 — 주인 쪽을 바꾸지 않았다**
+
+            `getLines().add(...)` 는 주인이 아닌 쪽만 고친 것이라 `order_id` 가 채워지지 않는다.
+            그래서 `null` 인 채로 저장되려다 제약에 걸린다.
+
+            ```java
+            @Entity
+            public class Order {
+
+                @OneToMany(mappedBy = "order")
+                private List<OrderLine> lines = new ArrayList<>();
+
+                public void addLine(OrderLine line) {
+                    lines.add(line);
+                    line.setOrder(this);          // 주인 쪽도 함께
+                }
+
+                public List<OrderLine> getLines() {
+                    return List.copyOf(lines);    // 밖에서 직접 못 만지게
+                }
+            }
+
+            // 쓰는 쪽
+            Order order = new Order(17L);
+            order.addLine(new OrderLine(product, 2));
+            orderRepository.save(order);
+            ```
+
+            `getLines()` 를 복사본으로 돌려주면 **도우미 메서드를 거치지 않고는 담을 수 없어**
+            같은 실수가 반복되지 않는다.
+          selfChecks:
+            - '`mappedBy = "order"` 를 넣었고 그것이 "주인은 저쪽"이라는 뜻임을 설명했는가'
+            - 도우미 메서드가 컬렉션과 주인 쪽을 **둘 다** 바꾸는가
+            - 밖에서 컬렉션을 직접 만지지 못하게 막았는가
+
+      - key: LESSON.DATABASE.JPA.001.U3
+        title: 언제 불러올 것인가
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.DATABASE.JPA.001.U1
+        explain: |-
+          연관을 읽어 올 시점은 둘이다.
+
+          - **`LAZY`** — 실제로 그 값을 건드릴 때 질의가 나간다
+          - **`EAGER`** — 부모를 읽을 때 **함께** 읽는다
+
+          기본값이 문제다. `jakarta.persistence` 애너테이션의 기본값은 이렇다.
+
+          | 애너테이션 | 기본 fetch |
+          |---|---|
+          | `@ManyToOne` | **EAGER** |
+          | `@OneToOne` | **EAGER** |
+          | `@OneToMany` | LAZY |
+          | `@ManyToMany` | LAZY |
+
+          즉 **`@ManyToOne` 을 아무 말 없이 쓰면 EAGER** 다. 그래서 주문 목록 20건을 읽으면
+          각 항목의 상품·주문을 읽는 질의가 **줄 수만큼** 따라 나간다 — Spring Data JPA 노트 U4의 N+1 이다.
+          목록 화면이 느려지는 가장 흔한 원인이 이 기본값이다.
+
+          그래서 실무 규칙은 하나다. **연관은 전부 `LAZY` 로 두고, 필요한 화면에서만 함께 읽는다.**
+          함께 읽는 방법이 `@EntityGraph` 나 `join fetch` 다.
+
+          `EAGER` 는 "항상 필요하다"를 뜻하는데, 실제로 항상 필요한 연관은 거의 없다.
+          게다가 `EAGER` 는 **끄기 어렵다** — 그 연관을 안 쓰는 화면에서도 질의가 나간다.
+          반대로 `LAZY` 는 필요할 때 켤 수 있다. **끌 수 없는 것보다 켤 수 있는 편이 낫다.**
+        example:
+          language: java
+          code: |-
+            // 기본값에 맡기면 EAGER 다
+            @ManyToOne
+            private Product product;
+
+            // 전부 LAZY 로 명시한다
+            @ManyToOne(fetch = FetchType.LAZY)
+            @JoinColumn(name = "product_id")
+            private Product product;
+
+            // 필요한 화면에서만 함께 읽는다
+            @EntityGraph(attributePaths = {"lines", "lines.product"})
+            List<Order> findWithLinesByCustomerId(Long customerId);
+          output: |-
+            EAGER (기본값) 로 두고 주문 20건을 읽으면
+              select ... from orders            (1)
+              select ... from products where id = ?   × 항목 수
+
+            LAZY + @EntityGraph
+              select ... from orders o
+                left join order_lines l ...
+                left join products p ...        (1)
+          note: |-
+            - '`@ManyToOne` 의 기본은 **EAGER** 다 — 적지 않으면 그렇게 된다'
+            - '`LAZY` 로 두고 필요한 자리에서 켠다. `EAGER` 는 끌 수가 없다'
+            - '느려졌는지는 **질의 로그를 세어** 확인한다 (Spring Data JPA 노트 U4)'
+        predict:
+          question: '`@ManyToOne` 에 `fetch` 를 적지 않으면 어떻게 동작하나?'
+          choices:
+            - EAGER 다. 부모를 읽을 때 함께 읽어 N+1 의 원인이 된다
+            - LAZY 다. 컬렉션과 같다
+            - 하이버네이트가 상황에 따라 정한다
+            - 설정에 따라 다르고 기본값은 없다
+          answer: EAGER 다. 부모를 읽을 때 함께 읽어 N+1 의 원인이 된다
+          explanation: |-
+            `@ManyToOne` 과 `@OneToOne` 의 기본 `fetch` 는 **EAGER** 이고,
+            컬렉션(`@OneToMany`·`@ManyToMany`)만 LAZY 다. 헷갈리기 쉬운데 방향이 반대다.
+            "하나만 딸려 오니까 가볍겠지"라는 생각으로 그렇게 정해졌지만, 목록에서 줄 수만큼 곱해지면 전혀 가볍지 않다.
+            **연관은 전부 `LAZY` 로 적어 두는 편**이 안전하다.
+        complete:
+          question: 연관을 필요할 때만 읽도록 빈칸을 채우세요.
+          code: |-
+            @ManyToOne(fetch = FetchType.___)
+            @JoinColumn(name = "product_id")
+            private Product product;
+          answers:
+            - [LAZY]
+          explanation: |-
+            `LAZY` 로 두면 실제로 `product` 를 건드릴 때만 질의가 나간다.
+            적지 않으면 `@ManyToOne` 의 기본값인 `EAGER` 가 되어 항상 함께 읽는다.
+        problem:
+          prompt: |-
+            주문 상세 화면은 항목과 상품 이름까지 보여 주고, 주문 목록 화면은 금액과 날짜만 보여 줍니다.
+            엔티티는 이렇습니다.
+
+            ```java
+            @ManyToOne                       // Order.customer
+            private Customer customer;
+
+            @OneToMany(mappedBy = "order")
+            private List<OrderLine> lines;
+
+            @ManyToOne                       // OrderLine.product
+            private Product product;
+            ```
+
+            1. 목록 화면에서 주문 20건을 읽으면 질의가 몇 번 나가는지 세고 이유를 쓰세요
+            2. 엔티티를 고치세요
+            3. 상세 화면이 항목과 상품을 함께 읽도록 리포지터리 메서드를 쓰세요
+          deliverables:
+            - 목록 화면의 질의 횟수와 근거
+            - 고친 엔티티
+            - 상세 화면용 리포지터리 메서드
+          hints:
+            - 기본값이 무엇인지 애너테이션마다 다시 보세요.
+            - 목록 화면은 고객 정보를 **쓰지 않는데도** 읽어 올까요?
+            - 함께 읽는 것은 엔티티가 아니라 **질의**가 정하게 합니다.
+          modelAnswer: |-
+            **1. 21번**
+
+            `Order.customer` 가 `@ManyToOne` 이라 **기본 EAGER** 다. 주문 목록 1번 + 주문마다 고객을 읽는 질의 20번.
+            화면은 금액과 날짜만 쓰는데도 고객을 전부 읽어 온다 — **끌 수가 없어서** 더 나쁘다.
+            (`lines` 는 `@OneToMany` 라 LAZY 이므로 건드리지 않으면 질의가 없다.)
+
+            **2. 고친 엔티티**
+
+            ```java
+            @ManyToOne(fetch = FetchType.LAZY)
+            @JoinColumn(name = "customer_id")
+            private Customer customer;
+
+            @OneToMany(mappedBy = "order")
+            private List<OrderLine> lines = new ArrayList<>();
+
+            @ManyToOne(fetch = FetchType.LAZY)
+            @JoinColumn(name = "product_id")
+            private Product product;
+            ```
+
+            이제 목록 화면은 질의 1번이다.
+
+            **3. 상세 화면**
+
+            ```java
+            @EntityGraph(attributePaths = {"lines", "lines.product"})
+            Optional<Order> findWithLinesById(Long id);
+            ```
+
+            "함께 읽을지"를 엔티티가 아니라 **질의가** 정하므로, 화면마다 필요한 만큼만 읽는다.
+          selfChecks:
+            - 21이라는 수와 "`@ManyToOne` 의 기본이 EAGER"라는 근거를 적었는가
+            - 두 `@ManyToOne` 을 모두 `LAZY` 로 바꿨는가
+            - 상세 화면이 엔티티가 아니라 **질의**로 함께 읽는가
+
+      - key: LESSON.DATABASE.JPA.001.U4
+        title: 같이 저장하고 같이 지우기
+        minutes: 12
+        core: false
+        prerequisiteUnits:
+          - LESSON.DATABASE.JPA.001.U2
+        explain: |-
+          주문을 저장할 때 항목도 함께 저장되면 편하다. 그것이 `cascade` 다.
+          부모에 한 동작이 자식에게도 전해진다.
+
+          | 값 | 전해지는 동작 |
+          |---|---|
+          | `PERSIST` | 저장 |
+          | `MERGE` | 병합 |
+          | `REMOVE` | **삭제** |
+          | `ALL` | 전부 |
+
+          `orphanRemoval = true` 는 다른 이야기다 — **컬렉션에서 빠진 자식을 지운다.**
+          `order.getLines().remove(line)` 하면 그 줄이 DELETE 된다.
+
+          여기서 위험한 것이 `REMOVE` 와 `ALL` 이다. 부모를 지우면 자식이 **줄줄이 지워진다.**
+          모델링 노트 U3에서 본 것과 같은 판단이 필요하다 — **자식이 부모 없이 혼자 의미가 있나.**
+
+          - 주문 항목은 주문 없이 의미가 없다 → `cascade = ALL, orphanRemoval = true` 가 맞다
+          - **상품은 주문 항목 없이도 의미가 있다** → 절대 `REMOVE` 를 걸지 않는다.
+            주문 항목 하나 지웠다고 상품이 사라지면 큰일이다
+
+          기준 한 줄: **cascade 는 "부모가 자식을 통째로 소유할 때"만 건다.**
+          여러 부모가 공유하는 자식(상품·회원·코드성 데이터)에는 걸지 않는다.
+
+          그리고 DB 쪽 `ON DELETE` 와는 **다른 층**이다. cascade 는 JPA가 자식마다 DELETE 를 보내는 것이고,
+          `ON DELETE CASCADE` 는 DB가 처리하는 것이다. 둘을 함께 쓸 때는 서로 어긋나지 않는지 확인한다.
+        example:
+          language: java
+          code: |-
+            @Entity
+            public class Order {
+
+                // 항목은 주문이 통째로 소유한다
+                @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+                private List<OrderLine> lines = new ArrayList<>();
+            }
+
+            @Entity
+            public class OrderLine {
+
+                @ManyToOne(fetch = FetchType.LAZY)
+                @JoinColumn(name = "product_id")
+                private Product product;          // cascade 없음 — 상품은 공유 자원이다
+            }
+          output: |-
+            orderRepository.save(order)
+              → 항목도 함께 insert          (cascade PERSIST)
+
+            order.getLines().remove(line)
+              → delete from order_lines ...  (orphanRemoval)
+
+            orderRepository.delete(order)
+              → 항목도 함께 delete           (cascade REMOVE)
+              → 상품은 그대로               (product 에 cascade 없음)
+          note: |-
+            - '기준: **부모가 자식을 통째로 소유하나**'
+            - '공유 자원(상품·회원)에는 `REMOVE`·`ALL` 을 걸지 않는다'
+            - '`orphanRemoval` 은 "컬렉션에서 빼면 지운다"이고 cascade 와 별개다'
+        predict:
+          question: '`OrderLine.product` 에 `cascade = CascadeType.ALL` 을 걸고 주문 항목을 지우면?'
+          choices:
+            - 상품까지 지워진다. 다른 주문들이 가리키던 상품이 사라진다
+            - 주문 항목만 지워진다
+            - 예외가 난다
+            - 상품은 판매 중지 상태가 된다
+          answer: 상품까지 지워진다. 다른 주문들이 가리키던 상품이 사라진다
+          explanation: |-
+            `ALL` 에는 `REMOVE` 가 들어 있다. 주문 항목 하나를 지웠을 뿐인데 그 항목이 가리키던 **상품**까지 지우려 한다.
+            상품은 **여러 주문이 공유하는 자원**이라 이건 사고다
+            (외래 키 제약이 있으면 제약 위반으로 막히고, 없으면 정말 사라진다).
+            cascade 는 **소유 관계일 때만** 건다.
+        complete:
+          question: 항목을 주문과 함께 저장·삭제하고 컬렉션에서 빠지면 지우도록 빈칸을 채우세요.
+          code: |-
+            @OneToMany(mappedBy = "order", cascade = CascadeType.___, ___ = true)
+            private List<OrderLine> lines = new ArrayList<>();
+          answers:
+            - [ALL]
+            - [orphanRemoval]
+          explanation: |-
+            저장·삭제를 모두 전하려면 `CascadeType.ALL`,
+            컬렉션에서 빠진 자식을 지우는 것은 `orphanRemoval = true` 다.
+        problem:
+          prompt: |-
+            엔티티가 이렇습니다. 이 중 **cascade 를 걸어야 할 것**과 **걸면 안 되는 것**을 가르고 이유를 쓰세요.
+
+            ```text
+            Order    ─< OrderLine        (주문 : 항목)
+            OrderLine >─ Product         (항목 : 상품)
+            Order    >─ Customer         (주문 : 회원)
+            Order    ─  Delivery         (주문 : 배송 1:1)
+            ```
+
+            그리고 **회원 탈퇴**를 `cascade = ALL` 로 처리하면 무슨 일이 생기는지 쓰세요.
+          deliverables:
+            - 네 연관관계의 cascade 판단과 이유
+            - 회원 탈퇴에 cascade ALL 을 걸면 생기는 일
+          hints:
+            - 기준은 "부모가 자식을 통째로 소유하나"였습니다.
+            - 여러 부모가 공유하는 자식이 어느 것인지 찾아보세요.
+            - 모델링 노트 U3의 회원 탈퇴 이야기를 떠올려 보세요.
+          modelAnswer: |-
+            | 연관 | cascade | 이유 |
+            |---|---|---|
+            | `Order` → `OrderLine` | **`ALL` + `orphanRemoval`** | 항목은 주문이 통째로 소유한다. 주문 없이 의미가 없다 |
+            | `Order` → `Delivery` (1:1) | **`ALL` + `orphanRemoval`** | 배송 정보도 그 주문의 것이다 |
+            | `OrderLine` → `Product` | **걸지 않는다** | 상품은 여러 항목이 공유한다. 항목을 지웠다고 상품이 사라지면 안 된다 |
+            | `Order` → `Customer` | **걸지 않는다** | 회원은 여러 주문이 공유한다. 방향도 거꾸로다 — 자식이 부모를 가리키고 있다 |
+
+            **회원 탈퇴에 `cascade = ALL` 을 걸면**
+
+            회원을 지울 때 그 회원의 **주문이 전부 지워진다.** 그러면 지난달 매출이 조용히 줄어들고
+            되돌릴 수도 없다. 주문은 회원의 것이기도 하지만 동시에 **매출 기록**이다(모델링 노트 U3).
+
+            그래서 회원은 지우지 않고 `withdrawn_at` 을 채우는 방식으로 다룬다. 개인정보를 지워야 하면
+            줄을 지우는 대신 이름·이메일 칸만 비운다 — 주문과의 연결은 남기고 신원만 지운다.
+          selfChecks:
+            - 소유 관계 둘에만 cascade 를 걸었는가
+            - 공유 자원(상품·회원)에 걸지 않은 이유가 "여러 곳이 공유한다"인가
+            - 회원 탈퇴의 위험을 "매출 기록이 사라진다"로 설명했는가
+
+    commonMistakes:
+      - '`@OneToMany` 에 `mappedBy` 를 빠뜨려 중간 표가 생긴다. 표는 이미 외래 키로 이어져 있다 (U2)'
+      - 주인이 아닌 쪽만 고치고 저장이 안 된다고 한다. 외래 키는 `@ManyToOne` 쪽이 관리한다 (U2)
+      - '`@ManyToOne` 의 기본이 LAZY 라고 생각한다. **EAGER** 이고 목록 화면 N+1 의 주범이다 (U3)'
+    inProject: |-
+      주문 시스템의 엔티티를 그릴 때 순서가 있다. 먼저 표의 외래 키를 보고 **키를 가진 쪽에 `@ManyToOne`** 을 둔다(U1).
+      반대 방향으로 걸어갈 일이 정말 있을 때만 `@OneToMany(mappedBy=...)` 를 더하고, 도우미 메서드로 두 쪽을 묶는다(U2).
+      모든 연관에 **`fetch = LAZY` 를 적어 두고**, 화면마다 `@EntityGraph` 로 필요한 것만 함께 읽는다(U3).
+      cascade 는 주문→항목, 주문→배송처럼 **통째로 소유하는 자리에만** 걸고 상품·회원에는 걸지 않는다(U4).
+    sources:
+      - title: Hibernate ORM — Introduction to Hibernate (Associations)
+        url: https://docs.hibernate.org/orm/6.6/introduction/html_single/Hibernate_Introduction.html
+        versionScope: Hibernate ORM 6.6+
+      - title: Hibernate ORM User Guide — Associations
+        url: https://docs.hibernate.org/orm/6.6/userguide/html_single/Hibernate_User_Guide.html
+        versionScope: Hibernate ORM 6.6+
+    verifiedAt: 2026-09-22
