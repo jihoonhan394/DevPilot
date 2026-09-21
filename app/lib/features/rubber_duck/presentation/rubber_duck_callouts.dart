@@ -111,7 +111,10 @@ class SummarizingNote extends StatelessWidget {
       child: Row(
         key: const Key('rubberDuck.summarizing'),
         children: [
-          const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+          const SizedBox.square(
+            dimension: 20,
+            child: SelectionContainer.disabled(child: CircularProgressIndicator(strokeWidth: 2)),
+          ),
           const SizedBox(width: AppSpacing.md),
           Expanded(child: Text(AppLocalizations.of(context).rubberDuckSummarizing)),
         ],

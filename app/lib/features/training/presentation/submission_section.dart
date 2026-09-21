@@ -163,12 +163,10 @@ class _History extends StatelessWidget {
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: Text(l10n.trainingEvalResult(submission.submissionNo)),
-            subtitle: SelectionArea(
-              child: Text(
-                [?submission.answerText, ?submission.code].join('\n'),
-                maxLines: 6,
-                overflow: TextOverflow.ellipsis,
-              ),
+            subtitle: Text(
+              [?submission.answerText, ?submission.code].join('\n'),
+              maxLines: 6,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
       ],

@@ -3,6 +3,7 @@ import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/theme/app_theme.dart';
 import 'package:devpilot_app/core/theme/devpilot_colors.dart';
 import 'package:devpilot_app/core/widgets/copy_text_button.dart';
+import 'package:devpilot_app/core/widgets/markdown_text.dart';
 import 'package:devpilot_app/core/widgets/screen_body.dart';
 import 'package:devpilot_app/core/widgets/status_badge.dart';
 import 'package:devpilot_app/features/today/data/reading_models.dart';
@@ -97,9 +98,7 @@ class CloneStep extends StatelessWidget {
           ),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: SelectionArea(
-              child: Text(repo.cloneHint, softWrap: false, style: AppTheme.codeTextStyle),
-            ),
+            child: Text(repo.cloneHint, softWrap: false, style: AppTheme.codeTextStyle),
           ),
         ),
         Align(
@@ -151,13 +150,11 @@ class FileStep extends StatelessWidget {
         SectionTitle(l10n.readCodeStepOpen),
         if (subPath.isNotEmpty) Text(l10n.readCodeSubPathNote(subPath)),
         const SizedBox(height: AppSpacing.xs),
-        SelectionArea(
-          child: Text(
-            // A zero-width space after each "/" lets a long path wrap there.
-            code.path.replaceAll('/', '/​'),
-            key: const Key('readCode.path'),
-            style: AppTheme.codeTextStyle,
-          ),
+        Text(
+          // A zero-width space after each "/" lets a long path wrap there.
+          code.path.replaceAll('/', '/​'),
+          key: const Key('readCode.path'),
+          style: AppTheme.codeTextStyle,
         ),
         Align(
           alignment: Alignment.centerRight,
@@ -187,11 +184,11 @@ class QuestionStep extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SectionTitle(l10n.readCodeStepThink),
-        SelectionArea(child: Text(code.question, key: const Key('readCode.question'))),
+        MarkdownText(code.question, textKey: const Key('readCode.question')),
         if (code.lookFor.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.sm),
           Text(l10n.readCodeLookFor, style: Theme.of(context).textTheme.titleSmall),
-          for (final point in code.lookFor) Text('• $point'),
+          for (final point in code.lookFor) MarkdownText('- $point'),
         ],
       ],
     );

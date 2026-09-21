@@ -11,7 +11,9 @@ class RefreshingBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       height: 2,
-      child: visible ? const LinearProgressIndicator(minHeight: 2) : null,
+      child: visible
+          ? const SelectionContainer.disabled(child: LinearProgressIndicator(minHeight: 2))
+          : null,
     );
   }
 }

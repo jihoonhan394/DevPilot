@@ -206,7 +206,7 @@ class _HistoryMore extends StatelessWidget {
     if (list.isLoadingMore) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: SelectionContainer.disabled(child: CircularProgressIndicator())),
       );
     }
     if (!list.hasMore) {

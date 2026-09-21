@@ -90,9 +90,11 @@ class _StepProgress extends StatelessWidget {
       children: [
         Expanded(
           child: ExcludeSemantics(
-            child: LinearProgressIndicator(
-              value: step.number / OnboardingStep.count,
-              minHeight: 4,
+            child: SelectionContainer.disabled(
+              child: LinearProgressIndicator(
+                value: step.number / OnboardingStep.count,
+                minHeight: 4,
+              ),
             ),
           ),
         ),

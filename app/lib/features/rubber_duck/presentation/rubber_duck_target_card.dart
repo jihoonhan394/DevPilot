@@ -49,7 +49,7 @@ class RubberDuckTargetCard extends StatelessWidget {
         ),
         expandedCrossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (text != null && text.isNotEmpty) SelectionArea(child: Text(text)),
+          if (text != null && text.isNotEmpty) Text(text),
         ],
       ),
     );

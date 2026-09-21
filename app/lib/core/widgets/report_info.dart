@@ -17,34 +17,32 @@ class ReportInfo extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final traceId = failure.traceId;
     final occurredAt = failure.occurredAt;
-    // SelectionArea + Text, not SelectableText: on the web SelectableText reaches screen readers as
-    // an empty read-only field (docs/02 A-6).
+    // Plain Text, not SelectableText: on the web SelectableText reaches screen readers as an empty
+    // read-only field (docs/02 A-6). Dragging works through the app-wide SelectionArea.
     return ExpansionTile(
       key: const Key('common.reportInfo'),
       title: Text(l10n.commonErrorReportInfo),
       children: [
-        SelectionArea(
-          child: Column(
-            children: [
+        Column(
+          children: [
+            ListTile(
+              dense: true,
+              title: Text(l10n.commonErrorCodeLabel),
+              subtitle: Text(failure.code),
+            ),
+            if (traceId != null)
               ListTile(
                 dense: true,
-                title: Text(l10n.commonErrorCodeLabel),
-                subtitle: Text(failure.code),
+                title: Text(l10n.commonErrorTraceIdLabel),
+                subtitle: Text(traceId),
               ),
-              if (traceId != null)
-                ListTile(
-                  dense: true,
-                  title: Text(l10n.commonErrorTraceIdLabel),
-                  subtitle: Text(traceId),
-                ),
-              if (occurredAt != null)
-                ListTile(
-                  dense: true,
-                  title: Text(l10n.commonErrorTimeLabel),
-                  subtitle: Text(occurredAt.toUtc().toIso8601String()),
-                ),
-            ],
-          ),
+            if (occurredAt != null)
+              ListTile(
+                dense: true,
+                title: Text(l10n.commonErrorTimeLabel),
+                subtitle: Text(occurredAt.toUtc().toIso8601String()),
+              ),
+          ],
         ),
         Align(
           alignment: Alignment.centerRight,

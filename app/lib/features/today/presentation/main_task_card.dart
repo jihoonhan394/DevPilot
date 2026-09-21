@@ -3,6 +3,7 @@ import 'package:devpilot_app/core/l10n/display_format.dart';
 import 'package:devpilot_app/core/l10n/enum_labels.dart';
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/theme/devpilot_colors.dart';
+import 'package:devpilot_app/core/widgets/markdown_text.dart';
 import 'package:devpilot_app/core/widgets/status_badge.dart';
 import 'package:devpilot_app/features/today/data/today_models.dart';
 import 'package:devpilot_app/features/today/presentation/concept_reading_section.dart';
@@ -132,11 +133,11 @@ class _TaskDescriptionState extends State<_TaskDescription> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: Text(
-              widget.text,
-              maxLines: _expanded ? null : 2,
-              overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
-            ),
+            // Folded: two plain lines, because maxLines needs one Text. Opened: Markdown, so code in
+            // the description becomes a code block (docs/02 §2.4).
+            child: _expanded
+                ? MarkdownText(widget.text)
+                : Text(widget.text, maxLines: 2, overflow: TextOverflow.ellipsis),
           ),
           Icon(
             _expanded ? Icons.expand_less : Icons.expand_more,

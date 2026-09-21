@@ -64,9 +64,11 @@ class ReplanPreviewView extends ConsumerWidget {
             child: replan.isSaving
                 ? SizedBox.square(
                     dimension: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      semanticsLabel: l10n.commonSubmitting,
+                    child: SelectionContainer.disabled(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        semanticsLabel: l10n.commonSubmitting,
+                      ),
                     ),
                   )
                 : Text(l10n.replanSave(replan.draft.basePlan.planVersion + 1)),

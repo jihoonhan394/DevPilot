@@ -1,5 +1,6 @@
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/widgets/badges.dart';
+import 'package:devpilot_app/core/widgets/markdown_text.dart';
 import 'package:devpilot_app/features/rubber_duck/data/rubber_duck_models.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -80,7 +81,7 @@ class _Bubble extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.xs),
-                  SelectionArea(child: Text(text)),
+                  MarkdownText(text),
                 ],
               ),
             ),
@@ -102,7 +103,10 @@ class _Thinking extends StatelessWidget {
       child: Row(
         key: const Key('rubberDuck.thinking'),
         children: [
-          const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+          const SizedBox.square(
+            dimension: 16,
+            child: SelectionContainer.disabled(child: CircularProgressIndicator(strokeWidth: 2)),
+          ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(child: Text(AppLocalizations.of(context).rubberDuckThinking)),
         ],

@@ -2,6 +2,7 @@ import 'package:devpilot_app/app/routes.dart';
 import 'package:devpilot_app/core/l10n/async_failure_labels.dart';
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/widgets/badges.dart';
+import 'package:devpilot_app/core/widgets/markdown_text.dart';
 import 'package:devpilot_app/core/widgets/screen_body.dart';
 import 'package:devpilot_app/features/rubber_duck/data/rubber_duck_enums.dart';
 import 'package:devpilot_app/features/rubber_duck/data/rubber_duck_models.dart';
@@ -96,7 +97,7 @@ class _SummaryBody extends StatelessWidget {
         if (summary.confirmed.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
           SectionTitle(l10n.rubberDuckSummaryConfirmed),
-          for (final item in summary.confirmed) Text('• $item'),
+          for (final item in summary.confirmed) MarkdownText('- $item'),
         ],
         if (note != null && note.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
@@ -106,7 +107,7 @@ class _SummaryBody extends StatelessWidget {
               const AiBadge(),
             ],
           ),
-          Text(note, key: const Key('rubberDuck.overallNote')),
+          MarkdownText(note, textKey: const Key('rubberDuck.overallNote')),
         ],
         const SizedBox(height: AppSpacing.md),
         _SummaryNotes(summary: summary, session: session, completion: completion),
@@ -132,32 +133,30 @@ class _GapCard extends StatelessWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
-        child: SelectionArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(l10n.rubberDuckSummaryMissed, style: titleStyle),
-              Text(gap.whatWasMissed),
-              const SizedBox(height: AppSpacing.sm),
-              Text(l10n.rubberDuckSummaryWhy, style: titleStyle),
-              Text(gap.whyItMatters),
-              const SizedBox(height: AppSpacing.sm),
-              Text(l10n.rubberDuckSummaryReviewQuestion, style: titleStyle),
-              Text(gap.reviewQuestion),
-              if (gap.reviewItemId != null)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    key: Key('rubberDuck.viewCard.$number'),
-                    onPressed: () => context.go(AppRoutes.reviewItemsFor(skillId: skillId)),
-                    child: Text(
-                      l10n.rubberDuckSummaryViewCard,
-                      semanticsLabel: l10n.rubberDuckSummaryViewCardNumbered(number),
-                    ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.rubberDuckSummaryMissed, style: titleStyle),
+            Text(gap.whatWasMissed),
+            const SizedBox(height: AppSpacing.sm),
+            Text(l10n.rubberDuckSummaryWhy, style: titleStyle),
+            Text(gap.whyItMatters),
+            const SizedBox(height: AppSpacing.sm),
+            Text(l10n.rubberDuckSummaryReviewQuestion, style: titleStyle),
+            Text(gap.reviewQuestion),
+            if (gap.reviewItemId != null)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  key: Key('rubberDuck.viewCard.$number'),
+                  onPressed: () => context.go(AppRoutes.reviewItemsFor(skillId: skillId)),
+                  child: Text(
+                    l10n.rubberDuckSummaryViewCard,
+                    semanticsLabel: l10n.rubberDuckSummaryViewCardNumbered(number),
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );

@@ -116,7 +116,11 @@ class _MonthUsage extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: ExcludeSemantics(child: LinearProgressIndicator(value: month.fraction)),
+                child: ExcludeSemantics(
+                  child: SelectionContainer.disabled(
+                    child: LinearProgressIndicator(value: month.fraction),
+                  ),
+                ),
               ),
               const SizedBox(width: AppSpacing.sm),
               Text(

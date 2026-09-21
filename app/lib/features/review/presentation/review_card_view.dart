@@ -1,5 +1,6 @@
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/validation/input_rules.dart';
+import 'package:devpilot_app/core/widgets/markdown_text.dart';
 import 'package:devpilot_app/core/widgets/screen_body.dart';
 import 'package:devpilot_app/features/review/data/review_enums.dart';
 import 'package:devpilot_app/features/review/domain/review_card_progress.dart';
@@ -52,12 +53,10 @@ class ReviewCardView extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
-        SelectionArea(
-          child: Text(
-            item.prompt,
-            key: const Key('review.session.prompt'),
-            style: textTheme.titleMedium,
-          ),
+        MarkdownText(
+          item.prompt,
+          textKey: const Key('review.session.prompt'),
+          style: textTheme.titleMedium,
         ),
         const SizedBox(height: AppSpacing.lg),
         if (card.revealed)
@@ -241,12 +240,13 @@ class _RevealedAnswerState extends State<_RevealedAnswer> {
       children: [
         if (answer.isNotEmpty) ...[
           SectionTitle(l10n.reviewSessionMyAnswer),
-          SelectionArea(child: Text(widget.card.answerText)),
+          MarkdownText(widget.card.answerText),
           const Divider(height: AppSpacing.xl),
         ],
         Focus(focusNode: _expectedFocus, child: SectionTitle(l10n.reviewSessionExpected)),
-        SelectionArea(
-          child: Text(item.expectedAnswer, key: const Key('review.session.expectedAnswer')),
+        MarkdownText(
+          item.expectedAnswer,
+          textKey: const Key('review.session.expectedAnswer'),
         ),
         if (item.rubric.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
@@ -266,7 +266,11 @@ class _RevealedAnswerState extends State<_RevealedAnswer> {
         if (widget.submitting)
           SizedBox(
             height: RatingButtonRow.minHeight,
-            child: Center(child: CircularProgressIndicator(semanticsLabel: l10n.commonSubmitting)),
+            child: Center(
+              child: SelectionContainer.disabled(
+                child: CircularProgressIndicator(semanticsLabel: l10n.commonSubmitting),
+              ),
+            ),
           )
         else
           RatingButtonRow(enabled: true, onRate: widget.onRate),

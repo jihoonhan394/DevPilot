@@ -46,7 +46,7 @@ class _SessionLoadingView extends StatelessWidget {
           children: [
             Text(l10n.appTitle, style: textTheme.displaySmall),
             const SizedBox(height: AppSpacing.xl),
-            const CircularProgressIndicator(),
+            const SelectionContainer.disabled(child: CircularProgressIndicator()),
             const SizedBox(height: AppSpacing.lg),
             Text(
               l10n.authCallbackLoading,

@@ -68,7 +68,7 @@ class _LoadMoreFooterState extends State<LoadMoreFooter> {
     if (widget.hasMore) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: SelectionContainer.disabled(child: CircularProgressIndicator())),
       );
     }
     return const SizedBox.shrink();

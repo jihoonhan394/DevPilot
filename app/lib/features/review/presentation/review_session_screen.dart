@@ -48,11 +48,13 @@ class ReviewSessionScreen extends ConsumerWidget {
             ? null
             : PreferredSize(
                 preferredSize: const Size.fromHeight(4),
-                child: LinearProgressIndicator(
-                  value: data.index / data.cards.length,
-                  semanticsLabel: l10n.reviewSessionProgressSemantics(
-                    _position(data),
-                    data.cards.length,
+                child: SelectionContainer.disabled(
+                  child: LinearProgressIndicator(
+                    value: data.index / data.cards.length,
+                    semanticsLabel: l10n.reviewSessionProgressSemantics(
+                      _position(data),
+                      data.cards.length,
+                    ),
                   ),
                 ),
               ),

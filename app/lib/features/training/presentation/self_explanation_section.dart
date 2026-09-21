@@ -33,9 +33,7 @@ class SelfExplanationSection extends ConsumerWidget {
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: SelectionArea(
-              child: Text(attempt.selfExplanation ?? l10n.trainingSelfExplainSkipped),
-            ),
+            child: Text(attempt.selfExplanation ?? l10n.trainingSelfExplainSkipped),
           ),
         ],
       );

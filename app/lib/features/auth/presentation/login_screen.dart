@@ -163,7 +163,9 @@ class _SubmitButton extends StatelessWidget {
           child: isSubmitting
               ? const SizedBox.square(
                   dimension: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: SelectionContainer.disabled(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 )
               : Text(AppLocalizations.of(context).loginButton),
         );

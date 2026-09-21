@@ -5,6 +5,7 @@ import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/theme/devpilot_colors.dart';
 import 'package:devpilot_app/core/time/local_date.dart';
 import 'package:devpilot_app/core/widgets/badges.dart';
+import 'package:devpilot_app/core/widgets/markdown_text.dart';
 import 'package:devpilot_app/core/widgets/status_badge.dart';
 import 'package:devpilot_app/features/rubber_duck/data/rubber_duck_enums.dart';
 import 'package:devpilot_app/features/settings/data/me_provider.dart';
@@ -141,15 +142,13 @@ class _RubricRow extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
-            child: SelectionArea(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(item.criterion),
-                  if (quote != null && quote.isNotEmpty)
-                    Text('"$quote"', style: Theme.of(context).textTheme.bodySmall),
-                ],
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                MarkdownText(item.criterion),
+                if (quote != null && quote.isNotEmpty)
+                  MarkdownText('"$quote"', style: Theme.of(context).textTheme.bodySmall),
+              ],
             ),
           ),
         ],

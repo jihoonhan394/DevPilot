@@ -42,7 +42,8 @@ void main() {
     await tapKey(tester, 'training.challenge.$challengeId');
     expect(locationOf(tester), AppRoutes.challengeDetail(challengeId));
     expect(find.text('파일에서 설정값을 읽는 유틸리티가 모든 예외를 삼키고 null을 반환한다.'), findsOneWidget);
-    expect(find.text('• JDK만 사용'), findsOneWidget);
+    // The constraint is a Markdown list item now, so the bullet is drawn, not typed.
+    expect(find.text('JDK만 사용'), findsOneWidget);
   });
 
   testWidgets('shouldShowTheEmptyStateWithTodayButton', (tester) async {

@@ -1,4 +1,5 @@
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
+import 'package:devpilot_app/core/widgets/markdown_text.dart';
 import 'package:devpilot_app/features/today/data/reading_models.dart';
 import 'package:devpilot_app/features/today/data/reading_repository.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
@@ -90,7 +91,7 @@ class _ConceptReadingBlock extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const ExcludeSemantics(child: Text('•  ')),
-                      Expanded(child: Text(point)),
+                      Expanded(child: MarkdownText(point)),
                     ],
                   ),
                 ),

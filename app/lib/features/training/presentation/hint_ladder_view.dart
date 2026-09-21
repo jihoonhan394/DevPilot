@@ -6,6 +6,7 @@ import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/widgets/ai_status_widgets.dart';
 import 'package:devpilot_app/core/widgets/badges.dart';
 import 'package:devpilot_app/core/widgets/inline_error.dart';
+import 'package:devpilot_app/core/widgets/markdown_text.dart';
 import 'package:devpilot_app/core/widgets/screen_body.dart';
 import 'package:devpilot_app/features/review/data/review_enums.dart';
 import 'package:devpilot_app/features/settings/data/me_provider.dart';
@@ -157,7 +158,7 @@ class _DisclosedRung extends StatelessWidget {
           alignment: Alignment.centerLeft,
           child: Semantics(
             liveRegion: true,
-            child: SelectionArea(child: Text(hint.content)),
+            child: MarkdownText(hint.content),
           ),
         ),
       ],
@@ -207,7 +208,9 @@ class _NextRung extends ConsumerWidget {
               children: [
                 const SizedBox.square(
                   dimension: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: SelectionContainer.disabled(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 if (aiLevel) Expanded(child: Text(l10n.trainingHintGenerating)),

@@ -42,7 +42,9 @@ class AsyncStatusIndicator extends StatelessWidget {
                 dimension: 20,
                 child: stalled
                     ? Icon(Icons.info_outline, size: 20, color: colorScheme.onSurfaceVariant)
-                    : const CircularProgressIndicator(strokeWidth: 2),
+                    : const SelectionContainer.disabled(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
