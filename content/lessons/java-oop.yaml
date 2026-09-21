@@ -1,0 +1,596 @@
+# DevPilot 개념 노트 — 자바 객체지향 기초
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 입문 트랙(JAVA_BACKEND_STARTER)의 첫 마일스톤 MUST다. 용어를 먼저 풀어 쓴다
+# - 예제는 주문 시스템 상황으로 쓴다 (CV-134)
+lessons:
+  - key: LESSON.JAVA.OOP.001
+    skillCode: JAVA.OOP
+    title: 상태와 행동을 한 덩어리로 (자바 객체지향)
+    whyItMatters: |-
+      자바로 짠 코드는 전부 클래스 안에 들어 있다. 그런데 "클래스를 어떻게 나눌지"를 모르면
+      한 클래스에 전부 몰아넣게 되고, 조금만 고쳐도 다른 데가 깨진다.
+      나눌 줄 알면 고칠 자리가 한 곳으로 좁아지고, 테스트에서 가짜를 끼워 넣을 수도 있다.
+      주문 시스템의 상품·주문·결제가 각각 어디까지 책임지는지가 전부 여기서 갈린다.
+    oneLine: 객체는 상태와 행동을 함께 담은 덩어리이고, 클래스는 그 덩어리를 찍어 내는 틀이다.
+    units:
+      - key: LESSON.JAVA.OOP.001.U1
+        title: 상태와 행동을 한 덩어리로 묶기
+        minutes: 10
+        core: true
+        explain: |-
+          공식 튜토리얼은 객체를 **"서로 관련된 상태와 행동을 묶어 놓은 소프트웨어 덩어리"**,
+          클래스를 **"객체를 만들어 내는 설계도"** 라고 정의한다.
+
+          왜 묶나. 주문의 수량과 "수량을 바꾸는 규칙"이 따로 떨어져 있으면,
+          수량을 바꾸는 코드가 여기저기 생기고 **어느 것이 규칙을 지켰는지 알 수 없다.**
+          한 덩어리로 묶고 밖에서는 정해진 행동으로만 만지게 하면, 규칙은 한 곳에만 있으면 된다.
+
+          그 "밖에서 못 만지게" 하는 장치가 접근 제어자다. 공식 문서의 권고는 분명하다 —
+          **"뜻이 통하는 한 가장 제한적인 수준을 쓰고, 그러지 않을 이유가 없으면 `private`을 쓴다"**,
+          그리고 **"상수를 빼고는 `public` 필드를 피하라"**.
+
+          | 제어자 | 같은 클래스 | 같은 패키지 | 하위 클래스 | 그 밖 |
+          |---|---|---|---|---|
+          | `public` | O | O | O | O |
+          | `protected` | O | O | O | X |
+          | (없음) | O | O | X | X |
+          | `private` | O | X | X | X |
+        example:
+          language: java
+          code: |-
+            public class OrderLine {
+
+                private final String productName;
+                private int quantity;              // 밖에서 직접 못 바꾼다
+
+                public OrderLine(String productName, int quantity) {
+                    this.productName = productName;
+                    changeQuantity(quantity);       // 만들 때도 같은 규칙을 지난다
+                }
+
+                public void changeQuantity(int quantity) {
+                    if (quantity < 1) {             // 규칙이 여기 한 곳에만 있다
+                        throw new IllegalArgumentException("수량은 1개 이상이어야 한다");
+                    }
+                    this.quantity = quantity;
+                }
+
+                public int quantity() {
+                    return quantity;
+                }
+            }
+          output: |-
+            new OrderLine("키보드", 2)   → 만들어진다
+            line.changeQuantity(0)       → IllegalArgumentException
+            line.quantity = 0            → 컴파일 오류 (private)
+          note: |-
+            - '`private int quantity` — 밖에서는 손댈 수 없다'
+            - '`changeQuantity` — 바꾸는 **유일한 문**이고 규칙이 그 안에 있다'
+            - '생성자도 그 문을 지나간다 — 만들 때만 규칙을 빠져나가는 구멍을 막는다'
+        predict:
+          question: '`quantity`를 `public int quantity`로 바꾸면 어떤 일이 생기나?'
+          choices:
+            - 밖에서 line.quantity = 0 이 가능해져 규칙을 건너뛴다
+            - changeQuantity가 더 이상 컴파일되지 않는다
+            - 아무 차이 없다. 규칙은 그대로 지켜진다
+            - 생성자를 쓸 수 없게 된다
+          answer: 밖에서 line.quantity = 0 이 가능해져 규칙을 건너뛴다
+          explanation: |-
+            `public` 필드는 누구나 직접 대입할 수 있다. 그러면 `changeQuantity` 안의 검사를
+            **지나가지 않고** 값이 바뀐다. 규칙이 한 곳에 있다는 보장이 깨지는 것이다.
+            공식 문서가 "상수를 빼고 `public` 필드를 피하라"고 하는 이유가 이것이다.
+        complete:
+          question: 상품 가격이 음수가 되지 않도록 빈칸을 채우세요.
+          code: |-
+            public class Product {
+
+                ___ int price;
+
+                public void changePrice(int price) {
+                    if (price ___ 0) {
+                        throw new IllegalArgumentException("가격은 0원 이상이어야 한다");
+                    }
+                    this.price = price;
+                }
+            }
+          answers:
+            - [private]
+            - ["<"]
+          explanation: |-
+            필드는 `private`으로 닫아야 밖에서 규칙을 건너뛰지 못한다.
+            0원은 허용하므로 막을 것은 **0보다 작을 때**, 즉 `price < 0`이다.
+        problem:
+          prompt: |-
+            주문 시스템의 `Coupon` 클래스를 백지에서 작성하세요.
+
+            - 할인율(`discountRate`, 퍼센트)과 사용 여부(`used`)를 갖는다
+            - 할인율은 **1~50** 사이여야 하고, 만든 뒤에는 바뀌지 않는다
+            - `use()`를 부르면 사용 처리된다. **이미 쓴 쿠폰을 또 쓰면** `IllegalStateException`을 던진다
+            - 밖에서는 필드에 직접 손댈 수 없어야 한다
+          deliverables:
+            - 클래스 전체 코드
+            - 각 필드에 그 접근 제어자와 `final` 여부를 고른 이유 한 줄씩
+          hints:
+            - '"만든 뒤에는 바뀌지 않는다"를 자바 문법 하나로 표현할 수 있습니다.'
+            - 규칙을 어기는 값은 **객체가 만들어지기 전에** 막는 것이 좋습니다. 그 자리가 어디일까요?
+            - 이미 쓴 쿠폰인지 아닌지는 값을 바꾸기 **전에** 확인해야 합니다.
+          modelAnswer: |-
+            ```java
+            public class Coupon {
+
+                private final int discountRate;
+                private boolean used;
+
+                public Coupon(int discountRate) {
+                    if (discountRate < 1 || discountRate > 50) {
+                        throw new IllegalArgumentException("할인율은 1~50 사이여야 한다");
+                    }
+                    this.discountRate = discountRate;
+                }
+
+                public void use() {
+                    if (used) {
+                        throw new IllegalStateException("이미 사용한 쿠폰이다");
+                    }
+                    used = true;
+                }
+
+                public int discountRate() {
+                    return discountRate;
+                }
+
+                public boolean isUsed() {
+                    return used;
+                }
+            }
+            ```
+
+            - '`private final int discountRate` — 밖에서 못 만지고(`private`), 만든 뒤 바뀌지 않는다(`final`).'
+            - '`private boolean used` — 바뀌어야 하므로 `final`이 아니고, 바꾸는 문은 `use()` 하나뿐이다.'
+          selfChecks:
+            - 두 필드가 모두 `private`이고 할인율이 `final`인가
+            - 범위 검사가 생성자 안에 있어 잘못된 쿠폰이 아예 만들어지지 않는가
+            - '`use()`가 값을 바꾸기 **전에** 이미 썼는지 확인하는가'
+
+      - key: LESSON.JAVA.OOP.001.U2
+        title: 약속만 정하고 방법은 나중에 (인터페이스)
+        minutes: 12
+        core: true
+        explain: |-
+          공식 튜토리얼은 인터페이스를 **"클래스와 바깥 세상 사이의 계약"** 이라고 정의한다.
+          "무엇을 할 수 있는지"만 적고 "어떻게 하는지"는 적지 않는다.
+
+          그리고 **"인스턴스로 만들 수 있는 클래스가 인터페이스를 구현하면, 그 인터페이스에 선언된
+          메서드마다 본문을 제공한다"** — 즉 약속한 것은 전부 채워야 한다. 하나라도 빠지면 컴파일되지 않는다.
+
+          왜 쓰나. 결제 방법이 카드 하나일 때는 필요 없다. 그런데 계좌이체가 생기고 포인트가 생기면,
+          `OrderService` 안의 `if (카드) … else if (계좌) …`가 결제 수단이 늘 때마다 길어진다.
+          인터페이스를 두면 `OrderService`는 **`PaymentMethod`만 알면 되고**, 수단이 늘어도 고치지 않는다.
+
+          여기서 중요한 것은 인터페이스가 **쓰는 쪽을 위한 것**이라는 점이다.
+          구현을 묶으려고 만드는 게 아니라, 쓰는 쪽이 구현을 몰라도 되게 하려고 만든다.
+        example:
+          language: java
+          code: |-
+            public interface PaymentMethod {
+                boolean pay(int amount);        // 약속: 금액을 받아 성공 여부를 준다
+            }
+
+            public class CardPayment implements PaymentMethod {
+                @Override
+                public boolean pay(int amount) {
+                    // 카드사에 승인을 요청한다
+                    return true;
+                }
+            }
+
+            public class PointPayment implements PaymentMethod {
+                @Override
+                public boolean pay(int amount) {
+                    // 보유 포인트에서 차감한다
+                    return true;
+                }
+            }
+
+            public class OrderService {
+                // 어느 수단인지 모른다. 알 필요도 없다
+                public void placeOrder(PaymentMethod paymentMethod, int amount) {
+                    if (!paymentMethod.pay(amount)) {
+                        throw new IllegalStateException("결제 실패");
+                    }
+                }
+            }
+          output: |-
+            결제 수단이 하나 더 늘어도
+              → PaymentMethod 를 구현하는 클래스를 하나 추가
+              → OrderService 는 한 줄도 고치지 않는다
+          note: |-
+            - '`implements PaymentMethod` — 약속한 메서드를 전부 채우겠다는 선언'
+            - '`@Override` — 오타로 다른 메서드를 만들면 컴파일 오류로 잡아 준다'
+            - '`OrderService`의 파라미터 타입이 인터페이스라는 점이 핵심이다'
+        predict:
+          question: '`CardPayment`에서 `pay` 메서드를 지우면 어떻게 되나?'
+          choices:
+            - 컴파일 오류다. 약속한 메서드를 채우지 않았다
+            - 실행할 때 NullPointerException이 난다
+            - 인터페이스의 빈 본문이 대신 불린다
+            - 경고만 나고 컴파일은 된다
+          answer: 컴파일 오류다. 약속한 메서드를 채우지 않았다
+          explanation: |-
+            인스턴스로 만들 수 있는 클래스가 인터페이스를 구현하면 **선언된 메서드마다 본문을 제공해야** 한다.
+            빠지면 컴파일 단계에서 막힌다 — 실행까지 가지 않는다.
+            (본문을 채울 준비가 안 됐으면 클래스를 `abstract`로 선언하는 길도 있다.)
+        complete:
+          question: 배송 방법을 인터페이스로 두고 택배로 구현하도록 빈칸을 채우세요.
+          code: |-
+            public ___ DeliveryMethod {
+                int estimatedDays();
+            }
+
+            public class ParcelDelivery ___ DeliveryMethod {
+                @Override
+                public int estimatedDays() {
+                    return 2;
+                }
+            }
+          answers:
+            - [interface]
+            - [implements]
+          explanation: |-
+            약속을 정하는 쪽은 `interface`, 그 약속을 채우는 클래스는 `implements`다.
+            (클래스를 물려받을 때 쓰는 `extends`와 헷갈리지 않도록 한다.)
+        problem:
+          prompt: |-
+            아래 코드는 알림 수단이 늘 때마다 `NotificationService`를 고쳐야 합니다.
+            인터페이스를 써서 **수단이 늘어도 이 클래스를 고치지 않아도 되게** 바꾸세요.
+
+            ```java
+            public class NotificationService {
+                public void notify(String type, String message) {
+                    if (type.equals("SMS")) {
+                        // 문자를 보낸다
+                    } else if (type.equals("EMAIL")) {
+                        // 메일을 보낸다
+                    }
+                }
+            }
+            ```
+          deliverables:
+            - 인터페이스 1개와 구현 2개, 그리고 고친 NotificationService
+            - 카카오톡 알림이 추가될 때 어느 파일을 새로 만들고 어느 파일을 고치는지 한 줄
+          hints:
+            - '`if` 가지마다 하는 일이 다릅니다. 그 "다른 일"을 각각 어디로 옮기면 좋을까요?'
+            - 공통으로 뽑을 수 있는 약속이 무엇인지 먼저 한 줄로 적어 보세요 — "메시지를 보낸다".
+            - 고친 `NotificationService`에는 `if`와 문자열 비교가 남아 있으면 안 됩니다.
+          modelAnswer: |-
+            ```java
+            public interface Notifier {
+                void send(String message);
+            }
+
+            public class SmsNotifier implements Notifier {
+                @Override
+                public void send(String message) { /* 문자를 보낸다 */ }
+            }
+
+            public class EmailNotifier implements Notifier {
+                @Override
+                public void send(String message) { /* 메일을 보낸다 */ }
+            }
+
+            public class NotificationService {
+                public void notify(Notifier notifier, String message) {
+                    notifier.send(message);
+                }
+            }
+            ```
+
+            - '카카오톡이 추가되면 `KakaoNotifier`를 **새로 만들기만** 하면 된다. `NotificationService`는 고치지 않는다.'
+          selfChecks:
+            - 고친 `NotificationService`에 `if`와 문자열 비교가 사라졌는가
+            - 두 구현 클래스가 같은 인터페이스를 구현하고 `@Override`를 붙였는가
+            - '`NotificationService`가 어느 구체 클래스도 이름으로 알지 못하는가'
+
+      - key: LESSON.JAVA.OOP.001.U3
+        title: 같은 이름, 다른 행동 (다형성)
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.JAVA.OOP.001.U2
+        explain: |-
+          U2에서 `PaymentMethod` 하나로 여러 수단을 다뤘다. 그게 되는 이유가 **다형성**이다.
+
+          공식 튜토리얼은 이렇게 설명한다 — **"JVM은 각 변수가 가리키는 그 객체에 알맞은 메서드를 부른다.
+          변수의 타입에 정의된 메서드를 부르는 것이 아니다."** 이것을 가상 메서드 호출이라고 부른다.
+
+          말이 어려우니 나눠 보자. 변수에는 타입이 둘 있다.
+
+          - **선언 타입** — 변수를 적을 때 쓴 타입. `PaymentMethod method`의 `PaymentMethod`
+          - **실제 타입** — 그 변수에 실제로 들어간 객체. `new CardPayment()`의 `CardPayment`
+
+          **부를 수 있는 메서드는 선언 타입이 정하고, 실제로 실행되는 본문은 실제 타입이 정한다.**
+          그래서 `PaymentMethod`로 선언하면 `pay()`만 부를 수 있지만, 실행되는 것은 `CardPayment.pay()`다.
+
+          하위 클래스에서 같은 서명으로 메서드를 다시 쓰는 것을 **재정의(override)** 라고 한다.
+          부모 것을 쓰고 싶으면 `super.메서드()`로 부른다.
+        example:
+          language: java
+          code: |-
+            List<PaymentMethod> methods = List.of(new CardPayment(), new PointPayment());
+
+            for (PaymentMethod method : methods) {
+                method.pay(10_000);     // 같은 줄인데 실행되는 본문이 다르다
+            }
+
+            PaymentMethod method = new CardPayment();
+            method.pay(10_000);          // OK — 선언 타입에 있는 메서드
+            method.cancel();             // 컴파일 오류 — CardPayment 에만 있다면
+          output: |-
+            반복문 1회차 → CardPayment.pay 가 실행된다
+            반복문 2회차 → PointPayment.pay 가 실행된다
+
+            부를 수 있는가  → 선언 타입(PaymentMethod)이 정한다
+            무엇이 실행되나 → 실제 타입(CardPayment)이 정한다
+          note: |-
+            - '`for` 안의 코드는 수단이 몇 개로 늘어도 그대로다'
+            - '`method.cancel()`이 막히는 이유: 컴파일러는 선언 타입만 보고 판단한다'
+            - '정말 필요하면 `instanceof`로 좁힐 수 있지만, 자주 쓰면 인터페이스를 잘못 나눈 신호다'
+        predict:
+          question: '`Object o = "안녕"; o.length();` 는 어떻게 되나?'
+          choices:
+            - 컴파일 오류다. Object에는 length()가 없다
+            - 2가 나온다. 실제 타입이 String이다
+            - 실행할 때 예외가 난다
+            - 0이 나온다
+          answer: 컴파일 오류다. Object에는 length()가 없다
+          explanation: |-
+            실제로 들어 있는 것은 `String`이 맞다. 하지만 **부를 수 있는지는 선언 타입이 정한다.**
+            선언 타입이 `Object`이므로 `length()`는 보이지 않아 컴파일 단계에서 막힌다.
+            `((String) o).length()`처럼 타입을 좁혀 주면 2가 나온다.
+        complete:
+          question: 부모의 설명을 먼저 출력한 뒤 자기 설명을 덧붙이도록 빈칸을 채우세요.
+          code: |-
+            public class MountainBike extends Bicycle {
+
+                @___
+                public void printDescription() {
+                    ___.printDescription();
+                    System.out.println("산악자전거입니다");
+                }
+            }
+          answers:
+            - [Override]
+            - [super]
+          explanation: |-
+            재정의임을 밝히는 것은 `@Override`(오타를 컴파일 단계에서 잡아 준다),
+            부모의 같은 메서드를 부르는 것은 `super`다.
+        problem:
+          prompt: |-
+            주문 시스템의 배송비 계산이 아래처럼 되어 있습니다.
+
+            ```java
+            public int deliveryFee(String grade, int amount) {
+                if (grade.equals("NORMAL")) {
+                    return amount >= 30_000 ? 0 : 3_000;
+                } else if (grade.equals("VIP")) {
+                    return 0;
+                }
+                return 3_000;
+            }
+            ```
+
+            다형성을 써서 등급이 늘어도 이 메서드를 고치지 않아도 되게 바꾸고,
+            **왜 `if`가 사라졌는지**를 선언 타입과 실제 타입이라는 말로 설명하세요.
+          deliverables:
+            - 바꾼 코드 (인터페이스 또는 추상 클래스 + 구현들 + 쓰는 쪽)
+            - 왜 if가 필요 없어졌는지 선언 타입·실제 타입으로 설명한 두세 줄
+          hints:
+            - '`if` 가지 하나가 곧 등급 하나입니다. 각 가지의 계산을 어디로 옮기면 좋을까요?'
+            - 쓰는 쪽이 등급 문자열을 아예 모르게 만들 수 있으면 성공입니다.
+            - 설명할 때 "부를 수 있는 것"과 "실행되는 것"을 나눠서 말해 보세요.
+          modelAnswer: |-
+            ```java
+            public interface DeliveryFeePolicy {
+                int feeFor(int amount);
+            }
+
+            public class NormalFeePolicy implements DeliveryFeePolicy {
+                @Override
+                public int feeFor(int amount) {
+                    return amount >= 30_000 ? 0 : 3_000;
+                }
+            }
+
+            public class VipFeePolicy implements DeliveryFeePolicy {
+                @Override
+                public int feeFor(int amount) {
+                    return 0;
+                }
+            }
+
+            // 쓰는 쪽 — 등급 문자열을 모른다
+            public int deliveryFee(DeliveryFeePolicy policy, int amount) {
+                return policy.feeFor(amount);
+            }
+            ```
+
+            **왜 `if`가 사라졌나**: 파라미터의 **선언 타입**이 `DeliveryFeePolicy`이므로 이 메서드가
+            부를 수 있는 것은 `feeFor` 하나뿐이다. 그런데 실제로 실행되는 본문은 그 자리에 들어온
+            객체의 **실제 타입**이 정한다. 즉 "어느 계산을 쓸지" 고르는 일을 `if`가 아니라
+            **객체를 넣는 쪽**이 이미 해 준 것이다. 등급이 늘면 구현을 하나 더 만들면 된다.
+          selfChecks:
+            - 쓰는 쪽 메서드에 `if`와 등급 문자열이 사라졌는가
+            - 등급이 하나 늘 때 새 파일만 추가하면 되는 구조인가
+            - 설명에 **선언 타입**과 **실제 타입**이 둘 다 나오고 역할이 바르게 갈렸는가
+
+      - key: LESSON.JAVA.OOP.001.U4
+        title: 물려받기와 담아 쓰기 중에 고르기
+        minutes: 12
+        core: false
+        prerequisiteUnits:
+          - LESSON.JAVA.OOP.001.U3
+        explain: |-
+          기능을 재사용하는 길은 둘이다.
+
+          - **상속(inheritance)** — 부모 클래스를 `extends`로 물려받는다. 공식 튜토리얼은 상속을
+            "소프트웨어를 조직하고 구조화하는 강력하고 자연스러운 장치"라고 소개한다
+          - **합성(composition)** — 쓰고 싶은 객체를 **필드로 들고** 필요한 것만 불러 쓴다
+
+          상속은 강하다. 부모의 `protected`·`public` 멤버가 전부 딸려 오고,
+          부모가 바뀌면 자식이 같이 흔들린다. 게다가 자바는 **클래스를 하나만 물려받을 수 있다.**
+
+          고르는 기준은 한 문장으로 된다. **"~는 ~이다"면 상속, "~는 ~를 가진다"면 합성.**
+          `MountainBike`는 `Bicycle`**이다** → 상속. `OrderService`는 `OrderRepository`를 **가진다** → 합성.
+
+          실무에서 더 자주 맞는 쪽은 합성이다. 부모를 물려받으면 **부모의 모든 공개 메서드가 내 것처럼
+          밖에 노출된다** — 원하지 않는 것까지. 합성은 필요한 것만 골라 열 수 있다.
+
+          여러 역할을 한 클래스가 갖게 하고 싶다면 인터페이스를 여러 개 구현하면 된다(U2).
+        example:
+          language: java
+          code: |-
+            // 나쁜 상속: Stack 은 ArrayList "가 아니다"
+            public class Stack<E> extends ArrayList<E> {
+                public void push(E item) { add(item); }
+                // add(0, item) 으로 밑에 끼워 넣는 것도 밖에서 가능해진다
+            }
+
+            // 합성: 필요한 것만 연다
+            public class Stack<E> {
+                private final List<E> items = new ArrayList<>();
+
+                public void push(E item) { items.add(item); }
+
+                public E pop() { return items.remove(items.size() - 1); }
+                // items 자체는 밖으로 나가지 않는다
+            }
+          output: |-
+            상속판 → stack.add(0, x) 가 가능하다. 스택의 규칙이 깨진다
+            합성판 → push / pop 만 열려 있다. 규칙이 지켜진다
+          note: |-
+            - '물려받으면 부모의 공개 메서드가 **전부** 내 얼굴이 된다'
+            - '합성은 `private` 필드로 들고 있으므로 무엇을 열지 내가 고른다'
+            - '"~는 ~이다"가 어색하게 들리면 그 상속은 대개 잘못된 것이다'
+        predict:
+          question: '`class Stack<E> extends ArrayList<E>`에서 `stack.add(0, x)`를 부를 수 있나?'
+          choices:
+            - 부를 수 있다. 부모의 공개 메서드가 그대로 노출된다
+            - 부를 수 없다. Stack이 막아 준다
+            - 컴파일은 되지만 실행할 때 예외가 난다
+            - private 이므로 보이지 않는다
+          answer: 부를 수 있다. 부모의 공개 메서드가 그대로 노출된다
+          explanation: |-
+            상속하면 부모의 `public` 메서드가 전부 자식의 공개 API가 된다.
+            `ArrayList`의 `add(int, E)`도 그중 하나라서 **스택 한가운데에 값을 끼워 넣을 수 있다.**
+            스택이라는 약속이 깨지는 것이다. 합성이면 `push`·`pop`만 열면 된다.
+        complete:
+          question: 주문 서비스가 리포지터리를 합성으로 들고 쓰도록 빈칸을 채우세요.
+          code: |-
+            public class OrderService {
+
+                private ___ OrderRepository orderRepository;
+
+                public OrderService(OrderRepository orderRepository) {
+                    this.___ = orderRepository;
+                }
+            }
+          answers:
+            - [final]
+            - [orderRepository]
+          explanation: |-
+            한 번 받은 뒤 바뀌지 않으므로 `final`, 필드에 넣을 때는 `this.orderRepository`다.
+            `extends OrderRepository`가 아니라 **필드로 들고 있는 것**이 합성이다.
+        problem:
+          prompt: |-
+            동료가 회원 등급별 할인을 이렇게 만들었습니다.
+
+            ```java
+            public class VipMember extends Member {
+                @Override
+                public int discountRate() { return 10; }
+            }
+
+            public class VvipMember extends VipMember {
+                @Override
+                public int discountRate() { return 20; }
+            }
+            ```
+
+            등급이 바뀌는 회원(VIP → VVIP)이 생기자 곤란해졌습니다.
+            왜 곤란한지 설명하고, 합성으로 바꾸세요.
+          deliverables:
+            - 상속으로 두면 왜 곤란한지 한두 줄
+            - 합성으로 바꾼 코드 (등급이 바뀌는 장면까지 보이게)
+          hints:
+            - 자바에서 이미 만들어진 객체의 **클래스를 바꿀 수 있나요?**
+            - 등급은 회원"이다"일까요, 회원이 등급을 "가진다"일까요?
+            - 바뀌는 것을 필드로 들면 무엇을 갈아 끼울 수 있게 되는지 생각해 보세요.
+          modelAnswer: |-
+            **왜 곤란한가**: 자바에서 객체의 클래스는 만든 뒤 바꿀 수 없다.
+            등급을 클래스로 표현하면 등급이 바뀔 때 **회원을 새로 만들어야** 하고,
+            그 회원이 갖고 있던 주문 이력·식별자를 옮겨 붙이는 일이 따라온다.
+            게다가 "회원은 VIP이다"보다 "회원은 VIP 등급을 가진다"가 사실에 가깝다.
+
+            ```java
+            public interface Grade {
+                int discountRate();
+            }
+
+            public class VipGrade implements Grade {
+                @Override
+                public int discountRate() { return 10; }
+            }
+
+            public class VvipGrade implements Grade {
+                @Override
+                public int discountRate() { return 20; }
+            }
+
+            public class Member {
+                private Grade grade;                       // 가진다
+
+                public Member(Grade grade) { this.grade = grade; }
+
+                public void changeGrade(Grade grade) {     // 갈아 끼운다
+                    this.grade = grade;
+                }
+
+                public int discountRate() {
+                    return grade.discountRate();
+                }
+            }
+            ```
+
+            이제 등급이 바뀌어도 회원은 그대로다 — `member.changeGrade(new VvipGrade())`.
+          selfChecks:
+            - '"클래스는 바꿀 수 없다"를 곤란한 이유로 짚었는가'
+            - '`Member`가 등급을 `extends`가 아니라 **필드로** 들고 있는가'
+            - 등급을 바꾸는 메서드가 있고, 그때 회원 객체를 새로 만들지 않는가
+
+    commonMistakes:
+      - 필드를 `public`으로 열어 두고 규칙은 메서드 안에만 둔다. 밖에서 대입하면 규칙을 그냥 지나간다 (U1)
+      - '"~는 ~이다"가 아닌데 코드를 재사용하려고 `extends`를 쓴다. 부모의 공개 메서드가 전부 노출된다 (U4)'
+      - 선언 타입과 실제 타입을 섞어 생각한다. 부를 수 있는지는 선언 타입, 실행되는 본문은 실제 타입이다 (U3)
+    inProject: |-
+      주문 시스템에서 이 넷이 순서대로 쓰인다. 먼저 `Order`·`OrderLine`·`Product`를
+      상태와 규칙이 같이 있는 덩어리로 만들고(U1), 결제·배송처럼 **방식이 여러 개인 자리**를
+      인터페이스로 뽑는다(U2). 그러면 `OrderService`는 수단을 몰라도 되고(U3),
+      회원 등급처럼 **나중에 바뀌는 것**은 상속이 아니라 필드로 들고 갈아 끼운다(U4).
+      이 구조가 잡혀 있어야 나중에 스프링이 그 자리에 구현을 넣어 줄 수 있다.
+    sources:
+      - title: The Java Tutorials — Object-Oriented Programming Concepts
+        url: https://docs.oracle.com/javase/tutorial/java/concepts/index.html
+        versionScope: Java SE
+      - title: The Java Tutorials — Polymorphism
+        url: https://docs.oracle.com/javase/tutorial/java/IandI/polymorphism.html
+        versionScope: Java SE
+      - title: The Java Tutorials — Defining an Interface
+        url: https://docs.oracle.com/javase/tutorial/java/IandI/createinterface.html
+        versionScope: Java SE
+      - title: The Java Tutorials — Controlling Access to Members of a Class
+        url: https://docs.oracle.com/javase/tutorial/java/javaOO/accesscontrol.html
+        versionScope: Java SE
+    verifiedAt: 2026-09-22
