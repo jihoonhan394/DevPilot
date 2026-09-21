@@ -1,0 +1,584 @@
+# DevPilot 개념 노트 — Spring Data JPA
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 버전을 우리 것에 맞춘다: Spring Boot 4.1 / Hibernate 7 / PostgreSQL 16
+# - 예제는 주문 시스템(orders / order_lines / products) 상황으로 쓴다 (CV-134)
+lessons:
+  - key: LESSON.SPRING.DATA_JPA.001
+    skillCode: SPRING.DATA_JPA
+    title: 표를 객체처럼 다루기 (Spring Data JPA)
+    whyItMatters: |-
+      JPA는 SQL을 대신 써 주는 대신 **언제 무엇이 실행되는지를 감춘다.**
+      그래서 잘 돌아가다가 목록 화면 하나에서 갑자기 질의가 수백 번 나가고, 값을 바꿨는데 저장이 안 되거나
+      저장한 적 없는데 저장되어 있다. 이 셋의 원인은 전부 같다 — **영속성 컨텍스트를 모르는 것**이다.
+      주문 시스템의 저장 계층 전체가 이 규칙 위에 올라간다.
+    oneLine: JPA는 엔티티 객체와 DB 표를 이어 주고, 트랜잭션 동안 그 객체들을 스스로 지켜보다가 끝날 때 바뀐 것만 반영한다.
+    units:
+      - key: LESSON.SPRING.DATA_JPA.001.U1
+        title: 엔티티와 리포지터리
+        minutes: 10
+        core: true
+        explain: |-
+          `@Entity`를 붙인 클래스 하나가 표 하나에 대응한다. `@Id`가 기본 키다.
+
+          그 표를 다루는 문은 리포지터리다. `JpaRepository<Order, Long>`를 **인터페이스로** 선언하기만 하면
+          구현은 스프링이 만들어 준다 — `save`·`findById`·`findAll`·`delete`가 그냥 생긴다.
+
+          `save`가 하는 일을 공식 문서는 이렇게 적는다 — **"`CrudRepository.save(…)`는 JPA `EntityManager`를
+          써서 주어진 엔티티를 persist 하거나 merge 한다."** 즉 `save`는 "INSERT"가 아니라 **"넣거나 고친다"** 다.
+
+          둘 중 무엇인지는 **새 것인지**로 갈린다. 기본 판정은 이렇다 —
+          **"식별자 속성이 `null`이면 새 엔티티로 보고, 아니면 이미 있는 것으로 본다."**
+
+          그래서 흔한 사고가 하나 있다. id를 직접 채워서 `save`하면 스프링은 "이미 있는 것"으로 보고
+          merge를 하려다 **먼저 SELECT를 날린다.** 키를 직접 정해야 한다면 `Persistable`을 구현해
+          `isNew()`를 직접 알려 주는 길이 있다.
+        example:
+          language: java
+          code: |-
+            @Entity
+            @Table(name = "orders")
+            public class Order {
+
+                @Id
+                @GeneratedValue(strategy = GenerationType.IDENTITY)
+                private Long id;                       // null 이면 "새 것"
+
+                private Long customerId;
+                private int totalAmount;
+                private Instant canceledAt;
+
+                protected Order() { }                  // JPA 가 쓰는 기본 생성자
+            }
+
+            public interface OrderRepository extends JpaRepository<Order, Long> {
+                // 구현을 쓰지 않아도 save / findById / findAll 이 생긴다
+            }
+          output: |-
+            Order order = new Order(17, 42000);   // id = null
+            orderRepository.save(order);          // → INSERT
+            order.getId();                        // → 1024 (DB 가 채워 준다)
+
+            id 를 직접 채운 채 save 하면
+              → merge 경로 → SELECT 먼저 나간다
+          note: |-
+            - '`@Id` + `@GeneratedValue(IDENTITY)` — 키를 DB가 채운다. 그래서 저장 전 id는 `null`이다'
+            - '`protected Order()` — JPA가 객체를 만들 때 쓴다. `public`일 필요는 없다'
+            - '`save`는 INSERT 전용이 아니다. "새 것이냐"에 따라 갈린다'
+        predict:
+          question: '`@GeneratedValue` 없이 `order.setId(1024L)`로 직접 채운 뒤 `save`하면?'
+          choices:
+            - 이미 있는 것으로 보고 merge 한다. SELECT 가 먼저 나간다
+            - 그냥 INSERT 한다
+            - 예외가 난다
+            - id를 무시하고 새 키를 만든다
+          answer: 이미 있는 것으로 보고 merge 한다. SELECT 가 먼저 나간다
+          explanation: |-
+            기본 판정은 **식별자가 `null`이면 새 것**이다. 직접 채웠으니 `null`이 아니고,
+            그래서 "이미 있는 줄을 고치는 것"으로 보고 merge 경로를 탄다.
+            merge는 먼저 현재 상태를 읽어야 하므로 SELECT가 한 번 나간다.
+            대량으로 넣을 때 이게 쌓이면 눈에 띄게 느려진다.
+        complete:
+          question: 상품 표를 다루는 리포지터리를 선언하도록 빈칸을 채우세요.
+          code: |-
+            @Entity
+            public class Product {
+                @___
+                @GeneratedValue(strategy = GenerationType.IDENTITY)
+                private Long id;
+            }
+
+            public interface ProductRepository extends ___<Product, Long> { }
+          answers:
+            - [Id]
+            - [JpaRepository]
+          explanation: |-
+            기본 키를 가리키는 것은 `@Id`, 기본 메서드를 받아 오는 것은 `JpaRepository<엔티티, 키 타입>`이다.
+            구현 클래스는 만들지 않는다 — 스프링이 만들어 준다.
+        problem:
+          prompt: |-
+            주문 항목(`order_lines`) 표를 다루는 엔티티와 리포지터리를 백지에서 작성하세요.
+
+            ```text
+            order_lines(id, order_id, product_id, quantity)
+            ```
+
+            - 키는 DB가 채운다
+            - 수량은 1 이상이어야 한다 (객체를 만들 때 막는다)
+            - 리포지터리에는 기본 메서드만 있으면 된다
+          deliverables:
+            - 엔티티 클래스와 리포지터리 인터페이스
+            - 기본 생성자를 `protected`로 둔 이유 한 줄
+          hints:
+            - JPA는 객체를 만들 때 인자 없는 생성자를 씁니다. 그런데 밖에서는 못 쓰게 하고 싶습니다.
+            - 키를 DB가 채운다면 저장 전에는 무슨 값일까요?
+            - 규칙은 값이 들어오는 **유일한 문**에 둡니다.
+          modelAnswer: |-
+            ```java
+            @Entity
+            @Table(name = "order_lines")
+            public class OrderLine {
+
+                @Id
+                @GeneratedValue(strategy = GenerationType.IDENTITY)
+                private Long id;
+
+                private Long orderId;
+                private Long productId;
+                private int quantity;
+
+                protected OrderLine() { }          // JPA 전용
+
+                public OrderLine(Long orderId, Long productId, int quantity) {
+                    if (quantity < 1) {
+                        throw new IllegalArgumentException("수량은 1개 이상이어야 한다");
+                    }
+                    this.orderId = orderId;
+                    this.productId = productId;
+                    this.quantity = quantity;
+                }
+            }
+
+            public interface OrderLineRepository extends JpaRepository<OrderLine, Long> { }
+            ```
+
+            - '기본 생성자를 `protected`로 둔 이유: JPA는 객체를 만들 때 인자 없는 생성자가 필요하다. 그렇다고 `public`으로 열면 **규칙을 건너뛴 빈 객체**를 아무나 만들 수 있으므로, JPA는 쓸 수 있고 밖에서는 못 쓰는 `protected`로 둔다.'
+          selfChecks:
+            - '`@Id`와 `@GeneratedValue`가 있고 id 타입이 `Long`(원시형이 아닌)인가'
+            - 수량 검사가 공개 생성자 안에 있는가
+            - 기본 생성자가 `protected`이고 리포지터리가 인터페이스인가
+
+      - key: LESSON.SPRING.DATA_JPA.001.U2
+        title: 메서드 이름으로 질의 만들기
+        minutes: 10
+        core: true
+        prerequisiteUnits:
+          - LESSON.SPRING.DATA_JPA.001.U1
+        explain: |-
+          리포지터리에 **메서드 이름만 적으면** 스프링이 질의를 만들어 준다.
+
+          공식 문서는 이름을 두 토막으로 읽는다고 설명한다 —
+          **"질의 메서드 이름 해석은 주어와 술어로 나뉜다. 앞부분(`find…By`, `exists…By`)이 주어를 정하고
+          뒷부분이 술어가 된다."** **첫 번째 `By`가 경계**다.
+
+          | 앞 토막 | 뜻 |
+          |---|---|
+          | `find…By` / `read…By` | 찾는다 |
+          | `exists…By` | 있는지만 본다 (`boolean`) |
+          | `count…By` | 개수를 센다 (`long`) |
+          | `delete…By` | 지운다 |
+
+          `By` 뒤는 필드 이름과 키워드를 이어 붙인다. 공식 문서는 **"`AND`·`OR`로 이을 수 있고
+          `Between`·`LessThan`·`GreaterThan`·`Like` 같은 연산자를 지원한다"** 고 적는다.
+          `OrderBy…Asc/Desc`로 정렬도 붙는다.
+
+          여기서 중요한 점 — **필드 이름이 틀리면 기동이 실패한다.** 실행할 때가 아니라 기동할 때다.
+          오타를 배포 전에 잡아 주는 셈이라 오히려 고맙다.
+
+          이름이 길어지면 읽기 어려워진다. 대략 **`And`가 둘을 넘으면** `@Query`로 JPQL을 직접 쓰는 편이 낫다.
+        example:
+          language: java
+          code: |-
+            public interface OrderRepository extends JpaRepository<Order, Long> {
+
+                List<Order> findByCustomerId(Long customerId);
+
+                List<Order> findByCustomerIdAndCanceledAtIsNull(Long customerId);
+
+                List<Order> findByTotalAmountGreaterThanOrderByOrderedAtDesc(int amount);
+
+                boolean existsByCustomerIdAndCanceledAtIsNull(Long customerId);
+
+                long countByCustomerId(Long customerId);
+
+                // 이름이 길어지면 이렇게
+                @Query("""
+                       select o from Order o
+                       where o.customerId = :customerId
+                         and o.canceledAt is null
+                         and o.totalAmount >= :minAmount
+                       """)
+                List<Order> findActiveOrdersOver(Long customerId, int minAmount);
+            }
+          output: |-
+            findByCustomerIdAndCanceledAtIsNull(17)
+              → select ... from orders where customer_id = 17 and canceled_at is null
+
+            필드 이름을 customerld (소문자 L) 로 잘못 적으면
+              → 기동 실패: No property 'customerld' found for type 'Order'
+          note: |-
+            - '`IsNull`·`IsNotNull`·`Between`·`Like`·`In` 같은 키워드가 그대로 조건이 된다'
+            - '`@Query`의 `Order`는 **표 이름이 아니라 엔티티 이름**이다 (JPQL이다)'
+            - '오타는 기동 때 걸린다 — 배포하고 나서 알게 되는 일이 없다'
+        predict:
+          question: '`findByCustomerIdAndCanceledAtIsNull`에서 `canceledAt` 필드를 `canceled_at`으로 오타 내면?'
+          choices:
+            - 기동이 실패한다. 그런 이름의 속성이 없다
+            - 실행할 때 예외가 난다
+            - 조건이 무시되고 전체가 나온다
+            - 컬럼 이름이라 그대로 동작한다
+          answer: 기동이 실패한다. 그런 이름의 속성이 없다
+          explanation: |-
+            메서드 이름은 **엔티티의 필드 이름**으로 해석된다(컬럼 이름이 아니다).
+            스프링은 기동할 때 리포지터리 메서드를 전부 해석해 보므로, 없는 이름이면 그 자리에서 실패한다.
+            실행 시점이 아니라 기동 시점에 걸리는 것이 이 방식의 장점이다.
+        complete:
+          question: 취소되지 않은 주문이 있는지만 확인하는 메서드가 되도록 빈칸을 채우세요.
+          code: |-
+            ___ ___ByCustomerIdAndCanceledAtIsNull(Long customerId);
+          answers:
+            - [boolean]
+            - [exists]
+          explanation: |-
+            "있는지만" 보는 것은 `exists…By`이고 반환 타입은 `boolean`이다.
+            목록을 받아 `isEmpty()`를 보는 것보다 낫다 — DB에서 한 줄만 확인하고 끝낸다.
+        problem:
+          prompt: |-
+            `OrderRepository`에 아래 네 가지를 **메서드 이름만으로** 추가하세요.
+
+            1. 어떤 회원의 취소되지 않은 주문을, 최근 주문 순으로
+            2. 금액이 두 값 사이인 주문
+            3. 어떤 회원의 주문 건수
+            4. 어떤 회원에게 취소되지 않은 주문이 있는지 (true/false)
+
+            그리고 이 중 **하나를 골라 `@Query`로 바꾸는 편이 나은 경우**를 고르고 이유를 쓰세요.
+          deliverables:
+            - 메서드 선언 4개 (반환 타입 포함)
+            - '`@Query`가 나을 것을 하나 고르고 이유'
+          hints:
+            - 앞 토막이 넷 다 다릅니다 — 찾기·세기·있는지 보기 중 무엇인지 먼저 정하세요.
+            - 두 값 사이를 뜻하는 키워드가 따로 있습니다.
+            - 이름이 길어지는 기준을 `And`의 개수로 잡아 보세요.
+          modelAnswer: |-
+            ```java
+            List<Order> findByCustomerIdAndCanceledAtIsNullOrderByOrderedAtDesc(Long customerId);
+
+            List<Order> findByTotalAmountBetween(int min, int max);
+
+            long countByCustomerId(Long customerId);
+
+            boolean existsByCustomerIdAndCanceledAtIsNull(Long customerId);
+            ```
+
+            - '`@Query`가 나은 것: **첫째**다. `And`와 `OrderBy`가 겹쳐 이름이 60자를 넘어가 무엇을 하는지 한눈에 안 들어온다. JPQL로 쓰면 조건이 줄로 나뉘어 읽기 쉽고, 나중에 조건을 하나 더해도 이름을 다시 짓지 않아도 된다.'
+          selfChecks:
+            - 반환 타입이 각각 맞는가 (`List` / `long` / `boolean`)
+            - 두 값 사이를 `Between`으로 썼는가
+            - 고른 이유가 "이름이 길어져 읽기 어렵다"에 닿아 있는가
+
+      - key: LESSON.SPRING.DATA_JPA.001.U3
+        title: 저장하지 않았는데 저장되는 이유
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.SPRING.DATA_JPA.001.U1
+        explain: |-
+          JPA에는 **영속성 컨텍스트**라는 보관소가 있다. 트랜잭션 동안 읽어 온 엔티티를 여기에 담아 두고,
+          **처음 읽었을 때의 상태를 함께 기억한다.**
+
+          트랜잭션이 끝날 때 JPA는 지금 상태와 처음 상태를 견준다. 다른 것이 있으면 **UPDATE를 알아서 보낸다.**
+          이것을 변경 감지(dirty checking)라고 한다. 그래서 `save`를 부르지 않아도 저장된다.
+
+          반대로, 트랜잭션 **밖에서** 바꾸면 아무 일도 일어나지 않는다. 보관소가 없기 때문이다.
+          "분명 바꿨는데 저장이 안 된다"의 대부분이 이것이다.
+
+          트랜잭션은 어디서 시작하나. 공식 문서는 기본값을 이렇게 적는다 —
+          **"`CrudRepository`에서 물려받은 메서드는 `SimpleJpaRepository`의 트랜잭션 설정을 따른다.
+          읽기 작업은 `readOnly` 플래그가 `true`이고, 나머지는 평범한 `@Transactional`이다."**
+
+          즉 **리포지터리 메서드 하나하나가 각각의 트랜잭션**이다. 그래서 문서는 서비스 계층에서 묶기를 권한다 —
+          **"여러 리포지터리를 아우르는 파사드나 서비스 구현으로 트랜잭션 경계를 정하라"**,
+          그리고 **"바깥 트랜잭션 설정이 실제로 쓰이는 것이 되므로 리포지터리 쪽 설정은 무시된다."**
+        example:
+          language: java
+          code: |-
+            @Service
+            public class OrderService {
+
+                private final OrderRepository orderRepository;
+
+                public OrderService(OrderRepository orderRepository) {
+                    this.orderRepository = orderRepository;
+                }
+
+                @Transactional                       // 여기가 경계다
+                public void cancel(Long orderId, Instant now) {
+                    Order order = orderRepository.findById(orderId)
+                            .orElseThrow(() -> new IllegalArgumentException("주문이 없다"));
+
+                    order.cancel(now);               // save 를 부르지 않는다
+
+                    // 메서드가 끝나면 JPA 가 바뀐 것을 보고 UPDATE 를 보낸다
+                }
+
+                // @Transactional 이 없으면?
+                public void cancelWrong(Long orderId, Instant now) {
+                    Order order = orderRepository.findById(orderId).orElseThrow();
+                    order.cancel(now);               // 아무 일도 일어나지 않는다
+                }
+            }
+          output: |-
+            cancel(1024)
+              select ... from orders where id = 1024
+              (메서드 끝)
+              update orders set canceled_at = ... where id = 1024
+
+            cancelWrong(1024)
+              select ... from orders where id = 1024
+              (findById 의 트랜잭션은 이미 끝났다)
+              → UPDATE 없음. 다음에 읽으면 그대로다
+          note: |-
+            - '`save`를 부르지 않아도 저장된다 — 트랜잭션 **안에서** 읽은 객체라면'
+            - '`@Transactional`은 서비스 메서드에 붙인다. 리포지터리 호출마다 따로 열리면 묶이지 않는다'
+            - '읽기만 하는 메서드에는 `@Transactional(readOnly = true)`를 붙여 두면 의도가 드러난다'
+        predict:
+          question: '`@Transactional` 없는 메서드에서 `findById`로 읽은 엔티티의 값을 바꾸면?'
+          choices:
+            - 아무 일도 일어나지 않는다. 변경을 지켜볼 트랜잭션이 없다
+            - 바로 UPDATE 가 나간다
+            - 예외가 난다
+            - 다음 요청에서 저장된다
+          answer: 아무 일도 일어나지 않는다. 변경을 지켜볼 트랜잭션이 없다
+          explanation: |-
+            `findById` 자체는 자기만의 트랜잭션(읽기 전용)으로 실행되고 **바로 끝난다.**
+            돌아온 객체는 더 이상 관리되지 않는 상태라, 값을 바꿔도 지켜보는 쪽이 없다.
+            예외도 나지 않아서 **조용히 안 저장된다** — 그래서 찾기 어렵다.
+        complete:
+          question: 서비스 메서드가 하나의 트랜잭션으로 묶이도록 빈칸을 채우세요.
+          code: |-
+            @___
+            public void changeQuantity(Long lineId, int quantity) {
+                OrderLine line = orderLineRepository.findById(lineId).orElseThrow();
+
+                line.changeQuantity(quantity);      // save 를 부르지 않는다
+            }
+          answers:
+            - [Transactional]
+          explanation: |-
+            `@Transactional`이 있어야 메서드가 끝날 때까지 영속성 컨텍스트가 살아 있고,
+            그때 변경 감지가 UPDATE를 보낸다. 없으면 바꾼 값이 사라진다.
+        problem:
+          prompt: |-
+            아래 코드는 "주문을 취소하고 재고를 되돌린다"인데, 둘 중 하나만 반영되는 일이 생깁니다.
+            무엇이 문제인지 설명하고 고치세요.
+
+            ```java
+            @Service
+            public class OrderCancelService {
+
+                public void cancel(Long orderId, Instant now) {
+                    Order order = orderRepository.findById(orderId).orElseThrow();
+                    order.cancel(now);
+                    orderRepository.save(order);
+
+                    Product product = productRepository.findById(order.getProductId()).orElseThrow();
+                    product.restock(order.getQuantity());
+                    productRepository.save(product);
+                }
+            }
+            ```
+          deliverables:
+            - 무엇이 왜 문제인지 (트랜잭션 경계로 설명)
+            - 고친 코드
+          hints:
+            - '`save` 두 번이 **각각 몇 개의 트랜잭션**으로 실행되는지 세어 보세요.'
+            - 첫째 `save` 뒤에 예외가 나면 둘째는 어떻게 될까요? 그리고 첫째는?
+            - 경계를 어디에 그어야 "둘 다 되거나 둘 다 안 되게" 될까요?
+          modelAnswer: |-
+            **무엇이 문제인가**
+
+            메서드에 `@Transactional`이 없으므로 `save` 두 번이 **각각 별개의 트랜잭션**으로 실행된다.
+            첫째 `save`가 커밋된 뒤 둘째에서 예외가 나면 **주문은 취소됐는데 재고는 그대로**가 된다.
+            "둘 다 되거나 둘 다 안 되게" 묶이지 않은 것이다.
+
+            ```java
+            @Service
+            public class OrderCancelService {
+
+                @Transactional
+                public void cancel(Long orderId, Instant now) {
+                    Order order = orderRepository.findById(orderId).orElseThrow();
+                    order.cancel(now);
+
+                    Product product = productRepository.findById(order.getProductId()).orElseThrow();
+                    product.restock(order.getQuantity());
+
+                    // save 를 부르지 않는다 — 트랜잭션이 끝날 때 변경 감지가 둘 다 반영한다
+                }
+            }
+            ```
+
+            바깥 트랜잭션이 생겼으므로 리포지터리 각각의 설정은 무시되고, 둘은 한 트랜잭션 안에서 함께 커밋된다.
+          selfChecks:
+            - 메서드에 `@Transactional`을 붙였는가
+            - '`save` 호출을 지웠고, 지워도 저장되는 이유를 변경 감지로 설명했는가'
+            - 문제를 "둘이 각각 커밋된다"로 짚었는가
+
+      - key: LESSON.SPRING.DATA_JPA.001.U4
+        title: 목록 하나에 질의가 수백 번 (N+1)
+        minutes: 12
+        core: false
+        prerequisiteUnits:
+          - LESSON.SPRING.DATA_JPA.001.U3
+        explain: |-
+          연관을 가진 엔티티는 기본이 **지연 로딩**이다. 실제로 그 값을 건드릴 때 그때서야 질의가 나간다.
+          혼자 볼 때는 좋은 성질인데, **목록에서 반복문을 돌면** 문제가 된다.
+
+          주문 20건을 읽고(`1`번) 각 주문의 항목을 건드리면 **20번이 더** 나간다. 이것이 N+1이다.
+          테스트 데이터 3건일 때는 안 보이다가 운영에서 터진다.
+
+          고치는 방법은 **한 번에 같이 읽어 오는 것**이다. 두 길이 있다.
+
+          **`@EntityGraph`** — 공식 문서는 이것을 **"결과 질의의 fetch 계획을 설정하는"** 표시로 설명한다.
+          메서드에 `@EntityGraph(attributePaths = {"lines"})`를 붙이면 그 연관을 함께 가져온다.
+
+          **`@Query`에 `join fetch`** — JPQL로 직접 적는다. 조건이 복잡할 때 쓴다.
+
+          주의할 점이 둘 있다.
+
+          - **`fetch` 없는 `join`은 소용없다.** 조인은 하되 가져오지는 않아서 N+1이 그대로 남는다
+          - **컬렉션을 둘 이상 fetch join 하면 줄이 곱해진다.** 하나만 fetch 하고 나머지는 따로 읽거나
+            `@EntityGraph`를 여러 번 나눈다
+        example:
+          language: java
+          code: |-
+            public interface OrderRepository extends JpaRepository<Order, Long> {
+
+                // N+1: 주문 1번 + 주문마다 항목 1번씩
+                List<Order> findByCustomerId(Long customerId);
+
+                // 한 번에 같이 읽는다
+                @EntityGraph(attributePaths = {"lines"})
+                List<Order> findWithLinesByCustomerId(Long customerId);
+
+                // JPQL 로 직접 (조건이 복잡할 때)
+                @Query("""
+                       select distinct o from Order o
+                       join fetch o.lines
+                       where o.customerId = :customerId
+                         and o.canceledAt is null
+                       """)
+                List<Order> findActiveWithLines(Long customerId);
+            }
+          output: |-
+            findByCustomerId(17) 뒤에 각 주문의 lines 를 읽으면
+              select ... from orders where customer_id = 17      (1번)
+              select ... from order_lines where order_id = 1019   (+1)
+              select ... from order_lines where order_id = 1024   (+1)
+              ... 주문 수만큼
+
+            findWithLinesByCustomerId(17)
+              select ... from orders o left join order_lines l ... (1번)
+          note: |-
+            - '`join fetch`의 `fetch`를 빠뜨리면 조인만 하고 가져오지 않아 N+1이 그대로다'
+            - '컬렉션을 fetch join 하면 주문이 항목 수만큼 중복되므로 `distinct`가 필요하다'
+            - '어느 쪽이든 **질의 로그를 켜고 실제 횟수를 보는 것**이 확인 방법이다'
+        predict:
+          question: '`join fetch`에서 `fetch`만 빼고 `join o.lines`로 쓰면?'
+          choices:
+            - 조인은 하지만 가져오지 않아 N+1이 그대로 남는다
+            - 같은 결과다
+            - 문법 오류가 난다
+            - 항목이 비어서 온다
+          answer: 조인은 하지만 가져오지 않아 N+1이 그대로 남는다
+          explanation: |-
+            `join`은 **조건을 걸기 위한** 조인이고, `join fetch`는 **함께 가져오기 위한** 조인이다.
+            `fetch` 없이 조인하면 SQL에는 조인이 들어가지만 `lines`는 여전히 지연 상태라,
+            나중에 건드릴 때 또 질의가 나간다. 한 글자 차이로 목적이 달라진다.
+        complete:
+          question: 주문과 항목을 한 번에 읽도록 빈칸을 채우세요.
+          code: |-
+            @___(attributePaths = {"lines"})
+            List<Order> findWithLinesByCustomerId(Long customerId);
+          answers:
+            - [EntityGraph]
+          explanation: |-
+            연관을 함께 가져오도록 fetch 계획을 정하는 것은 `@EntityGraph`이고,
+            `attributePaths`에 함께 읽을 연관의 이름을 적는다.
+        problem:
+          prompt: |-
+            주문 목록 화면이 느립니다. 코드는 이렇습니다.
+
+            ```java
+            @Transactional(readOnly = true)
+            public List<OrderView> list(Long customerId) {
+                return orderRepository.findByCustomerId(customerId).stream()
+                        .map(order -> new OrderView(
+                                order.getId(),
+                                order.getLines().size(),      // 여기서 매번 질의가 나간다
+                                order.getTotalAmount()))
+                        .toList();
+            }
+            ```
+
+            1. 주문이 50건일 때 질의가 몇 번 나가는지 세고 이유를 쓰세요
+            2. 고치세요
+            3. 고친 뒤 **정말 줄었는지 확인하는 방법**을 쓰세요
+          deliverables:
+            - 질의 횟수와 그 이유
+            - 고친 리포지터리 메서드와 서비스 코드
+            - 확인 방법 한 줄
+          hints:
+            - '`getLines()`가 처음 불리는 순간 무슨 일이 생기는지 생각해 보세요.'
+            - 주문 목록을 읽는 질의 1번에 무엇이 몇 번 더해지나요?
+            - 고쳤다고 믿지 말고 **눈으로 볼 방법**이 있습니다. 로그 설정 한 줄입니다.
+          modelAnswer: |-
+            **1. 51번**
+
+            주문 목록을 읽는 질의 1번 + 주문마다 `getLines()`를 처음 건드릴 때 나가는 질의 50번.
+            연관이 지연 로딩이라 `.size()`를 부르는 순간 그 주문의 항목을 읽으러 간다.
+
+            **2. 고치기**
+
+            ```java
+            @EntityGraph(attributePaths = {"lines"})
+            List<Order> findWithLinesByCustomerId(Long customerId);
+            ```
+
+            ```java
+            @Transactional(readOnly = true)
+            public List<OrderView> list(Long customerId) {
+                return orderRepository.findWithLinesByCustomerId(customerId).stream()
+                        .map(order -> new OrderView(
+                                order.getId(),
+                                order.getLines().size(),
+                                order.getTotalAmount()))
+                        .toList();
+            }
+            ```
+
+            **3. 확인**
+
+            `spring.jpa.show-sql=true`(또는 `logging.level.org.hibernate.SQL=DEBUG`)로 질의 로그를 켜고
+            같은 화면을 부른 뒤 **줄 수를 센다.** 51줄이 1줄이 되어야 고친 것이다.
+          selfChecks:
+            - 51번이라는 수와 "1 + 주문 수"라는 근거를 적었는가
+            - '`@EntityGraph`(또는 `join fetch`)로 함께 읽도록 바꿨는가'
+            - 확인 방법이 짐작이 아니라 **질의 로그를 세는 것**인가
+
+    commonMistakes:
+      - 트랜잭션 밖에서 엔티티를 바꾸고 "저장이 안 된다"고 한다. 지켜볼 컨텍스트가 없다 (U3)
+      - 서비스에 `@Transactional`이 없어 `save` 여러 번이 각각 커밋된다. 중간에 실패하면 절반만 남는다 (U3)
+      - 테스트 데이터가 적어 N+1을 못 보고 운영에서 만난다. 질의 로그로 횟수를 세면 바로 보인다 (U4)
+    inProject: |-
+      주문 시스템의 저장 계층을 이 순서로 만든다. 먼저 `Order`·`OrderLine`·`Product`를 엔티티로 잡고
+      리포지터리를 인터페이스로 선언한다(U1). 조회는 메서드 이름으로 시작하고, 이름이 길어지면 `@Query`로 옮긴다(U2).
+      상태를 바꾸는 일(주문 취소, 재고 되돌리기)은 **서비스 메서드 하나를 트랜잭션 경계로** 잡고
+      `save`를 부르지 않는다(U3). 목록 화면을 만들고 나면 반드시 질의 로그를 켜 보고 N+1을 확인한다(U4) —
+      화면이 느려진 뒤에 찾는 것보다 만들 때 세는 편이 훨씬 싸다.
+    sources:
+      - title: Spring Data JPA Reference — Defining Query Methods
+        url: https://docs.spring.io/spring-data/jpa/reference/repositories/query-methods-details.html
+        versionScope: Spring Data JPA 4
+      - title: Spring Data JPA Reference — Persisting Entities
+        url: https://docs.spring.io/spring-data/jpa/reference/jpa/entity-persistence.html
+        versionScope: Spring Data JPA 4
+      - title: Spring Data JPA Reference — Transactionality
+        url: https://docs.spring.io/spring-data/jpa/reference/jpa/transactions.html
+        versionScope: Spring Data JPA 4
+      - title: Spring Data JPA Reference — JPA Query Methods (Entity Graphs)
+        url: https://docs.spring.io/spring-data/jpa/reference/jpa/query-methods.html
+        versionScope: Spring Data JPA 4
+    verifiedAt: 2026-09-22
