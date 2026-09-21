@@ -30,6 +30,7 @@ final class ValidationContext {
     Set<String> retiredConceptKeys = Set.of();
     Set<String> retiredSourceIds = Set.of();
     Set<String> retiredReadingKeys = Set.of();
+    Set<String> retiredLessonKeys = Set.of();
     List<?> diagnosticCategories = List.of();
 
     /** 코드 읽기·개념 읽기가 같이 쓰는 key namespace (docs/19 §3.13, CV-120). */

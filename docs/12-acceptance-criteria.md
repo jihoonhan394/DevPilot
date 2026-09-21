@@ -67,6 +67,7 @@
 | AC-34 | 오늘의 팁 | FR-07, FR-11 | S3 | M1 |
 | AC-35 | 용어 사전 | FR-11 | S3 | M1 |
 | AC-36 | 주간 요약 · 연속 학습 일수 | FR-16 | S3 | M1 |
+| AC-37 | 개념 익히기 (개념 노트 · 학습 단위) | FR-07 | S3 | M1 |
 
 ---
 
@@ -2039,3 +2040,65 @@
 **S4. UI (SCR-DASHBOARD)**
 - 이번 주 요약이 **만든 것 → 끝낸 것 → 적은 것 → 시간** 순서로 보이고 연속 학습 일수가 함께 표시된다. 쉰 날 수·목표 대비 부족 퍼센트·빨간 경고 숫자는 없다(U-3)
 - `builtThisWeek`가 비면 그 영역에 다음 행동 1개를 안내하는 빈 상태 문구가 보인다(widget test)
+
+---
+
+## AC-37 개념 익히기 (개념 노트 · 학습 단위)
+
+| 항목 | 값 |
+|---|---|
+| 관련 요구사항 | FR-07 (`05` §21, `19` §3.14, `02` SCR-LESSON) |
+| Sprint | S3 |
+| 검증 수준 | integration, API E2E, UI |
+| 테스트 클래스 | `LessonQueryServiceIntegrationTest`, `LessonControllerIntegrationTest`, `UnitAnswerMatcherTest`, `lesson_screen_test.dart` |
+
+**S1. 노트를 조회해도 답이 오지 않는다**
+- Given 단위 3개짜리 노트 1개가 콘텐츠에 있다
+- When `GET /lessons/{lessonKey}`
+- Then 200이고 `units`가 3개이며 각 단위에 `explain`·`example`·`predict.question`·`complete.question`·`problem.prompt`·`problem.hints`가 있다
+- And 응답 JSON 어디에도 `answer`·`answers`·`modelAnswer`·`selfChecks` 필드가 **없다**
+- And `progress`는 기록이 없으므로 null이다
+
+**S2. 예측·빈칸은 서버가 즉시 채점한다 (AI 없음)**
+- Given 단위의 `predict.answer`가 `index`, `complete.answers`가 `[["@GetMapping"], ["/orders"]]`
+- When `POST /lessons/{k}/units/{u}/predict` `{"answer": "  index  "}`
+- Then 200 `{correct: true, expected: "index", explanation: ...}` — 앞뒤 공백을 버리고 비교한다
+- When `{"answer": "Index"}`
+- Then `correct: false`다 — **대소문자를 구분한다**
+- When `POST …/complete` `{"answers": ["@GetMapping"]}` (빈칸은 2개)
+- Then 400 `VALIDATION_FAILED`(field `answers`, code `Size`)
+- And 이 두 endpoint를 부르는 동안 `ai_call_log`에 새 행이 0이다
+
+**S3. 모범 답안은 조회로 보고, 사용자 답은 서버로 가지 않는다**
+- When `GET /lessons/{k}/units/{u}/answer`
+- Then 200에 `modelAnswer`와 `selfChecks`가 있다
+- And 이 요청은 상태를 바꾸지 않는다 — `learning_event`가 늘지 않는다
+- And 요청 본문이 없다: 사용자가 쓴 답을 서버로 보내지 않고 어느 테이블에도 저장하지 않는다
+
+**S4. 단위를 마치면 기록이 한 번 남는다**
+- When `POST …/finish` `{"helpLevel": "HINT", "selfChecksMet": 2}` + `Idempotency-Key`
+- Then 200이고 `learning_event`에 `UNIT_SOLVED` 1건이 생긴다. `skill_id`는 노트의 skill, payload는 `{lessonKey, unitKey, helpLevel: "HINT", selfChecksMet: 2}`다
+- And 같은 `Idempotency-Key`로 다시 부르면 같은 응답이고 이벤트는 늘지 않는다
+- And 다른 키로 다시 마치면 이벤트가 하나 더 쌓인다(다시 풀기) — **이전 이벤트를 고치지 않는다**
+- And `selfChecksMet`을 생략하면 payload에 그 칸이 없다
+- And `selfChecksMet`이 `selfChecks` 개수보다 크면 400 `VALIDATION_FAILED`
+
+**S5. 레벨은 오르지 않는다**
+- Given S4를 마친 직후
+- When `GET /skills/{skillId}`
+- Then `evidenceLevels`가 그대로다 — 단위를 풀었다고 skill 레벨이 오르지 않는다(`01` 원칙 4)
+
+**S6. 화면은 한 걸음씩 간다 (UI)**
+- Given SCR-LESSON을 연다
+- Then 처음 화면에 `whyItMatters`와 단위 목록이 보이고 예제·정답은 보이지 않는다
+- And "예제 보기"를 누르기 전에는 `example.code`가 화면에 없다
+- And 5번 걸음에서 힌트는 **한 번에 하나씩** 열리고, 모범 답안 버튼은 힌트를 다 연 뒤에 열린다
+- And "이미 안다 → 문제부터"를 누르면 5번 걸음으로 건너뛴다
+- And 코드 블록은 가로 스크롤이고 360px에서 화면이 넓어지지 않는다(§2.4)
+
+**S7. 없는 key**
+- When `GET /lessons/LESSON.NOPE.001`
+- Then 404 `RESOURCE_NOT_FOUND`
+- When key 형식이 어긋나면 400 `VALIDATION_FAILED`(code `Pattern`)
+- And 토큰이 없으면 401 `UNAUTHORIZED`
+

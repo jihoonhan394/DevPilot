@@ -99,6 +99,7 @@ content/
 | `files.curatedSources` | string | Y | | curated source 파일 |
 | `files.curatedRepos` | string | Y | | curated repo/코드 읽기 파일 (§3.8) |
 | `files.conceptReadings` | string | **N** (기본 `concept-readings.yaml`) | | 개념 읽기 파일 (§3.13). 생략하면 기본 경로를 읽는다 — `CatalogChecks`의 파일 키 집합이 고정이라 **`ConceptReadingRegistry`를 구현하는 변경에서 키를 추가한다**(그 전에 적으면 CV-03으로 기동이 실패한다) |
+| `files.lessons` | string[] | **N** (기본 없음) | 0개 이상 | 개념 노트 파일 (§3.14). 생략하면 노트가 없는 것으로 본다 — `CatalogChecks`의 파일 키 집합이 고정이라 **`LessonRegistry`를 구현하는 변경에서 키를 추가한다**(그 전에 적으면 CV-03으로 기동이 실패한다) |
 | `files.tips` | string[] | Y | 1개 이상 | 오늘의 팁 파일 (§3.9) |
 | `files.terms` | string[] | Y | 1개 이상 | 용어 사전 파일 (§3.10) |
 | `files.checklists` | string[] | Y | 1개 이상 | 과제 체크리스트 파일 (§3.11) |
@@ -109,6 +110,7 @@ content/
 | `retired.curatedSourceIds` | string[] | Y | | 은퇴한 curated source ID |
 | `retired.readingKeys` | string[] | Y | | 은퇴한 reading key (§3.8, §3.13). **코드 읽기(`READ.*`)와 개념 읽기(`DOC.*`)가 한 목록을 같이 쓴다** — 둘 다 `learning_task.reading_key` 한 칸에 들어가고 `GET /readings/{key}`가 둘 다 돌려주기 때문이다(`05` §19.7). 재사용 금지. 은퇴한 정의는 각 파일에 `retired: true`로 남는다(§8.2) |
 | `retired.tipKeys` | string[] | Y | | 은퇴한 tip key (§3.9). 재사용 금지. 은퇴한 팁의 정의는 파일에 `retired: true`로 남는다 — `user_daily_tip.tip_key`가 가리키기 때문이다(§8.2) |
+| `retired.lessonKeys` | string[] | **N** (기본 빈 목록) | | 은퇴한 개념 노트 key (§3.14). 재사용 금지. 은퇴한 노트의 정의는 파일에 `retired: true`로 남는다 — 학습 이벤트의 payload가 `lessonKey`·`unitKey`를 가리키기 때문이다(§8.2) |
 | `retired.termKeys` | string[] | Y | | 은퇴한 term key (§3.10). 재사용 금지. 은퇴한 용어의 정의는 파일에 `retired: true`로 남는다 — 용어 복습 카드의 `concept_key = TERM:{key}`가 가리키기 때문이다(§8.2) |
 
 체크리스트에는 은퇴 목록이 없다. 사용자 데이터가 `CHK.*` 키를 저장하지 않고(과제 카드를 그릴 때만 붙는다) 파일에서 빼면 그대로 사라지기 때문이다(§8.2).
@@ -585,6 +587,96 @@ conceptReadings:
 
 ---
 
+### 3.14 `lessons/*.yaml` (개념 노트와 학습 단위)
+
+최상위 키는 `lessons` 하나다. **"가르친 적 없는 것은 묻지 않는다"**(`01` §4)를 위한 콘텐츠다. 지금까지 제품에는 가르치는 단계가 없었고 문제·복습 카드·러버덕이 모두 "이미 안다"를 전제했다.
+
+**노트 1개 = skill 1개.** 노트는 **학습 단위** 3~6개로 이뤄지고, 단위 하나가 5~15분짜리 한 바퀴다.
+
+```text
+왜 배우나 → 설명 → 예제 → 출력 예측 → 빈칸 채우기 → 백지 문제 → (막히면 도움) → 모범 답안과 견주기
+```
+
+**어디서 오나** — 설명과 예제는 **공식 문서를 읽고 직접 쓴다**(`sources` 필수, 실제로 연 문서만 적는다). 무엇을 먼저 가르칠지(순서·범위)는 교재 목차를 참고한다. **남의 책 본문을 옮기지 않는다.** 버전은 우리 것에 맞춘다(Spring Boot 4.1 / Spring Framework 7, Java 25, PostgreSQL 16).
+
+**DB 테이블이 없다.** `ContentSeeder`가 검증한 뒤 `LessonRegistry`(today 모듈, `03` §3.2)에 등록하고, 조회 API와 planner가 skill code로 찾아 쓴다. 서버는 어떤 URL도 fetch하지 않는다.
+
+**개념 읽기(§3.13)와의 차이**
+
+| | 개념 읽기 `DOC.*` | 개념 노트 `LESSON.*` |
+|---|---|---|
+| 본문 | 없다. 공식 문서 링크 | **앱 안에 있다.** 한국어 설명·예제 |
+| 연습 | 없다(읽고 스스로 답할 3가지) | 예측·빈칸·문제·모범 답안·변형 문제 |
+| 채점 | 없다 | 예측·빈칸은 서버가 즉시(AI 없음), 문제는 모범 답안과 자기 비교 |
+| 쓰임 | 노트가 없는 skill의 대체 | 노트가 있으면 이쪽이 먼저다 |
+
+`lessons[]`
+
+| 필드 | 타입 | 필수 | 제약 | 용도 |
+|---|---|---|---|---|
+| `key` | string | Y | `^LESSON\.[A-Z][A-Z0-9_]*(\.[A-Z][A-Z0-9_]*)*\.[0-9]{3}$`, ≤ 120자, 전체 유일 | 진행·복습 기록이 가리키는 불변 키 |
+| `skillCode` | string | Y | role target이 있는 skill 1개. **skill당 노트 1개** | planner·skill 화면 매칭 |
+| `title` | string | Y | 1~100자 | 화면 제목 |
+| `whyItMatters` | string | Y | 40~400자. **모르면 무슨 일이 생기나 + 내 프로젝트 어디에 쓰이나** | 단위를 시작하기 전 두 줄 |
+| `oneLine` | string | Y | 10~200자. 용어는 업계 표기 + 영어 병기 | 한 줄 정의 |
+| `units` | object[] | Y | **3~6개**, `key` 유일 | 아래 표 |
+| `commonMistakes` | string[] | N | 0~3개, 항목 20~300자. 증상(에러 메시지)을 포함한다 | 노트 끝의 "자주 하는 실수" |
+| `inProject` | string | Y | 40~400자. 주문 시스템의 **어디에** 쓰는지 | 마지막 화면의 조언 |
+| `sources` | object[] | Y | **1개 이상.** `{title, url, versionScope}`. `url` 호스트는 trusted host allowlist(`03` §9) | 근거. 화면의 "원문" 링크 |
+| `readMore` | object[] | N | 0~3개. `{title, url}`. 호스트 allowlist | 다른 사람의 다른 설명 |
+| `verifiedAt` | date | Y | ISO 날짜. 사람이 `sources`를 **열어 본** 날 | 링크·버전 점검 (§8.5) |
+| `retired` | bool | N (기본 false) | `true`면 key가 `retired.lessonKeys`에 있어야 한다 | 은퇴 (§8.2) |
+
+`units[]`
+
+| 필드 | 타입 | 필수 | 제약 | 용도 |
+|---|---|---|---|---|
+| `key` | string | Y | `^<노트 key>\.U[0-9]{1,2}$`, 전체 유일 | 진행·복습 기록의 키 |
+| `title` | string | Y | 1~60자. 할 수 있게 되는 것으로 쓴다 | 단위 제목 |
+| `minutes` | int | Y | 3~20 | 남은 시간에 몇 개를 할지 정한다 |
+| `core` | bool | Y | 기한이 촉박하면 `true`만 한다 | `06` TH-6 |
+| `explain` | string | Y | 100~800자. 비유 → 정확한 말 순서. 마크다운 | 설명 |
+| `example` | object | Y | `{language, code, output?, note?}`. `code`는 **30줄 이내**, `note`는 줄별 설명(마크다운, ≤ 600자) | 가장 작은 동작하는 예제 |
+| `predict` | object | Y | `{question, code?, choices?, answer, explanation}` — `choices`가 있으면 2~4개 중 하나, 없으면 한 줄 정확 일치 | 예제를 조금 바꾼 결과 맞히기 |
+| `complete` | object | Y | `{question, code, answers, explanation}` — `code`에 빈칸 `___`이 1~2개, `answers`는 빈칸 순서대로 **허용 표기 목록**(각 1개 이상) | 빈칸 채우기 |
+| `problem` | object | Y | `{prompt, deliverables, starterCode?, hints, modelAnswer, selfChecks}` | 백지 문제 |
+| `prerequisiteUnits` | string[] | N | 0~4개. 다른 단위 key(아직 없는 key도 허용) | 막혔을 때 "먼저 볼 개념". 아직 없는 key는 다음에 만들 목록이다 |
+| `variants` | object[] | N | 0~2개. `problem`과 같은 모양 | 복습 때 낼 변형 문제. 없으면 원 문제를 다시 낸다 |
+
+`problem`
+
+| 필드 | 타입 | 필수 | 제약 |
+|---|---|---|---|
+| `prompt` | string | Y | 40~800자. 예제의 **복사가 아니라 변형**이다. 가능하면 주문 시스템(상품·주문) 상황으로 |
+| `deliverables` | string[] | Y | 2~4개. 무엇을 내야 하는지 번호로 읽히게 |
+| `starterCode` | string | N | 20줄 이내. 빈 화면을 피한다 |
+| `hints` | string[] | Y | **2~3개.** 앞에서 뒤로 갈수록 구체적이다. **답을 그대로 적지 않는다** |
+| `modelAnswer` | string | Y | 마크다운. 코드와 **왜 그렇게 했는지** 한두 줄 |
+| `selfChecks` | string[] | Y | 2~4개. 모범 답안과 견줘 스스로 체크할 것. "~했는가" 형태 |
+
+**채점 (AI를 쓰지 않는다)**
+
+| 대상 | 방법 |
+|---|---|
+| `predict` | `choices`가 있으면 고른 값이 `answer`와 같은지. 없으면 한 줄 비교 |
+| `complete` | 빈칸 순서대로 각 칸의 답이 그 칸의 `answers` 중 하나와 같은지 |
+| 비교 규칙 | 앞뒤 공백을 버리고 **연속 공백을 하나로** 줄인 뒤 **대소문자를 구분해** 비교한다. 다르게 쓸 수 있는 표기는 `answers`에 모두 적는다 |
+| `problem` | **서버가 코드를 실행하지 않는다.** 낸 뒤 `modelAnswer`와 `selfChecks`를 보여 주고 사용자가 스스로 견준다. 이 결과는 **복습 일정에만** 쓰고 레벨에는 쓰지 않는다(`01` 원칙 4) |
+
+**작성 가이드**
+
+| 항목 | 기준 |
+|---|---|
+| 한 단위 | 한 가지만 가르친다. 두 가지가 들어가면 단위를 나눈다 |
+| `explain` | 강의가 아니다. 예제를 읽기 위해 필요한 만큼만 쓴다 |
+| `example` | **돌아가는 가장 작은 것**. 실제로 확인한 결과만 `output`에 적는다 |
+| `predict` | 예제를 한 군데만 바꾼다. 바꾼 곳을 문항에 밝힌다 |
+| `problem` | 예제를 그대로 다시 쓰게 하지 않는다. 같은 규칙을 다른 자리에 쓰게 한다 |
+| `hints` | 1번은 "어디를 보라", 2번은 "무엇이 문제인가", 3번은 "어떤 도구를 쓰나". 답은 마지막까지 말하지 않는다 |
+| 순서 | 앞 단위에서 배운 것만 쓴다. 필요하면 `prerequisiteUnits`로 잇는다 |
+
+---
+
 ## 4. ContentValidator 규칙
 
 ### 4.1 규칙표
@@ -739,6 +831,17 @@ Severity `ERROR`는 기동 실패와 CI 실패, `WARN`은 로그만 남긴다. J
 | CV-123 | ERROR | `skillCodes` 1~4개·중복 없음이고 **모두 role target이 있는 skill로 실재**한다. `estimatedMinutes` 5~60 |
 | CV-124 | ERROR | `whyRead` **40~400자**. `checkPoints`가 **정확히 3개**이고 항목이 10~200자이며 중복이 없다 (`06` §5.3 "핵심 3가지") |
 | CV-125 | WARN | role target priority가 `MUST`인 skill 중 **은퇴하지 않은 코드 읽기(§3.8)도 개념 읽기(§3.13)도 없는 skill**이 있다(기본 트랙 `JAVA_BACKEND` 기준 — CV-48과 같다). 그 skill의 `READING` 과제는 자료 없이 제안된다(`06` §5.3). 소스 점검 입력 I-1 ③과 같은 목록이다(§8.5) |
+| CV-126 | ERROR | `lessons/*.yaml`(§3.14)의 `key`가 형식에 맞고 전체 유일하며 `retired.lessonKeys`와 어긋나지 않는다. `skillCode`는 role target이 있는 skill이고 **skill당 노트가 1개**다 |
+| CV-127 | ERROR | 노트의 `units`가 3~6개이고 단위 `key`가 `<노트 key>.U<n>` 형식·전체 유일이다. 길이 제한(`explain` 100~800, `example.code` 30줄, `title` 60자 등)을 지킨다 |
+| CV-128 | ERROR | 단위마다 `example`·`predict`·`complete`·`problem`이 모두 있다. `complete.code`의 빈칸(`___`) 개수와 `answers` 개수가 같고, 각 빈칸의 허용 표기가 1개 이상이다 |
+| CV-129 | ERROR | `predict.choices`가 있으면 2~4개이고 `answer`가 그중 하나다. 없으면 `answer`가 비어 있지 않다 |
+| CV-130 | ERROR | `problem.hints`가 2~3개, `deliverables`가 2~4개, `selfChecks`가 2~4개다. `variants`는 0~2개이고 있으면 `problem`과 같은 필수 필드를 갖는다 |
+| CV-131 | ERROR | `sources`가 1개 이상이고 각 `url`이 https이며 호스트가 trusted host allowlist에 있다. `readMore`의 `url`도 같다. `verifiedAt`이 미래가 아니다 |
+| CV-132 | ERROR | `prerequisiteUnits`의 항목이 단위 key 형식이다. **아직 없는 key도 허용한다**(다음에 만들 목록) — 다만 자기 자신과 같은 단위를 가리키지 않는다 |
+| CV-133 | WARN | `problem.hints`나 `deliverables`에 `modelAnswer`의 코드 줄이 **그대로** 들어 있다. 답을 미리 보여 주는 것이다 |
+| CV-134 | WARN | `problem.prompt`가 `example.code`와 **80% 이상 같다**. 예제를 그대로 다시 쓰게 하는 문제다(§3.14 작성 가이드) |
+| CV-135 | — | **쓰지 않는다.** 한때 "노트와 개념 읽기가 같은 skill에 둘 다 있으면 경고"였는데 CV-125(MUST skill에는 읽을 것이 있어야 한다)와 정면으로 부딪혔다. 둘 다 있는 것이 정상이다 — 노트가 가르치고 개념 읽기는 더 깊이 읽을거리다. 번호는 혼동을 막으려고 비워 둔다 |
+| CV-136 | WARN | 두 학습 트랙(`INTEGRATION_ENGINEER`·`JAVA_BACKEND_STARTER`)의 **첫 milestone MUST skill 중 노트가 없는 skill**이 있다. 그 skill은 아직 "가르치는 단계" 없이 문제부터 나온다. **노트를 하나라도 쓰기 시작한 catalog에서만 본다** — 노트가 아예 없으면 "전부 없다"가 되어 알려 주는 바가 없다 |
 
 **Seeder (DB 비교, `ContentSeeder`에서만 검사)**
 
@@ -780,7 +883,7 @@ Java 구현 전에는 이 스크립트가 기준이다. Java `ContentValidator`�
 | 종료 코드 | 0: ERROR 없음(WARN 허용), 1: ERROR 1개 이상, 2: 사용법·IO 오류 |
 | `--report` | §12 인벤토리 표와 budget 점검 표 출력 |
 | `--placement-vectors` | §5.4 test vector 표 출력 |
-| 구현 범위 | CV-01~CV-125 전부(CV-15 non-root 하한 60, CV-25·CV-26 학습 트랙, CV-62 시간 제한, CV-80~CV-87 curated repo, CV-88·CV-89 `whyItMatters`, CV-90~CV-96 팁, CV-100~CV-106 용어, CV-110~CV-113 체크리스트, CV-120~CV-125 개념 읽기 포함). SD-xx는 DB가 필요하므로 제외 |
+| 구현 범위 | CV-01~CV-136 전부(CV-15 non-root 하한 60, CV-25·CV-26 학습 트랙, CV-62 시간 제한, CV-80~CV-87 curated repo, CV-88·CV-89 `whyItMatters`, CV-90~CV-96 팁, CV-100~CV-106 용어, CV-110~CV-113 체크리스트, CV-120~CV-125 개념 읽기, CV-126~CV-136(CV-135 제외) 개념 노트 포함). SD-xx는 DB가 필요하므로 제외 |
 | `files.conceptReadings` | 아직 `catalog.yaml`에 없다(§3.1). 검증기는 catalog에 키가 있으면 그 경로를, 없으면 기본 경로 `concept-readings.yaml`을 읽고 CV-04의 "나열된 파일"로도 센다. **`ConceptReadingRegistry`를 구현할 때 Java `CatalogChecks`의 파일 키 집합에 `conceptReadings`를 더하고 catalog에 적는다** — 그때까지 두 검증기는 이 한 가지에서 갈린다 |
 | CI | content 검증 step에서 `python content/tools/validate_content.py`를 실행하고 종료 코드 1이면 실패 |
 

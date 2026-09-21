@@ -101,7 +101,7 @@ public class LearningEventRecorder {
             @Nullable UUID skillId,
             @Nullable UUID sessionId,
             LearningEventType eventType,
-            EventSourceType sourceType,
+            @Nullable EventSourceType sourceType,
             @Nullable UUID sourceId,
             LocalDate planDate,
             Object payload,

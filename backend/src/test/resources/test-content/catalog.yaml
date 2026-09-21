@@ -16,6 +16,8 @@ files:
     - review-cards/test.yaml
   challenges:
     - challenges/test.yaml
+  lessons:
+    - lessons/test.yaml
   curatedSources: curated-sources.yaml
   curatedRepos: curated-repos.yaml
   conceptReadings: concept-readings.yaml

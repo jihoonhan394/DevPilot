@@ -33,6 +33,10 @@ public class YamlContentReader {
     private static final String CATALOG = "catalog.yaml";
     private static final List<String> LIST_KEYS =
             List.of("skillTrees", "roleTargets", "planTemplates", "reviewCards", "challenges");
+
+    /** {@code files.lessons}는 선택 목록이다 — 없으면 노트가 없는 것으로 본다 (docs/19 §3.1·§3.14). */
+    private static final String LESSONS = "lessons";
+
     private static final List<String> SINGLE_KEYS = List.of("curatedSources", "curatedRepos");
 
     /** {@code files.conceptReadings}를 생략했을 때 읽는 경로 (docs/19 §3.1·§3.13). */
@@ -69,6 +73,9 @@ public class YamlContentReader {
             addDocument(documents, base, files.get(key));
         }
         addConceptReadings(documents, base, files.get("conceptReadings"));
+        for (Object path : files.get(LESSONS) instanceof List<?> paths ? paths : List.of()) {
+            addDocument(documents, base, path);
+        }
     }
 
     /** {@code conceptReadings}는 선택 키다 — 나열하지 않았으면 기본 경로가 있을 때만 읽는다 (docs/19 §3.1). */

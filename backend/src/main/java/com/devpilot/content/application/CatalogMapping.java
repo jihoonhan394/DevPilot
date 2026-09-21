@@ -10,9 +10,16 @@ import com.devpilot.skill.application.SkillCatalogSeedService;
 import com.devpilot.skill.domain.Priority;
 import com.devpilot.skill.domain.SkillCategory;
 import com.devpilot.skill.domain.TargetRole;
+import com.devpilot.today.domain.CompleteQuestion;
 import com.devpilot.today.domain.ConceptReading;
 import com.devpilot.today.domain.CuratedReading;
 import com.devpilot.today.domain.CuratedRepo;
+import com.devpilot.today.domain.Lesson;
+import com.devpilot.today.domain.LessonExample;
+import com.devpilot.today.domain.LessonProblem;
+import com.devpilot.today.domain.LessonSource;
+import com.devpilot.today.domain.LessonUnit;
+import com.devpilot.today.domain.PredictQuestion;
 import com.devpilot.training.application.ChallengeSeedService;
 import com.devpilot.training.domain.ChallengePurpose;
 import com.devpilot.training.domain.ChallengeRubricItem;
@@ -25,6 +32,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * 검증을 통과한 YAML 원본 → 적재용 record (docs/19 §3.2~§3.4). {@link ContentValidator}가 ERROR 없음을 확인한 뒤에만 부른다
@@ -211,6 +219,98 @@ final class CatalogMapping {
         return readings;
     }
 
+    /** 개념 노트 (docs/19 §3.14). 은퇴한 것도 넣는다 — 지난 학습 이벤트가 그 key를 가리킨다 (docs/19 §8.2). */
+    static List<Lesson> lessons(List<Map<String, Object>> documents) {
+        List<Lesson> lessons = new ArrayList<>();
+        for (Map<String, Object> document : documents) {
+            for (Object value : RawYaml.asList(document.get("lessons"))) {
+                Map<String, Object> lesson = RawYaml.asMap(value);
+                lessons.add(
+                        new Lesson(
+                                (String) lesson.get("key"),
+                                (String) lesson.get("skillCode"),
+                                (String) lesson.get("title"),
+                                (String) lesson.get("whyItMatters"),
+                                (String) lesson.get("oneLine"),
+                                units(lesson.get("units")),
+                                strings(lesson.get("commonMistakes")),
+                                (String) lesson.get("inProject"),
+                                sources(lesson.get("sources")),
+                                sources(lesson.get("readMore")),
+                                LocalDate.parse(String.valueOf(lesson.get("verifiedAt"))),
+                                Boolean.TRUE.equals(lesson.get("retired"))));
+            }
+        }
+        return lessons;
+    }
+
+    private static List<LessonUnit> units(@Nullable Object value) {
+        List<LessonUnit> units = new ArrayList<>();
+        for (Object item : RawYaml.asList(value)) {
+            Map<String, Object> unit = RawYaml.asMap(item);
+            Map<String, Object> example = RawYaml.asMap(unit.get("example"));
+            Map<String, Object> predict = RawYaml.asMap(unit.get("predict"));
+            Map<String, Object> complete = RawYaml.asMap(unit.get("complete"));
+            units.add(
+                    new LessonUnit(
+                            (String) unit.get("key"),
+                            (String) unit.get("title"),
+                            Math.toIntExact(RawYaml.longValue(unit.get("minutes"))),
+                            Boolean.TRUE.equals(unit.get("core")),
+                            (String) unit.get("explain"),
+                            new LessonExample(
+                                    (String) example.get("language"),
+                                    (String) example.get("code"),
+                                    (String) example.get("output"),
+                                    (String) example.get("note")),
+                            new PredictQuestion(
+                                    (String) predict.get("question"),
+                                    (String) predict.get("code"),
+                                    strings(predict.get("choices")),
+                                    (String) predict.get("answer"),
+                                    (String) predict.get("explanation")),
+                            new CompleteQuestion(
+                                    (String) complete.get("question"),
+                                    (String) complete.get("code"),
+                                    blankAnswers(complete.get("answers")),
+                                    (String) complete.get("explanation")),
+                            problem(unit.get("problem")),
+                            strings(unit.get("prerequisiteUnits")),
+                            RawYaml.asList(unit.get("variants")).stream()
+                                    .map(CatalogMapping::problem)
+                                    .toList()));
+        }
+        return units;
+    }
+
+    private static LessonProblem problem(@Nullable Object value) {
+        Map<String, Object> problem = RawYaml.asMap(value);
+        return new LessonProblem(
+                (String) problem.get("prompt"),
+                strings(problem.get("deliverables")),
+                (String) problem.get("starterCode"),
+                strings(problem.get("hints")),
+                (String) problem.get("modelAnswer"),
+                strings(problem.get("selfChecks")));
+    }
+
+    private static List<List<String>> blankAnswers(@Nullable Object value) {
+        return RawYaml.asList(value).stream().map(CatalogMapping::strings).toList();
+    }
+
+    private static List<LessonSource> sources(@Nullable Object value) {
+        List<LessonSource> sources = new ArrayList<>();
+        for (Object item : RawYaml.asList(value)) {
+            Map<String, Object> source = RawYaml.asMap(item);
+            sources.add(
+                    new LessonSource(
+                            (String) source.get("title"),
+                            (String) source.get("url"),
+                            (String) source.get("versionScope")));
+        }
+        return sources;
+    }
+
     /** seed challenge (docs/19 §3.6). {@code hints}는 1~3단계만 있고 검증이 이미 끝났다. */
     static List<ChallengeSeedService.ChallengeSeed> challenges(
             List<Map<String, Object>> documents) {
@@ -257,7 +357,7 @@ final class CatalogMapping {
                 hints);
     }
 
-    private static List<String> strings(Object value) {
+    private static List<String> strings(@Nullable Object value) {
         return RawYaml.asList(value).stream().map(String::valueOf).toList();
     }
 

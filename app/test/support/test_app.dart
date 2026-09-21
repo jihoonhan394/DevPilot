@@ -9,6 +9,7 @@ import 'package:devpilot_app/core/config/app_config.dart';
 import 'package:devpilot_app/core/storage/key_value_store.dart';
 import 'package:devpilot_app/core/time/clock.dart';
 import 'package:devpilot_app/features/dashboard/data/dashboard_repository.dart';
+import 'package:devpilot_app/features/lesson/data/lesson_repository.dart';
 import 'package:devpilot_app/features/onboarding/data/diagnostic_repository.dart';
 import 'package:devpilot_app/features/onboarding/data/onboarding_repository.dart';
 import 'package:devpilot_app/features/plan/data/learning_goal_repository.dart';
@@ -80,6 +81,7 @@ Widget buildTestApp({
       diagnosticRepositoryProvider.overrideWithValue(fakes.diagnosticRepository),
       rubberDuckRepositoryProvider.overrideWithValue(fakes.rubberDuckRepository),
       readingRepositoryProvider.overrideWithValue(fakes.readingRepository),
+      lessonRepositoryProvider.overrideWithValue(fakes.lessonRepository),
       reviewItemRepositoryProvider.overrideWithValue(fakes.reviewItemRepository),
       clockProvider.overrideWithValue(() => fakes.clock.now),
       ...overrides,

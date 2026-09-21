@@ -1,0 +1,661 @@
+# 테스트 fixture 개념 노트 (docs/19 §3.14).
+# 두 학습 트랙의 첫 milestone MUST skill을 덮는다 — 그래야 CV-136 경고가 없다.
+# 본문은 짧지만 형식은 진짜와 같다. 격리 테스트(SHARED_CONTENT)와 API 통합 테스트가 이 노트를 쓴다.
+lessons:
+  - key: LESSON.TESTSPRING.MVC.001
+    skillCode: WEB_HTTP.HTTP_BASICS
+    title: 요청을 메서드에 잇기
+    whyItMatters: 주소가 어느 메서드로 가는지 정하지 못하면 화면도 앱도 서버에 말을 걸 수 없다. 주문 시스템의 첫 화면이 이것부터 필요하다.
+    oneLine: 컨트롤러는 URL과 자바 메서드를 이어 주는 자리다.
+    units:
+      - key: LESSON.TESTSPRING.MVC.001.U1
+        title: 주소 하나를 메서드에 잇기
+        minutes: 10
+        core: true
+        explain: >-
+          스프링은 요청이 오면 등록된 URL 매핑을 먼저 찾는다. 찾지 못하면 404다. 매핑은 클래스에 애너테이션 하나,
+          메서드에 애너테이션 하나로 만든다. 그러면 메서드가 돌려준 값이 응답 본문이 된다.
+        example:
+          language: java
+          code: |-
+            @RestController
+            public class HelloController {
+                @GetMapping("/hello")
+                public String hello() {
+                    return "hi";
+                }
+            }
+          output: GET /hello → 200 hi
+        predict:
+          question: 파라미터 타입이 Long인데 /orders/abc를 부르면 응답 코드는?
+          choices:
+            - "400"
+            - "404"
+          answer: "400"
+          explanation: 주소의 값을 Long으로 바꾸지 못해 400이다. 매핑은 찾았으므로 404가 아니다.
+        complete:
+          question: GET /ping에 pong을 돌려주도록 빈칸을 채우세요.
+          code: |-
+            @___("/ping")
+            public String ping() {
+                return "pong";
+            }
+          answers:
+            - [GetMapping]
+          explanation: GET 요청이므로 GetMapping이다.
+        problem:
+          prompt: GET /orders/health를 부르면 본문에 ok만 돌려주는 컨트롤러를 백지에서 작성하세요.
+          deliverables:
+            - 클래스 전체 코드
+            - 각 애너테이션을 왜 붙였는지 한 줄씩
+          starterCode: |-
+            public class OrderHealthController {
+            }
+          hints:
+            - 클래스에 하나, 메서드에 하나를 붙입니다.
+            - 돌려준 문자열이 화면 이름으로 읽히면 안 됩니다.
+          modelAnswer: |-
+            ```java
+            @RestController
+            public class OrderHealthController {
+                @GetMapping("/orders/health")
+                public String health() {
+                    return "ok";
+                }
+            }
+            ```
+          selfChecks:
+            - 클래스에 RestController를 붙였는가
+            - 주소를 /orders/health로 정확히 적었는가
+      - key: LESSON.TESTSPRING.MVC.001.U2
+        title: 주소 안의 값 받기
+        minutes: 8
+        core: true
+        explain: >-
+          주소 일부가 값일 때는 중괄호로 자리를 만들고 파라미터에 애너테이션을 붙여 받는다. 타입은 스프링이 바꿔 준다.
+          바꾸지 못하면 400이 된다. 이름이 같으면 그대로 이어지고, 다르면 애너테이션에 이름을 적어 준다.
+        example:
+          language: java
+          code: |-
+            @GetMapping("/orders/{orderId}")
+            public Long find(@PathVariable Long orderId) {
+                return orderId;
+            }
+          output: GET /orders/7 → 200 7
+        predict:
+          question: GET /orders/7을 부르면 돌아오는 값은?
+          choices:
+            - "7"
+            - "null"
+          answer: "7"
+          explanation: 주소의 자리에 들어온 값이 파라미터로 넘어온다.
+        complete:
+          question: GET /products/42의 번호를 그대로 돌려주도록 빈칸을 채우세요.
+          code: |-
+            @GetMapping("/products/___")
+            public Long productId(@PathVariable Long productId) {
+                return productId;
+            }
+          answers:
+            - ["{productId}"]
+          explanation: 주소에는 중괄호로 자리를 만든다. 이름을 파라미터와 같게 맞춘다.
+        problem:
+          prompt: GET /orders/{orderId}/items/{itemId}를 받아 두 번호를 그대로 돌려주는 메서드를 백지에서 작성하세요.
+          deliverables:
+            - 메서드 코드
+            - 자리가 두 개일 때 달라지는 점 한 줄
+          hints:
+            - 자리가 두 개면 파라미터도 두 개입니다.
+            - 이름이 맞으면 그대로 이어집니다.
+          modelAnswer: |-
+            ```java
+            @GetMapping("/orders/{orderId}/items/{itemId}")
+            public String findItem(@PathVariable Long orderId, @PathVariable Long itemId) {
+                return orderId + "/" + itemId;
+            }
+            ```
+          selfChecks:
+            - 자리를 두 개 만들었는가
+            - 파라미터마다 애너테이션을 붙였는가
+      - key: LESSON.TESTSPRING.MVC.001.U3
+        title: 물음표 뒤의 값 받기
+        minutes: 8
+        core: false
+        explain: >-
+          물음표 뒤에 붙는 값은 쿼리 파라미터다. 기본은 필수라 값이 없으면 400이 난다. 없어도 되게 하려면
+          required를 false로 두거나 기본값을 준다. 기본값을 주면 필수가 아니게 된다.
+        example:
+          language: java
+          code: |-
+            @GetMapping("/orders")
+            public String search(@RequestParam(defaultValue = "1") int page) {
+                return "page=" + page;
+            }
+          output: GET /orders → page=1
+        predict:
+          question: 기본값도 required도 적지 않은 파라미터를 빼고 부르면?
+          choices:
+            - "400이 난다"
+            - "null이 들어온다"
+          answer: "400이 난다"
+          explanation: 쿼리 파라미터는 기본이 필수다.
+        complete:
+          question: size가 없으면 20이 되도록 빈칸을 채우세요.
+          code: |-
+            @GetMapping("/products")
+            public String list(@RequestParam(___ = "20") int size) {
+                return "size=" + size;
+            }
+          answers:
+            - [defaultValue]
+          explanation: 기본값을 주면 값이 없을 때 그 값이 들어오고 필수가 아니게 된다.
+        problem:
+          prompt: GET /products를 받아 keyword는 없어도 되고 page는 없으면 1이 되는 메서드를 백지에서 작성하세요.
+          deliverables:
+            - 메서드 코드
+            - 두 파라미터에 다른 방법을 쓴 이유
+          hints:
+            - 하나는 null이면 되고 하나는 기본값이 있어야 합니다.
+            - null을 담을 수 없는 타입에는 어느 쪽이 맞을까요.
+          modelAnswer: |-
+            ```java
+            @GetMapping("/products")
+            public String list(
+                    @RequestParam(required = false) String keyword,
+                    @RequestParam(defaultValue = "1") int page) {
+                return keyword + page;
+            }
+            ```
+          selfChecks:
+            - keyword에 required false를 주었는가
+            - page에 기본값을 주었는가
+    inProject: 주문 시스템의 상품 목록과 주문 넣기가 모두 이 매핑 위에 올라간다. 공통 경로를 클래스에 두면 주소가 한곳에 모인다.
+    sources:
+      - title: Spring Framework Reference — Request Mapping
+        url: https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-controller/ann-requestmapping.html
+        versionScope: Spring Framework 7
+    verifiedAt: 2026-09-21
+    retired: false
+
+  - key: LESSON.TESTJAVA.EXCEPTION.001
+    skillCode: JAVA.EXCEPTION
+    title: 예외를 삼키지 않기
+    whyItMatters: 예외를 잡고 아무것도 하지 않으면 장애가 났을 때 무엇이 터졌는지 알 수 없다. 로그에 원인이 남아야 고칠 수 있다.
+    oneLine: 잡은 예외는 원인을 남기거나 다시 던진다.
+    units:
+      - key: LESSON.TESTJAVA.EXCEPTION.001.U1
+        title: 원인을 잃지 않기
+        minutes: 10
+        core: true
+        explain: >-
+          예외를 새로 던질 때 원래 예외를 생성자에 넘기지 않으면 스택 추적이 거기서 끊긴다. 로그에는 새 메시지만 남고
+          진짜 원인은 사라져 장애 분석이 막힌다. 원인을 넘기면 두 스택이 이어져 함께 남는다.
+        example:
+          language: java
+          code: |-
+            try {
+                load(path);
+            } catch (IOException e) {
+                throw new IllegalStateException("설정을 읽지 못했다", e);
+            }
+          output: 로그에 IllegalStateException과 원인 IOException이 함께 남는다
+        predict:
+          question: 생성자에 e를 넘기지 않으면 로그에서 사라지는 것은?
+          choices:
+            - 원래 예외의 스택 추적
+            - 새 예외의 메시지
+          answer: 원래 예외의 스택 추적
+          explanation: 원인을 넘겨야 두 스택이 이어진다.
+        complete:
+          question: 원인을 잃지 않도록 빈칸을 채우세요.
+          code: |-
+            } catch (IOException e) {
+                throw new IllegalStateException("읽기 실패", ___);
+            }
+          answers:
+            - [e]
+          explanation: 잡은 예외를 그대로 넘긴다.
+        problem:
+          prompt: 파일을 읽다 실패하면 원인을 잃지 않고 다시 던지는 메서드를 백지에서 작성하세요.
+          deliverables:
+            - 메서드 코드
+            - 원인을 넘기는 자리 한 줄 설명
+          hints:
+            - 새 예외의 생성자에 넘길 것이 하나 있습니다.
+            - 잡은 변수를 어디에 쓸지 생각해 보세요.
+          modelAnswer: |-
+            ```java
+            void read(Path path) {
+                try {
+                    Files.readString(path);
+                } catch (IOException e) {
+                    throw new IllegalStateException("읽기 실패: " + path, e);
+                }
+            }
+            ```
+          selfChecks:
+            - 새 예외에 원래 예외를 넘겼는가
+            - 메시지에 무엇을 읽다 실패했는지 넣었는가
+      - key: LESSON.TESTJAVA.EXCEPTION.001.U2
+        title: 빈 catch 없애기
+        minutes: 6
+        core: true
+        explain: >-
+          catch 블록을 비워 두면 문제가 없었던 것처럼 넘어간다. 나중에 값이 이상해져도 어디서 시작됐는지 찾을 수 없다.
+          최소한 로그를 남기고, 무시해도 되는 이유가 있으면 주석으로 남긴다.
+        example:
+          language: java
+          code: |-
+            try {
+                close();
+            } catch (IOException e) {
+                log.warn("닫기 실패", e);
+            }
+          output: 경고 로그가 남고 흐름은 이어진다
+        predict:
+          question: catch를 비워 두면 생기는 일은?
+          choices:
+            - 아무 기록 없이 넘어간다
+            - 컴파일되지 않는다
+          answer: 아무 기록 없이 넘어간다
+          explanation: 문법은 맞지만 원인을 추적할 수 없다.
+        complete:
+          question: 최소한의 기록을 남기도록 빈칸을 채우세요.
+          code: |-
+            } catch (IOException e) {
+                log.___("닫기 실패", e);
+            }
+          answers:
+            - [warn, error]
+          explanation: 흐름을 이어 가도 되는 실패는 warn, 그렇지 않으면 error다.
+        problem:
+          prompt: 자원을 닫다 실패해도 흐름을 이어 가되 기록은 남기는 코드를 백지에서 작성하세요.
+          deliverables:
+            - 코드
+            - 로그 수준을 그렇게 고른 이유
+          hints:
+            - 비워 두면 안 됩니다.
+            - 흐름을 멈출 만큼의 실패인지 생각해 보세요.
+          modelAnswer: |-
+            ```java
+            try {
+                stream.close();
+            } catch (IOException e) {
+                log.warn("스트림을 닫지 못했다", e);
+            }
+            ```
+          selfChecks:
+            - catch를 비워 두지 않았는가
+            - 예외 객체를 로그에 넘겼는가
+      - key: LESSON.TESTJAVA.EXCEPTION.001.U3
+        title: 자원을 확실히 닫기
+        minutes: 8
+        core: false
+        explain: >-
+          자원을 연 뒤 예외가 나면 close가 실행되지 않을 수 있다. try 괄호 안에서 열면 블록을 벗어날 때 항상 닫힌다.
+          여러 개를 열면 연 순서의 역순으로 닫히므로 순서를 따로 챙기지 않아도 된다.
+        example:
+          language: java
+          code: |-
+            try (BufferedReader reader = Files.newBufferedReader(path)) {
+                return reader.readLine();
+            }
+          output: 예외가 나도 reader는 닫힌다
+        predict:
+          question: try 괄호 안에서 연 자원은 예외가 나면?
+          choices:
+            - 그래도 닫힌다
+            - 닫히지 않는다
+          answer: 그래도 닫힌다
+          explanation: 블록을 벗어날 때 항상 닫는다.
+        complete:
+          question: 자원이 항상 닫히도록 빈칸을 채우세요.
+          code: |-
+            ___ (BufferedReader reader = Files.newBufferedReader(path)) {
+                return reader.readLine();
+            }
+          answers:
+            - [try]
+          explanation: try 괄호 안에서 열면 자동으로 닫힌다.
+        problem:
+          prompt: 파일의 줄 수를 세는 메서드를 자원이 항상 닫히도록 백지에서 작성하세요.
+          deliverables:
+            - 메서드 코드
+            - 자원이 닫히는 시점 한 줄
+          hints:
+            - 자원을 어디에서 여는지가 중요합니다.
+            - 예외가 나는 경로도 생각해 보세요.
+          modelAnswer: |-
+            ```java
+            long countLines(Path path) throws IOException {
+                try (BufferedReader reader = Files.newBufferedReader(path)) {
+                    return reader.lines().count();
+                }
+            }
+            ```
+          selfChecks:
+            - try 괄호 안에서 자원을 열었는가
+            - 예외 경로에서도 닫히는가
+    inProject: 주문 저장에서 파일이나 커넥션을 다룰 때 이 형태를 그대로 쓴다. 원인을 남기지 않으면 장애 분석이 막힌다.
+    sources:
+      - title: Java SE Documentation — Exceptions
+        url: https://docs.oracle.com/en/java/javase/25/docs/api/index.html
+        versionScope: Java SE 25
+    verifiedAt: 2026-09-21
+    retired: false
+
+  - key: LESSON.TESTTESTING.JUNIT.001
+    skillCode: TESTING.JUNIT
+    title: 테스트로 확인하기
+    whyItMatters: 손으로 확인하면 고칠 때마다 다시 눌러 봐야 한다. 테스트가 있으면 고쳐도 무엇이 깨졌는지 바로 안다.
+    oneLine: 테스트는 기대한 값과 실제 값을 견주는 코드다.
+    units:
+      - key: LESSON.TESTTESTING.JUNIT.001.U1
+        title: 첫 테스트 쓰기
+        minutes: 10
+        core: true
+        explain: >-
+          테스트 메서드에 애너테이션을 붙이면 실행 대상이 된다. 안에서는 실제 값을 만들고 기대한 값과 견준다.
+          다르면 실패로 보고된다. 이름은 무엇을 확인하는지 읽히게 짓는 것이 나중에 도움이 된다.
+        example:
+          language: java
+          code: |-
+            @Test
+            void shouldAddTwoNumbers() {
+                assertThat(1 + 1).isEqualTo(2);
+            }
+          output: 통과하면 아무 출력이 없다
+        predict:
+          question: 기대한 값과 실제 값이 다르면?
+          choices:
+            - 테스트가 실패로 보고된다
+            - 그냥 넘어간다
+          answer: 테스트가 실패로 보고된다
+          explanation: 견주기가 맞지 않으면 실패다.
+        complete:
+          question: 실행 대상이 되도록 빈칸을 채우세요.
+          code: |-
+            @___
+            void shouldWork() {
+                assertThat(true).isTrue();
+            }
+          answers:
+            - [Test]
+          explanation: 테스트 애너테이션을 붙여야 실행된다.
+        problem:
+          prompt: 문자열을 뒤집는 메서드가 맞게 동작하는지 확인하는 테스트를 백지에서 작성하세요.
+          deliverables:
+            - 테스트 코드
+            - 이름을 그렇게 지은 이유
+          hints:
+            - 무엇을 확인하는지 이름에 담습니다.
+            - 실제 값과 기대한 값을 견줍니다.
+          modelAnswer: |-
+            ```java
+            @Test
+            void shouldReverseTheString() {
+                assertThat(reverse("abc")).isEqualTo("cba");
+            }
+            ```
+          selfChecks:
+            - 테스트 애너테이션을 붙였는가
+            - 기대한 값을 정확히 적었는가
+      - key: LESSON.TESTTESTING.JUNIT.001.U2
+        title: 경계 확인하기
+        minutes: 8
+        core: true
+        explain: >-
+          보통 값만 확인하면 비어 있거나 하나뿐일 때 터지는 것을 못 잡는다. 빈 값, 하나, 많이를 각각 확인한다.
+          실패하는 것을 먼저 보고 고치면 그 테스트가 진짜로 돌고 있는지도 함께 알 수 있다.
+        example:
+          language: java
+          code: |-
+            @Test
+            void shouldReturnZeroForAnEmptyList() {
+                assertThat(sum(List.of())).isZero();
+            }
+          output: 빈 목록에서도 터지지 않는다
+        predict:
+          question: 보통 값만 확인하면 놓치기 쉬운 것은?
+          choices:
+            - 빈 값에서 터지는 경우
+            - 값이 큰 경우
+          answer: 빈 값에서 터지는 경우
+          explanation: 경계는 따로 확인해야 한다.
+        complete:
+          question: 빈 목록의 합이 0인지 확인하도록 빈칸을 채우세요.
+          code: |-
+            assertThat(sum(List.___())).isZero();
+          answers:
+            - [of]
+          explanation: 빈 목록을 만들어 넘긴다.
+        problem:
+          prompt: 목록의 최댓값을 찾는 메서드에 대해 경계를 확인하는 테스트를 두 개 백지에서 작성하세요.
+          deliverables:
+            - 테스트 코드 두 개
+            - 각각 무엇을 확인하는지 한 줄
+          hints:
+            - 값이 하나뿐일 때를 생각해 보세요.
+            - 비어 있을 때 무엇이 맞는 동작인지 정해야 합니다.
+          modelAnswer: |-
+            ```java
+            @Test
+            void shouldReturnTheOnlyValue() {
+                assertThat(max(List.of(3))).isEqualTo(3);
+            }
+
+            @Test
+            void shouldRejectAnEmptyList() {
+                assertThatThrownBy(() -> max(List.of()));
+            }
+            ```
+          selfChecks:
+            - 하나뿐인 경우를 확인했는가
+            - 비어 있는 경우의 기대 동작을 정했는가
+      - key: LESSON.TESTTESTING.JUNIT.001.U3
+        title: 이름으로 설명하기
+        minutes: 5
+        core: false
+        explain: >-
+          테스트 이름은 실패했을 때 가장 먼저 읽는 문장이다. 무엇을 하면 무엇이 되어야 하는지 담으면 코드를 열지 않고도
+          무엇이 깨졌는지 안다. 메서드 이름을 그대로 쓰면 도움이 되지 않는다.
+        example:
+          language: java
+          code: |-
+            @Test
+            void shouldRejectAnOrderWithoutItems() {
+                assertThatThrownBy(() -> place(emptyOrder()));
+            }
+          output: 실패하면 이름이 그대로 보고된다
+        predict:
+          question: 실패 보고에서 가장 먼저 읽게 되는 것은?
+          choices:
+            - 테스트 이름
+            - 파일 크기
+          answer: 테스트 이름
+          explanation: 이름이 무엇이 깨졌는지 알려 준다.
+        complete:
+          question: 무엇이 되어야 하는지 담도록 빈칸을 채우세요.
+          code: |-
+            @Test
+            void ___RejectAnOrderWithoutItems() {
+            }
+          answers:
+            - [should]
+          explanation: 기대를 담은 이름으로 짓는다.
+        problem:
+          prompt: 주문 금액이 음수면 거부하는 동작에 대해 이름만으로 뜻이 읽히는 테스트를 백지에서 작성하세요.
+          deliverables:
+            - 테스트 코드
+            - 이름에 담은 조건과 기대
+          hints:
+            - 조건과 기대를 모두 담습니다.
+            - 메서드 이름을 그대로 쓰지 않습니다.
+          modelAnswer: |-
+            ```java
+            @Test
+            void shouldRejectAnOrderWithANegativeAmount() {
+                assertThatThrownBy(() -> place(order(-1)));
+            }
+            ```
+          selfChecks:
+            - 이름에 조건이 들어 있는가
+            - 이름에 기대한 결과가 들어 있는가
+    inProject: 주문 시스템의 계산과 검증을 손으로 확인하지 않게 된다. 고칠 때마다 무엇이 깨졌는지 바로 보인다.
+    sources:
+      - title: JUnit 5 User Guide — Writing Tests
+        url: https://junit.org/junit5/docs/current/user-guide/
+        versionScope: JUnit 5
+    verifiedAt: 2026-09-21
+    retired: false
+
+  - key: LESSON.TESTJAVA.COLLECTION.001
+    skillCode: JAVA.COLLECTION
+    title: 목록과 집합 고르기
+    whyItMatters: 담는 그릇을 잘못 고르면 중복이 쌓이거나 찾는 데 오래 걸린다. 주문의 상품 목록과 중복 없는 코드 집합은 다른 그릇이 맞다.
+    oneLine: 순서가 필요하면 목록, 중복을 막으려면 집합을 쓴다.
+    units:
+      - key: LESSON.TESTJAVA.COLLECTION.001.U1
+        title: 목록에 값 넣고 꺼내기
+        minutes: 8
+        core: true
+        explain: >-
+          목록은 넣은 순서를 지키고 같은 값을 여러 번 담을 수 있다. 자리 번호로 꺼내고, 번호는 0부터 센다.
+          없는 번호를 꺼내려 하면 예외가 나므로 크기를 size로 먼저 확인하는 습관이 필요하다.
+        example:
+          language: java
+          code: |-
+            List<String> codes = new ArrayList<>();
+            codes.add("A1");
+            codes.add("A1");
+            System.out.println(codes.size());
+          output: "2"
+        predict:
+          question: 같은 값을 두 번 add하면 size는?
+          choices:
+            - "2"
+            - "1"
+          answer: "2"
+          explanation: 목록은 중복을 허용한다.
+        complete:
+          question: 첫 번째 값을 꺼내도록 빈칸을 채우세요.
+          code: |-
+            String first = codes.___(0);
+          answers:
+            - [get]
+          explanation: 자리 번호로 꺼낼 때는 get을 쓴다.
+        problem:
+          prompt: 상품 코드를 순서대로 담고 두 번째 값을 돌려주는 메서드를 백지에서 작성하세요.
+          deliverables:
+            - 메서드 코드
+            - 번호가 0부터인 점을 어떻게 다뤘는지 한 줄
+          hints:
+            - 자리 번호는 0부터 셉니다.
+            - 크기보다 큰 번호를 꺼내면 예외가 납니다.
+          modelAnswer: |-
+            ```java
+            String second(List<String> codes) {
+                return codes.get(1);
+            }
+            ```
+          selfChecks:
+            - 번호를 0부터 세어 적었는가
+            - 크기가 모자랄 때를 생각했는가
+      - key: LESSON.TESTJAVA.COLLECTION.001.U2
+        title: 중복 막기
+        minutes: 7
+        core: true
+        explain: >-
+          집합은 같은 값을 한 번만 담는다. 같은 값인지는 equals로 판단하므로 직접 만든 타입은 equals와 hashCode를
+          함께 맞춰야 한다. 맞추지 않으면 같아 보이는 값이 여러 번 들어간다.
+        example:
+          language: java
+          code: |-
+            Set<String> codes = new HashSet<>();
+            codes.add("A1");
+            codes.add("A1");
+            System.out.println(codes.size());
+          output: "1"
+        predict:
+          question: 집합에 같은 값을 두 번 add하면 size는?
+          choices:
+            - "1"
+            - "2"
+          answer: "1"
+          explanation: 집합은 중복을 담지 않는다.
+        complete:
+          question: 중복 없는 그릇을 만들도록 빈칸을 채우세요.
+          code: |-
+            Set<String> codes = new ___<>();
+          answers:
+            - [HashSet, LinkedHashSet]
+          explanation: 중복을 막는 구현을 고른다. 순서까지 지키려면 LinkedHashSet이다.
+        problem:
+          prompt: 상품 코드 목록에서 중복을 없앤 결과를 돌려주는 메서드를 백지에서 작성하세요.
+          deliverables:
+            - 메서드 코드
+            - 순서가 필요한 경우 무엇을 바꿔야 하는지 한 줄
+          hints:
+            - 목록을 그대로 집합에 넣을 수 있습니다.
+            - 순서를 지키는 구현이 따로 있습니다.
+          modelAnswer: |-
+            ```java
+            Set<String> unique(List<String> codes) {
+                return new LinkedHashSet<>(codes);
+            }
+            ```
+          selfChecks:
+            - 중복을 막는 그릇을 썼는가
+            - 순서가 필요한지 판단해 구현을 골랐는가
+      - key: LESSON.TESTJAVA.COLLECTION.001.U3
+        title: 키로 찾기
+        minutes: 7
+        core: false
+        explain: >-
+          키로 값을 찾을 때는 맵을 쓴다. 목록을 처음부터 훑는 것보다 빠르고 코드도 읽기 쉽다. 없는 키를 꺼내면
+          null이 나오므로, 기본값이 필요하면 getOrDefault로 한 번에 처리하는 편이 안전하다.
+        example:
+          language: java
+          code: |-
+            Map<String, Integer> stock = new HashMap<>();
+            stock.put("A1", 3);
+            System.out.println(stock.getOrDefault("B1", 0));
+          output: "0"
+        predict:
+          question: 없는 키를 get으로 꺼내면?
+          choices:
+            - "null이 나온다"
+            - "예외가 난다"
+          answer: "null이 나온다"
+          explanation: 맵은 없는 키에 null을 돌려준다.
+        complete:
+          question: 없으면 0이 되도록 빈칸을 채우세요.
+          code: |-
+            int count = stock.___("B1", 0);
+          answers:
+            - [getOrDefault]
+          explanation: 기본값이 필요하면 getOrDefault를 쓴다.
+        problem:
+          prompt: 상품 코드로 재고 수를 찾되 없으면 0을 돌려주는 메서드를 백지에서 작성하세요.
+          deliverables:
+            - 메서드 코드
+            - null을 피한 방법 한 줄
+          hints:
+            - 없는 키를 꺼내면 무엇이 나오는지 생각해 보세요.
+            - 기본값을 함께 넘기는 방법이 있습니다.
+          modelAnswer: |-
+            ```java
+            int stockOf(Map<String, Integer> stock, String code) {
+                return stock.getOrDefault(code, 0);
+            }
+            ```
+          selfChecks:
+            - 없는 키에서 null이 나오지 않게 했는가
+            - 기본값을 0으로 두었는가
+    inProject: 주문의 상품 목록은 순서가 있는 목록, 중복을 막아야 하는 코드 모음은 집합, 재고 조회는 맵이 맞다.
+    sources:
+      - title: Java SE Documentation — Collections Framework
+        url: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/package-summary.html
+        versionScope: Java SE 25
+    verifiedAt: 2026-09-21
+    retired: false

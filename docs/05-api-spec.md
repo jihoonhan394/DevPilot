@@ -319,7 +319,7 @@ backend 자신은 이 endpoint를 호출하지 않는다(메모리의 공개키�
 
 | 항목 | 규칙 |
 |---|---|
-| 대상 | 인증이 필요한 `POST` 중 **리소스를 만들거나 AI를 호출하는 것**(각 endpoint 표의 "인증 / IK" 열이 `IK`인 것). 예외(IK 열이 `—`): `POST /plans/{planId}/replan/preview`(계산만), `POST /learning-sessions/{id}/abandon`, `POST /challenge-attempts/{id}/abandon`, `POST /rubber-duck/{id}/abandon`(상태 전이가 자연히 멱등 — 두 번째 호출은 409 또는 같은 결과), `POST /api/v1/dev/token`(인증 없음). 예외 endpoint는 헤더를 받아도 무시하고 record를 만들지 않는다 |
+| 대상 | 인증이 필요한 `POST` 중 **리소스를 만들거나 AI를 호출하는 것**(각 endpoint 표의 "인증 / IK" 열이 `IK`인 것). 예외(IK 열이 `—`): `POST /plans/{planId}/replan/preview`(계산만), `POST /learning-sessions/{id}/abandon`, `POST /challenge-attempts/{id}/abandon`, `POST /rubber-duck/{id}/abandon`(상태 전이가 자연히 멱등 — 두 번째 호출은 409 또는 같은 결과), `POST /lessons/{k}/units/{u}/predict`·`POST /lessons/{k}/units/{u}/complete`(§21.4·§21.5 — 채점만 하고 아무것도 만들지 않는다. 같은 답은 항상 같은 결과다), `POST /api/v1/dev/token`(인증 없음). 예외 endpoint는 헤더를 받아도 무시하고 record를 만들지 않는다 |
 | 헤더 | `Idempotency-Key: <key>`. 형식 `^[A-Za-z0-9_-]{8,100}$`. 없으면 400 `IDEMPOTENCY_KEY_REQUIRED`, 형식 오류면 400 `VALIDATION_FAILED`(field `Idempotency-Key`, code `Pattern`) |
 | 클라이언트 | 사용자 행동 1회마다 UUID v4를 새로 만든다. 네트워크 재시도에는 같은 키를 쓴다 |
 | 범위 | `(user_id, key)` 단위(`idempotency_record` PK). 다른 사용자의 같은 키는 무관 |
@@ -4314,3 +4314,131 @@ public record TermCardResponse(
 - 활성 skill이 하나도 없는 용어(은퇴한 skill만 가리키는 경우)는 카드를 만들지 않고 200 + `cards: []`, `createdCount = 0`을 돌려준다.
 - 새로 만든 카드가 있으면 `TERM_CARD_CREATED` 학습 이벤트를 1건 남긴다(`04-domain-model-and-db.md` §6).
 - 자유 텍스트 입력이 없으므로 마스킹 대상이 아니다(§1.11).
+
+## 21. Lesson 모듈 (개념 노트 · 학습 단위)
+
+Controller: `LessonController`(`/lessons*`, `today` 모듈). 본문은 DB에 없고 `content/lessons/*.yaml`에 있다(`19-content-spec.md` §3.14). `LessonRegistry`는 `content` 모듈이 기동 시 등록한다(`CuratedReadingRegistry`와 같은 방식).
+
+**이 절의 endpoint는 AI를 호출하지 않는다.** 예측·빈칸은 서버가 문자열로 채점하고, 백지 문제는 채점하지 않는다 — 모범 답안과 확인 목록을 돌려주고 사용자가 스스로 견준다(`01` 원칙 9 *No IDE reinvention*: 서버는 사용자 코드를 실행하지 않는다).
+
+키 형식: `lessonKey`는 `^LESSON\.[A-Z][A-Z0-9_]*(\.[A-Z][A-Z0-9_]*)*\.[0-9]{3}$`, `unitKey`는 `^<lessonKey>\.U[0-9]{1,2}$`(각 ≤ 140자, §17). 어긋나면 400 `VALIDATION_FAILED`(code `Pattern`). 형식이 맞아도 registry에 없으면 404 `RESOURCE_NOT_FOUND`. 은퇴한 노트(`retired: true`)도 조회는 된다 — 기록이 그 key를 가리키기 때문이다(`19` §8.2).
+
+### 21.1 공통 view record
+
+```java
+public record LessonView(
+        String lessonKey,
+        String skillId,              // UUID. registry가 skillCode로 찾아 채운다
+        String skillCode,
+        String skillName,
+        String title,
+        String whyItMatters,
+        String oneLine,
+        List<LessonUnitView> units,
+        List<String> commonMistakes,
+        String inProject,
+        List<LessonSourceView> sources,
+        List<LessonSourceView> readMore,
+        boolean retired) {}
+
+public record LessonUnitView(
+        String unitKey,
+        String title,
+        int minutes,
+        boolean core,
+        String explain,             // 마크다운
+        LessonExampleView example,
+        LessonQuestionView predict,  // answer·explanation 없음
+        LessonQuestionView complete, // answers·explanation 없음
+        LessonProblemView problem,   // modelAnswer·selfChecks 없음
+        List<String> prerequisiteUnits,
+        UnitProgressView progress) {} // 그 사용자의 진행. 기록이 없으면 null
+
+public record LessonExampleView(String language, String code, String output, String note) {}
+
+/** 문항. 정답은 채점 응답에만 들어간다. */
+public record LessonQuestionView(String question, String code, List<String> choices, int blanks) {}
+
+/** 백지 문제. hints는 단계별로 받는다(앱이 하나씩 연다) — 모범 답안은 제출해야 온다. */
+public record LessonProblemView(
+        String prompt, List<String> deliverables, String starterCode, List<String> hints) {}
+
+public record LessonSourceView(String title, String url, String versionScope) {}
+
+public record UnitProgressView(
+        boolean solved, HelpLevel helpLevel, Instant solvedAt, Integer selfChecksMet) {}
+```
+
+`HelpLevel`(`today.domain`): `NONE` < `HINT` < `DUCK` < `ANSWER`. 첫 학습에서 **예제를 다시 보는 것은 도움으로 치지 않는다**(방금 본 것이다). 다시 풀기에서는 노트를 여는 것도 도움이다 — 그 값은 복습 쪽에서 정한다(`06` §6).
+
+### 21.2 `GET /api/v1/lessons/{lessonKey}`
+
+노트 하나와 단위 전부. **정답을 담지 않는다** — `predict.answer`, `complete.answers`, `problem.modelAnswer`, `problem.selfChecks`는 채점·제출 응답에만 들어간다. 그래서 이 응답을 캐시해도 답이 새지 않는다.
+
+- 200 `LessonView`. 다른 사용자의 자원이 아니므로 소유권 검사는 없다(콘텐츠다). 진행(`progress`)만 호출한 사용자 것이다.
+- 404 `RESOURCE_NOT_FOUND` — registry에 없는 key
+
+### 21.3 `GET /api/v1/skills/{skillId}/lesson`
+
+그 skill의 노트. 화면에서 skill → 노트로 바로 가는 길이다.
+
+- 200 `LessonView`, 404 `RESOURCE_NOT_FOUND`(그 skill에 노트가 없다)
+
+### 21.4 `POST /api/v1/lessons/{lessonKey}/units/{unitKey}/predict`
+
+출력 예측 채점. `Idempotency-Key` 불필요 — 상태를 바꾸지 않는다(§2.6의 예외 목록에 넣는다).
+
+```json
+{ "answer": "index" }
+```
+
+- `answer` 1~200자 필수
+- 200 `{ "correct": true, "expected": "index", "explanation": "..." }`
+- 채점 규칙(`19` §3.14): 앞뒤 공백을 버리고 연속 공백을 하나로 줄인 뒤 **대소문자를 구분해** 비교한다. `choices`가 있으면 고른 값과 비교한다
+- 404 `RESOURCE_NOT_FOUND`
+
+### 21.5 `POST /api/v1/lessons/{lessonKey}/units/{unitKey}/complete`
+
+빈칸 채우기 채점. 상태를 바꾸지 않는다.
+
+```json
+{ "answers": ["@GetMapping", "/orders"] }
+```
+
+- `answers`는 그 단위의 빈칸 수와 같아야 한다. 다르면 400 `VALIDATION_FAILED`(field `answers`, code `Size`)
+- 200 `{ "correct": false, "results": [true, false], "expected": ["@GetMapping", "/orders"], "explanation": "..." }`
+
+### 21.6 `GET /api/v1/lessons/{lessonKey}/units/{unitKey}/answer`
+
+모범 답안과 확인 목록. **백지 문제를 낸 다음에 보는 것**이고 서버는 채점하지 않는다 — 사용자가 자기 IDE에서 돌려 본 답을 이것과 스스로 견준다(`01` 원칙 9).
+
+- 200 `{ "modelAnswer": "...", "selfChecks": ["...", "..."] }`
+- 상태를 바꾸지 않는다. 기록은 §21.7에서 한다
+- **사용자가 쓴 답은 서버로 보내지 않는다.** 보낼 이유가 없다(채점하지 않는다) — 저장하지 않을 것을 받지도 않는다(`03` §11)
+- 404 `RESOURCE_NOT_FOUND`
+
+### 21.7 `POST /api/v1/lessons/{lessonKey}/units/{unitKey}/finish`
+
+단위 한 바퀴를 마쳤다. `Idempotency-Key` 필수(§2.6).
+
+```json
+{ "helpLevel": "HINT", "selfChecksMet": 2 }
+```
+
+- `helpLevel` 필수. **앱이 센 값이다** — 무엇을 열었는지 서버가 추적하지 않는다. 이 값은 복습 일정에만 쓰고 레벨에는 쓰지 않으므로(`01` 원칙 4) 자기 보고로 충분하다
+- `selfChecksMet` 선택. 0 ~ 그 단위의 `selfChecks` 개수. 견주지 않고 넘어갔으면 생략한다. 범위를 벗어나면 400 `VALIDATION_FAILED`
+- 200 `{ "unitKey": "...", "helpLevel": "HINT", "selfChecksMet": 2, "recordedAt": "..." }`
+- 기록: `learning_event` `UNIT_SOLVED` 1건(`04` §6). `skill_id`는 노트의 skill
+- 같은 단위를 다시 마치면 이벤트가 하나 더 쌓인다(다시 풀기). dedupe 하지 않는다
+
+### 21.8 오류 코드
+
+| 상황 | 상태 | code |
+|---|---|---|
+| key 형식 위반 | 400 | `VALIDATION_FAILED` |
+| registry에 없음 | 404 | `RESOURCE_NOT_FOUND` |
+| `answers`·`met` 개수 불일치 | 400 | `VALIDATION_FAILED` |
+| 토큰 없음 | 401 | `UNAUTHORIZED` |
+
+---
+

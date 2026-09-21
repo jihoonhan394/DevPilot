@@ -5,6 +5,7 @@ import com.devpilot.plan.application.PlanTemplateRegistry;
 import com.devpilot.review.application.SeedCardRegistry;
 import com.devpilot.today.application.ConceptReadingRegistry;
 import com.devpilot.today.application.CuratedReadingRegistry;
+import com.devpilot.today.application.LessonRegistry;
 import com.devpilot.today.domain.ConceptReading;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,8 +15,8 @@ import org.springframework.stereotype.Component;
 /**
  * 검증을 마친 콘텐츠를 메모리 registry에 등록한다 (docs/04 §9, docs/19 §3.12 7번): plan template → {@link
  * PlanTemplateRegistry}, review card → {@link SeedCardRegistry}, curated reading(은퇴한 것 포함) → {@link
- * CuratedReadingRegistry}, 개념 읽기(은퇴한 것 포함) → {@link ConceptReadingRegistry}. {@link ContentSeeder}가
- * 부른다.
+ * CuratedReadingRegistry}, 개념 읽기(은퇴한 것 포함) → {@link ConceptReadingRegistry}, 개념 노트(은퇴한 것 포함) →
+ * {@link LessonRegistry}. {@link ContentSeeder}가 부른다.
  */
 @Component
 class ContentRegistration {
@@ -27,16 +28,19 @@ class ContentRegistration {
     private final SeedCardRegistry seedCardRegistry;
     private final CuratedReadingRegistry curatedReadingRegistry;
     private final ConceptReadingRegistry conceptReadingRegistry;
+    private final LessonRegistry lessonRegistry;
 
     ContentRegistration(
             PlanTemplateRegistry planTemplateRegistry,
             SeedCardRegistry seedCardRegistry,
             CuratedReadingRegistry curatedReadingRegistry,
-            ConceptReadingRegistry conceptReadingRegistry) {
+            ConceptReadingRegistry conceptReadingRegistry,
+            LessonRegistry lessonRegistry) {
         this.planTemplateRegistry = planTemplateRegistry;
         this.seedCardRegistry = seedCardRegistry;
         this.curatedReadingRegistry = curatedReadingRegistry;
         this.conceptReadingRegistry = conceptReadingRegistry;
+        this.lessonRegistry = lessonRegistry;
     }
 
     /** 등록하고 개수를 돌려준다. */
@@ -54,10 +58,12 @@ class ContentRegistration {
                     CatalogMapping.curatedReadings(RawYaml.asMap(content.document(path).root())));
         }
         registerConceptReadings(content, files);
+        lessonRegistry.register(CatalogMapping.lessons(documents(content, catalog, "lessons")));
         return new Registered(
                 seedCardRegistry.cards().size(),
                 curatedReadingRegistry.all().size(),
-                conceptReadingRegistry.all().size());
+                conceptReadingRegistry.all().size(),
+                lessonRegistry.all().size());
     }
 
     /**
@@ -92,5 +98,5 @@ class ContentRegistration {
     }
 
     /** 등록 개수 (로그용). */
-    record Registered(int seedCards, int readings, int conceptReadings) {}
+    record Registered(int seedCards, int readings, int conceptReadings, int lessons) {}
 }

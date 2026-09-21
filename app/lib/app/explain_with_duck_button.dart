@@ -52,6 +52,7 @@ class ExplainWithDuckButton extends ConsumerWidget {
     required this.launch,
     this.style = ExplainButtonStyle.text,
     this.semanticsLabel,
+    this.beforeOpen,
   });
 
   final Key buttonKey;
@@ -62,10 +63,18 @@ class ExplainWithDuckButton extends ConsumerWidget {
   /// A distinct name when several such buttons share one screen.
   final String? semanticsLabel;
 
+  /// Runs just before the duck opens. SCR-LESSON counts this as help (docs/05 §21.7).
+  final VoidCallback? beforeOpen;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final status = ref.watch(aiStatusProvider);
-    final onPressed = status.allowsAi ? () => openRubberDuck(context, launch) : null;
+    final onPressed = status.allowsAi
+        ? () {
+            beforeOpen?.call();
+            openRubberDuck(context, launch);
+          }
+        : null;
     final text = Text(label, semanticsLabel: semanticsLabel);
     return Column(
       mainAxisSize: MainAxisSize.min,

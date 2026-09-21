@@ -403,9 +403,11 @@ coverage 계산은 서버가 한다(`06` §8.1).
 | `REDO_COMPLETED` | LEARNING_TASK (`learning_task.id`) | task의 skill (null이면 기록 생략) | `{ taskId, sourceTaskId, sourceTaskType, withoutAi, difficulty }` — `sourceTaskType`은 `CHALLENGE` 또는 `PROJECT_TASK`, `difficulty`는 원본 과제의 difficulty(`06` §5.3), `withoutAi`는 완료 때 사용자가 답한 값 | `REDO:{taskId}:{skillId}` |
 | `TIP_VIEWED` | (없음 — `source_type`·`source_id` 모두 null) | 팁 `skillCodes`의 첫 활성 skill (없으면 null) | `{ tipKey, series, level }` — 팁을 보여 준 시점에 1회(`05` §20.2). `feedback`은 담지 않는다(고르지 않을 수 있다 — 값은 `user_daily_tip`에 있다) | `TIP_VIEWED:{tipKey}` |
 | `TERM_CARD_CREATED` | REVIEW_ITEM (정방향 카드 `review_item.id`) | 용어 `skillCodes`의 첫 활성 skill | `{ termKey, conceptKey, cardCount }` — `conceptKey`는 정방향 카드의 것(`TERM:{termKey}`), `cardCount`는 이번에 만든 카드 수(`05` §20.7) | `TERM_CARD:{termKey}:{skillId}` |
+| `UNIT_SOLVED` | (없음 — `source_type`·`source_id` 모두 null) | 노트의 skill | `{ lessonKey, unitKey, helpLevel, selfChecksMet }` — `helpLevel`은 `NONE`·`HINT`·`DUCK`·`ANSWER`(앱이 센 값, `05` §21.7), `selfChecksMet`은 모범 답안과 견준 개수(견주지 않고 넘어갔으면 없다). 단위를 마칠 때 **한 번에** 기록한다 — 이벤트를 나중에 고치지 않는다 | (없음 — 같은 단위를 여러 번 풀 수 있다) |
 | `EVIDENCE_ACCEPTED` | EVIDENCE | evidence skill | `{ evidenceId }` | `EVIDENCE_ACCEPTED:{evidenceId}` |
 | `PLAN_REPLANNED` | LEARNING_PLAN | null | `{ fromPlanId, toPlanId, fromVersion, toVersion, deferredSkillCodes[], reducedSkillCodes[] }` | `REPLANNED:{toPlanId}` |
 
+- `UNIT_SOLVED`는 **복습 일정의 입력**이고 레벨의 증거가 아니다(`01` 원칙 4). 단위 문제는 서버가 채점하지 않으므로(`05` §21.6) 맞았는지를 모르고, `helpLevel`과 `selfChecksMet`만 남는다. skill updater의 입력에서 제외한다(`06` §7.1).
 - `TIP_VIEWED`·`TERM_CARD_CREATED`는 **기록용**이다. `skill_id`가 있어도 skill updater의 입력에서 제외한다(`06` §7.1) — 팁을 받은 것과 용어 카드를 만든 것은 무엇을 할 수 있게 됐다는 증거가 아니다.
 - 무효화: `invalidated_at`이 설정된 이벤트는 모든 규칙 계산과 지표에서 제외한다. MVP에는 무효화 API가 없고 ADMIN 운영 작업으로만 설정한다.
 - `COACH_REVIEW_COMPLETED`와 `COACH_FINDING_CLOSED`는 `POST /coach/reviews/{id}/complete` 처리 트랜잭션에서 기록한다. `discoveredBy`는 그 시점에 확정한다(`06-learning-engine-rules.md` §9.3).
@@ -496,6 +498,7 @@ coverage 계산은 서버가 한다(`06` §8.1).
 | `V8__requirement_radar.sql` | S7 | `requirement_doc`, `requirement_item` |
 | `V9__rubberduck_project.sql` | S1(`side_project`) · S3(러버덕, 읽기 평가) | `side_project`, `rubber_duck_session`, `rubber_duck_turn`, `learning_task.side_project_id`·`reading_key`(+ CHECK `learning_task_reading_key_type`)·`reading_feedback`(`varchar(20)` null, 값 CHECK `HELPFUL`/`TOO_HARD`/`BORING` + CHECK `learning_task_reading_feedback_type`)·`coach_review.side_project_id` 추가 |
 | `V10__track_notes_redo.sql` | S3(학습 트랙 3종, 프로젝트 기록, 경험 기록 분류, 오늘의 팁, 용어 카드, 설명 기록, 문제 시간 제한, 개념 읽기) · S4(재현 과제) | 아래 §10.1 |
+| `V11__lesson_events.sql` | 개념 노트(학습 단위) | `learning_event.event_type` CHECK에 `UNIT_SOLVED`를 더해 다시 만든다(`learning_event_event_type_check`). **이것 하나뿐이다** — 개념 노트 본문은 콘텐츠이고 DB 테이블이 없다(`19` §3.14), 사용자 답도 저장하지 않는다(`05` §21.6) |
 
 ### 10.1 `V10__track_notes_redo.sql` (내용)
 

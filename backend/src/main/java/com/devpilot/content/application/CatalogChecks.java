@@ -35,9 +35,12 @@ final class CatalogChecks {
                     "curatedSources",
                     "curatedRepos");
 
-    /** {@code conceptReadings}는 선택이다 — 생략하면 기본 경로를 읽는다 (docs/19 §3.1·§3.13). */
+    /**
+     * {@code conceptReadings}는 선택이다 — 생략하면 기본 경로를 읽는다 (docs/19 §3.1·§3.13). {@code lessons}도 선택이다 —
+     * 없으면 개념 노트가 없는 것으로 본다 (docs/19 §3.14).
+     */
     private static final Set<String> ALLOWED_FILE_KEYS =
-            Stream.concat(FILE_KEYS.stream(), Stream.of("conceptReadings"))
+            Stream.concat(FILE_KEYS.stream(), Stream.of("conceptReadings", "lessons"))
                     .collect(Collectors.toUnmodifiableSet());
 
     private static final Set<String> RETIRED_KEYS =
@@ -47,6 +50,17 @@ final class CatalogChecks {
                     "conceptKeys",
                     "curatedSourceIds",
                     "readingKeys");
+
+    /** 선택 키 {@code lessonKeys}까지 (docs/19 §3.1·§3.14). */
+    private static final Set<String> RETIRED_ALLOWED_KEYS =
+            Set.of(
+                    "skillCodes",
+                    "challengeSeedKeys",
+                    "conceptKeys",
+                    "curatedSourceIds",
+                    "readingKeys",
+                    "lessonKeys");
+
     private static final List<String> LIST_KEYS =
             List.of("skillTrees", "roleTargets", "planTemplates", "reviewCards", "challenges");
     private static final String WHERE = "catalog.yaml";
@@ -88,12 +102,13 @@ final class CatalogChecks {
     }
 
     private static void checkRetired(ValidationContext context, Map<String, Object> values) {
-        RawYaml.checkKeys(values, RETIRED_KEYS, RETIRED_KEYS, context, WHERE + "#retired");
+        RawYaml.checkKeys(values, RETIRED_ALLOWED_KEYS, RETIRED_KEYS, context, WHERE + "#retired");
         context.retiredSkillCodes = stringSet(values.get("skillCodes"));
         context.retiredSeedKeys = stringSet(values.get("challengeSeedKeys"));
         context.retiredConceptKeys = stringSet(values.get("conceptKeys"));
         context.retiredSourceIds = stringSet(values.get("curatedSourceIds"));
         context.retiredReadingKeys = stringSet(values.get("readingKeys"));
+        context.retiredLessonKeys = stringSet(values.get("lessonKeys"));
     }
 
     private static void checkListedFiles(ValidationContext context) {
@@ -113,6 +128,7 @@ final class CatalogChecks {
         }
         // conceptReadings는 생략할 수 있고 그때는 기본 경로를 읽는다 (docs/19 §3.1)
         listed.add(context.conceptReadingsFile());
+        listed.addAll(context.fileList("lessons"));
         if (new HashSet<>(listed).size() != listed.size()) {
             context.error("CV-02", WHERE + "#files", "duplicate file entry");
         }

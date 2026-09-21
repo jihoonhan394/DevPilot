@@ -91,6 +91,7 @@
 | `/today` | SCR-TODAY | Y | Y | S2 |
 | `/today/diagnostics` | SCR-DIAGNOSTICS | Y | Y | S3 |
 | `/today/read/:readingKey` | SCR-READ-CODE | Y | Y | S3 |
+| `/lessons/:lessonKey` | SCR-LESSON | Y | Y | S3 |
 | `/tips` | SCR-TIPS | Y | Y | S3 |
 | `/tips/:tipKey` | SCR-TIP-DETAIL | Y | Y | S3 |
 | `/terms` | SCR-TERMS | Y | Y | S3 |
@@ -2409,6 +2410,41 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 - **상태**: Loading — 카테고리 헤더 skeleton 4개. Empty — 필터 결과 0 → `skill.tree.emptyFilter`. Error·Offline — 공통.
 - **행동**: 필터 기본값 = 필수만 + 목표 미달만 꺼짐. 카테고리 펼침 상태는 `localStorage` `devpilot.skills.expanded`(try/catch).
 - **문구**: `skill.tree.title` = "기술", `skill.tree.onlyGap` = "목표 미달만", `skill.tree.categorySummary` = "{priority} {total}개 중 목표 도달 {reached}개", `skill.tree.selfAssessed` = "자기평가", `skill.tree.deferred` = "미룸", `skill.tree.emptyFilter` = "조건에 맞는 기술이 없어요."
+
+#### SCR-LESSON
+
+경로 `/lessons/:lessonKey`. **가르치는 화면이다.** 지금까지 제품에는 이 자리가 없었고 문제·복습 카드·러버덕이 모두 "이미 안다"를 전제했다(`01` §4 *Teach before test*).
+
+노트 하나는 **학습 단위** 3~6개다. 단위 하나가 5~15분짜리 한 바퀴이고, 화면은 그 한 바퀴를 **한 걸음씩** 보여 준다. 한 화면에 다 펼치지 않는다 — 답을 먼저 보게 되고, 평일 60분에 어디까지 했는지도 흐려진다.
+
+**단위 한 바퀴 (걸음마다 화면 하나)**
+
+| # | 걸음 | 보이는 것 | 다음으로 가는 조건 |
+|---|---|---|---|
+| 0 | 왜 배우나 | 노트의 `whyItMatters`, `oneLine`, 단위 목록(제목·분). **노트를 열면 처음 한 번만** | "시작" |
+| 1 | 설명 | 단위의 `explain`(마크다운) | "예제 보기" |
+| 2 | 예제 | `example.code`(코드 블록 — 복사 가능), `output`, `note` | "해 보기" |
+| 3 | 예측 | `predict.question` + `code`. 선택형이면 버튼, 아니면 한 줄 입력 | 답을 내면 바로 채점 → 정답·해설 |
+| 4 | 빈칸 | `complete.question` + 빈칸이 있는 코드. 빈칸마다 입력칸 | 답을 내면 바로 채점 → 정답·해설 |
+| 5 | 문제 | `problem.prompt`, `deliverables`(번호 목록), `starterCode`가 채워진 답안칸 | "냈어요" |
+| 6 | 견주기 | `modelAnswer`(코드 블록), `selfChecks` 체크박스, 내가 쓴 답(화면에만 있다 — 서버로 보내지 않는다) | "마쳤어요"를 누르면 도움 단계와 체크 개수를 보낸다 |
+| 7 | 다음 걸음 | 노트의 `inProject`, 다음 단위 또는 "오늘은 여기까지" | — |
+
+- **"이미 안다 → 문제부터"**: 0·1·2에서 항상 보이는 버튼. 누르면 5로 건너뛴다. 도움 없이 풀면 그 단위는 끝이다(`06` R-0 1번).
+- **막혔을 때**(5번 화면): `힌트 보기`(1개씩, 콘텐츠의 `hints`) → `오리에게 설명하기`(러버덕) → `모범 답안 보기`. 이 순서대로 버튼이 하나씩 열린다. 옆에 안내 한 줄: "15분 넘게 막히면 도움을 쓰세요."
+- **도움 단계는 앱이 센다.** 무엇을 열었는지가 `POST …/finish`의 `helpLevel`이다(`05` §21.7). 서버가 추적하지 않는다. 모범 답안은 `GET …/answer`로 가져온다.
+- **`prerequisiteUnits`**: 5번 화면의 도움 목록 맨 위에 "먼저 볼 개념"으로 둔다. 아직 만들지 않은 단위를 가리키면 그 줄은 보이지 않는다.
+- 3·4의 채점은 **즉시**다(AI 없음). 틀려도 다음으로 간다 — 해설을 보여 주고 그 단위를 복습 대상으로 둔다.
+- 6번의 체크박스는 채점이 아니라 **스스로 견주기**다. 레벨을 올리지 않는다(`01` 원칙 4).
+
+**들어오는 길**: SCR-SKILL-DETAIL의 "개념 익히기", SCR-TODAY의 `READING` 과제 카드.
+
+**중간에 나가기**: 걸음은 로컬에 기억한다(어느 단위 몇 번째 걸음인지). 서버에 남는 것은 6번을 마친 단위뿐이다.
+
+**접근성**: 걸음이 바뀌면 새 제목에 포커스를 준다(A-4). 코드 블록은 가로 스크롤(A-9, §2.4). 즉시 채점 결과는 live region.
+
+**빈 상태**: 그 skill에 노트가 없으면 이 화면으로 오지 않는다 — 진입점이 보이지 않는다.
+
 
 #### SCR-SKILL-DETAIL
 

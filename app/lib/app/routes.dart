@@ -26,6 +26,9 @@ abstract final class AppRoutes {
   /// SCR-DIAGNOSTICS: step 5 "진단 시작" and the Today diagnostic card lead here.
   static const diagnostics = '/today/diagnostics';
 
+  /// SCR-LESSON prefix: `/lessons/:lessonKey`.
+  static const lessonsPrefix = '/lessons';
+
   /// SCR-READ-CODE prefix: `/today/read/:readingKey?taskId=`.
   static const readCodePrefix = '/today/read';
 
@@ -88,6 +91,9 @@ abstract final class AppRoutes {
     queryParameters: taskId == null ? null : {taskIdParameter: taskId},
     fragment: focusHints ? hintsFragment : null,
   ).toString();
+
+  /// SCR-LESSON of [lessonKey].
+  static String lesson(String lessonKey) => '$lessonsPrefix/$lessonKey';
 
   /// SCR-READ-CODE of [readingKey] for the Today READ_CODE task [taskId].
   static String readCode(String readingKey, {String? taskId}) =>

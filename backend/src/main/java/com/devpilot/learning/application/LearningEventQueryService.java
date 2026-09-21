@@ -7,11 +7,13 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +50,37 @@ public class LearningEventQueryService {
         return learningEventRepository.findRecentForSkill(userId, skillId, since).stream()
                 .map(LearningEventQueryService::toView)
                 .toList();
+    }
+
+    /**
+     * 그 노트의 학습 단위 진행 (docs/05 §21.2). 단위마다 <b>가장 최근</b> {@code UNIT_SOLVED} 하나다. payload만 읽으므로 다른
+     * 테이블을 조회하지 않는다. {@code today} 모듈이 {@code HelpLevel}로 바꿔 쓴다.
+     */
+    public List<UnitSolvedView> unitProgress(UUID userId, String lessonKey) {
+        Map<String, UnitSolvedView> latest = new LinkedHashMap<>();
+        for (LearningEvent event :
+                learningEventRepository.findByUserIdAndEventTypeOrderByOccurredAtDesc(
+                        userId, LearningEventType.UNIT_SOLVED)) {
+            if (event.getInvalidatedAt() != null) {
+                continue;
+            }
+            Map<String, Object> payload = event.getPayload();
+            if (!lessonKey.equals(payload.get("lessonKey"))) {
+                continue;
+            }
+            String unitKey = String.valueOf(payload.get("unitKey"));
+            latest.computeIfAbsent(
+                    unitKey,
+                    key ->
+                            new UnitSolvedView(
+                                    key,
+                                    String.valueOf(payload.get("helpLevel")),
+                                    event.getOccurredAt(),
+                                    payload.get("selfChecksMet") instanceof Number met
+                                            ? met.intValue()
+                                            : null));
+        }
+        return List.copyOf(latest.values());
     }
 
     /** 이 대상의 가장 최근 이벤트 id (docs/05 §10.6 {@code evidenceSourceEventId}). */
@@ -92,6 +125,15 @@ public class LearningEventQueryService {
                 event.getOccurredAt(),
                 event.getPayload());
     }
+
+    /**
+     * 단위를 마친 기록 (docs/04 §6 {@code UNIT_SOLVED}).
+     *
+     * @param helpLevel {@code today.domain.HelpLevel} 이름
+     * @param selfChecksMet 견주지 않았으면 null
+     */
+    public record UnitSolvedView(
+            String unitKey, String helpLevel, Instant solvedAt, @Nullable Integer selfChecksMet) {}
 
     /**
      * 규칙 입력용 이벤트 (docs/06 §7.1). payload는 docs/04 §6 표의 JSON 그대로다.

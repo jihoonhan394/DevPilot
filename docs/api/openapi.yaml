@@ -517,6 +517,196 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - learning
+  /api/v1/lessons/{lessonKey}:
+    get:
+      operationId: lessonGet
+      parameters:
+      - in: path
+        name: lessonKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}$"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LessonView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/lessons/{lessonKey}/units/{unitKey}/answer:
+    get:
+      operationId: lessonGetAnswer
+      parameters:
+      - in: path
+        name: lessonKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}$"
+      - in: path
+        name: unitKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}\\.U[0-9]{1,2}$"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnswerResult"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/lessons/{lessonKey}/units/{unitKey}/complete:
+    post:
+      operationId: lessonCheckComplete
+      parameters:
+      - in: path
+        name: lessonKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}$"
+      - in: path
+        name: unitKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}\\.U[0-9]{1,2}$"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompleteResult"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/lessons/{lessonKey}/units/{unitKey}/finish:
+    post:
+      operationId: lessonFinishUnit
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: lessonKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}$"
+      - in: path
+        name: unitKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}\\.U[0-9]{1,2}$"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinishRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinishResult"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/lessons/{lessonKey}/units/{unitKey}/predict:
+    post:
+      operationId: lessonCheckPredict
+      parameters:
+      - in: path
+        name: lessonKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}$"
+      - in: path
+        name: unitKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}\\.U[0-9]{1,2}$"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PredictRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PredictResult"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
   /api/v1/me:
     delete:
       operationId: userDeleteMe
@@ -1514,6 +1704,15 @@ components:
       - monthCostUsd
       - monthlyBudgetUsd
       - todayCalls
+    AnswerResult:
+      type: object
+      properties:
+        modelAnswer:
+          type: string
+        selfChecks:
+          type: array
+          items:
+            type: string
     AsyncStatusView:
       type: object
       properties:
@@ -1931,6 +2130,34 @@ components:
       - question
       - repo
       - startLine
+    CompleteRequest:
+      type: object
+      properties:
+        answers:
+          type: array
+          items:
+            type: string
+            maxLength: 200
+            minLength: 0
+          maxItems: 4
+          minItems: 0
+      required:
+      - answers
+    CompleteResult:
+      type: object
+      properties:
+        correct:
+          type: boolean
+        expected:
+          type: array
+          items:
+            type: string
+        explanation:
+          type: string
+        results:
+          type: array
+          items:
+            type: boolean
     ConceptReadingView:
       type: object
       properties:
@@ -2365,6 +2592,7 @@ components:
           - REDO_COMPLETED
           - TIP_VIEWED
           - TERM_CARD_CREATED
+          - UNIT_SOLVED
         id:
           type: string
           format: uuid
@@ -2439,6 +2667,40 @@ components:
       - code
       - field
       - message
+    FinishRequest:
+      type: object
+      properties:
+        helpLevel:
+          type: string
+          enum:
+          - NONE
+          - HINT
+          - DUCK
+          - ANSWER
+        selfChecksMet:
+          type: integer
+          format: int32
+          minimum: 0
+      required:
+      - helpLevel
+    FinishResult:
+      type: object
+      properties:
+        helpLevel:
+          type: string
+          enum:
+          - NONE
+          - HINT
+          - DUCK
+          - ANSWER
+        recordedAt:
+          type: string
+          format: date-time
+        selfChecksMet:
+          type: integer
+          format: int32
+        unitKey:
+          type: string
     GuardActionView:
       type: object
       properties:
@@ -2645,6 +2907,166 @@ components:
       - targetRole
       - updatedAt
       - version
+    LessonExampleView:
+      type: object
+      properties:
+        code:
+          type: string
+        language:
+          type: string
+        note:
+          type: string
+        output:
+          type: string
+      required:
+      - code
+      - language
+      - note
+      - output
+    LessonProblemView:
+      type: object
+      properties:
+        deliverables:
+          type: array
+          items:
+            type: string
+        hints:
+          type: array
+          items:
+            type: string
+        prompt:
+          type: string
+        starterCode:
+          type: string
+      required:
+      - deliverables
+      - hints
+      - prompt
+      - starterCode
+    LessonQuestionView:
+      type: object
+      properties:
+        blanks:
+          type: integer
+          format: int32
+        choices:
+          type: array
+          items:
+            type: string
+        code:
+          type: string
+        question:
+          type: string
+      required:
+      - blanks
+      - choices
+      - code
+      - question
+    LessonSourceView:
+      type: object
+      properties:
+        title:
+          type: string
+        url:
+          type: string
+        versionScope:
+          type: string
+      required:
+      - title
+      - url
+      - versionScope
+    LessonUnitView:
+      type: object
+      properties:
+        complete:
+          $ref: "#/components/schemas/LessonQuestionView"
+        core:
+          type: boolean
+        example:
+          $ref: "#/components/schemas/LessonExampleView"
+        explain:
+          type: string
+        minutes:
+          type: integer
+          format: int32
+        predict:
+          $ref: "#/components/schemas/LessonQuestionView"
+        prerequisiteUnits:
+          type: array
+          items:
+            type: string
+        problem:
+          $ref: "#/components/schemas/LessonProblemView"
+        progress:
+          $ref: "#/components/schemas/UnitProgressView"
+        title:
+          type: string
+        unitKey:
+          type: string
+      required:
+      - complete
+      - core
+      - example
+      - explain
+      - minutes
+      - predict
+      - prerequisiteUnits
+      - problem
+      - progress
+      - title
+      - unitKey
+    LessonView:
+      type: object
+      properties:
+        commonMistakes:
+          type: array
+          items:
+            type: string
+        inProject:
+          type: string
+        lessonKey:
+          type: string
+        oneLine:
+          type: string
+        readMore:
+          type: array
+          items:
+            $ref: "#/components/schemas/LessonSourceView"
+        retired:
+          type: boolean
+        skillCode:
+          type: string
+        skillId:
+          type: string
+          format: uuid
+        skillName:
+          type: string
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/LessonSourceView"
+        title:
+          type: string
+        units:
+          type: array
+          items:
+            $ref: "#/components/schemas/LessonUnitView"
+        whyItMatters:
+          type: string
+      required:
+      - commonMistakes
+      - inProject
+      - lessonKey
+      - oneLine
+      - readMore
+      - retired
+      - skillCode
+      - skillId
+      - skillName
+      - sources
+      - title
+      - units
+      - whyItMatters
     MainTaskView:
       type: object
       properties:
@@ -3179,6 +3601,24 @@ components:
       - supersedesPlanId
       - title
       - version
+    PredictRequest:
+      type: object
+      properties:
+        answer:
+          type: string
+          maxLength: 200
+          minLength: 0
+      required:
+      - answer
+    PredictResult:
+      type: object
+      properties:
+        correct:
+          type: boolean
+        expected:
+          type: string
+        explanation:
+          type: string
     ProblemDetail:
       type: object
       properties:
@@ -5039,6 +5479,29 @@ components:
       - mainTask
       - planDate
       - reviewTask
+    UnitProgressView:
+      type: object
+      properties:
+        helpLevel:
+          type: string
+          enum:
+          - NONE
+          - HINT
+          - DUCK
+          - ANSWER
+        selfChecksMet:
+          type: integer
+          format: int32
+        solved:
+          type: boolean
+        solvedAt:
+          type: string
+          format: date-time
+      required:
+      - helpLevel
+      - selfChecksMet
+      - solved
+      - solvedAt
     UpdateMeRequest:
       type: object
       properties:

@@ -1,6 +1,8 @@
 import 'package:devpilot_app/app/not_found_screen.dart';
 import 'package:devpilot_app/app/route_helpers.dart';
 import 'package:devpilot_app/app/routes.dart';
+import 'package:devpilot_app/features/lesson/data/lesson_repository.dart';
+import 'package:devpilot_app/features/lesson/presentation/lesson_screen.dart';
 import 'package:devpilot_app/features/review/data/review_enums.dart';
 import 'package:devpilot_app/features/review/data/review_item_models.dart';
 import 'package:devpilot_app/features/review/presentation/review_item_edit_controller.dart';
@@ -81,6 +83,19 @@ GoRoute trainingRoute() => GoRoute(
       ),
     ),
   ],
+);
+
+/// `/lessons/:lessonKey` (SCR-LESSON). Inside the navigation frame: it is an ordinary screen, not
+/// a focus screen — the learner leaves it mid-way often ("오늘은 여기까지").
+GoRoute lessonRoute() => GoRoute(
+  path: '${AppRoutes.lessonsPrefix}/:lessonKey',
+  builder: (context, state) {
+    final lessonKey = state.pathParameters['lessonKey'] ?? '';
+    if (!lessonKeyPattern.hasMatch(lessonKey)) {
+      return const NotFoundScreen();
+    }
+    return LessonScreen(lessonKey: lessonKey);
+  },
 );
 
 /// `/today/diagnostics` and `/today/read/:readingKey` (the key must match the reading pattern).

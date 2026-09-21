@@ -27,6 +27,12 @@ public final class UserOwnedEndpoints {
     /** 공용 콘텐츠 조회에 쓰는 테스트 catalog reading key (docs/09 §9.2 SHARED_CONTENT). */
     public static final String SHARED_READING_KEY = "READ.TESTREPO.ORDER_SERVICE.001";
 
+    /** 공용 콘텐츠 조회에 쓰는 테스트 개념 노트 key (docs/05 §21). */
+    public static final String SHARED_LESSON_KEY = "LESSON.TESTSPRING.MVC.001";
+
+    /** 그 노트의 첫 단위. */
+    public static final String SHARED_UNIT_KEY = SHARED_LESSON_KEY + ".U1";
+
     /**
      * @param pathVariables A(소유자)의 리소스로 path 변수를 채운다
      * @param body 요청 body. 없으면 null
@@ -372,6 +378,47 @@ public final class UserOwnedEndpoints {
                         Kind.SHARED_CONTENT,
                         fixture -> new Object[] {SHARED_READING_KEY},
                         NO_BODY,
+                        null),
+                // 개념 노트 (docs/05 §21). 본문은 콘텐츠라 모든 사용자가 같은 것을 본다 — 사용자별인 것은 진행과 마침 기록뿐이다.
+                new EndpointCase(
+                        "E63",
+                        HttpMethod.GET,
+                        "/api/v1/lessons/{lessonKey}",
+                        Kind.SHARED_CONTENT,
+                        fixture -> new Object[] {SHARED_LESSON_KEY},
+                        NO_BODY,
+                        null),
+                new EndpointCase(
+                        "E64",
+                        HttpMethod.POST,
+                        "/api/v1/lessons/{lessonKey}/units/{unitKey}/predict",
+                        Kind.SHARED_CONTENT,
+                        fixture -> new Object[] {SHARED_LESSON_KEY, SHARED_UNIT_KEY},
+                        fixture -> Map.of("answer", "400"),
+                        null),
+                new EndpointCase(
+                        "E65",
+                        HttpMethod.POST,
+                        "/api/v1/lessons/{lessonKey}/units/{unitKey}/complete",
+                        Kind.SHARED_CONTENT,
+                        fixture -> new Object[] {SHARED_LESSON_KEY, SHARED_UNIT_KEY},
+                        fixture -> Map.of("answers", List.of("GetMapping")),
+                        null),
+                new EndpointCase(
+                        "E66",
+                        HttpMethod.GET,
+                        "/api/v1/lessons/{lessonKey}/units/{unitKey}/answer",
+                        Kind.SHARED_CONTENT,
+                        fixture -> new Object[] {SHARED_LESSON_KEY, SHARED_UNIT_KEY},
+                        NO_BODY,
+                        null),
+                new EndpointCase(
+                        "E67",
+                        HttpMethod.POST,
+                        "/api/v1/lessons/{lessonKey}/units/{unitKey}/finish",
+                        Kind.SHARED_CONTENT,
+                        fixture -> new Object[] {SHARED_LESSON_KEY, SHARED_UNIT_KEY},
+                        fixture -> Map.of("helpLevel", "NONE"),
                         null),
                 // ACCOUNT_ACTION
                 account("E30", HttpMethod.DELETE, "/api/v1/me", NO_BODY),
