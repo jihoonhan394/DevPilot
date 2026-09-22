@@ -798,6 +798,7 @@ review_count += 1, last_result = final, last_reviewed_at = now
 | 온보딩 seed 카드 복사 | priority(MUST→SHOULD→LATER), practicalImportance DESC, conceptKey ASC로 정렬 후 `index`번째 카드 → `planDayStart(today + floorDiv(index, 5))` (하루 5장씩 분산) |
 | 신규 seed 카드 (기존 사용자) | 기존 사용자의 마지막 due 이후부터 같은 방식으로 분산 |
 | challenge 실패 / coach finding / 수동 생성 | `planDayStart(today + 1)` |
+| **학습 단위를 도움받아 풂** (`05` §21.7의 `helpLevel ≠ NONE`) | `planDayStart(today + 1)`. `concept_key` = 단위 key, `review_type = EXPLAIN`, `origin = SEED`, `source_type = LESSON_UNIT`, `source_id` 없음, prompt = 단위의 `problem.prompt`, `expected_answer` = `problem.modelAnswer`, `rubric_json` = `selfChecks`를 `S1`·`S2`…로. skill을 찾지 못한 노트는 카드를 만들지 않는다(`review_item.skill_id`는 not null). **도움 없이 푼 단위는 카드를 만들지 않는다** — "도움 없이 풀어도 7일 뒤 한 번"(재설계안 D-10)은 §6.2 간격 사다리와 함께 온다 |
 | 같은 `concept_key`가 이미 있음 | 새로 만들지 않는다. `status=ACTIVE`, `due_at = min(기존 due_at, planDayStart(today + 1))` |
 
 ### 6.4 Leech · Variant (답변 처리 직후)

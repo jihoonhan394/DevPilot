@@ -14,5 +14,6 @@ public enum ReviewItemSourceType {
     RUBBER_DUCK,
     REDO_TASK,
     TERM,
-    TIP
+    TIP,
+    LESSON_UNIT
 }

@@ -590,7 +590,7 @@ create table review_item (
     origin                   varchar(20) not null check (origin in ('SEED','MANUAL','AI_GENERATED')),
     source_type              varchar(30) not null check (source_type in
                              ('SEED_CARD','MANUAL','CHALLENGE_ATTEMPT','COACH_FINDING','EVIDENCE','RUBBER_DUCK',
-                              'REDO_TASK','TERM','TIP')),
+                              'REDO_TASK','TERM','TIP','LESSON_UNIT')),
     source_id                uuid,
     concept_key              varchar(150) not null,
     review_type              varchar(20) not null check (review_type in ('RECALL','BUG_SPOT','EXPLAIN','CHOICE')),

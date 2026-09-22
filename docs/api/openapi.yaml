@@ -4131,6 +4131,7 @@ components:
           - REDO_TASK
           - TERM
           - TIP
+          - LESSON_UNIT
         status:
           type: string
           enum:

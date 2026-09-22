@@ -93,7 +93,7 @@
 | `ReviewRating` (review.domain) | `AGAIN`(0), `HARD`(1), `GOOD`(2), `EASY`(3) | review_answer, review_item.last_result |
 | `RatingAdjustment` (review.domain) | `EVALUATED_INCORRECT`, `EVALUATED_PARTIAL`, `HINT_CAP_AGAIN`, `HINT_CAP_HARD`, `HINT_CAP_GOOD` | review_answer.adjusted_by |
 | `ReviewType` (review.domain) | `RECALL`, `BUG_SPOT`, `EXPLAIN`, `CHOICE` | review_item |
-| `ReviewItemSourceType` (review.domain) | `SEED_CARD`, `MANUAL`, `CHALLENGE_ATTEMPT`, `COACH_FINDING`, `EVIDENCE`, `RUBBER_DUCK`, `REDO_TASK`, `TERM`, `TIP` | review_item.source_type — `RUBBER_DUCK`은 러버덕 정리의 gap(`05` §9.8), `REDO_TASK`는 AI 없이 다시 만들지 못한 재현 과제(`06` §5.10 RE-7), `TERM`은 용어 사전에서 만든 복습 카드(`05` §20.7), `TIP`은 오늘의 팁에서 "새로 알았어요"를 고른 카드(`06` §5.12 TIP-5) |
+| `ReviewItemSourceType` (review.domain) | `SEED_CARD`, `MANUAL`, `CHALLENGE_ATTEMPT`, `COACH_FINDING`, `EVIDENCE`, `RUBBER_DUCK`, `REDO_TASK`, `TERM`, `TIP`, `LESSON_UNIT` | review_item.source_type — `RUBBER_DUCK`은 러버덕 정리의 gap(`05` §9.8), `REDO_TASK`는 AI 없이 다시 만들지 못한 재현 과제(`06` §5.10 RE-7), `TERM`은 용어 사전에서 만든 복습 카드(`05` §20.7), `TIP`은 오늘의 팁에서 "새로 알았어요"를 고른 카드(`06` §5.12 TIP-5), `LESSON_UNIT`은 개념 노트의 학습 단위를 **도움을 받아** 푼 경우(`05` §21.7, `19` §3.14). `LESSON_UNIT`은 `source_id`를 두지 않는다 — 단위를 가리키는 것은 UUID가 아니라 key이고 그 값은 `concept_key`에 담는다 |
 | `ReviewItemStatus` (review.domain) | `ACTIVE`, `SUSPENDED`, `ARCHIVED` | review_item — due 여부는 `due_at < planDayStart(today + 1)`로 계산 (`06` §6.5) |
 | `VariantStatus` (review.domain) | `NONE`, `PENDING`, `RUNNING`, `READY`, `FAILED` | review_item.variant_status |
 | `EvaluatedOutcome` (learning.domain) | `CORRECT`, `PARTIAL`, `INCORRECT`, `NOT_EVALUATED` | submission, attempt, review_answer |

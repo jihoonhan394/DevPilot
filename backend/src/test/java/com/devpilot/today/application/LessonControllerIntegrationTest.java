@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.devpilot.testsupport.ApiTestSupport;
 import com.devpilot.testsupport.IntegrationTest;
+import com.devpilot.testsupport.TestApi;
 import com.devpilot.testsupport.TestUser;
 import java.util.List;
 import java.util.Map;
@@ -186,6 +187,65 @@ class LessonControllerIntegrationTest extends ApiTestSupport {
                         org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
                                 "/api/v1/lessons/{lessonKey}", LESSON_KEY))
                 .andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * 도움을 받아 푼 단위는 복습으로 돌아온다 (재설계안 R-0 6번, 임시 연결).
+     *
+     * <p>지금까지는 단위를 풀어도 `UNIT_SOLVED` 이벤트만 남고 아무것도 돌아오지 않았다 — 소유자가 적은 8단계의 6번이 비어 있었다. 도움 없이 푼 것은
+     * 그대로 끝난다(7일 뒤 확인은 Step 3의 간격 사다리에서 온다).
+     */
+    @Test
+    void shouldBringBackAUnitThatNeededHelpAndLeaveAnUnaidedOneAlone() throws Exception {
+        TestUser user = onboardedUser();
+
+        api.postWithKey(
+                        user,
+                        TestApi.newKey(),
+                        UNIT + "/finish",
+                        Map.of("helpLevel", "NONE"),
+                        LESSON_KEY,
+                        UNIT_KEY)
+                .andExpect(status().isOk());
+        assertThat(lessonUnitCards(user)).isEmpty();
+
+        String secondUnit = LESSON_KEY + ".U2";
+        api.postWithKey(
+                        user,
+                        TestApi.newKey(),
+                        UNIT + "/finish",
+                        Map.of("helpLevel", "ANSWER"),
+                        LESSON_KEY,
+                        secondUnit)
+                .andExpect(status().isOk());
+
+        List<Map<String, Object>> cards = lessonUnitCards(user);
+        assertThat(cards).hasSize(1);
+        Map<String, Object> card = cards.getFirst();
+        assertThat(card.get("concept_key")).isEqualTo(secondUnit);
+        assertThat(card.get("source_id")).isNull();
+        assertThat(String.valueOf(card.get("prompt"))).isNotBlank();
+        // 내일 due — 오늘 푼 것이 오늘 또 나오지는 않는다
+        assertThat(api.body(api.get(user, "/api/v1/reviews/due")).path("items").toString())
+                .doesNotContain(secondUnit);
+
+        // 같은 단위를 다시 풀어도 카드가 늘지 않는다 (due만 당겨진다)
+        api.postWithKey(
+                        user,
+                        TestApi.newKey(),
+                        UNIT + "/finish",
+                        Map.of("helpLevel", "HINT"),
+                        LESSON_KEY,
+                        secondUnit)
+                .andExpect(status().isOk());
+        assertThat(lessonUnitCards(user)).hasSize(1);
+    }
+
+    private List<Map<String, Object>> lessonUnitCards(TestUser user) {
+        return jdbc.queryForList(
+                "select concept_key, source_id, prompt from devpilot.review_item"
+                        + " where user_id = ? and source_type = 'LESSON_UNIT' order by concept_key",
+                userId(user));
     }
 
     /**
