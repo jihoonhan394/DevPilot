@@ -370,6 +370,8 @@ backend 자신은 이 endpoint를 호출하지 않는다(메모리의 공개키�
 | `aiUsage.dailyCallLimit` | `devpilot.ai.daily-call-limit-per-user` |
 | `aiUsage.monthCostUsd` | 전체 사용자 `ai_call_log.cost_micro_usd` 합계 중 `created_at`이 **`devpilot.time.default-zone`(Asia/Seoul) 기준 이번 달력 월**(1일 00:00 ~ 다음 달 1일 00:00)에 속한 것. 월 예산은 서비스 전체 한도이므로 경계도 모든 사용자에게 같다(DEC-06, `17-ai-integration.md` §8.2). 계정 삭제로 `user_id`가 null이 된 행도 포함한다. 문자열, 소수 2자리, HALF_UP |
 | `aiUsage.monthlyBudgetUsd` | `devpilot.ai.monthly-budget-usd`, 문자열 소수 2자리 |
+| `aiUsage.balanceUsd` | `AiBalanceMonitor`가 마지막으로 읽은 **공급자 선불 잔액**(`17-ai-integration.md` §8.7). 문자열 소수 2자리, HALF_UP. 조회를 지원하지 않는 provider(`fake`·`disabled`)이거나 아직 한 번도 성공하지 못했으면 `null`. `monthCostUsd`는 토큰 수 × 설정 단가로 **우리가 계산한 추정치**이고 이 값이 공급자가 알려 준 실제 값이다 |
+| `aiUsage.balanceCheckedAt` | 그 잔액을 읽은 시각. `balanceUsd`가 `null`이면 함께 `null`. 조회 주기는 `devpilot.ai.balance-check-cron`(+ 기동 직후 1회) |
 | `aiStatus` | `provider = disabled` → `DISABLED` / 월 비용(micro) ≥ 예산(micro) → `DISABLED` / `AiBalanceMonitor`가 잔액 소진 상태(402 수신 또는 잔액 < `min-balance-usd`, `17-ai-integration.md` §8.7) → `BALANCE_EXHAUSTED` / 월 비용 × 10000 ≥ 예산 × `budget-warning-ratio`(bp) → `BUDGET_WARNING` / 그 외 `ENABLED`. 일일 한도 도달은 `aiStatus`에 반영하지 않는다(`todayCalls`로 표시) |
 
 `AiBudgetGuard`의 차단 판정도 같은 계산을 쓴다(월 비용 경계, 일일 호출 수). 검사 알고리즘은 `17-ai-integration.md` §8.2, `aiStatus` test vector는 `17-ai-integration.md` §8.5다.

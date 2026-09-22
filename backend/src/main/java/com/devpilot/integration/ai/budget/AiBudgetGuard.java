@@ -167,7 +167,13 @@ public class AiBudgetGuard {
         int todayCalls = Math.toIntExact(repository.countCallsBetween(userId, dayStart, nextDay));
         long budget = settings.monthlyBudgetMicroUsd();
         return new AiUsageSnapshot(
-                status(spent, budget), todayCalls, settings.dailyCallLimitPerUser(), spent, budget);
+                status(spent, budget),
+                todayCalls,
+                settings.dailyCallLimitPerUser(),
+                spent,
+                budget,
+                balanceMonitor.lastBalanceUsd(),
+                balanceMonitor.lastCheckedAt());
     }
 
     /**

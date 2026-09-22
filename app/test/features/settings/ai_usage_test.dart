@@ -45,6 +45,38 @@ void main() {
     expect(find.text('오늘 내 호출 18 / 60회'), findsOneWidget);
   });
 
+  /// 이번 달 사용액은 토큰 수로 계산한 **추정치**이고, 잔액이 공급자가 알려 준 실제 값이다.
+  /// 둘을 나란히 보여 주고 무엇이 추정인지 밝힌다 (docs/05 §1.9.1).
+  testWidgets('shouldShowTheProviderBalanceNextToTheEstimate', (tester) async {
+    final backend = FakeBackend(
+      me: testMe(
+        aiStatus: AiStatus.enabled,
+        aiUsage: usage.copyWith(
+          balanceUsd: '9.95',
+          balanceCheckedAt: DateTime.utc(2026, 10, 5, 3, 15),
+        ),
+      ),
+    );
+    await pumpApp(tester, backend: backend, at: AppRoutes.settings);
+    await tester.ensureVisible(find.byKey(const Key('settings.aiBalance')));
+    await tester.pumpAndSettle();
+
+    expect(find.text(r'$9.95'), findsOneWidget);
+    expect(find.byKey(const Key('settings.aiBalanceCheckedAt')), findsOneWidget);
+    expect(find.text('사용액은 토큰 수로 계산한 추정치예요. 잔액이 실제 값이에요.'), findsOneWidget);
+  });
+
+  /// fake·disabled provider 는 잔액을 알려 주지 않는다. 그때 0으로 보이면 안 된다.
+  testWidgets('shouldSayTheBalanceIsUnknownWhenTheProviderDoesNotReportOne', (tester) async {
+    final backend = FakeBackend(me: testMe(aiStatus: AiStatus.enabled, aiUsage: usage));
+    await pumpApp(tester, backend: backend, at: AppRoutes.settings);
+    await tester.ensureVisible(find.byKey(const Key('settings.aiBalance')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('아직 확인하지 못했어요'), findsOneWidget);
+    expect(find.byKey(const Key('settings.aiBalanceCheckedAt')), findsNothing);
+  });
+
   final statusCases = {
     AiStatus.disabled: ('사용 불가', 'AI 기능을 지금 쓸 수 없어요. 복습·계획·Today는 그대로 쓸 수 있어요.'),
     AiStatus.balanceExhausted: ('잔액 없음', 'AI 잔액이 떨어졌어요. 충전하면 다시 쓸 수 있어요. 복습·계획·Today는 그대로예요.'),

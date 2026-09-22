@@ -1,6 +1,8 @@
 import 'package:devpilot_app/core/api/api_enums.dart';
+import 'package:devpilot_app/core/l10n/display_format.dart';
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/theme/devpilot_colors.dart';
+import 'package:devpilot_app/core/time/time_zone_support.dart';
 import 'package:devpilot_app/core/widgets/ai_status_widgets.dart';
 import 'package:devpilot_app/core/widgets/screen_body.dart';
 import 'package:devpilot_app/core/widgets/status_badge.dart';
@@ -45,6 +47,8 @@ class AiUsageSection extends ConsumerWidget {
           l10n.settingsAiToday(usage.todayCalls, usage.dailyCallLimit),
           key: const Key('settings.aiToday'),
         ),
+        const SizedBox(height: AppSpacing.md),
+        _Balance(usage: usage),
       ],
     );
   }
@@ -95,6 +99,52 @@ class _StatusNote extends StatelessWidget {
 
 /// "이번 달 (서비스 전체)" with `$used / $budget`, a bar and the percentage (text next to the bar,
 /// never color alone — A-3).
+/// 공급자 선불 잔액 (docs/05 §1.9.1).
+///
+/// 위의 이번 달 사용액은 토큰 수로 **우리가 계산한 추정치**이고, 이것은 공급자가 알려 준 실제 값이다.
+/// 둘을 나란히 두되 무엇이 추정인지 한 줄로 밝힌다.
+class _Balance extends ConsumerWidget {
+  const _Balance({required this.usage});
+
+  final AiUsageView usage;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final textTheme = Theme.of(context).textTheme;
+    final balance = usage.balanceUsd;
+    final checkedAt = usage.balanceCheckedAt;
+    return Column(
+      key: const Key('settings.aiBalance'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(l10n.settingsAiBalance, style: textTheme.titleSmall),
+        Text(
+          balance == null
+              ? l10n.settingsAiBalanceUnknown
+              : l10n.settingsAiBalanceValue(balance),
+          key: const Key('settings.aiBalanceValue'),
+        ),
+        if (balance != null && checkedAt != null)
+          Text(
+            l10n.settingsAiBalanceCheckedAt(
+              formatInstantMonthDay(
+                checkedAt,
+                ref.watch(userTimeZoneProvider),
+                ref.watch(timeZoneSupportProvider),
+                l10n,
+              ),
+            ),
+            key: const Key('settings.aiBalanceCheckedAt'),
+            style: textTheme.bodySmall,
+          ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(l10n.settingsAiMonthEstimate, style: textTheme.bodySmall),
+      ],
+    );
+  }
+}
+
 class _MonthUsage extends StatelessWidget {
   const _MonthUsage({required this.usage});
 

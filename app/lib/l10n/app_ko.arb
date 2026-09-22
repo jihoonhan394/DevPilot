@@ -1480,6 +1480,22 @@
     "description": "SCR-SETTINGS: month cost share of the budget.",
     "placeholders": {"percent": {"type": "int"}}
   },
+  "settingsAiBalance": "잔액",
+  "@settingsAiBalance": {"description": "SCR-SETTINGS: heading of the provider's prepaid balance."},
+  "settingsAiBalanceValue": "${amount}",
+  "@settingsAiBalanceValue": {
+    "description": "SCR-SETTINGS: the provider's prepaid balance in USD.",
+    "placeholders": {"amount": {"type": "String"}}
+  },
+  "settingsAiBalanceCheckedAt": "{time} 기준",
+  "@settingsAiBalanceCheckedAt": {
+    "description": "SCR-SETTINGS: when the balance was last read from the provider.",
+    "placeholders": {"time": {"type": "String"}}
+  },
+  "settingsAiBalanceUnknown": "아직 확인하지 못했어요",
+  "@settingsAiBalanceUnknown": {"description": "SCR-SETTINGS: the provider does not report a balance, or it has not been read yet."},
+  "settingsAiMonthEstimate": "사용액은 토큰 수로 계산한 추정치예요. 잔액이 실제 값이에요.",
+  "@settingsAiMonthEstimate": {"description": "SCR-SETTINGS: month cost is computed from token counts, the balance comes from the provider."},
   "settingsAiToday": "오늘 내 호출 {used} / {limit}회",
   "@settingsAiToday": {
     "description": "SCR-SETTINGS: the user's AI calls today.",

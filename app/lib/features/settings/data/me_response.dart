@@ -40,6 +40,10 @@ abstract class AiUsageView with _$AiUsageView {
     required int dailyCallLimit,
     required String monthCostUsd,
     required String monthlyBudgetUsd,
+
+    /// 공급자가 알려 준 선불 잔액. 조회를 지원하지 않거나 아직 성공한 적이 없으면 null이다.
+    String? balanceUsd,
+    DateTime? balanceCheckedAt,
   }) = _AiUsageView;
 
   factory AiUsageView.fromJson(Map<String, Object?> json) => _$AiUsageViewFromJson(json);

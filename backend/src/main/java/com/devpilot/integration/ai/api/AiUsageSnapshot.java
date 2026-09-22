@@ -1,5 +1,9 @@
 package com.devpilot.integration.ai.api;
 
+import java.math.BigDecimal;
+import java.time.Instant;
+import org.jspecify.annotations.Nullable;
+
 /**
  * AI 상태와 사용량 요약 (docs/05 §1.9.1, docs/17 §8.1·§8.5). 금액은 micro USD 정수다(docs/05 §1.1). 응답에서는 소수 2자리
  * 문자열로 바꾼다.
@@ -8,10 +12,14 @@ package com.devpilot.integration.ai.api;
  * @param dailyCallLimit {@code devpilot.ai.daily-call-limit-per-user}
  * @param monthCostMicroUsd 서비스 전체 이번 달(Asia/Seoul) 비용
  * @param monthlyBudgetMicroUsd {@code devpilot.ai.monthly-budget-usd}
+ * @param balanceUsd 공급자 선불 잔액. 마지막 조회 값이고, 조회를 지원하지 않거나(fake·disabled) 아직 한 번도 성공하지 못했으면 null
+ * @param balanceCheckedAt 그 잔액을 읽은 시각. 값이 없으면 null
  */
 public record AiUsageSnapshot(
         AiStatus aiStatus,
         int todayCalls,
         int dailyCallLimit,
         long monthCostMicroUsd,
-        long monthlyBudgetMicroUsd) {}
+        long monthlyBudgetMicroUsd,
+        @Nullable BigDecimal balanceUsd,
+        @Nullable Instant balanceCheckedAt) {}

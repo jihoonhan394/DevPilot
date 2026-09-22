@@ -146,9 +146,18 @@ public class ProfileService {
                         usage.todayCalls(),
                         usage.dailyCallLimit(),
                         usd(usage.monthCostMicroUsd()),
-                        usd(usage.monthlyBudgetMicroUsd())),
+                        usd(usage.monthlyBudgetMicroUsd()),
+                        balanceUsd(usage.balanceUsd()),
+                        usage.balanceCheckedAt()),
                 Objects.requireNonNull(user.getCreatedAt(), "createdAt"),
                 user.getVersion());
+    }
+
+    /** 공급자 잔액 → 소수 2자리 문자열. 조회한 적이 없으면 null을 그대로 넘긴다. */
+    static @Nullable String balanceUsd(@Nullable BigDecimal balance) {
+        return balance == null
+                ? null
+                : balance.setScale(USD_SCALE, RoundingMode.HALF_UP).toPlainString();
     }
 
     /** micro USD → 소수 2자리 문자열, HALF_UP (docs/05 §1.1 금액). */
