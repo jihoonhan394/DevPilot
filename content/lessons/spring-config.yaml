@@ -47,9 +47,9 @@ lessons:
             @Value("${shop.unknown}")         → 기동 실패 (그런 이름이 없다)
             @Value("${shop.unknown:0}")       → 0   (기본값을 줬다)
           note: |-
-            - 'YAML의 중첩은 점으로 이어 읽는다: `shop:` 아래 `delivery-fee` → `shop.delivery-fee`'
-            - '기본값이 없는 이름이 비면 **기동 시점에** 실패한다 — 실행 중에 터지는 것보다 낫다'
-            - '`.properties`와 `.yaml`을 섞지 않는다'
+            - YAML의 중첩은 점으로 이어 읽는다: `shop:` 아래 `delivery-fee` → `shop.delivery-fee`
+            - 기본값이 없는 이름이 비면 **기동 시점에** 실패한다 — 실행 중에 터지는 것보다 낫다
+            - `.properties`와 `.yaml`을 섞지 않는다
         predict:
           question: '`application.yaml`에 `shop.delivery-fee`가 없는데 `@Value("${shop.delivery-fee}")`를 쓰면?'
           choices:
@@ -112,7 +112,7 @@ lessons:
             }
             ```
 
-            - '최대 개수에 기본값을 주지 않은 이유: 이 값이 빠진 채로 도는 것은 사고다. 기동 때 바로 알아야 한다. 취소 시간은 없어도 30분으로 돌아가면 되므로 기본값을 뒀다.'
+            - 최대 개수에 기본값을 주지 않은 이유: 이 값이 빠진 채로 도는 것은 사고다. 기동 때 바로 알아야 한다. 취소 시간은 없어도 30분으로 돌아가면 되므로 기본값을 뒀다.
           selfChecks:
             - 최대 개수에는 기본값이 **없고** 취소 시간에는 있는가
             - YAML의 중첩과 `@Value`의 이름이 정확히 맞는가
@@ -166,9 +166,9 @@ lessons:
             SHOP_DELIVERY_FEE  ↔  shop.delivery-fee
             (점·하이픈 → 밑줄, 대문자)
           note: |-
-            - '같은 빌드를 환경마다 다르게 띄울 수 있는 이유가 이 순서다'
-            - '비밀 값은 파일이 아니라 환경 변수로 — 저장소에는 진짜 값이 남지 않는다'
-            - '환경 변수 이름을 지을 때 대문자·밑줄만 기억하면 된다'
+            - 같은 빌드를 환경마다 다르게 띄울 수 있는 이유가 이 순서다
+            - 비밀 값은 파일이 아니라 환경 변수로 — 저장소에는 진짜 값이 남지 않는다
+            - 환경 변수 이름을 지을 때 대문자·밑줄만 기억하면 된다
         predict:
           question: '`application.yaml`에 `shop.api-timeout: 5`가 있고 환경 변수 `SHOP_API_TIMEOUT=10`을 주고 띄우면?'
           choices:
@@ -290,9 +290,9 @@ lessons:
             java -jar shop.jar --spring.profiles.active=prod
               → delivery-fee 3000, 환경 변수 DB, INFO 로그
           note: |-
-            - '공통은 `application.yaml`에, 다른 것만 프로필 파일에 — 중복을 줄인다'
-            - '프로필 파일이 기본 파일을 **덮는다**. 지우는 것이 아니라 얹는 것이다'
-            - '`--spring.profiles.active=prod`도 U2의 순서를 따른다'
+            - 공통은 `application.yaml`에, 다른 것만 프로필 파일에 — 중복을 줄인다
+            - 프로필 파일이 기본 파일을 **덮는다**. 지우는 것이 아니라 얹는 것이다
+            - `--spring.profiles.active=prod`도 U2의 순서를 따른다
         predict:
           question: '`application.yaml`에 `shop.delivery-fee: 3000`, `application-prod.yaml`에는 그 값이 없다. prod로 띄우면?'
           choices:
@@ -442,9 +442,9 @@ lessons:
             delivery-fee: -1 로 두면
               → 기동 실패 (@Min(0) 위반)
           note: |-
-            - '접두사 `shop`을 **한 번만** 적는다. 오타가 날 자리가 줄어든다'
-            - 'record라서 만들어진 뒤 바뀌지 않는다'
-            - '`@Validated` + `@Min` — 잘못된 값은 실행 중이 아니라 **기동 때** 걸린다'
+            - 접두사 `shop`을 **한 번만** 적는다. 오타가 날 자리가 줄어든다
+            - record라서 만들어진 뒤 바뀌지 않는다
+            - `@Validated` + `@Min` — 잘못된 값은 실행 중이 아니라 **기동 때** 걸린다
         predict:
           question: 'YAML에 `shop.delivery-fee: 3000`이라고 적으면 record의 어느 칸에 들어가나?'
           choices:
@@ -514,8 +514,8 @@ lessons:
 
             **나아진 점**
 
-            - '접두사 `shop.order`를 한 번만 적는다 — 문자열 오타가 날 자리가 셋에서 하나로 줄었다.'
-            - '`@Validated` + `@Min(1)` 덕분에 잘못된 값이 **기동 때** 걸린다. `@Value`였다면 그 값을 쓰는 코드가 실행될 때까지 몰랐다.'
+            - 접두사 `shop.order`를 한 번만 적는다 — 문자열 오타가 날 자리가 셋에서 하나로 줄었다.
+            - `@Validated` + `@Min(1)` 덕분에 잘못된 값이 **기동 때** 걸린다. `@Value`였다면 그 값을 쓰는 코드가 실행될 때까지 몰랐다.
           selfChecks:
             - 접두사가 한 곳에만 적혀 있는가
             - 기본값 두 개가 `@DefaultValue`로 옮겨졌는가

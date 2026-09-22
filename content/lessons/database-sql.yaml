@@ -53,9 +53,9 @@ lessons:
             1019 |           3 |        30000 | 2026-09-21 09:41:05
             (2 rows)
           note: |-
-            - '`canceled_at IS NULL` — `= NULL`로 쓰면 한 줄도 안 나온다'
-            - '`ORDER BY ... DESC` + `LIMIT` — 이 둘은 짝으로 다닌다'
-            - '칸 이름을 적었으므로 나중에 표에 칸이 늘어도 결과가 그대로다'
+            - `canceled_at IS NULL` — `= NULL`로 쓰면 한 줄도 안 나온다
+            - `ORDER BY ... DESC` + `LIMIT` — 이 둘은 짝으로 다닌다
+            - 칸 이름을 적었으므로 나중에 표에 칸이 늘어도 결과가 그대로다
         predict:
           question: '`WHERE canceled_at = NULL`로 쓰면 결과가 어떻게 되나?'
           choices:
@@ -110,7 +110,7 @@ lessons:
             LIMIT 20;
             ```
 
-            - '`canceled_at IS NULL`을 쓴 이유: 취소 시각이 비어 있다는 것이 곧 "취소되지 않았다"다. `= NULL`로 쓰면 문법은 맞지만 **조용히 0건**이 된다.'
+            - `canceled_at IS NULL`을 쓴 이유: 취소 시각이 비어 있다는 것이 곧 "취소되지 않았다"다. `= NULL`로 쓰면 문법은 맞지만 **조용히 0건**이 된다.
           selfChecks:
             - '`SELECT *`가 아니라 필요한 칸만 적었는가'
             - 취소 조건이 `IS NULL`인가
@@ -168,9 +168,9 @@ lessons:
             17 | 한채원  |     1024
             42 | 김영희  |     NULL   ← 주문이 없는 회원. LEFT JOIN 이라 남는다
           note: |-
-            - '`o`·`ol`·`p`는 별칭이다. 표가 셋이 되면 칸 이름이 겹쳐서 별칭 없이는 읽기 어렵다'
-            - '`ON`에 **어떤 칸끼리 짝인지**를 적는다. 여기를 빠뜨리면 모든 조합이 나온다'
-            - '`order_id`가 `NULL`이라는 것은 짝이 없었다는 뜻이다'
+            - `o`·`ol`·`p`는 별칭이다. 표가 셋이 되면 칸 이름이 겹쳐서 별칭 없이는 읽기 어렵다
+            - `ON`에 **어떤 칸끼리 짝인지**를 적는다. 여기를 빠뜨리면 모든 조합이 나온다
+            - `order_id`가 `NULL`이라는 것은 짝이 없었다는 뜻이다
         predict:
           question: '`LEFT JOIN orders o ON o.customer_id = c.id` 뒤에 `WHERE o.total_amount >= 10000`을 붙이면?'
           choices:
@@ -227,8 +227,8 @@ lessons:
             ORDER BY order_count DESC;
             ```
 
-            - '취소 조건을 `ON`에 둔 이유: `WHERE`에 두면 주문이 없는 회원의 `o.canceled_at`이 `NULL`이라 그 줄이 걸러지고, 0건인 회원이 사라진다. `ON`에 두면 "짝지을 주문"만 좁히므로 회원은 남는다.'
-            - '`count(o.id)`를 쓴 이유: `count(*)`는 줄 수를 세므로 주문 없는 회원도 1이 된다. 칸을 세면 `NULL`은 세지 않아 0이 나온다.'
+            - 취소 조건을 `ON`에 둔 이유: `WHERE`에 두면 주문이 없는 회원의 `o.canceled_at`이 `NULL`이라 그 줄이 걸러지고, 0건인 회원이 사라진다. `ON`에 두면 "짝지을 주문"만 좁히므로 회원은 남는다.
+            - `count(o.id)`를 쓴 이유: `count(*)`는 줄 수를 세므로 주문 없는 회원도 1이 된다. 칸을 세면 `NULL`은 세지 않아 0이 나온다.
           selfChecks:
             - '`LEFT JOIN`을 쓰고 취소 조건이 `ON` 쪽에 있는가'
             - '`count(*)`가 아니라 `count(o.id)`인가 (0이 제대로 나오는가)'
@@ -278,9 +278,9 @@ lessons:
             WHERE  → 취소된 주문의 줄을 미리 버린다
             HAVING → 합계가 10 이하인 상품 묶음을 버린다
           note: |-
-            - '`WHERE`는 줄을, `HAVING`은 **묶음**을 거른다'
-            - '`p.id, p.name`이 둘 다 `GROUP BY`에 있다 — `SELECT`에 적었기 때문이다'
-            - '`sold`라는 별칭은 `ORDER BY`에서는 쓸 수 있지만 `HAVING`에서는 쓸 수 없다(계산 순서 때문)'
+            - `WHERE`는 줄을, `HAVING`은 **묶음**을 거른다
+            - `p.id, p.name`이 둘 다 `GROUP BY`에 있다 — `SELECT`에 적었기 때문이다
+            - `sold`라는 별칭은 `ORDER BY`에서는 쓸 수 있지만 `HAVING`에서는 쓸 수 없다(계산 순서 때문)
         predict:
           question: '`SELECT p.name, sum(ol.quantity) ... GROUP BY p.id`처럼 name을 GROUP BY에서 빼면?'
           choices:
@@ -404,9 +404,9 @@ lessons:
               UPDATE ... RETURNING id → 12043 rows
               → 숫자가 다르므로 ROLLBACK 한다
           note: |-
-            - '`SELECT`와 `UPDATE`의 `WHERE`가 **글자 그대로 같아야** 의미가 있다'
-            - '`RETURNING`이 바꾼 줄 수를 눈앞에 보여 준다 — 커밋 전에 알아챌 마지막 기회다'
-            - '`ROLLBACK`은 `COMMIT` 전까지만 쓸 수 있다'
+            - `SELECT`와 `UPDATE`의 `WHERE`가 **글자 그대로 같아야** 의미가 있다
+            - `RETURNING`이 바꾼 줄 수를 눈앞에 보여 준다 — 커밋 전에 알아챌 마지막 기회다
+            - `ROLLBACK`은 `COMMIT` 전까지만 쓸 수 있다
         predict:
           question: '`BEGIN;` 뒤에 `DELETE FROM orders;`를 실행했는데 아직 `COMMIT`하지 않았다. 다른 접속에서 조회하면?'
           choices:

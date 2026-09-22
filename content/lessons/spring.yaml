@@ -44,9 +44,9 @@ lessons:
             GET /hello  →  200 OK
             본문: 안녕하세요
           note: |-
-            - '`@RestController` — 돌려준 값이 응답 본문이 된다'
-            - '`@GetMapping("/hello")` — GET `/hello` 요청을 이 메서드에 잇는다'
-            - '`return "안녕하세요"` — 문자열이므로 그대로 본문이 된다(JSON으로 감싸지 않는다)'
+            - `@RestController` — 돌려준 값이 응답 본문이 된다
+            - `@GetMapping("/hello")` — GET `/hello` 요청을 이 메서드에 잇는다
+            - `return "안녕하세요"` — 문자열이므로 그대로 본문이 된다(JSON으로 감싸지 않는다)
         predict:
           question: 같은 코드에서 `@RestController`를 `@Controller`로만 바꾸면 GET /hello의 결과는?
           code: |-
@@ -114,8 +114,8 @@ lessons:
             }
             ```
 
-            - '`@RestController`를 쓴 이유: 돌려준 `"ok"`를 **응답 본문**으로 그대로 쓰기 위해서다. `@Controller`만 쓰면 `ok`라는 화면을 찾는다.'
-            - '`@GetMapping("/orders/health")`를 쓴 이유: GET 요청과 이 메서드를 잇기 위해서다.'
+            - `@RestController`를 쓴 이유: 돌려준 `"ok"`를 **응답 본문**으로 그대로 쓰기 위해서다. `@Controller`만 쓰면 `ok`라는 화면을 찾는다.
+            - `@GetMapping("/orders/health")`를 쓴 이유: GET 요청과 이 메서드를 잇기 위해서다.
           selfChecks:
             - 클래스에 `@RestController`(또는 `@Controller` + 메서드에 `@ResponseBody`)를 붙였는가
             - 메서드에 `@GetMapping`을 붙이고 주소를 `/orders/health`로 정확히 적었는가
@@ -152,9 +152,9 @@ lessons:
             GET /orders/7    →  200 OK   {"id":7,"status":"PAID"}
             GET /orders/abc  →  400      (abc를 Long으로 바꿀 수 없다)
           note: |-
-            - '`{orderId}` — 주소에서 값이 들어올 자리'
-            - '`@PathVariable Long orderId` — 그 자리의 값을 받는다. 이름이 같아서 따로 적지 않았다'
-            - '`OrderView`를 돌려주니 JSON이 된다(문자열이 아니다)'
+            - `{orderId}` — 주소에서 값이 들어올 자리
+            - `@PathVariable Long orderId` — 그 자리의 값을 받는다. 이름이 같아서 따로 적지 않았다
+            - `OrderView`를 돌려주니 JSON이 된다(문자열이 아니다)
         predict:
           question: 파라미터 타입은 `Long`인데 GET /orders/abc 를 부르면 어떻게 되나요?
           code: |-
@@ -225,8 +225,8 @@ lessons:
 
           기본은 **필수**다. 값이 없으면 400이 난다. 없어도 되게 하려면 두 가지 방법이 있다.
 
-          - '`@RequestParam(required = false) String status` — 없으면 `null`'
-          - '`@RequestParam(defaultValue = "1") int page` — 없으면 `1`'
+          - `@RequestParam(required = false) String status` — 없으면 `null`
+          - `@RequestParam(defaultValue = "1") int page` — 없으면 `1`
 
           `java.util.Optional<String>`로 받아도 된다. 타입 변환은 `@PathVariable`과 같다 — `page=2`는 `int 2`가 된다.
 
@@ -249,8 +249,8 @@ lessons:
             GET /orders?status=PAID          →  status=PAID, page=1
             GET /orders?status=PAID&page=3   →  status=PAID, page=3
           note: |-
-            - '`required = false` — `status`가 없으면 `null`이 들어온다'
-            - '`defaultValue = "1"` — `page`가 없으면 1이 된다. 기본값을 주면 필수가 아니게 된다'
+            - `required = false` — `status`가 없으면 `null`이 들어온다
+            - `defaultValue = "1"` — `page`가 없으면 1이 된다. 기본값을 주면 필수가 아니게 된다
             - 둘 다 적지 않았다면 값이 없을 때 400이 난다
         predict:
           question: 아래처럼 `required`도 `defaultValue`도 적지 않았을 때 GET /orders 를 부르면?
@@ -285,9 +285,9 @@ lessons:
             상품 목록 주소를 만듭니다. GET `/products`를 받아 아래 조건을 지키는 메서드를 백지에서 작성하세요.
             반환은 문자열로 `keyword=..., page=..., size=...` 형태면 됩니다.
 
-            - '`keyword`는 없어도 된다(없으면 `null`)'
-            - '`page`는 없으면 1'
-            - '`size`는 없으면 20'
+            - `keyword`는 없어도 된다(없으면 `null`)
+            - `page`는 없으면 1
+            - `size`는 없으면 20
           deliverables:
             - 메서드 코드
             - 세 파라미터에 각각 왜 그 방법을 골랐는지 한 줄씩
@@ -306,8 +306,8 @@ lessons:
             }
             ```
 
-            - '`keyword`: 없으면 `null`이면 되므로 `required = false`. `String`은 null을 담을 수 있다.'
-            - '`page`·`size`: 없을 때 넣을 값이 정해져 있으므로 `defaultValue`. `int`는 null을 담을 수 없어서 이쪽이 맞다.'
+            - `keyword`: 없으면 `null`이면 되므로 `required = false`. `String`은 null을 담을 수 있다.
+            - `page`·`size`: 없을 때 넣을 값이 정해져 있으므로 `defaultValue`. `int`는 null을 담을 수 없어서 이쪽이 맞다.
           selfChecks:
             - '`keyword`에 `required = false`를 주었는가'
             - '`page`와 `size`에 `defaultValue`를 주었는가'
@@ -350,9 +350,9 @@ lessons:
             POST /orders  {"productCode":"A1","quantity":2}  →  201  created A1
           note: |-
             - 클래스의 `@RequestMapping("/orders")` + 메서드의 `"/{orderId}"` = `/orders/{orderId}`
-            - '`@PostMapping`에 주소를 적지 않았다 — 클래스 경로 그대로 `/orders`다'
-            - '`@RequestBody` — 요청 본문 JSON을 record로 바꿔 받는다'
-            - '`@ResponseStatus(HttpStatus.CREATED)` — 응답 코드를 201로 정한다'
+            - `@PostMapping`에 주소를 적지 않았다 — 클래스 경로 그대로 `/orders`다
+            - `@RequestBody` — 요청 본문 JSON을 record로 바꿔 받는다
+            - `@ResponseStatus(HttpStatus.CREATED)` — 응답 코드를 201로 정한다
         predict:
           question: 위 컨트롤러에서 create 메서드를 `@PostMapping("/orders")`로 바꾸면 POST /orders 는?
           choices:

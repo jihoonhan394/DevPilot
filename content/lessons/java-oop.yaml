@@ -67,9 +67,9 @@ lessons:
             line.changeQuantity(0)       → IllegalArgumentException
             line.quantity = 0            → 컴파일 오류 (private)
           note: |-
-            - '`private int quantity` — 밖에서는 손댈 수 없다'
-            - '`changeQuantity` — 바꾸는 **유일한 문**이고 규칙이 그 안에 있다'
-            - '생성자도 그 문을 지나간다 — 만들 때만 규칙을 빠져나가는 구멍을 막는다'
+            - `private int quantity` — 밖에서는 손댈 수 없다
+            - `changeQuantity` — 바꾸는 **유일한 문**이고 규칙이 그 안에 있다
+            - 생성자도 그 문을 지나간다 — 만들 때만 규칙을 빠져나가는 구멍을 막는다
         predict:
           question: '`quantity`를 `public int quantity`로 바꾸면 어떤 일이 생기나?'
           choices:
@@ -148,8 +148,8 @@ lessons:
             }
             ```
 
-            - '`private final int discountRate` — 밖에서 못 만지고(`private`), 만든 뒤 바뀌지 않는다(`final`).'
-            - '`private boolean used` — 바뀌어야 하므로 `final`이 아니고, 바꾸는 문은 `use()` 하나뿐이다.'
+            - `private final int discountRate` — 밖에서 못 만지고(`private`), 만든 뒤 바뀌지 않는다(`final`).
+            - `private boolean used` — 바뀌어야 하므로 `final`이 아니고, 바꾸는 문은 `use()` 하나뿐이다.
           selfChecks:
             - 두 필드가 모두 `private`이고 할인율이 `final`인가
             - 범위 검사가 생성자 안에 있어 잘못된 쿠폰이 아예 만들어지지 않는가
@@ -208,9 +208,9 @@ lessons:
               → PaymentMethod 를 구현하는 클래스를 하나 추가
               → OrderService 는 한 줄도 고치지 않는다
           note: |-
-            - '`implements PaymentMethod` — 약속한 메서드를 전부 채우겠다는 선언'
-            - '`@Override` — 오타로 다른 메서드를 만들면 컴파일 오류로 잡아 준다'
-            - '`OrderService`의 파라미터 타입이 인터페이스라는 점이 핵심이다'
+            - `implements PaymentMethod` — 약속한 메서드를 전부 채우겠다는 선언
+            - `@Override` — 오타로 다른 메서드를 만들면 컴파일 오류로 잡아 준다
+            - `OrderService`의 파라미터 타입이 인터페이스라는 점이 핵심이다
         predict:
           question: '`CardPayment`에서 `pay` 메서드를 지우면 어떻게 되나?'
           choices:
@@ -288,7 +288,7 @@ lessons:
             }
             ```
 
-            - '카카오톡이 추가되면 `KakaoNotifier`를 **새로 만들기만** 하면 된다. `NotificationService`는 고치지 않는다.'
+            - 카카오톡이 추가되면 `KakaoNotifier`를 **새로 만들기만** 하면 된다. `NotificationService`는 고치지 않는다.
           selfChecks:
             - 고친 `NotificationService`에 `if`와 문자열 비교가 사라졌는가
             - 두 구현 클래스가 같은 인터페이스를 구현하고 `@Override`를 붙였는가
@@ -335,9 +335,9 @@ lessons:
             부를 수 있는가  → 선언 타입(PaymentMethod)이 정한다
             무엇이 실행되나 → 실제 타입(CardPayment)이 정한다
           note: |-
-            - '`for` 안의 코드는 수단이 몇 개로 늘어도 그대로다'
-            - '`method.cancel()`이 막히는 이유: 컴파일러는 선언 타입만 보고 판단한다'
-            - '정말 필요하면 `instanceof`로 좁힐 수 있지만, 자주 쓰면 인터페이스를 잘못 나눈 신호다'
+            - `for` 안의 코드는 수단이 몇 개로 늘어도 그대로다
+            - `method.cancel()`이 막히는 이유: 컴파일러는 선언 타입만 보고 판단한다
+            - 정말 필요하면 `instanceof`로 좁힐 수 있지만, 자주 쓰면 인터페이스를 잘못 나눈 신호다
         predict:
           question: '`Object o = "안녕"; o.length();` 는 어떻게 되나?'
           choices:
@@ -471,9 +471,9 @@ lessons:
             상속판 → stack.add(0, x) 가 가능하다. 스택의 규칙이 깨진다
             합성판 → push / pop 만 열려 있다. 규칙이 지켜진다
           note: |-
-            - '물려받으면 부모의 공개 메서드가 **전부** 내 얼굴이 된다'
-            - '합성은 `private` 필드로 들고 있으므로 무엇을 열지 내가 고른다'
-            - '"~는 ~이다"가 어색하게 들리면 그 상속은 대개 잘못된 것이다'
+            - 물려받으면 부모의 공개 메서드가 **전부** 내 얼굴이 된다
+            - 합성은 `private` 필드로 들고 있으므로 무엇을 열지 내가 고른다
+            - "~는 ~이다"가 어색하게 들리면 그 상속은 대개 잘못된 것이다
         predict:
           question: '`class Stack<E> extends ArrayList<E>`에서 `stack.add(0, x)`를 부를 수 있나?'
           choices:

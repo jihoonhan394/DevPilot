@@ -66,9 +66,9 @@ lessons:
 
             lines 안의 quantity 0 도 잡힌다 — List<@Valid ...> 라서
           note: |-
-            - '`@Valid`가 파라미터에 있어야 검사가 돈다. 제약만 적고 `@Valid`를 빼면 아무 일도 안 일어난다'
-            - '`List<@Valid OrderLineRequest>` — 원소 안까지 보려면 원소 자리에 적는다'
-            - '`memo`에는 `@NotBlank`가 없다. 없어도 되는 값이다'
+            - `@Valid`가 파라미터에 있어야 검사가 돈다. 제약만 적고 `@Valid`를 빼면 아무 일도 안 일어난다
+            - `List<@Valid OrderLineRequest>` — 원소 안까지 보려면 원소 자리에 적는다
+            - `memo`에는 `@NotBlank`가 없다. 없어도 되는 값이다
         predict:
           question: '`@Valid`를 빼고 `@RequestBody OrderRequest request`로만 두면?'
           choices:
@@ -125,7 +125,7 @@ lessons:
             }
             ```
 
-            - '`referrer`에는 `@Size(max = 100)`만 걸었다. `@NotNull`이나 `@NotBlank`를 붙이면 **없으면 안 되는 값**이 되어 버린다. 길이 제약은 값이 있을 때만 보므로(U2) 이대로 두면 "없어도 되지만 있다면 100자 이하"가 된다.'
+            - `referrer`에는 `@Size(max = 100)`만 걸었다. `@NotNull`이나 `@NotBlank`를 붙이면 **없으면 안 되는 값**이 되어 버린다. 길이 제약은 값이 있을 때만 보므로(U2) 이대로 두면 "없어도 되지만 있다면 100자 이하"가 된다.
           selfChecks:
             - 닉네임이 `@NotNull`이 아니라 `@NotBlank`인가 (공백만 있는 닉네임을 막는가)
             - '`referrer`에 `@NotNull`·`@NotBlank`가 **없는가**'
@@ -182,9 +182,9 @@ lessons:
             new Fixed(null, null)
               violations=2          ← 둘 다 NotNull 위반
           note: |-
-            - '`Not*`만 "없음"을 본다. 나머지는 전부 "있다면 이래야 한다"다'
-            - '`int quantity`처럼 원시형으로 받으면 `null`이 아예 못 들어와 다른 문제가 된다 — 빠뜨린 값이 0이 된다'
-            - 'DB의 `CHECK` + `NOT NULL` 짝과 같은 규칙이다'
+            - `Not*`만 "없음"을 본다. 나머지는 전부 "있다면 이래야 한다"다
+            - `int quantity`처럼 원시형으로 받으면 `null`이 아예 못 들어와 다른 문제가 된다 — 빠뜨린 값이 0이 된다
+            - DB의 `CHECK` + `NOT NULL` 짝과 같은 규칙이다
         predict:
           question: '`@Size(min = 2, max = 5) String name`에 `null`이 들어오면?'
           choices:
@@ -245,9 +245,9 @@ lessons:
                     @Email String contactEmail) { }   // 그대로 — 없어도 된다
             ```
 
-            - '`code`: 반드시 있어야 하고 공백만 있는 코드도 막아야 하므로 `@NotBlank`.'
-            - '`discountRate`: 반드시 있어야 하므로 `@NotNull`. 숫자에는 `@NotBlank`를 쓸 수 없다.'
-            - '`contactEmail`: **그대로 둔다.** 없어도 되는 값이라 `@Email`만으로 "있다면 이메일 모양"이 된다.'
+            - `code`: 반드시 있어야 하고 공백만 있는 코드도 막아야 하므로 `@NotBlank`.
+            - `discountRate`: 반드시 있어야 하므로 `@NotNull`. 숫자에는 `@NotBlank`를 쓸 수 없다.
+            - `contactEmail`: **그대로 둔다.** 없어도 되는 값이라 `@Email`만으로 "있다면 이메일 모양"이 된다.
           selfChecks:
             - 원인을 "`@Size`가 `null`을 통과시킨다"로 짚었는가
             - 세 칸을 똑같이 고치지 않고 의도대로 갈랐는가
@@ -313,9 +313,9 @@ lessons:
               → HandlerMethodValidationException
               → 같은 모양의 400
           note: |-
-            - '두 예외를 **둘 다** 다룬다. 하나만 다루면 나머지가 500으로 나간다'
-            - '`field`에 `lines[0].quantity`처럼 경로가 찍힌다 — 화면이 그 칸에 표시할 수 있다'
-            - '서비스 메서드 제약은 `ConstraintViolationException`이다. 필요하면 그것도 같은 형식으로 바꾼다'
+            - 두 예외를 **둘 다** 다룬다. 하나만 다루면 나머지가 500으로 나간다
+            - `field`에 `lines[0].quantity`처럼 경로가 찍힌다 — 화면이 그 칸에 표시할 수 있다
+            - 서비스 메서드 제약은 `ConstraintViolationException`이다. 필요하면 그것도 같은 형식으로 바꾼다
         predict:
           question: '`MethodArgumentNotValidException`만 처리해 두고 `@PathVariable @Min(1) long id`에 0이 오면?'
           choices:
@@ -370,8 +370,8 @@ lessons:
           modelAnswer: |-
             **1. 예외**
 
-            - '`list(@RequestParam @Min(1) @Max(100) int size)` — 제약이 파라미터 자리에 있으므로 `HandlerMethodValidationException`.'
-            - '`place(@Valid @RequestBody OrderRequest request)` — `@Valid`가 붙은 객체이므로 `MethodArgumentNotValidException`.'
+            - `list(@RequestParam @Min(1) @Max(100) int size)` — 제약이 파라미터 자리에 있으므로 `HandlerMethodValidationException`.
+            - `place(@Valid @RequestBody OrderRequest request)` — `@Valid`가 붙은 객체이므로 `MethodArgumentNotValidException`.
 
             **2. 핸들러**
 
@@ -468,9 +468,9 @@ lessons:
 
             셋 다 "잘못된 요청"이지만 알 수 있는 시점과 코드가 다르다
           note: |-
-            - '기준: **요청 하나만 들고 판단할 수 있나**'
-            - '재고 확인을 검증 단계에서 하면 읽은 뒤 저장 전까지 값이 바뀔 수 있다'
-            - '재고 규칙은 `Product` 안에 둔다 — 그래야 다른 경로로 차감해도 같은 규칙을 지난다'
+            - 기준: **요청 하나만 들고 판단할 수 있나**
+            - 재고 확인을 검증 단계에서 하면 읽은 뒤 저장 전까지 값이 바뀔 수 있다
+            - 재고 규칙은 `Product` 안에 둔다 — 그래야 다른 경로로 차감해도 같은 규칙을 지난다
         predict:
           question: 커스텀 validator 안에서 리포지터리를 불러 재고를 확인하면 무엇이 문제인가?
           choices:

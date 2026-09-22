@@ -38,7 +38,7 @@ lessons:
             같은 파일이 양쪽에 보인다.
             지금 commit하면 add한 시점의 내용만 들어가고, 그 뒤 고친 것은 남는다.
           note: |-
-            - '`add`는 "지금 이 내용을 담을 목록에 넣어 줘"다'
+            - `add`는 "지금 이 내용을 담을 목록에 넣어 줘"다
             - 그 뒤 수정은 목록에 자동으로 따라가지 않는다 — 다시 `add`해야 한다
         predict:
           question: "`git add a.txt` 뒤에 a.txt를 한 줄 더 고치고 `git commit`을 하면 커밋에 들어가는 것은?"
@@ -111,7 +111,7 @@ lessons:
             order-cancel에서 한 커밋은 main에 보이지 않는다.
             합치기 전까지 서로 영향을 주지 않는다.
           note: |-
-            - '`-c`는 create다. 만들면서 옮긴다'
+            - `-c`는 create다. 만들면서 옮긴다
             - 옮기면 작업 폴더의 파일이 그 브랜치의 내용으로 바뀐다
         predict:
           question: order-cancel 브랜치에서 커밋을 하나 하고 main으로 옮기면 그 커밋은?
@@ -184,7 +184,7 @@ lessons:
                 order.requireCancelable();
             >>>>>>> order-cancel
           note: |-
-            - '`HEAD` 쪽이 지금 있는 브랜치의 내용이다'
+            - `HEAD` 쪽이 지금 있는 브랜치의 내용이다
             - 표시 세 줄(`<<<<<<<`, `=======`, `>>>>>>>`)은 **반드시 지운다**
             - 둘 중 하나를 고를 수도 있고, 둘을 합친 새 코드를 쓸 수도 있다
         predict:
@@ -258,7 +258,7 @@ lessons:
             거절 → 받아서 합치기 → 다시 push. 이 순서로 풀린다.
             pull에서 충돌이 나면 U3의 방법으로 해결한 뒤 push한다.
           note: |-
-            - '`fetch`는 보기만, `pull`은 보고 합치기까지'
+            - `fetch`는 보기만, `pull`은 보고 합치기까지
             - 거절은 내 잘못이 아니라 "먼저 받으라"는 뜻이다
         predict:
           question: "`git fetch`만 실행하면 내 현재 브랜치의 파일은?"

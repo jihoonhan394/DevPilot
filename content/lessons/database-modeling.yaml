@@ -75,9 +75,9 @@ lessons:
             orders 에는 항목 칸이 없다
               → 1:N 에서 키를 드는 쪽은 언제나 N 이다
           note: |-
-            - '칸 이름 끝에 숫자가 붙기 시작하면 표를 나눌 때다'
-            - '`order_lines`가 `order_id`를 든다. 반대로 `orders`가 항목 목록을 들 수는 없다'
-            - '`timestamptz`를 쓴다 — 시간대 없는 `timestamp`는 나중에 반드시 문제가 된다'
+            - 칸 이름 끝에 숫자가 붙기 시작하면 표를 나눌 때다
+            - `order_lines`가 `order_id`를 든다. 반대로 `orders`가 항목 목록을 들 수는 없다
+            - `timestamptz`를 쓴다 — 시간대 없는 `timestamp`는 나중에 반드시 문제가 된다
         predict:
           question: '`orders` 표에 `product_name1`·`product_name2` 칸을 두면 상품 세 개를 담을 때 어떻게 되나?'
           choices:
@@ -147,9 +147,9 @@ lessons:
             );
             ```
 
-            - '`product_name`·`product_price` → `product_id`: 이미 `products`에 있는 값을 복사해 두면 상품 이름이 바뀔 때 모든 후기를 고쳐야 한다.'
-            - '`writer_name`·`writer_email` → `writer_id`: 같은 이유다. 이메일 같은 개인정보가 여러 표에 흩어지는 것도 위험하다.'
-            - '`tag1`~`tag3` → `review_tags` 표: 개수가 정해지지 않았다. 넷째 태그가 필요해지면 표를 고쳐야 한다.'
+            - `product_name`·`product_price` → `product_id`: 이미 `products`에 있는 값을 복사해 두면 상품 이름이 바뀔 때 모든 후기를 고쳐야 한다.
+            - `writer_name`·`writer_email` → `writer_id`: 같은 이유다. 이메일 같은 개인정보가 여러 표에 흩어지는 것도 위험하다.
+            - `tag1`~`tag3` → `review_tags` 표: 개수가 정해지지 않았다. 넷째 태그가 필요해지면 표를 고쳐야 한다.
           selfChecks:
             - 숫자가 붙은 칸이 별도 표의 줄로 바뀌었는가
             - 다른 표에 이미 있는 값을 복사하지 않고 키만 들고 있는가
@@ -214,9 +214,9 @@ lessons:
             price 에 NOT NULL 이 없었다면
               INSERT ... price = NULL      → 통과한다 (CHECK 은 null 을 막지 않는다)
           note: |-
-            - '`CHECK`과 `NOT NULL`은 짝이다 — `CHECK`만으로는 `null`이 새어 들어온다'
-            - '제약에 이름을 주면(`CONSTRAINT products_status_check`) 위반 메시지에 그 이름이 나와 원인을 바로 안다'
-            - '상태 목록을 `CHECK`으로 두면 앱이 모르는 값이 DB에 쌓이지 않는다'
+            - `CHECK`과 `NOT NULL`은 짝이다 — `CHECK`만으로는 `null`이 새어 들어온다
+            - 제약에 이름을 주면(`CONSTRAINT products_status_check`) 위반 메시지에 그 이름이 나와 원인을 바로 안다
+            - 상태 목록을 `CHECK`으로 두면 앱이 모르는 값이 DB에 쌓이지 않는다
         predict:
           question: '`price integer CHECK (price > 0)`만 걸고 `NOT NULL`을 빼면 `price = NULL`인 줄이 들어오나?'
           choices:
@@ -283,8 +283,8 @@ lessons:
             );
             ```
 
-            - '`used_at`을 `NOT NULL`로 하지 않은 이유: **아직 쓰지 않은 상태**를 표현해야 한다. 비어 있음이 곧 "미사용"이다.'
-            - '그래서 `CHECK`을 `used_at IS NULL OR used_at < expires_at`로 썼다. `used_at < expires_at`만 쓰면 `null`일 때도 통과하므로 결과는 같지만, **의도를 드러내려고** 앞의 조건을 적어 둔다 — 읽는 사람이 "비어 있어도 된다"를 바로 안다.'
+            - `used_at`을 `NOT NULL`로 하지 않은 이유: **아직 쓰지 않은 상태**를 표현해야 한다. 비어 있음이 곧 "미사용"이다.
+            - 그래서 `CHECK`을 `used_at IS NULL OR used_at < expires_at`로 썼다. `used_at < expires_at`만 쓰면 `null`일 때도 통과하므로 결과는 같지만, **의도를 드러내려고** 앞의 조건을 적어 둔다 — 읽는 사람이 "비어 있어도 된다"를 바로 안다.
           selfChecks:
             - 반드시 있어야 하는 칸 넷에 `NOT NULL`이 걸렸는가
             - 할인율 범위가 `CHECK`으로 막혔고 `NOT NULL`과 짝인가
@@ -346,9 +346,9 @@ lessons:
             DELETE FROM products WHERE id = 7  (주문된 적 있는 상품)
               → 막힌다 (RESTRICT)
           note: |-
-            - '`CASCADE`와 `RESTRICT`가 한 표 안에 같이 있는 것이 자연스럽다 — 방향마다 답이 다르다'
-            - '`ON DELETE`를 안 적으면 `NO ACTION`이다. 즉 기본은 "막는다"'
-            - '`NOT NULL`이 없으면 `order_id = NULL`인 줄이 제약을 비켜 간다'
+            - `CASCADE`와 `RESTRICT`가 한 표 안에 같이 있는 것이 자연스럽다 — 방향마다 답이 다르다
+            - `ON DELETE`를 안 적으면 `NO ACTION`이다. 즉 기본은 "막는다"
+            - `NOT NULL`이 없으면 `order_id = NULL`인 줄이 제약을 비켜 간다
         predict:
           question: '`order_id bigint REFERENCES orders(id)`에 `NOT NULL`이 없을 때 `order_id = NULL`인 줄을 넣으면?'
           choices:
@@ -474,9 +474,9 @@ lessons:
               DELETE 하지 않고 canceled_at 에 시각을 채운다
               → "언제 취소됐나"에 답할 수 있고 통계도 남는다
           note: |-
-            - '`product_id`와 `product_name`을 **둘 다** 둔다 — 하나는 연결, 하나는 그때의 사실'
-            - '`canceled_at IS NULL`이 "취소되지 않음"이다 (SQL 노트 U1과 같은 규칙)'
-            - '`created_at`·`updated_at`은 거의 모든 표에 둔다. 나중에 반드시 필요해진다'
+            - `product_id`와 `product_name`을 **둘 다** 둔다 — 하나는 연결, 하나는 그때의 사실
+            - `canceled_at IS NULL`이 "취소되지 않음"이다 (SQL 노트 U1과 같은 규칙)
+            - `created_at`·`updated_at`은 거의 모든 표에 둔다. 나중에 반드시 필요해진다
         predict:
           question: '`order_lines`에 `unit_price` 없이 `product_id`만 두면 상품 가격이 오른 뒤 지난달 주문 금액은?'
           choices:
@@ -541,9 +541,9 @@ lessons:
             );
             ```
 
-            - '복사한 값: 받는 사람 이름·전화·주소. **그때 어디로 보냈는지**가 남아야 한다. 회원 주소를 참조하면 회원이 이사한 순간 지난 배송 기록이 새 주소로 바뀐다.'
-            - '참조한 값: `order_id`. 어느 주문의 배송인지는 **지금도 앞으로도 같은 사실**이라 키로 충분하다.'
-            - '`shipped_at`·`delivered_at`을 따로 둔 이유: `status`만으로는 "언제 발송됐나"에 답할 수 없다. 상태가 바뀔 때 해당 시각을 채운다.'
+            - 복사한 값: 받는 사람 이름·전화·주소. **그때 어디로 보냈는지**가 남아야 한다. 회원 주소를 참조하면 회원이 이사한 순간 지난 배송 기록이 새 주소로 바뀐다.
+            - 참조한 값: `order_id`. 어느 주문의 배송인지는 **지금도 앞으로도 같은 사실**이라 키로 충분하다.
+            - `shipped_at`·`delivered_at`을 따로 둔 이유: `status`만으로는 "언제 발송됐나"에 답할 수 없다. 상태가 바뀔 때 해당 시각을 채운다.
           selfChecks:
             - 받는 사람 정보를 회원 참조가 아니라 **복사**로 뒀고 그 이유를 적었는가
             - 1:1 관계를 `UNIQUE`로 표현했는가

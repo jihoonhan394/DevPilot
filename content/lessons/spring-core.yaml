@@ -56,9 +56,9 @@ lessons:
             2. 그것을 인자로 넣어 new OrderService(...) 를 부른다
             3. 만들어진 OrderService 를 빈으로 보관한다
           note: |-
-            - '`@Service` — 이 클래스를 빈으로 관리한다는 표시'
-            - '`private final` — 한 번 받으면 바뀌지 않는다'
-            - '생성자 파라미터 — "이게 있어야 나는 일할 수 있다"는 선언. 어디서 오는지는 내가 몰라도 된다'
+            - `@Service` — 이 클래스를 빈으로 관리한다는 표시
+            - `private final` — 한 번 받으면 바뀌지 않는다
+            - 생성자 파라미터 — "이게 있어야 나는 일할 수 있다"는 선언. 어디서 오는지는 내가 몰라도 된다
         predict:
           question: 이 코드를 기동하면 `OrderService`를 만드는 것은 누구인가?
           code: |-
@@ -134,7 +134,7 @@ lessons:
             }
             ```
 
-            - '생성자로 받은 이유: 안에서 `new`를 하면 `CouponService`가 특정 구현에 붙어 버린다. 밖에서 받으면 컨테이너가 넣어 주고, 테스트에서는 가짜를 넣을 수 있다.'
+            - 생성자로 받은 이유: 안에서 `new`를 하면 `CouponService`가 특정 구현에 붙어 버린다. 밖에서 받으면 컨테이너가 넣어 주고, 테스트에서는 가짜를 넣을 수 있다.
           selfChecks:
             - 클래스에 `@Service`(또는 `@Component`)를 붙였는가
             - 리포지터리를 생성자 파라미터로 받고 `private final` 필드에 넣었는가
@@ -176,9 +176,9 @@ lessons:
             CouponService 를 주입받으려 하면 기동 실패
               → NoSuchBeanDefinitionException
           note: |-
-            - '스캔의 시작점은 `@SpringBootApplication`이 있는 패키지다'
-            - '빈 이름은 기본이 `orderService`(첫 글자만 소문자)'
-            - '표시를 붙여도 **범위 밖이면** 없는 것과 같다'
+            - 스캔의 시작점은 `@SpringBootApplication`이 있는 패키지다
+            - 빈 이름은 기본이 `orderService`(첫 글자만 소문자)
+            - 표시를 붙여도 **범위 밖이면** 없는 것과 같다
         predict:
           question: '`com.shop`에 `@SpringBootApplication`이 있고 `com.tools.MailSender`에 `@Component`가 붙어 있다. 기동하면?'
           choices:
@@ -300,8 +300,8 @@ lessons:
             A 와 B        → 기동 실패
               BeanCurrentlyInCreationException
           note: |-
-            - '`final` 은 생성자 주입에서만 쓸 수 있다 — 세터 주입은 나중에 넣으므로 불가'
-            - '순환은 오류 메시지가 아니라 **설계 신호**다. 공통 부분을 셋째 클래스로 빼는 것이 보통의 답'
+            - `final` 은 생성자 주입에서만 쓸 수 있다 — 세터 주입은 나중에 넣으므로 불가
+            - 순환은 오류 메시지가 아니라 **설계 신호**다. 공통 부분을 셋째 클래스로 빼는 것이 보통의 답
         predict:
           question: 세터 주입으로 바꾸면 `private final OrderRepository orderRepository;`는 어떻게 되나?
           choices:
@@ -447,9 +447,9 @@ lessons:
             @Primary 와 @Qualifier 를 둘 다 빼면
               NoUniqueBeanDefinitionException
           note: |-
-            - '`@Primary`는 빈 쪽에 한 번, `@Qualifier`는 받는 쪽에 매번'
-            - '`@Qualifier`에 적은 `fixedDiscountPolicy`는 기본 빈 이름(첫 글자 소문자)'
-            - '둘 다 있으면 받는 쪽의 `@Qualifier`가 이긴다 — 더 구체적인 지정이다'
+            - `@Primary`는 빈 쪽에 한 번, `@Qualifier`는 받는 쪽에 매번
+            - `@Qualifier`에 적은 `fixedDiscountPolicy`는 기본 빈 이름(첫 글자 소문자)
+            - 둘 다 있으면 받는 쪽의 `@Qualifier`가 이긴다 — 더 구체적인 지정이다
         predict:
           question: '`DiscountPolicy` 구현이 둘인데 `@Primary`도 `@Qualifier`도 없으면 기동하면 어떻게 되나?'
           choices:
@@ -513,7 +513,7 @@ lessons:
             }
             ```
 
-            - '평소 쓰는 카드를 `@Primary`로 한 번만 정해 두면, 나머지 자리는 아무것도 쓰지 않아도 맞는 것이 들어온다. 예외인 정산만 `@Qualifier`로 콕 집으면 "여기만 다르다"가 코드에 드러난다.'
+            - 평소 쓰는 카드를 `@Primary`로 한 번만 정해 두면, 나머지 자리는 아무것도 쓰지 않아도 맞는 것이 들어온다. 예외인 정산만 `@Qualifier`로 콕 집으면 "여기만 다르다"가 코드에 드러난다.
           selfChecks:
             - '`CardPayment`에 `@Primary`를 붙이고 `OrderService`는 아무 표시 없이 받는가'
             - '`SettlementService`가 `@Qualifier`로 `transferPayment`를 고르는가'

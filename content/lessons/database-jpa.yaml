@@ -65,9 +65,9 @@ lessons:
             @JoinColumn 을 적지 않으면
               order_id 로 만들어지지만, 이름이 코드에 안 보인다
           note: |-
-            - '`@ManyToOne` 쪽이 외래 키를 갖고 있고, 그래서 **주인**이다'
-            - '`@JoinColumn(name = ...)` 은 표의 칸 이름 — 적어 두면 표와 코드가 같은 말을 한다'
-            - '`fetch = LAZY` 를 적은 이유는 U3에서 본다'
+            - `@ManyToOne` 쪽이 외래 키를 갖고 있고, 그래서 **주인**이다
+            - `@JoinColumn(name = ...)` 은 표의 칸 이름 — 적어 두면 표와 코드가 같은 말을 한다
+            - `fetch = LAZY` 를 적은 이유는 U3에서 본다
         predict:
           question: 주문 항목이 주문을 가리킬 때 외래 키는 어느 표에 있나?
           choices:
@@ -136,8 +136,8 @@ lessons:
             }
             ```
 
-            - '`order` 가 `@ManyToOne` 인 이유: 외래 키 `order_id` 가 `order_lines` 에 있다. 주문 하나에 항목이 여럿이므로 항목 쪽이 키를 든다.'
-            - '`product` 도 같은 이유다. `product_id` 가 `order_lines` 에 있고, 상품 하나가 여러 항목에 담긴다.'
+            - `order` 가 `@ManyToOne` 인 이유: 외래 키 `order_id` 가 `order_lines` 에 있다. 주문 하나에 항목이 여럿이므로 항목 쪽이 키를 든다.
+            - `product` 도 같은 이유다. `product_id` 가 `order_lines` 에 있고, 상품 하나가 여러 항목에 담긴다.
           selfChecks:
             - 두 연관관계가 모두 `@ManyToOne` 이고 `@JoinColumn` 이름이 표와 같은가
             - 이유가 "외래 키가 이 표에 있다"에 닿아 있는가
@@ -196,9 +196,9 @@ lessons:
             mappedBy 를 빠뜨리면
               → 중간 표(orders_order_lines)를 만들려 한다
           note: |-
-            - '`mappedBy` 의 값은 **저쪽 필드 이름**이다. 표의 칸 이름이 아니다'
-            - '주인이 아닌 쪽을 고쳐도 DB는 바뀌지 않는다 — 도우미 메서드로 둘을 묶는다'
-            - '양방향이 필요 없으면 만들지 않는다. 맞출 것이 하나 줄어든다'
+            - `mappedBy` 의 값은 **저쪽 필드 이름**이다. 표의 칸 이름이 아니다
+            - 주인이 아닌 쪽을 고쳐도 DB는 바뀌지 않는다 — 도우미 메서드로 둘을 묶는다
+            - 양방향이 필요 없으면 만들지 않는다. 맞출 것이 하나 줄어든다
         predict:
           question: '`order.getLines().add(line)` 만 하고 `line.setOrder(order)` 를 빠뜨리면?'
           choices:
@@ -344,9 +344,9 @@ lessons:
                 left join order_lines l ...
                 left join products p ...        (1)
           note: |-
-            - '`@ManyToOne` 의 기본은 **EAGER** 다 — 적지 않으면 그렇게 된다'
-            - '`LAZY` 로 두고 필요한 자리에서 켠다. `EAGER` 는 끌 수가 없다'
-            - '느려졌는지는 **질의 로그를 세어** 확인한다 (Spring Data JPA 노트 U4)'
+            - `@ManyToOne` 의 기본은 **EAGER** 다 — 적지 않으면 그렇게 된다
+            - `LAZY` 로 두고 필요한 자리에서 켠다. `EAGER` 는 끌 수가 없다
+            - 느려졌는지는 **질의 로그를 세어** 확인한다 (Spring Data JPA 노트 U4)
         predict:
           question: '`@ManyToOne` 에 `fetch` 를 적지 않으면 어떻게 동작하나?'
           choices:
@@ -496,9 +496,9 @@ lessons:
               → 항목도 함께 delete           (cascade REMOVE)
               → 상품은 그대로               (product 에 cascade 없음)
           note: |-
-            - '기준: **부모가 자식을 통째로 소유하나**'
-            - '공유 자원(상품·회원)에는 `REMOVE`·`ALL` 을 걸지 않는다'
-            - '`orphanRemoval` 은 "컬렉션에서 빼면 지운다"이고 cascade 와 별개다'
+            - 기준: **부모가 자식을 통째로 소유하나**
+            - 공유 자원(상품·회원)에는 `REMOVE`·`ALL` 을 걸지 않는다
+            - `orphanRemoval` 은 "컬렉션에서 빼면 지운다"이고 cascade 와 별개다
         predict:
           question: '`OrderLine.product` 에 `cascade = CascadeType.ALL` 을 걸고 주문 항목을 지우면?'
           choices:
