@@ -6,9 +6,11 @@ import 'package:devpilot_app/features/review/data/review_enums.dart';
 import 'package:devpilot_app/features/review/domain/review_card_progress.dart';
 import 'package:devpilot_app/features/review/presentation/rating_button_row.dart';
 import 'package:devpilot_app/features/review/presentation/review_labels.dart';
+import 'package:devpilot_app/features/settings/data/me_provider.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// One review card: ① answer (prompt, optional answer, hint, reveal) and ② the revealed answer
 /// with the rubric and the four ratings (docs/02 SCR-REVIEW-SESSION). The expected answer and the
@@ -22,6 +24,7 @@ class ReviewCardView extends StatelessWidget {
     required this.onHint,
     required this.onShowAnswerFirst,
     required this.onReveal,
+    required this.onEvaluationChanged,
     required this.onRate,
   });
 
@@ -31,6 +34,7 @@ class ReviewCardView extends StatelessWidget {
   final VoidCallback onHint;
   final VoidCallback onShowAnswerFirst;
   final VoidCallback onReveal;
+  final ValueChanged<bool> onEvaluationChanged;
   final ValueChanged<ReviewRating> onRate;
 
   @override
@@ -60,7 +64,12 @@ class ReviewCardView extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.lg),
         if (card.revealed)
-          _RevealedAnswer(card: card, submitting: submitting, onRate: onRate)
+          _RevealedAnswer(
+            card: card,
+            submitting: submitting,
+            onEvaluationChanged: onEvaluationChanged,
+            onRate: onRate,
+          )
         else
           _AnswerStep(
             card: card,
@@ -200,18 +209,24 @@ class _HintArea extends StatelessWidget {
 }
 
 /// ② The typed answer, "정답" (focused so screen readers read it), "핵심 포인트", the ratings.
-class _RevealedAnswer extends StatefulWidget {
-  const _RevealedAnswer({required this.card, required this.submitting, required this.onRate});
+class _RevealedAnswer extends ConsumerStatefulWidget {
+  const _RevealedAnswer({
+    required this.card,
+    required this.submitting,
+    required this.onEvaluationChanged,
+    required this.onRate,
+  });
 
   final ReviewCardProgress card;
   final bool submitting;
+  final ValueChanged<bool> onEvaluationChanged;
   final ValueChanged<ReviewRating> onRate;
 
   @override
-  State<_RevealedAnswer> createState() => _RevealedAnswerState();
+  ConsumerState<_RevealedAnswer> createState() => _RevealedAnswerState();
 }
 
-class _RevealedAnswerState extends State<_RevealedAnswer> {
+class _RevealedAnswerState extends ConsumerState<_RevealedAnswer> {
   final _expectedFocus = FocusNode(debugLabel: 'review.session.expected');
 
   @override
@@ -260,6 +275,22 @@ class _RevealedAnswerState extends State<_RevealedAnswer> {
               ],
             ),
         ],
+        // AI가 꺼져 있거나 잔액이 없으면 눌러 봐야 채점되지 않는다 (docs/02 §6.2 aiAvailable).
+        if (widget.card.canAskEvaluation && ref.watch(aiStatusProvider).allowsAi) ...[
+          const SizedBox(height: AppSpacing.md),
+          // 실제 AI 호출이라 비용이 든다 — 기본은 꺼져 있고 카드마다 학습자가 고른다.
+          CheckboxListTile(
+            key: const Key('review.session.evaluateCheckbox'),
+            value: widget.card.requestEvaluation,
+            onChanged: widget.submitting
+                ? null
+                : (wanted) => widget.onEvaluationChanged(wanted ?? false),
+            title: Text(l10n.reviewSessionAskEvaluation),
+            subtitle: Text(l10n.reviewSessionAskEvaluationNote),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+          ),
+        ],
         const SizedBox(height: AppSpacing.xl),
         SectionTitle(l10n.reviewSessionRatePrompt),
         const SizedBox(height: AppSpacing.sm),
@@ -268,7 +299,11 @@ class _RevealedAnswerState extends State<_RevealedAnswer> {
             height: RatingButtonRow.minHeight,
             child: Center(
               child: SelectionContainer.disabled(
-                child: CircularProgressIndicator(semanticsLabel: l10n.commonSubmitting),
+                child: CircularProgressIndicator(
+                  semanticsLabel: widget.card.requestEvaluation
+                      ? l10n.reviewSessionEvaluating
+                      : l10n.commonSubmitting,
+                ),
               ),
             ),
           )

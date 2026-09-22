@@ -15,6 +15,7 @@ final class ReviewCardProgress {
     this.answerText = '',
     this.hintLevel = HintLevel.selfExplain,
     this.revealed = false,
+    this.requestEvaluation = false,
   });
 
   final DueReviewItemView item;
@@ -24,6 +25,14 @@ final class ReviewCardProgress {
   final String answerText;
   final HintLevel hintLevel;
   final bool revealed;
+
+  /// "AI에게 채점 받기"를 켰는가. 매번 고른다 — 카드를 넘기면 다시 꺼진 상태로 시작한다.
+  final bool requestEvaluation;
+
+  /// 채점을 물어볼 수 있는 카드인가: 답을 썼고, 견줄 루브릭이 있다.
+  ///
+  /// 루브릭이 없으면 AI가 항목별로 짚어 줄 것이 없다 — 물어봐야 답이 "채점함" 한 줄뿐이다.
+  bool get canAskEvaluation => answerText.trim().isNotEmpty && item.rubric.isNotEmpty;
 
   /// "힌트 보기" exists only while nothing was revealed and the card has a rubric.
   bool get canShowHint => !revealed && hintLevel == HintLevel.selfExplain && item.rubric.isNotEmpty;
@@ -44,7 +53,12 @@ final class ReviewCardProgress {
   /// "답 확인": reveals and freezes the hint level.
   ReviewCardProgress withRevealed() => _copy(revealed: true);
 
-  /// `POST /reviews/{id}/answer` body for [rating]. S2 never asks for AI grading.
+  /// "AI에게 채점 받기" 토글. 물어볼 수 없는 카드에서는 아무 일도 없다.
+  ReviewCardProgress withEvaluation(bool wanted) =>
+      canAskEvaluation ? _copy(requestEvaluation: wanted) : this;
+
+  /// `POST /reviews/{id}/answer` body for [rating]. 채점은 학습자가 그 카드에서 켠 경우에만 요청한다 —
+  /// 실제 AI 호출이고 비용이 든다(docs/17 §8).
   ReviewAnswerRequest request(ReviewRating rating, DateTime now) {
     final seconds = now.difference(shownAt).inSeconds;
     return ReviewAnswerRequest(
@@ -53,20 +67,25 @@ final class ReviewCardProgress {
       hintLevel: hintLevel,
       responseSeconds: seconds.clamp(0, maxResponseSeconds),
       wasVariant: item.wasVariant,
-      evaluate: false,
+      evaluate: requestEvaluation && canAskEvaluation,
     );
   }
 
   static const maxResponseSeconds = 86400;
 
-  ReviewCardProgress _copy({String? answerText, HintLevel? hintLevel, bool? revealed}) =>
-      ReviewCardProgress(
-        item: item,
-        shownAt: shownAt,
-        answerText: answerText ?? this.answerText,
-        hintLevel: hintLevel ?? this.hintLevel,
-        revealed: revealed ?? this.revealed,
-      );
+  ReviewCardProgress _copy({
+    String? answerText,
+    HintLevel? hintLevel,
+    bool? revealed,
+    bool? requestEvaluation,
+  }) => ReviewCardProgress(
+    item: item,
+    shownAt: shownAt,
+    answerText: answerText ?? this.answerText,
+    hintLevel: hintLevel ?? this.hintLevel,
+    revealed: revealed ?? this.revealed,
+    requestEvaluation: requestEvaluation ?? this.requestEvaluation,
+  );
 }
 
 /// Estimated review minutes for [count] cards: `ceilDiv(n × 3, 2)` (docs/02 SCR-REVIEW-HOME).

@@ -56,6 +56,9 @@ final class ReviewSessionController extends AsyncNotifier<ReviewSessionState> {
 
   void reveal() => _updateCard((card) => card.withRevealed());
 
+  /// "AI에게 채점 받기" 토글. 이 카드에만 적용되고 다음 카드는 다시 꺼진 채로 시작한다.
+  void setEvaluation(bool wanted) => _updateCard((card) => card.withEvaluation(wanted));
+
   void _updateCard(ReviewCardProgress Function(ReviewCardProgress card) change) {
     final data = state.value;
     final card = data?.current;

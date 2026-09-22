@@ -618,6 +618,19 @@
 **S6. 실기기 (manual)**
 - iOS Safari와 Android Chrome에서 홈 화면 추가 → standalone 실행 → 로그인 유지 → 5장 복습을 5분 안에 완료. 결과(기기, 소요 시간)를 S2 데모 기록에 남긴다
 
+**S7. AI 채점은 고른 카드에서만 부른다 (S3)**
+- Given 답을 썼고 rubric이 있는 카드, `aiStatus = ENABLED`
+- Then "AI로 채점하기" 체크가 보이고 **꺼져 있다**
+- When 켜지 않고 등급을 누른다
+- Then 요청 `evaluate = false`이고 채점 시트가 뜨지 않는다 — 켜지 않으면 AI를 부르지 않는다
+- When 켜고 등급을 누른다
+- Then 요청 `evaluate = true`, 채점 시트에 rubric 항목마다 "짚었어요/빠졌어요 — {기준}"과 총평이 보인다. 닫으면 조정 토스트로 이어진다
+- And 다음 카드는 다시 **꺼진 상태**로 시작한다 (마지막 선택을 기억하지 않는다)
+- Given 답을 쓰지 않았거나 rubric이 없거나 `aiStatus ∈ {DISABLED, BALANCE_EXHAUSTED}`
+- Then 체크 자체가 **보이지 않는다**
+- Given 채점이 실패한다(`evaluationSkippedReason`)
+- Then 오류 화면 없이 자기평가로 진행하고 조정 토스트에 한 줄로 알린다
+
 ---
 
 ## AC-11 온보딩·진단 제안

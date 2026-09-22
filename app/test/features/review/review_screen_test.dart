@@ -1,3 +1,4 @@
+import 'package:devpilot_app/core/api/api_enums.dart';
 import 'package:devpilot_app/core/api/api_exception.dart';
 import 'package:devpilot_app/core/api/learning_enums.dart';
 import 'package:devpilot_app/features/review/data/review_enums.dart';
@@ -6,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fake_backend.dart';
+import '../../support/fixtures.dart';
 import '../../support/learning_fixtures.dart';
 import '../../support/test_app.dart';
 import '../../support/widget_actions.dart';
@@ -29,6 +31,80 @@ void main() {
     await tapKey(tester, 'review.session.revealButton');
     await tapKey(tester, 'review.session.rate.$rating');
   }
+
+  /// AI 채점은 학습자가 카드마다 고른다 — 실제 호출이고 비용이 든다(docs/17 §8).
+  testWidgets('shouldNotAskForGradingUnlessTheLearnerTurnsItOn', (tester) async {
+    backend.meRepository.me = testMe(aiStatus: AiStatus.enabled);
+    await openSession(tester);
+
+    await enterTextByKey(tester, 'review.session.answerField', '프록시를 안 거쳐서');
+    await tapKey(tester, 'review.session.revealButton');
+    // 답을 썼고 루브릭이 있으니 물어볼 수 있는 카드다.
+    expect(find.byKey(const Key('review.session.evaluateCheckbox')), findsOneWidget);
+
+    await tapKey(tester, 'review.session.rate.good');
+
+    expect(backend.reviewRepository.answers.single.request.evaluate, isFalse);
+    expect(find.byKey(const Key('review.session.evaluationTitle')), findsNothing);
+  });
+
+  /// AI가 꺼져 있으면 눌러 봐야 채점되지 않는다 (docs/02 §6.2 aiAvailable).
+  testWidgets('shouldHideTheGradingOptionWhileAiIsOff', (tester) async {
+    backend.meRepository.me = testMe(aiStatus: AiStatus.disabled);
+    await openSession(tester);
+
+    await enterTextByKey(tester, 'review.session.answerField', '프록시를 안 거쳐서');
+    await tapKey(tester, 'review.session.revealButton');
+
+    expect(find.byKey(const Key('review.session.evaluateCheckbox')), findsNothing);
+  });
+
+  testWidgets('shouldHideTheGradingOptionWithoutAWrittenAnswer', (tester) async {
+    await openSession(tester);
+
+    await tapKey(tester, 'review.session.revealButton');
+
+    // 견줄 답이 없으면 채점할 것도 없다.
+    expect(find.byKey(const Key('review.session.evaluateCheckbox')), findsNothing);
+  });
+
+  testWidgets('shouldShowWhatTheAnswerCoveredAndMissedWhenGradingIsAskedFor', (tester) async {
+    backend.meRepository.me = testMe(aiStatus: AiStatus.enabled);
+    backend.reviewRepository.evaluationMet = [true, false];
+    await openSession(tester);
+
+    await enterTextByKey(tester, 'review.session.answerField', '프록시를 안 거쳐서');
+    await tapKey(tester, 'review.session.revealButton');
+    await tapKey(tester, 'review.session.evaluateCheckbox');
+    await tapKey(tester, 'review.session.rate.good');
+
+    expect(backend.reviewRepository.answers.single.request.evaluate, isTrue);
+    expect(find.byKey(const Key('review.session.evaluationTitle')), findsOneWidget);
+    expect(find.textContaining('짚었어요'), findsOneWidget);
+    expect(find.byKey(const Key('review.session.evaluationFeedback')), findsOneWidget);
+
+    await tapKey(tester, 'review.session.evaluationClose');
+    expect(find.byKey(const Key('review.session.evaluationTitle')), findsNothing);
+  });
+
+  /// 다음 카드로 넘어가면 다시 꺼진 채로 시작한다 — 켜 둔 채 계속 부르지 않는다.
+  testWidgets('shouldStartEachCardWithGradingOff', (tester) async {
+    backend.meRepository.me = testMe(aiStatus: AiStatus.enabled);
+    await openSession(tester);
+
+    await enterTextByKey(tester, 'review.session.answerField', '프록시를 안 거쳐서');
+    await tapKey(tester, 'review.session.revealButton');
+    await tapKey(tester, 'review.session.evaluateCheckbox');
+    await tapKey(tester, 'review.session.rate.good');
+    await tapKey(tester, 'review.session.evaluationClose');
+
+    await enterTextByKey(tester, 'review.session.answerField', '두 번째 답');
+    await tapKey(tester, 'review.session.revealButton');
+    await tapKey(tester, 'review.session.rate.good');
+
+    expect(backend.reviewRepository.answers[0].request.evaluate, isTrue);
+    expect(backend.reviewRepository.answers[1].request.evaluate, isFalse);
+  });
 
   testWidgets('shouldSummarizeDueCardsAndStartSessionFromHome', (tester) async {
     await pumpApp(tester, backend: backend, at: '/review');

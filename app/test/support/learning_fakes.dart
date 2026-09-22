@@ -245,6 +245,12 @@ final class FakeReviewRepository implements ReviewRepository {
   final answers = <({String itemId, ReviewAnswerRequest request, IdempotencyKey key})>[];
   var fetchCount = 0;
 
+  /// `evaluate: true`일 때 루브릭 항목마다 짚었다고 볼지. 길이가 모자라면 나머지는 빠진 것으로 본다.
+  var evaluationMet = <bool>[true];
+
+  /// `evaluate: true`일 때 돌려줄 총평. 비우면 응답에 담지 않는다.
+  var evaluationFeedback = '두 번째 항목을 덧붙이면 설명이 닫힙니다.';
+
   @override
   Future<DueReviewsResponse> fetchDue() async {
     fetchCount++;
@@ -276,11 +282,28 @@ final class FakeReviewRepository implements ReviewRepository {
         (ReviewRating.hard, RatingAdjustment.hintCapHard),
       _ => (request.selfRating, null),
     };
+    final rubric = due.items
+        .where((item) => item.reviewItemId == reviewItemId)
+        .expand((item) => item.rubric)
+        .toList();
+    final results = <ReviewRubricResultView>[
+      if (request.evaluate)
+        for (var index = 0; index < rubric.length; index++)
+          ReviewRubricResultView(
+            id: rubric[index].id,
+            criterion: rubric[index].criterion,
+            met: index < evaluationMet.length && evaluationMet[index],
+          ),
+    ];
     return ReviewAnswerResponse(
       reviewAnswerId: 'ra-${answers.length}',
       finalRating: rating,
       adjustedBy: [?adjustment],
-      evaluatedOutcome: EvaluatedOutcome.notEvaluated,
+      evaluatedOutcome: request.evaluate ? EvaluatedOutcome.partial : EvaluatedOutcome.notEvaluated,
+      rubricResults: results,
+      evaluationFeedback: request.evaluate && evaluationFeedback.isNotEmpty
+          ? evaluationFeedback
+          : null,
       intervalBefore: 1,
       intervalAfter: rating == ReviewRating.again ? 1 : 2,
       nextDueDate: rating == ReviewRating.again ? '2026-09-20' : '2026-09-21',

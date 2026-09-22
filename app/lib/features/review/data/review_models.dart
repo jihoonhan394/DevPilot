@@ -52,6 +52,19 @@ abstract class DueReviewItemView with _$DueReviewItemView {
       _$DueReviewItemViewFromJson(json);
 }
 
+/// `ReviewRubricResultView` (docs/05 §11.3): 항목마다 AI가 짚었다고 본 것인지. 저장하지 않고 응답에만 온다.
+@freezed
+abstract class ReviewRubricResultView with _$ReviewRubricResultView {
+  const factory ReviewRubricResultView({
+    required String id,
+    required String criterion,
+    required bool met,
+  }) = _ReviewRubricResultView;
+
+  factory ReviewRubricResultView.fromJson(Map<String, Object?> json) =>
+      _$ReviewRubricResultViewFromJson(json);
+}
+
 /// `ReviewAnswerRequest` (docs/05 §11.3).
 @freezed
 abstract class ReviewAnswerRequest with _$ReviewAnswerRequest {
@@ -81,6 +94,11 @@ abstract class ReviewAnswerResponse with _$ReviewAnswerResponse {
     required int intervalAfter,
     required String nextDueDate,
     @JsonKey(unknownEnumValue: AsyncFailureCode.unknown) AsyncFailureCode? evaluationSkippedReason,
+
+    /// 채점에 성공했을 때만 온다. 그 외에는 null이거나 비어 있다.
+    @Default(<ReviewRubricResultView>[]) List<ReviewRubricResultView> rubricResults,
+    String? evaluationFeedback,
+    int? rubricCoverageBp,
     @JsonKey(unknownEnumValue: ReviewItemStatus.unknown) required ReviewItemStatus status,
     required bool leechDetected,
   }) = _ReviewAnswerResponse;

@@ -1255,7 +1255,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ • 내부 호출은 프록시를 우회        │
 │ • 해결 방법 1개 이상              │
 │                                │
-│ [ ] AI로 채점하기 (S3)            │
+│ [ ] AI로 채점하기                 │
 │ 얼마나 잘 떠올렸나요?             │
 │ ┌──────┬──────┬──────┬──────┐  │
 │ │ 다시 │어려움│알맞음│ 쉬움 │  │
@@ -1265,8 +1265,11 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 ```
 
   - 평가 버튼 4개는 한 줄, 각 높이 56 이상. 버튼 아래 작은 숫자는 데스크톱에서만 보인다(단축키 안내).
-  - "AI로 채점하기" 스위치는 `answerText`가 비어 있지 않고, flag `review_evaluate`가 켜져 있고, **`aiAvailable`**(= `aiStatus ∉ {DISABLED, BALANCE_EXHAUSTED}`, §6.4)일 때만 보인다. 기본값은 마지막 선택(`localStorage` `devpilot.review.evaluate`, 없으면 꺼짐).
-  - 평가 버튼을 누르면 버튼 영역이 진행 표시로 바뀐다. 채점이 켜져 있으면 `review.session.evaluating`(최대 20초)을 보여준다.
+  - "AI로 채점하기" 체크는 `answerText`가 비어 있지 않고, **카드에 rubric이 있고**(비어 있으면 서버가 채점 대상으로 보지 않는다 — `05` §11.3), **`aiAvailable`**(= `aiStatus ∉ {DISABLED, BALANCE_EXHAUSTED}`, §6.4)일 때만 보인다.
+  - **기본값은 항상 꺼짐이고 카드마다 다시 고른다.** 마지막 선택을 기억하지 않는다 — 실제 AI 호출이라 비용이 들고(`17` §8), 켜 둔 것을 잊은 채 복습을 도는 일이 없어야 한다.
+  - 평가 버튼을 누르면 버튼 영역이 진행 표시로 바뀐다. 채점이 켜져 있으면 `review.session.evaluating`을 읽어 준다.
+  - 채점에 성공하면 다음 카드로 넘어가기 전에 시트를 띄운다: 루브릭 항목마다 "짚었어요 / 빠졌어요 — {기준}"과 총평 한 줄(`05` §11.3 `rubricResults`·`evaluationFeedback`. 둘 다 저장하지 않으므로 이 자리에서만 보인다). 닫으면 ③ 조정 토스트로 이어진다.
+  - 채점하지 못하면(`evaluationSkippedReason`) 오류를 띄우지 않는다 — 자기평가만으로 진행하고 ③에 한 줄로 알린다.
 
 - **레이아웃 ③ 조정 토스트 (다음 카드 위에 4초)**
 

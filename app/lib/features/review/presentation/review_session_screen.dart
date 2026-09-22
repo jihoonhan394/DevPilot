@@ -138,6 +138,7 @@ class _SessionBody extends ConsumerWidget {
         onHint: controller.showHint,
         onShowAnswerFirst: controller.showAnswerFirst,
         onReveal: controller.reveal,
+        onEvaluationChanged: controller.setEvaluation,
         onRate: rate,
       ),
     );
