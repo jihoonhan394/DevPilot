@@ -9,6 +9,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// **AI를 부르지 않는다.** 예측과 빈칸은 서버가 문자열로 즉시 채점하고, 백지 문제는 채점하지 않는다 — 모범 답안을 따로 받아
 /// 사용자가 스스로 견준다. 사용자가 쓴 답은 서버로 보내지 않는다.
 abstract interface class LessonRepository {
+  /// 노트 목록과 진행 (docs/05 §21.9). 이어서 할 것이 맨 위다.
+  Future<LessonListView> fetchLessons();
+
   Future<LessonView> fetchLesson(String lessonKey);
 
   /// 그 skill의 노트 (docs/05 §21.3). 없으면 404다.
@@ -33,6 +36,10 @@ final class ApiLessonRepository implements LessonRepository {
   ApiLessonRepository(this._apiClient);
 
   final ApiClient _apiClient;
+
+  @override
+  Future<LessonListView> fetchLessons() async =>
+      LessonListView.fromJson(await _apiClient.getJson('/lessons'));
 
   @override
   Future<LessonView> fetchLesson(String lessonKey) async =>
@@ -96,6 +103,11 @@ final class ApiLessonRepository implements LessonRepository {
 
 final lessonRepositoryProvider = Provider<LessonRepository>(
   (ref) => ApiLessonRepository(ref.watch(apiClientProvider)),
+);
+
+/// 노트 목록. 단위를 마치고 돌아오면 다시 읽어 진행이 반영되게 한다.
+final lessonListProvider = FutureProvider.autoDispose<LessonListView>(
+  (ref) => ref.watch(lessonRepositoryProvider).fetchLessons(),
 );
 
 /// 노트 하나. 진행이 바뀌면 다시 읽는다.

@@ -34,6 +34,12 @@ class MoreScreen extends ConsumerWidget {
             child: BudgetWarningNote(status: aiStatus),
           ),
           _MoreTile(
+            tileKey: const Key('more.lessons'),
+            icon: Icons.menu_book_outlined,
+            label: l10n.lessonListOpen,
+            path: AppRoutes.lessonsPrefix,
+          ),
+          _MoreTile(
             tileKey: const Key('more.projects'),
             icon: Icons.code,
             label: l10n.moreProjects,

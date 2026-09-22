@@ -58,6 +58,9 @@ final class FakeLessonRepository implements LessonRepository {
   /// skill → 노트. 비어 있으면 그 skill에는 노트가 없다(404).
   final lessonsBySkill = <String, LessonView>{};
 
+  /// 목록 응답. 화면은 서버가 준 순서를 그대로 쓰므로 테스트가 여기서 순서를 정한다.
+  var lessonList = const LessonListView();
+
   final predicted = <String>[];
   final completed = <List<String>>[];
   final revealed = <String>[];
@@ -65,6 +68,9 @@ final class FakeLessonRepository implements LessonRepository {
 
   bool predictCorrect = true;
   bool completeCorrect = true;
+
+  @override
+  Future<LessonListView> fetchLessons() async => lessonList;
 
   @override
   Future<LessonView> fetchLesson(String lessonKey) async {

@@ -3,6 +3,7 @@ package com.devpilot.today.presentation;
 import com.devpilot.common.idempotency.IdempotencyService;
 import com.devpilot.common.security.CurrentUser;
 import com.devpilot.common.time.PlanDayCalculator;
+import com.devpilot.today.application.LessonListView;
 import com.devpilot.today.application.LessonQueryService;
 import com.devpilot.today.application.LessonQueryService.AnswerResult;
 import com.devpilot.today.application.LessonQueryService.CompleteResult;
@@ -62,6 +63,13 @@ public class LessonController {
         this.lessonQueryService = lessonQueryService;
         this.idempotencyService = idempotencyService;
         this.clock = clock;
+    }
+
+    /** 노트 목록 (docs/05 §21.9). 앱을 열었을 때 이어서 할 노트가 맨 위에 온다. */
+    @GetMapping
+    @Operation(operationId = "lessonList")
+    public LessonListView list(CurrentUser currentUser) {
+        return lessonQueryService.list(currentUser.userId());
     }
 
     @GetMapping("/{lessonKey}")

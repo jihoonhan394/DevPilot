@@ -32,6 +32,7 @@ void main() {
     expect(locationOf(tester), '/plan');
 
     await tapKey(tester, 'shell.nav.more');
+    expect(find.byKey(const Key('more.lessons')), findsOneWidget);
     expect(find.byKey(const Key('more.skills')), findsOneWidget);
     expect(find.byKey(const Key('more.dashboard')), findsOneWidget);
     await tapKey(tester, 'more.settings');
@@ -59,11 +60,13 @@ void main() {
     await pumpApp(tester);
 
     expect(rail(tester).extended, isFalse);
-    // Today, Review, Training, Plan, Projects, Skill (Settings is pinned below).
-    expect(rail(tester).destinations, hasLength(6));
+    // Today, Notes, Review, Training, Plan, Projects, Skill (Settings is pinned below).
+    expect(rail(tester).destinations, hasLength(7));
     expect(rail(tester).selectedIndex, 0);
     expect(find.byKey(const Key('shell.bottomNavigation')), findsNothing);
 
+    await tapKey(tester, 'shell.nav.lessons');
+    expect(locationOf(tester), '/lessons');
     await tapKey(tester, 'shell.nav.review');
     expect(locationOf(tester), '/review');
     await tapKey(tester, 'shell.nav.skills');
@@ -102,7 +105,7 @@ void main() {
     addTearDown(() => resetScreenSize(tester));
     await pumpApp(tester);
 
-    for (final label in ['Today', 'Review', 'Plan', 'Projects', 'Skill', 'Settings']) {
+    for (final label in ['Today', 'Notes', 'Review', 'Plan', 'Projects', 'Skill', 'Settings']) {
       expect(find.bySemanticsLabel(RegExp('^$label')), findsOneWidget, reason: label);
     }
     semantics.dispose();
@@ -131,7 +134,7 @@ void main() {
 
     await goTo(tester, '/plan/versions');
 
-    expect(rail(tester).selectedIndex, 3);
+    expect(rail(tester).selectedIndex, 4);
     expect(find.byType(BackButton), findsOneWidget);
   });
 }

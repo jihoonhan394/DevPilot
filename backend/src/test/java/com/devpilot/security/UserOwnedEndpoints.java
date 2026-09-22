@@ -432,6 +432,15 @@ public final class UserOwnedEndpoints {
                         fixture -> new Object[] {fixture.lessonSkillId()},
                         NO_BODY,
                         null),
+                // 노트 목록 (docs/05 §21.9). 목록 자체는 콘텐츠다 — 사용자별인 것은 각 줄의 진행뿐이다.
+                new EndpointCase(
+                        "E69",
+                        HttpMethod.GET,
+                        "/api/v1/lessons",
+                        Kind.SHARED_CONTENT,
+                        fixture -> new Object[] {},
+                        NO_BODY,
+                        null),
                 // ACCOUNT_ACTION
                 account("E30", HttpMethod.DELETE, "/api/v1/me", NO_BODY),
                 account(

@@ -19,6 +19,52 @@ enum HelpLevel {
   answer,
 }
 
+/// 노트 하나의 진행 상태 (docs/05 §21.9).
+enum LessonStatus {
+  @JsonValue('NOT_STARTED')
+  notStarted,
+  @JsonValue('IN_PROGRESS')
+  inProgress,
+  @JsonValue('DONE')
+  done,
+}
+
+/// 노트 목록 (docs/05 §21.9). 앱을 열었을 때 이어서 할 노트가 맨 위에 온다.
+@freezed
+abstract class LessonListView with _$LessonListView {
+  const factory LessonListView({
+    @Default(<LessonSummaryView>[]) List<LessonSummaryView> lessons,
+  }) = _LessonListView;
+
+  factory LessonListView.fromJson(Map<String, Object?> json) => _$LessonListViewFromJson(json);
+}
+
+/// 목록의 한 줄. 본문은 없다 — 열면 §21.2로 따로 받는다.
+@freezed
+abstract class LessonSummaryView with _$LessonSummaryView {
+  const LessonSummaryView._();
+
+  const factory LessonSummaryView({
+    required String lessonKey,
+    String? skillId,
+    required String skillCode,
+    required String skillName,
+    required String title,
+    required String oneLine,
+    required int unitCount,
+    required int solvedUnitCount,
+    required int minutes,
+    required LessonStatus status,
+    DateTime? lastSolvedAt,
+  }) = _LessonSummaryView;
+
+  factory LessonSummaryView.fromJson(Map<String, Object?> json) =>
+      _$LessonSummaryViewFromJson(json);
+
+  /// 0.0~1.0. 단위가 없으면 0이다.
+  double get progress => unitCount == 0 ? 0 : solvedUnitCount / unitCount;
+}
+
 @freezed
 abstract class LessonView with _$LessonView {
   const LessonView._();

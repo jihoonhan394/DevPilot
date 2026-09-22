@@ -53,6 +53,7 @@
 | 목적지 | 아이콘(Material Symbols) | 라우트 | Mobile | Tablet·Desktop | Sprint |
 |---|---|---|---|---|---|
 | Today | `today` | `/today` | 탭 | rail | S2 (S1은 SCR-PLAN으로 대체) |
+| Notes | `menu_book` | `/lessons` | More | rail | S3 |
 | Review | `style` | `/review` | 탭 | rail | S2 |
 | Training | `fitness_center` | `/training` | More | rail | S3 |
 | Coach | `rate_review` | `/coach` | More | rail | S4 |
@@ -91,6 +92,7 @@
 | `/today` | SCR-TODAY | Y | Y | S2 |
 | `/today/diagnostics` | SCR-DIAGNOSTICS | Y | Y | S3 |
 | `/today/read/:readingKey` | SCR-READ-CODE | Y | Y | S3 |
+| `/lessons` | SCR-LESSON-LIST | Y | Y | S3 |
 | `/lessons/:lessonKey` | SCR-LESSON | Y | Y | S3 |
 | `/tips` | SCR-TIPS | Y | Y | S3 |
 | `/tips/:tipKey` | SCR-TIP-DETAIL | Y | Y | S3 |
@@ -2417,6 +2419,18 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 - **상태**: Loading — 카테고리 헤더 skeleton 4개. Empty — 필터 결과 0 → `skill.tree.emptyFilter`. Error·Offline — 공통.
 - **행동**: 필터 기본값 = 필수만 + 목표 미달만 꺼짐. 카테고리 펼침 상태는 `localStorage` `devpilot.skills.expanded`(try/catch).
 - **문구**: `skill.tree.title` = "기술", `skill.tree.onlyGap` = "목표 미달만", `skill.tree.categorySummary` = "{priority} {total}개 중 목표 도달 {reached}개", `skill.tree.selfAssessed` = "자기평가", `skill.tree.deferred` = "미룸", `skill.tree.emptyFilter` = "조건에 맞는 기술이 없어요."
+
+#### SCR-LESSON-LIST
+
+`/lessons`. 개념 노트 전부와 그 사용자의 진행(`GET /api/v1/lessons`, `05` §21.9).
+
+기술 트리에는 어느 기술에 노트가 붙었는지 표시가 없고 노트가 붙은 기술은 전체의 일부다 — **앱을 열었을 때 "오늘 뭘 열지"가 한 화면에 보이게** 하는 것이 이 화면의 목적이다. 며칠에 걸쳐 혼자 쓸 때 "어제 어디까지 했지"를 여기서 답한다.
+
+- 목적지다: rail(Notes), 모바일은 SCR-MORE "노트 보기". 하단 탭·rail을 그대로 두는 보통 화면이다
+- 서버가 준 순서를 그대로 쓴다 — 화면은 정렬하지 않는다. 상태가 바뀌는 자리에만 제목을 끼운다: "이어서 하기"(`IN_PROGRESS`) → "아직 안 연 것"(`NOT_STARTED`) → "한 바퀴 돈 것"(`DONE`)
+- 줄마다: 제목, 한 줄 요약, 진행 막대와 `N/M 단위`. 누르면 SCR-LESSON으로 간다
+- 노트가 하나도 없으면 빈 상태 문구만 보인다
+- 페이지 나누기 없음. AI를 부르지 않는다
 
 #### SCR-LESSON
 

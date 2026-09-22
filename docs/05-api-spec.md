@@ -4437,6 +4437,42 @@ public record UnitProgressView(
 - 기록: `learning_event` `UNIT_SOLVED` 1건(`04` §6). `skill_id`는 노트의 skill
 - 같은 단위를 다시 마치면 이벤트가 하나 더 쌓인다(다시 풀기). dedupe 하지 않는다
 
+### 21.9 `GET /api/v1/lessons`
+
+노트 목록과 진행. **앱을 열었을 때 "오늘 뭘 열지"가 한 화면에 보이게 하는 것이 이 endpoint의 목적이다** — 기술 트리에는 어느 기술에 노트가 붙었는지 표시가 없고, 노트가 붙은 기술은 전체의 일부다.
+
+```java
+public record LessonListView(List<LessonSummaryView> lessons) {}
+
+public record LessonSummaryView(
+        String lessonKey,
+        String skillId,              // UUID
+        String skillCode,
+        String skillName,
+        String title,
+        String oneLine,
+        int unitCount,
+        int solvedUnitCount,         // 그 사용자가 한 번이라도 마친 단위 수
+        int minutes,                 // 단위 minutes 합
+        LessonStatus status,         // NOT_STARTED | IN_PROGRESS | DONE
+        Instant lastSolvedAt) {}     // 마지막 UNIT_SOLVED 시각. 기록이 없으면 null
+```
+
+`LessonStatus`(`today.domain`): `solvedUnitCount == 0` → `NOT_STARTED`, `unitCount` 미만 → `IN_PROGRESS`, 같으면 `DONE`.
+
+**목록에 넣는 노트**: `skillCode`가 **활성 skill로 풀리는** 것만. 은퇴한 노트(`retired: true`)는 넣지 않는다 — key로 직접 여는 것은 §21.2 그대로 된다(`19` §8.2).
+
+**정렬**(이어서 하기가 맨 위):
+
+1. `status` — `IN_PROGRESS` → `NOT_STARTED` → `DONE`
+2. `IN_PROGRESS`·`DONE`은 `lastSolvedAt` DESC (방금 손댄 것이 위)
+3. `NOT_STARTED`는 `lessonKey` ASC (콘텐츠가 정한 순서)
+4. 동률은 `lessonKey` ASC
+
+- 200 `LessonListView`. 본문은 콘텐츠이므로 소유권 검사는 없고, `solvedUnitCount`·`status`·`lastSolvedAt`만 호출한 사용자 것이다
+- 페이지 나누기 없음 — 노트 수는 콘텐츠가 정하고 한 화면에 보여야 하는 목록이다
+- AI를 부르지 않는다
+
 ### 21.8 오류 코드
 
 | 상황 | 상태 | code |

@@ -517,6 +517,24 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - learning
+  /api/v1/lessons:
+    get:
+      operationId: lessonList
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LessonListView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
   /api/v1/lessons/{lessonKey}:
     get:
       operationId: lessonGet
@@ -2955,6 +2973,15 @@ components:
       - language
       - note
       - output
+    LessonListView:
+      type: object
+      properties:
+        lessons:
+          type: array
+          items:
+            $ref: "#/components/schemas/LessonSummaryView"
+      required:
+      - lessons
     LessonProblemView:
       type: object
       properties:
@@ -3007,6 +3034,51 @@ components:
       - title
       - url
       - versionScope
+    LessonSummaryView:
+      type: object
+      properties:
+        lastSolvedAt:
+          type: string
+          format: date-time
+        lessonKey:
+          type: string
+        minutes:
+          type: integer
+          format: int32
+        oneLine:
+          type: string
+        skillCode:
+          type: string
+        skillId:
+          type: string
+        skillName:
+          type: string
+        solvedUnitCount:
+          type: integer
+          format: int32
+        status:
+          type: string
+          enum:
+          - NOT_STARTED
+          - IN_PROGRESS
+          - DONE
+        title:
+          type: string
+        unitCount:
+          type: integer
+          format: int32
+      required:
+      - lastSolvedAt
+      - lessonKey
+      - minutes
+      - oneLine
+      - skillCode
+      - skillId
+      - skillName
+      - solvedUnitCount
+      - status
+      - title
+      - unitCount
     LessonUnitView:
       type: object
       properties:

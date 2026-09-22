@@ -2,6 +2,7 @@ import 'package:devpilot_app/app/not_found_screen.dart';
 import 'package:devpilot_app/app/route_helpers.dart';
 import 'package:devpilot_app/app/routes.dart';
 import 'package:devpilot_app/features/lesson/data/lesson_repository.dart';
+import 'package:devpilot_app/features/lesson/presentation/lesson_list_screen.dart';
 import 'package:devpilot_app/features/lesson/presentation/lesson_screen.dart';
 import 'package:devpilot_app/features/review/data/review_enums.dart';
 import 'package:devpilot_app/features/review/data/review_item_models.dart';
@@ -83,6 +84,12 @@ GoRoute trainingRoute() => GoRoute(
       ),
     ),
   ],
+);
+
+/// `/lessons` (SCR-LESSON-LIST). 노트 전부와 진행 — 이어서 할 것이 맨 위다.
+GoRoute lessonListRoute() => GoRoute(
+  path: AppRoutes.lessonsPrefix,
+  builder: (context, state) => const LessonListScreen(),
 );
 
 /// `/lessons/:lessonKey` (SCR-LESSON). Inside the navigation frame: it is an ordinary screen, not

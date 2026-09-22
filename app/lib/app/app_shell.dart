@@ -31,6 +31,7 @@ class AppShell extends StatelessWidget {
 
 enum _Destination {
   today(AppRoutes.today, Icons.today),
+  lessons(AppRoutes.lessonsPrefix, Icons.menu_book_outlined),
   review(AppRoutes.review, Icons.style),
   training(AppRoutes.training, Icons.fitness_center),
   plan(AppRoutes.plan, Icons.timeline),
@@ -46,6 +47,7 @@ enum _Destination {
 
   String label(AppLocalizations l10n) => switch (this) {
     today => l10n.navToday,
+    lessons => l10n.navLessons,
     review => l10n.navReview,
     training => l10n.navTraining,
     plan => l10n.navPlan,
@@ -116,6 +118,7 @@ class _RailShell extends StatelessWidget {
 
   static const _railItems = [
     _Destination.today,
+    _Destination.lessons,
     _Destination.review,
     _Destination.training,
     _Destination.plan,

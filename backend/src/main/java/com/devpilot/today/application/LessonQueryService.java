@@ -4,6 +4,7 @@ import com.devpilot.common.domain.ContentOrigin;
 import com.devpilot.common.error.ErrorCode;
 import com.devpilot.common.error.NotFoundException;
 import com.devpilot.learning.application.LearningEventQueryService;
+import com.devpilot.learning.application.LearningEventQueryService.LessonProgressView;
 import com.devpilot.learning.application.LearningEventRecorder;
 import com.devpilot.learning.domain.LearningEventType;
 import com.devpilot.learning.domain.UnitSolvedPayload;
@@ -14,6 +15,7 @@ import com.devpilot.review.domain.ReviewType;
 import com.devpilot.review.domain.RubricItem;
 import com.devpilot.skill.application.SkillCatalogQueryService;
 import com.devpilot.skill.application.SkillRef;
+import com.devpilot.today.application.LessonListView.LessonSummaryView;
 import com.devpilot.today.application.LessonView.LessonExampleView;
 import com.devpilot.today.application.LessonView.LessonProblemView;
 import com.devpilot.today.application.LessonView.LessonQuestionView;
@@ -24,13 +26,16 @@ import com.devpilot.today.domain.HelpLevel;
 import com.devpilot.today.domain.Lesson;
 import com.devpilot.today.domain.LessonProblem;
 import com.devpilot.today.domain.LessonSource;
+import com.devpilot.today.domain.LessonStatus;
 import com.devpilot.today.domain.LessonUnit;
 import com.devpilot.today.domain.PredictQuestion;
 import com.devpilot.today.domain.UnitAnswerMatcher;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -47,6 +52,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class LessonQueryService {
+
+    /**
+     * 목록 정렬 (docs/05 §21.9): status → lastSolvedAt DESC(IN_PROGRESS·DONE) → lessonKey ASC. 아직 안 연
+     * 노트는 lastSolvedAt이 없으므로 그 자리에서 곧바로 key 순이 된다.
+     */
+    private static final Comparator<LessonSummaryView> LIST_ORDER =
+            Comparator.comparingInt((LessonSummaryView view) -> view.status().listRank())
+                    .thenComparing(
+                            LessonSummaryView::lastSolvedAt,
+                            Comparator.nullsLast(Comparator.reverseOrder()))
+                    .thenComparing(LessonSummaryView::lessonKey);
 
     private final LessonRegistry lessonRegistry;
     private final SkillCatalogQueryService skillCatalogQueryService;
@@ -73,6 +89,43 @@ public class LessonQueryService {
     /** 노트 하나. 없으면 404 {@code RESOURCE_NOT_FOUND}. */
     public LessonView get(UUID userId, String lessonKey) {
         return toView(userId, lesson(lessonKey));
+    }
+
+    /**
+     * 노트 목록과 진행 (docs/05 §21.9). 활성 skill로 풀리는 은퇴하지 않은 노트만, 이어서 할 것이 맨 위로 오게 정렬한다.
+     *
+     * <p>진행은 {@link LearningEventQueryService#lessonProgress}를 <b>한 번</b> 불러 모든 노트 것을 한꺼번에 받는다.
+     */
+    public LessonListView list(UUID userId) {
+        List<Lesson> lessons = lessonRegistry.all().stream().filter(l -> !l.retired()).toList();
+        Map<String, SkillRef> skills =
+                skillCatalogQueryService.findActiveByCodes(
+                        lessons.stream().map(Lesson::skillCode).toList());
+        Map<String, LessonProgressView> progress = learningEventQueryService.lessonProgress(userId);
+        List<LessonSummaryView> summaries = new ArrayList<>();
+        for (Lesson lesson : lessons) {
+            SkillRef skill = skills.get(lesson.skillCode());
+            if (skill == null) {
+                continue;
+            }
+            LessonProgressView done = progress.get(lesson.key());
+            int solved = done == null ? 0 : done.solvedUnitCount();
+            summaries.add(
+                    new LessonSummaryView(
+                            lesson.key(),
+                            skill.id().toString(),
+                            skill.code(),
+                            skill.name(),
+                            lesson.title(),
+                            lesson.oneLine(),
+                            lesson.units().size(),
+                            solved,
+                            lesson.units().stream().mapToInt(LessonUnit::minutes).sum(),
+                            LessonStatus.of(solved, lesson.units().size()),
+                            done == null ? null : done.lastSolvedAt()));
+        }
+        summaries.sort(LIST_ORDER);
+        return new LessonListView(List.copyOf(summaries));
     }
 
     /** 그 skill의 노트. 없으면 404. */

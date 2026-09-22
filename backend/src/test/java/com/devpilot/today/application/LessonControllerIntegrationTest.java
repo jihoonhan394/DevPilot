@@ -27,6 +27,10 @@ class LessonControllerIntegrationTest extends ApiTestSupport {
     private static final String LESSON = "/api/v1/lessons/{lessonKey}";
     private static final String UNIT = "/api/v1/lessons/{lessonKey}/units/{unitKey}";
     private static final String SKILL_LESSON = "/api/v1/skills/{skillId}/lesson";
+    private static final String LESSON_LIST = "/api/v1/lessons";
+
+    /** key 순으로 맨 뒤인 fixture 노트. 손대면 목록 맨 앞으로 올라와야 한다. */
+    private static final String LAST_BY_KEY = "LESSON.TESTTESTING.JUNIT.001";
 
     /** fixture 노트가 붙은 skill (test-content/lessons/test.yaml). */
     private static final String LESSON_SKILL_CODE = "WEB_HTTP.HTTP_BASICS";
@@ -158,6 +162,86 @@ class LessonControllerIntegrationTest extends ApiTestSupport {
         assertThat(progress.path("solved").asBoolean()).isTrue();
         assertThat(progress.path("helpLevel").asString()).isEqualTo("HINT");
         assertThat(progress.path("selfChecksMet").asInt()).isEqualTo(1);
+    }
+
+    /** docs/05 §21.9: 목록은 노트 전부와 그 사용자의 진행을 준다. 본문·답은 오지 않는다. */
+    @Test
+    void shouldListEveryLessonWithTheUsersProgress() throws Exception {
+        TestUser user = onboardedUser();
+
+        JsonNode lessons =
+                api.body(api.get(user, LESSON_LIST).andExpect(status().isOk())).path("lessons");
+
+        assertThat(lessons).hasSize(4);
+        JsonNode first = lessons.get(0);
+        assertThat(first.path("title").asString()).isNotBlank();
+        assertThat(first.path("oneLine").asString()).isNotBlank();
+        assertThat(first.path("skillName").asString()).isNotBlank();
+        assertThat(first.path("unitCount").asInt()).isPositive();
+        assertThat(first.path("minutes").asInt()).isPositive();
+        assertThat(first.path("solvedUnitCount").asInt()).isZero();
+        assertThat(first.path("status").asString()).isEqualTo("NOT_STARTED");
+        assertThat(first.path("lastSolvedAt").isNull()).isTrue();
+
+        String json = lessons.toString();
+        assertThat(json).doesNotContain("modelAnswer").doesNotContain("selfChecks");
+        assertThat(json).doesNotContain("explain").doesNotContain("units");
+    }
+
+    /** docs/05 §21.9 정렬: 손댄 노트가 key 순을 제치고 맨 위로 온다 — "이어서 하기"가 목록의 목적이다. */
+    @Test
+    void shouldPutTheLessonYouTouchedLastOnTop() throws Exception {
+        TestUser user = onboardedUser();
+        List<String> byKey = lessonKeys(user);
+        assertThat(byKey).endsWith(LAST_BY_KEY);
+
+        api.postWithKey(
+                        user,
+                        UUID.randomUUID().toString(),
+                        UNIT + "/finish",
+                        Map.of("helpLevel", "NONE"),
+                        LAST_BY_KEY,
+                        LAST_BY_KEY + ".U1")
+                .andExpect(status().isOk());
+
+        JsonNode lessons =
+                api.body(api.get(user, LESSON_LIST).andExpect(status().isOk())).path("lessons");
+        JsonNode top = lessons.get(0);
+        assertThat(top.path("lessonKey").asString()).isEqualTo(LAST_BY_KEY);
+        assertThat(top.path("status").asString()).isEqualTo("IN_PROGRESS");
+        assertThat(top.path("solvedUnitCount").asInt()).isEqualTo(1);
+        assertThat(top.path("lastSolvedAt").asString()).isNotBlank();
+        assertThat(lessons.get(1).path("status").asString()).isEqualTo("NOT_STARTED");
+    }
+
+    /** 다른 사용자가 마친 단위는 내 목록의 진행에 섞이지 않는다 (docs/07 소유권). */
+    @Test
+    void shouldNotLeakAnotherUsersProgressIntoTheList() throws Exception {
+        TestUser mine = onboardedUser();
+        TestUser theirs = onboardedUser();
+        api.postWithKey(
+                        theirs,
+                        UUID.randomUUID().toString(),
+                        UNIT + "/finish",
+                        Map.of("helpLevel", "NONE"),
+                        LAST_BY_KEY,
+                        LAST_BY_KEY + ".U1")
+                .andExpect(status().isOk());
+
+        JsonNode lessons =
+                api.body(api.get(mine, LESSON_LIST).andExpect(status().isOk())).path("lessons");
+
+        assertThat(lessons)
+                .allSatisfy(l -> assertThat(l.path("status").asString()).isEqualTo("NOT_STARTED"));
+        assertThat(lessonKeys(mine)).isSorted();
+    }
+
+    private List<String> lessonKeys(TestUser user) throws Exception {
+        JsonNode lessons =
+                api.body(api.get(user, LESSON_LIST).andExpect(status().isOk())).path("lessons");
+        List<String> keys = new java.util.ArrayList<>();
+        lessons.forEach(lesson -> keys.add(lesson.path("lessonKey").asString()));
+        return keys;
     }
 
     /** AC-37 S4: 확인 목록보다 많이 체크하면 400이다. */

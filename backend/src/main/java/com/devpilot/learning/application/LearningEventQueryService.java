@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -83,6 +84,41 @@ public class LearningEventQueryService {
         return List.copyOf(latest.values());
     }
 
+    /**
+     * 노트별 진행 요약 (docs/05 §21.9). {@code UNIT_SOLVED}를 <b>한 번만</b> 훑어 노트마다 마친 단위 수와 마지막 시각을 센다 — 노트
+     * 수만큼 {@link #unitProgress}를 부르면 그만큼 다시 훑게 된다.
+     *
+     * <p>같은 단위를 다시 풀면 이벤트가 하나 더 쌓이므로(docs/05 §21.7) 단위 key로 접어서 센다.
+     *
+     * @return 노트 key → 요약. 기록이 없는 노트는 키가 없다
+     */
+    public Map<String, LessonProgressView> lessonProgress(UUID userId) {
+        Map<String, Set<String>> solvedUnits = new LinkedHashMap<>();
+        Map<String, Instant> lastSolvedAt = new LinkedHashMap<>();
+        for (LearningEvent event :
+                learningEventRepository.findByUserIdAndEventTypeOrderByOccurredAtDesc(
+                        userId, LearningEventType.UNIT_SOLVED)) {
+            if (event.getInvalidatedAt() != null) {
+                continue;
+            }
+            Map<String, Object> payload = event.getPayload();
+            if (!(payload.get("lessonKey") instanceof String lessonKey)
+                    || !(payload.get("unitKey") instanceof String unitKey)) {
+                continue;
+            }
+            solvedUnits.computeIfAbsent(lessonKey, key -> new LinkedHashSet<>()).add(unitKey);
+            // 정렬이 occurredAt DESC이므로 노트마다 처음 만난 것이 마지막 시각이다.
+            lastSolvedAt.putIfAbsent(lessonKey, event.getOccurredAt());
+        }
+        Map<String, LessonProgressView> progress = new LinkedHashMap<>();
+        solvedUnits.forEach(
+                (lessonKey, units) ->
+                        progress.put(
+                                lessonKey,
+                                new LessonProgressView(units.size(), lastSolvedAt.get(lessonKey))));
+        return Map.copyOf(progress);
+    }
+
     /** 이 대상의 가장 최근 이벤트 id (docs/05 §10.6 {@code evidenceSourceEventId}). */
     public Optional<UUID> latestEventIdForSource(
             UUID userId, LearningEventType eventType, UUID sourceId) {
@@ -134,6 +170,14 @@ public class LearningEventQueryService {
      */
     public record UnitSolvedView(
             String unitKey, String helpLevel, Instant solvedAt, @Nullable Integer selfChecksMet) {}
+
+    /**
+     * 노트 하나의 진행 (docs/05 §21.9).
+     *
+     * @param solvedUnitCount 마친 단위 수 (같은 단위를 여러 번 풀어도 1)
+     * @param lastSolvedAt 그 노트에서 마지막으로 단위를 마친 시각
+     */
+    public record LessonProgressView(int solvedUnitCount, Instant lastSolvedAt) {}
 
     /**
      * 규칙 입력용 이벤트 (docs/06 §7.1). payload는 docs/04 §6 표의 JSON 그대로다.

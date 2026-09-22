@@ -2064,10 +2064,10 @@
 
 | 항목 | 값 |
 |---|---|
-| 관련 요구사항 | FR-07 (`05` §21, `19` §3.14, `02` SCR-LESSON) |
+| 관련 요구사항 | FR-07 (`05` §21, `19` §3.14, `02` SCR-LESSON·SCR-LESSON-LIST) |
 | Sprint | S3 |
 | 검증 수준 | integration, API E2E, UI |
-| 테스트 클래스 | `LessonQueryServiceIntegrationTest`, `LessonControllerIntegrationTest`, `UnitAnswerMatcherTest`, `lesson_screen_test.dart` |
+| 테스트 클래스 | `LessonQueryServiceIntegrationTest`, `LessonControllerIntegrationTest`, `UnitAnswerMatcherTest`, `lesson_screen_test.dart`, `lesson_list_screen_test.dart` |
 
 **S1. 노트를 조회해도 답이 오지 않는다**
 - Given 단위 3개짜리 노트 1개가 콘텐츠에 있다
@@ -2128,4 +2128,15 @@
 - Then "그래서 답이 뭔가요"가 보이고 누르면 SCR-LESSON으로 간다 — **러버덕은 답을 말하지 않으므로 답은 여기에만 있다**
 - And 오늘 과제 카드(SCR-TODAY)에서 과제의 skill에 노트가 있으면 "먼저 개념 익히기"가 보인다. 마친 과제에는 보이지 않는다
 - And 노트가 없는 skill이면 두 자리 모두 **버튼 자체가 없다**
+
+**S9. 목록에서 어디까지 했는지 보고 이어서 한다 (§21.9, UI)**
+- Given 노트 3개가 있고 그중 하나는 단위 하나를 마친 상태다
+- When `GET /lessons`
+- Then 200이고 `lessons`가 3개이며 각 줄에 `title`·`oneLine`·`unitCount`·`solvedUnitCount`·`minutes`·`status`가 있다
+- And 마친 노트가 **맨 앞**이고 `status`가 `IN_PROGRESS`, 나머지는 `NOT_STARTED`로 `lessonKey` 순이다
+- And 응답 JSON 어디에도 본문(`explain`·`units`)과 답이 **없다**
+- And 다른 사용자가 마친 단위는 내 목록의 진행에 섞이지 않는다
+- Given SCR-LESSON-LIST를 연다
+- Then 서버가 준 순서 그대로 그리고, 상태가 바뀌는 자리에만 "이어서 하기"·"아직 안 연 것"·"한 바퀴 돈 것" 제목이 붙는다
+- And 줄을 누르면 그 노트의 SCR-LESSON으로 간다. 노트가 하나도 없으면 빈 상태 문구만 보인다
 

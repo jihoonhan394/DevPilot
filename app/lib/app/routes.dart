@@ -176,6 +176,7 @@ enum RouteAccess {
     RegExp(r'^/training/(challenges|attempts)/[^/]+$'),
     RegExp(r'^/rubber-duck/[^/]+$'),
     RegExp(r'^/review/items/[^/]+$'),
+    RegExp(r'^/lessons/[^/]+$'),
   ];
 
   static const _onboardedPaths = {
@@ -195,6 +196,7 @@ enum RouteAccess {
     AppRoutes.diagnostics,
     AppRoutes.training,
     AppRoutes.reviewItems,
+    AppRoutes.lessonsPrefix,
   };
 
   static RouteAccess of(String path) {
