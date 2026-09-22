@@ -112,7 +112,9 @@ void main() {
   /// 마친 과제에 필요한 것은 노트가 아니라 복습이다.
   testWidgets('shouldHideTheLessonEntryOnACompletedTask', (tester) async {
     backend.lessonRepository.lessonsBySkill[springTransactionRef.id] = testLesson();
-    backend.todayRepository.today = testTodayView(mainTask: testMainTask(status: TaskStatus.completed));
+    backend.todayRepository.today = testTodayView(
+      mainTask: testMainTask(status: TaskStatus.completed),
+    );
     await pumpApp(tester, backend: backend);
 
     expect(find.byKey(const Key('today.lessonButton')), findsNothing);

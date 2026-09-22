@@ -68,7 +68,9 @@ void main() {
 
   /// fake·disabled provider 는 잔액을 알려 주지 않는다. 그때 0으로 보이면 안 된다.
   testWidgets('shouldSayTheBalanceIsUnknownWhenTheProviderDoesNotReportOne', (tester) async {
-    final backend = FakeBackend(me: testMe(aiStatus: AiStatus.enabled, aiUsage: usage));
+    final backend = FakeBackend(
+      me: testMe(aiStatus: AiStatus.enabled, aiUsage: usage),
+    );
     await pumpApp(tester, backend: backend, at: AppRoutes.settings);
     await tester.ensureVisible(find.byKey(const Key('settings.aiBalance')));
     await tester.pumpAndSettle();

@@ -120,9 +120,7 @@ class _Balance extends ConsumerWidget {
       children: [
         Text(l10n.settingsAiBalance, style: textTheme.titleSmall),
         Text(
-          balance == null
-              ? l10n.settingsAiBalanceUnknown
-              : l10n.settingsAiBalanceValue(balance),
+          balance == null ? l10n.settingsAiBalanceUnknown : l10n.settingsAiBalanceValue(balance),
           key: const Key('settings.aiBalanceValue'),
         ),
         if (balance != null && checkedAt != null)
