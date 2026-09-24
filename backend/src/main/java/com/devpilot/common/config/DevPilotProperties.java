@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.ZoneId;
@@ -37,6 +38,7 @@ public record DevPilotProperties(
         @Valid @NotNull Budget budget,
         @Valid @NotNull Review review,
         @Valid @NotNull Skill skill,
+        @Valid @NotNull SideProject sideProject,
         @Valid @NotNull Privacy privacy,
         @Valid @NotNull Content content,
         @Valid @NotNull Ai ai,
@@ -339,6 +341,17 @@ public record DevPilotProperties(
             @NotNull Duration axisChangeCooldown,
             @Min(0) @Max(5) int selfAssessmentCap,
             @Min(0) @Max(5) int diagnosticMaxLevel) {}
+
+    /**
+     * 사이드 프로젝트 기본값 (ADR-050). 온보딩에서 만들 것을 정하지 않은 사람에게 주는 프로젝트다.
+     *
+     * <p>개념 노트의 {@code inProject}가 전부 주문 시스템 기준으로 쓰여 있으므로(docs/19 §3.14) 기본값도 그것에 맞춘다. 사용자가 이름과 설명을
+     * 언제든 고칠 수 있다(docs/05 §19.5).
+     */
+    public record SideProject(
+            @NotBlank @Size(max = 100) String defaultName,
+            @NotBlank @Size(max = 1000) String defaultDescription,
+            @NotBlank @Size(max = 300) String defaultStack) {}
 
     /** 보존 기간 (docs/04 §8). */
     public record Privacy(

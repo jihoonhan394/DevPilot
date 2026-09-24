@@ -1001,3 +1001,85 @@ description = "{프로젝트}에서 이 개념을 적용할 지점을 찾아 구
 
 - *만들기 과제용 콘텐츠를 새로 만든다* — 노트의 `inProject`와 내용이 겹친다. 두 곳에 같은 말을 쓰면 갈라진다.
 - *milestone description을 쓴다* — 단계 단위라 skill 단위 과제에 맞지 않고, 같은 단계의 모든 과제가 같은 설명을 갖게 된다.
+
+## ADR-049 주장은 증거가 아니다 — 단계를 넘기는 것은 증거다
+
+- **Status**: Accepted · **Date**: 2026-09-25 · **Related**: `06` §5.2·§7.5, ADR-044, ADR-045
+
+**Context** — 유지보수만 해 온 경력자를 가정하고 연차별로 첫 과제를 추적했더니, **4년차 이상이 첫날 빈 화면을 본다.**
+
+입문 트랙(`JAVA_BACKEND_STARTER`)의 role target은 92개 skill 전부가 목표 3 이하다(목표 4 이상 0개). 그런데 자기평가도 3에서 잘린다.
+
+```text
+selfCap = min(self_assessed_level, 3)          # 06 §7.5
+planningLevel = max(evidenceLevel, selfCap)
+```
+
+그래서 온보딩에서 모든 category에 3을 주면 **92개 skill이 전부 목표 달성으로 계산된다.** 결과는 이렇다.
+
+| 단계 | 결과 |
+|---|---|
+| `isComplete` | 6개 milestone 전부 완료 |
+| `currentMilestone` | 없음 |
+| `selectCandidates` | 1·2번 비어 있고, `excluded`가 나머지를 전부 거른다 |
+| 화면 | **"목표를 모두 달성했어요. 계획을 조정해 새 목표를 잡아 보세요."** |
+
+**가장 도움이 필요한 사람이 가장 먼저 튕겨 나간다.** "중간쯤은 한다"고 정직하게 답한 대가다.
+
+**Decision** — `planningLevel ≥ target` 하나로 판단하던 두 자리에 **증거 조건을 더한다.**
+
+```java
+private static boolean targetReached(SkillProfile profile, AxisLevels targets) {
+    return profile.lastPracticedAt() != null && allMet(profile.planning(), targets);
+}
+```
+
+1. `isComplete` — 손대 본 적 없는 skill이 있으면 그 milestone은 완료가 아니다
+2. `excluded` — 손대 본 적 없는 skill은 "목표 달성"으로 걸러 내지 않는다
+
+`lastPracticedAt`은 그 skill의 마지막 학습 이벤트 시각이다(`06` §7.1). **진단 통과(`DIAGNOSTIC_PASSED`)도 이벤트이므로 증거로 센다** — 진단을 풀면 그 자리는 그대로 넘어간다.
+
+**Consequences**
+
+- 자기평가만으로는 단계를 넘지 않는다. 넘기려면 **풀어 보이거나 진단을 통과해야** 한다.
+- **자기평가가 버려지는 것은 아니다.** 그 skill은 후보로 남고, `planningLevel`이 높으므로 §5.3이 **자기평가한 수준의 난이도**로 제안한다. 3을 주면 난이도 3 문제가 나온다 — 과소평가당하는 느낌 없이 확인받는다.
+- 그래서 온보딩에서 수준을 잘못 답해도 **첫 과제에서 스스로 교정된다.** "어느 수준으로 시작해야 할지 모르겠다"는 사람이 아무거나 답해도 되는 상태가 된다.
+- 이미 증거가 쌓인 사용자에게는 아무 변화가 없다.
+- **남는 문제**: 진단은 category당 1문제·최대 5개라, 92개 skill 대부분은 여전히 증거가 없다. 실력 있는 사람이 빠르게 넘어가려면 진단을 더 촘촘히 주거나 "이미 안다" 표시를 따로 둬야 한다. 지금은 문제를 풀어 넘어가는 경로 하나뿐이다.
+
+---
+
+## ADR-050 만들 것을 정하지 않은 사람에게는 기본 프로젝트를 준다
+
+- **Status**: Accepted · **Date**: 2026-09-25 · **Related**: `05` §4.1·§19, `06` §5.3, `19` §3.14, ADR-048
+
+**Context** — `PROJECT_TASK`는 두 조건이 모두 참일 때만 제안된다.
+
+```java
+if (skill.projectNeed() && input.energy() != EnergyLevel.LOW && project != null)
+```
+
+그런데 온보딩에서 사이드 프로젝트는 **건너뛸 수 있다**(SP-1, `sideProject: null`). 건너뛰면 `project == null`이라 **만들기 과제가 한 번도 나오지 않는다.** 읽기와 문제만 돈다.
+
+처음부터 만들어 본 적 없는 사람일수록 "무엇을 만들지"를 못 정해 여기서 건너뛰기 쉬운데, **그 사람에게 가장 필요한 것이 만들기다.** ADR-048로 만들기 과제의 내용을 채웠는데 그 과제에 도달하지 못한다.
+
+앱은 이미 기본값("주문 시스템")을 채워 보내지만, 그것은 클라이언트의 배려일 뿐 서버 계약이 아니다.
+
+**Decision** — 온보딩에서 사이드 프로젝트가 없으면 **서버가 기본 프로젝트를 만든다.**
+
+```yaml
+devpilot:
+  side-project:
+    default-name: 주문 시스템
+    default-description: 상품을 고르고 주문하고 결제하는 가장 작은 흐름을 직접 만든다. …
+    default-stack: Java 25, Spring Boot 4.1, PostgreSQL 16
+```
+
+기본값을 주문 시스템으로 두는 이유는 **개념 노트 47개의 `inProject`가 전부 그 기준으로 쓰여 있기** 때문이다(`19` §3.14). 노트를 읽고 만들기 과제로 넘어갈 때 같은 프로젝트를 말하게 된다.
+
+**Consequences**
+
+- 온보딩을 마치면 사이드 프로젝트가 **언제나 있다.** `OnboardingResponse.sideProject`는 더 이상 null이 아니다.
+- 이름·설명·스택은 언제든 고칠 수 있다(`05` §19.5). 원하지 않으면 지우면 된다.
+- 콘텐츠가 아니라 설정에 둔 이유는 값이 세 줄뿐이고 운영 환경마다 바꿀 수 있어야 해서다. 늘어나면 콘텐츠로 옮긴다.
+- **남는 문제**: 프로젝트가 생겨도 `projectNeed`가 **온보딩에서 고른 집중 skill 10개**로 제한되고, 제안 순서에서 `PROJECT_TASK`가 CHALLENGE·READ_CODE·READING 다음 네 번째다. 그래서 여전히 드물게 나온다. 만들기를 더 자주 내보낼지는 별도 결정으로 둔다.

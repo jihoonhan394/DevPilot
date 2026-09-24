@@ -239,7 +239,9 @@ ratioBp (저장·표시용) = effective == 0 ? null : floorDiv(requiredMust × 1
 
 **현재 milestone** = `sort_order`가 가장 앞선 **미완료** milestone이다. 날짜로 정하지 않는다(ADR-044).
 
-- **완료**: 그 milestone의 `milestone_skill` 중 `plan_skill_target.priority = MUST`인 skill이 **전부** 모든 축에서 `planningLevel ≥ target`이다. MUST가 하나도 없으면 SHOULD로 같은 판정을 한다. 둘 다 없으면 그 milestone은 완료로 본다(넘어간다).
+- **완료**: 그 milestone의 `milestone_skill` 중 `plan_skill_target.priority = MUST`인 skill이 **전부** 모든 축에서 `planningLevel ≥ target`이고 **`lastPracticedAt != null`** 이다(ADR-049). MUST가 하나도 없으면 SHOULD로 같은 판정을 한다. 둘 다 없으면 그 milestone은 완료로 본다(넘어간다).
+  - **주장은 증거가 아니다**(ADR-049). `planningLevel`은 자기평가를 섞은 값이라(§7.5) 손대 본 적 없는 skill도 목표를 덮을 수 있다. 입문 트랙은 목표 최고치와 자기평가 상한이 둘 다 3이어서, 모든 category에 3을 주면 92개 skill이 전부 달성으로 계산되고 첫날부터 후보가 0이 됐다. 증거가 하나라도 있어야 목표에 닿은 것으로 본다.
+  - 자기평가가 버려지는 것은 아니다. 그 skill은 후보로 남아 **자기평가한 수준의 난이도**로 제안되고(§5.3), 풀어 내면 그때 증거가 생겨 넘어간다. 진단 통과(`DIAGNOSTIC_PASSED`, §7.4)도 증거다.
 - 모든 milestone이 완료면 현재 milestone은 없고 1·2번은 비어 있다. 후보는 3·4번만 남는다.
 - **날짜는 위험도 계산과 표시에만 쓴다**(§4). 늦어도 단계를 건너뛰지 않는다 — 늦었다는 사실은 위험도와 replan 권고로 알린다.
 
@@ -247,7 +249,7 @@ ratioBp (저장·표시용) = effective == 0 ? null : floorDiv(requiredMust × 1
 - `deferred=true`
 - `skill.active=false` (retire된 skill)
 - risk ≥ HIGH이면 priority LATER
-- 모든 축에서 `planningLevel ≥ target`이고 due review가 없는 skill (5번으로 들어온 skill은 예외)
+- 모든 축에서 `planningLevel ≥ target`이고 **`lastPracticedAt != null`** 이며 due review가 없는 skill (ADR-049, 5번으로 들어온 skill은 예외)
 - `prerequisiteReadiness < 500_000`인 skill → 대신 **준비되지 않은 prerequisite 중 planning IMPLEMENTATION이 가장 낮은 skill**(동점이면 code ASC)을 후보에 추가
 
 후보가 하나도 없으면(모든 목표 달성 등) main task를 만들지 않는다. due review가 있으면 REVIEW task만 만들고, 응답의 `mainTask`는 `null`이다.

@@ -158,6 +158,58 @@ class PlannerScoringTest {
                 .isEmpty();
     }
 
+    /**
+     * ADR-049: 자기평가만으로는 단계를 넘지 않는다. 입문 트랙은 목표 최고치와 자기평가 상한이 둘 다 3이라, 모든 category에 3을 주면 예전에는 전 단계가
+     * 완료로 계산되어 첫날부터 후보가 0이었다.
+     */
+    @Test
+    void shouldNotFinishAMilestoneOnSelfAssessmentAlone() {
+        AxisLevels target = AxisLevels.uniform(3);
+        MilestoneSpan first =
+                new MilestoneSpan(
+                        MILESTONE_ID,
+                        "기반 다지기",
+                        0,
+                        LocalDate.parse("2026-09-01"),
+                        LocalDate.parse("2026-09-10"),
+                        Set.of("A"));
+        List<MilestoneSpan> plan = List.of(first);
+        Map<String, SkillTarget> targets = mustTargets(target, "A");
+
+        // 레벨은 목표에 닿았지만 손대 본 적이 없다 → 아직 지금 단계다.
+        assertThat(PlannerScoring.currentMilestone(plan, targets, claimedSkills(target, "A")))
+                .contains(first);
+        // 증거가 생기면 그때 넘어간다.
+        assertThat(PlannerScoring.currentMilestone(plan, targets, metSkills(target, "A")))
+                .isEmpty();
+    }
+
+    /** ADR-049: 증거가 없으면 후보에서 빠지지 않는다 — 자기평가한 수준의 과제로 확인한다. */
+    @Test
+    void shouldKeepAClaimedSkillAsACandidate() {
+        AxisLevels target = AxisLevels.uniform(3);
+        Map<String, SkillTarget> targets = mustTargets(target, "A");
+        CandidateInput claimed =
+                new CandidateInput(
+                        RiskLevel.LOW,
+                        Set.of("A"),
+                        Set.of(),
+                        Set.of(),
+                        targets,
+                        claimedSkills(target, "A"));
+        CandidateInput proven =
+                new CandidateInput(
+                        RiskLevel.LOW,
+                        Set.of("A"),
+                        Set.of(),
+                        Set.of(),
+                        targets,
+                        metSkills(target, "A"));
+
+        assertThat(scoring.selectCandidates(claimed)).containsExactly("A");
+        assertThat(scoring.selectCandidates(proven)).isEmpty();
+    }
+
     /** 상태를 모르는 skill은 못 한 것으로 본다 — 모르는 채로 단계를 넘기지 않는다. */
     @Test
     void shouldNotAdvancePastAMilestoneWithAnUnknownSkill() {
@@ -571,8 +623,17 @@ class PlannerScoringTest {
         return skills;
     }
 
-    /** 모든 축이 목표에 닿은 skill (그 단계를 완료로 만든다). */
+    /** 모든 축이 목표에 닿고 <b>증거도 있는</b> skill (그 단계를 완료로 만든다). ADR-049로 증거가 함께 있어야 완료로 본다. */
     private static Map<String, SkillProfile> metSkills(AxisLevels target, String... codes) {
+        Map<String, SkillProfile> skills = new LinkedHashMap<>();
+        for (String code : codes) {
+            skills.put(code, practiced(code, target));
+        }
+        return skills;
+    }
+
+    /** 레벨은 목표에 닿았지만 손대 본 적이 없는 skill — 자기평가만으로 올라간 상태다 (ADR-049). */
+    private static Map<String, SkillProfile> claimedSkills(AxisLevels target, String... codes) {
         Map<String, SkillProfile> skills = new LinkedHashMap<>();
         for (String code : codes) {
             skills.put(code, profile(code, target));

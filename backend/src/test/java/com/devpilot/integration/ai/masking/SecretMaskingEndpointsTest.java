@@ -272,9 +272,11 @@ class SecretMaskingEndpointsTest extends ApiTestSupport {
     }
 
     private int sideProjects(TestUser user) {
+        // ADR-050: 온보딩이 만든 기본 프로젝트는 세지 않는다
         return count(
                 "select count(*) from devpilot.side_project s join devpilot.app_user u"
-                        + " on u.id = s.user_id where u.external_auth_id = ?",
+                        + " on u.id = s.user_id where u.external_auth_id = ? and s.name <> '주문"
+                        + " 시스템'",
                 user.sub());
     }
 

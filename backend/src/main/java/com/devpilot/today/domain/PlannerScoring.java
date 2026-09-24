@@ -117,7 +117,21 @@ public final class PlannerScoring {
             return true;
         }
         AxisLevels targets = target == null ? AxisLevels.ZERO : target.targets();
-        return allMet(profile.planning(), targets) && !input.dueSkills().contains(code);
+        return targetReached(profile, targets) && !input.dueSkills().contains(code);
+    }
+
+    /**
+     * 목표에 닿았는가 (ADR-049). 레벨이 목표 이상이면서 <b>증거가 하나라도 있어야</b> 한다.
+     *
+     * <p>planning level은 자기평가를 섞은 값이라(docs/06 §7.5), 자기평가만으로도 목표를 덮을 수 있다. 입문 트랙은 목표 최고치가 3이고 자기평가
+     * 상한도 3이어서, 모든 category에 3을 주면 92개 skill이 전부 달성으로 계산되고 후보가 0이 된다 — 첫날부터 "목표를 모두 달성했어요"가 나온다.
+     * 주장은 증거가 아니므로, 한 번도 손대 본 적 없는 skill은 목표에 닿은 것으로 보지 않는다.
+     *
+     * <p>자기평가가 버려지는 것은 아니다. 그 skill은 후보로 남아 <b>자기평가한 수준의 난이도</b>로 제안되고(docs/06 §5.3), 풀어 내면 그때 증거가
+     * 생겨 넘어간다.
+     */
+    private static boolean targetReached(SkillProfile profile, AxisLevels targets) {
+        return profile.lastPracticedAt() != null && allMet(profile.planning(), targets);
     }
 
     private static boolean allMet(AxisLevels planning, AxisLevels targets) {
@@ -234,7 +248,7 @@ public final class PlannerScoring {
                 // 상태를 모르는 skill은 아직 못 한 것으로 본다 — 모르는 채로 단계를 넘기지 않는다.
                 return false;
             }
-            if (!allMet(profile.planning(), target.targets())) {
+            if (!targetReached(profile, target.targets())) {
                 return false;
             }
         }

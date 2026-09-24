@@ -55,7 +55,9 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
                                 .andExpect(jsonPath("$.activePlan.status").value("ACTIVE"))
                                 .andExpect(jsonPath("$.activePlan.milestoneCount").value(3))
                                 .andExpect(jsonPath("$.activePlan.latestRiskLevel").value("LOW"))
-                                .andExpect(jsonPath("$.sideProject").doesNotExist())
+                                // ADR-050: 만들 것을 정하지 않아도 기본 프로젝트를 준다
+                                .andExpect(jsonPath("$.sideProject.name").value("주문 시스템"))
+                                .andExpect(jsonPath("$.sideProject.status").value("ACTIVE"))
                                 .andExpect(jsonPath("$.assignedSeedCardCount").value(10))
                                 .andExpect(jsonPath("$.suggestedDiagnostics").isEmpty()));
         UUID userId = userId(user);

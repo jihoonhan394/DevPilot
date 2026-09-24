@@ -260,6 +260,7 @@ class PromptRegistryTest {
                 base.budget(),
                 base.review(),
                 base.skill(),
+                base.sideProject(),
                 base.privacy(),
                 base.content(),
                 new DevPilotProperties.Ai(

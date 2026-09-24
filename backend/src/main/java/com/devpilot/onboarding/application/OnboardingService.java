@@ -38,7 +38,7 @@ public class OnboardingService {
     private final LearningGoalService learningGoalService;
     private final OnboardingSkillSetup onboardingSkillSetup;
     private final OnboardingPlanSetup onboardingPlanSetup;
-    private final SideProjectService sideProjectService;
+    private final OnboardingSideProjectSetup sideProjectSetup;
     private final DiagnosticSuggestionService diagnosticSuggestionService;
     private final Clock clock;
 
@@ -47,14 +47,14 @@ public class OnboardingService {
             LearningGoalService learningGoalService,
             OnboardingSkillSetup onboardingSkillSetup,
             OnboardingPlanSetup onboardingPlanSetup,
-            SideProjectService sideProjectService,
+            OnboardingSideProjectSetup sideProjectSetup,
             DiagnosticSuggestionService diagnosticSuggestionService,
             Clock clock) {
         this.profileService = profileService;
         this.learningGoalService = learningGoalService;
         this.onboardingSkillSetup = onboardingSkillSetup;
         this.onboardingPlanSetup = onboardingPlanSetup;
-        this.sideProjectService = sideProjectService;
+        this.sideProjectSetup = sideProjectSetup;
         this.diagnosticSuggestionService = diagnosticSuggestionService;
         this.clock = clock;
     }
@@ -80,9 +80,7 @@ public class OnboardingService {
         onboardingSkillSetup.initialize(userId, command);
         OnboardingPlanSetup.Result plan =
                 onboardingPlanSetup.setUp(userId, command, learningGoal, today);
-        SideProjectService.NewSideProjectCommand newSideProject = command.sideProject();
-        SideProjectView sideProject =
-                newSideProject == null ? null : sideProjectService.create(userId, newSideProject);
+        SideProjectView sideProject = sideProjectSetup.create(userId, command.sideProject());
         return new OnboardingResult(
                 user,
                 learningGoal,
@@ -104,7 +102,7 @@ public class OnboardingService {
         errors.addAll(validateSelfAssessments(command));
         SideProjectService.NewSideProjectCommand sideProject = command.sideProject();
         if (sideProject != null) {
-            errors.addAll(sideProjectService.validateNew(sideProject, "sideProject."));
+            errors.addAll(sideProjectSetup.validate(sideProject));
         }
         return errors;
     }

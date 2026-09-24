@@ -68,7 +68,8 @@ class OnboardingToTodayFlowTest extends ApiTestSupport {
         api.post(user, "/api/v1/onboarding", onboarding)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.activePlan.planVersion").value(1))
-                .andExpect(jsonPath("$.sideProject").doesNotExist())
+                // ADR-050: 정하지 않아도 기본 프로젝트가 생긴다
+                .andExpect(jsonPath("$.sideProject.name").value("주문 시스템"))
                 .andExpect(jsonPath("$.assignedSeedCardCount").value(10));
 
         // 4. 다시 온보딩

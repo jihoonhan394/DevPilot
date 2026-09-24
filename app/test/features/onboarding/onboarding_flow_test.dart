@@ -85,7 +85,7 @@ void main() {
     await tapKey(tester, 'onboarding.nextButton');
 
     await tapKey(tester, 'onboarding.skipButton');
-    expect(find.text('프로젝트 없이 시작할까요?'), findsOneWidget);
+    expect(find.text('주문 시스템으로 시작할까요?'), findsOneWidget);
     await tapKey(tester, 'onboarding.skipConfirmButton');
 
     final request = backend.onboardingRepository.requests.single;
@@ -109,7 +109,11 @@ void main() {
     expect(request.toJson(), containsPair('sideProject', null));
 
     expect(locationOf(tester), '/onboarding/plan');
-    expect(find.text('사이드 프로젝트 없이 시작해요. 프로젝트 과제는 제안되지 않아요.'), findsOneWidget);
+    // ADR-050: 정하지 않아도 서버가 기본 프로젝트를 만든다
+    expect(
+      find.text("'주문 시스템'으로 시작해요. '사이드 프로젝트'에서 이름과 설명을 고칠 수 있어요."),
+      findsOneWidget,
+    );
     expect(find.byKey(const Key('onboarding.plan.diagnosticCard')), findsNothing);
     expect(find.byKey(const Key('onboarding.plan.startButton')), findsOneWidget);
   });

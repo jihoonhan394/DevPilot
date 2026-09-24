@@ -909,7 +909,7 @@ public record OnboardingRequest(
         @NotNull @Valid LearningGoalInput learningGoal,             // 1단계: 무엇을(학습 트랙)·언제까지(목표일)
         @NotNull Boolean runDiagnostic,                             // 3단계: true = 짧은 진단, false = 자기평가 입력으로 대체
         @NotNull @Size(max = 14) List<@NotNull @Valid SelfAssessmentInput> selfAssessments,  // SkillCategory 값 수. runDiagnostic = true면 []
-        @Valid SideProjectInput sideProject,                        // null = 건너뛰기 (SP-1)
+        @Valid SideProjectInput sideProject,                        // null이면 기본 프로젝트를 만든다 (ADR-050)
         @NotNull Boolean useTemplate) {}
 
 public record LearningGoalInput(
@@ -931,7 +931,7 @@ public record OnboardingResponse(
         MeResponse user,
         LearningGoalView learningGoal,                      // §5.1
         PlanSummaryView activePlan,                         // §7.1
-        SideProjectView sideProject,                        // §19.1. 건너뛰었으면 null
+        SideProjectView sideProject,                        // §19.1. 온보딩 뒤에는 언제나 있다 (ADR-050)
         int assignedSeedCardCount,
         List<DiagnosticSuggestionView> suggestedDiagnostics) {}  // §4.2. runDiagnostic = false면 []
 ```
