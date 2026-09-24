@@ -3,6 +3,7 @@ package com.devpilot.content.application;
 import com.devpilot.content.domain.RawContent;
 import com.devpilot.plan.application.PlanTemplateRegistry;
 import com.devpilot.review.application.SeedCardRegistry;
+import com.devpilot.today.application.ChecklistRegistry;
 import com.devpilot.today.application.ConceptReadingRegistry;
 import com.devpilot.today.application.CuratedReadingRegistry;
 import com.devpilot.today.application.LessonRegistry;
@@ -29,18 +30,21 @@ class ContentRegistration {
     private final CuratedReadingRegistry curatedReadingRegistry;
     private final ConceptReadingRegistry conceptReadingRegistry;
     private final LessonRegistry lessonRegistry;
+    private final ChecklistRegistry checklistRegistry;
 
     ContentRegistration(
             PlanTemplateRegistry planTemplateRegistry,
             SeedCardRegistry seedCardRegistry,
             CuratedReadingRegistry curatedReadingRegistry,
             ConceptReadingRegistry conceptReadingRegistry,
-            LessonRegistry lessonRegistry) {
+            LessonRegistry lessonRegistry,
+            ChecklistRegistry checklistRegistry) {
         this.planTemplateRegistry = planTemplateRegistry;
         this.seedCardRegistry = seedCardRegistry;
         this.curatedReadingRegistry = curatedReadingRegistry;
         this.conceptReadingRegistry = conceptReadingRegistry;
         this.lessonRegistry = lessonRegistry;
+        this.checklistRegistry = checklistRegistry;
     }
 
     /** 등록하고 개수를 돌려준다. */
@@ -59,11 +63,14 @@ class ContentRegistration {
         }
         registerConceptReadings(content, files);
         lessonRegistry.register(CatalogMapping.lessons(documents(content, catalog, "lessons")));
+        checklistRegistry.register(
+                CatalogMapping.checklists(documents(content, catalog, "checklists")));
         return new Registered(
                 seedCardRegistry.cards().size(),
                 curatedReadingRegistry.all().size(),
                 conceptReadingRegistry.all().size(),
-                lessonRegistry.all().size());
+                lessonRegistry.all().size(),
+                checklistRegistry.all().size());
     }
 
     /**
@@ -98,5 +105,6 @@ class ContentRegistration {
     }
 
     /** 등록 개수 (로그용). */
-    record Registered(int seedCards, int readings, int conceptReadings, int lessons) {}
+    record Registered(
+            int seedCards, int readings, int conceptReadings, int lessons, int checklists) {}
 }

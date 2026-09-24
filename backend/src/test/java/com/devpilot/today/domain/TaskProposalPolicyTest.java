@@ -146,6 +146,7 @@ class TaskProposalPolicyTest {
                 challenges,
                 List.of(new ReadingOption("READ.R.A.001", "Repo", "src/A.java", 1, 40, 15, "질문")),
                 List.of(),
+                null,
                 null);
     }
 
@@ -176,7 +177,8 @@ class TaskProposalPolicyTest {
                 challenges(row.get("challenges")),
                 readings(row.get("readings")),
                 List.of(),
-                sideProject == null ? null : new SideProjectRef(PROJECT_ID, sideProject));
+                sideProject == null ? null : new SideProjectRef(PROJECT_ID, sideProject),
+                (String) row.get("projectGuide"));
     }
 
     private static TrackDefaults track(Object value) {

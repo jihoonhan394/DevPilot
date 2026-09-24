@@ -44,6 +44,7 @@ public class ContentValidator {
         CuratedRepoChecks.check(context);
         ConceptReadingChecks.check(context);
         LessonChecks.check(context);
+        ChecklistChecks.check(context);
         checkPlacementSmoke(context);
         return context.report();
     }

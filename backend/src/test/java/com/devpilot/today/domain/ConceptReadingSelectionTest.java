@@ -61,6 +61,7 @@ class ConceptReadingSelectionTest {
                                 List.of(),
                                 List.of(),
                                 candidates,
+                                null,
                                 null));
 
         Map<String, Object> expected = map(row.get("expected"));

@@ -33,7 +33,8 @@ final class CatalogChecks {
                     "reviewCards",
                     "challenges",
                     "curatedSources",
-                    "curatedRepos");
+                    "curatedRepos",
+                    "checklists");
 
     /**
      * {@code conceptReadings}는 선택이다 — 생략하면 기본 경로를 읽는다 (docs/19 §3.1·§3.13). {@code lessons}도 선택이다 —
@@ -129,6 +130,7 @@ final class CatalogChecks {
         // conceptReadings는 생략할 수 있고 그때는 기본 경로를 읽는다 (docs/19 §3.1)
         listed.add(context.conceptReadingsFile());
         listed.addAll(context.fileList("lessons"));
+        listed.addAll(context.fileList("checklists"));
         if (new HashSet<>(listed).size() != listed.size()) {
             context.error("CV-02", WHERE + "#files", "duplicate file entry");
         }

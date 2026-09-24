@@ -18,6 +18,8 @@ files:
     - challenges/test.yaml
   lessons:
     - lessons/test.yaml
+  checklists:
+    - checklists/test.yaml
   curatedSources: curated-sources.yaml
   curatedRepos: curated-repos.yaml
   conceptReadings: concept-readings.yaml

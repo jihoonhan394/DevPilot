@@ -27,6 +27,7 @@ class MainTaskCard extends StatelessWidget {
     final description = task.description;
     final planned = task.status == TaskStatus.planned;
     final readingKey = task.readingKey;
+    final checklist = task.checklist;
     return Card(
       key: const Key('today.mainCard'),
       child: Padding(
@@ -53,6 +54,20 @@ class MainTaskCard extends StatelessWidget {
             // points to answer (docs/02 SCR-TODAY). Hidden when the skill has no material.
             if (task.taskType == TaskType.reading && readingKey != null)
               ConceptReadingSection(readingKey: readingKey),
+            // 시작 전에는 무엇을 정하고 들어가는지, 하는 중에는 무엇을 보고 끝내는지 (docs/19 §3.11).
+            // 마친 과제에는 붙이지 않는다 — 확인할 것이 남아 있지 않다.
+            if (checklist != null && planned)
+              _ChecklistSection(
+                sectionKey: const Key('today.checklistBefore'),
+                title: AppLocalizations.of(context).todayChecklistBefore,
+                items: checklist.before,
+              ),
+            if (checklist != null && task.status == TaskStatus.inProgress)
+              _ChecklistSection(
+                sectionKey: const Key('today.checklistAfter'),
+                title: AppLocalizations.of(context).todayChecklistAfter,
+                items: checklist.after,
+              ),
             if (planned && task.reasons.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.md),
               _ReasonList(reasons: task.reasons),
@@ -70,6 +85,46 @@ class MainTaskCard extends StatelessWidget {
             MainTaskActions(task: task, data: data),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 확인 목록 한 덩어리. 질문형 문장이라 체크 상태를 저장하지 않는다 — 읽고 답하면 끝이다(docs/19 §3.11).
+class _ChecklistSection extends StatelessWidget {
+  const _ChecklistSection({
+    required this.sectionKey,
+    required this.title,
+    required this.items,
+  });
+
+  final Key sectionKey;
+  final String title;
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      key: sectionKey,
+      padding: const EdgeInsets.only(top: AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: textTheme.labelLarge),
+          const SizedBox(height: AppSpacing.xs),
+          for (final item in items)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('· ', style: textTheme.bodyMedium),
+                  Expanded(child: Text(item, style: textTheme.bodyMedium)),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

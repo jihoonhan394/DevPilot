@@ -50,6 +50,9 @@ abstract class MainTaskView with _$MainTaskView {
     String? readingKey,
     required String title,
     String? description,
+
+    /// 시작 전·끝내기 전 확인 목록 (docs/05 §8.1). 맞는 목록이 없거나 skill이 없는 과제면 null이다.
+    ChecklistView? checklist,
     required int estimatedMinutes,
     @JsonKey(unknownEnumValue: TaskStatus.unknown) required TaskStatus status,
 
@@ -60,6 +63,22 @@ abstract class MainTaskView with _$MainTaskView {
   }) = _MainTaskView;
 
   factory MainTaskView.fromJson(Map<String, Object?> json) => _$MainTaskViewFromJson(json);
+}
+
+/// 과제 체크리스트 (docs/05 §8.1). 저장되지 않고 응답을 만들 때 채워지므로 지난 과제에도 지금 글이 붙는다.
+@freezed
+abstract class ChecklistView with _$ChecklistView {
+  const factory ChecklistView({
+    required String key,
+
+    /// 시작 전 확인 3~5개.
+    required List<String> before,
+
+    /// 끝내기 전 확인 3~5개.
+    required List<String> after,
+  }) = _ChecklistView;
+
+  factory ChecklistView.fromJson(Map<String, Object?> json) => _$ChecklistViewFromJson(json);
 }
 
 @freezed

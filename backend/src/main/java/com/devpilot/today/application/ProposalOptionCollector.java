@@ -7,6 +7,7 @@ import com.devpilot.integration.ai.budget.AiBudgetGuard;
 import com.devpilot.today.domain.ConceptReading;
 import com.devpilot.today.domain.ConceptReadingSelection;
 import com.devpilot.today.domain.CuratedReading;
+import com.devpilot.today.domain.Lesson;
 import com.devpilot.today.domain.TaskProposalPolicy.ChallengeOption;
 import com.devpilot.today.domain.TaskProposalPolicy.ReadingOption;
 import com.devpilot.today.infrastructure.LearningTaskRepository;
@@ -20,6 +21,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 
 /**
@@ -44,6 +46,7 @@ class ProposalOptionCollector {
     private final AiBudgetGuard aiBudgetGuard;
     private final CuratedReadingRegistry curatedReadingRegistry;
     private final ConceptReadingRegistry conceptReadingRegistry;
+    private final LessonRegistry lessonRegistry;
     private final LearningTaskRepository learningTaskRepository;
     private final ChallengeQueryService challengeQueryService;
     private final int challengeExclusionDays;
@@ -52,12 +55,14 @@ class ProposalOptionCollector {
             AiBudgetGuard aiBudgetGuard,
             CuratedReadingRegistry curatedReadingRegistry,
             ConceptReadingRegistry conceptReadingRegistry,
+            LessonRegistry lessonRegistry,
             LearningTaskRepository learningTaskRepository,
             ChallengeQueryService challengeQueryService,
             DevPilotProperties properties) {
         this.aiBudgetGuard = aiBudgetGuard;
         this.curatedReadingRegistry = curatedReadingRegistry;
         this.conceptReadingRegistry = conceptReadingRegistry;
+        this.lessonRegistry = lessonRegistry;
         this.learningTaskRepository = learningTaskRepository;
         this.challengeQueryService = challengeQueryService;
         this.challengeExclusionDays = properties.planner().challengeRepeatExclusionDays();
@@ -73,7 +78,8 @@ class ProposalOptionCollector {
                         .sorted(Comparator.comparing(ConceptReading::key))
                         .toList();
         if (!aiAvailable) {
-            return new ProposalOptions(false, List.of(), List.of(), conceptReadings);
+            return new ProposalOptions(
+                    false, List.of(), List.of(), conceptReadings, lessonRegistry);
         }
         List<CuratedReading> readings =
                 curatedReadingRegistry.active().stream()
@@ -87,7 +93,8 @@ class ProposalOptionCollector {
                 true,
                 readings,
                 challengeQueryService.practiceCandidates(userId, recentSince),
-                conceptReadings);
+                conceptReadings,
+                lessonRegistry);
     }
 
     /** 완료했거나 최근 14 plan-day 안에 제안된 reading key (코드 읽기·개념 읽기 공통, docs/06 §5.3). */
@@ -105,7 +112,8 @@ class ProposalOptionCollector {
             boolean aiAvailable,
             List<CuratedReading> readings,
             List<ChallengeCandidate> challenges,
-            List<ConceptReading> conceptReadings) {
+            List<ConceptReading> conceptReadings,
+            LessonRegistry lessons) {
 
         ProposalOptions {
             readings = List.copyOf(readings);
@@ -124,6 +132,11 @@ class ProposalOptionCollector {
         /** 해당 skill code를 가진 개념 읽기 후보 (key ASC, docs/06 §5.3). */
         List<ConceptReading> conceptReadingsFor(String skillCode) {
             return ConceptReadingSelection.candidates(conceptReadings, skillCode, Set.of());
+        }
+
+        /** 만들기 과제의 설명이 될 노트의 {@code inProject} (ADR-048). 노트가 없으면 null이고, 그때는 일반 문장으로 돌아간다. */
+        @Nullable String projectGuideFor(String skillCode) {
+            return lessons.findBySkillCode(skillCode).map(Lesson::inProject).orElse(null);
         }
 
         /** 해당 skill code를 가진 challenge 후보 (docs/06 §5.3 1번). */

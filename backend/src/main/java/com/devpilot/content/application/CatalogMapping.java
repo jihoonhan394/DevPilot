@@ -10,6 +10,7 @@ import com.devpilot.skill.application.SkillCatalogSeedService;
 import com.devpilot.skill.domain.Priority;
 import com.devpilot.skill.domain.SkillCategory;
 import com.devpilot.skill.domain.TargetRole;
+import com.devpilot.today.domain.Checklist;
 import com.devpilot.today.domain.CompleteQuestion;
 import com.devpilot.today.domain.ConceptReading;
 import com.devpilot.today.domain.CuratedReading;
@@ -20,6 +21,7 @@ import com.devpilot.today.domain.LessonProblem;
 import com.devpilot.today.domain.LessonSource;
 import com.devpilot.today.domain.LessonUnit;
 import com.devpilot.today.domain.PredictQuestion;
+import com.devpilot.today.domain.TaskType;
 import com.devpilot.training.application.ChallengeSeedService;
 import com.devpilot.training.domain.ChallengePurpose;
 import com.devpilot.training.domain.ChallengeRubricItem;
@@ -217,6 +219,26 @@ final class CatalogMapping {
                             Boolean.TRUE.equals(reading.get("retired"))));
         }
         return readings;
+    }
+
+    /** 과제 체크리스트 (docs/19 §3.11). 검증은 {@code ChecklistChecks}가 이미 마쳤다. */
+    static List<Checklist> checklists(List<Map<String, Object>> documents) {
+        List<Checklist> checklists = new ArrayList<>();
+        for (Map<String, Object> document : documents) {
+            for (Object value : RawYaml.asList(document.get("checklists"))) {
+                Map<String, Object> checklist = RawYaml.asMap(value);
+                checklists.add(
+                        new Checklist(
+                                (String) checklist.get("key"),
+                                strings(checklist.get("taskTypes")).stream()
+                                        .map(TaskType::valueOf)
+                                        .toList(),
+                                strings(checklist.get("skillCodes")),
+                                strings(checklist.get("before")),
+                                strings(checklist.get("after"))));
+            }
+        }
+        return checklists;
     }
 
     /** 개념 노트 (docs/19 §3.14). 은퇴한 것도 넣는다 — 지난 학습 이벤트가 그 key를 가리킨다 (docs/19 §8.2). */

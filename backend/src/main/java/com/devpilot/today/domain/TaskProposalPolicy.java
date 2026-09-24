@@ -81,7 +81,7 @@ public final class TaskProposalPolicy {
         }
         SideProjectRef project = input.activeSideProject();
         if (skill.projectNeed() && input.energy() != EnergyLevel.LOW && project != null) {
-            return projectTask(skill, project);
+            return projectTask(skill, project, input.projectGuide());
         }
         return explain(skill);
     }
@@ -202,14 +202,24 @@ public final class TaskProposalPolicy {
                 null);
     }
 
-    /** PROJECT_TASK: {@code {프로젝트 이름}에 {skill.name} 적용하기} (SP-2). 프로젝트 id는 생성 시점에 고정한다(SP-3). */
-    static Proposal projectTask(SkillContext skill, SideProjectRef project) {
+    /**
+     * PROJECT_TASK: {@code {프로젝트 이름}에 {skill.name} 적용하기} (SP-2). 프로젝트 id는 생성 시점에 고정한다(SP-3).
+     *
+     * <p>설명은 그 skill 노트의 {@code inProject}다 (ADR-048) — 노트가 이미 "이 개념을 프로젝트 어디에 쓰는가"를 쓰고 있고, 그래야 읽기와
+     * 만들기가 같은 글로 이어진다. 노트가 없으면 일반 문장으로 돌아간다.
+     */
+    static Proposal projectTask(
+            SkillContext skill, SideProjectRef project, @Nullable String projectGuide) {
+        String description =
+                projectGuide == null || projectGuide.isBlank()
+                        ? project.name() + "에서 이 개념을 적용할 지점을 찾아 구현하고 이유를 적어 보세요."
+                        : projectGuide;
         return new Proposal(
                 TaskType.PROJECT_TASK,
                 PROJECT_TASK_MINUTES,
                 PROJECT_TASK_DIFFICULTY,
                 truncate(project.name() + "에 " + skill.name() + " 적용하기", TITLE_MAX),
-                truncate(project.name() + "에서 이 개념을 적용할 지점을 찾아 구현하고 이유를 적어 보세요.", DESCRIPTION_MAX),
+                truncate(description, DESCRIPTION_MAX),
                 null,
                 null,
                 project.id(),
@@ -312,7 +322,8 @@ public final class TaskProposalPolicy {
             List<ChallengeOption> challenges,
             List<ReadingOption> readings,
             List<ConceptReading> conceptReadings,
-            @Nullable SideProjectRef activeSideProject) {
+            @Nullable SideProjectRef activeSideProject,
+            @Nullable String projectGuide) {
 
         public ProposalInput {
             challenges = List.copyOf(challenges);

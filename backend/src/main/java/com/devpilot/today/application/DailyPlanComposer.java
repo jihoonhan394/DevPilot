@@ -207,7 +207,8 @@ public class DailyPlanComposer {
                                 options.challengesFor(code),
                                 options.readingsFor(code),
                                 options.conceptReadingsFor(code),
-                                inputs.sideProject()));
+                                inputs.sideProject(),
+                                options.projectGuideFor(code)));
         ScoredCandidate scored =
                 scoring.score(
                         new ScoreInput(

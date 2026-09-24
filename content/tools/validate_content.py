@@ -43,6 +43,9 @@ TARGET_ROLES = {"JAVA_BACKEND", "JAVA_BACKEND_STARTER", "INTEGRATION_ENGINEER"}
 PRIORITIES = ["MUST", "SHOULD", "LATER"]
 REVIEW_TYPES = {"RECALL", "BUG_SPOT", "EXPLAIN", "CHOICE"}
 CHALLENGE_PURPOSES = {"PRACTICE", "DIAGNOSTIC"}
+# docs/04 §3 TaskType. 체크리스트가 어떤 과제에 붙는지 정하는 값이다 (docs/19 §3.11)
+TASK_TYPES = {"READING", "READ_CODE", "CHALLENGE", "PROJECT_TASK", "EXPLAIN", "REVIEW",
+              "RECALL", "REDO"}
 RUBRIC_AXES = {"IMPLEMENTATION", "EXPLANATION", "DEBUGGING"}
 HINT_KEYS = ["QUESTION_ONLY", "CONCEPT_HINT", "DIRECTION"]
 PHASES = ["PREPARATION", "CONSOLIDATION"]
@@ -76,6 +79,8 @@ CURATED_REPO_KEY_RE = re.compile(r"^[a-z][a-z0-9-]{1,29}$")
 READING_KEY_RE = re.compile(r"^READ\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\.[0-9]{3}$")
 CONCEPT_READING_KEY_RE = re.compile(r"^DOC\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\.[0-9]{3}$")
 LESSON_KEY_RE = re.compile(r"^LESSON\.[A-Z][A-Z0-9_]*(\.[A-Z][A-Z0-9_]*)*\.[0-9]{3}$")
+# docs/19 §3.11: CHK.<A>.<B>[.<C>]
+CHECKLIST_KEY = re.compile(r"^CHK\.[A-Z][A-Z0-9_]*(\.[A-Z][A-Z0-9_]*){1,2}$")
 UNIT_KEY_RE = re.compile(r"^LESSON\.[A-Z][A-Z0-9_.]*\.[0-9]{3}\.U[0-9]{1,2}$")
 # docs/19-content-spec.md §3.1: files.conceptReadings is optional and defaults to this path.
 # The catalog entry lands in P3 together with ConceptReadingRegistry (§3.13).
@@ -240,9 +245,9 @@ def validate(content_dir: str):
         res.error("CV-01", "catalog.yaml", "catalogVersion must be an integer >= 1")
     files = catalog.get("files") or {}
     check_keys(files, {"skillTrees", "roleTargets", "planTemplates", "reviewCards", "challenges",
-                       "curatedSources", "curatedRepos", "conceptReadings", "lessons"},
+                       "curatedSources", "curatedRepos", "conceptReadings", "lessons", "checklists"},
                {"skillTrees", "roleTargets", "planTemplates", "reviewCards", "challenges",
-                "curatedSources", "curatedRepos"}, res, "catalog.yaml#files")
+                "curatedSources", "curatedRepos", "checklists"}, res, "catalog.yaml#files")
     retired = catalog.get("retired") or {}
     check_keys(retired, {"skillCodes", "challengeSeedKeys", "conceptKeys", "curatedSourceIds",
                          "readingKeys"},
@@ -275,6 +280,7 @@ def validate(content_dir: str):
         concept_readings_rel = DEFAULT_CONCEPT_READINGS
     listed.append(concept_readings_rel)
     listed.extend(files.get("lessons") or [])
+    listed.extend(files.get("checklists") or [])
     if len(set(listed)) != len(listed):
         res.error("CV-02", "catalog.yaml#files", "duplicate file entry")
 
@@ -1015,6 +1021,71 @@ def validate(content_dir: str):
                             for c in (rd.get("skillCodes") or [])}
     readable_for_lessons |= {c for cr in data["conceptReadings"]
                              for c in (cr.get("skillCodes") or [])}
+
+    # ---- checklists (CV-110..CV-113) --------------------------------------
+    # docs/19 §3.11. 과제 카드의 "시작 전·끝내기 전 확인"이다. 저장하지 않고 응답을 만들 때 읽는다.
+    chk_keys: set[str] = set()
+    chk_pairs: dict[tuple[str, str], list[str]] = {}
+    # 어느 트랙에든 role target 이 있는 non-root skill (docs/19 §3.11 skillCodes 제약)
+    codes_with_target = {c for targets in targets_by_role.values() for c in targets}
+    for crel in files.get("checklists") or []:
+        path = os.path.join(content_dir, crel)
+        doc = load_yaml(path, res, crel)
+        if doc is None or not check_keys(doc, {"checklists"}, {"checklists"}, res, crel):
+            continue
+        entries = doc.get("checklists") or []
+        if not isinstance(entries, list) or not entries:
+            res.error("CV-110", crel, "checklists must be a non-empty list")
+            continue
+        for idx, ck in enumerate(entries):
+            where = f"{crel}#checklists[{idx}]"
+            required = {"key", "taskTypes", "skillCodes", "before", "after"}
+            if not check_keys(ck, required, required, res, where):
+                continue
+            key = ck.get("key")
+            if not isinstance(key, str) or not CHECKLIST_KEY.match(key) or len(key) > 120:
+                res.error("CV-110", where, f"bad checklist key {key!r}")
+            elif key in chk_keys:
+                res.error("CV-110", where, f"duplicate checklist key {key}")
+            else:
+                chk_keys.add(key)
+
+            task_types = ck.get("taskTypes") or []
+            if (not isinstance(task_types, list) or not 1 <= len(task_types) <= 8
+                    or len(set(task_types)) != len(task_types)):
+                res.error("CV-111", where, "taskTypes must be 1..8 distinct values")
+            else:
+                for t in task_types:
+                    if t not in TASK_TYPES:
+                        res.error("CV-111", where, f"unknown taskType {t}")
+
+            codes = ck.get("skillCodes") or []
+            if (not isinstance(codes, list) or not 1 <= len(codes) <= 4
+                    or len(set(codes)) != len(codes)):
+                res.error("CV-111", where, "skillCodes must be 1..4 distinct codes")
+            else:
+                for c in codes:
+                    if c not in codes_with_target:
+                        res.error("CV-111", where, f"skill without role target: {c}")
+
+            for field in ("before", "after"):
+                items = ck.get(field) or []
+                if not isinstance(items, list) or not 3 <= len(items) <= 5:
+                    res.error("CV-112", where, f"{field} must have 3..5 items")
+                    continue
+                for item in items:
+                    if not isinstance(item, str) or not 10 <= len(item) <= 120:
+                        res.error("CV-112", where, f"{field} item must be 10..120 chars")
+
+            if isinstance(key, str) and isinstance(task_types, list) and isinstance(codes, list):
+                for t in task_types:
+                    for c in codes:
+                        chk_pairs.setdefault((str(t), str(c)), []).append(key)
+
+    for (task_type, code), keys in sorted(chk_pairs.items()):
+        if len(keys) > 1:
+            res.warn("CV-113", "checklists",
+                     f"{task_type}+{code} matches {len(keys)}: only {sorted(keys)[0]} is shown")
 
     # ---- lessons (CV-126..CV-136) -----------------------------------------
     # docs/19 §3.14. 가르치는 단계의 콘텐츠다 — 빠진 칸이 있으면 화면의 걸음 하나가 통째로 빈다.

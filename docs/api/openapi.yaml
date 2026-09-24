@@ -2195,6 +2195,23 @@ components:
       - statusUpdatedAt
       - title
       - transferTargetSkillCodes
+    ChecklistView:
+      type: object
+      properties:
+        after:
+          type: array
+          items:
+            type: string
+        before:
+          type: array
+          items:
+            type: string
+        key:
+          type: string
+      required:
+      - after
+      - before
+      - key
     CodeReadingView:
       type: object
       properties:
@@ -3218,6 +3235,8 @@ components:
         challengeId:
           type: string
           format: uuid
+        checklist:
+          $ref: "#/components/schemas/ChecklistView"
         completedAt:
           type: string
           format: date-time
@@ -3275,6 +3294,7 @@ components:
           format: int64
       required:
       - challengeId
+      - checklist
       - completedAt
       - description
       - estimatedMinutes

@@ -43,6 +43,7 @@ public record TodayView(
      * @param challengeId CHALLENGE일 때만
      * @param sideProjectId PROJECT_TASK일 때만 (생성 시점 고정, 프로젝트가 삭제되면 null)
      * @param readingKey READ_CODE일 때만
+     * @param checklist 과제의 taskType·skill에 맞는 목록. 맞는 것이 없거나 skill이 없으면 null
      * @param reasons 1~3개 (docs/06 §5.8)
      */
     public record MainTaskView(
@@ -57,6 +58,7 @@ public record TodayView(
             @Nullable String readingKey,
             String title,
             @Nullable String description,
+            @Nullable ChecklistView checklist,
             int estimatedMinutes,
             TaskStatus status,
             List<ReasonView> reasons,
@@ -70,6 +72,20 @@ public record TodayView(
 
     /** reason 1개 (문구는 저장된 변수로 응답 때 채운다). */
     public record ReasonView(ReasonCode code, String text) {}
+
+    /**
+     * 과제 체크리스트 (docs/05 §8.1, docs/19 §3.11). 저장하지 않고 응답을 만들 때 콘텐츠 최신본에서 읽는다 — 지난 과제에도 지금 글이 붙는다.
+     *
+     * @param before 시작 전 확인 3~5개
+     * @param after 끝내기 전 확인 3~5개
+     */
+    public record ChecklistView(String key, List<String> before, List<String> after) {
+
+        public ChecklistView {
+            before = List.copyOf(before);
+            after = List.copyOf(after);
+        }
+    }
 
     /**
      * REVIEW 과제.

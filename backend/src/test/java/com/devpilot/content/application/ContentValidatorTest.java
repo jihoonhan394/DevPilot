@@ -408,7 +408,59 @@ class ContentValidatorTest {
                 error(
                         "CV-03",
                         "concept reading retired is not a boolean",
-                        f -> f.conceptReadings().getFirst().put("retired", "yes")));
+                        f -> f.conceptReadings().getFirst().put("retired", "yes")),
+                // checklists (docs/19 §3.11)
+                error(
+                        "CV-110",
+                        "checklist key off pattern",
+                        f -> f.checklists().getFirst().put("key", "CHK.TEST")),
+                error(
+                        "CV-110",
+                        "duplicate checklist key",
+                        f -> f.checklists().getLast().put("key", "CHK.TEST.EXCEPTION")),
+                error(
+                        "CV-111",
+                        "unknown taskType",
+                        f -> f.checklists().getFirst().put("taskTypes", list("HOMEWORK"))),
+                error(
+                        "CV-111",
+                        "duplicate taskType",
+                        f ->
+                                f.checklists()
+                                        .getFirst()
+                                        .put("taskTypes", list("CHALLENGE", "CHALLENGE"))),
+                error(
+                        "CV-111",
+                        "skillCode without a role target",
+                        f -> f.checklists().getFirst().put("skillCodes", list("JAVA"))),
+                error(
+                        "CV-111",
+                        "more than four skillCodes",
+                        f ->
+                                f.checklists()
+                                        .getFirst()
+                                        .put(
+                                                "skillCodes",
+                                                list(
+                                                        "JAVA.EXCEPTION",
+                                                        "JAVA.COLLECTION",
+                                                        "SPRING.TRANSACTION",
+                                                        "DATABASE.INDEX",
+                                                        "TESTING.JUNIT"))),
+                error(
+                        "CV-112",
+                        "only two before items",
+                        f ->
+                                f.checklists()
+                                        .getFirst()
+                                        .put("before", list("첫 번째 확인입니다", "두 번째 확인입니다"))),
+                error(
+                        "CV-112",
+                        "after item too short",
+                        f ->
+                                f.checklists()
+                                        .getFirst()
+                                        .put("after", list("짧다", "두 번째 확인입니다", "세 번째 확인입니다"))));
     }
 
     /** CV-83 은퇴 규칙은 경우마다 정확히 1건, 위치는 해당 reading 또는 catalog 목록 (docs/19 §8.2). */
@@ -577,6 +629,13 @@ class ContentValidatorTest {
     static Stream<Arguments> warningCases() {
         return Stream.of(
                 warning(
+                        "CV-113",
+                        "two checklists match the same taskType and skill",
+                        f -> {
+                            f.checklists().getLast().put("taskTypes", list("CHALLENGE"));
+                            f.checklists().getLast().put("skillCodes", list("JAVA.EXCEPTION"));
+                        }),
+                warning(
                         "CV-24",
                         "ALGORITHM not SHOULD",
                         f -> f.target("ALGORITHM.SORT_SEARCH").put("priority", "LATER")),
@@ -719,6 +778,10 @@ class ContentValidatorTest {
 
         List<Object> milestoneSkills(String key) {
             return rawList(milestone(key).get("skillCodes"));
+        }
+
+        List<Map<String, Object>> checklists() {
+            return maps(document("checklists/test.yaml").get("checklists"));
         }
 
         List<Map<String, Object>> lessons() {
