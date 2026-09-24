@@ -2,7 +2,7 @@
 # Spec: docs/19-content-spec.md §3.1
 # - catalogVersion: seed 대상 파일(이 파일에 나열된 모든 파일)이 바뀌면 1 올린다 (§8)
 # - YamlContentReader는 여기 나열된 파일만 읽는다. 나열 순서대로 읽는다
-catalogVersion: 31
+catalogVersion: 37
 files:
   skillTrees:
     - skill-tree/java-backend.yaml
@@ -47,13 +47,19 @@ files:
     - lessons/java-modern.yaml
     - lessons/java-oop.yaml
     - lessons/practical-code-review.yaml
+    - lessons/security-authn-authz.yaml
+    - lessons/security-input-validation.yaml
+    - lessons/security-logging.yaml
+    - lessons/security-secrets.yaml
     - lessons/spring-config.yaml
     - lessons/spring-core.yaml
     - lessons/spring-data-jpa.yaml
+    - lessons/spring-security.yaml
     - lessons/spring-validation.yaml
     - lessons/spring.yaml
     - lessons/testing-junit.yaml
     - lessons/testing-spring.yaml
+    - lessons/web-auth.yaml
     - lessons/web-cors.yaml
     - lessons/web-http.yaml
     - lessons/web-rest-design.yaml
