@@ -12,11 +12,13 @@ import 'package:flutter/material.dart';
 /// Sends the sheet values. Returns null when the sheet may close, otherwise the failure to show
 /// inside it (the input stays). [readingFeedback] is null unless the reading chips were shown and
 /// one was chosen. [understood] is null unless the sheet asked (see [CompleteSessionSheet.askUnderstanding]).
+/// [redoWithoutAi] is null unless the sheet asked (see [CompleteSessionSheet.askRedoAnswer]).
 typedef CompleteSessionSubmit = Future<Object?> Function(
   int actualMinutes,
   String reflection,
   ReadingFeedback? readingFeedback, {
   bool? understood,
+  bool? redoWithoutAi,
 });
 
 /// `CompleteSessionSheet` of SCR-TODAY and SCR-REVIEW-SESSION (docs/02 SCR-TODAY 완료 시트):
@@ -29,6 +31,7 @@ Future<void> showCompleteSessionSheet(
   required CompleteSessionSubmit onSubmit,
   bool askReadingFeedback = false,
   bool askUnderstanding = false,
+  bool askRedoAnswer = false,
 }) => showFormModal<void>(
   context,
   builder: (_) => CompleteSessionSheet(
@@ -38,6 +41,7 @@ Future<void> showCompleteSessionSheet(
     onSubmit: onSubmit,
     askReadingFeedback: askReadingFeedback,
     askUnderstanding: askUnderstanding,
+    askRedoAnswer: askRedoAnswer,
   ),
 );
 
@@ -50,6 +54,7 @@ class CompleteSessionSheet extends StatefulWidget {
     required this.onSubmit,
     this.askReadingFeedback = false,
     this.askUnderstanding = false,
+    this.askRedoAnswer = false,
   });
 
   static const step = 5;
@@ -61,6 +66,12 @@ class CompleteSessionSheet extends StatefulWidget {
   ///
   /// 시간을 썼다는 것과 알게 되었다는 것은 다르다. 답을 모른 채 "완료"가 되면 그 개념은 다시 나오지 않는다.
   final bool askUnderstanding;
+
+  /// 재현 과제를 끝낼 때만 묻는다: AI 도움 없이 끝냈나 (docs/06 §5.10 RE-6).
+  ///
+  /// 이 과제의 결과 그 자체라 고르기 전에는 보낼 수 없다. "혼자 했다"만 독립 구현 증거가 되고(RE-8), "도움을 받았다"는
+  /// 어디서 막혔는지 묻는 복습 카드가 된다(RE-7) — 둘 중 어느 쪽도 벌이 아니다.
+  final bool askRedoAnswer;
 
   final String title;
   final int initialMinutes;
@@ -78,6 +89,9 @@ class _CompleteSessionSheetState extends State<CompleteSessionSheet> {
 
   /// null이면 아직 고르지 않았다. 고르기 전에는 보낼 수 없다.
   bool? _understood;
+
+  /// 〃 (재현 과제의 답, RE-6).
+  bool? _redoWithoutAi;
 
   var _submitting = false;
   Object? _error;
@@ -102,6 +116,7 @@ class _CompleteSessionSheetState extends State<CompleteSessionSheet> {
       _reflection.text,
       _feedback,
       understood: _understood,
+      redoWithoutAi: _redoWithoutAi,
     );
     if (!mounted) {
       return;
@@ -171,13 +186,23 @@ class _CompleteSessionSheetState extends State<CompleteSessionSheet> {
               onChanged: (answer) => setState(() => _understood = answer),
             ),
           ],
+          if (widget.askRedoAnswer) ...[
+            const SizedBox(height: AppSpacing.lg),
+            _RedoAnswerChoice(
+              withoutAi: _redoWithoutAi,
+              enabled: !_submitting,
+              onChanged: (answer) => setState(() => _redoWithoutAi = answer),
+            ),
+          ],
           if (generalError != null) InlineError(message: generalError),
           const SizedBox(height: AppSpacing.xl),
           _SubmitButton(
             reflection: _reflection,
             submitting: _submitting,
             understood: _understood,
-            answered: !widget.askUnderstanding || _understood != null,
+            answered:
+                (!widget.askUnderstanding || _understood != null) &&
+                (!widget.askRedoAnswer || _redoWithoutAi != null),
             onSubmit: _submit,
           ),
         ],
@@ -284,6 +309,61 @@ class _UnderstandingChoice extends StatelessWidget {
           Text(
             l10n.todayCompleteSheetNotYetNote,
             key: const Key('completeSheet.notYetNote'),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// "AI 도움 없이 끝냈나요?" — 재현 과제의 결과다 (docs/06 §5.10 RE-6).
+///
+/// 어느 쪽을 골라도 과제는 완료된다. 다른 점은 그 뒤다 — "네"는 독립 구현 증거가 되고(RE-8), "아니요"는 어디서 막혔는지
+/// 적어 두는 복습 카드가 된다(RE-7).
+class _RedoAnswerChoice extends StatelessWidget {
+  const _RedoAnswerChoice({
+    required this.withoutAi,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final bool? withoutAi;
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Column(
+      key: const Key('completeSheet.redoAnswer'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(l10n.todayCompleteSheetRedoTitle, style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: AppSpacing.xs),
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.xs,
+          children: [
+            ChoiceChip(
+              key: const Key('completeSheet.redoAlone'),
+              label: Text(l10n.todayCompleteSheetRedoAlone),
+              selected: withoutAi == true,
+              onSelected: enabled ? (_) => onChanged(true) : null,
+            ),
+            ChoiceChip(
+              key: const Key('completeSheet.redoHelped'),
+              label: Text(l10n.todayCompleteSheetRedoHelped),
+              selected: withoutAi == false,
+              onSelected: enabled ? (_) => onChanged(false) : null,
+            ),
+          ],
+        ),
+        if (withoutAi == false) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            l10n.todayCompleteSheetRedoHelpedNote,
+            key: const Key('completeSheet.redoHelpedNote'),
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],

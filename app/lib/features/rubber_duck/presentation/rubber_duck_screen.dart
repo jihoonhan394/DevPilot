@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:devpilot_app/app/not_found_screen.dart';
 import 'package:devpilot_app/app/routes.dart';
 import 'package:devpilot_app/core/api/api_exception.dart';
+import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/widgets/ai_status_widgets.dart';
 import 'package:devpilot_app/core/widgets/error_view.dart';
 import 'package:devpilot_app/core/widgets/screen_body.dart';
@@ -17,6 +18,7 @@ import 'package:devpilot_app/features/settings/data/me_provider.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 /// SCR-RUBBER-DUCK: explain in your own words, answer the AI's questions, then summarize the gaps
 /// into review cards (docs/02 §3.16, FR-25). A focus screen without the navigation frame.
@@ -130,10 +132,15 @@ class _RubberDuckScreenState extends ConsumerState<RubberDuckScreen> {
             child: ScreenBody(
               child: screen.when(
                 loading: () => const SkeletonList(count: 2, lines: 3),
-                error: (error, _) => ErrorView(
-                  error: error,
-                  onRetry: () => ref.read(provider.notifier).reload(),
-                ),
+                // RE-5: 재현 과제가 열려 있는 동안은 이 대상만 잠긴다. 다시 시도해도 같으므로 재시도 대신
+                // 왜 그런지와 돌아갈 곳을 준다.
+                error: (error, _) =>
+                    error is ApiException && error.code == ApiErrorCode.aiAssistLockedForRedo
+                    ? const _RedoLocked()
+                    : ErrorView(
+                        error: error,
+                        onRetry: () => ref.read(provider.notifier).reload(),
+                      ),
                 data: (data) => RubberDuckBody(
                   data: data,
                   preview: widget.preview,
@@ -180,6 +187,30 @@ class _SessionActions extends StatelessWidget {
               child: Text(l10n.rubberDuckMenuAbandon),
             ),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+/// 열려 있는 재현 과제가 이 대상의 러버덕을 막았다 (docs/06 §5.10 RE-5).
+class _RedoLocked extends StatelessWidget {
+  const _RedoLocked();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Column(
+      key: const Key('rubberDuck.redoLocked'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l10n.errorAiAssistLockedForRedo),
+        const SizedBox(height: AppSpacing.md),
+        FilledButton(
+          key: const Key('rubberDuck.redoLockedGoToday'),
+          onPressed: () => context.go(AppRoutes.today),
+          child: Text(l10n.commonGoToday),
         ),
       ],
     );

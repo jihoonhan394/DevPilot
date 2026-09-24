@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import org.jspecify.annotations.Nullable;
 
@@ -343,19 +344,43 @@ public final class SkillLevelRules {
                 : change(SkillAxis.IMPLEMENTATION, current, next, "I2_SOLVED_GUIDED", matches);
     }
 
-    /** {@code I3_SOLVED_INDEPENDENT}: 난이도 2 이상을 혼자 해결 3건, 서로 다른 challenge 2개 이상. */
+    /**
+     * {@code I3_SOLVED_INDEPENDENT}: 난이도 2 이상의 <b>독립 구현 증거</b> 3건, 서로 다른 {@code evidenceKey} 2개 이상
+     * (docs/06 §7.2).
+     *
+     * <p>증거는 두 가지다 — 그 자리에서 혼자 푼 것({@code CHALLENGE_EVALUATED})과, 며칠 뒤 도움 없이 다시 만들어 낸 것({@code
+     * REDO_COMPLETED} {@code withoutAi = true}, §5.10 RE-8). 둘은 같은 것을 재지만 뒤의 것은 <b>시간이 지난 뒤</b>를
+     * 잰다. 그래서 같은 문제를 풀고 며칠 뒤 재현하면 증거 2개가 된다.
+     */
     private static @Nullable LevelChange implementationSolvedIndependent(
             List<RuleEvent> events, int current, int next) {
         List<RuleEvent> matches =
                 filter(
                         events,
                         event ->
-                                event.eventType() == LearningEventType.CHALLENGE_EVALUATED
-                                        && "SOLVED_INDEPENDENTLY".equals(event.text("outcome"))
+                                independentImplementation(event)
                                         && atLeast(event.number("difficulty"), 2));
-        return matches.size() >= 3 && distinct(matches, "challengeId") >= 2
+        return matches.size() >= 3 && distinctBy(matches, SkillLevelRules::evidenceKey) >= 2
                 ? change(SkillAxis.IMPLEMENTATION, current, next, "I3_SOLVED_INDEPENDENT", matches)
                 : null;
+    }
+
+    /** 독립 구현 증거인가 (docs/06 §7.2 표). 실패한 재현({@code withoutAi = false})은 증거가 아니다(RE-7). */
+    private static boolean independentImplementation(RuleEvent event) {
+        if (event.eventType() == LearningEventType.CHALLENGE_EVALUATED) {
+            return "SOLVED_INDEPENDENTLY".equals(event.text("outcome"));
+        }
+        return event.eventType() == LearningEventType.REDO_COMPLETED && event.flag("withoutAi");
+    }
+
+    /** 독립 구현 증거의 {@code evidenceKey} (docs/06 §7.2 표). 가리킬 것이 없으면 null이라 세지 않는다. */
+    private static @Nullable String evidenceKey(RuleEvent event) {
+        String challengeId = event.text("challengeId");
+        if (event.eventType() == LearningEventType.CHALLENGE_EVALUATED) {
+            return challengeId == null ? null : "CHALLENGE:" + challengeId;
+        }
+        String sourceTaskId = event.text("sourceTaskId");
+        return sourceTaskId == null ? null : "REDO:" + sourceTaskId;
     }
 
     /** {@code I4_PRODUCTION_LIKE}: 난이도 4 이상을 CONCEPT_HINT 이하로 해결 + 증거 채택. */
@@ -669,6 +694,19 @@ public final class SkillLevelRules {
     private static @Nullable RuleEvent firstOf(
             List<RuleEvent> events, Predicate<RuleEvent> predicate) {
         return events.stream().filter(predicate).findFirst().orElse(null);
+    }
+
+    private static int distinctBy(
+            List<RuleEvent> events, Function<RuleEvent, @Nullable String> key) {
+        Set<String> values = new LinkedHashSet<>();
+        events.forEach(
+                event -> {
+                    String value = key.apply(event);
+                    if (value != null) {
+                        values.add(value);
+                    }
+                });
+        return values.size();
     }
 
     private static int distinct(List<RuleEvent> events, String key) {

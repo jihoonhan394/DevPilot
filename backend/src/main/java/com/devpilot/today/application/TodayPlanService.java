@@ -44,6 +44,7 @@ public class TodayPlanService {
     private final DailyPlanComposer dailyPlanComposer;
     private final TodayQueryService todayQueryService;
     private final CodeReadingCompletionProvider codeReadingCompletionProvider;
+    private final RedoCompletion redoCompletion;
     private final Clock clock;
 
     public TodayPlanService(
@@ -52,12 +53,14 @@ public class TodayPlanService {
             DailyPlanComposer dailyPlanComposer,
             TodayQueryService todayQueryService,
             CodeReadingCompletionProvider codeReadingCompletionProvider,
+            RedoCompletion redoCompletion,
             Clock clock) {
         this.dailyPlanRepository = dailyPlanRepository;
         this.learningTaskRepository = learningTaskRepository;
         this.dailyPlanComposer = dailyPlanComposer;
         this.todayQueryService = todayQueryService;
         this.codeReadingCompletionProvider = codeReadingCompletionProvider;
+        this.redoCompletion = redoCompletion;
         this.clock = clock;
     }
 
@@ -105,9 +108,9 @@ public class TodayPlanService {
     /**
      * {@code PATCH /today/tasks/{taskId}} (docs/05 §8.4). 검사 순서: 404 → version 불일치 409 {@code
      * CONCURRENT_MODIFICATION} → 전이표 밖·RC-1 미충족 409 {@code INVALID_STATE_TRANSITION} → {@code
-     * readingFeedback} 허용 여부 400 {@code VALUE_NOT_ALLOWED}. {@code SKIPPED → PLANNED} main은 같은
-     * daily plan에 활성 main이 없을 때만 된다. {@code READ_CODE}의 {@code IN_PROGRESS → COMPLETED}는 그 과제를 대상으로
-     * 한 {@code COMPLETED} 러버덕 세션이 있어야 한다(RC-1, docs/06 §9.5).
+     * readingFeedback}·{@code redoWithoutAi} 허용·필수 여부 400. {@code SKIPPED → PLANNED} main은 같은 daily
+     * plan에 활성 main이 없을 때만 된다. {@code READ_CODE}의 {@code IN_PROGRESS → COMPLETED}는 그 과제를 대상으로 한
+     * {@code COMPLETED} 러버덕 세션이 있어야 한다(RC-1, docs/06 §9.5).
      */
     @Transactional
     public TaskStatusView updateTaskStatus(
@@ -115,6 +118,7 @@ public class TodayPlanService {
             UUID taskId,
             TaskStatus status,
             @Nullable ReadingFeedback readingFeedback,
+            @Nullable Boolean redoWithoutAi,
             long version) {
         LearningTask task =
                 learningTaskRepository
@@ -148,15 +152,15 @@ public class TodayPlanService {
                     ErrorCode.INVALID_STATE_TRANSITION,
                     "code reading needs a completed rubber duck session");
         }
+        boolean redoCompletionRequest =
+                task.getTaskType() == TaskType.REDO && status == TaskStatus.COMPLETED;
+        validateCompletionFields(
+                readingFeedback, readCodeCompletion, redoWithoutAi, redoCompletionRequest);
         task.changeStatus(status, clock.instant());
-        if (readingFeedback != null && !readCodeCompletion) {
-            throw new BusinessValidationException(
-                    "reading feedback is not allowed for this task",
-                    List.of(
-                            ApiFieldError.of(
-                                    "readingFeedback", FieldErrorCodes.VALUE_NOT_ALLOWED)));
-        }
         task.recordReadingFeedback(readingFeedback);
+        if (redoWithoutAi != null) {
+            task.answerRedo(redoWithoutAi);
+        }
         try {
             learningTaskRepository.flush();
         } catch (DataIntegrityViolationException exception) {
@@ -168,7 +172,37 @@ public class TodayPlanService {
                         .findById(task.getDailyPlanId())
                         .map(DailyPlan::getPlanDate)
                         .orElseThrow(() -> new IllegalStateException("task without daily plan"));
+        if (redoCompletionRequest) {
+            redoCompletion.complete(userId, task, redoWithoutAi, planDate);
+        }
         return TaskStatusView.of(task, planDate);
+    }
+
+    /**
+     * 완료 요청에만 붙는 값들의 허용·필수 여부 (docs/05 §8.4 400 단계). 상태를 바꾸기 전에 모두 확인한다 — 하나라도 어긋나면 아무것도 바꾸지 않는다.
+     */
+    private static void validateCompletionFields(
+            @Nullable ReadingFeedback readingFeedback,
+            boolean readCodeCompletion,
+            @Nullable Boolean redoWithoutAi,
+            boolean redoCompletionRequest) {
+        if (readingFeedback != null && !readCodeCompletion) {
+            throw notAllowed("readingFeedback", "reading feedback is not allowed for this task");
+        }
+        if (redoWithoutAi != null && !redoCompletionRequest) {
+            throw notAllowed("redoWithoutAi", "redo answer is not allowed for this task");
+        }
+        // RE-6: 답이 없으면 완료할 수 없다. "혼자 했나"가 이 과제의 결과 그 자체다
+        if (redoCompletionRequest && redoWithoutAi == null) {
+            throw new BusinessValidationException(
+                    "redo answer is required to complete this task",
+                    List.of(ApiFieldError.of("redoWithoutAi", FieldErrorCodes.VALUE_REQUIRED)));
+        }
+    }
+
+    private static BusinessValidationException notAllowed(String field, String message) {
+        return new BusinessValidationException(
+                message, List.of(ApiFieldError.of(field, FieldErrorCodes.VALUE_NOT_ALLOWED)));
     }
 
     /**

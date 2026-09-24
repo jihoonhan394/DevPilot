@@ -43,6 +43,7 @@ String? _mappedMessage(String code, AppLocalizations l10n) => switch (code) {
   ApiErrorCode.selfExplanationRequired => l10n.errorSelfExplanationRequired,
   ApiErrorCode.hintConfirmationRequired => l10n.errorHintConfirmationRequired,
   ApiErrorCode.fullExampleNotAllowed => l10n.errorFullExampleNotAllowed,
+  ApiErrorCode.aiAssistLockedForRedo => l10n.errorAiAssistLockedForRedo,
   ApiErrorCode.submissionLimitReached => l10n.errorSubmissionLimitReached,
   ApiErrorCode.evaluationInProgress => l10n.errorEvaluationInProgress,
   ApiErrorCode.aiTaskNotRetryable => l10n.errorAiTaskNotRetryable,

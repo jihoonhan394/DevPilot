@@ -8,6 +8,7 @@ import com.devpilot.skill.domain.Priority;
 import com.devpilot.testsupport.TestRuleSettings;
 import com.devpilot.testsupport.UnitTest;
 import com.devpilot.testsupport.VectorLoader;
+import com.devpilot.today.domain.PlannerScoring.AppliedModifier;
 import com.devpilot.today.domain.PlannerScoring.CandidateInput;
 import com.devpilot.today.domain.PlannerScoring.Context;
 import com.devpilot.today.domain.PlannerScoring.FactorInput;
@@ -382,6 +383,37 @@ class PlannerScoringTest {
         assertThat(PlannerScoring.prerequisiteReadiness(skills.get("S.ADVANCED"), skills))
                 .isEqualTo(333_333);
         assertThat(candidates).containsExactly("S.BASE2");
+    }
+
+    /**
+     * REDO_DUE는 마지막에 붙고 앞의 modifier를 지우지 않는다 (docs/06 §5.5 6번).
+     *
+     * <p>창(RE-2)이 며칠뿐이라 가중치를 주지만, 같은 skill을 이틀 연속 잡았다면 재현이라도 하루 쉬는 편이 낫다 — 창은 하루 밀릴 뿐이다.
+     */
+    @Test
+    void shouldAddRedoDueLastWithoutRemovingFatigue() {
+        Factors factors = new Factors(500_000, 500_000, 0, 0, 0, 1_000_000);
+        Context context = new Context(RiskLevel.LOW, EnergyLevel.NORMAL, false, List.of());
+        RecentMain sameSkill = new RecentMain("T.A", TaskStatus.COMPLETED);
+
+        ScoredCandidate redo =
+                scoring.score(
+                        new ScoreInput(
+                                "T.A",
+                                null,
+                                factors,
+                                TaskType.REDO,
+                                35,
+                                2,
+                                null,
+                                sameSkill,
+                                sameSkill),
+                        context);
+
+        assertThat(redo.modifiers())
+                .extracting(AppliedModifier::code)
+                .containsExactly(PlannerModifier.FATIGUE_TWO_DAYS, PlannerModifier.REDO_DUE);
+        assertThat(redo.modifiers().getLast().multiplierBp()).isEqualTo(13_000);
     }
 
     @Test

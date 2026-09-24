@@ -97,6 +97,14 @@ public class LearningTask implements Persistable<UUID> {
     @Column(name = "completed_at")
     private @Nullable Instant completedAt;
 
+    /** REDO 과제가 다시 만드는 원본 (docs/06 §5.10 RE-1). REDO가 아니면 null이다. */
+    @Column(name = "redo_source_task_id")
+    private @Nullable UUID redoSourceTaskId;
+
+    /** 완료 때의 "AI 도움 없이 끝냈나?" (RE-6). REDO가 COMPLETED일 때만 값이 있다. */
+    @Column(name = "redo_without_ai")
+    private @Nullable Boolean redoWithoutAi;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "reading_feedback")
     private @Nullable ReadingFeedback readingFeedback;
@@ -133,6 +141,7 @@ public class LearningTask implements Persistable<UUID> {
         task.readingKey = values.readingKey();
         task.description = values.description();
         task.estimatedMinutes = values.estimatedMinutes();
+        task.redoSourceTaskId = values.redoSourceTaskId();
         task.main = main;
         task.reasonCodes = values.reasonCodes().stream().map(ReasonCode::name).toList();
         task.scoreBreakdown = values.scoreBreakdown();
@@ -311,6 +320,22 @@ public class LearningTask implements Persistable<UUID> {
         return readingFeedback;
     }
 
+    public @Nullable UUID getRedoSourceTaskId() {
+        return redoSourceTaskId;
+    }
+
+    public @Nullable Boolean getRedoWithoutAi() {
+        return redoWithoutAi;
+    }
+
+    /**
+     * 재현 과제를 끝내며 "AI 도움 없이 끝냈나?"에 답한다 (docs/06 §5.10 RE-6). 답이 없으면 완료할 수 없다(I-21) — DB 제약 {@code
+     * learning_task_redo_answer_required}도 같은 것을 막는다.
+     */
+    public void answerRedo(boolean withoutAi) {
+        this.redoWithoutAi = withoutAi;
+    }
+
     public @Nullable Instant getCompletedAt() {
         return completedAt;
     }
@@ -341,6 +366,7 @@ public class LearningTask implements Persistable<UUID> {
             @Nullable UUID challengeId,
             @Nullable UUID sideProjectId,
             @Nullable String readingKey,
+            @Nullable UUID redoSourceTaskId,
             String title,
             @Nullable String description,
             int estimatedMinutes,

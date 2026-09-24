@@ -207,7 +207,7 @@ V10,10,GOOD,CORRECT,SELF_EXPLAIN,GOOD,,5,4
 | §4.4 | `06-04-replan-suggestion.yaml` (4행 — vector 1·2 축소, 3·4 확장. §5.3) | `ReplanSuggestionPolicyTest` | unit |
 | §5.3 | `06-05-task-proposal.yaml` (분기 6개(REDO·READ_CODE 포함) + comeback + 제안 분기 T-1~T-5, 학습 트랙 T-6~T-9. §5.3·§5.4) | `TaskProposalPolicyTest` | unit |
 | §5.10 RE-1~RE-3 | `06-05-redo-candidate.yaml` (RE-V1~RE-V11. §5.4) | `RedoTaskPolicyTest` | unit |
-| §5.10 RE-6~RE-8 | — (RE-V12~RE-V15. §5.4) | `TodayPlanServiceIntegrationTest` | integration |
+| §5.10 RE-6~RE-8 | — (RE-V12~RE-V15. §5.4) | `RedoTaskIntegrationTest` | integration |
 | §5.4–5.5, §5.7 | `06-05-planner-score.yaml` (10행 — 1~6행은 factor·modifier, 7~10행은 `MONOTONY_*`. `devpilot.planner.weights.stage-gap = 0`으로 돌린다. §5.7 공통 조건) | `PlannerScoringTest` | unit |
 | §5.11 | `06-05-learning-stage.yaml` (ST-V1~ST-V12) | `LearningStageEvaluatorTest` | unit |
 | §5.12 | `06-05-daily-tip.yaml` (TIP-V1~TIP-V11) | `DailyTipSelectorTest` | unit |
@@ -309,11 +309,11 @@ V10,10,GOOD,CORRECT,SELF_EXPLAIN,GOOD,,5,4
 
 ### 5.4 재현 과제 · 학습 트랙 규칙 테스트
 
-**`RedoTaskPolicyTest` — 재현 후보 (AC-31, S4, `06` §5.10).** `06-05-redo-candidate.yaml`에 RE-V1~RE-V11을 그대로 넣는다. 설정은 `min-days-after = 3`, `max-days-after = 7`, `max-attempts = 2`, `today = 2026-10-20`이다. 입력은 원본 task(유형, 완료 plan-day, `estimatedMinutes`, difficulty, `skillId`)와 그 원본을 가리키는 `REDO` task 목록(상태, 완료 plan-day, `withoutAi`)이고, 출력은 후보 여부와 `lastAttemptDate`다.
+**`RedoTaskPolicyTest` — 재현 후보 (AC-31, S4, `06` §5.10).** `06-05-redo-candidate.yaml`에 RE-V1~RE-V11을 그대로 넣는다. 설정은 `min-days-after = 3`, `max-days-after = 7`, `max-attempts = 2`, `today = 2026-10-20`이다. 입력은 원본 task(유형, 완료 plan-day, `estimatedMinutes`, difficulty, `skillId`)와 그 원본을 가리키는 `REDO` task 목록(상태, 완료 plan-day, `withoutAi`)이고, 출력은 skill별로 고른 후보와 `daysAfter`(원본 완료일부터 오늘까지의 일수 — 과제 문구와 이유에 그대로 쓴다)다.
 
 - 경계(같은 클래스): 창 시작 `daysBetween = 2 / 3`(RE-V1·RE-V2)과 창 끝 `7 / 8`(RE-V3·RE-V4)을 양쪽 다 확인한다. 시도 `1 / 2`(RE-V5·RE-V6). 정렬은 `lastAttemptDate ASC → 원본 task.id ASC`이고 skill 하나당 후보 1개만 나온다(RE-V10). **결정적이어야 한다** — 같은 입력에 항상 같은 출력.
 - `TaskProposalPolicyTest`: 재현 후보가 있으면 CHALLENGE·READ_CODE 조건을 모두 만족해도 `REDO`가 나온다(0번 분기). estimated가 `limit`을 넘으면 `REDO`를 버리고 1번부터 다시 고른다(RE-V11, `06` §5.6).
-- `PlannerScoringTest`: `REDO_DUE` ×13,000bp가 modifier 5번으로 마지막에 적용되고, `FATIGUE_TWO_DAYS`(×6,000)와 함께 걸리면 `floorDiv(floorDiv(base × 6000, 10000) × 13000, 10000)` 순서로 계산된다.
+- `PlannerScoringTest`: `REDO_DUE` ×13,000bp가 modifier 6번으로 마지막에 적용되고, `FATIGUE_TWO_DAYS`(×6,000)와 함께 걸리면 `floorDiv(floorDiv(base × 6000, 10000) × 13000, 10000)` 순서로 계산된다.
 - `ReasonTemplatesTest`: `REDO` task면 `REDO_WITHOUT_AI`가 항상 들어가고 modifier·task reason 중 가장 앞이다(`06` §5.8).
 
 **`TodayPlanServiceIntegrationTest` — 재현 완료 (AC-31, `06` §5.10 RE-6~RE-8).** RE-V12~RE-V15.

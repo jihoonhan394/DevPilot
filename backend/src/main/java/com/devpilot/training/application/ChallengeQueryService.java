@@ -19,6 +19,7 @@ import com.devpilot.training.infrastructure.ChallengeAttemptRepository;
 import com.devpilot.training.infrastructure.ChallengeRepository;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -249,6 +250,22 @@ public class ChallengeQueryService {
             return Set.of();
         }
         return Set.copyOf(attemptRepository.findDiagnosedChallengeIds(userId, challengeIds));
+    }
+
+    /**
+     * 주어진 challenge의 difficulty (docs/06 §5.10 RE-4). 재현 과제가 원본과 같은 난이도를 쓰는 데만 필요하다.
+     *
+     * <p>id는 호출자의 완료된 과제에서 나오므로 이미 그 사람 것이다. 없어진 challenge는 결과에서 빠지고, 그때 재현 제안은 기본 난이도로 간다.
+     */
+    public Map<UUID, Integer> difficultiesByIds(Collection<UUID> challengeIds) {
+        if (challengeIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, Integer> difficulties = new HashMap<>();
+        for (Challenge challenge : challengeRepository.findAllByIdIn(challengeIds)) {
+            difficulties.put(challenge.getId(), challenge.getDifficulty());
+        }
+        return Map.copyOf(difficulties);
     }
 
     static List<RubricItemView> rubricViews(List<ChallengeRubricItem> rubric) {

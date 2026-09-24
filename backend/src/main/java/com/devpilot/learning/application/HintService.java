@@ -64,16 +64,31 @@ public class HintService {
 
     private final HintDisclosureRepository hintDisclosureRepository;
     private final LearningEventRecorder learningEventRecorder;
+    private final RedoLockProvider redoLockProvider;
     private final AiGateway aiGateway;
     private final HintLadderPolicy policy = new HintLadderPolicy();
 
     public HintService(
             HintDisclosureRepository hintDisclosureRepository,
             LearningEventRecorder learningEventRecorder,
+            RedoLockProvider redoLockProvider,
             AiGateway aiGateway) {
         this.hintDisclosureRepository = hintDisclosureRepository;
         this.learningEventRecorder = learningEventRecorder;
+        this.redoLockProvider = redoLockProvider;
         this.aiGateway = aiGateway;
+    }
+
+    /**
+     * HL-9 (docs/06 §9.1, §5.10 RE-5): 이 문제를 원본으로 하는 재현 과제가 열려 있으면 힌트를 열지 않는다.
+     *
+     * <p>재현은 혼자 만들어 낼 수 있는지 보는 자리라, 여기서 힌트가 열리면 잴 것이 없어진다. 재현 과제를 끝내거나 건너뛰면 다시 열린다.
+     */
+    public void requireChallengeUnlocked(UUID userId, UUID challengeId) {
+        if (redoLockProvider.challengeLocked(userId, challengeId)) {
+            throw new ConflictException(
+                    ErrorCode.AI_ASSIST_LOCKED_FOR_REDO, "an open redo task locks this challenge");
+        }
     }
 
     /** HL-1~HL-6 판정 (docs/06 §9.1). 대상 모듈이 맥락을 채워 부른다. */

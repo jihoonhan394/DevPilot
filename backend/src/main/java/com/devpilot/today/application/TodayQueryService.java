@@ -25,6 +25,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -129,11 +130,12 @@ public class TodayQueryService {
                     }
                 });
         Map<UUID, SkillRef> skills = skillCatalogQueryService.findRefs(skillIds);
+        Map<UUID, TaskType> redoSourceTypes = redoSourceTypes(plan.getUserId(), studyTasks);
         List<MainTaskView> earlier =
                 studyTasks.stream()
                         .filter(task -> !task.equals(main))
                         .sorted(Comparator.comparingInt(LearningTask::getSortOrder))
-                        .map(task -> toMainView(task, skills))
+                        .map(task -> toMainView(task, skills, redoSourceTypes))
                         .toList();
         ReviewTaskView review =
                 reviewTask(tasks)
@@ -148,7 +150,7 @@ public class TodayQueryService {
                 plan.isComebackMode(),
                 plan.getGenerationCount(),
                 plan.getGeneratedAt(),
-                main == null ? null : toMainView(main, skills),
+                main == null ? null : toMainView(main, skills, redoSourceTypes),
                 review,
                 earlier);
     }
@@ -202,7 +204,31 @@ public class TodayQueryService {
                 task.getVersion());
     }
 
-    private MainTaskView toMainView(LearningTask task, Map<UUID, SkillRef> skills) {
+    /**
+     * 재현 과제가 가리키는 원본의 종류 (docs/05 §8.1 {@code redoSourceTaskType}). 저장하지 않고 응답을 만들 때 원본 행에서 읽는다.
+     */
+    private Map<UUID, TaskType> redoSourceTypes(UUID userId, List<LearningTask> tasks) {
+        Set<UUID> sourceIds = new HashSet<>();
+        for (LearningTask task : tasks) {
+            UUID sourceId = task.getRedoSourceTaskId();
+            if (sourceId != null) {
+                sourceIds.add(sourceId);
+            }
+        }
+        if (sourceIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, TaskType> types = new HashMap<>();
+        for (UUID sourceId : sourceIds) {
+            learningTaskRepository
+                    .findByIdAndUserId(sourceId, userId)
+                    .ifPresent(source -> types.put(sourceId, source.getTaskType()));
+        }
+        return Map.copyOf(types);
+    }
+
+    private MainTaskView toMainView(
+            LearningTask task, Map<UUID, SkillRef> skills, Map<UUID, TaskType> redoSourceTypes) {
         SkillRef skill = task.getSkillId() == null ? null : skills.get(task.getSkillId());
         ScoreBreakdown breakdown = task.getScoreBreakdown();
         ReasonParams params = breakdown == null ? ReasonParams.EMPTY : breakdown.reasonParams();
@@ -220,6 +246,11 @@ public class TodayQueryService {
                 task.getChallengeId(),
                 task.getSideProjectId(),
                 task.getReadingKey(),
+                task.getRedoSourceTaskId(),
+                task.getRedoSourceTaskId() == null
+                        ? null
+                        : redoSourceTypes.get(task.getRedoSourceTaskId()),
+                task.getRedoWithoutAi(),
                 task.getTitle(),
                 task.getDescription(),
                 checklistView(task.getTaskType(), skill),

@@ -108,7 +108,13 @@ class RubberDuckTargetResolver {
                         .findAttemptTarget(userId, targetId)
                         .orElseThrow(RubberDuckTargetResolver::referenceNotFound);
         return new ResolvedTarget(
-                targetId, null, null, target.title(), target.summary(), target.skillId());
+                targetId,
+                null,
+                null,
+                target.title(),
+                target.summary(),
+                target.skillId(),
+                target.challengeId());
     }
 
     /** 조회용: 대상이 지워졌으면 {@code title}·{@code summary}가 비어 있다(docs/05 §9.5). */
@@ -167,8 +173,7 @@ class RubberDuckTargetResolver {
 
     private ResolvedTarget concept(@Nullable String conceptKey) {
         String key = conceptKey == null ? "" : conceptKey;
-        return new ResolvedTarget(
-                null, key, null, key, key, skillIdForConceptKey(key).orElse(null));
+        return ResolvedTarget.of(null, key, null, key, key, skillIdForConceptKey(key).orElse(null));
     }
 
     private ResolvedTarget codeReading(UUID userId, UUID targetId) {
@@ -180,8 +185,7 @@ class RubberDuckTargetResolver {
         Optional<CuratedReading> reading =
                 readingKey == null ? Optional.empty() : readingQueryService.find(readingKey);
         String summary = reading.map(RubberDuckTargetResolver::readingSummary).orElse(task.title());
-        return new ResolvedTarget(
-                targetId, null, readingKey, task.title(), summary, task.skillId());
+        return ResolvedTarget.of(targetId, null, readingKey, task.title(), summary, task.skillId());
     }
 
     private ResolvedTarget reviewItem(UUID userId, UUID targetId) {
@@ -189,7 +193,7 @@ class RubberDuckTargetResolver {
                 reviewQueryService
                         .findItemRef(userId, targetId)
                         .orElseThrow(RubberDuckTargetResolver::referenceNotFound);
-        return new ResolvedTarget(
+        return ResolvedTarget.of(
                 targetId, null, null, item.prompt(), item.prompt(), item.skillId());
     }
 
@@ -200,11 +204,11 @@ class RubberDuckTargetResolver {
                         .orElseThrow(RubberDuckTargetResolver::referenceNotFound);
         String description = project.description();
         String summary = description == null ? project.name() : project.name() + "\n" + description;
-        return new ResolvedTarget(targetId, null, null, project.name(), summary, null);
+        return ResolvedTarget.of(targetId, null, null, project.name(), summary, null);
     }
 
     private static ResolvedTarget missing(RubberDuckSession session) {
-        return new ResolvedTarget(
+        return ResolvedTarget.of(
                 session.getTargetId(), session.getConceptKey(), null, null, "", null);
     }
 
@@ -240,6 +244,7 @@ class RubberDuckTargetResolver {
      * @param title 사람이 알아볼 문구. 대상이 지워졌으면 null
      * @param summary AI 입력 {@code targetSummary} (docs/17 §3.11). 대상이 지워졌으면 빈 문자열
      * @param derivedSkillId {@code skillCode} 생략 시 쓸 skill. 유도할 수 없으면 null
+     * @param challengeId {@code CHALLENGE} 대상일 때 그 attempt의 문제. 재현 잠금(RE-5)이 이것으로 판단한다
      */
     record ResolvedTarget(
             @Nullable UUID targetId,
@@ -247,5 +252,18 @@ class RubberDuckTargetResolver {
             @Nullable String readingKey,
             @Nullable String title,
             String summary,
-            @Nullable UUID derivedSkillId) {}
+            @Nullable UUID derivedSkillId,
+            @Nullable UUID challengeId) {
+
+        static ResolvedTarget of(
+                @Nullable UUID targetId,
+                @Nullable String conceptKey,
+                @Nullable String readingKey,
+                @Nullable String title,
+                String summary,
+                @Nullable UUID derivedSkillId) {
+            return new ResolvedTarget(
+                    targetId, conceptKey, readingKey, title, summary, derivedSkillId, null);
+        }
+    }
 }

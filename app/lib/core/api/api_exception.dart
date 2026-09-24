@@ -31,6 +31,7 @@ abstract final class ApiErrorCode {
   static const selfExplanationRequired = 'SELF_EXPLANATION_REQUIRED';
   static const hintConfirmationRequired = 'HINT_CONFIRMATION_REQUIRED';
   static const fullExampleNotAllowed = 'FULL_EXAMPLE_NOT_ALLOWED';
+  static const aiAssistLockedForRedo = 'AI_ASSIST_LOCKED_FOR_REDO';
   static const submissionLimitReached = 'SUBMISSION_LIMIT_REACHED';
   static const evaluationInProgress = 'EVALUATION_IN_PROGRESS';
   static const aiTaskNotRetryable = 'AI_TASK_NOT_RETRYABLE';

@@ -95,6 +95,81 @@ void main() {
     expect(submit.onPressed, isNull);
   });
 
+  /// 재현 과제는 무엇이 다른지와 왜 AI가 막히는지가 카드에서 먼저 보여야 한다 (docs/06 §5.10 RE-5).
+  testWidgets('shouldShowWhatARedoTaskIsAndWhyAiIsLocked', (tester) async {
+    backend.todayRepository.today = testTodayView(
+      mainTask: testMainTask(
+        taskType: TaskType.redo,
+        title: '주문 취소 만들기 혼자 다시 만들기',
+        redoSourceTaskId: 'd7f10000-0000-4000-8000-0000000000aa',
+        redoSourceTaskType: TaskType.challenge,
+      ),
+    );
+    await pumpApp(tester, backend: backend);
+
+    expect(find.byKey(const Key('today.redoBadge')), findsOneWidget);
+    expect(find.text('AI 없이 재현'), findsOneWidget);
+    expect(find.byKey(const Key('today.redo.locked')), findsOneWidget);
+
+    // 시작한 뒤에도 사유는 그대로 있다 — 막히는 순간이 그때다
+    await tapKey(tester, 'today.startButton');
+    expect(find.byKey(const Key('today.redo.locked')), findsOneWidget);
+  });
+
+  /// 재현 과제는 "혼자 했나"가 결과 그 자체다 — 고르기 전에는 보낼 수 없다 (docs/06 §5.10 RE-6).
+  testWidgets('shouldAskWhetherTheRedoWasDoneWithoutAi', (tester) async {
+    backend.todayRepository.today = testTodayView(
+      mainTask: testMainTask(
+        taskType: TaskType.redo,
+        title: '주문 취소 만들기 — AI 없이 다시 만들기',
+        redoSourceTaskId: 'd7f10000-0000-4000-8000-0000000000aa',
+        redoSourceTaskType: TaskType.challenge,
+      ),
+    );
+    await pumpApp(tester, backend: backend);
+    await tapKey(tester, 'today.startButton');
+
+    await tapKey(tester, 'today.completeButton');
+    await tapKey(tester, 'completeSheet.understood');
+
+    expect(find.byKey(const Key('completeSheet.redoAnswer')), findsOneWidget);
+    final beforeAnswer = tester.widget<FilledButton>(
+      find.byKey(const Key('completeSheet.submitButton')),
+    );
+    expect(beforeAnswer.onPressed, isNull);
+
+    await tapKey(tester, 'completeSheet.redoAlone');
+    await tapKey(tester, 'completeSheet.submitButton');
+
+    final patch = backend.todayRepository.patches.last.request;
+    expect(patch.status, TaskStatus.completed);
+    expect(patch.redoWithoutAi, isTrue);
+  });
+
+  /// 도움을 받았다고 말해도 과제는 끝난다 — 달라지는 것은 그 뒤다 (RE-7).
+  testWidgets('shouldSendTheRedoAnswerWhenHelpWasUsed', (tester) async {
+    backend.todayRepository.today = testTodayView(
+      mainTask: testMainTask(
+        taskType: TaskType.redo,
+        redoSourceTaskId: 'd7f10000-0000-4000-8000-0000000000aa',
+        redoSourceTaskType: TaskType.challenge,
+      ),
+    );
+    await pumpApp(tester, backend: backend);
+    await tapKey(tester, 'today.startButton');
+    await tapKey(tester, 'today.completeButton');
+    await tapKey(tester, 'completeSheet.understood');
+
+    await tapKey(tester, 'completeSheet.redoHelped');
+
+    expect(find.byKey(const Key('completeSheet.redoHelpedNote')), findsOneWidget);
+    await tapKey(tester, 'completeSheet.submitButton');
+    expect(backend.todayRepository.patches.last.request.redoWithoutAi, isFalse);
+    // 못 한 것이 아니라 다시 만날 약속이 된다 (RE-7)
+    expect(find.text('기록했어요. 막힌 지점을 묻는 복습 카드를 하나 만들어 뒀어요.'), findsOneWidget);
+    expect(find.text('복습하러 가기'), findsOneWidget);
+  });
+
   /// "여기까지 기록"은 이미 못 끝냈다고 말한 것이다 — 한 번 더 묻지 않는다.
   testWidgets('shouldNotAskAgainWhenTheLearnerAlreadySaidTheyStopped', (tester) async {
     backend.todayRepository.today = testTodayView();

@@ -139,6 +139,28 @@ void main() {
     expect(find.byKey(const Key('attempt.aiSubmitNote')), findsOneWidget);
   });
 
+  /// RE-5: 이 문제를 혼자 다시 만드는 중이면 힌트가 열리지 않는다. 다시 시도해도 같으므로 버튼을 끄고 돌아갈 곳을 준다.
+  testWidgets('shouldLockTheHintLadderWhileARedoIsOpen', (tester) async {
+    backend.trainingRepository.attempts[attemptId] = testAttempt(
+      selfExplanation: '설명',
+      maxHintLevel: HintLevel.direction,
+    );
+    backend.trainingRepository.hintFailures.add(
+      const ApiException(code: ApiErrorCode.aiAssistLockedForRedo, status: 409),
+    );
+    await openAttempt(tester);
+
+    await tapKey(tester, 'attempt.hintButton');
+    await tapKey(tester, 'attempt.hintConfirmButton');
+
+    expect(find.byKey(const Key('attempt.hintRedoLocked')), findsOneWidget);
+    expect(find.text('지금은 AI 도움을 쓸 수 없어요. 이 과제를 혼자 다시 만들어 보는 중이에요.'), findsOneWidget);
+    expect(find.byKey(const Key('attempt.hintRedoLockedGoToday')), findsOneWidget);
+    expect(isButtonEnabled(tester, 'attempt.hintButton'), isFalse);
+    // AI 불가와 다르다 — 배너도, 그 문구도 없다
+    expect(find.byKey(const Key('attempt.hintAiOff')), findsNothing);
+  });
+
   testWidgets('shouldShowAiRefusedUnderTheLadder', (tester) async {
     backend.trainingRepository.attempts[attemptId] = testAttempt(
       selfExplanation: '설명',

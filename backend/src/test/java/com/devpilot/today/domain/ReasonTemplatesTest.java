@@ -40,7 +40,7 @@ class ReasonTemplatesTest {
 
     @Test
     void shouldFillVariablesWhenParamsArePresent() {
-        ReasonParams params = new ReasonParams("Spring Boot/JPA", 1, 4, 2, "Spring PetClinic");
+        ReasonParams params = new ReasonParams("Spring Boot/JPA", 1, 4, 2, "Spring PetClinic", 5);
 
         assertThat(ReasonTemplates.text(ReasonCode.MILESTONE_CORE, params))
                 .isEqualTo("지금 단계(Spring Boot/JPA)의 핵심 항목");

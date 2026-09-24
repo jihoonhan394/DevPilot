@@ -372,6 +372,10 @@ public final class PlannerScoring {
         if (context.comebackMode() && input.difficulty() >= HARD_TASK_DIFFICULTY) {
             modifiers.add(modifier(PlannerModifier.COMEBACK_HARD_TASK));
         }
+        // 6 (마지막): 창(RE-2)이 며칠뿐이라 가중치를 준다. 앞의 modifier는 재현에도 그대로 걸린다 (docs/06 §5.5)
+        if (input.taskType() == TaskType.REDO) {
+            modifiers.add(modifier(PlannerModifier.REDO_DUE));
+        }
         long score = base;
         for (AppliedModifier modifier : modifiers) {
             score = FixedPointMath.applyMultiplierBp(score, modifier.multiplierBp());
@@ -537,7 +541,8 @@ public final class PlannerScoring {
             int continuation,
             int comebackHardTask,
             int monotonyThreeDays,
-            int monotonyFiveDays) {
+            int monotonyFiveDays,
+            int redoDue) {
 
         int of(PlannerModifier modifier) {
             return switch (modifier) {
@@ -551,6 +556,7 @@ public final class PlannerScoring {
                 case MONOTONY_THREE_DAYS -> monotonyThreeDays;
                 case MONOTONY_FIVE_DAYS -> monotonyFiveDays;
                 case COMEBACK_HARD_TASK -> comebackHardTask;
+                case REDO_DUE -> redoDue;
             };
         }
     }

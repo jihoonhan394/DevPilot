@@ -44,7 +44,12 @@ Future<void> requestHintFlow(
     result = await controller.requestHint(level, acknowledge: true, giveUp: giveUp);
   }
   if (context.mounted) {
-    await presentAttemptResult(context, ref, result, inlineCodes: const {ApiErrorCode.aiRefused});
+    await presentAttemptResult(
+      context,
+      ref,
+      result,
+      inlineCodes: const {ApiErrorCode.aiRefused, ApiErrorCode.aiAssistLockedForRedo},
+    );
   }
 }
 

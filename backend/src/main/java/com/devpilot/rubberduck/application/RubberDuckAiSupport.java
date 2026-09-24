@@ -1,5 +1,7 @@
 package com.devpilot.rubberduck.application;
 
+import com.devpilot.common.error.ConflictException;
+import com.devpilot.common.error.ErrorCode;
 import com.devpilot.common.web.AiMeta;
 import com.devpilot.common.web.AiMeta.GuardActionView;
 import com.devpilot.integration.ai.AiGateway;
@@ -17,7 +19,10 @@ import com.devpilot.integration.ai.api.UserContentBlock;
 import com.devpilot.integration.ai.api.output.RubberDuckSummaryOutput;
 import com.devpilot.integration.ai.api.output.RubberDuckTurnOutput;
 import com.devpilot.integration.ai.masking.SecretMasker;
+import com.devpilot.learning.application.RedoLockProvider;
+import com.devpilot.rubberduck.application.RubberDuckTargetResolver.ResolvedTarget;
 import com.devpilot.rubberduck.domain.RubberDuckSession;
+import com.devpilot.rubberduck.domain.RubberDuckTargetType;
 import com.devpilot.rubberduck.domain.RubberDuckTurn;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -48,12 +53,42 @@ class RubberDuckAiSupport {
     private final AiGateway aiGateway;
     private final SecretMasker secretMasker;
     private final AiCallMetaReader aiCallMetaReader;
+    private final RedoLockProvider redoLockProvider;
 
     RubberDuckAiSupport(
-            AiGateway aiGateway, SecretMasker secretMasker, AiCallMetaReader aiCallMetaReader) {
+            AiGateway aiGateway,
+            SecretMasker secretMasker,
+            AiCallMetaReader aiCallMetaReader,
+            RedoLockProvider redoLockProvider) {
         this.aiGateway = aiGateway;
         this.secretMasker = secretMasker;
         this.aiCallMetaReader = aiCallMetaReader;
+        this.redoLockProvider = redoLockProvider;
+    }
+
+    /**
+     * RE-5 (docs/06 §5.10): 이 대상을 원본으로 하는 재현 과제가 열려 있으면 러버덕을 시작하지 않는다.
+     *
+     * <p>막는 것은 그 대상 하나뿐이다 — 다른 문제, 복습 카드, 코드 읽기, 개념은 그대로 열려 있다. 재현 과제를 끝내거나 건너뛰면 다시 열린다.
+     */
+    void requireUnlockedForRedo(
+            UUID userId, RubberDuckTargetType targetType, ResolvedTarget target) {
+        boolean locked =
+                switch (targetType) {
+                    case CHALLENGE ->
+                            target.challengeId() != null
+                                    && redoLockProvider.challengeLocked(
+                                            userId, target.challengeId());
+                    case PROJECT_WORK ->
+                            target.targetId() != null
+                                    && redoLockProvider.sideProjectLocked(
+                                            userId, target.targetId());
+                    case CODE_READING, REVIEW_ITEM, CONCEPT -> false;
+                };
+        if (locked) {
+            throw new ConflictException(
+                    ErrorCode.AI_ASSIST_LOCKED_FOR_REDO, "an open redo task locks this target");
+        }
     }
 
     /** 설명 마스킹 (RD-6, docs/05 §1.11 4단계). private key면 422 {@code SECRET_DETECTED_BLOCKED}. */

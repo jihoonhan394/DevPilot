@@ -3257,6 +3257,23 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ReasonView"
+        redoSourceTaskId:
+          type: string
+          format: uuid
+        redoSourceTaskType:
+          type: string
+          enum:
+          - RECALL
+          - REVIEW
+          - CHALLENGE
+          - PROJECT_TASK
+          - COACH_REVIEW
+          - READING
+          - READ_CODE
+          - EXPLAIN
+          - REDO
+        redoWithoutAi:
+          type: boolean
         sideProjectId:
           type: string
           format: uuid
@@ -3302,6 +3319,9 @@ components:
       - milestoneId
       - readingKey
       - reasons
+      - redoSourceTaskId
+      - redoSourceTaskType
+      - redoWithoutAi
       - sideProjectId
       - skillCode
       - skillId
@@ -3864,6 +3884,7 @@ components:
           - RECENT_RECALL_FAILURE
           - PROJECT_FOCUS
           - READ_REAL_CODE
+          - REDO_WITHOUT_AI
           - CONTINUE_YESTERDAY
           - DEADLINE_RISK_MUST
           - LOW_ENERGY_LIGHT_TASK
@@ -5451,6 +5472,8 @@ components:
           - HELPFUL
           - TOO_HARD
           - BORING
+        redoWithoutAi:
+          type: boolean
         status:
           type: string
           enum:

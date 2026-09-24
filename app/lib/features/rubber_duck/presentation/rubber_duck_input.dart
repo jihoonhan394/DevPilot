@@ -1,3 +1,4 @@
+import 'package:devpilot_app/app/routes.dart';
 import 'package:devpilot_app/core/api/api_enums.dart';
 import 'package:devpilot_app/core/api/api_exception.dart';
 import 'package:devpilot_app/core/api/error_message_mapper.dart';
@@ -9,6 +10,7 @@ import 'package:devpilot_app/core/widgets/inline_error.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 
 /// `ExplanationField` with its counter, masking note and buttons (docs/02 SCR-RUBBER-DUCK ①②).
 /// 1~2000 characters, warned from 1900; a private key block is refused before sending.
@@ -54,7 +56,11 @@ class RubberDuckInput extends StatelessWidget {
     return ValueListenableBuilder<TextEditingValue>(
       valueListenable: controller,
       builder: (context, value, _) {
-        final sendEnabled = !busy && aiStatus.allowsAi && canSend(value.text);
+        // 재현 잠금은 다시 눌러도 같다 — 보내기를 끄고 돌아갈 곳을 준다 (docs/06 §5.10 RE-5)
+        final lockedForRedo =
+            inputError is ApiException &&
+            (inputError! as ApiException).code == ApiErrorCode.aiAssistLockedForRedo;
+        final sendEnabled = !busy && aiStatus.allowsAi && !lockedForRedo && canSend(value.text);
         void send() {
           if (sendEnabled && !value.composing.isValid) {
             onSend();
@@ -74,7 +80,19 @@ class RubberDuckInput extends StatelessWidget {
             _FieldNotes(text: value.text, remainingTurns: remainingTurns),
             if (InputRules.containsPrivateKey(value.text))
               InlineError(message: l10n.rubberDuckValidationPrivateKey),
-            if (inputError != null) InlineError(message: _errorText(inputError!, l10n)),
+            if (inputError != null && !lockedForRedo)
+              InlineError(message: _errorText(inputError!, l10n)),
+            if (lockedForRedo) ...[
+              Text(l10n.errorAiAssistLockedForRedo, key: const Key('rubberDuck.redoLocked')),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  key: const Key('rubberDuck.redoLockedGoToday'),
+                  onPressed: () => context.go(AppRoutes.today),
+                  child: Text(l10n.commonGoToday),
+                ),
+              ),
+            ],
             const SizedBox(height: AppSpacing.md),
             _Buttons(
               first: first,

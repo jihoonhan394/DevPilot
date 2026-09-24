@@ -83,6 +83,7 @@ public class TodayController {
                 taskId,
                 request.status(),
                 request.readingFeedback(),
+                request.redoWithoutAi(),
                 request.version());
     }
 }

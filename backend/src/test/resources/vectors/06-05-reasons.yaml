@@ -1,4 +1,4 @@
-# source: 06 §5.8, rows: 6
+# source: 06 §5.8, rows: 7
 # 최소 1개 보장, modifier·과제 reason 우선, 최대 3개, 기여도 순서. contributions는 factor × WEIGHT_BP (micro × bp).
 vectors:
   - id: V01
@@ -103,3 +103,20 @@ vectors:
     selectedType: READ_CODE
     selectedEstimated: 15
     expected: [READ_REAL_CODE, HIGH_PRACTICAL_IMPORTANCE, LARGE_SKILL_GAP]
+  - id: V07
+    case: REDO 과제 reason이 가장 앞이다 — 과제의 성격 자체를 설명한다
+    contributions: { PRACTICAL_IMPORTANCE: 2000000000, SKILL_GAP: 1000000000, REVIEW_URGENCY: 0, MILESTONE_URGENCY: 0, PROJECT_NEED: 0, PREREQUISITE_READINESS: 1000000000 }
+    practicalImportance: 800000
+    skillGap: 500000
+    overdueDays: 0
+    recentRecallFailure: false
+    currentMilestone: false
+    nextMilestone: false
+    projectNeed: false
+    deadlineRiskMust: true
+    continuation: false
+    energy: NORMAL
+    comebackMode: false
+    selectedType: REDO
+    selectedEstimated: 35
+    expected: [REDO_WITHOUT_AI, DEADLINE_RISK_MUST, HIGH_PRACTICAL_IMPORTANCE]

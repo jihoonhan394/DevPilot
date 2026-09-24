@@ -155,6 +155,7 @@ public record DevPilotProperties(
     public record Planner(
             @Valid @NotNull Weights weights,
             @Valid @NotNull Modifiers modifiers,
+            @Valid @NotNull Redo redo,
             @Positive int lowEnergyLongTaskMinutes,
             @NotNull BigDecimal minPrerequisiteReadiness,
             @NotNull BigDecimal overrunTolerance,
@@ -196,6 +197,18 @@ public record DevPilotProperties(
         }
     }
 
+    /** 재현 과제 설정 (docs/06 §5.10 RE-2·RE-3). */
+    public record Redo(
+            @Positive int minDaysAfter, @Positive int maxDaysAfter, @Positive int maxAttempts) {
+
+        public Redo {
+            if (minDaysAfter > maxDaysAfter) {
+                throw new IllegalArgumentException(
+                        "devpilot.planner.redo.min-days-after must not exceed max-days-after");
+            }
+        }
+    }
+
     /** planner factor 가중치. 합이 정확히 1.0(10_000bp)이어야 한다 (docs/03 §9 끝). */
     public record Weights(
             @NotNull BigDecimal practicalImportance,
@@ -232,7 +245,8 @@ public record DevPilotProperties(
             @NotNull BigDecimal continuationBonus,
             @NotNull BigDecimal comebackHardTask,
             @NotNull BigDecimal monotonyThreeDays,
-            @NotNull BigDecimal monotonyFiveDays) {
+            @NotNull BigDecimal monotonyFiveDays,
+            @NotNull BigDecimal redoDue) {
 
         public Modifiers {
             requireBasisPoints(riskHighMust, "modifiers.risk-high-must");
@@ -245,6 +259,7 @@ public record DevPilotProperties(
             requireBasisPoints(comebackHardTask, "modifiers.comeback-hard-task");
             requireBasisPoints(monotonyThreeDays, "modifiers.monotony-three-days");
             requireBasisPoints(monotonyFiveDays, "modifiers.monotony-five-days");
+            requireBasisPoints(redoDue, "modifiers.redo-due");
         }
     }
 

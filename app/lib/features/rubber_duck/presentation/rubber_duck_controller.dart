@@ -21,6 +21,8 @@ final class RubberDuckController extends AsyncNotifier<RubberDuckScreenData> {
     ApiErrorCode.contentTooLarge,
     ApiErrorCode.secretDetectedBlocked,
     ApiErrorCode.aiRefused,
+    // RE-5: 재현 과제가 열려 있는 동안 이 대상만 막힌다. 입력은 그대로 두고 사유를 붙인다
+    ApiErrorCode.aiAssistLockedForRedo,
   };
   static const _newKeyCodes = {ApiErrorCode.aiOutputInvalid, ApiErrorCode.aiTimeout};
 
@@ -87,7 +89,7 @@ final class RubberDuckController extends AsyncNotifier<RubberDuckScreenData> {
       final gone = error.fieldErrors.any(
         (field) => field.code == ApiFieldErrorCode.referenceNotFound,
       );
-      return gone ? const RubberDuckTargetGone() : RubberDuckSendFailed(error);
+      return gone ? const RubberDuckTargetGone() : await _sendFailed(error);
     }
     final sessionId = started.session.id;
     _local.writeActive(sessionId, taskId);

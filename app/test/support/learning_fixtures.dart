@@ -32,6 +32,8 @@ MainTaskView testMainTask({
   TaskStatus status = TaskStatus.planned,
   int estimatedMinutes = 25,
   List<ReasonView> reasons = _reasons,
+  String? redoSourceTaskId,
+  TaskType? redoSourceTaskType,
   int version = 0,
 }) => MainTaskView(
   id: id,
@@ -45,6 +47,8 @@ MainTaskView testMainTask({
   estimatedMinutes: estimatedMinutes,
   status: status,
   reasons: reasons,
+  redoSourceTaskId: redoSourceTaskId,
+  redoSourceTaskType: redoSourceTaskType,
   completedAt: status == TaskStatus.completed ? testNow : null,
   version: version,
 );

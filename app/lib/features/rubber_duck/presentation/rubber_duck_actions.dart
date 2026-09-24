@@ -79,8 +79,9 @@ final class RubberDuckActions {
       switch (error.code) {
         case ApiErrorCode.contentTooLarge ||
             ApiErrorCode.secretDetectedBlocked ||
-            ApiErrorCode.aiRefused:
-          // Shown under the input.
+            ApiErrorCode.aiRefused ||
+            ApiErrorCode.aiAssistLockedForRedo:
+          // Shown under the input (재현 잠금은 사유와 돌아갈 곳까지, docs/06 §5.10 RE-5).
           return;
         case ApiErrorCode.aiOutputInvalid ||
             ApiErrorCode.aiTimeout ||

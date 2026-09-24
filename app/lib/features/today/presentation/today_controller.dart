@@ -19,7 +19,8 @@ final class TodayController extends AsyncNotifier<TodayScreenData> {
   final _createPlanKeys = IdempotencyKeyCache();
 
   /// A status change still owed after its session was finished (docs/02 §4.2).
-  ({String taskId, TaskStatus target, ReadingFeedback? feedback})? _pendingStatus;
+  ({String taskId, TaskStatus target, ReadingFeedback? feedback, bool? redoWithoutAi})?
+  _pendingStatus;
 
   TodayRepository get _today => ref.read(todayRepositoryProvider);
 
@@ -135,6 +136,7 @@ final class TodayController extends AsyncNotifier<TodayScreenData> {
     required String reflection,
     required bool partial,
     ReadingFeedback? readingFeedback,
+    bool? redoWithoutAi,
   }) async {
     final data = state.value;
     final main = data?.mainTask;
@@ -161,6 +163,8 @@ final class TodayController extends AsyncNotifier<TodayScreenData> {
       target: partial ? TaskStatus.deferred : TaskStatus.completed,
       // READ_CODE completion only (docs/05 §8.4); any other request with it is a 400.
       feedback: partial || main.taskType != TaskType.readCode ? null : readingFeedback,
+      // REDO completion only, and there it is required (docs/06 §5.10 RE-6).
+      redoWithoutAi: partial || main.taskType != TaskType.redo ? null : redoWithoutAi,
     );
     return _sendPendingStatus(knownVersion: main.version);
   }
@@ -184,6 +188,7 @@ final class TodayController extends AsyncNotifier<TodayScreenData> {
           pending.target,
           knownVersion: knownVersion,
           readingFeedback: pending.feedback,
+          redoWithoutAi: pending.redoWithoutAi,
         );
       } on ApiException catch (error) {
         if (knownVersion == null || _isReadingWithoutDuck(pending.target, error)) {
@@ -194,6 +199,7 @@ final class TodayController extends AsyncNotifier<TodayScreenData> {
           pending.taskId,
           pending.target,
           readingFeedback: pending.feedback,
+          redoWithoutAi: pending.redoWithoutAi,
         );
       }
       _pendingStatus = null;

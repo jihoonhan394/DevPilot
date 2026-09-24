@@ -17,9 +17,10 @@ import org.jspecify.annotations.Nullable;
  * main 과제의 이유 1~3개 (docs/06 §5.8, BL-TDY-05). 순수 규칙 클래스다(ARCH-12).
  *
  * <ol>
- *   <li>modifier·과제 reason({@code DEADLINE_RISK_MUST}, {@code CONTINUE_YESTERDAY}, {@code
- *       LOW_ENERGY_LIGHT_TASK}, {@code COMEBACK_EASY_START}, {@code READ_REAL_CODE})을 조건이 맞으면 먼저
- *       넣는다.
+ *   <li>modifier·과제 reason({@code REDO_WITHOUT_AI}, {@code DEADLINE_RISK_MUST}, {@code
+ *       CONTINUE_YESTERDAY}, {@code LOW_ENERGY_LIGHT_TASK}, {@code COMEBACK_EASY_START}, {@code
+ *       READ_REAL_CODE})을 조건이 맞으면 먼저 넣는다. 그 안에서 {@code REDO_WITHOUT_AI}가 가장 앞이다 — 과제의 성격 자체를 설명하기
+ *       때문이다.
  *   <li>그다음 factor 기여도({@code factor × WEIGHT_BP})가 큰 순서로 조건을 만족하는 reason을 넣는다. 전체 최대 3개.
  *   <li>하나도 없으면 기여도 1위 factor의 reason을 조건 없이 넣는다(최소 1개 보장, AC-02).
  * </ol>
@@ -58,6 +59,9 @@ public final class ReasonTemplates {
 
     private static List<ReasonCode> modifierReasons(ReasonInput input) {
         List<ReasonCode> reasons = new ArrayList<>();
+        if (input.selectedType() == TaskType.REDO) {
+            reasons.add(ReasonCode.REDO_WITHOUT_AI);
+        }
         if (input.deadlineRiskMust()) {
             reasons.add(ReasonCode.DEADLINE_RISK_MUST);
         }
@@ -192,6 +196,10 @@ public final class ReasonTemplates {
                     params.repoName() == null
                             ? "같은 문제를 실제 코드에서 어떻게 풀었는지 먼저 봅니다"
                             : params.repoName() + "에서 같은 문제를 어떻게 풀었는지 먼저 봅니다";
+            case REDO_WITHOUT_AI ->
+                    params.redoDaysAfter() == null
+                            ? "며칠 전에 한 것을 AI 없이 혼자 다시 만들어 확인합니다"
+                            : params.redoDaysAfter() + "일 전에 한 것을 AI 없이 혼자 다시 만들어 확인합니다";
             case DEADLINE_RISK_MUST -> "마감 위험이 높아 필수 항목 우선";
             case CONTINUE_YESTERDAY -> "어제 하던 과제 이어하기";
             case LOW_ENERGY_LIGHT_TASK -> "컨디션에 맞춘 가벼운 과제";
@@ -259,9 +267,11 @@ public final class ReasonTemplates {
             @Nullable Integer planningImplementation,
             @Nullable Integer targetImplementation,
             @Nullable Integer overdueDays,
-            @Nullable String repoName) {
+            @Nullable String repoName,
+            @Nullable Integer redoDaysAfter) {
 
         /** 변수 없음. */
-        public static final ReasonParams EMPTY = new ReasonParams(null, null, null, null, null);
+        public static final ReasonParams EMPTY =
+                new ReasonParams(null, null, null, null, null, null);
     }
 }

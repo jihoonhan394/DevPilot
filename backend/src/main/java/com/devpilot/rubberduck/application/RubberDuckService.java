@@ -89,6 +89,7 @@ public class RubberDuckService {
         ResolvedTarget target =
                 queries.resolveTarget(
                         userId, command.targetType(), command.targetId(), command.conceptKey());
+        aiSupport.requireUnlockedForRedo(userId, command.targetType(), target);
         UUID skillId = queries.resolveSkillId(command.skillCode(), target);
         return Objects.requireNonNull(
                 transactions.execute(status -> startSession(userId, command, target, skillId)));

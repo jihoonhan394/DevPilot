@@ -109,7 +109,8 @@ public class DailyPlanComposer {
                         new Context(risk == null ? RiskLevel.LOW : risk, energy, comebackMode),
                         due);
         ProposalOptionCollector.ProposalOptions options =
-                proposalOptionCollector.collect(userId, today, user.zoneId(), user.dayStartHour());
+                proposalOptionCollector.collect(
+                        userId, today, user.zoneId(), user.dayStartHour(), inputs.skillIdsByCode());
         Chosen chosen = chooseTasks(inputs, options, allocation);
         return new Composition(
                 plan.id(), risk, comebackMode, allocation, chosen.main(), chosen.extras());
@@ -208,7 +209,8 @@ public class DailyPlanComposer {
                                 options.readingsFor(code),
                                 options.conceptReadingsFor(code),
                                 inputs.sideProject(),
-                                options.projectGuideFor(code)));
+                                options.projectGuideFor(code),
+                                options.redoFor(code)));
         ScoredCandidate scored =
                 scoring.score(
                         new ScoreInput(
@@ -270,7 +272,8 @@ public class DailyPlanComposer {
                         chosen.skill().planning().implementation(),
                         target == null ? null : target.targets().implementation(),
                         overdue,
-                        fitted.repoName());
+                        fitted.repoName(),
+                        fitted.redoDaysAfter());
         ScoreBreakdown breakdown =
                 new ScoreBreakdown(
                         PlannerScoring.PLANNER_VERSION,
@@ -287,6 +290,7 @@ public class DailyPlanComposer {
                 fitted.challengeId(),
                 fitted.sideProjectId(),
                 fitted.readingKey(),
+                fitted.redoSourceTaskId(),
                 fitted.title(),
                 fitted.description(),
                 fitted.estimatedMinutes(),

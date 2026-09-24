@@ -1725,7 +1725,7 @@
 | 관련 요구사항 | FR-28 (RE-1~RE-8 = `06` §5.10, HL-9 = `06` §9.1, 독립 구현 증거 = `06` §7.2) |
 | Sprint | S4 |
 | 검증 수준 | unit(vector), integration, API E2E, UI |
-| 테스트 클래스 | `RedoTaskPolicyTest`, `TaskProposalPolicyTest`, `PlannerScoringTest`, `ReasonTemplatesTest`, `SkillLevelRulesTest`, `TodayPlanServiceIntegrationTest`, `RedoLockServiceIntegrationTest`, `InvariantConstraintIntegrationTest`, `RedoTaskFlowTest`, `today_redo_test.dart`, `redo_lock_test.dart` |
+| 테스트 클래스 | `RedoTaskPolicyTest`, `TaskProposalPolicyTest`, `PlannerScoringTest`, `ReasonTemplatesTest`, `SkillLevelRulesTest`, `RedoTaskIntegrationTest`, `InvariantConstraintIntegrationTest`, `today_flow_test.dart`, `attempt_flow_test.dart`, `rubber_duck_screen_test.dart` |
 
 **S1. 제안 창 (RE-2)** — 설정 `min-days-after = 3`, `max-days-after = 7`, today = `D`.
 

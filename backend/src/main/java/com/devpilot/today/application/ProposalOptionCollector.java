@@ -7,7 +7,13 @@ import com.devpilot.integration.ai.budget.AiBudgetGuard;
 import com.devpilot.today.domain.ConceptReading;
 import com.devpilot.today.domain.ConceptReadingSelection;
 import com.devpilot.today.domain.CuratedReading;
+import com.devpilot.today.domain.LearningTask;
 import com.devpilot.today.domain.Lesson;
+import com.devpilot.today.domain.RedoTaskPolicy;
+import com.devpilot.today.domain.RedoTaskPolicy.RedoAttempt;
+import com.devpilot.today.domain.RedoTaskPolicy.RedoCandidate;
+import com.devpilot.today.domain.RedoTaskPolicy.RedoOrigin;
+import com.devpilot.today.domain.RedoTaskPolicy.RedoSettings;
 import com.devpilot.today.domain.TaskProposalPolicy.ChallengeOption;
 import com.devpilot.today.domain.TaskProposalPolicy.ReadingOption;
 import com.devpilot.today.infrastructure.LearningTaskRepository;
@@ -16,9 +22,12 @@ import com.devpilot.training.application.ChallengeQueryService.ChallengeCandidat
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -49,7 +58,9 @@ class ProposalOptionCollector {
     private final LessonRegistry lessonRegistry;
     private final LearningTaskRepository learningTaskRepository;
     private final ChallengeQueryService challengeQueryService;
+    private final RedoTaskPolicy redoTaskPolicy;
     private final int challengeExclusionDays;
+    private final long redoOriginLookbackDays;
 
     ProposalOptionCollector(
             AiBudgetGuard aiBudgetGuard,
@@ -65,12 +76,28 @@ class ProposalOptionCollector {
         this.lessonRegistry = lessonRegistry;
         this.learningTaskRepository = learningTaskRepository;
         this.challengeQueryService = challengeQueryService;
+        DevPilotProperties.Redo redo = properties.planner().redo();
+        this.redoTaskPolicy =
+                new RedoTaskPolicy(
+                        new RedoSettings(
+                                redo.minDaysAfter(), redo.maxDaysAfter(), redo.maxAttempts()));
         this.challengeExclusionDays = properties.planner().challengeRepeatExclusionDays();
+        // 실패한 재현이 창을 뒤로 미루므로(RE-2) 원본은 그보다 훨씬 오래된 것일 수 있다.
+        // 시도는 max-attempts로 막혀 있어 사슬 길이가 정해진다: 원본 + 시도마다 최대 max-days-after.
+        this.redoOriginLookbackDays = (long) redo.maxDaysAfter() * (redo.maxAttempts() + 1) + 1;
     }
 
-    ProposalOptions collect(UUID userId, LocalDate today, ZoneId zone, int dayStartHour) {
+    ProposalOptions collect(
+            UUID userId,
+            LocalDate today,
+            ZoneId zone,
+            int dayStartHour,
+            Map<String, UUID> skillIdsByCode) {
         AiStatus status = aiBudgetGuard.status();
         boolean aiAvailable = status != AiStatus.DISABLED && status != AiStatus.BALANCE_EXHAUSTED;
+        // 재현 과제는 AI를 부르지 않으므로 AI 상태와 무관하게 고른다 (docs/06 §5.10 RE-8)
+        Map<String, RedoCandidate> redos =
+                redoCandidates(userId, today, zone, dayStartHour, skillIdsByCode);
         Set<String> excluded = excludedReadingKeys(userId, today);
         List<ConceptReading> conceptReadings =
                 conceptReadingRegistry.active().stream()
@@ -79,7 +106,7 @@ class ProposalOptionCollector {
                         .toList();
         if (!aiAvailable) {
             return new ProposalOptions(
-                    false, List.of(), List.of(), conceptReadings, lessonRegistry);
+                    false, List.of(), List.of(), conceptReadings, lessonRegistry, redos);
         }
         List<CuratedReading> readings =
                 curatedReadingRegistry.active().stream()
@@ -94,7 +121,73 @@ class ProposalOptionCollector {
                 readings,
                 challengeQueryService.practiceCandidates(userId, recentSince),
                 conceptReadings,
-                lessonRegistry);
+                lessonRegistry,
+                redos);
+    }
+
+    /**
+     * 오늘 걸 재현 후보 (docs/06 §5.10 "제안 절차"). 저장소에서 읽어 plan-day로 바꾼 뒤 순수 규칙에 넘긴다.
+     *
+     * <p>skill code를 모르는 과제(트랙에서 빠진 skill 등)는 넘기지 않는다 — 후보 skill과 맞출 수 없기 때문이다.
+     */
+    private Map<String, RedoCandidate> redoCandidates(
+            UUID userId,
+            LocalDate today,
+            ZoneId zone,
+            int dayStartHour,
+            Map<String, UUID> skillIdsByCode) {
+        Instant from =
+                PlanDayCalculator.planDayStart(
+                        today.minusDays(redoOriginLookbackDays), zone, dayStartHour);
+        Map<UUID, String> codeBySkillId = new HashMap<>();
+        skillIdsByCode.forEach((code, id) -> codeBySkillId.put(id, code));
+
+        List<LearningTask> completed =
+                learningTaskRepository.findRedoOriginCandidates(userId, from);
+        Map<UUID, Integer> difficulties =
+                challengeQueryService.difficultiesByIds(challengeIdsOf(completed));
+        List<RedoOrigin> origins = new ArrayList<>();
+        for (LearningTask task : completed) {
+            Instant completedAt = task.getCompletedAt();
+            if (completedAt == null) {
+                continue;
+            }
+            UUID challengeId = task.getChallengeId();
+            origins.add(
+                    new RedoOrigin(
+                            task.getId(),
+                            task.getSkillId() == null ? null : codeBySkillId.get(task.getSkillId()),
+                            task.getTaskType(),
+                            task.getTitle(),
+                            task.getDescription(),
+                            task.getEstimatedMinutes(),
+                            challengeId == null ? null : difficulties.get(challengeId),
+                            PlanDayCalculator.planDate(completedAt, zone, dayStartHour)));
+        }
+        List<RedoAttempt> attempts = new ArrayList<>();
+        for (LearningTask redo : learningTaskRepository.findRedoTasks(userId)) {
+            Instant completedAt = redo.getCompletedAt();
+            attempts.add(
+                    new RedoAttempt(
+                            redo.getRedoSourceTaskId(),
+                            redo.getStatus(),
+                            completedAt == null
+                                    ? null
+                                    : PlanDayCalculator.planDate(completedAt, zone, dayStartHour),
+                            redo.getRedoWithoutAi()));
+        }
+        return redoTaskPolicy.selectBySkill(today, origins, attempts);
+    }
+
+    private static Set<UUID> challengeIdsOf(List<LearningTask> tasks) {
+        Set<UUID> ids = new HashSet<>();
+        for (LearningTask task : tasks) {
+            UUID challengeId = task.getChallengeId();
+            if (challengeId != null) {
+                ids.add(challengeId);
+            }
+        }
+        return ids;
     }
 
     /** 완료했거나 최근 14 plan-day 안에 제안된 reading key (코드 읽기·개념 읽기 공통, docs/06 §5.3). */
@@ -113,12 +206,19 @@ class ProposalOptionCollector {
             List<CuratedReading> readings,
             List<ChallengeCandidate> challenges,
             List<ConceptReading> conceptReadings,
-            LessonRegistry lessons) {
+            LessonRegistry lessons,
+            Map<String, RedoCandidate> redosBySkillCode) {
 
         ProposalOptions {
             readings = List.copyOf(readings);
             challenges = List.copyOf(challenges);
             conceptReadings = List.copyOf(conceptReadings);
+            redosBySkillCode = Map.copyOf(redosBySkillCode);
+        }
+
+        /** 오늘 이 skill에 걸 재현 후보 (docs/06 §5.10). 없으면 null이고 제안은 1번 분기부터 간다. */
+        @Nullable RedoCandidate redoFor(String skillCode) {
+            return redosBySkillCode.get(skillCode);
         }
 
         /** 해당 skill code를 가진 reading 후보 (key ASC). */

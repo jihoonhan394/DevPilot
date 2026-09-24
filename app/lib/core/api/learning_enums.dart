@@ -35,6 +35,8 @@ enum TaskType {
   readCode,
   @JsonValue('EXPLAIN')
   explain,
+  @JsonValue('REDO')
+  redo,
   unknown,
 }
 

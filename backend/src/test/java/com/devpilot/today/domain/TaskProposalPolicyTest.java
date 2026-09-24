@@ -13,11 +13,13 @@ import com.devpilot.today.domain.TaskProposalPolicy.ReadingOption;
 import com.devpilot.today.domain.TaskProposalPolicy.SideProjectRef;
 import com.devpilot.today.domain.TaskProposalPolicy.SkillContext;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -32,6 +34,8 @@ class TaskProposalPolicyTest {
 
     private static final String VECTOR_FILE = "06-05-task-proposal.yaml";
     private static final UUID PROJECT_ID = UUID.fromString("00000000-0000-0000-0000-00000000000a");
+    private static final UUID REDO_SOURCE_ID =
+            UUID.fromString("00000000-0000-0000-0000-00000000000b");
 
     /** {@code devpilot.tracks.JAVA_BACKEND} (docs/06 §5.3 표). track을 적지 않은 vector가 쓴다. */
     private static final TrackDefaults BASE_TRACK = new TrackDefaults(5, 1, 1, false);
@@ -66,6 +70,11 @@ class TaskProposalPolicyTest {
             assertThat(proposal.sideProjectId()).as(id).isEqualTo(PROJECT_ID);
         } else {
             assertThat(proposal.sideProjectId()).as(id).isNull();
+        }
+        if (proposal.taskType() == TaskType.REDO) {
+            assertThat(proposal.redoSourceTaskId()).as(id).isEqualTo(REDO_SOURCE_ID);
+        } else {
+            assertThat(proposal.redoSourceTaskId()).as(id).isNull();
         }
     }
 
@@ -147,6 +156,7 @@ class TaskProposalPolicyTest {
                 List.of(new ReadingOption("READ.R.A.001", "Repo", "src/A.java", 1, 40, 15, "질문")),
                 List.of(),
                 null,
+                null,
                 null);
     }
 
@@ -178,7 +188,34 @@ class TaskProposalPolicyTest {
                 readings(row.get("readings")),
                 List.of(),
                 sideProject == null ? null : new SideProjectRef(PROJECT_ID, sideProject),
-                (String) row.get("projectGuide"));
+                (String) row.get("projectGuide"),
+                redoCandidate(row.get("redo")));
+    }
+
+    /**
+     * vector의 {@code redo} 값 → 0번 분기 입력 (docs/06 §5.3). 적지 않으면 후보가 없다.
+     *
+     * <p>{@code {estimated, difficulty, daysAfter}}만 적는다 — 어떤 원본이 후보가 되는지는 {@code RedoTaskPolicy}가
+     * 정하고 여기서는 그 결과를 받는다.
+     */
+    @SuppressWarnings("unchecked")
+    private static RedoTaskPolicy.@Nullable RedoCandidate redoCandidate(@Nullable Object value) {
+        if (value == null) {
+            return null;
+        }
+        Map<String, Object> redo = (Map<String, Object>) value;
+        int daysAfter = (Integer) redo.get("daysAfter");
+        return new RedoTaskPolicy.RedoCandidate(
+                new RedoTaskPolicy.RedoOrigin(
+                        REDO_SOURCE_ID,
+                        "S",
+                        TaskType.CHALLENGE,
+                        "주문 취소 만들기",
+                        "설명",
+                        (Integer) redo.get("estimated"),
+                        (Integer) redo.get("difficulty"),
+                        LocalDate.parse("2026-10-10").minusDays(daysAfter)),
+                daysAfter);
     }
 
     private static TrackDefaults track(Object value) {

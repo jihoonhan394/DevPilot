@@ -236,6 +236,35 @@ class TimeAllocatorTest {
         return new ExtraCandidate(skill, proposal(skill, row), challenges, readings);
     }
 
+    /**
+     * 예산을 넘는 재현 과제는 오늘 제안하지 않는다 (docs/06 §5.6 RE-4).
+     *
+     * <p>같은 것을 다시 만드는 과제라 줄일 수 없다. 창(RE-2)은 며칠 더 열려 있으니 내일 다시 걸린다.
+     */
+    @Test
+    void shouldDropARedoThatDoesNotFitAndProposeSomethingElse() {
+        SkillContext skill = skill("S");
+        Allocation allocation = allocator.allocate(40, 0, false);
+        Proposal redo =
+                new Proposal(
+                        TaskType.REDO,
+                        60,
+                        3,
+                        "주문 취소 만들기 혼자 다시 만들기",
+                        "설명",
+                        null,
+                        null,
+                        null,
+                        null,
+                        UUID.fromString("00000000-0000-0000-0000-00000000000b"),
+                        4);
+
+        Proposal fitted = allocator.fit(redo, allocation, skill, List.of(), List.of());
+
+        assertThat(fitted.taskType()).isEqualTo(TaskType.EXPLAIN);
+        assertThat(fitted.redoSourceTaskId()).isNull();
+    }
+
     /** vector 행의 {@code type}·{@code estimated}·재료 key로 §5.3이 만들었을 제안을 그대로 만든다. */
     private static Proposal proposal(SkillContext skill, Map<String, Object> row) {
         TaskType type = TaskType.valueOf((String) row.get("type"));
@@ -252,7 +281,9 @@ class TimeAllocatorTest {
                 seedKey == null ? null : challengeId(seedKey),
                 readingKey,
                 null,
-                readingKey == null ? null : "Repo");
+                readingKey == null ? null : "Repo",
+                null,
+                null);
     }
 
     private static SkillContext skill(String code) {

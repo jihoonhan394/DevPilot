@@ -83,7 +83,7 @@ Future<bool> openReviewRecordSheet(
       initialMinutes: SessionTimeRules.defaultActualMinutes(startedAt, now),
       maxMinutes: SessionTimeRules.maxActualMinutes(startedAt, now),
       // 복습 세션은 묻지 않는다 — 안다/모른다는 카드마다 이미 답했다.
-      onSubmit: (minutes, reflection, _, {understood}) => container
+      onSubmit: (minutes, reflection, _, {understood, redoWithoutAi}) => container
           .read(provider.notifier)
           .record(actualMinutes: minutes, reflection: reflection, partial: partial),
     );

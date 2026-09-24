@@ -117,6 +117,7 @@ extension TaskTypeLabel on TaskType {
     TaskType.reading => l10n.enumTaskTypeReading,
     TaskType.readCode => l10n.enumTaskTypeReadCode,
     TaskType.explain => l10n.enumTaskTypeExplain,
+    TaskType.redo => l10n.enumTaskTypeRedo,
     TaskType.unknown => l10n.enumUnknown,
   };
 }

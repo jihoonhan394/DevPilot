@@ -34,7 +34,8 @@ public final class TodayRuleSettings {
                         bp(modifiers.continuationBonus()),
                         bp(modifiers.comebackHardTask()),
                         bp(modifiers.monotonyThreeDays()),
-                        bp(modifiers.monotonyFiveDays())),
+                        bp(modifiers.monotonyFiveDays()),
+                        bp(modifiers.redoDue())),
                 new PlannerScoring.FactorSettings(
                         FixedPointMath.toMicros(planner.defaultPracticalImportance()),
                         FixedPointMath.toMicros(planner.minPrerequisiteReadiness()),

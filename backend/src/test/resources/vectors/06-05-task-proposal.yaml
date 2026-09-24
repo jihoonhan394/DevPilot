@@ -1,5 +1,6 @@
-# source: 06 §5.3, rows: 19
-# 분기 5개(CHALLENGE·READ_CODE·READING·PROJECT_TASK·EXPLAIN) + d−1 fallback + 복귀 모드 + ACTIVE 프로젝트 없음 + 제안 분기 T-1~T-5
+# source: 06 §5.3, rows: 21
+# 분기 6개(REDO·CHALLENGE·READ_CODE·READING·PROJECT_TASK·EXPLAIN) + d−1 fallback + 복귀 모드 + ACTIVE 프로젝트 없음
+# + 제안 분기 T-1~T-5
 # + 학습 트랙 T-6~T-9 + CHALLENGE 문턱 T-10·T-11(ADR-045).
 # track을 적지 않으면 JAVA_BACKEND(maxDifficulty 5, minKnowledge 1, challengeMinKnowledge 1)다.
 # planning은 K|I. challenges·readings는 호출자가 조건(14 plan-day 안 시도·제안, 해결, 완료)을 거른 뒤의 후보다.
@@ -239,3 +240,27 @@ vectors:
       - { seedKey: JAVA.A, difficulty: 1, estimated: 20 }
     readings: []
     expected: { type: CHALLENGE, estimated: 20, difficulty: 1, challengeSeedKey: JAVA.A }
+  - id: V20
+    case: 재현 후보가 있으면 0번 분기 — CHALLENGE 조건을 모두 만족해도 REDO다
+    planning: "3|2"
+    energy: NORMAL
+    comebackMode: false
+    aiAvailable: true
+    projectNeed: false
+    challenges:
+      - { seedKey: PRACTICE.S.L3.001, difficulty: 3, estimated: 30 }
+    readings:
+      - { key: READ.R.A.001, estimated: 15 }
+    redo: { estimated: 35, difficulty: 2, daysAfter: 4 }
+    expected: { type: REDO, estimated: 35, difficulty: 2, title: "주문 취소 만들기 혼자 다시 만들기" }
+  - id: V21
+    case: 재현 과제는 AI 상태와 무관하다 (RE-8)
+    planning: "3|2"
+    energy: NORMAL
+    comebackMode: false
+    aiAvailable: false
+    projectNeed: false
+    challenges: []
+    readings: []
+    redo: { estimated: 30, difficulty: 3, daysAfter: 6 }
+    expected: { type: REDO, estimated: 30, difficulty: 3 }

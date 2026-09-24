@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:devpilot_app/app/routes.dart';
 import 'package:devpilot_app/core/api/api_enums.dart';
+import 'package:devpilot_app/core/api/api_exception.dart';
 import 'package:devpilot_app/core/api/error_message_mapper.dart';
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/widgets/ai_status_widgets.dart';
@@ -20,6 +22,7 @@ import 'package:devpilot_app/features/training/presentation/training_labels.dart
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 /// ② `HintLadder` of a challenge attempt (docs/02 §6.2): disclosed rungs can be read, only the
 /// next rung has a button, AI rungs are blocked while the AI is off.
@@ -66,7 +69,9 @@ class HintLadderView extends ConsumerWidget {
           key: const Key('attempt.hintImpact'),
           style: Theme.of(context).textTheme.bodySmall,
         ),
-        if (hintError != null) InlineError(message: messageFor(hintError, l10n)),
+        // 재현 잠금은 오류가 아니라 지금 그렇게 하기로 한 것이다 — 사유는 그 단계 아래에 붙인다 (RE-5)
+        if (hintError != null && !_lockedForRedo(hintError))
+          InlineError(message: messageFor(hintError, l10n)),
       ],
     );
   }
@@ -185,8 +190,10 @@ class _NextRung extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final aiLevel = HintLadderRules.isAiLevel(level);
     final blockedByAi = aiLevel && !aiStatus.allowsAi;
+    // RE-5: 이 문제를 혼자 다시 만드는 중이다. AI 불가와 다르게 배너가 아니라 이 단계에서만 막힌다
+    final lockedForRedo = _lockedForRedo(data.hintError);
     final inFlight = data.hintInFlight == level;
-    final enabled = !data.busy && !data.closed && !blockedByAi;
+    final enabled = !data.busy && !data.closed && !blockedByAi && !lockedForRedo;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -218,8 +225,23 @@ class _NextRung extends ConsumerWidget {
             ),
           ),
         if (blockedByAi) Text(l10n.trainingHintAiOff, key: const Key('attempt.hintAiOff')),
-        if (aiLevel && !blockedByAi) BudgetWarningNote(status: aiStatus),
+        if (lockedForRedo) ...[
+          Text(l10n.errorAiAssistLockedForRedo, key: const Key('attempt.hintRedoLocked')),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              key: const Key('attempt.hintRedoLockedGoToday'),
+              onPressed: () => context.go(AppRoutes.today),
+              child: Text(l10n.commonGoToday),
+            ),
+          ),
+        ],
+        if (aiLevel && !blockedByAi && !lockedForRedo) BudgetWarningNote(status: aiStatus),
       ],
     );
   }
 }
+
+/// 그 오류가 재현 잠금인가 (docs/06 §5.10 RE-5).
+bool _lockedForRedo(Object? error) =>
+    error is ApiException && error.code == ApiErrorCode.aiAssistLockedForRedo;

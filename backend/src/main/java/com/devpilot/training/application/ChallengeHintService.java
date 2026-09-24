@@ -124,6 +124,7 @@ public class ChallengeHintService {
                                         new com.devpilot.common.error.NotFoundException(
                                                 ErrorCode.RESOURCE_NOT_FOUND, "attempt not found"));
         attempt.requireNotAbandoned();
+        hintService.requireChallengeUnlocked(userId, attempt.getChallengeId());
         Challenge challenge = challengeQueryService.require(userId, attempt.getChallengeId());
         List<DisclosedHint> disclosures =
                 hintService.disclosures(userId, HintTargetType.CHALLENGE_ATTEMPT, attemptId);

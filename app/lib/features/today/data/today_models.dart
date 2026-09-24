@@ -48,6 +48,13 @@ abstract class MainTaskView with _$MainTaskView {
     String? challengeId,
     String? sideProjectId,
     String? readingKey,
+
+    /// 며칠 전에 끝낸 원본 과제 (docs/06 §5.10 RE-1). `taskType`이 REDO일 때만 있다.
+    String? redoSourceTaskId,
+    @JsonKey(unknownEnumValue: TaskType.unknown) TaskType? redoSourceTaskType,
+
+    /// "AI 도움 없이 끝냈나요?"의 답 (RE-6). 완료한 REDO에만 있다.
+    bool? redoWithoutAi,
     required String title,
     String? description,
 
@@ -134,13 +141,15 @@ abstract class TodayGenerateRequest with _$TodayGenerateRequest {
       _$TodayGenerateRequestFromJson(json);
 }
 
-/// `TaskStatusPatchRequest` (docs/05 §8.4). [readingFeedback] is sent only when chosen, only when
+/// `TaskStatusPatchRequest` (docs/05 §8.4). [redoWithoutAi] is required when a REDO task is
+/// completed and rejected elsewhere. [readingFeedback] is sent only when chosen, only when
 /// a READ_CODE task is completed; otherwise the field is left out of the body.
 @freezed
 abstract class TaskStatusPatchRequest with _$TaskStatusPatchRequest {
   const factory TaskStatusPatchRequest({
     required TaskStatus status,
     @JsonKey(includeIfNull: false) ReadingFeedback? readingFeedback,
+    @JsonKey(includeIfNull: false) bool? redoWithoutAi,
     required int version,
   }) = _TaskStatusPatchRequest;
 

@@ -2,6 +2,7 @@ package com.devpilot.today.infrastructure;
 
 import com.devpilot.today.domain.LearningTask;
 import com.devpilot.today.domain.TaskStatus;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
@@ -29,6 +30,29 @@ public interface LearningTaskRepository extends JpaRepository<LearningTask, UUID
     /** daily plan들의 main 과제 (docs/06 §5.5 어제·그제 main). */
     List<LearningTask> findByDailyPlanIdInAndMainTrue(Collection<UUID> dailyPlanIds);
 
+    /** 재현 후보가 될 수 있는 최근 완료 과제 (docs/06 §5.10 "제안 절차" 1번). 창보다 하루 넉넉히 읽어 plan-day 경계에서 놓치지 않는다. */
+    @Query(
+            """
+            select t from LearningTask t
+             where t.userId = :userId
+               and t.status = com.devpilot.today.domain.TaskStatus.COMPLETED
+               and t.taskType in (com.devpilot.today.domain.TaskType.CHALLENGE,
+                                  com.devpilot.today.domain.TaskType.PROJECT_TASK)
+               and t.completedAt >= :from
+            """)
+    List<LearningTask> findRedoOriginCandidates(
+            @Param("userId") UUID userId, @Param("from") Instant from);
+
+    /** 그 사용자의 모든 재현 과제 (상태 무관). 시도 횟수와 열림 여부를 세는 데 쓴다 (RE-3). */
+    @Query(
+            """
+            select t from LearningTask t
+             where t.userId = :userId
+               and t.taskType = com.devpilot.today.domain.TaskType.REDO
+               and t.redoSourceTaskId is not null
+            """)
+    List<LearningTask> findRedoTasks(@Param("userId") UUID userId);
+
     /** 사용자가 {@code COMPLETED}한 {@code READ_CODE} 과제의 reading key (docs/06 §5.3 reading 선택). */
     @Query(
             """
@@ -54,4 +78,20 @@ public interface LearningTaskRepository extends JpaRepository<LearningTask, UUID
             @Param("userId") UUID userId,
             @Param("from") LocalDate from,
             @Param("today") LocalDate today);
+
+    /**
+     * 열려 있는 재현 과제가 가리키는 <b>원본</b> 과제 (docs/06 §5.10 RE-5). 그 원본의 challenge·사이드 프로젝트가 AI 지원 잠금 대상이다.
+     */
+    @Query(
+            """
+            select o from LearningTask o
+             where o.userId = :userId
+               and o.id in (select r.redoSourceTaskId from LearningTask r
+                             where r.userId = :userId
+                               and r.taskType = com.devpilot.today.domain.TaskType.REDO
+                               and r.redoSourceTaskId is not null
+                               and r.status in (com.devpilot.today.domain.TaskStatus.PLANNED,
+                                                com.devpilot.today.domain.TaskStatus.IN_PROGRESS))
+            """)
+    List<LearningTask> findOpenRedoOriginals(@Param("userId") UUID userId);
 }

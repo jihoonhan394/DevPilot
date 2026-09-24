@@ -53,25 +53,20 @@ public final class TaskProposalPolicy {
         SkillContext skill = input.skill();
         AxisLevels planning = skill.planning();
         TrackDefaults track = input.trackDefaults();
+        // 0. 재현 과제가 걸려 있으면 그것이 오늘의 main이다 (docs/06 §5.10). AI를 쓰지 않으므로
+        // 예산이 바닥나도 나온다 — 혼자 할 수 있는지 확인하는 것이 이 과제의 목적이다.
+        RedoTaskPolicy.RedoCandidate redo = input.redoCandidate();
+        if (redo != null) {
+            return redo(redo);
+        }
         int difficulty = Math.clamp(planning.implementation() + 1L, 1, track.maxTaskDifficulty());
         if (input.comebackMode()) {
             difficulty = Math.min(difficulty, COMEBACK_MAX_DIFFICULTY);
         }
         if (input.aiAvailable()) {
-            // ADR-045: 개념을 한 번도 안 본 skill에는 문제를 내지 않는다. 코드 읽기에만 문턱이 있고
-            // 문제 풀기에는 없으면, 지식 0인 학습자가 어디에 쓰는지 모른 채 답만 맞히게 된다.
-            Optional<ChallengeOption> challenge =
-                    planning.knowledge() >= track.challengeMinKnowledge()
-                            ? chooseChallenge(input.challenges(), difficulty)
-                            : Optional.empty();
-            if (challenge.isPresent()) {
-                return challenge(challenge.get());
-            }
-            if (planning.knowledge() >= track.readCodeMinKnowledge()) {
-                Optional<ReadingOption> reading = firstReading(input.readings());
-                if (reading.isPresent()) {
-                    return readCode(reading.get());
-                }
+            Optional<Proposal> withAi = proposeWithAi(input, difficulty);
+            if (withAi.isPresent()) {
+                return withAi.get();
             }
         }
         if (planning.knowledge() < READING_MAX_KNOWLEDGE) {
@@ -84,6 +79,28 @@ public final class TaskProposalPolicy {
             return projectTask(skill, project, input.projectGuide());
         }
         return explain(skill);
+    }
+
+    /**
+     * AI를 쓸 수 있을 때의 1·2번 분기 (docs/06 §5.3). 둘 다 고를 수 없으면 비어 있고, 호출자가 아래 분기로 이어 간다.
+     *
+     * <p>ADR-045: 개념을 한 번도 안 본 skill에는 문제를 내지 않는다. 코드 읽기에만 문턱이 있고 문제 풀기에는 없으면, 지식 0인 학습자가 어디에 쓰는지
+     * 모른 채 답만 맞히게 된다.
+     */
+    private static Optional<Proposal> proposeWithAi(ProposalInput input, int difficulty) {
+        AxisLevels planning = input.skill().planning();
+        TrackDefaults track = input.trackDefaults();
+        Optional<ChallengeOption> challenge =
+                planning.knowledge() >= track.challengeMinKnowledge()
+                        ? chooseChallenge(input.challenges(), difficulty)
+                        : Optional.empty();
+        if (challenge.isPresent()) {
+            return Optional.of(challenge(challenge.get()));
+        }
+        if (planning.knowledge() < track.readCodeMinKnowledge()) {
+            return Optional.empty();
+        }
+        return firstReading(input.readings()).map(TaskProposalPolicy::readCode);
     }
 
     /** difficulty d, 없으면 d−1(≥ 1). 같은 difficulty 안에서는 seed_key ASC(null 뒤) → id ASC. */
@@ -142,6 +159,8 @@ public final class TaskProposalPolicy {
                 option.id(),
                 null,
                 null,
+                null,
+                null,
                 null);
     }
 
@@ -167,7 +186,9 @@ public final class TaskProposalPolicy {
                 null,
                 reading.key(),
                 null,
-                reading.repoName());
+                reading.repoName(),
+                null,
+                null);
     }
 
     /** READING (개념 읽기 후보 없음): {@code {skill.name} 핵심 개념 정리}. 자료를 가리키지 못하는 지금까지의 과제다. */
@@ -178,6 +199,8 @@ public final class TaskProposalPolicy {
                 READING_DIFFICULTY,
                 truncate(skill.name() + " 핵심 개념 정리", TITLE_MAX),
                 describe(skill, "공식 문서를 읽고 핵심 3가지를 스스로 적어 보세요."),
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -198,6 +221,8 @@ public final class TaskProposalPolicy {
                 truncate(material.whyRead() + "\n읽고 나서 핵심 3가지를 스스로 적어 보세요.", DESCRIPTION_MAX),
                 null,
                 material.key(),
+                null,
+                null,
                 null,
                 null);
     }
@@ -223,7 +248,48 @@ public final class TaskProposalPolicy {
                 null,
                 null,
                 project.id(),
+                null,
+                null,
                 null);
+    }
+
+    /**
+     * REDO (docs/06 §5.10 0번 분기): 며칠 전에 끝낸 것을 <b>AI 없이 처음부터 다시</b> 만든다.
+     *
+     * <p>예상 시간과 난이도는 원본 그대로다(RE-4) — 같은 것을 다시 만드는 과제라 줄일 수 없다.
+     */
+    static Proposal redo(RedoTaskPolicy.RedoCandidate candidate) {
+        RedoTaskPolicy.RedoOrigin origin = candidate.origin();
+        return new Proposal(
+                TaskType.REDO,
+                origin.estimatedMinutes(),
+                originalDifficulty(origin.taskType(), origin.difficulty()),
+                truncate(origin.title() + " 혼자 다시 만들기", TITLE_MAX),
+                truncate(
+                        candidate.daysAfter()
+                                + "일 전에 한 과제입니다. 이번에는 AI 도움 없이 처음부터 혼자 다시 만들어 보세요."
+                                + " 막히면 기록해 두고, 끝나고 혼자 해냈는지 답해 주세요.",
+                        DESCRIPTION_MAX),
+                null,
+                null,
+                null,
+                null,
+                origin.taskId(),
+                candidate.daysAfter());
+    }
+
+    /**
+     * 원본 과제의 difficulty (docs/06 §5.3). {@code CHALLENGE}는 그 문제의 난이도이고, {@code PROJECT_TASK}는 제안할 때
+     * 쓴 고정값이다. 문제가 지워졌으면 EXPLAIN과 같은 난이도로 둔다.
+     *
+     * <p>과제 행에 난이도를 저장하지 않아(docs/04 §5.1) 재현 과제를 만들 때도, 완료 이벤트를 남길 때도 여기서 다시 정한다.
+     */
+    public static int originalDifficulty(
+            TaskType originalType, @Nullable Integer challengeDifficulty) {
+        if (originalType == TaskType.PROJECT_TASK) {
+            return PROJECT_TASK_DIFFICULTY;
+        }
+        return challengeDifficulty == null ? EXPLAIN_DIFFICULTY : challengeDifficulty;
     }
 
     /** EXPLAIN: {@code {skill.name} 내 말로 설명하기}. */
@@ -234,6 +300,8 @@ public final class TaskProposalPolicy {
                 EXPLAIN_DIFFICULTY,
                 truncate(skill.name() + " 내 말로 설명하기", TITLE_MAX),
                 describe(skill, "5문장 이내로 설명하고 예시를 하나 드세요."),
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -248,6 +316,8 @@ public final class TaskProposalPolicy {
                 1,
                 truncate(skill.name() + " 5분 떠올리기", TITLE_MAX),
                 "자료를 보지 않고 기억나는 내용을 적어 보세요.",
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -323,7 +393,8 @@ public final class TaskProposalPolicy {
             List<ReadingOption> readings,
             List<ConceptReading> conceptReadings,
             @Nullable SideProjectRef activeSideProject,
-            @Nullable String projectGuide) {
+            @Nullable String projectGuide,
+            RedoTaskPolicy.@Nullable RedoCandidate redoCandidate) {
 
         public ProposalInput {
             challenges = List.copyOf(challenges);
@@ -347,5 +418,7 @@ public final class TaskProposalPolicy {
             @Nullable UUID challengeId,
             @Nullable String readingKey,
             @Nullable UUID sideProjectId,
-            @Nullable String repoName) {}
+            @Nullable String repoName,
+            @Nullable UUID redoSourceTaskId,
+            @Nullable Integer redoDaysAfter) {}
 }

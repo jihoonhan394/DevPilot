@@ -15,6 +15,7 @@ public final class FieldErrorCodes {
     public static final String ONE_OF_REQUIRED = "ONE_OF_REQUIRED";
     public static final String MUTUALLY_EXCLUSIVE = "MUTUALLY_EXCLUSIVE";
     public static final String VALUE_NOT_ALLOWED = "VALUE_NOT_ALLOWED";
+    public static final String VALUE_REQUIRED = "VALUE_REQUIRED";
     public static final String MILESTONE_NOT_IN_PLAN = "MILESTONE_NOT_IN_PLAN";
     public static final String REFERENCE_NOT_FOUND = "REFERENCE_NOT_FOUND";
     public static final String NOT_BLANK_IF_PRESENT = "NOT_BLANK_IF_PRESENT";

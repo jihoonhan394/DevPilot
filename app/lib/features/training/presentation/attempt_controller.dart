@@ -93,7 +93,10 @@ final class AttemptController extends AsyncNotifier<AttemptScreenData> {
       if (error is ApiException && error.code == ApiErrorCode.hintConfirmationRequired) {
         return const AttemptHintNeedsConfirmation();
       }
-      if (error is ApiException && error.code == ApiErrorCode.aiRefused) {
+      // 사다리 아래에 사유를 남긴다. 재현 잠금은 다시 눌러도 같으므로 버튼까지 끈다 (docs/06 §5.10 RE-5)
+      if (error is ApiException &&
+          (error.code == ApiErrorCode.aiRefused ||
+              error.code == ApiErrorCode.aiAssistLockedForRedo)) {
         _change((data) => data.copyWith(hintError: error));
       }
       if (error is ApiException && error.code == ApiErrorCode.fullExampleNotAllowed) {

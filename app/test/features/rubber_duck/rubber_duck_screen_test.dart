@@ -54,6 +54,22 @@ void main() {
     });
   }
 
+  /// RE-5: 이 대상을 혼자 다시 만드는 중이면 러버덕이 열리지 않는다. AI 불가와 달리 배너가 아니라 사유 한 줄이다.
+  testWidgets('shouldBlockTheDuckWhileARedoIsOpen', (tester) async {
+    backend.rubberDuckRepository.startFailures.add(
+      const ApiException(code: ApiErrorCode.aiAssistLockedForRedo, status: 409),
+    );
+    await open(tester, _conceptStart);
+
+    await send(tester, '트랜잭션은 프록시가 경계를 연다.');
+
+    expect(find.byKey(const Key('rubberDuck.redoLocked')), findsOneWidget);
+    expect(find.text('지금은 AI 도움을 쓸 수 없어요. 이 과제를 혼자 다시 만들어 보는 중이에요.'), findsOneWidget);
+    expect(find.byKey(const Key('rubberDuck.redoLockedGoToday')), findsOneWidget);
+    expect(isButtonEnabled(tester, 'rubberDuck.sendButton'), isFalse);
+    expect(find.byKey(const Key('ai.unavailableBanner')), findsNothing);
+  });
+
   testWidgets('shouldStillShowAPastSessionWhileAiIsOff', (tester) async {
     backend.meRepository.me = testMe(aiStatus: AiStatus.disabled);
     backend.rubberDuckRepository.sessions[duckSessionId] = testDuckSession(

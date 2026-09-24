@@ -44,6 +44,15 @@ class MainTaskCard extends StatelessWidget {
                 expanded: task.status == TaskStatus.inProgress,
               ),
             ],
+            // RE-5: 이 과제가 열려 있는 동안 그 대상의 AI 도움이 잠긴다. 막혔을 때 왜 안 되는지 화면에서 먼저 말한다
+            if (task.taskType == TaskType.redo && task.status != TaskStatus.completed) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                AppLocalizations.of(context).todayRedoLocked,
+                key: const Key('today.redo.locked'),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
             if (task.taskType == TaskType.readCode)
               Text(
                 AppLocalizations.of(context).todayReadCodeLocal,
@@ -151,6 +160,13 @@ class _TaskHeading extends StatelessWidget {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               StatusBadge(label: task.taskType.label(l10n), tone: AppTone.primary),
+              // 재현 과제는 무엇이 다른지가 제목보다 먼저 보여야 한다 (docs/06 §5.10)
+              if (task.taskType == TaskType.redo)
+                StatusBadge(
+                  key: const Key('today.redoBadge'),
+                  label: l10n.todayRedoBadge,
+                  tone: AppTone.warning,
+                ),
               if (skillName != null) Text(skillName, style: textTheme.bodySmall),
             ],
           ),

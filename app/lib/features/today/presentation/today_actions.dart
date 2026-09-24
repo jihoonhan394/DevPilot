@@ -1,3 +1,4 @@
+import 'package:devpilot_app/app/routes.dart';
 import 'package:devpilot_app/core/api/api_exception.dart';
 import 'package:devpilot_app/core/api/error_message_mapper.dart';
 import 'package:devpilot_app/core/api/learning_enums.dart';
@@ -151,6 +152,7 @@ Future<void> openCompleteSheet(BuildContext context, WidgetRef ref, {required bo
   }
   final now = ref.read(clockProvider)();
   TodayOutcome? outcome;
+  var helpedRedo = false;
   await showCompleteSessionSheet(
     context,
     title: partial ? l10n.todayPartialTitle : l10n.todayCompleteSheetTitle,
@@ -159,9 +161,12 @@ Future<void> openCompleteSheet(BuildContext context, WidgetRef ref, {required bo
     askReadingFeedback: !partial && data?.mainTask?.taskType == TaskType.readCode,
     // "완료"를 누른 경우에만 묻는다. "여기까지 기록"은 이미 못 끝냈다고 말한 것이다.
     askUnderstanding: !partial,
-    onSubmit: (minutes, reflection, feedback, {understood}) async {
+    // RE-6: 재현 과제는 답이 있어야 완료된다. 그 답이 이 과제의 결과다
+    askRedoAnswer: !partial && data?.mainTask?.taskType == TaskType.redo,
+    onSubmit: (minutes, reflection, feedback, {understood, redoWithoutAi}) async {
       // 모른 채로 "완료"하면 그 개념은 다시 나오지 않는다 — 미룸으로 두어 내일 이어 가게 한다.
       final stillStuck = understood == false;
+      helpedRedo = !partial && !stillStuck && redoWithoutAi == false;
       final result = await ref
           .read(todayControllerProvider.notifier)
           .finish(
@@ -169,11 +174,21 @@ Future<void> openCompleteSheet(BuildContext context, WidgetRef ref, {required bo
             reflection: reflection,
             partial: partial || stillStuck,
             readingFeedback: stillStuck ? null : feedback,
+            redoWithoutAi: stillStuck ? null : redoWithoutAi,
           );
       outcome = result;
       return result is TodayActionFailed ? result.error : null;
     },
   );
+  // RE-7: 도움을 받아 끝낸 재현은 벌이 아니라 복습 한 장이 된다. 그 카드가 어디 있는지 바로 알려 준다
+  if (helpedRedo && outcome is TodayActionDone && context.mounted) {
+    showToast(
+      context,
+      l10n.todayRedoHelpedToast,
+      actionLabel: l10n.todayRedoGoReview,
+      onAction: () => context.go(AppRoutes.review),
+    );
+  }
   // A failed session call was shown inside the sheet; only the owed status change needs a toast.
   final finished = outcome;
   if ((finished is TodayStatusRetryNeeded || finished is TodayReadingNeedsDuck) &&
