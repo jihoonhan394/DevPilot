@@ -1,0 +1,951 @@
+# DevPilot 개념 노트 — 서버를 다루고 컨테이너로 올리기
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 4단계(배포와 로그)에서 쓴다. LINUX_BASICS가 DOCKER의 선행이라 순서대로 둔다
+# - 예제는 모두 주문 시스템을 서버에 올리는 상황이다
+lessons:
+  - key: LESSON.DEVOPS.LINUX_BASICS.001
+    skillCode: DEVOPS.LINUX_BASICS
+    title: 서버에 들어가 무슨 일이 벌어지는지 보기 (Linux)
+    whyItMatters: |-
+      올린 뒤에 "안 된다"는 연락을 받으면 서버에 들어가 직접 봐야 한다.
+      그때 **무엇을 먼저 칠지 모르면** 로그만 하염없이 스크롤하게 된다.
+      프로세스가 살아 있는지, 포트가 열렸는지, 디스크가 찼는지 —
+      확인 순서를 알면 원인 범위가 몇 분 안에 절반으로 준다.
+    oneLine: 서버를 볼 때는 프로세스·포트·자원·로그 네 가지를 정해진 순서로 확인한다.
+    units:
+      - key: LESSON.DEVOPS.LINUX_BASICS.001.U1
+        title: 살아 있나, 듣고 있나
+        minutes: 12
+        core: true
+        explain: |-
+          "서비스가 안 된다"는 연락을 받으면 **가장 싼 확인부터** 한다.
+
+          | 순서 | 무엇을 | 명령 |
+          |---|---|---|
+          | 1 | 프로세스가 살아 있나 | `ps aux | grep java` |
+          | 2 | 포트를 듣고 있나 | `ss -ltnp` |
+          | 3 | 내가 직접 부르면 되나 | `curl -i localhost:8080/health` |
+          | 4 | 자원이 남았나 | `df -h`, `free -m` |
+
+          순서에 뜻이 있다. **프로세스가 없으면 나머지는 볼 필요가 없고**,
+          프로세스는 있는데 포트가 없으면 기동 중에 실패한 것이다.
+
+          `ss -ltnp`의 글자들은 각각 **l**istening, **t**cp, **n**umeric(이름 해석 안 함),
+          **p**rocess(어느 프로세스인지)다. 외우기보다 **무엇을 묻는지**를 알면 된다.
+
+          `curl -i`로 서버에서 직접 부르는 것이 중요하다. 밖에서 안 되는데
+          안에서 되면 **방화벽이나 프록시 문제**로 범위가 좁아진다.
+        example:
+          language: bash
+          code: |-
+            $ ps aux | grep '[j]ava'
+            deploy  2841  2.1  8.4 4821904 692104 ?  Sl  09:12  1:22 java -jar order-service.jar
+
+            $ ss -ltnp | grep 8080
+            LISTEN 0  100  *:8080  *:*  users:(("java",pid=2841,fd=12))
+
+            $ curl -i -s localhost:8080/health | head -3
+            HTTP/1.1 200 OK
+            Content-Type: application/json
+
+            $ df -h /
+            Filesystem  Size  Used Avail Use% Mounted on
+            /dev/sda1    40G   38G  1.2G  97% /
+          output: |-
+            네 줄로 좁혀진 것
+
+            프로세스   살아 있다 (pid 2841, 09:12부터)
+            포트       8080을 듣고 있다. 그 pid가 맞다
+            직접 호출  서버 안에서는 200이 나온다
+            디스크     97% — 여기가 의심스럽다
+
+            → 밖에서 안 되는데 안에서 되고, 디스크가 거의 찼다.
+              로그가 쌓여 디스크를 채웠고 그래서 쓰기가 막혔을 가능성
+          note: |-
+            - `grep '[j]ava'`의 대괄호는 **grep 자기 자신이 안 잡히게** 하는 관용구다
+            - `ss` 결과에 pid가 있어 **1번과 2번이 같은 프로세스인지** 확인된다
+            - 서버 안에서 200이 나온다 — 밖에서 안 되면 네트워크 쪽이다
+            - 네 명령이 1분이 안 걸린다. **먼저 치고 로그는 그다음**이다
+        predict:
+          question: 프로세스는 살아 있는데 `ss -ltnp`에 8080이 없다면?
+          choices:
+            - 기동 도중에 실패했거나 다른 포트로 떴다 — 기동 로그를 본다
+            - 방화벽 문제다
+            - 디스크가 찼다
+            - 정상이다
+          answer: 기동 도중에 실패했거나 다른 포트로 떴다 — 기동 로그를 본다
+          explanation: |-
+            프로세스가 있는데 듣지 않는다는 것은 **아직 다 뜨지 않았거나
+            뜨다가 실패했다**는 뜻이다. 설정 오류나 DB 연결 실패가 흔한 원인이고,
+            기동 로그 맨 아래에 이유가 있다.
+            방화벽은 **포트를 듣고 있는데 밖에서 못 닿을 때** 의심한다.
+        complete:
+          question: 서버 상태를 확인하는 순서를 채우세요.
+          code: |-
+            ps aux | grep '[j]ava'       # 1. ___ 가 살아 있나
+            ss -___ | grep 8080          # 2. 포트를 듣고 있나
+            curl -i localhost:8080/health # 3. 안에서 부르면 되나
+            df -h /                       # 4. 자원이 남았나
+          answers:
+            - [프로세스]
+            - [ltnp]
+          explanation: |-
+            **가장 싼 확인부터** 한다. 프로세스가 없으면 나머지를 볼 이유가 없다.
+            `ss -ltnp`는 듣고 있는 TCP 포트를 프로세스와 함께 보여 준다.
+        problem:
+          prompt: |-
+            아래 세 상황에서 **어떤 순서로 무엇을 확인할지** 적으세요.
+            각 단계마다 명령과 **그 결과가 무엇을 뜻하는지**를 함께 쓰세요.
+
+            ```text
+            ① 배포 직후부터 모든 요청이 502를 받는다
+            ② 평소에는 되는데 오전 10시대에만 느리다
+            ③ 어제까지 되던 파일 업로드가 오늘부터 실패한다
+            ```
+
+            - 세 상황에 각각 **3~4단계**의 확인 순서를 적으세요
+            - 각 단계에서 **두 갈래로 갈리는 지점**을 표시하세요 (이러면 A, 저러면 B)
+            - 세 상황 중 **로그를 가장 나중에 보는 것**은 어느 것이고 왜인지 적으세요
+          deliverables:
+            - 상황별 확인 순서와 명령
+            - 갈라지는 지점 표시
+            - 로그를 나중에 보는 상황과 이유
+          hints:
+            - 502는 앞단이 뒤를 못 찾았다는 뜻입니다. 뒤가 떠 있나요?
+            - 특정 시간대만 느리면 그 시각에 무엇이 도는지 봅니다.
+            - 어제까지 됐다면 어제와 오늘 사이에 무엇이 달라졌는지 봅니다.
+          modelAnswer: |-
+            **① 배포 직후 502**
+            1. `ps aux | grep '[j]ava'` → **없으면** 기동 실패 (로그로)
+               / **있으면** 2로
+            2. `ss -ltnp | grep 8080` → **없으면** 기동 중 실패나 포트 변경 (로그로)
+               / **있으면** 3으로
+            3. `curl -i localhost:8080/health` → **200이면** 앞단(프록시) 설정 문제
+               / **아니면** 앱 내부 문제
+            4. 그제서야 로그
+
+            **② 오전 10시대만 느림**
+            1. `df -h`, `free -m` → 자원이 그 시각에 마르는가
+            2. `crontab -l`, `systemctl list-timers` → **그 시각에 도는 것**이 있는가
+            3. `top` 또는 `ps aux --sort=-%cpu | head` → 누가 CPU를 쓰는가
+            4. 앱 로그에서 그 시간대 응답 시간 분포
+
+            **③ 어제까지 되던 업로드**
+            1. `df -h` → **디스크가 찼는가** (업로드 실패의 1위 원인)
+            2. `ls -l /var/app/uploads` → **권한과 소유자**가 바뀌지 않았는가
+            3. `journalctl -u order-service --since yesterday` → 어제와 오늘의 차이
+            4. 배포 기록 → 어제 뭔가 올렸는가
+
+            **로그를 가장 나중에 보는 것은 ①**이다.
+            502는 앞단과 뒤 사이의 문제라 **프로세스와 포트 확인만으로 절반이 갈린다.**
+            로그는 그 갈림 뒤에 어디를 읽을지 정해진 다음에 봐야 양이 감당된다.
+            ②③은 앞 단계가 곧 원인 후보라 로그가 상대적으로 빨리 필요하다.
+          selfChecks:
+            - 가장 싼 확인부터 순서를 잡았는가
+            - 각 단계에서 갈라지는 지점을 표시했는가
+            - 디스크와 권한을 후보에 넣었는가
+            - 로그를 언제 볼지 이유와 함께 정했는가
+      - key: LESSON.DEVOPS.LINUX_BASICS.001.U2
+        title: 로그를 찾아 읽기
+        minutes: 12
+        core: true
+        explain: |-
+          로그는 **어디 있는지 아는 것**이 절반이다.
+
+          | 어디 | 무엇 |
+          |---|---|
+          | `journalctl -u <서비스>` | systemd로 띄운 것의 표준 출력 |
+          | `/var/log/...` | 직접 파일로 남긴 것 |
+          | `docker logs <컨테이너>` | 컨테이너의 표준 출력 |
+
+          찾은 뒤에는 **양을 줄이는 것**이 문제다. 하루치가 수십만 줄이다.
+
+          ```bash
+          journalctl -u order-service --since "10:00" --until "10:30"   # 시간으로
+          grep -n "ERROR" app.log | tail -50                            # 수준으로
+          grep -n "traceId=6f1c" app.log                                # 건으로
+          ```
+
+          가장 강한 것이 **건으로 좁히는 것**이다. 앞 노트에서 응답에 넣은
+          `traceId` 하나면 그 요청의 모든 줄이 한 번에 나온다.
+
+          그리고 **지금 일어나는 것**을 봐야 하면 따라붙는다.
+
+          ```bash
+          tail -f app.log | grep --line-buffered "ERROR"
+          ```
+
+          `--line-buffered`가 없으면 grep이 모아 두고 안 보여 준다.
+        example:
+          language: bash
+          code: |-
+            # 1) 시간으로 좁힌다
+            $ journalctl -u order-service --since "10:00" --until "10:30" | wc -l
+            18422
+
+            # 2) 수준으로 좁힌다
+            $ journalctl -u order-service --since "10:00" --until "10:30" \
+                | grep -c "ERROR"
+            41
+
+            # 3) 첫 오류의 앞뒤를 본다
+            $ journalctl -u order-service --since "10:00" | grep -n "ERROR" | head -1
+            1204:10:05:12.882 ERROR ... traceId=6f1c2e5a ... Connection is not available
+
+            # 4) 그 건만 따라간다
+            $ journalctl -u order-service --since "10:00" | grep "traceId=6f1c2e5a"
+          output: |-
+            18422줄 → 41줄 → 1건
+
+            첫 ERROR 시각   10:05:12
+            traceId         6f1c2e5a
+            그 건의 줄 수   7줄 (요청 수신 → 조회 → 결제 호출 → 실패 → 응답)
+
+            → 7줄만 읽으면 그 요청에서 무슨 일이 있었는지 다 나온다
+          note: |-
+            - **첫 번째 오류**를 찾는 것이 핵심이다. 뒤는 대개 그 여파다
+            - `grep -n`으로 줄 번호를 얻어 두면 그 앞뒤를 볼 때 쓴다
+            - `traceId`로 한 요청을 통째로 뽑는다 — 이것이 구조화 로그의 값어치다
+            - 18422줄을 7줄로 줄였다. 읽을 수 있는 양이 됐다
+        predict:
+          question: 오류가 41건인데 **마지막** 오류부터 읽으면?
+          choices:
+            - 대개 여파를 먼저 읽게 되어 원인에서 멀어진다
+            - 최신이라 더 정확하다
+            - 차이가 없다
+            - 더 빠르다
+          answer: 대개 여파를 먼저 읽게 되어 원인에서 멀어진다
+          explanation: |-
+            자원이 마르는 장애가 특히 그렇다 — **첫 번째가 원인이고
+            나머지 40건은 그 결과**다. 마지막을 읽으면 "커넥션이 없다"만 41번 보게 된다.
+            시간 순으로 **처음 것**부터 읽는 것이 규칙이다.
+        complete:
+          question: 특정 요청 하나를 로그에서 뽑아내세요.
+          code: |-
+            journalctl -u order-service --since "10:00" | grep "___=6f1c2e5a"
+            # 응답에 함께 내려준 값으로 그 요청의 모든 줄을 한 번에 찾는다
+
+            tail -f app.log | grep --___ "ERROR"
+            # 지금 일어나는 것을 따라본다
+          answers:
+            - [traceId]
+            - [line-buffered]
+          explanation: |-
+            `traceId`는 앞 노트(스프링 예외 처리)에서 응답과 로그에 함께 남긴 값이다.
+            `--line-buffered`가 없으면 grep이 출력을 모아 두어 실시간으로 안 보인다.
+        problem:
+          prompt: |-
+            장애 시각 10:05~10:25의 로그에서 원인을 좁히는 **명령 순서**를 만드세요.
+
+            - 전체 → 시간 → 수준 → 건 순으로 좁히는 명령을 각각 쓰세요
+            - 각 단계에서 **몇 줄로 줄었는지** 세는 명령도 함께 쓰세요
+            - 첫 오류의 **앞 20줄**을 보는 명령을 쓰세요 (왜 앞을 보는지도)
+            - 로그가 너무 커서 `grep`이 느릴 때 쓸 방법을 하나 적으세요
+          deliverables:
+            - 네 단계의 명령
+            - 줄 수를 세는 명령
+            - 첫 오류 앞을 보는 명령과 이유
+            - 큰 로그를 다루는 방법
+          hints:
+            - 줄 수를 세면 좁혀지고 있는지 확인됩니다.
+            - 오류 줄만 보면 그 직전에 무슨 일이 있었는지 모릅니다.
+            - 시간으로 먼저 자르면 읽을 양이 크게 줄어듭니다.
+          modelAnswer: |-
+            ```bash
+            # 1) 시간으로
+            journalctl -u order-service --since "10:05" --until "10:25" > /tmp/win.log
+            wc -l /tmp/win.log                      # 18422
+
+            # 2) 수준으로
+            grep -c "ERROR" /tmp/win.log            # 41
+
+            # 3) 첫 오류 찾기
+            grep -n "ERROR" /tmp/win.log | head -1  # 1204:...traceId=6f1c2e5a
+
+            # 4) 그 앞 20줄 — 오류 직전에 무슨 일이 있었는지
+            sed -n '1184,1210p' /tmp/win.log
+
+            # 5) 그 건만
+            grep "traceId=6f1c2e5a" /tmp/win.log
+            ```
+
+            **앞을 보는 이유** — 오류 줄은 결과만 말한다.
+            그 직전에 어떤 요청이 들어왔고 무엇을 하다가 실패했는지는 앞에 있다.
+            "Connection is not available" 앞에 **결제 호출 시작** 줄이 있으면
+            그것으로 원인이 거의 정해진다.
+
+            **큰 로그를 다루는 방법** — 먼저 **시간으로 잘라 파일로 뽑아 두고**
+            그 파일에서 작업한다. 위에서 `/tmp/win.log`로 뽑은 것이 그 방법이다.
+            매번 전체를 `grep`하면 수 GB를 계속 읽게 된다.
+            더 크면 `journalctl --since/--until`로 잘라 내는 것 자체가 빠르다.
+          selfChecks:
+            - 시간 → 수준 → 건 순으로 좁혔는가
+            - 단계마다 줄 수를 세어 확인했는가
+            - 첫 오류의 앞을 봤는가
+            - 큰 로그를 잘라 두고 작업했는가
+      - key: LESSON.DEVOPS.LINUX_BASICS.001.U3
+        title: 권한과 디스크 — 조용히 막는 것들
+        minutes: 10
+        core: false
+        explain: |-
+          **오류 메시지가 애매한 장애**의 상당수가 이 둘이다.
+
+          **권한** — 파일 권한은 세 자리 숫자로 읽는다.
+
+          ```text
+          -rw-r-----  1 deploy  app  4096  app.log
+           │└┬┘└┬┘└┬┘   └─┬──┘ └┬┘
+           │ │  │  │      │     └ 그룹
+           │ │  │  └ 그 밖(없음)  └ 소유자
+           │ │  └ 그룹 (읽기)
+           │ └ 소유자 (읽기·쓰기)
+           └ 파일 종류
+          ```
+
+          숫자로는 `640`이다 — 읽기 4, 쓰기 2, 실행 1을 더한 값이다.
+
+          배포할 때 자주 나는 문제는 **실행 사용자와 파일 소유자가 다른 것**이다.
+          `deploy`로 띄웠는데 로그 디렉터리가 `root` 소유면 쓰기가 막힌다.
+
+          **디스크** — 차면 로그도 못 쓰고 임시 파일도 못 만든다.
+          증상이 제각각이라 원인으로 잘 안 떠오른다.
+          그래서 **확인 순서의 4번에 고정**해 둔다.
+
+          그리고 `du`로 어디가 먹는지 찾는다 — 대개 로그나 임시 파일이다.
+        example:
+          language: bash
+          code: |-
+            $ df -h /
+            Filesystem  Size  Used Avail Use% Mounted on
+            /dev/sda1    40G   38G  1.2G  97% /
+
+            $ du -sh /var/log/* 2>/dev/null | sort -h | tail -3
+            412M   /var/log/journal
+            1.8G   /var/log/nginx
+            29G    /var/log/order-service
+
+            $ ls -l /var/log/order-service | head -3
+            -rw-r----- 1 root   root  27G  app.log          ← 소유자가 root다
+            -rw-r----- 1 deploy app   1.1G app.log.1.gz
+
+            $ sudo -u deploy sh -c 'echo test >> /var/log/order-service/app.log'
+            sh: app.log: Permission denied
+          output: |-
+            두 문제가 겹쳐 있다
+
+            디스크  97% — app.log 하나가 27G
+            권한    그 파일이 root 소유라 deploy가 못 쓴다
+
+            → 로그 로테이션이 안 돌아 27G가 됐고,
+              어느 시점에 root로 한 번 띄워서 소유자가 바뀌었다
+          note: |-
+            - `du ... | sort -h | tail -3` 로 **큰 것 세 개**만 본다. 전체를 볼 필요 없다
+            - `ls -l`의 소유자가 `root`인데 실행 사용자는 `deploy`다 — 이게 원인이다
+            - `sudo -u deploy` 로 **그 사용자인 척** 해 보면 바로 확인된다
+            - 디스크와 권한이 겹치면 증상이 더 헷갈린다. 둘 다 본다
+        predict:
+          question: 앱이 `deploy`로 도는데 로그 파일이 `root` 소유라면?
+          choices:
+            - 로그를 못 써서 조용히 실패하거나 기동에 실패한다
+            - 자동으로 권한이 바뀐다
+            - root 권한으로 쓴다
+            - 아무 문제 없다
+          answer: 로그를 못 써서 조용히 실패하거나 기동에 실패한다
+          explanation: |-
+            **조용히 실패하는 쪽이 더 나쁘다.** 앱은 떠 있는데 로그가 안 남아
+            장애가 나도 볼 것이 없다.
+            그래서 배포 뒤에 **로그가 실제로 쌓이는지** 한 번 확인하는 습관이 필요하다.
+        complete:
+          question: 디스크를 먹는 곳을 찾으세요.
+          code: |-
+            df -h /                                   # 얼마나 찼나
+            du -sh /var/log/* | sort -h | ___ -3      # 큰 것 세 개
+            ls -l /var/log/order-service              # 소유자와 ___ 확인
+          answers:
+            - [tail]
+            - [권한]
+          explanation: |-
+            `sort -h`는 사람이 읽는 크기(1.8G, 412M)를 제대로 정렬한다.
+            `tail -3`으로 큰 것만 본다. 그다음 소유자와 권한을 확인한다.
+        problem:
+          prompt: |-
+            배포한 서비스가 **로그를 한 줄도 안 남긴다.** 앱은 떠 있고 API는 동작한다.
+
+            - 원인 후보를 **네 가지** 적으세요 (권한 / 디스크 / 설정 / 출력 위치)
+            - 각각을 **확인하는 명령**을 한 줄씩 쓰세요
+            - 확인 순서를 정하고 이유를 적으세요
+            - 이 문제를 **다음에 빨리 알아채는 방법**을 하나 적으세요
+              (배포 뒤 자동으로 확인할 수 있는 것)
+          deliverables:
+            - 원인 후보 네 가지
+            - 각각의 확인 명령
+            - 확인 순서와 이유
+            - 다음에 빨리 알아채는 방법
+          hints:
+            - 앱이 표준 출력으로 내는지 파일로 내는지부터 다릅니다.
+            - 디스크가 차 있으면 쓰기가 전부 실패합니다.
+            - 배포 직후 헬스체크만 하고 로그는 안 보는 경우가 많습니다.
+          modelAnswer: |-
+            | 후보 | 확인 명령 |
+            |---|---|
+            | 디스크가 참 | `df -h /` |
+            | 로그 파일 권한·소유자 | `ls -l /var/log/order-service` |
+            | 로그 설정이 꺼짐·수준이 높음 | `grep -A5 "logging:" /opt/app/application-prod.yml` |
+            | 표준 출력으로 나가는데 파일만 봄 | `journalctl -u order-service -n 20` |
+
+            **순서는 디스크 → 출력 위치 → 권한 → 설정**이다.
+            디스크가 가장 싸게 확인되고 가장 광범위하게 막는다.
+            그다음 **엉뚱한 곳을 보고 있는 것은 아닌지**(표준 출력 vs 파일) 확인한다 —
+            이게 의외로 흔하고, 맞으면 나머지를 볼 필요가 없다.
+            권한과 설정은 그다음이다.
+
+            **다음에 빨리 알아채는 방법** — 배포 스크립트 마지막에
+            **로그가 실제로 쌓이는지 확인하는 단계**를 넣는다.
+            ```bash
+            curl -s localhost:8080/health > /dev/null
+            sleep 2
+            if [ -z "$(journalctl -u order-service --since '10 seconds ago' | head -1)" ]; then
+              echo "배포 뒤 로그가 비어 있다" >&2
+              exit 1
+            fi
+            ```
+            헬스체크만 하면 **로그 없이 도는 상태**를 정상으로 보고 넘어간다.
+          selfChecks:
+            - 네 후보를 서로 다른 층에서 뽑았는가
+            - 확인 순서를 비용과 범위로 정했는가
+            - 표준 출력과 파일을 구분했는가
+            - 배포 뒤 자동 확인을 넣었는가
+    commonMistakes:
+      - 로그부터 연다. 프로세스와 포트 확인이 1분이면 범위가 절반으로 준다 (U1)
+      - 마지막 오류부터 읽는다. 대개 여파라 원인에서 멀어진다 (U2)
+      - 디스크와 권한을 후보에서 뺀다. 증상이 제각각이라 원인으로 잘 안 떠오른다 (U3)
+    inProject: |-
+      주문 시스템을 서버에 올린 뒤 **확인 순서를 네 줄로 적어 둔다** —
+      프로세스, 포트, 안에서 호출, 자원. 이것을 배포 스크립트 끝에 넣어 두면
+      매번 손으로 치지 않아도 된다.
+      로그는 `traceId`로 한 건을 뽑을 수 있게 남기고(다음 노트),
+      배포 뒤 로그가 실제로 쌓이는지까지 확인한다.
+    sources:
+      - title: man7 — ps(1)
+        url: https://man7.org/linux/man-pages/man1/ps.1.html
+        versionScope: Linux man-pages
+      - title: man7 — ss(8)
+        url: https://man7.org/linux/man-pages/man8/ss.8.html
+        versionScope: Linux man-pages
+      - title: man7 — journalctl(1)
+        url: https://man7.org/linux/man-pages/man1/journalctl.1.html
+        versionScope: systemd
+      - title: man7 — chmod(1)
+        url: https://man7.org/linux/man-pages/man1/chmod.1.html
+        versionScope: Linux man-pages
+    verifiedAt: 2026-09-25
+
+  - key: LESSON.DEVOPS.DOCKER.001
+    skillCode: DEVOPS.DOCKER
+    title: 어디서나 같게 돌게 묶기 (Docker)
+    whyItMatters: |-
+      "제 컴퓨터에서는 되는데요"의 원인은 대개 **주변 환경**이다 —
+      자바 버전, 설치된 라이브러리, 환경변수, 파일 경로.
+      컨테이너는 그 주변까지 함께 묶어 **어디서 띄우든 같은 것**을 만든다.
+      그리고 이 저장소의 테스트도 컨테이너로 실제 PostgreSQL을 띄우므로,
+      여기를 알면 통합 테스트가 무엇을 하고 있는지도 보인다.
+    oneLine: 이미지는 실행에 필요한 것을 통째로 담은 틀이고, 컨테이너는 그 틀로 띄운 프로세스다.
+    units:
+      - key: LESSON.DEVOPS.DOCKER.001.U1
+        title: 이미지와 컨테이너는 다른 것이다
+        minutes: 12
+        core: true
+        explain: |-
+          가장 먼저 가를 것은 둘이다.
+
+          | | 무엇 | 비유 |
+          |---|---|---|
+          | **이미지** | 실행에 필요한 파일과 설정을 담은 **읽기 전용 틀** | 설치 파일 |
+          | **컨테이너** | 그 틀로 띄운 **프로세스** | 실행 중인 프로그램 |
+
+          이미지 하나로 컨테이너를 여러 개 띄울 수 있고,
+          컨테이너를 지워도 이미지는 남는다.
+
+          중요한 성질이 하나 있다 — **컨테이너 안에서 바꾼 것은 지우면 사라진다.**
+          그래서 남아야 하는 것(업로드 파일, DB 데이터)은 **볼륨**으로 밖에 둔다.
+
+          그리고 컨테이너는 **가상 머신이 아니다.** 호스트의 커널을 그대로 쓰고
+          프로세스만 격리한다. 그래서 가볍고 빨리 뜬다.
+
+          자주 쓰는 명령은 몇 개뿐이다.
+
+          ```bash
+          docker build -t order-service:1.0 .     # 이미지를 만든다
+          docker run -d -p 8080:8080 order-service:1.0
+          docker ps                                # 도는 것
+          docker logs -f <컨테이너>
+          docker exec -it <컨테이너> sh            # 안에 들어간다
+          ```
+        example:
+          language: bash
+          code: |-
+            $ docker build -t order-service:1.0 .
+            => exporting to image  ... sha256:9f1c2e...
+
+            $ docker run -d --name order -p 18080:8080 \
+                -e SPRING_PROFILES_ACTIVE=prod -e DB_PASSWORD=... order-service:1.0
+            a3f91c...
+
+            $ docker ps
+            CONTAINER ID  IMAGE               STATUS        PORTS
+            a3f91c        order-service:1.0   Up 12 seconds 0.0.0.0:18080->8080/tcp
+
+            $ curl -s localhost:18080/health
+            {"status":"UP"}
+
+            $ docker exec -it order sh -c 'ls -l /app && echo $SPRING_PROFILES_ACTIVE'
+            -rw-r--r-- 1 root root 48210394 order-service.jar
+            prod
+          output: |-
+            -p 18080:8080 이 뜻하는 것
+
+            18080  호스트(서버)의 포트 — 밖에서 이걸로 부른다
+            8080   컨테이너 안의 포트 — 앱이 듣고 있는 포트
+
+            → 밖에서 18080으로 부르면 안의 8080으로 이어진다
+          note: |-
+            - `-t order-service:1.0` 의 **태그**가 버전이다. `latest`는 쓰지 않는다
+            - `-e`로 환경변수를 넣는다 — 앞 노트의 `${DB_PASSWORD}`가 여기서 채워진다
+            - `-p 호스트:컨테이너` 순서다. 뒤집으면 안 된다
+            - `docker exec ... sh`로 **안에 들어가 확인**할 수 있다. 서버에 들어가는 것과 같다
+        predict:
+          question: '`docker run -p 8080:18080` 으로 잘못 쓰면?'
+          choices:
+            - 컨테이너 안의 18080으로 이어지는데 앱은 8080을 들어 연결이 안 된다
+            - 그대로 동작한다
+            - 컨테이너가 안 뜬다
+            - 자동으로 고쳐진다
+          answer: 컨테이너 안의 18080으로 이어지는데 앱은 8080을 들어 연결이 안 된다
+          explanation: |-
+            컨테이너는 **정상적으로 뜬다.** 다만 아무도 18080을 듣지 않아
+            밖에서 부르면 연결이 끊긴다.
+            `docker ps`의 `PORTS` 열을 보면 어떻게 이어졌는지 나오므로,
+            안 될 때 거기부터 확인한다.
+        complete:
+          question: 이미지를 만들고 컨테이너를 띄우세요.
+          code: |-
+            docker ___ -t order-service:1.0 .          # 이미지를 만든다
+            docker run -d -p 18080:___ order-service:1.0   # 안의 앱 포트로 잇는다
+          answers:
+            - [build]
+            - ["8080"]
+          explanation: |-
+            `build`가 이미지를 만들고 `run`이 그 이미지로 컨테이너를 띄운다.
+            `-p`는 **호스트 포트:컨테이너 포트** 순서다.
+        problem:
+          prompt: |-
+            주문 시스템을 컨테이너로 띄워 보세요.
+
+            - 이미지를 만들고 컨테이너를 띄워 `GET /health`가 응답하는 것까지 확인하세요
+            - 환경변수로 **프로필과 DB 비밀번호**를 주입하세요
+            - 컨테이너 **안에 들어가** 환경변수가 실제로 들어갔는지 확인하세요
+            - 컨테이너를 지웠다가 다시 띄우면 **무엇이 남고 무엇이 사라지는지** 확인해 적으세요
+            - 태그를 `latest`로 두지 않는 이유를 한 줄로 적으세요
+          deliverables:
+            - 빌드·실행·확인 명령과 결과
+            - 환경변수 주입과 안에서 확인한 결과
+            - 지웠다 띄웠을 때 남는 것 / 사라지는 것
+            - latest를 쓰지 않는 이유
+          hints:
+            - 컨테이너 안에 파일을 하나 만들고 지웠다 띄워 보세요.
+            - 이미지는 남고 컨테이너 안의 변경은 사라집니다.
+            - latest는 언제 만든 것인지 알 수 없습니다.
+          modelAnswer: |-
+            ```bash
+            $ docker build -t order-service:1.0 .
+            $ docker run -d --name order -p 18080:8080 \
+                -e SPRING_PROFILES_ACTIVE=prod \
+                -e DB_PASSWORD="$DB_PASSWORD" order-service:1.0
+            $ curl -s localhost:18080/health
+            {"status":"UP"}
+
+            $ docker exec -it order sh -c 'echo $SPRING_PROFILES_ACTIVE'
+            prod
+
+            # 안에 파일을 만들고
+            $ docker exec -it order sh -c 'echo hello > /tmp/note.txt'
+            $ docker rm -f order
+            $ docker run -d --name order -p 18080:8080 ... order-service:1.0
+            $ docker exec -it order sh -c 'cat /tmp/note.txt'
+            cat: can't open '/tmp/note.txt': No such file or directory
+            ```
+
+            **남는 것**: 이미지(`order-service:1.0`)와 볼륨에 둔 데이터.
+            **사라지는 것**: 컨테이너 안에서 만든 파일, 설치한 것, 로그.
+
+            그래서 업로드 파일이나 DB 데이터는 **볼륨으로 밖에 두어야** 한다.
+            로그도 컨테이너 안에만 남기면 재시작 때 사라지므로
+            표준 출력으로 내보내 호스트가 수집하게 한다.
+
+            **`latest`를 쓰지 않는 이유** — 같은 이름이 가리키는 것이 계속 바뀌어
+            **어느 것이 도는지 알 수 없고 되돌릴 수도 없다.**
+            문제가 나면 "어제 버전으로 되돌려"가 불가능해진다.
+          selfChecks:
+            - 안에 들어가 환경변수를 확인했는가
+            - 지웠다 띄워 사라지는 것을 직접 봤는가
+            - 남아야 하는 것을 볼륨으로 둘 계획을 세웠는가
+            - 버전 태그를 붙였는가
+      - key: LESSON.DEVOPS.DOCKER.001.U2
+        title: Dockerfile을 읽고 고치기
+        minutes: 12
+        core: true
+        explain: |-
+          `Dockerfile`은 **이미지를 만드는 절차서**다. 한 줄이 한 층(layer)이 되고,
+          **바뀌지 않은 층은 다시 만들지 않는다**(캐시).
+
+          그래서 순서가 빌드 시간을 정한다. **자주 바뀌는 것을 뒤에 둔다.**
+
+          ```dockerfile
+          COPY build.gradle.kts .      # 거의 안 바뀐다 → 앞
+          RUN ./gradlew dependencies   # 의존성 내려받기
+          COPY src ./src               # 자주 바뀐다 → 뒤
+          RUN ./gradlew bootJar
+          ```
+
+          소스만 고치면 앞의 두 층은 캐시에서 나와 **의존성을 다시 안 받는다.**
+          순서를 뒤집으면 매번 다 받는다.
+
+          그리고 **다단계 빌드**를 쓴다. 빌드에 필요한 것(JDK, Gradle, 소스)과
+          실행에 필요한 것(JRE, jar)이 다르기 때문이다.
+          최종 이미지에 빌드 도구가 들어가면 크기가 몇 배가 되고,
+          쓸데없는 것이 많을수록 취약점도 많아진다.
+
+          마지막으로 **root로 실행하지 않는다.** 컨테이너가 뚫렸을 때
+          호스트로 번지는 것을 어렵게 만든다.
+        example:
+          language: dockerfile
+          code: |-
+            # 1단계: 빌드
+            FROM eclipse-temurin:25-jdk AS builder
+            WORKDIR /build
+            COPY gradlew settings.gradle.kts build.gradle.kts ./
+            COPY gradle ./gradle
+            RUN ./gradlew dependencies --no-daemon        # 여기까지 캐시된다
+            COPY src ./src
+            RUN ./gradlew bootJar --no-daemon
+
+            # 2단계: 실행
+            FROM eclipse-temurin:25-jre
+            RUN useradd --system --no-create-home app     # root로 안 돈다
+            WORKDIR /app
+            COPY --from=builder /build/build/libs/*.jar order-service.jar
+            USER app
+            EXPOSE 8080
+            ENTRYPOINT ["java", "-jar", "order-service.jar"]
+          output: |-
+            $ docker images
+            REPOSITORY      TAG   SIZE
+            order-service   1.0   241MB      ← 다단계 빌드
+            order-service   0.9   842MB      ← 단일 단계 (JDK + Gradle + 소스 포함)
+
+            $ docker exec order sh -c 'whoami'
+            app                                ← root 가 아니다
+
+            소스만 고치고 다시 빌드
+            => CACHED [builder 5/7] RUN ./gradlew dependencies
+            => [builder 6/7] COPY src ./src      ← 여기부터 다시
+            Build time: 24s   (전체 재빌드는 3m 12s)
+          note: |-
+            - 의존성 층이 `CACHED`다 — 소스만 바꿨으므로 다시 안 받는다
+            - 최종 이미지가 241MB다. JDK와 Gradle이 빠져 3분의 1이 안 된다
+            - `USER app` 으로 **root가 아닌 사용자**로 실행한다
+            - `--from=builder` 로 앞 단계의 결과물만 가져온다
+        predict:
+          question: '`COPY src ./src` 를 `RUN ./gradlew dependencies` **앞**으로 옮기면?'
+          choices:
+            - 소스를 고칠 때마다 의존성을 처음부터 다시 받는다
+            - 빌드가 빨라진다
+            - 이미지가 작아진다
+            - 차이가 없다
+          answer: 소스를 고칠 때마다 의존성을 처음부터 다시 받는다
+          explanation: |-
+            캐시는 **그 층과 그 앞이 모두 같을 때만** 쓰인다.
+            소스를 앞에 두면 한 글자만 고쳐도 그 뒤가 전부 무효가 되어
+            의존성부터 다시 받는다. 24초가 3분이 되는 차이다.
+        complete:
+          question: 실행 단계를 안전하게 만드세요.
+          code: |-
+            FROM eclipse-temurin:25-___          # 실행에는 JDK가 필요 없다
+            RUN useradd --system --no-create-home app
+            COPY --from=builder /build/build/libs/*.jar order-service.jar
+            ___ app                               # root 로 돌지 않는다
+            ENTRYPOINT ["java", "-jar", "order-service.jar"]
+          answers:
+            - [jre]
+            - [USER]
+          explanation: |-
+            실행에는 JRE면 충분하다. JDK를 넣으면 크기와 취약점이 함께 늘어난다.
+            `USER`로 실행 사용자를 바꿔 root 권한으로 돌지 않게 한다.
+        problem:
+          prompt: |-
+            아래 `Dockerfile`을 고치세요. 문제가 **네 가지** 있습니다.
+
+            ```dockerfile
+            FROM eclipse-temurin:25-jdk
+            WORKDIR /app
+            COPY . .
+            RUN ./gradlew bootJar
+            ENTRYPOINT ["java", "-jar", "build/libs/order-service.jar"]
+            ```
+
+            - 네 가지 문제를 지적하고 각각 **무엇이 나빠지는지** 적으세요
+            - 고친 `Dockerfile`을 쓰세요
+            - 고치기 전후의 **이미지 크기와 재빌드 시간**을 재서 적으세요
+            - `COPY . .` 이 가져오는 것 중 **이미지에 들어가면 안 되는 것**을 하나 적고
+              막는 방법도 적으세요
+          deliverables:
+            - 문제 네 가지와 각각의 영향
+            - 고친 Dockerfile
+            - 전후 이미지 크기와 재빌드 시간
+            - 들어가면 안 되는 것과 막는 방법
+          hints:
+            - 실행에 JDK가 필요한지, COPY . . 이 캐시를 쓸 수 있는지 보세요.
+            - 실행 사용자가 누구인지 확인해 보세요.
+            - .env 나 .git 이 딸려 들어가면 어떻게 될까요?
+          modelAnswer: |-
+            | 문제 | 나빠지는 것 |
+            |---|---|
+            | ① 단일 단계 (JDK로 실행) | 이미지가 3배 이상 커지고 취약점이 늘어난다 |
+            | ② `COPY . .` 이 맨 앞 | 무엇을 고쳐도 의존성부터 다시 받는다 |
+            | ③ `USER` 없음 | root로 실행되어 뚫렸을 때 피해가 커진다 |
+            | ④ 태그가 없음(`latest` 기본) | 어느 버전이 도는지 알 수 없고 되돌릴 수 없다 |
+
+            ```dockerfile
+            FROM eclipse-temurin:25-jdk AS builder
+            WORKDIR /build
+            COPY gradlew settings.gradle.kts build.gradle.kts ./
+            COPY gradle ./gradle
+            RUN ./gradlew dependencies --no-daemon
+            COPY src ./src
+            RUN ./gradlew bootJar --no-daemon
+
+            FROM eclipse-temurin:25-jre
+            RUN useradd --system --no-create-home app
+            WORKDIR /app
+            COPY --from=builder /build/build/libs/*.jar order-service.jar
+            USER app
+            EXPOSE 8080
+            ENTRYPOINT ["java", "-jar", "order-service.jar"]
+            ```
+
+            ```text
+            전  842MB / 재빌드 3m 12s
+            후  241MB / 재빌드 24s        (소스만 고쳤을 때)
+            ```
+
+            **들어가면 안 되는 것** — `.env`와 `.git`.
+            `.env`에는 비밀이 들어 있고, `.git`에는 **지운 비밀의 기록까지** 남아 있다.
+            이미지는 배포되므로 그것을 받는 누구나 꺼내 볼 수 있다.
+
+            막는 방법은 `.dockerignore` 다.
+            ```text
+            .git
+            .env
+            build/
+            .gradle/
+            ```
+            `.gitignore`와 별개 파일이라 **따로 만들어야** 한다는 점이 함정이다.
+          selfChecks:
+            - 네 문제를 모두 찾았는가
+            - 다단계 빌드로 실행 이미지를 줄였는가
+            - 캐시가 걸리게 순서를 잡았는가
+            - .dockerignore를 만들었는가
+      - key: LESSON.DEVOPS.DOCKER.001.U3
+        title: 여러 개를 함께 띄우기와 설정 주입
+        minutes: 12
+        core: false
+        explain: |-
+          앱 혼자 도는 경우는 드물다. DB가 있어야 하고, 때로는 캐시도 있다.
+          여러 컨테이너를 **함께 정의해 한 번에 띄우는 것**이 Compose다.
+
+          ```yaml
+          services:
+            db:
+              image: postgres:16
+              environment:
+                POSTGRES_DB: orderdb
+                POSTGRES_PASSWORD: ${DB_PASSWORD}
+              volumes:
+                - pgdata:/var/lib/postgresql/data     # 데이터는 밖에 둔다
+            app:
+              build: .
+              depends_on: [db]
+              ports: ["18080:8080"]
+              environment:
+                SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/orderdb
+          volumes:
+            pgdata:
+          ```
+
+          두 가지가 눈에 띌 것이다.
+
+          **하나, 주소가 `db`다.** 같은 Compose 안의 컨테이너는
+          **서비스 이름으로 서로를 찾는다.** `localhost`가 아니다 —
+          컨테이너 안의 `localhost`는 자기 자신이다.
+
+          **둘, 비밀이 `${DB_PASSWORD}`다.** 파일에 적지 않고 환경에서 받는다.
+          앞 노트(설정)와 같은 규칙이 여기서도 적용된다.
+
+          `depends_on`은 **순서만** 정한다. DB가 **받을 준비가 됐는지**는
+          보장하지 않으므로, 앱이 재시도하거나 헬스체크를 붙여야 한다.
+        example:
+          language: bash
+          code: |-
+            $ DB_PASSWORD=... docker compose up -d
+            [+] Running 3/3
+             ✔ Network order_default  Created
+             ✔ Container order-db-1   Started
+             ✔ Container order-app-1  Started
+
+            $ docker compose ps
+            NAME          IMAGE             STATUS
+            order-db-1    postgres:16       Up 8 seconds
+            order-app-1   order-app         Up 5 seconds
+
+            $ docker compose exec app sh -c 'getent hosts db'
+            172.18.0.2      db
+
+            $ docker compose logs app | grep -i "started\|error" | head -3
+            Started OrderServiceApplication in 4.102 seconds
+          output: |-
+            컨테이너 안에서 db 가 이름으로 풀린다
+
+            getent hosts db  →  172.18.0.2
+
+            localhost 로 적었다면
+            Connection refused — 컨테이너 안의 localhost 는 자기 자신이다
+          note: |-
+            - Compose가 **네트워크를 자동으로** 만들고 이름으로 찾게 해 준다
+            - `getent hosts db` 로 이름이 실제로 풀리는지 확인할 수 있다
+            - 비밀번호가 파일에 없다 — `DB_PASSWORD=` 로 넘겼다
+            - 볼륨(`pgdata`)이 있어 컨테이너를 지워도 DB 데이터는 남는다
+        predict:
+          question: 앱의 DB 주소를 `jdbc:postgresql://localhost:5432/...` 로 적으면?
+          choices:
+            - 컨테이너 안의 localhost는 자기 자신이라 연결이 거부된다
+            - 정상 동작한다
+            - 호스트의 DB에 붙는다
+            - 자동으로 db로 바뀐다
+          answer: 컨테이너 안의 localhost는 자기 자신이라 연결이 거부된다
+          explanation: |-
+            컨테이너마다 자기 네트워크가 있어 **`localhost`는 그 컨테이너 자신**이다.
+            앱 컨테이너 안에는 PostgreSQL이 없으니 연결이 거부된다.
+            같은 Compose 안에서는 **서비스 이름**으로 부른다.
+            이것이 로컬에서는 되다가 컨테이너로 옮기면 안 되는 대표적인 이유다.
+        complete:
+          question: 컨테이너끼리 찾게 하고 데이터를 남기세요.
+          code: |-
+            app:
+              environment:
+                SPRING_DATASOURCE_URL: jdbc:postgresql://___:5432/orderdb   # 서비스 이름
+            db:
+              ___:
+                - pgdata:/var/lib/postgresql/data      # 데이터를 밖에 둔다
+          answers:
+            - [db]
+            - [volumes]
+          explanation: |-
+            같은 Compose 안에서는 **서비스 이름이 곧 호스트 이름**이다.
+            볼륨을 붙이지 않으면 컨테이너를 지울 때 DB 데이터가 함께 사라진다.
+        problem:
+          prompt: |-
+            주문 시스템을 앱 + DB 두 컨테이너로 띄우는 `compose.yaml`을 작성하세요.
+
+            - DB 데이터가 컨테이너를 지워도 **남아야** 합니다
+            - 비밀번호는 **파일에 적지 않습니다**
+            - 앱은 DB가 **받을 준비가 된 뒤**에 붙어야 합니다
+              (`depends_on`만으로는 부족한 이유와 대응을 적으세요)
+            - 다 띄운 뒤 **확인하는 명령 세 개**를 적으세요
+            - 이 구성을 운영에 그대로 쓰면 안 되는 이유를 하나 적으세요
+          deliverables:
+            - compose.yaml
+            - depends_on이 부족한 이유와 대응
+            - 확인 명령 세 개
+            - 운영에 그대로 쓰면 안 되는 이유
+          hints:
+            - depends_on은 "시작했다"까지만 보장합니다.
+            - 헬스체크를 붙이거나 앱이 재시도하게 만들 수 있습니다.
+            - 운영에서는 DB를 컨테이너로 같이 띄우지 않는 경우가 많습니다.
+          modelAnswer: |-
+            ```yaml
+            services:
+              db:
+                image: postgres:16
+                environment:
+                  POSTGRES_DB: orderdb
+                  POSTGRES_USER: order
+                  POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD required}
+                volumes:
+                  - pgdata:/var/lib/postgresql/data
+                healthcheck:
+                  test: ["CMD-SHELL", "pg_isready -U order -d orderdb"]
+                  interval: 5s
+                  retries: 10
+              app:
+                build: .
+                depends_on:
+                  db:
+                    condition: service_healthy      # 준비될 때까지 기다린다
+                ports: ["18080:8080"]
+                environment:
+                  SPRING_PROFILES_ACTIVE: local
+                  SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/orderdb
+                  SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+            volumes:
+              pgdata:
+            ```
+
+            **`depends_on`만으로 부족한 이유** — 그것은 "컨테이너를 먼저 시작한다"까지다.
+            PostgreSQL은 프로세스가 떠도 **몇 초간 접속을 안 받는다.**
+            그 사이에 앱이 붙으려다 실패하고 기동이 죽는다.
+            그래서 `healthcheck` + `condition: service_healthy`로 **준비 상태**를 본다.
+            (앱 쪽에서 재시도하게 만드는 방법도 있다.)
+
+            **확인 명령 세 개**
+            ```bash
+            docker compose ps                        # 둘 다 Up 인가
+            docker compose exec app sh -c 'getent hosts db'   # 이름이 풀리나
+            curl -s localhost:18080/health           # 앱이 응답하나
+            ```
+
+            **운영에 그대로 쓰면 안 되는 이유** — DB를 같은 호스트의 컨테이너로 두면
+            **그 호스트가 죽을 때 앱과 데이터가 함께 사라진다.**
+            백업·복제·버전 업그레이드도 직접 해야 한다.
+            개발과 테스트에는 훌륭하지만 운영 DB는 따로 둔다.
+          selfChecks:
+            - 볼륨으로 데이터를 남겼는가
+            - 비밀번호를 파일에 적지 않았는가
+            - 준비 상태까지 기다리게 했는가
+            - 확인 명령을 실제로 돌려 봤는가
+    commonMistakes:
+      - '`COPY . .` 을 앞에 둔다. 소스를 한 글자만 고쳐도 의존성부터 다시 받는다 (U2)'
+      - 실행 이미지에 JDK를 쓰고 root로 돌린다. 크기와 위험이 함께 커진다 (U2)
+      - 컨테이너 안에서 DB 주소를 `localhost`로 적는다. 자기 자신을 가리킨다 (U3)
+    inProject: |-
+      주문 시스템의 `Dockerfile`은 다단계로 만들고 `USER`를 붙인다.
+      로컬 개발은 `compose.yaml`로 앱과 PostgreSQL 16을 함께 띄우되
+      데이터는 볼륨에 두고 비밀번호는 환경에서 받는다.
+      이 저장소의 통합 테스트도 같은 방식으로 `postgres:16` 컨테이너를 띄우므로,
+      여기서 익힌 것이 그대로 테스트를 읽는 데 쓰인다.
+    sources:
+      - title: Docker — Building images
+        url: https://docs.docker.com/build/concepts/overview/
+        versionScope: Docker
+      - title: Docker — Dockerfile reference
+        url: https://docs.docker.com/reference/dockerfile/
+        versionScope: Docker
+      - title: Docker — Multi-stage builds
+        url: https://docs.docker.com/build/building/multi-stage/
+        versionScope: Docker
+      - title: Docker — Compose file reference
+        url: https://docs.docker.com/reference/compose-file/
+        versionScope: Docker Compose
+    verifiedAt: 2026-09-25
