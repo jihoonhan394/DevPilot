@@ -1,0 +1,820 @@
+# DevPilot 개념 노트 — 컬렉션과 제네릭
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 1단계(CRUD와 검증)에서 쓴다. JAVA.OOP 노트를 먼저 본 것으로 전제한다
+# - 예제는 주문 시스템 상황으로 쓴다 (CV-134)
+lessons:
+  - key: LESSON.JAVA.COLLECTION.001
+    skillCode: JAVA.COLLECTION
+    title: 무엇을 담을지 먼저 정하기 (List·Set·Map)
+    whyItMatters: |-
+      담을 그릇을 잘못 고르면 코드가 아니라 데이터가 틀어진다. 중복이 들어가면 안 되는 곳에
+      List를 쓰면 같은 상품이 두 번 담기고, 찾기만 하면 되는데 List를 쓰면 건수가 늘수록 느려진다.
+      주문 시스템의 장바구니·쿠폰 목록·상품 조회가 전부 이 선택 하나로 갈린다.
+    oneLine: 컬렉션은 순서가 필요한가(List), 중복을 막아야 하는가(Set), 열쇠로 찾는가(Map)로 고른다.
+    units:
+      - key: LESSON.JAVA.COLLECTION.001.U1
+        title: List·Set·Map 중에 고르기
+        minutes: 10
+        core: true
+        explain: |-
+          공식 튜토리얼은 컬렉션을 **"여러 원소를 한 덩어리로 다루는 객체"** 라고 하고,
+          쓰임에 따라 세 갈래로 나눈다.
+
+          | 인터페이스 | 순서 | 중복 | 찾는 방법 |
+          |---|---|---|---|
+          | `List` | 있다 (넣은 순서) | 허용 | 위치(index)나 훑기 |
+          | `Set` | 없다 (`LinkedHashSet`은 있다) | **막는다** | 값 자체로 |
+          | `Map` | 없다 (`LinkedHashMap`은 있다) | 키는 막는다 | **키로** |
+
+          고르는 순서는 간단하다. **키로 찾을 일이 있나** → `Map`.
+          **같은 것이 두 번 들어가면 안 되나** → `Set`. 둘 다 아니면 `List`.
+
+          왜 중요한가. `List.contains`는 처음부터 끝까지 훑는다.
+          `HashSet.contains`와 `HashMap.get`은 값에서 자리를 바로 계산한다 —
+          원소가 10개일 때는 차이가 없지만 10만 개가 되면 완전히 다른 코드가 된다.
+        example:
+          language: java
+          code: |-
+            List<String> cart = new ArrayList<>();
+            cart.add("키보드");
+            cart.add("키보드");              // List는 그대로 받는다
+
+            Set<String> couponCodes = new HashSet<>();
+            couponCodes.add("WELCOME10");
+            couponCodes.add("WELCOME10");    // Set은 두 번째를 버린다
+
+            Map<String, Integer> stock = new HashMap<>();
+            stock.put("키보드", 3);
+            stock.put("키보드", 5);          // Map은 값을 덮어쓴다
+
+            System.out.println(cart.size());
+            System.out.println(couponCodes.size());
+            System.out.println(stock.get("키보드"));
+            System.out.println(stock.get("마우스"));
+          output: |-
+            2
+            1
+            5
+            null
+          note: |-
+            - `List`는 같은 값을 두 번 넣어도 둘 다 남는다
+            - `Set.add`는 이미 있으면 **아무 일도 하지 않고** `false`를 돌려준다
+            - `Map.put`은 같은 키면 **값을 갈아 끼운다**. 옛 값이 돌아온다
+            - 없는 키를 `get`하면 예외가 아니라 `null`이다 — 여기서 NPE가 시작된다
+        predict:
+          question: '`couponCodes`를 `new ArrayList<>()`로 바꾸면 출력 두 번째 줄은 무엇이 되나?'
+          choices:
+            - "2"
+            - "1"
+            - "0"
+            - 컴파일 오류가 난다
+          answer: "2"
+          explanation: |-
+            `List`는 중복을 막지 않는다. 같은 쿠폰 코드를 두 번 넣으면 둘 다 남아 크기가 2다.
+            "같은 것이 두 번 들어가면 안 된다"는 규칙을 코드로 지키고 싶으면 그릇을 `Set`으로 바꾸는 것이
+            검사 코드를 따로 쓰는 것보다 낫다.
+        complete:
+          question: 상품 코드로 재고를 찾고, 없으면 0으로 보도록 빈칸을 채우세요.
+          code: |-
+            Map<String, Integer> stock = new ___<>();
+            stock.put("키보드", 3);
+
+            int count = stock.___("마우스", 0);
+            System.out.println(count);   // 0
+          answers:
+            - [HashMap, LinkedHashMap]
+            - [getOrDefault]
+          explanation: |-
+            키로 찾으니 `Map`이고, 순서가 필요 없으면 `HashMap`이다.
+            없는 키를 `get`하면 `null`이 나와 그대로 `int`에 담을 수 없다.
+            `getOrDefault(키, 기본값)`은 없을 때 줄 값을 **부르는 쪽에서** 정하게 해 준다.
+        problem:
+          prompt: |-
+            주문 시스템의 장바구니를 담는 `Cart` 클래스를 백지에서 작성하세요.
+
+            - 같은 상품 코드를 여러 번 담으면 **수량이 더해진다** (줄이 늘어나지 않는다)
+            - `add(상품코드, 수량)`으로 담는다. 수량은 1 이상이어야 한다
+            - `quantityOf(상품코드)`는 담긴 수량을 돌려주고, 담은 적이 없으면 **0**이다
+            - 담은 상품 코드의 개수를 세는 `size()`가 있다
+
+            어떤 컬렉션을 골랐는지, 그리고 그 선택이 위 규칙 중 **어느 것을 저절로 지켜 주는지** 적으세요.
+          deliverables:
+            - 클래스 전체 코드
+            - 고른 컬렉션과 그 이유 한 줄
+            - 위 규칙 중 컬렉션이 저절로 지켜 주는 것과 직접 코드로 지켜야 하는 것의 구분
+          hints:
+            - 상품 코드로 수량을 찾아야 합니다. 세 갈래 중 어느 것이 "열쇠로 찾는" 그릇일까요?
+            - 이미 담긴 상품을 다시 담을 때 옛 수량을 알아야 합니다. 없을 때 0으로 보는 방법이 있습니다.
+            - 수량이 1 이상인지는 컬렉션이 봐 주지 않습니다. 담기 전에 막아야 합니다.
+          modelAnswer: |-
+            ```java
+            public class Cart {
+
+                private final Map<String, Integer> lines = new LinkedHashMap<>();
+
+                public void add(String productCode, int quantity) {
+                    if (quantity < 1) {
+                        throw new IllegalArgumentException("수량은 1개 이상이어야 한다");
+                    }
+                    lines.merge(productCode, quantity, Integer::sum);
+                }
+
+                public int quantityOf(String productCode) {
+                    return lines.getOrDefault(productCode, 0);
+                }
+
+                public int size() {
+                    return lines.size();
+                }
+            }
+            ```
+
+            `Map`을 고른 이유는 **상품 코드로 찾기** 때문이다. 키가 같으면 줄이 늘지 않으므로
+            "여러 번 담아도 줄이 하나"는 컬렉션이 저절로 지켜 준다.
+            `LinkedHashMap`은 담은 순서로 보여 주려는 것이다 — 화면에 순서가 필요 없으면 `HashMap`이어도 된다.
+            수량 규칙은 컬렉션이 봐 주지 않으므로 `add` 안에서 막는다.
+          selfChecks:
+            - 상품 코드를 열쇠로 쓰는 그릇을 골랐는가
+            - 같은 상품을 두 번 담았을 때 줄이 늘지 않고 수량만 더해지는가
+            - 담은 적 없는 상품을 물었을 때 예외가 아니라 0이 나오는가
+            - 수량 규칙을 컬렉션이 아니라 내 코드에서 막았는가
+      - key: LESSON.JAVA.COLLECTION.001.U2
+        title: Set과 Map이 "같다"를 판단하는 법
+        minutes: 12
+        core: true
+        explain: |-
+          `Set`이 중복을 막고 `Map`이 키를 찾을 때, 무엇을 보고 "같다"고 할까.
+          공식 문서가 정한 규칙은 두 단계다 — 먼저 `hashCode()`로 **자리**를 찾고,
+          그 자리에서 `equals()`로 **정말 같은지** 확인한다.
+
+          그래서 계약이 하나 붙는다. **`equals`로 같은 두 객체는 `hashCode`도 같아야 한다.**
+          한쪽만 재정의하면 이 계약이 깨진다. 값은 같은데 자리가 다르니,
+          `Set`에 같은 것이 두 번 들어가고 `Map.get`이 방금 넣은 것을 못 찾는다.
+
+          자바 16부터는 **`record`** 가 이 둘을 자동으로 만들어 준다.
+          값을 담기만 하는 타입이라면 `record`를 쓰는 것이 가장 안전하다 —
+          손으로 쓰다가 필드 하나를 빠뜨리는 일이 없다.
+
+          이렇게 **식별자가 아니라 값으로 같고 다름을 따지는 타입**을 설계에서는
+          **값 객체(Value Object)** 라고 부른다. 주문 ID처럼 "누구인지"로 구분하는
+          엔터티(Entity)와 짝을 이루는 개념이고, 값 객체는 불변으로 만드는 것이 정석이다.
+        example:
+          language: java
+          code: |-
+            // 손으로 쓴 클래스 — equals만 재정의했다
+            static final class BadCode {
+                private final String value;
+                BadCode(String value) { this.value = value; }
+                @Override public boolean equals(Object o) {
+                    return o instanceof BadCode other && value.equals(other.value);
+                }
+            }
+
+            // record — equals와 hashCode를 함께 만들어 준다
+            record CouponCode(String value) {}
+
+            Set<BadCode> bad = new HashSet<>();
+            bad.add(new BadCode("WELCOME10"));
+            bad.add(new BadCode("WELCOME10"));
+
+            Set<CouponCode> good = new HashSet<>();
+            good.add(new CouponCode("WELCOME10"));
+            good.add(new CouponCode("WELCOME10"));
+
+            System.out.println(bad.size());
+            System.out.println(good.size());
+            System.out.println(new BadCode("A").equals(new BadCode("A")));
+          output: |-
+            2
+            1
+            true
+          note: |-
+            - `BadCode`는 `equals`로는 같다고 하면서 크기가 2다 — 자리를 먼저 다르게 잡았기 때문이다
+            - 마지막 줄이 `true`인 것이 함정이다. **`equals`만 확인하면 버그가 안 보인다**
+            - `record`는 모든 구성 요소로 `equals`·`hashCode`를 만든다
+        predict:
+          question: '`BadCode`에 `hashCode()`를 `value.hashCode()`를 돌려주게 추가하면 첫 줄 출력은?'
+          choices:
+            - "1"
+            - "2"
+            - "0"
+            - 실행 중 예외가 난다
+          answer: "1"
+          explanation: |-
+            같은 값이면 같은 자리를 잡고, 그 자리에서 `equals`가 같다고 하므로
+            두 번째 `add`는 버려진다. `equals`와 `hashCode`는 **둘이 한 쌍**이라는 것이 이 결과다.
+        complete:
+          question: 상품을 값으로 다루는 타입을 만들고 Set에 넣으세요. 중복이 들어가지 않아야 합니다.
+          code: |-
+            ___ ProductCode(String value) {}
+
+            Set<ProductCode> codes = new HashSet<>();
+            codes.add(new ProductCode("KB-01"));
+            codes.add(new ProductCode("KB-01"));
+            System.out.println(codes.___());   // 1
+          answers:
+            - [record]
+            - [size]
+          explanation: |-
+            `record`는 `equals`·`hashCode`·`toString`을 구성 요소로부터 만들어 준다.
+            값을 담기만 하는 타입에서 이 둘을 손으로 쓸 이유가 거의 없다.
+        problem:
+          prompt: |-
+            주문 시스템에서 **같은 사람이 같은 상품을 같은 날 중복 주문했는지** 걸러 내려 한다.
+
+            - 주문을 식별하는 값 타입 `OrderKey`를 만든다. 회원 ID, 상품 코드, 주문 날짜 세 가지를 담는다
+            - 이미 본 주문인지 판단하는 `DuplicateFilter`를 만든다.
+              `isFirst(OrderKey)` 는 처음 보는 주문이면 `true`, 이미 본 것이면 `false`다
+            - 세 값이 모두 같으면 같은 주문으로 본다
+
+            `OrderKey`를 `record`가 아니라 일반 클래스로 만들었다면 무엇을 더 해야 하는지도 적으세요.
+          deliverables:
+            - OrderKey와 DuplicateFilter의 코드
+            - 일반 클래스로 만들었을 때 추가로 해야 하는 일과 그 이유
+            - 같은 값으로 두 번 물었을 때 true, false가 나오는 것을 보인 실행 결과
+          hints:
+            - 처음 보는 것인지 판단하는 일은 "중복을 막는" 그릇이 이미 할 줄 압니다.
+            - 그 그릇의 `add`가 무엇을 돌려주는지 다시 보세요. 넣은 결과가 곧 답입니다.
+            - 값 세 개가 모두 같아야 같은 것으로 쳐야 합니다. 그 판단은 그릇이 아니라 값 타입이 합니다.
+          modelAnswer: |-
+            ```java
+            record OrderKey(long memberId, String productCode, LocalDate orderedOn) {}
+
+            public class DuplicateFilter {
+
+                private final Set<OrderKey> seen = new HashSet<>();
+
+                public boolean isFirst(OrderKey key) {
+                    return seen.add(key);   // 처음이면 true, 이미 있으면 false
+                }
+            }
+            ```
+
+            `Set.add`가 **넣었는지 여부**를 돌려주므로 따로 `contains`를 부를 필요가 없다.
+            두 번 훑지 않고 한 번에 끝난다.
+
+            일반 클래스였다면 세 필드를 모두 쓰는 `equals`와 `hashCode`를 직접 써야 한다.
+            하나라도 빠뜨리면 다른 주문이 같은 것으로 묶이거나, 같은 주문이 매번 새것으로 보인다.
+          selfChecks:
+            - 중복을 막는 그릇을 골랐는가
+            - add가 돌려주는 값을 그대로 썼는가, 아니면 contains를 한 번 더 불렀는가
+            - 세 값이 모두 같을 때만 같은 주문으로 판단되는가
+            - record를 쓰지 않았다면 equals와 hashCode를 둘 다 재정의했는가
+      - key: LESSON.JAVA.COLLECTION.001.U3
+        title: 밖으로 내보내는 컬렉션 닫기
+        minutes: 8
+        core: false
+        explain: |-
+          `JAVA.OOP`에서 필드를 `private`으로 닫았다. 그런데 컬렉션 필드는
+          **getter 하나로 그 담이 무너진다.**
+
+          ```java
+          public List<OrderLine> lines() {
+              return lines;   // 내부 목록 그 자체를 건넨다
+          }
+          ```
+
+          받은 쪽이 `order.lines().clear()` 를 부르면 주문 안이 비어 버린다.
+          `private`이었지만 막은 것이 없다.
+
+          막는 방법은 두 가지다. **복사해서 주거나**(`List.copyOf`),
+          **읽기 전용 창으로 주거나**(`Collections.unmodifiableList`).
+          둘 다 바꾸려 들면 `UnsupportedOperationException`을 던진다.
+          차이는 하나 — 복사본은 그 뒤 원본이 바뀌어도 그대로지만,
+          읽기 전용 창은 원본이 바뀌면 같이 바뀐다.
+        example:
+          language: java
+          code: |-
+            public class Order {
+
+                private final List<String> lines = new ArrayList<>();
+
+                public void addLine(String line) {
+                    lines.add(line);
+                }
+
+                public List<String> lines() {
+                    return List.copyOf(lines);   // 복사해서 준다
+                }
+            }
+
+            Order order = new Order();
+            order.addLine("키보드");
+
+            List<String> outside = order.lines();
+            System.out.println(outside.size());
+
+            order.addLine("마우스");
+            System.out.println(outside.size());      // 복사본이라 그대로다
+            System.out.println(order.lines().size());
+            outside.clear();                          // 예외
+          output: |-
+            1
+            1
+            2
+            Exception in thread "main" java.lang.UnsupportedOperationException
+          note: |-
+            - `List.copyOf`는 **그 시점의 사본**을 만든다 — 뒤에 원본이 늘어도 사본은 1이다
+            - 사본은 바꿀 수 없다. `clear()`가 예외로 막힌다
+            - 원본을 늘리려면 `addLine`을 지나야 한다 — 규칙이 다시 한 곳으로 모인다
+        predict:
+          question: '`List.copyOf(lines)` 대신 `lines`를 그대로 돌려주면 마지막 `outside.clear()`는 어떻게 되나?'
+          choices:
+            - 예외 없이 성공하고 주문 안의 목록이 비워진다
+            - 그대로 UnsupportedOperationException이 난다
+            - 복사본만 비워지고 주문은 그대로다
+            - 컴파일 오류가 난다
+          answer: 예외 없이 성공하고 주문 안의 목록이 비워진다
+          explanation: |-
+            `ArrayList`를 그대로 건넸으니 받은 쪽이 마음대로 바꿀 수 있다.
+            필드가 `private`이어도 **참조를 넘겨주면 닫은 것이 아니다.**
+            컬렉션 필드에서 이 실수가 가장 자주 난다.
+        complete:
+          question: 생성자로 받은 목록도 밖에서 못 바꾸게 빈칸을 채우세요.
+          code: |-
+            public class Coupon {
+
+                private final List<String> targets;
+
+                public Coupon(List<String> targets) {
+                    this.targets = List.___(targets);   // 받을 때 끊는다
+                }
+
+                public List<String> targets() {
+                    return ___;                          // 이미 불변이니 그대로 준다
+                }
+            }
+          answers:
+            - [copyOf]
+            - [targets]
+          explanation: |-
+            받을 때 한 번 복사해 두면 **부른 쪽이 나중에 그 목록을 바꿔도** 내 안은 안전하다.
+            필드가 이미 불변이므로 돌려줄 때 또 복사할 필요는 없다.
+        problem:
+          prompt: |-
+            아래 `Basket`은 겉보기에 잘 닫혀 있지만 두 군데가 새고 있다.
+
+            ```java
+            public class Basket {
+                private final List<String> items;
+                public Basket(List<String> items) { this.items = items; }
+                public List<String> items() { return items; }
+            }
+            ```
+
+            - 새는 두 자리를 각각 지적하고, **밖에서 내용을 바꾸는 코드**를 한 줄씩 보이세요
+            - 두 자리를 모두 막은 `Basket`을 다시 작성하세요
+          deliverables:
+            - 새는 두 자리와 각각을 깨뜨리는 코드 한 줄씩
+            - 고친 Basket 전체 코드
+            - 복사본과 읽기 전용 창 중 무엇을 골랐는지와 그 이유
+          hints:
+            - 값이 밖으로 나가는 길만 보면 절반입니다. 들어오는 길도 보세요.
+            - 생성자에 넘긴 목록을 부른 쪽이 계속 들고 있다면 어떻게 될까요?
+            - 막는 자리는 두 곳이지만 쓰는 방법은 같은 것 하나면 됩니다.
+          modelAnswer: |-
+            새는 자리는 **생성자**와 **getter** 두 곳이다.
+
+            ```java
+            List<String> mine = new ArrayList<>(List.of("키보드"));
+            Basket basket = new Basket(mine);
+            mine.add("마우스");              // ① 밖에서 들고 있던 목록으로 안을 바꾼다
+            basket.items().clear();          // ② 돌려받은 목록으로 안을 비운다
+            ```
+
+            ```java
+            public class Basket {
+
+                private final List<String> items;
+
+                public Basket(List<String> items) {
+                    this.items = List.copyOf(items);   // 들어오는 길을 끊는다
+                }
+
+                public List<String> items() {
+                    return items;                       // 이미 불변이라 그대로 준다
+                }
+            }
+            ```
+
+            복사본을 고른 이유는 **만든 뒤에는 바뀌지 않는 값**이기 때문이다.
+            원본이 계속 자라고 그것을 보여 줘야 하는 화면이라면 읽기 전용 창이 맞다.
+          selfChecks:
+            - 들어오는 길과 나가는 길을 둘 다 막았는가
+            - 각각을 깨뜨리는 코드를 실제로 한 줄씩 보였는가
+            - 복사본과 읽기 전용 창 중 왜 그것을 골랐는지 말할 수 있는가
+    commonMistakes:
+      - '`List.contains`로 중복을 검사한다. 건수가 늘면 느려지고, 애초에 `Set`이면 검사할 일이 없다 (U1)'
+      - '`equals`만 재정의하고 `hashCode`를 빠뜨린다. `equals`로는 같다고 나와서 버그가 안 보인다 (U2)'
+      - 컬렉션 필드를 getter로 그대로 돌려준다. `private`이어도 받은 쪽이 바꿀 수 있다 (U3)
+    inProject: |-
+      주문 시스템에서 셋이 각자 자리가 있다. 장바구니처럼 **상품 코드로 찾는** 것은 `Map`,
+      쿠폰 코드처럼 **두 번 들어가면 안 되는** 것은 `Set`, 주문 내역처럼 **순서가 뜻인** 것은 `List`다.
+      그리고 `Order`가 들고 있는 줄 목록은 밖으로 나갈 때 반드시 닫아서 준다 —
+      여기를 열어 두면 나중에 붙일 어떤 규칙도 우회당한다.
+    sources:
+      - title: The Java Tutorials — Collections
+        url: https://docs.oracle.com/javase/tutorial/collections/index.html
+        versionScope: Java SE
+      - title: The Java Tutorials — The Collection Interfaces
+        url: https://docs.oracle.com/javase/tutorial/collections/interfaces/index.html
+        versionScope: Java SE
+      - title: The Java Tutorials — The Set Interface
+        url: https://docs.oracle.com/javase/tutorial/collections/interfaces/set.html
+        versionScope: Java SE
+      - title: The Java Tutorials — The Map Interface
+        url: https://docs.oracle.com/javase/tutorial/collections/interfaces/map.html
+        versionScope: Java SE
+    verifiedAt: 2026-09-24
+
+  - key: LESSON.JAVA.GENERICS.001
+    skillCode: JAVA.GENERICS
+    title: 무엇이 들어 있는지 타입으로 적어 두기 (제네릭)
+    whyItMatters: |-
+      꺾쇠 안이 없으면 꺼낼 때마다 형변환을 해야 하고, 잘못 담아도 컴파일러가 아무 말을 하지 않는다.
+      틀린 것은 실행 중에 ClassCastException으로 나타난다.
+      주문 시스템에서 공통 응답 타입이나 목록 조회 결과를 만들 때, 제네릭이 없으면
+      같은 클래스를 타입마다 복사해 만들게 된다.
+    oneLine: 제네릭은 "무엇이 들어 있는지"를 컴파일러에게 알려 주는 표기이고, 실행 중에는 사라진다.
+    units:
+      - key: LESSON.JAVA.GENERICS.001.U1
+        title: 타입 파라미터로 형변환 없애기
+        minutes: 10
+        core: true
+        explain: |-
+          공식 튜토리얼이 드는 이점은 세 가지다 —
+          **컴파일 때 타입을 검사하고, 형변환을 없애고, 같은 코드를 여러 타입에 쓴다.**
+
+          꺾쇠 안에 적는 `T`가 **타입 파라미터**다. 메서드의 매개변수가 값을 받듯,
+          타입 파라미터는 **타입을 받는다**. 쓰는 쪽에서 `Box<String>`이라고 적으면
+          그 자리의 `T`가 전부 `String`이 된다.
+
+          이름에는 관례가 있다. `T`(Type), `E`(Element), `K`·`V`(Key·Value), `R`(Result).
+
+          클래스뿐 아니라 **메서드 하나에만** 붙일 수도 있다.
+          그때는 돌려주는 타입 앞에 `<T>`를 적는다 — 이것이 제네릭 메서드다.
+        example:
+          language: java
+          code: |-
+            record ApiResponse<T>(T data, String message) {
+
+                static <T> ApiResponse<T> ok(T data) {
+                    return new ApiResponse<>(data, "OK");
+                }
+            }
+
+            record Product(String code, int price) {}
+
+            ApiResponse<Product> one = ApiResponse.ok(new Product("KB-01", 39000));
+            ApiResponse<List<String>> many = ApiResponse.ok(List.of("KB-01", "MS-02"));
+
+            Product product = one.data();        // 형변환이 없다
+            System.out.println(product.price());
+            System.out.println(many.data().size());
+            System.out.println(one.message());
+          output: |-
+            39000
+            2
+            OK
+          note: |-
+            - `ApiResponse<T>` — `T`가 무엇이 담기는지를 나타낸다
+            - `static <T> ApiResponse<T> ok(...)` — 돌려주는 타입 앞의 `<T>`가 제네릭 메서드 표시다
+            - `one.data()`가 이미 `Product`다. 꺼낼 때 형변환이 필요 없다
+            - `new ApiResponse<>(...)` — 꺾쇠 안을 비우면 컴파일러가 채운다(다이아몬드)
+        predict:
+          question: '`ApiResponse<Product> one`에 `one.data().length()`를 부르면 어떻게 되나?'
+          choices:
+            - 컴파일 오류가 난다 — Product에 length()가 없다
+            - 실행 중 ClassCastException이 난다
+            - null이 돌아온다
+            - 0이 돌아온다
+          answer: 컴파일 오류가 난다 — Product에 length()가 없다
+          explanation: |-
+            `T`가 `Product`로 정해졌으므로 `data()`의 타입도 `Product`다.
+            **실행하기 전에** 막힌다는 것이 제네릭의 값어치다.
+            꺾쇠가 없었다면 `Object`를 `String`으로 형변환하다 실행 중에 터졌을 것이다.
+        complete:
+          question: 목록의 첫 원소를 돌려주는 제네릭 메서드를 완성하세요.
+          code: |-
+            static ___ E first(List<E> items) {
+                if (items.isEmpty()) {
+                    throw new IllegalArgumentException("비어 있다");
+                }
+                return items.___(0);
+            }
+          answers:
+            - ["<E>"]
+            - [get]
+          explanation: |-
+            메서드에만 타입 파라미터를 붙일 때는 **돌려주는 타입 앞에** `<E>`를 적는다.
+            `E`는 원소(Element)를 가리키는 관례 이름이다.
+        problem:
+          prompt: |-
+            주문 시스템의 목록 조회 응답을 담는 `PageResponse<T>`를 백지에서 작성하세요.
+
+            - 한 페이지의 내용(`content`), 전체 건수(`totalCount`), 페이지 번호(`page`)를 담는다
+            - `content`는 밖에서 바꿀 수 없어야 한다
+            - 비어 있는 페이지를 만드는 `empty()`를 제네릭 메서드로 둔다
+            - `Product`와 `String` 두 타입으로 각각 만들어 쓰는 예를 보이세요
+          deliverables:
+            - PageResponse의 전체 코드
+            - 두 타입으로 만들어 쓰는 예제 코드
+            - 제네릭을 쓰지 않았다면 무엇을 더 써야 했을지 한 줄
+          hints:
+            - 담기는 것이 무엇인지 모르는 채로 만들어야 합니다. 그 자리를 무엇으로 비워 둘까요?
+            - 비어 있는 페이지는 담기는 타입과 상관없이 만들 수 있어야 합니다.
+            - 내용을 바꿀 수 없게 하는 방법은 앞 노트(컬렉션)에서 이미 썼습니다.
+          modelAnswer: |-
+            ```java
+            record PageResponse<T>(List<T> content, long totalCount, int page) {
+
+                PageResponse {
+                    content = List.copyOf(content);   // 받을 때 끊는다
+                }
+
+                static <T> PageResponse<T> empty(int page) {
+                    return new PageResponse<>(List.of(), 0, page);
+                }
+            }
+
+            PageResponse<Product> products =
+                    new PageResponse<>(List.of(new Product("KB-01", 39000)), 1, 0);
+            PageResponse<String> codes = PageResponse.empty(0);
+            ```
+
+            `record`의 압축 생성자에서 한 번 끊으면 안이 불변이 된다.
+            `empty()`는 담기는 타입과 무관하므로 제네릭 메서드로 두었다.
+            제네릭이 없었다면 `ProductPageResponse`, `StringPageResponse`처럼
+            **타입마다 같은 클래스를 복사해** 만들어야 했다.
+          selfChecks:
+            - 담기는 타입을 타입 파라미터로 비워 두었는가
+            - content를 밖에서 바꿀 수 없게 했는가
+            - empty()를 타입마다 따로 만들지 않고 하나로 두었는가
+            - 두 타입으로 실제로 만들어 써 봤는가
+      - key: LESSON.JAVA.GENERICS.001.U2
+        title: extends와 super — 받을 수 있는 폭 넓히기
+        minutes: 12
+        core: true
+        explain: |-
+          함정이 하나 있다. `List<Product>`는 `List<Object>`가 **아니다.**
+          만약 맞다면 `Product` 목록에 아무 `Object`나 넣을 수 있게 되어 타입 검사가 무너진다.
+
+          그래서 "이 타입이거나 그 아래면 된다"를 적는 표기가 필요하다. 그것이 와일드카드 `?`다.
+
+          | 표기 | 뜻 | 할 수 있는 일 |
+          |---|---|---|
+          | `List<? extends T>` | `T`이거나 그 **하위** | 꺼내 읽는다 |
+          | `List<? super T>` | `T`이거나 그 **상위** | 넣는다 |
+
+          외우는 말이 있다 — **PECS**, Producer는 `extends`, Consumer는 `super`.
+          값을 **주는**(읽는) 자리면 `extends`, 값을 **받는**(넣는) 자리면 `super`다.
+
+          `? extends T`에 넣을 수 없는 이유는 간단하다. 정확히 어느 하위 타입인지
+          모르는데 넣으면, 그 목록의 진짜 타입과 어긋날 수 있기 때문이다.
+        example:
+          language: java
+          code: |-
+            sealed interface Item permits Product, Coupon {}
+            record Product(String code, int price) implements Item {}
+            record Coupon(String code, int rate) implements Item {}
+
+            // 읽기만 한다 → extends
+            static int count(List<? extends Item> items) {
+                return items.size();
+            }
+
+            // 넣는다 → super
+            static void addProduct(List<? super Product> target) {
+                target.add(new Product("KB-01", 39000));
+            }
+
+            List<Product> products = new ArrayList<>(List.of(new Product("MS-02", 12000)));
+            List<Item> items = new ArrayList<>();
+
+            System.out.println(count(products));
+            System.out.println(count(items));
+            addProduct(products);
+            addProduct(items);
+            System.out.println(products.size() + " " + items.size());
+          output: |-
+            1
+            0
+            2 1
+          note: |-
+            - `count`는 `List<Product>`와 `List<Item>`을 **둘 다** 받는다 — `extends` 덕분이다
+            - `addProduct`도 둘 다 받는다 — `Product`를 담을 수 있는 목록이면 되기 때문이다
+            - `count` 안에서 `items.add(...)`를 쓰면 컴파일 오류다. 읽기 전용이다
+        predict:
+          question: '`count`의 매개변수를 `List<Item>`으로 바꾸면 `count(products)`는 어떻게 되나?'
+          choices:
+            - 컴파일 오류가 난다 — List<Product>는 List<Item>이 아니다
+            - 그대로 1이 출력된다
+            - 0이 출력된다
+            - 실행 중 ClassCastException이 난다
+          answer: 컴파일 오류가 난다 — List<Product>는 List<Item>이 아니다
+          explanation: |-
+            `Product`가 `Item`의 하위라고 해서 `List<Product>`가 `List<Item>`의 하위가 되지는 않는다.
+            이것을 잇는 표기가 `? extends Item`이다.
+            매개변수에서 **읽기만 한다면** 거의 언제나 `extends`를 붙이는 편이 낫다.
+        complete:
+          question: 두 목록을 합치는 메서드입니다. PECS에 맞게 빈칸을 채우세요.
+          code: |-
+            static <T> void copyAll(List<? ___ T> source, List<? ___ T> target) {
+                for (T item : source) {
+                    target.add(item);
+                }
+            }
+          answers:
+            - [extends]
+            - [super]
+          explanation: |-
+            `source`는 값을 **주는** 쪽이라 `extends`, `target`은 값을 **받는** 쪽이라 `super`다.
+            이렇게 적어 두면 `copyAll(productList, itemList)` 같은 호출이 전부 통과한다.
+        problem:
+          prompt: |-
+            주문 시스템의 합계를 구하는 유틸리티를 작성하세요.
+
+            - `int totalPrice(List<? extends Product> products)` — 가격의 합을 돌려준다
+            - `void collectCodes(List<? extends Item> items, List<? super String> target)` —
+              각 항목의 코드를 꺼내 target에 담는다
+            - 두 메서드를 `List<Product>`와 `List<Item>`, `List<String>`과 `List<Object>`로
+              각각 불러 보고 **컴파일이 되는 조합과 안 되는 조합**을 정리하세요
+          deliverables:
+            - 두 메서드의 코드
+            - 호출 조합별로 컴파일 여부를 적은 표
+            - collectCodes의 target에 extends를 쓰면 왜 안 되는지 한 줄
+          hints:
+            - 매개변수마다 "여기서 값을 읽나, 넣나"를 먼저 정하세요.
+            - 읽는 쪽과 넣는 쪽에 붙는 표기가 다릅니다. 외우는 말이 있었습니다.
+            - 안 되는 조합은 컴파일러가 알려 줍니다. 그 메시지를 그대로 옮겨 적어도 됩니다.
+          modelAnswer: |-
+            ```java
+            static int totalPrice(List<? extends Product> products) {
+                int sum = 0;
+                for (Product product : products) {
+                    sum += product.price();
+                }
+                return sum;
+            }
+
+            static void collectCodes(List<? extends Item> items, List<? super String> target) {
+                for (Item item : items) {
+                    target.add(item instanceof Product p ? p.code() : ((Coupon) item).code());
+                }
+            }
+            ```
+
+            | 호출 | 컴파일 |
+            |---|---|
+            | `totalPrice(List<Product>)` | O |
+            | `totalPrice(List<Item>)` | X — `Item`은 `Product`의 하위가 아니다 |
+            | `collectCodes(items, List<String>)` | O |
+            | `collectCodes(items, List<Object>)` | O — `Object`는 `String`의 상위다 |
+
+            `target`에 `? extends String`을 쓰면 **정확히 어느 하위 타입인지 모르는 목록**이 되어
+            넣는 것이 막힌다. 받는 자리에는 `super`를 쓴다.
+          selfChecks:
+            - 매개변수마다 읽는 자리인지 넣는 자리인지 먼저 정했는가
+            - 컴파일이 안 되는 조합을 실제로 확인했는가
+            - target에 extends를 쓰면 왜 막히는지 말로 설명할 수 있는가
+      - key: LESSON.JAVA.GENERICS.001.U3
+        title: 실행 중에는 꺾쇠가 사라진다 (타입 소거)
+        minutes: 8
+        core: false
+        explain: |-
+          제네릭은 **컴파일러를 위한 표기**다. 컴파일이 끝나면 꺾쇠 안은 지워지고
+          필요한 자리에 형변환이 끼워진다. 이것을 **타입 소거(type erasure)** 라고 한다.
+
+          이유는 호환이다. 제네릭이 없던 시절의 코드와 같은 바이트코드 위에서 돌아야 했다.
+
+          여기서 몇 가지가 따라 나온다.
+
+          - `List<String>`과 `List<Integer>`는 **실행 중에 같은 타입**이다
+          - `items instanceof List<String>` 은 쓸 수 없다
+          - `new T[10]` 처럼 타입 파라미터로 배열을 만들 수 없다
+          - 지워진 타입이 같으면 **메서드 이름을 겹쳐 쓸 수 없다**
+
+          그래서 실행 중에 타입을 알아야 하면 `Class<T>`를 함께 받아 두는 방법을 쓴다.
+        example:
+          language: java
+          code: |-
+            List<String> codes = new ArrayList<>();
+            List<Integer> prices = new ArrayList<>();
+
+            System.out.println(codes.getClass() == prices.getClass());
+            System.out.println(codes.getClass().getName());
+
+            // 꺾쇠를 지우고 담으면 컴파일러가 못 막는다
+            List raw = codes;
+            raw.add(39000);            // 경고만 나고 통과한다
+
+            for (Object item : codes) {
+                System.out.println(item);
+            }
+            String first = codes.get(0);   // 여기서 터진다
+          output: |-
+            true
+            java.util.ArrayList
+            39000
+            Exception in thread "main" java.lang.ClassCastException:
+              class java.lang.Integer cannot be cast to class java.lang.String
+          note: |-
+            - 두 목록의 클래스가 **같다** — 실행 중에는 `ArrayList` 하나다
+            - 꺾쇠를 뗀 raw 타입에 담으면 컴파일러의 검사를 건너뛴다
+            - 터지는 자리가 **담은 곳이 아니라 꺼내는 곳**이다. 원인에서 멀어진다
+            - 그래서 꺾쇠를 떼지 않는 것이 규칙이다
+        predict:
+          question: '`raw.add(39000)` 줄을 지우면 마지막 `codes.get(0)`은 어떻게 되나?'
+          choices:
+            - IndexOutOfBoundsException이 난다 — 목록이 비어 있다
+            - ClassCastException이 그대로 난다
+            - null이 돌아온다
+            - 빈 문자열이 돌아온다
+          answer: IndexOutOfBoundsException이 난다 — 목록이 비어 있다
+          explanation: |-
+            `codes`에 담은 것은 그 한 줄뿐이었다. 지우면 목록이 비고,
+            없는 자리를 꺼내니 범위 오류가 난다.
+            형변환 오류는 **잘못된 것이 들어갔을 때만** 난다는 것을 뒤집어 보여 준다.
+        complete:
+          question: 실행 중에도 타입을 알아야 할 때 쓰는 방법입니다. 빈칸을 채우세요.
+          code: |-
+            record TypedCache<T>(___<T> type, Map<String, Object> values) {
+
+                T get(String key) {
+                    return type.___(values.get(key));
+                }
+            }
+          answers:
+            - [Class]
+            - [cast]
+          explanation: |-
+            꺾쇠는 지워지지만 `Class<T>` 객체는 실행 중에도 남는다.
+            그것을 들고 다니면 `cast`로 안전하게 형변환할 수 있다 —
+            스프링의 여러 API가 `Class<T>`를 함께 받는 이유가 이것이다.
+        problem:
+          prompt: |-
+            아래 코드는 컴파일되지 않는다.
+
+            ```java
+            static void handle(List<Product> products) { }
+            static void handle(List<Coupon> coupons) { }
+            ```
+
+            - **왜** 컴파일되지 않는지 타입 소거로 설명하세요
+            - 두 가지 방법으로 고치세요. 하나는 이름을 바꾸는 것이고,
+              다른 하나는 이름을 그대로 두고 **매개변수를 바꾸는** 것입니다
+            - 두 방법 중 주문 시스템에서 어느 쪽을 고르겠는지와 그 이유를 적으세요
+          deliverables:
+            - 컴파일되지 않는 이유
+            - 고친 코드 두 가지
+            - 고른 쪽과 그 이유 한 줄
+          hints:
+            - 컴파일이 끝난 뒤 두 메서드의 서명이 어떻게 보이는지 그려 보세요.
+            - 꺾쇠가 지워지면 남는 것은 무엇인가요?
+            - 이름을 그대로 두려면 지워진 뒤에도 서로 다른 것이 있어야 합니다.
+          modelAnswer: |-
+            타입 소거 뒤 두 메서드의 서명이 **둘 다 `handle(List)`** 가 된다.
+            같은 이름에 같은 매개변수이므로 겹쳐 쓸 수 없다.
+
+            ```java
+            // 1. 이름을 나눈다
+            static void handleProducts(List<Product> products) { }
+            static void handleCoupons(List<Coupon> coupons) { }
+
+            // 2. 공통 상위 타입 하나로 받는다
+            static void handle(List<? extends Item> items) { }
+            ```
+
+            주문 시스템에서는 두 번째가 낫다. 항목 종류가 늘어날 때마다 메서드를 더 만들지 않아도 되고,
+            안에서 `instanceof` 패턴으로 갈라 쓰면 된다.
+            다만 종류마다 처리가 완전히 다르다면 첫 번째가 더 읽기 쉽다.
+          selfChecks:
+            - 지워진 뒤의 서명을 실제로 적어 보았는가
+            - 두 가지 방법을 모두 컴파일해 보았는가
+            - 고른 이유가 짧아서가 아니라 앞으로 늘어날 것을 본 이유인가
+    commonMistakes:
+      - 꺾쇠를 뗀 raw 타입을 쓴다. 컴파일러 검사를 건너뛰고 꺼낼 때 ClassCastException으로 터진다 (U3)
+      - 읽기만 하는 매개변수에 정확한 타입을 적어 두고 하위 타입 목록을 못 받는다 (U2)
+      - '`instanceof List<String>`처럼 실행 중에 없는 것을 확인하려 한다 (U3)'
+    inProject: |-
+      주문 시스템의 공통 응답(ApiResponse)과 목록 응답(PageResponse)이 첫 자리다.
+      타입마다 클래스를 복사하지 않아도 되고, 컨트롤러가 무엇을 돌려주는지 서명만 봐도 드러난다.
+      서비스 계층에서 여러 종류를 함께 다루는 메서드에는 `? extends`를 붙여 두면,
+      나중에 항목 종류가 늘어도 그 메서드는 고치지 않는다.
+    sources:
+      - title: The Java Tutorials — Generics
+        url: https://docs.oracle.com/javase/tutorial/java/generics/index.html
+        versionScope: Java SE
+      - title: The Java Tutorials — Generic Types
+        url: https://docs.oracle.com/javase/tutorial/java/generics/types.html
+        versionScope: Java SE
+      - title: The Java Tutorials — Wildcards
+        url: https://docs.oracle.com/javase/tutorial/java/generics/wildcards.html
+        versionScope: Java SE
+      - title: The Java Tutorials — Type Erasure
+        url: https://docs.oracle.com/javase/tutorial/java/generics/erasure.html
+        versionScope: Java SE
+    verifiedAt: 2026-09-24
