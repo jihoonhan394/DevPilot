@@ -241,6 +241,10 @@ targets:
     priority: SHOULD
     importance: 0.70
     target: { knowledge: 3, implementation: 3, explanation: 2, debugging: 1 }
+  - skill: DEVOPS.PROJECT_BOOTSTRAP
+    priority: SHOULD
+    importance: 0.55
+    target: { knowledge: 2, implementation: 2, explanation: 2, debugging: 1 }
   - skill: DEVOPS.BUILD_GRADLE
     priority: SHOULD
     importance: 0.60

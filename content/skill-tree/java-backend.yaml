@@ -437,6 +437,14 @@ skills:
     description: 브랜치 전략, merge와 rebase, PR 리뷰 흐름으로 협업한다.
     minutesPerLevelStep: 60
     prerequisites: []
+  - code: DEVOPS.PROJECT_BOOTSTRAP
+    name: 프로젝트 처음 만들기
+    category: DEVOPS
+    parent: DEVOPS
+    description: 빈 폴더에서 프로젝트 뼈대를 만들고, 필요한 의존성과 실행 설정을 붙여 첫 기동까지 스스로 간다.
+    whyItMatters: 남이 만들어 준 프로젝트만 고쳐 본 사람은 무엇이 어디서 켜지는지 모른 채로 고치게 된다.
+    minutesPerLevelStep: 60
+    prerequisites: []
   - code: DEVOPS.BUILD_GRADLE
     name: Gradle 빌드
     category: DEVOPS

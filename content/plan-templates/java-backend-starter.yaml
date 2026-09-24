@@ -23,13 +23,14 @@ milestones:
   - key: SETUP_AND_FIRST_API
     title: 환경과 첫 API
     description: >-
-      내려받은 프로젝트를 내 손으로 띄우고, 요청 하나가 어디를 지나 어디서 응답이 되는지 직접 따라간다.
+      빈 폴더에서 프로젝트를 직접 만들어 띄우고, 요청 하나가 어디를 지나 어디서 응답이 되는지 따라간다.
       컨트롤러·서비스·저장소를 나눠 첫 조회 API를 만들고, 브라우저와 curl로 눌러 상태 코드와 본문을 확인한다.
       만든 것은 브랜치로 올리고 리뷰 지적을 하나 받아 고쳐 본다.
     priority: MUST
     weightBp: 1800
     phase: PREPARATION
     skillCodes:
+      - DEVOPS.PROJECT_BOOTSTRAP
       - DEVOPS.GIT
       - DEVOPS.BUILD_GRADLE
       - JAVA.OOP
