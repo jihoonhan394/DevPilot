@@ -1,0 +1,949 @@
+# DevPilot 개념 노트 — 스프링 트랜잭션
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 기준 버전: Spring Boot 4.1 / Spring Framework 7 (AGENTS.md §0)
+# - 2단계(DB와 트랜잭션)에서 쓴다. DATABASE.TRANSACTION 노트를 먼저 본 것으로 전제한다
+lessons:
+  - key: LESSON.SPRING.TRANSACTION.001
+    skillCode: SPRING.TRANSACTION
+    title: 어노테이션 하나로 경계 긋기 (@Transactional)
+    whyItMatters: |-
+      `@Transactional`을 붙였는데 롤백이 안 되거나, 붙였는데도 아무 일이 안 일어나는 경우가 있다.
+      둘 다 이유가 정해져 있고 알면 5분이면 고친다. 모르면 데이터가 어긋난 채로 운영에 나간다.
+      주문 생성처럼 여러 표를 함께 바꾸는 자리마다 이 어노테이션 하나가 안전장치다.
+    oneLine: "@Transactional은 그 메서드의 시작과 끝을 트랜잭션 경계로 만들고, 기본적으로 unchecked 예외에만 롤백한다."
+    units:
+      - key: LESSON.SPRING.TRANSACTION.001.U1
+        title: 경계를 어디에 그을까
+        minutes: 10
+        core: true
+        explain: |-
+          `@Transactional`을 메서드나 클래스에 붙이면, 스프링이 그 메서드를 감싸
+          **시작할 때 트랜잭션을 열고 끝날 때 커밋**한다. 예외로 끝나면 롤백한다.
+          `BEGIN`과 `COMMIT`을 손으로 쓰지 않아도 되는 것이다.
+
+          문제는 **어디에 붙이느냐**다. 정석은 **서비스 계층의 공개 메서드**다.
+
+          | 계층 | 붙이나 | 왜 |
+          |---|---|---|
+          | 컨트롤러 | **아니다** | HTTP 처리 시간까지 경계에 들어간다 |
+          | **서비스** | **그렇다** | 하나의 업무 단위가 여기서 끝난다 |
+          | 저장소 | 아니다 | 한 메서드가 한 질의라 묶을 것이 없다 |
+
+          스프링 문서의 권고도 같다 — **서비스 계층에 두라**는 것이다.
+          업무 단위가 무엇인지 아는 곳이 거기이기 때문이다.
+          저장소에 붙이면 "재고 차감"과 "주문 저장"이 각각 따로 커밋된다.
+        example:
+          language: java
+          code: |-
+            @Service
+            public class OrderService {
+
+                @Transactional                                   // 여기가 경계다
+                public OrderResponse place(OrderRequest request, long memberId) {
+                    Stock stock = stockRepository.findByCode(request.productCode())
+                            .orElseThrow(() -> new ProductNotFoundException(request.productCode()));
+                    stock.take(request.quantity());              // 재고 차감
+
+                    Order order = orderRepository.save(
+                            Order.place(memberId, request));     // 주문 저장
+
+                    return OrderResponse.from(order);
+                }
+
+                @Transactional(readOnly = true)                  // 조회 전용
+                public OrderResponse find(long orderId, long memberId) {
+                    return orderRepository.findByIdAndMemberId(orderId, memberId)
+                            .map(OrderResponse::from)
+                            .orElseThrow(() -> new OrderNotFoundException(orderId));
+                }
+            }
+          output: |-
+            [정상]
+            Hibernate: select ... from stocks where product_code=?
+            Hibernate: insert into orders (...) values (...)
+            Hibernate: update stocks set available=? where id=?
+            → COMMIT
+
+            [재고 부족으로 예외]
+            Hibernate: select ... from stocks where product_code=?
+            → ROLLBACK  (주문도 남지 않는다)
+          note: |-
+            - 재고 차감과 주문 저장이 **한 경계** 안이다. 둘 다 되거나 둘 다 안 된다
+            - `save`를 부르지 않은 `stock`도 변경 감지로 `UPDATE`가 나갔다
+            - 예외로 끝나면 `INSERT`까지 되돌아간다 — 주문만 남는 일이 없다
+            - 조회에는 `readOnly = true`를 붙였다. 다음 노트에서 그 효과를 본다
+        predict:
+          question: '`@Transactional`을 `OrderRepository`의 각 메서드에 붙이고 서비스에서 떼면?'
+          choices:
+            - 재고 차감과 주문 저장이 따로 커밋되어 한쪽만 반영될 수 있다
+            - 그대로 한 단위로 묶인다
+            - 컴파일 오류가 난다
+            - 성능이 좋아진다
+          answer: 재고 차감과 주문 저장이 따로 커밋되어 한쪽만 반영될 수 있다
+          explanation: |-
+            저장소 메서드마다 경계가 열리고 닫힌다. 주문을 저장한 뒤 재고 차감에서 실패하면
+            **주문은 이미 커밋돼 있다.** 업무 단위를 아는 곳은 서비스이므로 경계도 거기에 있어야 한다.
+        complete:
+          question: 서비스 계층에 경계를 긋고 조회는 읽기 전용으로 표시하세요.
+          code: |-
+            @Service
+            public class CouponService {
+
+                @___
+                public void issue(long memberId, String code) { ... }
+
+                @Transactional(___ = true)
+                public List<CouponResponse> findMine(long memberId) { ... }
+            }
+          answers:
+            - [Transactional]
+            - [readOnly]
+          explanation: |-
+            변경이 있는 메서드에는 `@Transactional`, 조회만 하는 메서드에는
+            `@Transactional(readOnly = true)`를 붙인다.
+            읽기 전용 표시는 성능뿐 아니라 **의도를 드러내는** 역할도 한다.
+        problem:
+          prompt: |-
+            아래 서비스는 경계가 잘못 잡혀 있다.
+
+            ```java
+            @Service
+            public class OrderService {
+
+                public OrderResponse place(OrderRequest request, long memberId) {
+                    Order order = orderRepository.save(Order.place(memberId, request));
+                    paymentClient.charge(order.getId(), order.getAmount());   // 외부 호출
+                    stockRepository.decrease(request.productCode(), request.quantity());
+                    notificationClient.send(memberId, "주문 완료");             // 외부 호출
+                    return OrderResponse.from(order);
+                }
+            }
+            ```
+
+            - 지금 상태에서 결제 호출이 실패하면 데이터가 어떻게 어긋나는지 적으세요
+            - `@Transactional`을 그냥 메서드에 붙이면 **새로 생기는 문제**가 무엇인지 적으세요
+            - 경계를 다시 잡고, 외부 호출 둘을 어디에 둘지 정하세요
+          deliverables:
+            - 지금 상태에서 어긋나는 방식
+            - 메서드 전체에 경계를 걸었을 때 새로 생기는 문제
+            - 다시 잡은 경계와 외부 호출의 자리
+          hints:
+            - 경계가 없으면 각 저장소 호출이 따로 커밋됩니다.
+            - 외부 호출이 경계 안에 있으면 그동안 무엇을 쥐고 있게 되나요?
+            - 알림은 실패해도 주문을 되돌릴 이유가 없습니다. 결제는 어떤가요?
+          modelAnswer: |-
+            지금은 경계가 없어 `orderRepository.save`가 **바로 커밋**된다.
+            결제가 실패하면 주문은 남고 재고는 안 줄어든 어긋난 상태가 된다.
+
+            그렇다고 메서드 전체에 `@Transactional`을 붙이면
+            **결제와 알림 호출 시간 내내 DB 연결과 잠금을 쥐고 있게 된다.**
+            상대가 느려지면 연결 풀이 마르고 서비스 전체가 멈춘다.
+
+            ```java
+            @Transactional
+            public Order placeOrder(OrderRequest request, long memberId) {
+                Stock stock = stockRepository.findByCode(request.productCode()).orElseThrow();
+                stock.take(request.quantity());
+                return orderRepository.save(Order.place(memberId, request));
+            }
+
+            // 경계 밖에서 부른다
+            public OrderResponse place(OrderRequest request, long memberId) {
+                Order order = placeOrder(request, memberId);   // 짧은 경계
+                paymentClient.charge(order.getId(), order.getAmount());
+                eventPublisher.publishEvent(new OrderPlaced(order.getId(), memberId));
+                return OrderResponse.from(order);
+            }
+            ```
+
+            결제는 실패하면 주문 상태를 `PAYMENT_FAILED`로 바꾸는 **별도의 짧은 경계**로 처리한다.
+            알림은 실패해도 주문을 되돌릴 이유가 없으므로 커밋 뒤의 이벤트로 뺀다.
+            **경계 안에는 DB 작업만 둔다**는 것이 규칙이다.
+          selfChecks:
+            - 경계가 없을 때 어긋나는 방식을 구체적으로 적었는가
+            - 외부 호출을 경계 안에 두면 무엇을 쥐게 되는지 설명했는가
+            - DB 작업만 경계 안에 남겼는가
+            - 결제 실패와 알림 실패를 다르게 다뤘는가
+      - key: LESSON.SPRING.TRANSACTION.001.U2
+        title: 기본 롤백 규칙 — 무엇에 되돌리나
+        minutes: 12
+        core: true
+        explain: |-
+          가장 자주 당하는 함정이다. 스프링의 기본 규칙은 이렇다 —
+          **`RuntimeException`과 `Error`에는 롤백하고, checked 예외에는 커밋한다.**
+
+          ```java
+          @Transactional
+          public void transfer() throws IOException {
+              repository.save(...);
+              throw new IOException("실패");   // 커밋된다
+          }
+          ```
+
+          예외를 던졌는데 데이터는 저장돼 있다. 이유는 스프링이 checked 예외를
+          **"부른 쪽이 회복할 수 있는 업무 상황"** 으로 보기 때문이다.
+
+          바꾸려면 `rollbackFor`를 적는다.
+
+          ```java
+          @Transactional(rollbackFor = Exception.class)
+          ```
+
+          반대 함정도 있다 — **예외를 잡아서 삼키면 롤백되지 않는다.**
+          스프링은 메서드 밖으로 나온 예외를 보고 판단하므로,
+          안에서 잡아 버리면 정상 종료로 본다.
+          앞 노트의 "빈 catch를 두지 않는다"가 여기서 데이터 문제로 이어진다.
+        example:
+          language: java
+          code: |-
+            @Transactional
+            public void uncheckedRollsBack() {
+                orderRepository.save(Order.place(1L, request));
+                throw new IllegalStateException("실패");      // 롤백된다
+            }
+
+            @Transactional
+            public void checkedCommits() throws IOException {
+                orderRepository.save(Order.place(1L, request));
+                throw new IOException("실패");                 // 커밋된다
+            }
+
+            @Transactional
+            public void swallowedCommits() {
+                orderRepository.save(Order.place(1L, request));
+                try {
+                    paymentClient.charge(1L, 1000);
+                } catch (RuntimeException ignored) {          // 삼켰다
+                }
+            }                                                  // 커밋된다
+          output: |-
+            uncheckedRollsBack  → ROLLBACK,  주문 0건
+            checkedCommits      → COMMIT,    주문 1건   ← 예외를 던졌는데 남아 있다
+            swallowedCommits    → COMMIT,    주문 1건   ← 결제가 실패했는데 주문이 남는다
+          note: |-
+            - 두 번째가 함정이다. **예외로 끝났는데 데이터는 남아 있다**
+            - 세 번째는 더 조용하다. 로그도 없고 예외도 없고 데이터만 어긋난다
+            - 스프링은 **메서드 밖으로 나온 예외**만 본다
+            - 잡아서 처리했다면 "정상 처리"로 간주된다 — 의도한 것이 맞는지 봐야 한다
+        predict:
+          question: '`swallowedCommits`에서 `catch` 안에 `throw new PaymentFailedException(...)`을 넣으면?'
+          choices:
+            - 롤백된다 — unchecked 예외가 메서드 밖으로 나간다
+            - 그대로 커밋된다
+            - 컴파일 오류가 난다
+            - 결제만 되돌아간다
+          answer: 롤백된다 — unchecked 예외가 메서드 밖으로 나간다
+          explanation: |-
+            잡은 뒤 **다시 던지면** 스프링이 그것을 보고 롤백한다.
+            앞 노트에서 "잡았으면 회복하든 바꿔 던지든 무언가 한다"고 한 규칙이
+            여기서 데이터 정합성과 직접 연결된다.
+        complete:
+          question: checked 예외에도 롤백되도록 빈칸을 채우세요.
+          code: |-
+            @Transactional(___ = Exception.class)
+            public void importOrders(Path file) ___ IOException {
+                List<Order> orders = parse(file);     // IOException 가능
+                orderRepository.saveAll(orders);
+            }
+          answers:
+            - [rollbackFor]
+            - [throws]
+          explanation: |-
+            `rollbackFor`로 롤백 대상을 넓힌다.
+            파일 읽기 중간에 실패했는데 앞부분만 저장돼 있으면 안 되므로
+            이 경계에서는 checked 예외에도 되돌려야 한다.
+        problem:
+          prompt: |-
+            아래 세 메서드 중 **데이터가 어긋나는 것**을 모두 고르고 고치세요.
+
+            ```java
+            // A
+            @Transactional
+            void a() { repo.save(x); throw new OutOfStockException("재고 부족"); }
+
+            // B
+            @Transactional
+            void b() throws TimeoutException { repo.save(x); throw new TimeoutException(); }
+
+            // C
+            @Transactional
+            void c() {
+                repo.save(x);
+                try { externalClient.call(); }
+                catch (Exception e) { log.warn("외부 호출 실패"); }
+            }
+            ```
+
+            - 셋의 결과(커밋/롤백)를 적고 그중 어긋나는 것을 고르세요
+            - 어긋나는 것을 각각 **두 가지 방법**으로 고칠 수 있다면 둘 다 적으세요
+            - C에서 "외부 호출 실패를 기록만 하고 계속 진행"이 **맞는 선택일 수도 있는** 경우를 하나 드세요
+          deliverables:
+            - 셋의 결과와 어긋나는 것
+            - 어긋나는 것을 고친 코드 (가능하면 두 방법)
+            - C의 지금 코드가 맞는 선택일 수 있는 경우
+          hints:
+            - 예외의 종류가 checked인지 unchecked인지 먼저 표시하세요.
+            - 메서드 밖으로 나온 예외가 무엇인지 보세요.
+            - 외부 호출이 알림이라면 실패해도 본 업무를 되돌릴 이유가 있을까요?
+          modelAnswer: |-
+            | | 결과 | 어긋나나 |
+            |---|---|---|
+            | A | 롤백 | 아니다 — `OutOfStockException`은 unchecked다 |
+            | B | **커밋** | **그렇다** — checked라 롤백 안 된다 |
+            | C | **커밋** | **아마도** — 외부 호출이 실패했는데 저장은 남는다 |
+
+            ```java
+            // B 방법 1: 롤백 대상을 넓힌다
+            @Transactional(rollbackFor = Exception.class)
+            void b() throws TimeoutException { ... }
+
+            // B 방법 2: 예외를 우리 말로 바꿔 던진다 (앞 노트의 예외 변환)
+            @Transactional
+            void b() {
+                try { ... }
+                catch (TimeoutException cause) {
+                    throw new ExternalCallFailedException("시간 초과", cause);
+                }
+            }
+
+            // C: 잡았으면 다시 던진다
+            catch (Exception cause) {
+                throw new ExternalCallFailedException("외부 호출 실패", cause);
+            }
+            ```
+
+            B는 두 번째 방법이 낫다. 계층 경계에서 기술 예외를 우리 예외로 바꾸면
+            `rollbackFor`를 적을 일도 없어지고 위 계층이 다루기도 쉬워진다.
+
+            C가 맞는 선택일 수 있는 경우는 **외부 호출이 알림 발송일 때**다.
+            알림이 안 갔다고 주문을 되돌리는 것이 오히려 이상하다.
+            다만 그렇다면 **애초에 경계 밖에서 불러야** 하고, 실패는 재시도할 수 있게 남겨야 한다.
+          selfChecks:
+            - 예외마다 checked인지 unchecked인지 표시했는가
+            - B가 커밋된다는 것을 실제로 확인했는가
+            - 삼킨 예외가 롤백을 막는다는 것을 짚었는가
+            - C가 맞는 경우와 그때의 올바른 구조를 함께 적었는가
+      - key: LESSON.SPRING.TRANSACTION.001.U3
+        title: 같은 클래스 안에서 부르면 안 걸린다 (프록시)
+        minutes: 12
+        core: true
+        explain: |-
+          `@Transactional`을 붙였는데 **아무 일도 안 일어나는** 경우가 있다.
+          원인은 스프링이 이것을 구현하는 방식에 있다.
+
+          스프링은 그 빈을 그대로 쓰지 않고 **대신 받는 껍데기(프록시)** 를 만들어 둔다.
+          밖에서 부르면 껍데기가 먼저 받아 트랜잭션을 열고, 진짜 객체에게 넘긴다.
+
+          여기서 두 가지 한계가 나온다.
+
+          | 안 걸리는 경우 | 왜 |
+          |---|---|
+          | **같은 클래스 안에서 `this`로 호출** | 껍데기를 거치지 않는다 |
+          | `private`·`final` 메서드 | 껍데기가 가로챌 수 없다 |
+
+          첫 번째가 실무에서 압도적으로 많다. **자기 자신의 메서드를 부르는 순간
+          껍데기는 건너뛰어진다.** 어노테이션은 그대로 붙어 있는데 아무 효과가 없다.
+
+          해결은 **경계가 필요한 메서드를 다른 빈으로 옮기는 것**이다.
+          자기 자신을 주입받아 부르는 방법도 있지만, 보통은 설계가 잘못됐다는 신호다.
+        example:
+          language: java
+          code: |-
+            @Service
+            public class OrderService {
+
+                public void placeAll(List<OrderRequest> requests) {
+                    for (OrderRequest request : requests) {
+                        placeOne(request);        // this 호출 → 껍데기를 건너뛴다
+                    }
+                }
+
+                @Transactional
+                public void placeOne(OrderRequest request) {
+                    stockRepository.decrease(request.productCode(), request.quantity());
+                    orderRepository.save(Order.place(1L, request));
+                }
+            }
+
+            // 밖에서 직접 부르면 걸린다
+            orderService.placeOne(request);   // 껍데기 → 트랜잭션 열림
+            orderService.placeAll(requests);  // 껍데기 → placeAll에는 어노테이션이 없다
+          output: |-
+            [placeOne을 직접 호출]
+            o.s.t.i.TransactionInterceptor: Getting transaction for [OrderService.placeOne]
+            → 트랜잭션 안에서 실행
+
+            [placeAll을 호출]
+            (TransactionInterceptor 로그 없음)
+            → placeOne이 트랜잭션 없이 실행된다. 재고만 줄고 주문 저장이 실패해도 안 되돌아간다
+          note: |-
+            - 같은 메서드인데 **부르는 쪽에 따라** 트랜잭션이 걸리고 안 걸린다
+            - 로그에 `TransactionInterceptor`가 찍히는지로 확인할 수 있다
+            - 어노테이션이 붙어 있어서 코드만 봐서는 문제가 안 보인다
+            - 이런 코드는 테스트에서도 잘 안 잡힌다 — 실패 경로를 시험해야 드러난다
+        predict:
+          question: '`placeAll`에 `@Transactional`을 붙이면 어떻게 되나?'
+          choices:
+            - 전체가 한 경계가 된다 — 하나만 실패해도 전부 되돌아간다
+            - 각 placeOne이 따로 경계를 갖는다
+            - 여전히 아무것도 안 걸린다
+            - 컴파일 오류가 난다
+          answer: 전체가 한 경계가 된다 — 하나만 실패해도 전부 되돌아간다
+          explanation: |-
+            `placeAll`은 밖에서 불리므로 껍데기를 지난다. 그 안의 `placeOne`은
+            이미 열린 경계에 **합류**한다(기본 전파 규칙).
+            의도가 "건마다 따로 커밋"이었다면 이것은 틀린 결과다 —
+            전파 속성으로 갈라야 하고, 그것이 다음 노트의 주제다.
+        complete:
+          question: 자기 호출 문제를 다른 빈으로 옮겨 해결하세요.
+          code: |-
+            @Service
+            public class OrderBatchService {
+
+                private final ___ orderService;    // 다른 빈으로 분리한다
+
+                public void placeAll(List<OrderRequest> requests) {
+                    for (OrderRequest request : requests) {
+                        orderService.___(request);  // 껍데기를 지난다
+                    }
+                }
+            }
+          answers:
+            - [OrderService]
+            - [placeOne]
+          explanation: |-
+            다른 빈을 주입받아 부르면 그 호출은 **껍데기를 지난다.**
+            `this.placeOne(...)`이 아니라 `orderService.placeOne(...)`이 되는 것이 요점이다.
+        problem:
+          prompt: |-
+            아래 코드는 운영에서 재고만 줄고 주문이 안 들어가는 일이 생긴다.
+
+            ```java
+            @Service
+            public class OrderService {
+
+                public OrderResponse place(OrderRequest request, long memberId) {
+                    validate(request);
+                    return doPlace(request, memberId);
+                }
+
+                @Transactional
+                private OrderResponse doPlace(OrderRequest request, long memberId) {
+                    stockRepository.decrease(request.productCode(), request.quantity());
+                    Order order = orderRepository.save(Order.place(memberId, request));
+                    return OrderResponse.from(order);
+                }
+            }
+            ```
+
+            - 트랜잭션이 안 걸리는 이유를 **두 가지** 찾으세요
+            - 고친 코드를 쓰세요
+            - 트랜잭션이 실제로 걸렸는지 **확인하는 방법** 두 가지를 적으세요
+          deliverables:
+            - 안 걸리는 이유 두 가지
+            - 고친 코드
+            - 걸렸는지 확인하는 방법 두 가지
+          hints:
+            - 메서드를 부르는 주체가 누구인지 보세요.
+            - 접근 제어자도 껍데기가 가로챌 수 있는지에 영향을 줍니다.
+            - 로그로 확인하는 방법과 코드로 확인하는 방법이 각각 있습니다.
+          modelAnswer: |-
+            이유는 **① `this.doPlace(...)` 자기 호출이라 껍데기를 건너뛴다
+            ② `private` 메서드라 애초에 가로챌 수 없다** 두 가지다.
+            둘 중 하나만 고쳐도 안 된다 — 둘 다 고쳐야 한다.
+
+            ```java
+            @Service
+            public class OrderService {
+
+                @Transactional
+                public OrderResponse place(OrderRequest request, long memberId) {
+                    validate(request);                 // 검증은 경계 안에 있어도 싸지 않다
+                    stockRepository.decrease(request.productCode(), request.quantity());
+                    Order order = orderRepository.save(Order.place(memberId, request));
+                    return OrderResponse.from(order);
+                }
+            }
+            ```
+
+            나눌 이유가 없으면 합치는 것이 가장 간단하다.
+            검증이 무거워 경계 밖에 둬야 한다면 `OrderValidator` 같은 다른 빈으로 뺀다.
+
+            확인하는 방법 두 가지 —
+            `logging.level.org.springframework.transaction.interceptor: TRACE` 로
+            `Getting transaction for [...]` 이 찍히는지 보거나,
+            테스트에서 `TransactionSynchronizationManager.isActualTransactionActive()`가
+            `true`인지 단언한다. 후자는 회귀를 막아 주므로 더 낫다.
+          selfChecks:
+            - 두 가지 이유를 모두 찾았는가
+            - 하나만 고쳐서는 안 된다는 것을 확인했는가
+            - 확인 방법을 두 가지 적었는가
+            - 테스트로 확인하는 쪽이 왜 나은지 말할 수 있는가
+    commonMistakes:
+      - checked 예외를 던지면 롤백될 것이라고 여긴다. 기본 규칙은 커밋이다 (U2)
+      - 예외를 잡아 로그만 남긴다. 밖으로 안 나가므로 정상 종료로 보고 커밋한다 (U2)
+      - 같은 클래스 안에서 `@Transactional` 메서드를 부른다. 껍데기를 건너뛰어 안 걸린다 (U3)
+    inProject: |-
+      주문 시스템에서 경계는 `OrderService`·`CouponService` 같은 서비스의 공개 메서드에 긋는다.
+      조회에는 `readOnly = true`를 붙이고, 결제·알림 같은 외부 호출은 경계 밖으로 뺀다.
+      도메인 예외는 전부 unchecked라 기본 롤백 규칙에 그대로 걸리고,
+      경계가 필요한 메서드를 같은 클래스 안에서 부르지 않는지 확인한다.
+    sources:
+      - title: Spring Framework — Transaction Management
+        url: https://docs.spring.io/spring-framework/reference/data-access/transaction.html
+        versionScope: Spring Framework 6.x+
+      - title: Spring Framework — Using @Transactional
+        url: https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html
+        versionScope: Spring Framework 6.x+
+      - title: Spring Framework — Understanding the Spring Framework Transaction Abstraction
+        url: https://docs.spring.io/spring-framework/reference/data-access/transaction/strategies.html
+        versionScope: Spring Framework 6.x+
+    verifiedAt: 2026-09-24
+
+  - key: LESSON.SPRING.TRANSACTION.PROPAGATION.001
+    skillCode: SPRING.TRANSACTION.PROPAGATION
+    title: 이미 열린 경계를 만났을 때 (전파와 readOnly)
+    whyItMatters: |-
+      트랜잭션 안에서 또 트랜잭션이 필요한 메서드를 부르면 무슨 일이 생길까.
+      기본은 합류지만, 이력을 남기는 일처럼 **본 작업이 실패해도 남아야 하는 것**이 있다.
+      전파 속성을 모르면 로그를 남기려다 본 작업까지 되돌리거나,
+      그 반대로 되돌려야 할 것을 남기게 된다.
+    oneLine: 전파 속성은 이미 열린 트랜잭션을 만났을 때 합류할지 따로 열지를 정하고, readOnly는 조회 전용임을 알린다.
+    units:
+      - key: LESSON.SPRING.TRANSACTION.PROPAGATION.001.U1
+        title: REQUIRED와 REQUIRES_NEW
+        minutes: 12
+        core: true
+        explain: |-
+          전파 속성은 **"이미 트랜잭션이 열려 있을 때 어떻게 할까"** 의 답이다.
+          여러 값이 있지만 실무에서 쓰는 것은 둘이다.
+
+          | 속성 | 열려 있으면 | 없으면 |
+          |---|---|---|
+          | **REQUIRED** (기본) | **합류한다** | 새로 연다 |
+          | **REQUIRES_NEW** | **잠시 멈추고 따로 연다** | 새로 연다 |
+
+          `REQUIRED`는 합류하므로 **하나가 실패하면 전부 되돌아간다.**
+          한 업무 단위로 묶고 싶을 때 맞는 기본값이다.
+
+          `REQUIRES_NEW`는 완전히 별개의 트랜잭션이다. 안쪽이 커밋되면
+          바깥이 나중에 실패해도 **안쪽은 남는다.** 이력·감사 기록처럼
+          "본 작업이 어떻게 되든 남아야 하는 것"에 쓴다.
+
+          대가가 있다. **DB 연결을 하나 더 쓴다.** 바깥 트랜잭션이 멈춘 채로
+          연결을 쥐고 있고 안쪽이 또 하나를 가져가므로, 남발하면 연결 풀이 마른다.
+        example:
+          language: java
+          code: |-
+            @Service
+            public class OrderService {
+
+                @Transactional                                     // REQUIRED
+                public void place(OrderRequest request) {
+                    orderRepository.save(Order.place(1L, request));
+                    auditService.record("주문 시도");                // 따로 커밋된다
+                    stockService.decrease(request.productCode());   // 합류한다
+                    throw new OutOfStockException("재고 부족");
+                }
+            }
+
+            @Service
+            public class AuditService {
+
+                @Transactional(propagation = Propagation.REQUIRES_NEW)
+                public void record(String message) {
+                    auditRepository.save(new AuditLog(message));
+                }
+            }
+          output: |-
+            Hibernate: insert into orders ...
+            Hibernate: insert into audit_logs ...   → 안쪽 COMMIT
+            Hibernate: update stocks ...
+            → 바깥 ROLLBACK
+
+            결과: orders 0건, stocks 그대로, audit_logs **1건 남음**
+          note: |-
+            - `audit_logs`만 남았다 — `REQUIRES_NEW`라 따로 커밋됐기 때문이다
+            - `stockService`는 `REQUIRED`(기본)라 합류했고 함께 되돌아갔다
+            - "무엇이 남아야 하는가"를 먼저 정하고 전파를 고른다
+            - 이 예제에서 연결은 동시에 **두 개** 쓰였다
+        predict:
+          question: '`AuditService.record`가 기본값(`REQUIRED`)이라면 결과는?'
+          choices:
+            - audit_logs도 함께 되돌아가 0건이 된다
+            - 그대로 1건 남는다
+            - 예외가 난다
+            - 주문만 남는다
+          answer: audit_logs도 함께 되돌아가 0건이 된다
+          explanation: |-
+            합류하면 **한 몸**이다. 바깥이 롤백되면 안쪽이 이미 한 일도 함께 사라진다.
+            "실패한 기록"을 남기려던 것이 실패했을 때만 사라지는 셈이라,
+            기록이 가장 필요한 순간에 없다.
+        complete:
+          question: 본 작업과 상관없이 남아야 하는 기록에 전파 속성을 지정하세요.
+          code: |-
+            @Transactional(propagation = Propagation.___)
+            public void recordFailure(long orderId, String reason) {
+                failureLogRepository.save(new FailureLog(orderId, reason));
+            }
+          answers:
+            - [REQUIRES_NEW]
+          explanation: |-
+            `REQUIRES_NEW`는 바깥과 무관하게 따로 커밋한다.
+            실패 기록은 **본 작업이 롤백돼도 남아야** 하므로 이 속성이 맞다.
+            대신 연결을 하나 더 쓰므로 꼭 필요한 곳에만 쓴다.
+        problem:
+          prompt: |-
+            주문 처리에서 세 가지를 기록해야 한다.
+
+            1. 주문 이력 — 주문이 성공했을 때만 남는다
+            2. 결제 실패 기록 — 주문이 롤백돼도 남아야 한다
+            3. 재고 변경 이력 — 재고 변경과 함께 남거나 함께 사라진다
+
+            - 셋에 각각 어떤 전파 속성을 쓸지 정하고 이유를 적으세요
+            - 코드를 쓰고, 각각이 어느 트랜잭션에 속하는지 표시하세요
+            - `REQUIRES_NEW`를 남발하면 생기는 문제를 적고, 대안을 하나 제시하세요
+          deliverables:
+            - 셋의 전파 속성과 이유
+            - 코드와 트랜잭션 소속 표시
+            - REQUIRES_NEW 남발의 문제와 대안
+          hints:
+            - 각 기록이 "본 작업이 실패했을 때 남아야 하는가"를 먼저 답해 보세요.
+            - 함께 사라져야 하는 것은 합류시키면 됩니다.
+            - 연결을 하나 더 쓴다는 대가를 피하는 다른 방법도 있습니다.
+          modelAnswer: |-
+            | 기록 | 전파 | 이유 |
+            |---|---|---|
+            | 주문 이력 | `REQUIRED` | 주문이 사라지면 이력도 사라져야 한다 |
+            | 결제 실패 기록 | `REQUIRES_NEW` | 주문이 롤백돼도 남아야 한다 |
+            | 재고 변경 이력 | `REQUIRED` | 재고 변경과 운명을 같이한다 |
+
+            ```java
+            @Transactional                                  // 바깥 경계
+            public void place(OrderRequest request) {
+                orderRepository.save(...);                  // 바깥
+                orderHistoryService.record(...);            // REQUIRED → 바깥에 합류
+                stockService.decrease(...);                 // REQUIRED → 바깥에 합류
+            }
+
+            @Transactional(propagation = Propagation.REQUIRES_NEW)
+            public void recordPaymentFailure(long orderId, String reason) {
+                failureLogRepository.save(...);             // 별개 트랜잭션
+            }
+            ```
+
+            `REQUIRES_NEW`를 남발하면 **한 요청이 연결을 여러 개 쥐게 되어**
+            연결 풀이 마르고, 바깥이 멈춘 동안 잠금도 길어진다.
+            깊이 중첩되면 교착 상태까지 갈 수 있다.
+
+            대안은 **실패 기록을 트랜잭션 밖에서 남기는 것**이다.
+            예외를 잡는 바깥쪽(예외 처리기나 호출자)에서 기록하면
+            애초에 롤백될 트랜잭션 안에 있지 않으므로 전파를 쓸 일이 없다.
+          selfChecks:
+            - 셋을 "함께 사라져야 하는가"로 갈랐는가
+            - REQUIRED가 기본값임을 알고 생략 여부를 정했는가
+            - REQUIRES_NEW의 연결 비용을 적었는가
+            - 전파를 쓰지 않는 대안을 하나 제시했는가
+      - key: LESSON.SPRING.TRANSACTION.PROPAGATION.001.U2
+        title: readOnly가 하는 일과 안 하는 일
+        minutes: 10
+        core: true
+        explain: |-
+          `@Transactional(readOnly = true)` 는 **"이 경계에서는 읽기만 한다"** 는 **힌트**다.
+          힌트라는 말이 중요하다 — 쓰기를 막는 보안 장치가 아니다.
+
+          하는 일:
+
+          - **JPA가 변경 감지를 위한 스냅숏을 만들지 않는다** — 메모리와 시간이 준다
+          - **flush를 하지 않는다** — 커밋 시점에 `UPDATE`를 찾지 않는다
+          - 드라이버와 DB에 읽기 전용임을 알려, **읽기 복제본으로 보낼 근거**가 된다
+
+          안 하는 일:
+
+          - 네이티브 질의나 JDBC로 하는 쓰기는 **막지 못할 수 있다**
+          - 애초에 조회만 하는 코드를 더 빠르게 만들어 주지는 않는다
+
+          그래서 정석은 간단하다 — **조회 메서드에는 빠짐없이 붙인다.**
+          효과가 크지 않은 경우에도 **읽기만 한다는 의도**가 코드에 남고,
+          나중에 누가 여기에 쓰기를 넣으려 할 때 한 번 멈추게 된다.
+        example:
+          language: java
+          code: |-
+            @Transactional(readOnly = true)
+            public OrderResponse find(long orderId) {
+                Order order = orderRepository.findById(orderId).orElseThrow();
+                order.setStatus("PAID");            // 바꿔 봐도
+                return OrderResponse.from(order);
+            }                                        // UPDATE가 나가지 않는다
+
+            @Transactional
+            public OrderResponse findAndChange(long orderId) {
+                Order order = orderRepository.findById(orderId).orElseThrow();
+                order.setStatus("PAID");
+                return OrderResponse.from(order);
+            }                                        // UPDATE가 나간다
+          output: |-
+            [find]
+            Hibernate: select o1_0.id, o1_0.status from orders o1_0 where o1_0.id=?
+            (UPDATE 없음)
+
+            [findAndChange]
+            Hibernate: select o1_0.id, o1_0.status from orders o1_0 where o1_0.id=?
+            Hibernate: update orders set status=? where id=?
+          note: |-
+            - `readOnly`에서는 세터를 불러도 `UPDATE`가 안 나간다 — flush를 안 하기 때문이다
+            - **예외도 안 난다.** 조용히 무시된다는 점이 함정이다
+            - 그래서 "왜 안 바뀌지?" 할 때 `readOnly`가 붙어 있는지도 본다
+            - 스냅숏을 안 만드는 만큼 큰 목록 조회에서 메모리가 준다
+        predict:
+          question: '`readOnly = true`인 메서드에서 `jdbcTemplate.update("update ...")`를 부르면?'
+          choices:
+            - 실행될 수 있다 — readOnly는 JPA의 flush를 막는 힌트이지 쓰기 금지가 아니다
+            - 반드시 예외가 난다
+            - 조용히 무시된다
+            - 컴파일 오류가 난다
+          answer: 실행될 수 있다 — readOnly는 JPA의 flush를 막는 힌트이지 쓰기 금지가 아니다
+          explanation: |-
+            `readOnly`는 **보장이 아니라 힌트**다. JPA를 거치지 않는 쓰기는 그대로 나갈 수 있고,
+            DB나 드라이버 설정에 따라서는 막힐 수도 있어 **동작이 환경에 달라진다.**
+            쓰기를 막는 용도로 기대면 안 된다.
+        complete:
+          question: 조회 서비스에 읽기 전용 경계를 긋고 변경 메서드만 따로 두세요.
+          code: |-
+            @Service
+            @Transactional(readOnly = ___)          // 클래스 기본값
+            public class OrderQueryService {
+
+                public OrderResponse find(long id) { ... }
+
+                @Transactional                        // 이 메서드만 ___ 가능
+                public void markAsRead(long id) { ... }
+            }
+          answers:
+            - ["true"]
+            - [쓰기, 변경]
+          explanation: |-
+            클래스에 기본값을 두고 **예외인 메서드에만 덮어쓰는 것**이 정석이다.
+            메서드의 `@Transactional`이 클래스의 것보다 우선한다.
+            이렇게 하면 새로 추가되는 조회 메서드가 자동으로 읽기 전용이 된다.
+        problem:
+          prompt: |-
+            주문 조회 서비스를 설계하세요.
+
+            - 조회 메서드 다섯 개와 "마지막 조회 시각 갱신" 메서드 하나가 있다
+            - 클래스 수준 기본값과 메서드 수준 예외를 어떻게 둘지 정하세요
+            - `readOnly = true`를 붙였을 때 **실제로 무엇이 절약되는지** 세 가지 적으세요
+            - 조회 메서드 안에서 실수로 엔티티를 바꿨을 때 어떻게 드러나는지,
+              그리고 **드러나지 않는 위험**이 무엇인지 적으세요
+          deliverables:
+            - 클래스와 메서드 수준 설정을 반영한 코드
+            - readOnly로 절약되는 것 세 가지
+            - 실수로 바꿨을 때의 증상과 드러나지 않는 위험
+          hints:
+            - 기본값을 어느 쪽으로 두는 것이 안전할지 생각해 보세요.
+            - JPA가 변경을 알아내려면 무엇을 들고 있어야 할까요?
+            - 값이 안 바뀌는데 예외도 안 난다면 언제 알게 될까요?
+          modelAnswer: |-
+            ```java
+            @Service
+            @Transactional(readOnly = true)
+            public class OrderQueryService {
+
+                public OrderResponse find(long id) { ... }
+                public List<OrderResponse> findMine(long memberId) { ... }
+                public List<OrderResponse> findByStatus(String status) { ... }
+                public long countMine(long memberId) { ... }
+                public OrderSummary summarize(long memberId) { ... }
+
+                @Transactional
+                public void touchLastViewedAt(long id) { ... }
+            }
+            ```
+
+            절약되는 것 세 가지 —
+            **① 변경 감지용 스냅숏을 안 만들어** 메모리가 준다(큰 목록에서 특히),
+            **② 커밋 시점에 flush로 훑지 않아** 시간이 준다,
+            **③ 읽기 전용임을 DB에 알려** 읽기 복제본으로 보낼 근거가 된다.
+
+            실수로 바꾸면 **증상이 없다.** 예외도 안 나고 로그도 없고
+            `UPDATE`만 안 나간다. 그래서 "화면에서는 바뀐 것처럼 보이는데
+            새로고침하면 돌아와 있다"는 식으로 뒤늦게 드러난다.
+
+            드러나지 않는 위험은 그 반대다 — **클래스 기본값이 `readOnly`가 아닐 때**
+            조회 메서드에서 실수로 바꾼 것이 **조용히 저장된다.**
+            그래서 기본값을 `readOnly = true`로 두는 것이 더 안전하다.
+          selfChecks:
+            - 클래스 기본값을 readOnly로 두었는가
+            - 변경 메서드에만 덮어썼는가
+            - 절약되는 것을 세 가지 적었는가
+            - 기본값을 readOnly로 두는 쪽이 왜 안전한지 설명했는가
+      - key: LESSON.SPRING.TRANSACTION.PROPAGATION.001.U3
+        title: 경계 안에 넣으면 안 되는 것
+        minutes: 12
+        core: true
+        explain: |-
+          앞에서 계속 나온 규칙을 하나로 모은다.
+          **트랜잭션 경계 안에는 DB 작업만 둔다.**
+
+          경계가 열려 있는 동안 우리는 두 가지를 쥐고 있다 —
+          **DB 연결**과 **잠금**. 둘 다 다른 요청이 기다리는 자원이다.
+          그래서 경계 안에 느린 일이 들어오면 그 느림이 그대로 전파된다.
+
+          | 넣으면 안 되는 것 | 왜 |
+          |---|---|
+          | 외부 API 호출 | 상대가 느려지면 연결 풀이 마른다 |
+          | 파일·메일·알림 전송 | 위와 같다. 게다가 롤백해도 되돌릴 수 없다 |
+          | 오래 걸리는 계산 | 그 시간만큼 잠금을 쥔다 |
+          | 사람의 입력 대기 | 절대 안 된다 |
+
+          되돌릴 수 없다는 점도 중요하다. 메일은 한 번 나가면 롤백되지 않는다.
+          **커밋 뒤에 보내야** 한다.
+
+          정석은 **커밋 뒤 이벤트**다. 스프링은 커밋이 끝난 뒤에만 실행되는
+          리스너를 제공하므로, 경계 안에서는 "일어났다"는 사실만 알리고
+          실제 바깥일은 커밋 뒤에 한다.
+        example:
+          language: java
+          code: |-
+            @Transactional
+            public void place(OrderRequest request, long memberId) {
+                Order order = orderRepository.save(Order.place(memberId, request));
+                eventPublisher.publishEvent(new OrderPlaced(order.getId(), memberId));
+                // 여기서는 알림을 보내지 않는다
+            }
+
+            @Component
+            public class OrderPlacedListener {
+
+                @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+                public void onOrderPlaced(OrderPlaced event) {
+                    notificationClient.send(event.memberId(), "주문이 접수됐습니다");
+                }
+            }
+          output: |-
+            Hibernate: insert into orders (...) values (...)
+            → COMMIT
+            OrderPlacedListener: 알림 발송 orderId=1001
+
+            [주문 저장이 실패한 경우]
+            → ROLLBACK
+            (알림이 나가지 않는다 — 리스너가 아예 안 불린다)
+          note: |-
+            - 알림 발송이 `COMMIT` **뒤에** 찍혔다. 경계 밖이다
+            - 롤백되면 리스너가 아예 불리지 않는다 — 없던 주문의 알림이 안 나간다
+            - 경계 안에는 `insert` 하나뿐이라 연결을 쥐는 시간이 짧다
+            - 알림이 실패해도 주문은 이미 커밋돼 있다. 재시도는 따로 다룬다
+        predict:
+          question: 리스너를 `@EventListener`(보통 이벤트)로 바꾸면 언제 실행되나?
+          choices:
+            - 커밋 전에 같은 트랜잭션 안에서 실행된다 — 롤백돼도 알림이 나간다
+            - 그대로 커밋 뒤에 실행된다
+            - 실행되지 않는다
+            - 예외가 난다
+          answer: 커밋 전에 같은 트랜잭션 안에서 실행된다 — 롤백돼도 알림이 나간다
+          explanation: |-
+            보통 이벤트는 **발행한 그 자리에서 바로** 처리된다.
+            그러면 경계 안에서 외부 호출을 하는 것과 같아지고,
+            나중에 롤백되면 **없던 주문의 알림이 이미 나가 있다.**
+            커밋 뒤에 실행돼야 한다면 반드시 그렇게 지정해야 한다.
+        complete:
+          question: 커밋된 뒤에만 실행되는 리스너를 만드세요.
+          code: |-
+            @___(phase = TransactionPhase.___)
+            public void onOrderPlaced(OrderPlaced event) {
+                notificationClient.send(event.memberId(), "주문이 접수됐습니다");
+            }
+          answers:
+            - [TransactionalEventListener]
+            - [AFTER_COMMIT]
+          explanation: |-
+            `@TransactionalEventListener`는 트랜잭션의 어느 시점에 실행할지 고를 수 있고,
+            `AFTER_COMMIT`이 기본이자 가장 많이 쓰는 값이다.
+            롤백되면 실행되지 않는다는 점이 핵심이다.
+        problem:
+          prompt: |-
+            아래 메서드는 경계 안에 넣으면 안 되는 것을 **세 가지** 갖고 있다.
+
+            ```java
+            @Transactional
+            public void completeOrder(long orderId) {
+                Order order = orderRepository.findById(orderId).orElseThrow();
+                order.complete();
+
+                paymentClient.capture(order.getPaymentId());        // 외부 결제 확정
+                String pdf = invoiceRenderer.render(order);         // 3초 걸리는 계산
+                mailClient.send(order.getMemberEmail(), pdf);       // 메일 발송
+
+                orderRepository.save(order);
+            }
+            ```
+
+            - 셋이 각각 **무엇을 쥐고 있게 만드는지** 적으세요
+            - 셋을 어디로 옮길지 정하고 고친 코드를 쓰세요
+            - 옮긴 뒤 **새로 생기는 문제**(커밋은 됐는데 메일이 실패한 경우)를 어떻게 다룰지 적으세요
+          deliverables:
+            - 세 가지가 쥐고 있게 만드는 것
+            - 고친 코드
+            - 커밋 후 실패를 다루는 방법
+          hints:
+            - 경계가 열려 있는 동안 무엇을 점유하는지 두 가지를 떠올려 보세요.
+            - 셋 중에 롤백으로 되돌릴 수 없는 것이 있습니다.
+            - 커밋 뒤에 실패한 일은 되돌릴 수 없으니 다른 방법이 필요합니다.
+          modelAnswer: |-
+            | 호출 | 쥐고 있게 되는 것 |
+            |---|---|
+            | 결제 확정 | 상대 응답까지 DB 연결과 주문 줄의 잠금 |
+            | PDF 렌더링 | 3초 동안 같은 것 |
+            | 메일 발송 | 같은 것. 게다가 **롤백으로 되돌릴 수 없다** |
+
+            ```java
+            @Transactional
+            public void completeOrder(long orderId) {
+                Order order = orderRepository.findById(orderId).orElseThrow();
+                order.complete();                                   // 변경 감지로 충분하다
+                eventPublisher.publishEvent(new OrderCompleted(orderId));
+            }
+
+            @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+            public void onCompleted(OrderCompleted event) {
+                paymentClient.capture(...);
+                String pdf = invoiceRenderer.render(...);
+                mailClient.send(...);
+            }
+            ```
+
+            경계 안에는 조회와 상태 변경만 남아 밀리초 단위로 끝난다.
+            `save` 호출도 뺐다 — 영속 상태라 변경 감지로 반영된다.
+
+            새로 생기는 문제는 **커밋은 됐는데 메일이 실패하는 경우**다.
+            롤백할 수 없으므로 되돌리는 대신 **다시 시도할 수 있게** 만든다 —
+            보낼 일을 표에 기록해 두고 실패하면 재시도하는 방식이다.
+            결제 확정처럼 되돌릴 수 없는 것은 **실패 기록을 남기고 사람이 보게** 한다.
+          selfChecks:
+            - 세 가지가 무엇을 점유하는지 각각 적었는가
+            - 롤백으로 되돌릴 수 없는 것을 구분했는가
+            - 경계 안에 DB 작업만 남겼는가
+            - 커밋 후 실패를 되돌리기가 아니라 재시도로 다뤘는가
+    commonMistakes:
+      - 기록을 남기려고 REQUIRES_NEW를 남발한다. 요청마다 연결을 여러 개 쥐어 풀이 마른다 (U1)
+      - readOnly를 쓰기 금지로 여긴다. 힌트일 뿐이라 JPA 밖의 쓰기는 나갈 수 있다 (U2)
+      - 경계 안에서 알림을 보낸다. 롤백돼도 되돌릴 수 없고 그동안 연결을 쥔다 (U3)
+    inProject: |-
+      주문 시스템에서 전파를 지정할 자리는 실패 기록 하나 정도다. 나머지는 기본값으로 둔다.
+      조회 서비스는 클래스에 `readOnly = true`를 걸고 변경 메서드에만 덮어쓴다.
+      결제·알림은 커밋 뒤 이벤트로 빼고, 커밋 후 실패는 되돌리는 대신 재시도할 수 있게
+      기록해 둔다. 경계 안에는 DB 작업만 남긴다.
+    sources:
+      - title: Spring Framework — Transaction Propagation
+        url: https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/tx-propagation.html
+        versionScope: Spring Framework 6.x+
+      - title: Spring Framework — Using @Transactional
+        url: https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html
+        versionScope: Spring Framework 6.x+
+      - title: Spring Framework — Transaction-bound Events
+        url: https://docs.spring.io/spring-framework/reference/data-access/transaction/event.html
+        versionScope: Spring Framework 6.x+
+    verifiedAt: 2026-09-24
