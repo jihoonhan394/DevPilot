@@ -7,6 +7,7 @@ import com.devpilot.integration.ai.api.output.CoachResponseFeedbackOutput;
 import com.devpilot.integration.ai.api.output.CoachReviewOutput;
 import com.devpilot.integration.ai.api.output.EvidenceDraftOutput;
 import com.devpilot.integration.ai.api.output.HintGenerateOutput;
+import com.devpilot.integration.ai.api.output.LessonReexplainOutput;
 import com.devpilot.integration.ai.api.output.RequirementExtractOutput;
 import com.devpilot.integration.ai.api.output.ReviewEvaluateOutput;
 import com.devpilot.integration.ai.api.output.ReviewVariantOutput;
@@ -116,6 +117,7 @@ public class OutputSchemaRegistry {
         types.put(AiOperation.REQUIREMENT_EXTRACT, RequirementExtractOutput.class);
         types.put(AiOperation.RUBBER_DUCK, RubberDuckTurnOutput.class);
         types.put(AiOperation.RUBBER_DUCK_SUMMARY, RubberDuckSummaryOutput.class);
+        types.put(AiOperation.LESSON_REEXPLAIN, LessonReexplainOutput.class);
         return Map.copyOf(types);
     }
 }

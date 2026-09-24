@@ -123,9 +123,9 @@ devpilot:
     default-zone: Asia/Seoul
     default-day-start-hour: 4
   tracks:                                  # 학습 트랙 기본값. 키는 TargetRole 값 (04 §3). 누락되면 기동 실패
-    JAVA_BACKEND:         { max-task-difficulty: 5, read-code-min-knowledge: 1, basic-tips-first: false }  # 06 §5.3, RC-3
-    JAVA_BACKEND_STARTER: { max-task-difficulty: 3, read-code-min-knowledge: 2, basic-tips-first: true }   # 입문 트랙: 쉬운 기본값, 기초 팁 먼저
-    INTEGRATION_ENGINEER: { max-task-difficulty: 4, read-code-min-knowledge: 1, basic-tips-first: false }  # 연동·구축 트랙 (06 §5.3)
+    JAVA_BACKEND:         { max-task-difficulty: 5, read-code-min-knowledge: 1, challenge-min-knowledge: 1, basic-tips-first: false }  # 06 §5.3, RC-3, ADR-045
+    JAVA_BACKEND_STARTER: { max-task-difficulty: 3, read-code-min-knowledge: 2, challenge-min-knowledge: 1, basic-tips-first: true }   # 입문 트랙: 쉬운 기본값, 기초 팁 먼저
+    INTEGRATION_ENGINEER: { max-task-difficulty: 4, read-code-min-knowledge: 1, challenge-min-knowledge: 1, basic-tips-first: false }  # 연동·구축 트랙 (06 §5.3)
   planner:
     weights: { practical-importance: 0.25, skill-gap: 0.20, review-urgency: 0.20, milestone-urgency: 0.15, project-need: 0.10, prerequisite-readiness: 0.10 }
     modifiers:
@@ -166,6 +166,7 @@ devpilot:
     axis-cost: { knowledge: 0.5, implementation: 1.0, explanation: 0.4, debugging: 0.8 }
     review-overhead: 1.15
     risk-thresholds: { low-max: 0.80, medium-max: 1.00, high-max: 1.25 }
+    replan-recommend-after-days: 7        # 스냅샷이 연속 이 날 수만큼 risk ≥ HIGH면 replan 권고 (ADR-046)
     # 소수 설정값은 기동 시 bp(×10000)/micro(×1000000) 정수로 변환. 정수가 아니면 기동 실패 (06 §1 N-6)
   review:
     max-per-day: 20
@@ -235,6 +236,7 @@ devpilot:
       REQUIREMENT_EXTRACT:     { mode: ASYNC, thinking: false, max-tokens: 8000,  timeout: 120s, max-retries: 1, input-token-budget: 8000 }
       RUBBER_DUCK:             { mode: SYNC,  thinking: false, max-tokens: 1500,  timeout: 20s,  max-retries: 0, input-token-budget: 6000 }
       RUBBER_DUCK_SUMMARY:     { mode: SYNC,  thinking: true,  reasoning-effort: low, max-tokens: 4000, timeout: 30s, max-retries: 0, input-token-budget: 8000 }
+      LESSON_REEXPLAIN:        { mode: SYNC,  thinking: false, max-tokens: 2000,  timeout: 20s,  max-retries: 0, input-token-budget: 3000 }   # ADR-047
     trusted-source-hosts: [docs.spring.io, spring.io, docs.oracle.com, openjdk.org, www.postgresql.org, owasp.org, cheatsheetseries.owasp.org, www.kisa.or.kr, supabase.com, dart.dev, docs.flutter.dev, api.flutter.dev, pmd.github.io, spotbugs.readthedocs.io, checkstyle.org, junit.org, hibernate.org, docs.jboss.org, developer.mozilla.org, www.rfc-editor.org, git-scm.com, spec.openapis.org, docs.gradle.org, man7.org, docs.docker.com]
     curated-sources-location: classpath:content/curated-sources.yaml
     pricing:                    # USD / 1M tokens, 2026-09-18 확인
@@ -259,3 +261,4 @@ devpilot:
       requirement.extract: v1
       rubber.duck: v1
       rubber.duck.summary: v1
+      lesson.reexplain: v1

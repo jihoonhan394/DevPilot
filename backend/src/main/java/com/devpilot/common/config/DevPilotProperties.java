@@ -254,7 +254,8 @@ public record DevPilotProperties(
             @NotNull BigDecimal completionMinRate,
             @Valid @NotNull AxisCost axisCost,
             @NotNull BigDecimal reviewOverhead,
-            @Valid @NotNull RiskThresholds riskThresholds) {
+            @Valid @NotNull RiskThresholds riskThresholds,
+            @Positive int replanRecommendAfterDays) {
 
         public Budget {
             requireBasisPoints(completionDefaultRate, "budget.completion-default-rate");

@@ -23,6 +23,9 @@ abstract interface class LessonRepository {
 
   Future<AnswerResult> fetchAnswer(String lessonKey, String unitKey);
 
+  /// 설명을 다른 각도로 한 번 더 (docs/05 §21.10). 저장하지 않는다.
+  Future<ReexplainResult> reexplain(String lessonKey, String unitKey, ConfusionReason reason);
+
   Future<FinishResult> finishUnit(
     String lessonKey,
     String unitKey, {
@@ -76,6 +79,25 @@ final class ApiLessonRepository implements LessonRepository {
   @override
   Future<AnswerResult> fetchAnswer(String lessonKey, String unitKey) async =>
       AnswerResult.fromJson(await _apiClient.getJson('${_unit(lessonKey, unitKey)}/answer'));
+
+  @override
+  Future<ReexplainResult> reexplain(
+    String lessonKey,
+    String unitKey,
+    ConfusionReason reason,
+  ) async => ReexplainResult.fromJson(
+    await _apiClient.postJson(
+      '${_unit(lessonKey, unitKey)}/reexplain',
+      body: {'reason': _reasonValue(reason)},
+      idempotencyKey: IdempotencyKey.generate(),
+    ),
+  );
+
+  static String _reasonValue(ConfusionReason reason) => switch (reason) {
+    ConfusionReason.unfamiliarTerms => 'UNFAMILIAR_TERMS',
+    ConfusionReason.whyNotClear => 'WHY_NOT_CLEAR',
+    ConfusionReason.exampleUnclear => 'EXAMPLE_UNCLEAR',
+  };
 
   @override
   Future<FinishResult> finishUnit(

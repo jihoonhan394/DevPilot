@@ -11,6 +11,8 @@
   "prompts/evidence.draft/v1/user-template.md": "d3df4711c9dfc34eca98457d5f730d756edcc7b8f553b24d01244d9d4f4577f5",
   "prompts/hint.generate/v1/system.md": "7b800506f440fb141672718c06a42f5754293fcd820a00431900ef244f51663d",
   "prompts/hint.generate/v1/user-template.md": "a457f0193abf40c592c1a91e8a86177911e0f6454688e6a49985c58f1f524dee",
+  "prompts/lesson.reexplain/v1/system.md": "15a9df8d9255980058af111840c70804fbd1bbb3eb334e90d1c4738876e1d4b7",
+  "prompts/lesson.reexplain/v1/user-template.md": "60dafafbcdc8469ee8c437ff62e8560e94802f9fafb33ca68108d908c85cfe69",
   "prompts/requirement.extract/v1/system.md": "37b9857e5595e4a9e7991f49d49fcd111b476283cea8a9436ed02e0779b4a5c8",
   "prompts/requirement.extract/v1/user-template.md": "a45334ba7c5fb3439de58ad7fee17e99f7a95941af211abb9bd61bf96dcc03e4",
   "prompts/review.evaluate/v1/system.md": "82f2a8de2c815850f05602e5770a229db16f0c6976c05bd052ab691e5a749927",

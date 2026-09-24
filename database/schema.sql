@@ -192,7 +192,7 @@ create table ai_call_log (
     operation           varchar(40) not null check (operation in (
                         'COACH_REVIEW','COACH_RESPONSE_FEEDBACK','CHALLENGE_GENERATE','CHALLENGE_EVALUATE',
                         'HINT_GENERATE','REVIEW_VARIANT','REVIEW_EVALUATE','EVIDENCE_DRAFT','REQUIREMENT_EXTRACT',
-                        'RUBBER_DUCK','RUBBER_DUCK_SUMMARY')),
+                        'RUBBER_DUCK','RUBBER_DUCK_SUMMARY','LESSON_REEXPLAIN')),
     provider            varchar(20) not null check (provider in ('deepseek','anthropic','fake','disabled')),
     model               varchar(80) not null,
     prompt_id           varchar(60) not null,

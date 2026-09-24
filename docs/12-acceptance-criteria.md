@@ -2077,7 +2077,7 @@
 
 | 항목 | 값 |
 |---|---|
-| 관련 요구사항 | FR-07 (`05` §21, `19` §3.14, `02` SCR-LESSON·SCR-LESSON-LIST) |
+| 관련 요구사항 | FR-07 (`05` §21, `19` §3.14, `02` SCR-LESSON·SCR-LESSON-LIST, ADR-047) |
 | Sprint | S3 |
 | 검증 수준 | integration, API E2E, UI |
 | 테스트 클래스 | `LessonQueryServiceIntegrationTest`, `LessonControllerIntegrationTest`, `UnitAnswerMatcherTest`, `lesson_screen_test.dart`, `lesson_list_screen_test.dart` |
@@ -2152,4 +2152,16 @@
 - Given SCR-LESSON-LIST를 연다
 - Then 서버가 준 순서 그대로 그리고, 상태가 바뀌는 자리에만 "이어서 하기"·"아직 안 연 것"·"한 바퀴 돈 것" 제목이 붙는다
 - And 줄을 누르면 그 노트의 SCR-LESSON으로 간다. 노트가 하나도 없으면 빈 상태 문구만 보인다
+
+**S10. 설명이 안 통하면 다른 각도로 한 번 더 (§21.10, ADR-047)**
+- Given 학습 단위를 읽는 중이고 `aiStatus = ENABLED`
+- When `POST /lessons/{k}/units/{u}/reexplain` `{"reason": "WHY_NOT_CLEAR"}`
+- Then 200이고 `explanation`이 비어 있지 않다. `analogy`는 null일 수 있다
+- And `aiMeta.promptVersion`이 `lesson.reexplain@`로 시작한다
+- And **학습 이벤트가 늘지 않는다** — 읽기를 돕는 일이지 배움의 증거가 아니다. 저장하는 것이 없다
+- And AI에 보낸 입력에 **`modelAnswer`와 `selfChecks`가 없다.** 보내지 않으므로 흘릴 수 없다
+- When AI가 코드 블록을 섞어 답한다
+- Then `CodeLeakGuard`가 막아 5xx다. 재설명은 개념에 머문다
+- Given `reason`이 세 값 밖이다
+- Then 400 `VALIDATION_FAILED`다. 자유 입력을 받지 않는다
 

@@ -19,6 +19,29 @@ enum HelpLevel {
   answer,
 }
 
+/// 설명이 안 통한 이유 (docs/05 §21.10, ADR-047). 자유 입력이 아니라 고정 선택지다.
+enum ConfusionReason {
+  @JsonValue('UNFAMILIAR_TERMS')
+  unfamiliarTerms,
+  @JsonValue('WHY_NOT_CLEAR')
+  whyNotClear,
+  @JsonValue('EXAMPLE_UNCLEAR')
+  exampleUnclear,
+}
+
+/// 재설명 응답 (docs/05 §21.10). 저장되지 않으므로 이 자리에서만 보인다.
+@freezed
+abstract class ReexplainResult with _$ReexplainResult {
+  const factory ReexplainResult({
+    required String explanation,
+
+    /// 비유. 억지로 만들지 않으므로 없을 수 있다.
+    String? analogy,
+  }) = _ReexplainResult;
+
+  factory ReexplainResult.fromJson(Map<String, Object?> json) => _$ReexplainResultFromJson(json);
+}
+
 /// 노트 하나의 진행 상태 (docs/05 §21.9).
 enum LessonStatus {
   @JsonValue('NOT_STARTED')

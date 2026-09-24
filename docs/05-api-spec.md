@@ -1816,7 +1816,7 @@ public record TodayGenerateRequest(
     "estimatedMinutes": 15,
     "status": "PLANNED",
     "reasons": [
-      { "code": "MILESTONE_CORE", "text": "Spring Boot/JPA milestone 핵심 항목" },
+      { "code": "MILESTONE_CORE", "text": "지금 단계(Spring Boot/JPA)의 핵심 항목" },
       { "code": "HIGH_PRACTICAL_IMPORTANCE", "text": "실무에서 중요도가 높은 기술" },
       { "code": "LARGE_SKILL_GAP", "text": "목표 수준과 차이가 큼 (구현 1/4)" }
     ],
@@ -3217,7 +3217,7 @@ public record MilestoneTimelineView(
 public record TimelineMilestoneView(
         UUID id, String title, LocalDate startDate, LocalDate endDate,
         Priority priority, MilestoneStatus status,
-        boolean current) {}               // startDate ≤ today ≤ endDate
+        boolean current) {}               // 지금 단계 (ADR-044: 날짜가 아니라 진행으로 정한다)
 
 public record SkillCategorySummaryView(
         SkillCategory category,
@@ -3237,6 +3237,7 @@ public record SkillCategorySummaryView(
 | `weeklySummary` | `builtThisWeek`: `plan_date ∈ [weekStartDate, today]`이고 `status = COMPLETED`인 `CHALLENGE`·`PROJECT_TASK`·`REDO` task를 `plan_date` DESC, `sort_order` DESC로 최대 5개. `completedTasks`: 같은 기간의 `COMPLETED` task 수(REVIEW task 포함). `notesWritten`: 같은 기간에 만든 `side_project_note` 수(`created_at`의 plan-day 기준) — dashboard는 `project`를 직접 의존하지 않고 `evidence`의 지표 경로로 읽는다(`03-system-architecture.md` §2.2, `06-learning-engine-rules.md` §12 `projectNoteCount`). `studyMinutes`: `weekStudyMinutes`와 같은 값 |
 | `risk.trend` | 사용자의 `plan_progress_snapshot`에서 서로 다른 `snapshot_date` 최근 8개. 같은 날짜에 여러 행(replan)이 있으면 `generated_at`이 가장 늦은 행 |
 | `skillCategories` | 활성 plan의 `plan_skill_target` 중 `deferred = false`인 skill을 category별로 묶는다. `n` = skill 수. `avgPlanningLevelMilli = floorDiv(Σ_skill Σ_axis planning × 1000, n × 4)`, `avgTargetLevelMilli = floorDiv(Σ_skill Σ_axis target × 1000, n × 4)` (planning은 `06-learning-engine-rules.md` §7.5). `n ≥ 1`인 category만, `SkillCategory` 선언 순서 |
+| `milestoneTimeline.milestones[].current` | **`sort_order`가 가장 앞선 미완료 milestone 하나만 true**다(ADR-044, `06` §5.2). 날짜로 정하지 않는다 — Today가 고르는 단계와 같아야 하고, 날짜로 판정하면 쉬었을 때 두 화면이 다른 단계를 가리킨다. 전부 끝냈으면 모두 false다. 학습 목표가 없으면 `milestoneTimeline` 자체가 null이다(`horizonDate`를 만들 수 없다) |
 | `weakThinkingAxes` | `06-learning-engine-rules.md` §12 `weakThinkingAxes`, 기간 최근 28 plan-day |
 | `aiStatus` | §1.9.1 |
 | `replanRecommended` | 활성 plan의 `replan_recommended` (없으면 false) |
@@ -4472,6 +4473,24 @@ public record LessonSummaryView(
 - 200 `LessonListView`. 본문은 콘텐츠이므로 소유권 검사는 없고, `solvedUnitCount`·`status`·`lastSolvedAt`만 호출한 사용자 것이다
 - 페이지 나누기 없음 — 노트 수는 콘텐츠가 정하고 한 화면에 보여야 하는 목록이다
 - AI를 부르지 않는다
+
+### 21.10 `POST /api/v1/lessons/{lessonKey}/units/{unitKey}/reexplain`
+
+그 단위의 설명을 **다른 각도로 한 번 더** 풀어 준다 (ADR-047, `17` §3.12). 학습자가 누를 때만 부르고 **아무것도 저장하지 않는다.**
+
+```java
+public record ReexplainRequest(@NotNull ConfusionReason reason) {}
+
+public record ReexplainResponse(String explanation, String analogy, AiMeta aiMeta) {}
+```
+
+`ConfusionReason`(`today.domain`): `UNFAMILIAR_TERMS`(용어가 낯설다) | `WHY_NOT_CLEAR`(왜 그런지 모르겠다) | `EXAMPLE_UNCLEAR`(예제가 이해되지 않는다). **자유 입력을 받지 않는다** — 고정 선택지만으로 방향을 잡고, 마스킹·주입을 다룰 일을 만들지 않는다.
+
+- `Idempotency-Key` 불필요 — 상태를 바꾸지 않는다(§2.6 예외 목록에 넣는다)
+- 200 `ReexplainResponse`. `analogy`는 null일 수 있다
+- 404 `RESOURCE_NOT_FOUND` — registry에 없는 key
+- AI 오류는 `1.9`의 공통 규칙을 따른다(429/502/503/504). 저장한 것이 없으므로 되돌릴 것도 없다
+- **백지 문제·모범 답안·정답은 AI에 보내지 않는다**(`17` §3.12). 응답에도 들어갈 수 없다
 
 ### 21.8 오류 코드
 

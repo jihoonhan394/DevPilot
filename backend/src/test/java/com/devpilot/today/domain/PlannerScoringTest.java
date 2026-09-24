@@ -21,6 +21,7 @@ import com.devpilot.today.domain.PlannerScoring.SkillProfile;
 import com.devpilot.today.domain.PlannerScoring.SkillTarget;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -118,12 +119,73 @@ class PlannerScoringTest {
         assertThat(leech.reviewUrgency()).isEqualTo(1_000_000);
     }
 
+    /** ADR-044: 지금 단계는 날짜가 아니라 진행으로 정한다. */
+    @Test
+    void shouldTakeTheFirstUnfinishedMilestoneAsTheCurrentOne() {
+        AxisLevels target = AxisLevels.uniform(3);
+        MilestoneSpan first =
+                new MilestoneSpan(
+                        MILESTONE_ID,
+                        "기반 다지기",
+                        0,
+                        LocalDate.parse("2026-09-01"),
+                        LocalDate.parse("2026-09-10"),
+                        Set.of("A"));
+        MilestoneSpan second =
+                new MilestoneSpan(
+                        UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                        "회원과 인증",
+                        1,
+                        LocalDate.parse("2026-09-11"),
+                        LocalDate.parse("2026-09-30"),
+                        Set.of("B"));
+        List<MilestoneSpan> plan = List.of(second, first); // 입력 순서와 무관해야 한다
+        Map<String, SkillTarget> targets = mustTargets(target, "A", "B");
+
+        // 1단계를 아직 못 했다 — 달력이 2단계 기간이어도 1단계가 지금 단계다.
+        Map<String, SkillProfile> notYet = unmetSkills("A", "B");
+        assertThat(PlannerScoring.currentMilestone(plan, targets, notYet)).contains(first);
+        assertThat(PlannerScoring.nextMilestone(plan, targets, notYet)).contains(second);
+
+        // 1단계 MUST가 목표에 닿으면 그제서야 2단계가 열린다.
+        Map<String, SkillProfile> firstDone = new LinkedHashMap<>(notYet);
+        firstDone.putAll(metSkills(target, "A"));
+        assertThat(PlannerScoring.currentMilestone(plan, targets, firstDone)).contains(second);
+        assertThat(PlannerScoring.nextMilestone(plan, targets, firstDone)).isEmpty();
+
+        // 전부 끝나면 지금 단계가 없다.
+        assertThat(PlannerScoring.currentMilestone(plan, targets, metSkills(target, "A", "B")))
+                .isEmpty();
+    }
+
+    /** 상태를 모르는 skill은 못 한 것으로 본다 — 모르는 채로 단계를 넘기지 않는다. */
+    @Test
+    void shouldNotAdvancePastAMilestoneWithAnUnknownSkill() {
+        AxisLevels target = AxisLevels.uniform(3);
+        MilestoneSpan first =
+                new MilestoneSpan(
+                        MILESTONE_ID,
+                        "기반 다지기",
+                        0,
+                        LocalDate.parse("2026-09-01"),
+                        LocalDate.parse("2026-09-10"),
+                        Set.of("A"));
+
+        assertThat(
+                        PlannerScoring.currentMilestone(
+                                List.of(first), mustTargets(target, "A"), Map.of()))
+                .contains(first);
+    }
+
+    /** 단계 안의 급한 정도는 그 단계의 날짜로 잰다. 끝나는 날이 지났으면 최대다. */
     @Test
     void shouldUseFloorAndNextMilestoneUrgency() {
+        AxisLevels target = AxisLevels.uniform(3);
         MilestoneSpan ending =
                 new MilestoneSpan(
                         MILESTONE_ID,
                         "끝나 가는 milestone",
+                        0,
                         LocalDate.parse("2026-10-01"),
                         LocalDate.parse("2026-10-10"),
                         Set.of("A"));
@@ -131,26 +193,23 @@ class PlannerScoringTest {
                 new MilestoneSpan(
                         UUID.fromString("00000000-0000-0000-0000-000000000002"),
                         "다음 milestone",
+                        1,
                         LocalDate.parse("2026-10-11"),
                         LocalDate.parse("2026-10-30"),
                         Set.of("B"));
-        MilestoneSpan beginning =
-                new MilestoneSpan(
-                        UUID.fromString("00000000-0000-0000-0000-000000000003"),
-                        "막 시작한 milestone",
-                        LocalDate.parse("2026-10-10"),
-                        LocalDate.parse("2026-12-31"),
-                        Set.of("C"));
+        List<MilestoneSpan> plan = List.of(ending, starting);
+        Map<String, SkillTarget> targets = mustTargets(target, "A", "B");
+        Map<String, SkillProfile> skills = unmetSkills("A", "B");
 
-        MilestoneContext a = scoring.milestoneContext(TODAY, List.of(ending, starting), "A");
-        MilestoneContext b = scoring.milestoneContext(TODAY, List.of(ending, starting), "B");
-        MilestoneContext c = scoring.milestoneContext(TODAY, List.of(beginning, starting), "C");
+        MilestoneContext a = scoring.milestoneContext(TODAY, plan, targets, skills, "A");
+        MilestoneContext b = scoring.milestoneContext(TODAY, plan, targets, skills, "B");
 
         assertThat(a.urgency()).isEqualTo(1_000_000);
         assertThat(a.current()).isEqualTo(ending);
         assertThat(b.urgency()).isEqualTo(100_000);
         assertThat(b.next()).isEqualTo(starting);
-        assertThat(c.urgency()).isEqualTo(200_000);
+        // B는 다음 단계라 지금 단계가 아니다.
+        assertThat(b.current()).isNull();
     }
 
     @Test
@@ -166,14 +225,16 @@ class PlannerScoringTest {
                 Map.of(
                         "S.MUST", profile("S.MUST", AxisLevels.ZERO),
                         "S.DEFERRED", profile("S.DEFERRED", AxisLevels.ZERO),
-                        "S.MET", profile("S.MET", target),
+                        // ADR-044: due 경로로 들어오려면 손대 본 적이 있어야 한다.
+                        "S.MET", practiced("S.MET", target),
                         "S.LATER", profile("S.LATER", AxisLevels.ZERO));
 
         List<String> low =
                 scoring.selectCandidates(
                         new CandidateInput(
                                 RiskLevel.LOW,
-                                Set.of("S.LATER"),
+                                // ADR-044: 후보는 지금 단계의 skill이다. 네 개를 모두 이 단계에 둔다.
+                                Set.of("S.MUST", "S.DEFERRED", "S.MET", "S.LATER"),
                                 Set.of(),
                                 Set.of(),
                                 targets,
@@ -182,7 +243,7 @@ class PlannerScoringTest {
                 scoring.selectCandidates(
                         new CandidateInput(
                                 RiskLevel.HIGH,
-                                Set.of("S.LATER"),
+                                Set.of("S.MUST", "S.DEFERRED", "S.MET", "S.LATER"),
                                 Set.of(),
                                 Set.of(),
                                 targets,
@@ -200,6 +261,36 @@ class PlannerScoringTest {
         assertThat(low).containsExactly("S.LATER", "S.MUST");
         assertThat(high).containsExactly("S.MUST");
         assertThat(metWithDue).contains("S.MET");
+    }
+
+    /**
+     * ADR-044: 씨앗 카드는 아직 배우지 않은 뒷 단계 skill에도 미리 배정된다. due라는 이유만으로 main task 후보가 되면 순서가 뚫린다 — 손대 본 적
+     * 있는 skill만 이 경로로 들어온다.
+     */
+    @Test
+    void shouldNotLetAnUntouchedSkillInThroughTheDuePath() {
+        AxisLevels target = AxisLevels.uniform(3);
+        Map<String, SkillTarget> targets =
+                Map.of(
+                        "S.SEEDED", new SkillTarget(Priority.MUST, 9_000, target, false),
+                        "S.STUDIED", new SkillTarget(Priority.MUST, 9_000, target, false));
+        Map<String, SkillProfile> skills =
+                Map.of(
+                        // 씨앗 카드만 있고 한 번도 손대지 않았다.
+                        "S.SEEDED", profile("S.SEEDED", AxisLevels.ZERO),
+                        "S.STUDIED", practiced("S.STUDIED", AxisLevels.ZERO));
+
+        List<String> candidates =
+                scoring.selectCandidates(
+                        new CandidateInput(
+                                RiskLevel.LOW,
+                                Set.of(),
+                                Set.of(),
+                                Set.of("S.SEEDED", "S.STUDIED"),
+                                targets,
+                                skills));
+
+        assertThat(candidates).containsExactly("S.STUDIED");
     }
 
     @Test
@@ -228,7 +319,13 @@ class PlannerScoringTest {
         List<String> candidates =
                 scoring.selectCandidates(
                         new CandidateInput(
-                                RiskLevel.LOW, Set.of(), Set.of(), Set.of(), targets, skills));
+                                RiskLevel.LOW,
+                                // ADR-044: 지금 단계에 든 skill이라도 선행이 안 됐으면 선행으로 바꿔 준다.
+                                Set.of("S.ADVANCED"),
+                                Set.of(),
+                                Set.of(),
+                                targets,
+                                skills));
 
         assertThat(PlannerScoring.prerequisiteReadiness(skills.get("S.ADVANCED"), skills))
                 .isEqualTo(333_333);
@@ -376,14 +473,23 @@ class PlannerScoringTest {
     }
 
     private Factors factorsOfA() {
+        AxisLevels target = AxisLevels.uniform(3);
         MilestoneSpan milestone =
                 new MilestoneSpan(
                         MILESTONE_ID,
                         "Spring/JPA 핵심",
+                        0,
                         LocalDate.parse("2026-10-01"),
                         LocalDate.parse("2026-10-20"),
                         Set.of("A"));
-        long urgency = scoring.milestoneContext(TODAY, List.of(milestone), "A").urgency();
+        long urgency =
+                scoring.milestoneContext(
+                                TODAY,
+                                List.of(milestone),
+                                mustTargets(target, "A"),
+                                unmetSkills("A"),
+                                "A")
+                        .urgency();
         return scoring.factors(
                 new FactorInput(
                         new SkillTarget(Priority.MUST, 9_000, AxisLevels.uniform(5), false),
@@ -409,6 +515,12 @@ class PlannerScoringTest {
 
     private static SkillProfile profile(String code, AxisLevels planning) {
         return new SkillProfile(code, code, "설명", planning, null, List.of());
+    }
+
+    /** 이미 손대 본 skill (docs/06 §5.2 3번: due 경로는 이 skill만 후보로 넣는다). */
+    private static SkillProfile practiced(String code, AxisLevels planning) {
+        return new SkillProfile(
+                code, code, "설명", planning, Instant.parse("2026-09-01T00:00:00Z"), List.of());
     }
 
     static Stream<Arguments> vectors() {
@@ -448,5 +560,31 @@ class PlannerScoringTest {
     private static int[] proposal(Object value) {
         Map<?, ?> map = (Map<?, ?>) value;
         return new int[] {(Integer) map.get("estimated"), (Integer) map.get("difficulty")};
+    }
+
+    /** 아직 목표에 닿지 않은 skill (그 단계를 미완료로 만든다). */
+    private static Map<String, SkillProfile> unmetSkills(String... codes) {
+        Map<String, SkillProfile> skills = new LinkedHashMap<>();
+        for (String code : codes) {
+            skills.put(code, profile(code, AxisLevels.ZERO));
+        }
+        return skills;
+    }
+
+    /** 모든 축이 목표에 닿은 skill (그 단계를 완료로 만든다). */
+    private static Map<String, SkillProfile> metSkills(AxisLevels target, String... codes) {
+        Map<String, SkillProfile> skills = new LinkedHashMap<>();
+        for (String code : codes) {
+            skills.put(code, profile(code, target));
+        }
+        return skills;
+    }
+
+    private static Map<String, SkillTarget> mustTargets(AxisLevels target, String... codes) {
+        Map<String, SkillTarget> targets = new LinkedHashMap<>();
+        for (String code : codes) {
+            targets.put(code, new SkillTarget(Priority.MUST, 9_000, target, false));
+        }
+        return targets;
     }
 }

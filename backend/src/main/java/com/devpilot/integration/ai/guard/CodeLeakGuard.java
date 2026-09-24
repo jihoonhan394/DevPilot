@@ -7,6 +7,7 @@ import com.devpilot.integration.ai.api.output.ChallengeGenerateOutput;
 import com.devpilot.integration.ai.api.output.CoachResponseFeedbackOutput;
 import com.devpilot.integration.ai.api.output.CoachReviewOutput;
 import com.devpilot.integration.ai.api.output.HintGenerateOutput;
+import com.devpilot.integration.ai.api.output.LessonReexplainOutput;
 import com.devpilot.integration.ai.api.output.RubberDuckGap;
 import com.devpilot.integration.ai.api.output.RubberDuckSummaryOutput;
 import com.devpilot.integration.ai.api.output.RubberDuckTurnOutput;
@@ -67,6 +68,11 @@ public class CodeLeakGuard implements OutputGuard {
                     check(evaluated.followUpQuestion(), "followUpQuestion", result);
             case HintGenerateOutput hint -> value = hint(hint, context, result);
             case RubberDuckTurnOutput turn -> check(turn.question(), "question", result);
+            case LessonReexplainOutput reexplain -> {
+                // ADR-047: 재설명은 개념에 머문다. 코드를 보여 줄 자리는 노트의 example 이다.
+                check(reexplain.explanation(), "explanation", result);
+                check(reexplain.analogy(), "analogy", result);
+            }
             case RubberDuckSummaryOutput summary -> {
                 for (int i = 0; i < summary.gaps().size(); i++) {
                     RubberDuckGap gap = summary.gaps().get(i);

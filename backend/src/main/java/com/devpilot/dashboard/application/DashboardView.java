@@ -14,9 +14,9 @@ import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 /**
- * 홈 집계 (docs/05 §13.1 {@code DashboardView}). S2 최소판은 오늘 상태, due 수, 이번 주 학습 시간·완료 세션, AI 상태, replan
- * 권고를 채운다. {@code risk}, {@code milestoneTimeline}, {@code skillCategories}, {@code
- * weakThinkingAxes}는 S5(BL-TDY-12) 전까지 {@code null}/{@code []}다.
+ * 홈 집계 (docs/05 §13.1 {@code DashboardView}). {@code milestoneTimeline}과 {@code skillCategories}는
+ * 채운다 — "어디쯤 왔나"와 "늘고 있나"에 답하는 자리다. {@code risk}와 {@code weakThinkingAxes}는 아직 {@code null}/{@code
+ * []}다(전자는 스냅샷 추세, 후자는 코드 리뷰의 사고 축이라 출처가 다르다).
  *
  * @param dueReviewCount docs/06 §6.5 대상 수에 cap 적용
  * @param weekStartDate 오늘이 속한 ISO week의 월요일
@@ -94,7 +94,7 @@ public record DashboardView(
     /**
      * 타임라인 milestone.
      *
-     * @param current {@code startDate ≤ today ≤ endDate}
+     * @param current 지금 단계인가. <b>날짜가 아니라 진행으로 정한다</b>(ADR-044) — Today가 고르는 단계와 같다
      */
     public record TimelineMilestoneView(
             UUID id,

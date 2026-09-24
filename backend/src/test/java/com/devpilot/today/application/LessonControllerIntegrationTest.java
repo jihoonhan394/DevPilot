@@ -3,6 +3,7 @@ package com.devpilot.today.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.devpilot.integration.ai.api.AiOperation;
 import com.devpilot.testsupport.ApiTestSupport;
 import com.devpilot.testsupport.IntegrationTest;
 import com.devpilot.testsupport.TestApi;
@@ -242,6 +243,78 @@ class LessonControllerIntegrationTest extends ApiTestSupport {
         List<String> keys = new java.util.ArrayList<>();
         lessons.forEach(lesson -> keys.add(lesson.path("lessonKey").asString()));
         return keys;
+    }
+
+    /** ADR-047: 설명이 안 통할 때 다른 각도로 한 번 더. 저장하지 않고 응답으로만 온다. */
+    @Test
+    void shouldReexplainTheUnitWithoutStoringAnything() throws Exception {
+        TestUser user = onboardedUser();
+        long eventsBefore = unitEvents(user);
+
+        JsonNode body =
+                api.body(
+                        api.post(
+                                        user,
+                                        UNIT + "/reexplain",
+                                        Map.of("reason", "WHY_NOT_CLEAR"),
+                                        LESSON_KEY,
+                                        UNIT_KEY)
+                                .andExpect(status().isOk()));
+
+        assertThat(body.path("explanation").asString()).isNotBlank();
+        assertThat(body.path("aiMeta").path("promptVersion").asString())
+                .startsWith("lesson.reexplain@");
+        assertThat(fakeAi().callCount(AiOperation.LESSON_REEXPLAIN)).isEqualTo(1);
+        // 읽기를 돕는 일이지 배움의 증거가 아니다 — 학습 이벤트를 남기지 않는다.
+        assertThat(unitEvents(user)).isEqualTo(eventsBefore);
+    }
+
+    /** 백지 문제와 모범 답안은 AI에 보내지 않는다 (ADR-047). 보내지 않으면 흘릴 수 없다. */
+    @Test
+    void shouldNotSendTheProblemOrItsAnswerToTheModel() throws Exception {
+        TestUser user = onboardedUser();
+
+        api.post(
+                        user,
+                        UNIT + "/reexplain",
+                        Map.of("reason", "UNFAMILIAR_TERMS"),
+                        LESSON_KEY,
+                        UNIT_KEY)
+                .andExpect(status().isOk());
+
+        String sent = fakeAi().receivedCalls(AiOperation.LESSON_REEXPLAIN).getLast().input();
+        JsonNode answer =
+                api.body(
+                        api.get(user, UNIT + "/answer", LESSON_KEY, UNIT_KEY)
+                                .andExpect(status().isOk()));
+        assertThat(sent).doesNotContain(answer.path("modelAnswer").asString());
+        answer.path("selfChecks")
+                .forEach(check -> assertThat(sent).doesNotContain(check.asString()));
+        // 설명과 막힌 이유는 보낸다 — 그게 이 호출의 재료다.
+        assertThat(sent).contains("UNFAMILIAR_TERMS");
+    }
+
+    /** 재설명이 코드를 쏟아내면 가드가 막는다 (docs/17 §6.3). 코드를 볼 자리는 노트의 예제다. */
+    @Test
+    void shouldRefuseAReexplanationThatDumpsCode() throws Exception {
+        TestUser user = onboardedUser();
+        fakeAi().use(AiOperation.LESSON_REEXPLAIN, "code-leak");
+
+        api.post(
+                        user,
+                        UNIT + "/reexplain",
+                        Map.of("reason", "EXAMPLE_UNCLEAR"),
+                        LESSON_KEY,
+                        UNIT_KEY)
+                .andExpect(status().is5xxServerError());
+    }
+
+    @Test
+    void shouldRejectAnUnknownConfusionReason() throws Exception {
+        TestUser user = onboardedUser();
+
+        api.post(user, UNIT + "/reexplain", Map.of("reason", "JUST_BECAUSE"), LESSON_KEY, UNIT_KEY)
+                .andExpect(status().isBadRequest());
     }
 
     /** AC-37 S4: 확인 목록보다 많이 체크하면 400이다. */

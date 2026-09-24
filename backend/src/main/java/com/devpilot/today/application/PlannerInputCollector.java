@@ -224,6 +224,7 @@ class PlannerInputCollector {
                                 new MilestoneSpan(
                                         milestone.id(),
                                         milestone.title(),
+                                        milestone.sortOrder(),
                                         milestone.startDate(),
                                         milestone.endDate(),
                                         Set.copyOf(milestone.skillCodes())))

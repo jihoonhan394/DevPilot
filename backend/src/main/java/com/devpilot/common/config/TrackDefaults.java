@@ -12,9 +12,12 @@ import jakarta.validation.constraints.Min;
  *
  * @param maxTaskDifficulty main 과제 난이도 {@code d}의 상한 (docs/06 §5.3)
  * @param readCodeMinKnowledge {@code READ_CODE} 제안의 planning KNOWLEDGE 문턱 (docs/06 RC-3)
+ * @param challengeMinKnowledge {@code CHALLENGE} 제안의 planning KNOWLEDGE 문턱 (docs/06 §5.3, ADR-045).
+ *     개념을 한 번도 안 본 skill에는 문제를 내지 않는다
  * @param basicTipsFirst 오늘의 팁 정렬에서 {@code BASIC}을 먼저 두는지 (docs/06 §5.12)
  */
 public record TrackDefaults(
         @Min(1) @Max(5) int maxTaskDifficulty,
         @Min(0) @Max(5) int readCodeMinKnowledge,
+        @Min(0) @Max(5) int challengeMinKnowledge,
         boolean basicTipsFirst) {}

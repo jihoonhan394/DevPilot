@@ -118,12 +118,16 @@ public class DailyPlanComposer {
     /** 1위 후보로 main을 만들고, 남는 예산이 크면 다음 후보로 추가 과제를 만든다 (docs/06 §5.6). */
     private Chosen chooseTasks(
             Inputs inputs, ProposalOptionCollector.ProposalOptions options, Allocation allocation) {
-        List<MilestoneSpan> current =
-                PlannerScoring.currentMilestones(inputs.today(), inputs.milestones());
-        Set<String> currentCodes = new HashSet<>();
-        current.forEach(milestone -> currentCodes.addAll(milestone.skillCodes()));
+        // 지금 단계는 날짜가 아니라 진행으로 정한다 (ADR-044).
+        Set<String> currentCodes =
+                new HashSet<>(
+                        PlannerScoring.currentMilestone(
+                                        inputs.milestones(), inputs.targets(), inputs.profiles())
+                                .map(MilestoneSpan::skillCodes)
+                                .orElse(Set.of()));
         Set<String> nextCodes =
-                PlannerScoring.nextMilestone(inputs.today(), inputs.milestones())
+                PlannerScoring.nextMilestone(
+                                inputs.milestones(), inputs.targets(), inputs.profiles())
                         .map(MilestoneSpan::skillCodes)
                         .orElse(Set.of());
         List<String> candidates =
@@ -175,7 +179,12 @@ public class DailyPlanComposer {
         SkillProfile profile = inputs.profiles().get(code);
         SkillTarget target = inputs.targets().get(code);
         MilestoneContext milestone =
-                scoring.milestoneContext(inputs.today(), inputs.milestones(), code);
+                scoring.milestoneContext(
+                        inputs.today(),
+                        inputs.milestones(),
+                        inputs.targets(),
+                        inputs.profiles(),
+                        code);
         Factors factors =
                 scoring.factors(
                         new PlannerScoring.FactorInput(

@@ -13,6 +13,7 @@ import com.devpilot.plan.domain.LearningPlan;
 import com.devpilot.plan.domain.PlanProgressSnapshot;
 import com.devpilot.plan.domain.PlanSkillTarget;
 import com.devpilot.plan.domain.PlanStatus;
+import com.devpilot.plan.domain.ReplanRecommendationPolicy;
 import com.devpilot.plan.domain.ReplanSuggestionPolicy.TargetItem;
 import com.devpilot.plan.domain.RiskLevel;
 import com.devpilot.plan.domain.StudyBudgetCalculator;
@@ -25,6 +26,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +45,7 @@ public class StudyBudgetService {
     private final Clock clock;
     private final StudyBudgetCalculator budgetCalculator;
     private final DeadlineRiskEvaluator riskEvaluator;
+    private final int replanRecommendAfterDays;
 
     StudyBudgetService(
             LearningPlanRepository learningPlanRepository,
@@ -56,6 +59,7 @@ public class StudyBudgetService {
         this.clock = clock;
         this.budgetCalculator = new StudyBudgetCalculator(PlanRuleSettings.budget(properties));
         this.riskEvaluator = new DeadlineRiskEvaluator(PlanRuleSettings.risk(properties));
+        this.replanRecommendAfterDays = properties.budget().replanRecommendAfterDays();
     }
 
     /**
@@ -117,7 +121,25 @@ public class StudyBudgetService {
                                                         values,
                                                         now)));
         snapshotRepository.flush();
+        recommendReplanIfRiskPersists(plan.get());
         return Optional.of(PlanQueryService.toSnapshotView(snapshot));
+    }
+
+    /**
+     * 위험도가 여러 날 이어지면 replan을 권한다 (ADR-046, docs/06 §4). 세는 단위는 <b>스냅샷이 있는 날</b>이다 — 앱을 안 연 날은 스냅샷이
+     * 없어 건너뛴다. 켜기만 하고 끄지 않는다(끄는 것은 새 plan version이다).
+     */
+    private void recommendReplanIfRiskPersists(LearningPlan plan) {
+        if (plan.isReplanRecommended()) {
+            return;
+        }
+        List<PlanProgressSnapshot> recent =
+                snapshotRepository.findByPlanIdOrderBySnapshotDateDesc(
+                        plan.getId(), Limit.of(replanRecommendAfterDays));
+        List<RiskLevel> risks = recent.stream().map(PlanProgressSnapshot::getRiskLevel).toList();
+        if (ReplanRecommendationPolicy.shouldRecommend(risks, replanRecommendAfterDays)) {
+            plan.recommendReplan();
+        }
     }
 
     /**

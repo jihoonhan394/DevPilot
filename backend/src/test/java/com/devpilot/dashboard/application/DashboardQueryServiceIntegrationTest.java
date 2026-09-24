@@ -9,15 +9,17 @@ import com.devpilot.testsupport.IntegrationTest;
 import com.devpilot.testsupport.TestUser;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 
 /**
  * docs/05 §13.1 (BL-TDY-11), AC-02 S10. S2 최소판: 오늘 상태, due 수, 이번 ISO 주 학습 시간. risk 추세·timeline·카테고리
- * 요약·약한 사고 축은 S5 전까지 null/[]다.
+ * risk 추세와 약한 사고 축은 아직 null/[]다. 타임라인과 category 요약은 채운다.
  */
 @IntegrationTest
 class DashboardQueryServiceIntegrationTest extends ApiTestSupport {
@@ -58,8 +60,10 @@ class DashboardQueryServiceIntegrationTest extends ApiTestSupport {
                 .isEqualTo(api.body(api.get(user, "/api/v1/me")).path("aiStatus").asString());
         assertThat(dashboard.path("replanRecommended").asBoolean()).isFalse();
         assertThat(dashboard.path("risk").isNull()).isTrue();
-        assertThat(dashboard.path("milestoneTimeline").isNull()).isTrue();
-        assertThat(dashboard.path("skillCategories")).isEmpty();
+        // 타임라인과 category 요약은 채운다 — "어디쯤 왔나"와 "늘고 있나"에 답하는 자리다.
+        assertThat(dashboard.path("milestoneTimeline").isNull()).isFalse();
+        assertThat(dashboard.path("skillCategories")).isNotEmpty();
+        // 코드 리뷰의 사고 축은 출처가 달라 아직 비어 있다 (docs/06 §12).
         assertThat(dashboard.path("weakThinkingAxes")).isEmpty();
     }
 
@@ -101,6 +105,60 @@ class DashboardQueryServiceIntegrationTest extends ApiTestSupport {
         api.put(user, "/api/v1/learning-goal", goal).andExpect(status().isOk());
 
         api.get(user, DASHBOARD).andExpect(jsonPath("$.replanRecommended").value(true));
+    }
+
+    /** docs/05 §13.1: 타임라인의 지금 단계는 날짜가 아니라 진행으로 정한다 (ADR-044). */
+    @Test
+    void shouldMarkTheFirstUnfinishedMilestoneAsCurrent() throws Exception {
+        TestUser user = onboardedOwner();
+
+        JsonNode timeline =
+                api.body(api.get(user, DASHBOARD).andExpect(status().isOk()))
+                        .path("milestoneTimeline");
+
+        assertThat(timeline.isNull()).isFalse();
+        assertThat(timeline.path("planVersion").asInt()).isPositive();
+        assertThat(timeline.path("horizonDate").asString()).isNotBlank();
+        JsonNode milestones = timeline.path("milestones");
+        assertThat(milestones).isNotEmpty();
+
+        List<Integer> current = new ArrayList<>();
+        for (int index = 0; index < milestones.size(); index++) {
+            if (milestones.get(index).path("current").asBoolean()) {
+                current.add(index);
+            }
+        }
+        // 아무것도 하지 않은 사용자는 맨 앞 단계에 있다. current 는 하나뿐이다.
+        assertThat(current).containsExactly(0);
+    }
+
+    /** docs/05 §13.1: category별 평균은 활성 plan의 deferred=false skill만 세고 4축 평균 milli다. */
+    @Test
+    void shouldSummarizeSkillCategoriesFromTheActivePlan() throws Exception {
+        TestUser user = onboardedOwner();
+
+        JsonNode categories =
+                api.body(api.get(user, DASHBOARD).andExpect(status().isOk()))
+                        .path("skillCategories");
+
+        assertThat(categories).isNotEmpty();
+        for (JsonNode category : categories) {
+            assertThat(category.path("category").asString()).isNotBlank();
+            assertThat(category.path("skillCount").asInt()).isPositive();
+            // 목표는 0보다 크다 — 그래서 "얼마나 남았는지"가 보인다.
+            assertThat(category.path("avgTargetLevelMilli").asInt()).isPositive();
+            // planning은 자기평가가 반영돼 0이 아닐 수 있다(docs/06 §7.5). 아직 목표에는 못 미친다.
+            assertThat(category.path("avgPlanningLevelMilli").asInt())
+                    .isNotNegative()
+                    .isLessThan(category.path("avgTargetLevelMilli").asInt());
+        }
+        // 자기평가한 JAVA는 planning이 이미 0보다 크다 — 온보딩 입력이 반영됐다는 뜻이다.
+        JsonNode java =
+                StreamSupport.stream(categories.spliterator(), false)
+                        .filter(category -> "JAVA".equals(category.path("category").asString()))
+                        .findFirst()
+                        .orElseThrow();
+        assertThat(java.path("avgPlanningLevelMilli").asInt()).isPositive();
     }
 
     @Test

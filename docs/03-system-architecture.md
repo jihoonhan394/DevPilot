@@ -100,7 +100,7 @@ Base package: `com.devpilot`
 | `evidence` | `common`, `skill`, `learning`, `coach`, `training`, `review`, `plan` (지표 입력), `project` (프로젝트 기록 — `projectNoteCount` 지표와 증거 초안 입력, `06` §12·`05` §14.5), `integration.ai` |
 | `radar` | `common`, `skill`, `evidence`, `goal` (target role), `plan` (활성 plan의 `plan_skill_target`, `06` §13), `integration.ai` |
 | `onboarding` | `common`, `user`, `goal`, `plan`, `skill`, `review` (seed 카드 배정), `training`, `project` (첫 사이드 프로젝트 생성) |
-| `dashboard` | `common`, `user`, `plan`, `skill`, `review`, `today`, `learning`, `coach`, `evidence` (`MetricsCalculator` — 약한 thinking 축), `integration.ai` |
+| `dashboard` | `common`, `user`, `goal` (타임라인의 `horizonDate` = 학습 목표일), `plan`, `skill`, `review`, `today`, `learning`, `coach`, `evidence` (`MetricsCalculator` — 약한 thinking 축), `integration.ai` |
 | `project` | `common`, `skill`(기록에 붙이는 선택 skill 검증), `integration.ai` (`SecretMasker` — 사이드 프로젝트 `name`·`description`·`stack`과 기록의 모든 텍스트 항목) |
 | `rubberduck` | `common`, `integration.ai`, `skill`(대상 skill), `learning`(학습 세션 id, `RUBBER_DUCK_COMPLETED` 기록, `hintDisclosed` 조회), `review`(gap → 복습 카드, `REVIEW_ITEM` 대상), `training`(`CHALLENGE` 대상), `today`(`CODE_READING` 대상 task·RC-1 완료, reading 조회), `project`(`PROJECT_WORK` 대상). **다른 모듈은 rubberduck에 의존하지 않는다**(account 모듈의 export 집계만 예외) |
 | `content` | `common`, `skill`, `plan`, `review` (`TermRegistry` 등록), `training`, `today` (`CuratedReadingRegistry`·`ConceptReadingRegistry`·`LessonRegistry`·`DailyTipRegistry`·`TaskChecklistRegistry` 등록) |
@@ -150,7 +150,7 @@ com.devpilot.<module>
 | 클래스 | 역할 |
 |---|---|
 | `common.config.DevPilotProperties` | `devpilot.*` 설정 루트 (`@ConfigurationProperties`, record) — §9 |
-| `common.config.TrackDefaults` | 학습 트랙 기본값 record (`maxTaskDifficulty`, `readCodeMinKnowledge`). `DevPilotProperties.tracks`는 `Map<String, TrackDefaults>`이고 키는 `TargetRole` 이름이다. **기동 시 `TargetRole` 값마다 항목이 있는지 검사하고 없으면 기동 실패**(`common`은 `goal`을 의존하지 않으므로 검사는 `goal.application`의 `@PostConstruct`에서 한다) |
+| `common.config.TrackDefaults` | 학습 트랙 기본값 record (`maxTaskDifficulty`, `readCodeMinKnowledge`, `challengeMinKnowledge`). `DevPilotProperties.tracks`는 `Map<String, TrackDefaults>`이고 키는 `TargetRole` 이름이다. **기동 시 `TargetRole` 값마다 항목이 있는지 검사하고 없으면 기동 실패**(`common`은 `goal`을 의존하지 않으므로 검사는 `goal.application`의 `@PostConstruct`에서 한다) |
 | `common.time.ClockConfig` | `Clock` bean (UTC). 테스트에서 `MutableClock`으로 교체 |
 | `common.time.PlanDayCalculator` | `planDate(Instant, ZoneId, dayStartHour)`, `planDayStart(LocalDate, ZoneId, dayStartHour)` |
 | `common.time.UserTimeSettingsProvider` | interface: 사용자 id → `(ZoneId, dayStartHour)`. `user` 모듈이 구현. 요청 밖(비동기 task, job, 예산 가드)에서 사용 |
@@ -547,6 +547,7 @@ devpilot:
     axis-cost: { knowledge: 0.5, implementation: 1.0, explanation: 0.4, debugging: 0.8 }
     review-overhead: 1.15
     risk-thresholds: { low-max: 0.80, medium-max: 1.00, high-max: 1.25 }
+    replan-recommend-after-days: 7        # 스냅샷이 연속 이 날 수만큼 risk ≥ HIGH면 replan 권고 (ADR-046)
     # 소수 설정값은 기동 시 bp(×10000)/micro(×1000000) 정수로 변환. 정수가 아니면 기동 실패 (06 §1 N-6)
   review:
     max-per-day: 20

@@ -14,6 +14,14 @@ void main() {
 
   setUp(() => backend = FakeBackend());
 
+  /// 처음 여는 사람에게는 시간·컨디션을 왜 묻는지가 보여야 한다.
+  testWidgets('shouldSayWhatGeneratingWillDoBeforeAsking', (tester) async {
+    await pumpApp(tester, backend: backend);
+
+    expect(find.byKey(const Key('today.generateLead')), findsOneWidget);
+    expect(find.textContaining('지금 단계에 맞는 과제'), findsOneWidget);
+  });
+
   testWidgets('shouldGenerateStartAndCompleteWithActualMinutes', (tester) async {
     await pumpApp(tester, backend: backend);
     await tapKey(tester, 'today.minutes.30');

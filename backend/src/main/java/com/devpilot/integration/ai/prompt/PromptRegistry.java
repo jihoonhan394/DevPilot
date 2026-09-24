@@ -234,6 +234,9 @@ public class PromptRegistry {
                         "skillSummary",
                         "availableSkillCodes",
                         "conversation"));
+        names.put(
+                AiOperation.LESSON_REEXPLAIN,
+                Set.of("skillName", "lessonOneLine", "unitTitle", "reason", "explain"));
         return Map.copyOf(names);
     }
 

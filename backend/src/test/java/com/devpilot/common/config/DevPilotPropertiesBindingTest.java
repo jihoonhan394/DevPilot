@@ -119,7 +119,7 @@ class DevPilotPropertiesBindingTest {
     void shouldBindAiOperationsPromptsPricingAndGuardsWhenApplicationYamlIsLoaded() {
         DevPilotProperties.Ai ai = TestProperties.defaults(REQUIRED).ai();
 
-        assertThat(ai.operations()).hasSize(11);
+        assertThat(ai.operations()).hasSize(12);
         DevPilotProperties.AiOperationSettings coach = operation(ai, "COACH_REVIEW");
         assertThat(coach.mode()).isEqualTo(DevPilotProperties.AiMode.ASYNC);
         assertThat(coach.effort()).isEqualTo("high");
@@ -129,7 +129,7 @@ class DevPilotPropertiesBindingTest {
         assertThat(duck.mode()).isEqualTo(DevPilotProperties.AiMode.SYNC);
         assertThat(duck.effort()).isEqualTo("off");
         assertThat(duck.inputTokenBudget()).isEqualTo(6_000);
-        assertThat(ai.prompts()).containsEntry("rubber.duck.summary", "v1").hasSize(11);
+        assertThat(ai.prompts()).containsEntry("lesson.reexplain", "v1").hasSize(12);
         assertThat(ai.pricing().peakMultiplier()).isEqualTo(2);
         assertThat(ai.pricing().models()).containsKeys("deepseek-flash", "deepseek-v4-pro");
         assertThat(ai.deepseek().retryAfterDefault()).isEqualTo(Duration.ofSeconds(2));

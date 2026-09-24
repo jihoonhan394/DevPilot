@@ -43,9 +43,9 @@ class ReasonTemplatesTest {
         ReasonParams params = new ReasonParams("Spring Boot/JPA", 1, 4, 2, "Spring PetClinic");
 
         assertThat(ReasonTemplates.text(ReasonCode.MILESTONE_CORE, params))
-                .isEqualTo("Spring Boot/JPA milestone 핵심 항목");
+                .isEqualTo("지금 단계(Spring Boot/JPA)의 핵심 항목");
         assertThat(ReasonTemplates.text(ReasonCode.MILESTONE_NEXT, params))
-                .isEqualTo("다음 milestone(Spring Boot/JPA) 준비");
+                .isEqualTo("다음 단계(Spring Boot/JPA) 준비");
         assertThat(ReasonTemplates.text(ReasonCode.LARGE_SKILL_GAP, params))
                 .isEqualTo("목표 수준과 차이가 큼 (구현 1/4)");
         assertThat(ReasonTemplates.text(ReasonCode.REVIEW_OVERDUE, params)).isEqualTo("복습이 2일 밀림");
@@ -58,9 +58,8 @@ class ReasonTemplatesTest {
         ReasonParams empty = ReasonParams.EMPTY;
 
         assertThat(ReasonTemplates.text(ReasonCode.MILESTONE_CORE, empty))
-                .isEqualTo("milestone 핵심 항목");
-        assertThat(ReasonTemplates.text(ReasonCode.MILESTONE_NEXT, empty))
-                .isEqualTo("다음 milestone 준비");
+                .isEqualTo("지금 단계의 핵심 항목");
+        assertThat(ReasonTemplates.text(ReasonCode.MILESTONE_NEXT, empty)).isEqualTo("다음 단계 준비");
         assertThat(ReasonTemplates.text(ReasonCode.LARGE_SKILL_GAP, empty))
                 .isEqualTo("목표 수준과 차이가 큼");
         assertThat(ReasonTemplates.text(ReasonCode.REVIEW_OVERDUE, empty)).isEqualTo("복습이 밀림");

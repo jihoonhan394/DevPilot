@@ -13,7 +13,8 @@ import org.jspecify.annotations.Nullable;
  *
  * <pre>
  * d = clamp(planning IMPLEMENTATION + 1, 1, trackDefaults.maxTaskDifficulty), 복귀 모드면 min(d, 2)
- * 1. AI 가능 + 조건을 만족하는 challenge(difficulty d, 없으면 d−1) → CHALLENGE
+ * 1. AI 가능 + planning KNOWLEDGE ≥ trackDefaults.challengeMinKnowledge (ADR-045)
+ *    + 조건을 만족하는 challenge(difficulty d, 없으면 d−1) → CHALLENGE
  * 2. AI 가능 + planning KNOWLEDGE ≥ trackDefaults.readCodeMinKnowledge + 선택 가능한 reading
  *    → READ_CODE (reading 시간, difficulty 2)
  * 3. planning KNOWLEDGE &lt; 2 → READING (개념 읽기 후보가 있으면 그 시간, 없으면 25. 둘 다 difficulty 1)
@@ -57,7 +58,12 @@ public final class TaskProposalPolicy {
             difficulty = Math.min(difficulty, COMEBACK_MAX_DIFFICULTY);
         }
         if (input.aiAvailable()) {
-            Optional<ChallengeOption> challenge = chooseChallenge(input.challenges(), difficulty);
+            // ADR-045: 개념을 한 번도 안 본 skill에는 문제를 내지 않는다. 코드 읽기에만 문턱이 있고
+            // 문제 풀기에는 없으면, 지식 0인 학습자가 어디에 쓰는지 모른 채 답만 맞히게 된다.
+            Optional<ChallengeOption> challenge =
+                    planning.knowledge() >= track.challengeMinKnowledge()
+                            ? chooseChallenge(input.challenges(), difficulty)
+                            : Optional.empty();
             if (challenge.isPresent()) {
                 return challenge(challenge.get());
             }

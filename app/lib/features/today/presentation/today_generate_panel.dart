@@ -30,6 +30,15 @@ class TodayGeneratePanel extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // 처음 여는 사람에게는 시간·컨디션을 왜 묻는지가 보이지 않는다.
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+          child: Text(
+            l10n.todayGenerateLead,
+            key: const Key('today.generateLead'),
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ),
         TodayInputFields(
           minutes: input.minutes,
           energy: input.energy,

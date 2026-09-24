@@ -229,12 +229,19 @@ ratioBp (저장·표시용) = effective == 0 ? null : floorDiv(requiredMust × 1
 
 ### 5.2 후보 skill
 
+**학습 순서는 프로젝트를 만드는 순서다**(ADR-044). milestone은 과목 묶음이 아니라 하나를 만들어 확인하기까지의 단계이고, 후보는 **지금 단계**로 제한한다. 중요도는 그 단계 **안에서** 순서를 정하는 데만 쓴다(§5.4).
+
 합집합(중복 제거):
-1. 오늘이 기간에 포함된 milestone의 `milestone_skill`
-2. 시작일이 오늘 이후인 가장 가까운 milestone의 `milestone_skill`
-3. due review가 있는 skill
-4. `plan_skill_target`에서 priority MUST/SHOULD인 skill
-5. **오늘 재현 후보가 있는 skill**(§5.10 RE-2). 이 경로로만 들어온 skill에는 아래 제외 규칙 중 "모든 축에서 `planningLevel ≥ target`" 하나를 적용하지 않는다 — 목표에 닿은 skill이라도 AI 없이 다시 만들 수 있는지는 아직 확인하지 않았기 때문이다
+1. **현재 milestone**의 `milestone_skill`
+2. 현재 milestone 다음 순서의 `milestone_skill` — 현재 단계를 다 끝냈을 때 할 일이 없어지지 않게 하는 완충이다
+3. due review가 있고 **이미 손대 본** skill(`lastPracticedAt != null`). 씨앗 카드는 아직 배우지 않은 뒷 단계 skill에도 미리 배정되므로 거르지 않으면 이 경로로 순서가 뚫린다(ADR-044). **거른 skill의 복습 자체는 그대로 나온다** — REVIEW 과제는 main task 선정과 별개다(§5.6)
+4. **오늘 재현 후보가 있는 skill**(§5.10 RE-2). 이 경로로만 들어온 skill에는 아래 제외 규칙 중 "모든 축에서 `planningLevel ≥ target`" 하나를 적용하지 않는다 — 목표에 닿은 skill이라도 AI 없이 다시 만들 수 있는지는 아직 확인하지 않았기 때문이다
+
+**현재 milestone** = `sort_order`가 가장 앞선 **미완료** milestone이다. 날짜로 정하지 않는다(ADR-044).
+
+- **완료**: 그 milestone의 `milestone_skill` 중 `plan_skill_target.priority = MUST`인 skill이 **전부** 모든 축에서 `planningLevel ≥ target`이다. MUST가 하나도 없으면 SHOULD로 같은 판정을 한다. 둘 다 없으면 그 milestone은 완료로 본다(넘어간다).
+- 모든 milestone이 완료면 현재 milestone은 없고 1·2번은 비어 있다. 후보는 3·4번만 남는다.
+- **날짜는 위험도 계산과 표시에만 쓴다**(§4). 늦어도 단계를 건너뛰지 않는다 — 늦었다는 사실은 위험도와 replan 권고로 알린다.
 
 제외:
 - `deferred=true`
@@ -255,7 +262,7 @@ if comebackMode: d = min(d, 2)
 
 0. 이 skill에 오늘 제안할 재현 후보가 있으면(§5.10 RE-2)
    → REDO (estimated = §5.10 RE-4, difficulty = 원본 과제의 difficulty, `redoSourceTaskId` = 그 후보의 원본 task)
-1. else if `aiStatus ∉ {DISABLED, BALANCE_EXHAUSTED}`이고(평가가 AI에 의존하므로), 해당 skill에 VALIDATED challenge(PRACTICE, seed 또는 본인 소유)가 있고,
+1. else if `aiStatus ∉ {DISABLED, BALANCE_EXHAUSTED}`이고(평가가 AI에 의존하므로), **planning KNOWLEDGE ≥ trackDefaults.challengeMinKnowledge**이고(ADR-045 — 개념을 한 번도 안 본 skill에는 문제를 내지 않는다), 해당 skill에 VALIDATED challenge(PRACTICE, seed 또는 본인 소유)가 있고,
    최근 14 plan-day 안에 attempt하지 않았고 **해결(outcome ∈ {SOLVED_INDEPENDENTLY, SOLVED_WITH_HINTS})한 attempt가 없는** 문제가 difficulty d, 없으면 d−1(≥1) 순서로 있으면
    → CHALLENGE (estimated = challenge.estimated_minutes, difficulty = 찾은 문제의 difficulty)
    같은 difficulty에 여러 개면 seed_key ASC(null은 뒤), 그다음 ID ASC 첫 번째
@@ -269,6 +276,8 @@ if comebackMode: d = min(d, 2)
 ```
 
 **REDO의 자리 (0번)와 그 이유** — 재현 과제는 새로 배우는 과제가 아니라 **이미 한 것을 AI 없이 혼자 다시 만들어 확인하는 과제**다(§5.10). 창(RE-2)이 며칠뿐이고 창을 놓치면 그 기회는 사라지므로, 같은 skill 안에서는 다른 제안보다 앞선다. 다만 **skill 사이의 경쟁은 그대로 점수로 한다** — 재현 후보가 있다고 해서 그 skill이 자동으로 오늘의 main이 되지는 않고, §5.5의 `REDO_DUE` modifier로 가중치만 받는다. AI 상태와 무관하다(재현 과제는 AI를 쓰지 않는다).
+
+**CHALLENGE의 문턱 (ADR-045)** — 1번 분기는 `planning KNOWLEDGE ≥ trackDefaults.challengeMinKnowledge`(기본 1)일 때만 잡힌다. KNOWLEDGE 0이면 3번 READING으로 떨어지고, 개념을 한 번 마치면 KNOWLEDGE가 1이 되어(§7) 그때 열린다. 코드 읽기에만 문턱이 있고 문제 풀기에는 없던 비대칭을 없앤다. **진단(`DIAGNOSTIC`) challenge는 이 문턱을 받지 않는다** — 지금 수준을 재는 과제이지 가르치는 과제가 아니다(§7.4).
 
 **학습 트랙 기본값** — `d`의 상한은 고정 5가 아니라 학습 목표의 트랙 기본값 `trackDefaults.maxTaskDifficulty`다(`devpilot.tracks.<트랙>`, `03` §9). 트랙은 `READ_CODE`의 진입 문턱(RC-3, `trackDefaults.readCodeMinKnowledge`)과 오늘의 팁 정렬(§5.12, `trackDefaults.basicTipsFirst`)도 정한다. 그 밖의 planner 규칙(factor, weight, modifier, 시간 배분, 학습 단계)은 트랙과 무관하게 같다.
 
@@ -334,7 +343,7 @@ task 제목 템플릿:
 | RECALL | `{skill.name} 5분 떠올리기` | "자료를 보지 않고 기억나는 내용을 적어 보세요." |
 | REVIEW | `복습 {n}장` | — |
 
-**Test vectors (제안 분기)** — 공통: energy NORMAL, comebackMode 아님, 해당 skill에 조건을 만족하는 CHALLENGE 없음, 재현 후보 없음, 트랙 `JAVA_BACKEND`(`maxTaskDifficulty` 5, `readCodeMinKnowledge` 1).
+**Test vectors (제안 분기)** — 공통: energy NORMAL, comebackMode 아님, 해당 skill에 조건을 만족하는 CHALLENGE 없음(T-10·T-11 제외), 재현 후보 없음, 트랙 `JAVA_BACKEND`(`maxTaskDifficulty` 5, `readCodeMinKnowledge` 1, `challengeMinKnowledge` 1).
 
 | # | planning (K,I) | aiStatus | 선택 가능한 reading | projectNeed | 결과 |
 |---|---|---|---|---|---|
@@ -343,6 +352,8 @@ task 제목 템플릿:
 | T-3 | (1,1) | DISABLED | 있음 | N | **READING** (25, d1) — AI 불가라 CHALLENGE·READ_CODE 모두 제외, KNOWLEDGE < 2. 개념 읽기 후보 없음 |
 | T-4 | (3,3) | ENABLED | 없음(전부 완료) | Y | **PROJECT_TASK** (30, d3) |
 | T-5 | (3,3) | ENABLED | 2개(`READ.MODULAR_MONOLITH.SECURITY_CONFIG.001`, `READ.MODULAR_MONOLITH.STOCK_UPDATE.001`) | Y | **READ_CODE** — key ASC로 `READ.MODULAR_MONOLITH.SECURITY_CONFIG.001`, estimated **15**, difficulty 2 |
+| T-10 | (0,0) | ENABLED | 없음 | N | **READING** (25, d1) — difficulty 1 PRACTICE challenge가 **있어도** KNOWLEDGE 0이면 내지 않는다(ADR-045) |
+| T-11 | (1,0) | ENABLED | 없음 | N | **CHALLENGE** (d1) — 개념을 한 번 마쳐 KNOWLEDGE가 1이 되면 열린다 |
 
 **Test vectors (학습 트랙)** — 공통: energy NORMAL, comebackMode 아님, 재현 후보 없음, aiStatus ENABLED.
 
@@ -524,8 +535,8 @@ remaining = mainBudget − (조정까지 끝난 main의 estimated)      # 음수
 
 | ReasonCode | 조건 | 문구 |
 |---|---|---|
-| `MILESTONE_CORE` | 현재 milestone skill | `{milestoneTitle} milestone 핵심 항목` |
-| `MILESTONE_NEXT` | 다음 milestone skill | `다음 milestone({milestoneTitle}) 준비` |
+| `MILESTONE_CORE` | 현재 milestone skill | `지금 단계({milestoneTitle})의 핵심 항목` |
+| `MILESTONE_NEXT` | 다음 milestone skill | `다음 단계({milestoneTitle}) 준비` |
 | `HIGH_PRACTICAL_IMPORTANCE` | practicalImportance ≥ 700_000 | `실무에서 중요도가 높은 기술` |
 | `LARGE_SKILL_GAP` | skillGap ≥ 400_000 | `목표 수준과 차이가 큼 (구현 {planningImplementation}/{targetImplementation})` |
 | `REVIEW_OVERDUE` | overdue ≥ 1일 | `복습이 {overdueDays}일 밀림` |
@@ -1280,6 +1291,7 @@ AI 출력 파싱 직후 finding마다 순서대로 적용한다.
 | milestone `status`, `description`, `sortOrder` | in-place PATCH (`version` 필수) |
 | milestone 추가·삭제, 날짜·priority·skill 구성 변경, skill target defer/축소 | **새 plan version** (`POST /plans/{id}/replan`) |
 | 목표일 변경 | 학습 목표 즉시 저장 + 활성 plan `replan_recommended = true` |
+| 위험도가 계속 높음 | 진행 스냅샷을 만들 때, **스냅샷이 있는 날 기준** 최근 `budget.replan-recommend-after-days`(기본 7)일이 **연속으로 `riskLevel ≥ HIGH`**면 활성 plan `replan_recommended = true` (ADR-046). 앱을 안 연 날은 스냅샷이 없어 건너뛴다. **켜기만 한다** — 끄는 것은 새 plan version이다. 이미 켜져 있으면 아무 일도 하지 않는다 |
 
 ### 11.2 Replan 절차 (한 트랜잭션)
 

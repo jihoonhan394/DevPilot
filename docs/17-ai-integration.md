@@ -465,6 +465,31 @@ while est > op.input-token-budget:
 
 **가드**: CodeLeak(`whatWasMissed`·`whyItMatters`·`reviewQuestion` 전부), SkillCode(`conceptKey`의 접두사), Language, `NoAnswerGuard`(§6.8).
 
+### 3.12 `LESSON_REEXPLAIN`
+
+| 항목 | 값 |
+|---|---|
+| mode / timeout / retries | SYNC / 20s / 0 |
+| trigger | `POST /lessons/{lessonKey}/units/{unitKey}/reexplain` (`05` §21.10). 학습자가 "다시 설명해 주세요"를 누를 때만. 자동 호출 없음 |
+| 실행 | `LessonReexplainService`: registry에서 단위를 찾아 `AiGateway` 호출. **저장하지 않는다** — 트랜잭션 없음 |
+| prompt id | `lesson.reexplain` |
+| input-token-budget | 3000 |
+| output | `LessonReexplainOutput` (§4.12) |
+
+| 변수 | 타입 | 출처 | user | 절삭 |
+|---|---|---|---|---|
+| `skillName` | text | 노트의 skill 이름 | | — |
+| `lessonOneLine` | text | `lesson.oneLine` | | — |
+| `unitTitle` | text | `unit.title` | | — |
+| `explain` | text | `unit.explain` (마크다운 그대로) | | 1, `TAIL_CHARS`, 1200자 |
+| `reason` | `ConfusionReason` | 요청 (`UNFAMILIAR_TERMS` \| `WHY_NOT_CLEAR` \| `EXAMPLE_UNCLEAR`) | | — |
+
+**보내지 않는 것** — `problem`(백지 문제), `modelAnswer`, `selfChecks`, `predict.answer`, `complete.answers`. 보내지 않으므로 흘릴 수 없다(ADR-047).
+
+**가드** — `CodeLeakGuard`(`explanation` 필드). 코드 블록이나 3줄 이상 코드면 위반이다. 설명은 개념에 머문다.
+
+**후처리** — 없다. 응답으로만 보여 주고 아무것도 저장하지 않는다. `ai_call_log`에는 다른 operation과 같게 남는다.
+
 ### 3.10 AI 불가 시 동작 (AC-12)
 
 "AI 불가" = provider `disabled`, 잔액 소진(`BALANCE_EXHAUSTED`, §8.7), provider 오류·timeout·`content_filter` 거절, 가드 실패. "예산" = §8 거부.
@@ -918,6 +943,29 @@ public record RequirementItemOutput(
         @NotBlank String requirementType,
         @Size(max = 100) String suggestedSkillCode) {}
 ```
+
+### 4.12 `LESSON_REEXPLAIN` → `LessonReexplainOutput`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "devpilot/ai/LESSON_REEXPLAIN.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["explanation", "analogy"],
+  "properties": {
+    "explanation": { "type": "string", "minLength": 1, "maxLength": 1200 },
+    "analogy": { "anyOf": [{ "type": "string", "minLength": 1, "maxLength": 400 }, { "type": "null" }] }
+  }
+}
+```
+
+```java
+public record LessonReexplainOutput(
+        @NotBlank @Size(max = 1200) String explanation, @Nullable @Size(max = 400) String analogy) {}
+```
+
+`analogy`는 비유 한 문단이고 없을 수 있다. 억지 비유를 만들게 하지 않는다.
 
 ### 4.10 `RUBBER_DUCK` → `RubberDuckTurnOutput`
 

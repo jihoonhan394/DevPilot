@@ -36,7 +36,7 @@ class ConceptReadingSelectionTest {
     private static final AxisLevels BEGINNER = new AxisLevels(0, 0, 0, 0);
 
     /** {@code devpilot.tracks.JAVA_BACKEND} (docs/06 §5.3 표). */
-    private static final TrackDefaults BASE_TRACK = new TrackDefaults(5, 1, false);
+    private static final TrackDefaults BASE_TRACK = new TrackDefaults(5, 1, 1, false);
 
     private final TaskProposalPolicy policy = new TaskProposalPolicy();
 

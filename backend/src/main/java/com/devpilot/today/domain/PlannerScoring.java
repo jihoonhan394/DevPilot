@@ -70,22 +70,26 @@ public final class PlannerScoring {
     // ---------------------------------------------------------------------------------------------
 
     /**
-     * 후보 skill code (docs/06 §5.2). 합집합(현재·다음 milestone skill, due review skill, MUST·SHOULD 목표)에서
-     * 제외 규칙을 적용한다. 선행 준비도가 낮은 skill은 준비되지 않은 선행 skill 중 planning IMPLEMENTATION이 가장 낮은 것(동점 code
+     * 후보 skill code (docs/06 §5.2, ADR-044). 합집합(지금 단계·다음 단계 skill, due review skill, 재현 후보)에서 제외
+     * 규칙을 적용한다. 선행 준비도가 낮은 skill은 준비되지 않은 선행 skill 중 planning IMPLEMENTATION이 가장 낮은 것(동점 code
      * ASC)으로 바꾼다. 결과는 code ASC.
      */
     public List<String> selectCandidates(CandidateInput input) {
         Set<String> union = new TreeSet<>();
         union.addAll(input.currentMilestoneSkills());
         union.addAll(input.nextMilestoneSkills());
-        union.addAll(input.dueSkills());
-        input.targets()
-                .forEach(
-                        (code, target) -> {
-                            if (target.priority() != Priority.LATER) {
-                                union.add(code);
-                            }
-                        });
+        // due review가 있는 skill은 **이미 손대 본 것만** 넣는다 (ADR-044). 씨앗 카드는 아직 배우지 않은
+        // 뒷 단계 skill에도 미리 배정되어 있어서, 거르지 않으면 이 경로로 순서가 다시 뚫린다.
+        // 거른 카드도 복습 자체는 그대로 나온다 — REVIEW 과제는 main task 선정과 별개다(§5.6).
+        for (String code : input.dueSkills()) {
+            SkillProfile profile = input.skills().get(code);
+            if (profile != null && profile.lastPracticedAt() != null) {
+                union.add(code);
+            }
+        }
+        // 계획 전체의 MUST/SHOULD를 여기 넣지 않는다 (ADR-044). 그러면 9개 단계의 skill이 첫날부터
+        // 후보가 되고, 점수가 중요도·격차로 정렬하니 결과가 "중요도 순"이 된다 — 어디에 쓰는지
+        // 모르는 채로 배우게 된다. 후보는 지금 단계와 그 다음 단계로 제한한다.
         Set<String> candidates = new TreeSet<>();
         for (String code : union) {
             SkillProfile profile = input.skills().get(code);
@@ -177,28 +181,86 @@ public final class PlannerScoring {
     // §5.4 factor
     // ---------------------------------------------------------------------------------------------
 
-    /** 오늘을 포함하는 milestone들 (docs/06 §5.2 1번). {@code end_date} ASC → id ASC. */
-    public static List<MilestoneSpan> currentMilestones(
-            LocalDate today, List<MilestoneSpan> milestones) {
-        return milestones.stream()
+    /**
+     * 지금 단계 (docs/06 §5.2, ADR-044): {@code sort_order}가 가장 앞선 <b>미완료</b> milestone. <b>날짜로 정하지
+     * 않는다</b> — 쉬어도 달력이 단계를 넘기지 않는다.
+     *
+     * @return 모든 milestone이 완료면 empty
+     */
+    public static Optional<MilestoneSpan> currentMilestone(
+            List<MilestoneSpan> milestones,
+            Map<String, SkillTarget> targets,
+            Map<String, SkillProfile> skills) {
+        return ordered(milestones).stream()
+                .filter(milestone -> !isComplete(milestone, targets, skills))
+                .findFirst();
+    }
+
+    /** 지금 단계 <b>다음</b> 순서의 milestone (docs/06 §5.2 2번). 현재 단계를 다 끝냈을 때를 위한 완충이다. */
+    public static Optional<MilestoneSpan> nextMilestone(
+            List<MilestoneSpan> milestones,
+            Map<String, SkillTarget> targets,
+            Map<String, SkillProfile> skills) {
+        List<MilestoneSpan> ordered = ordered(milestones);
+        Optional<MilestoneSpan> current = currentMilestone(milestones, targets, skills);
+        if (current.isEmpty()) {
+            return Optional.empty();
+        }
+        int index = ordered.indexOf(current.get());
+        return index >= 0 && index + 1 < ordered.size()
+                ? Optional.of(ordered.get(index + 1))
+                : Optional.empty();
+    }
+
+    /**
+     * milestone을 마쳤는가 (docs/06 §5.2, ADR-044): 그 단계의 MUST skill이 <b>전부</b> 모든 축에서 {@code
+     * planningLevel ≥ target}이다. MUST가 없으면 SHOULD로 같은 판정을 하고, 둘 다 없으면 완료로 본다(넘어간다).
+     */
+    static boolean isComplete(
+            MilestoneSpan milestone,
+            Map<String, SkillTarget> targets,
+            Map<String, SkillProfile> skills) {
+        List<String> gate = gateSkills(milestone, targets, Priority.MUST);
+        if (gate.isEmpty()) {
+            gate = gateSkills(milestone, targets, Priority.SHOULD);
+        }
+        if (gate.isEmpty()) {
+            return true;
+        }
+        for (String code : gate) {
+            SkillProfile profile = skills.get(code);
+            SkillTarget target = targets.get(code);
+            if (profile == null || target == null) {
+                // 상태를 모르는 skill은 아직 못 한 것으로 본다 — 모르는 채로 단계를 넘기지 않는다.
+                return false;
+            }
+            if (!allMet(profile.planning(), target.targets())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static List<String> gateSkills(
+            MilestoneSpan milestone, Map<String, SkillTarget> targets, Priority priority) {
+        return milestone.skillCodes().stream()
                 .filter(
-                        milestone ->
-                                !milestone.startDate().isAfter(today)
-                                        && !milestone.endDate().isBefore(today))
-                .sorted(
-                        Comparator.comparing(MilestoneSpan::endDate)
-                                .thenComparing(MilestoneSpan::id))
+                        code -> {
+                            SkillTarget target = targets.get(code);
+                            return target != null
+                                    && !target.deferred()
+                                    && target.priority() == priority;
+                        })
+                .sorted()
                 .toList();
     }
 
-    /** 시작일이 오늘 이후인 가장 가까운 milestone (docs/06 §5.2 2번). 시작일이 같으면 id ASC 첫 번째. */
-    public static Optional<MilestoneSpan> nextMilestone(
-            LocalDate today, List<MilestoneSpan> milestones) {
+    private static List<MilestoneSpan> ordered(List<MilestoneSpan> milestones) {
         return milestones.stream()
-                .filter(milestone -> milestone.startDate().isAfter(today))
-                .min(
-                        Comparator.comparing(MilestoneSpan::startDate)
-                                .thenComparing(MilestoneSpan::id));
+                .sorted(
+                        Comparator.comparingInt(MilestoneSpan::sortOrder)
+                                .thenComparing(MilestoneSpan::id))
+                .toList();
     }
 
     /**
@@ -207,26 +269,28 @@ public final class PlannerScoring {
      * 최댓값.
      */
     public MilestoneContext milestoneContext(
-            LocalDate today, List<MilestoneSpan> milestones, String skillCode) {
-        @Nullable MilestoneSpan current = null;
+            LocalDate today,
+            List<MilestoneSpan> milestones,
+            Map<String, SkillTarget> targets,
+            Map<String, SkillProfile> skills,
+            String skillCode) {
+        MilestoneSpan current =
+                currentMilestone(milestones, targets, skills)
+                        .filter(milestone -> milestone.skillCodes().contains(skillCode))
+                        .orElse(null);
         long urgency = 0;
-        for (MilestoneSpan milestone : currentMilestones(today, milestones)) {
-            if (!milestone.skillCodes().contains(skillCode)) {
-                continue;
-            }
-            if (current == null) {
-                current = milestone;
-            }
-            long length = ChronoUnit.DAYS.between(milestone.startDate(), milestone.endDate()) + 1;
-            long daysLeft = ChronoUnit.DAYS.between(today, milestone.endDate());
-            long value =
+        if (current != null) {
+            // 단계 자체는 진행으로 정하고(ADR-044), 급한 정도만 그 단계의 날짜로 잰다. 끝나는 날이
+            // 지났으면 daysLeft가 음수라 값이 올라간다 — 늦었다는 뜻이다.
+            long length = ChronoUnit.DAYS.between(current.startDate(), current.endDate()) + 1;
+            long daysLeft = ChronoUnit.DAYS.between(today, current.endDate());
+            urgency =
                     Math.max(
                             settings.factors().milestoneUrgencyFloor(),
                             MICRO - FixedPointMath.floorDiv(daysLeft * MICRO, length));
-            urgency = Math.max(urgency, value);
         }
         MilestoneSpan next =
-                nextMilestone(today, milestones)
+                nextMilestone(milestones, targets, skills)
                         .filter(milestone -> milestone.skillCodes().contains(skillCode))
                         .orElse(null);
         if (next != null) {
@@ -535,7 +599,12 @@ public final class PlannerScoring {
 
     /** plan의 milestone 기간과 skill. */
     public record MilestoneSpan(
-            UUID id, String title, LocalDate startDate, LocalDate endDate, Set<String> skillCodes) {
+            UUID id,
+            String title,
+            int sortOrder,
+            LocalDate startDate,
+            LocalDate endDate,
+            Set<String> skillCodes) {
 
         public MilestoneSpan {
             skillCodes = Set.copyOf(skillCodes);

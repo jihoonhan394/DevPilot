@@ -1,6 +1,7 @@
-# source: 06 §5.3, rows: 17
+# source: 06 §5.3, rows: 19
 # 분기 5개(CHALLENGE·READ_CODE·READING·PROJECT_TASK·EXPLAIN) + d−1 fallback + 복귀 모드 + ACTIVE 프로젝트 없음 + 제안 분기 T-1~T-5
-# + 학습 트랙 T-6~T-9. track을 적지 않으면 JAVA_BACKEND(maxDifficulty 5, minKnowledge 1)다.
+# + 학습 트랙 T-6~T-9 + CHALLENGE 문턱 T-10·T-11(ADR-045).
+# track을 적지 않으면 JAVA_BACKEND(maxDifficulty 5, minKnowledge 1, challengeMinKnowledge 1)다.
 # planning은 K|I. challenges·readings는 호출자가 조건(14 plan-day 안 시도·제안, 해결, 완료)을 거른 뒤의 후보다.
 vectors:
   - id: V01
@@ -214,3 +215,27 @@ vectors:
     readings:
       - { key: READ.PETCLINIC.CONTROLLER_SLICE.001, estimated: 15 }
     expected: { type: READ_CODE, estimated: 15, difficulty: 2, readingKey: READ.PETCLINIC.CONTROLLER_SLICE.001 }
+  - id: V18
+    case: T-10 ADR-045 — 개념을 한 번도 안 본 skill(KNOWLEDGE 0)은 challenge가 있어도 READING이다
+    planning: "0|0"
+    energy: NORMAL
+    comebackMode: false
+    aiAvailable: true
+    projectNeed: false
+    sideProject: null
+    challenges:
+      - { seedKey: JAVA.A, difficulty: 1, estimated: 20 }
+    readings: []
+    expected: { type: READING, estimated: 25, difficulty: 1 }
+  - id: V19
+    case: T-11 ADR-045 — 개념을 한 번 마쳐 KNOWLEDGE 1이 되면 그때 challenge가 열린다
+    planning: "1|0"
+    energy: NORMAL
+    comebackMode: false
+    aiAvailable: true
+    projectNeed: false
+    sideProject: null
+    challenges:
+      - { seedKey: JAVA.A, difficulty: 1, estimated: 20 }
+    readings: []
+    expected: { type: CHALLENGE, estimated: 20, difficulty: 1, challengeSeedKey: JAVA.A }

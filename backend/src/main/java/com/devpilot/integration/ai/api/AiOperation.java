@@ -20,7 +20,8 @@ public enum AiOperation {
     EVIDENCE_DRAFT("evidence.draft"),
     REQUIREMENT_EXTRACT("requirement.extract"),
     RUBBER_DUCK("rubber.duck"),
-    RUBBER_DUCK_SUMMARY("rubber.duck.summary");
+    RUBBER_DUCK_SUMMARY("rubber.duck.summary"),
+    LESSON_REEXPLAIN("lesson.reexplain");
 
     private final String promptId;
 

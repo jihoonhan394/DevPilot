@@ -108,6 +108,7 @@ class ModuleDependencyArchTest {
                             Set.of(
                                     "common",
                                     "user",
+                                    "goal",
                                     "plan",
                                     "skill",
                                     "review",

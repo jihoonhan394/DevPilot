@@ -167,12 +167,12 @@ public final class ReasonTemplates {
         return switch (code) {
             case MILESTONE_CORE ->
                     params.milestoneTitle() == null
-                            ? "milestone 핵심 항목"
-                            : params.milestoneTitle() + " milestone 핵심 항목";
+                            ? "지금 단계의 핵심 항목"
+                            : "지금 단계(" + params.milestoneTitle() + ")의 핵심 항목";
             case MILESTONE_NEXT ->
                     params.milestoneTitle() == null
-                            ? "다음 milestone 준비"
-                            : "다음 milestone(" + params.milestoneTitle() + ") 준비";
+                            ? "다음 단계 준비"
+                            : "다음 단계(" + params.milestoneTitle() + ") 준비";
             case HIGH_PRACTICAL_IMPORTANCE -> "실무에서 중요도가 높은 기술";
             case LARGE_SKILL_GAP ->
                     params.planningImplementation() == null || params.targetImplementation() == null

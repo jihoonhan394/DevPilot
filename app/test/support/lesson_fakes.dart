@@ -64,6 +64,18 @@ final class FakeLessonRepository implements LessonRepository {
   final predicted = <String>[];
   final completed = <List<String>>[];
   final revealed = <String>[];
+
+  /// 재설명 요청 기록 (docs/05 §21.10). 누를 때만 늘어야 한다.
+  final reexplained = <({String unitKey, ConfusionReason reason})>[];
+
+  /// 재설명 응답. 비유가 없는 경우도 테스트할 수 있게 둔다.
+  var reexplainResult = const ReexplainResult(
+    explanation: '규칙부터가 아니라 문제 상황부터 보면 자리가 잡힙니다.',
+    analogy: '문을 잠그는 이유는 잠그지 않은 밤을 한 번 떠올리면 오래 갑니다.',
+  );
+
+  /// 설정하면 재설명이 그 오류로 실패한다.
+  ApiException? reexplainFailure;
   final finished = <({String unitKey, HelpLevel helpLevel, int? selfChecksMet})>[];
 
   bool predictCorrect = true;
@@ -108,6 +120,20 @@ final class FakeLessonRepository implements LessonRepository {
       expected: const ['GetMapping'],
       explanation: 'GET 요청이므로 GetMapping이다.',
     );
+  }
+
+  @override
+  Future<ReexplainResult> reexplain(
+    String lessonKey,
+    String unitKey,
+    ConfusionReason reason,
+  ) async {
+    reexplained.add((unitKey: unitKey, reason: reason));
+    final failure = reexplainFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return reexplainResult;
   }
 
   @override

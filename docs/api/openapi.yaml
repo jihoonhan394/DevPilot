@@ -725,6 +725,47 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - today
+  /api/v1/lessons/{lessonKey}/units/{unitKey}/reexplain:
+    post:
+      operationId: lessonReexplain
+      parameters:
+      - in: path
+        name: lessonKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}$"
+      - in: path
+        name: unitKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}\\.U[0-9]{1,2}$"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReexplainRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReexplainView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
   /api/v1/me:
     delete:
       operationId: userDeleteMe
@@ -3812,6 +3853,30 @@ components:
       required:
       - code
       - text
+    ReexplainRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          enum:
+          - UNFAMILIAR_TERMS
+          - WHY_NOT_CLEAR
+          - EXAMPLE_UNCLEAR
+      required:
+      - reason
+    ReexplainView:
+      type: object
+      properties:
+        aiMeta:
+          $ref: "#/components/schemas/AiMeta"
+        analogy:
+          type: string
+        explanation:
+          type: string
+      required:
+      - aiMeta
+      - analogy
+      - explanation
     ReplanCommitResponse:
       type: object
       properties:

@@ -6,6 +6,7 @@ import 'package:devpilot_app/core/widgets/markdown_text.dart';
 import 'package:devpilot_app/core/widgets/screen_body.dart';
 import 'package:devpilot_app/features/lesson/data/lesson_models.dart';
 import 'package:devpilot_app/features/lesson/presentation/lesson_controller.dart';
+import 'package:devpilot_app/features/lesson/presentation/lesson_reexplain.dart';
 import 'package:devpilot_app/features/lesson/presentation/lesson_screen.dart';
 import 'package:devpilot_app/features/lesson/presentation/lesson_step.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
@@ -118,6 +119,11 @@ class _Explain extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         MarkdownText(view.unit.explain, textKey: const Key('lesson.explain')),
+        // 설명에서 막혔을 때의 출구. 힌트는 문제 풀이용이라 여기서는 열리지 않는다(ADR-047).
+        LessonReexplainButton(
+          lessonKey: view.lesson.lessonKey,
+          unitKey: view.unit.unitKey,
+        ),
         const SizedBox(height: AppSpacing.lg),
         FilledButton(
           key: const Key('lesson.nextButton'),

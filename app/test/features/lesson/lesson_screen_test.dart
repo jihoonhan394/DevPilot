@@ -1,8 +1,10 @@
+import 'package:devpilot_app/core/api/api_enums.dart';
 import 'package:devpilot_app/features/lesson/data/lesson_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fake_backend.dart';
+import '../../support/fixtures.dart';
 import '../../support/lesson_fakes.dart';
 import '../../support/test_app.dart';
 import '../../support/widget_actions.dart';
@@ -19,6 +21,52 @@ void main() {
   Future<void> openLesson(WidgetTester tester) async {
     await pumpApp(tester, backend: backend, at: '/lessons/$testLessonKey');
   }
+
+  /// ADR-047: 설명에서 막혔을 때의 출구. 누를 때만 부른다.
+  testWidgets('shouldReexplainOnlyWhenTheLearnerAsks', (tester) async {
+    backend.meRepository.me = testMe(aiStatus: AiStatus.enabled);
+    await openLesson(tester);
+    await tapKey(tester, 'lesson.startButton');
+
+    expect(find.byKey(const Key('lesson.reexplainButton')), findsOneWidget);
+    expect(backend.lessonRepository.reexplained, isEmpty);
+
+    await tapKey(tester, 'lesson.reexplainButton');
+    await tapKey(tester, 'lesson.reexplainReason.whyNotClear');
+
+    expect(backend.lessonRepository.reexplained.single.reason, ConfusionReason.whyNotClear);
+    expect(find.byKey(const Key('lesson.reexplainTitle')), findsOneWidget);
+    expect(find.byKey(const Key('lesson.reexplainText')), findsOneWidget);
+    // 매번 달라진다는 것을 알려 본문을 대체하지 않게 한다.
+    expect(find.textContaining('노트 본문이 기준'), findsOneWidget);
+
+    await tapKey(tester, 'lesson.reexplainClose');
+    expect(find.byKey(const Key('lesson.reexplainTitle')), findsNothing);
+  });
+
+  /// 비유가 없으면 그 자리를 비운다 — 억지 비유를 만들지 않기로 했다(ADR-047).
+  testWidgets('shouldShowNoAnalogySectionWhenThereIsNone', (tester) async {
+    backend.meRepository.me = testMe(aiStatus: AiStatus.enabled);
+    backend.lessonRepository.reexplainResult = const ReexplainResult(
+      explanation: '조건이 없으면 무엇이 어긋나는지부터 보면 됩니다.',
+    );
+    await openLesson(tester);
+    await tapKey(tester, 'lesson.startButton');
+    await tapKey(tester, 'lesson.reexplainButton');
+    await tapKey(tester, 'lesson.reexplainReason.unfamiliarTerms');
+
+    expect(find.byKey(const Key('lesson.reexplainText')), findsOneWidget);
+    expect(find.text('비유로 보면'), findsNothing);
+  });
+
+  /// AI가 꺼져 있으면 눌러 봐야 부를 수 없다 (docs/02 §6.2).
+  testWidgets('shouldHideReexplainWhileAiIsOff', (tester) async {
+    backend.meRepository.me = testMe(aiStatus: AiStatus.disabled);
+    await openLesson(tester);
+    await tapKey(tester, 'lesson.startButton');
+
+    expect(find.byKey(const Key('lesson.reexplainButton')), findsNothing);
+  });
 
   testWidgets('shouldStartWithWhyItMattersAndHideTheExample', (tester) async {
     await openLesson(tester);

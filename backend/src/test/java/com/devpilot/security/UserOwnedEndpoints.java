@@ -432,6 +432,15 @@ public final class UserOwnedEndpoints {
                         fixture -> new Object[] {fixture.lessonSkillId()},
                         NO_BODY,
                         null),
+                // 재설명 (docs/05 §21.10). 콘텐츠를 다시 푸는 것이라 모두에게 같은 자리다.
+                new EndpointCase(
+                        "E70",
+                        HttpMethod.POST,
+                        "/api/v1/lessons/{lessonKey}/units/{unitKey}/reexplain",
+                        Kind.SHARED_CONTENT,
+                        fixture -> new Object[] {SHARED_LESSON_KEY, SHARED_UNIT_KEY},
+                        fixture -> Map.of("reason", "WHY_NOT_CLEAR"),
+                        null),
                 // 노트 목록 (docs/05 §21.9). 목록 자체는 콘텐츠다 — 사용자별인 것은 각 줄의 진행뿐이다.
                 new EndpointCase(
                         "E69",

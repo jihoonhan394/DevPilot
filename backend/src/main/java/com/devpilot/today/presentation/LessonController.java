@@ -9,7 +9,10 @@ import com.devpilot.today.application.LessonQueryService.AnswerResult;
 import com.devpilot.today.application.LessonQueryService.CompleteResult;
 import com.devpilot.today.application.LessonQueryService.FinishResult;
 import com.devpilot.today.application.LessonQueryService.PredictResult;
+import com.devpilot.today.application.LessonReexplainService;
+import com.devpilot.today.application.LessonReexplainService.ReexplainView;
 import com.devpilot.today.application.LessonView;
+import com.devpilot.today.domain.ConfusionReason;
 import com.devpilot.today.domain.HelpLevel;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -53,14 +56,17 @@ public class LessonController {
             "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}\\.U[0-9]{1,2}$";
 
     private final LessonQueryService lessonQueryService;
+    private final LessonReexplainService lessonReexplainService;
     private final IdempotencyService idempotencyService;
     private final Clock clock;
 
     public LessonController(
             LessonQueryService lessonQueryService,
+            LessonReexplainService lessonReexplainService,
             IdempotencyService idempotencyService,
             Clock clock) {
         this.lessonQueryService = lessonQueryService;
+        this.lessonReexplainService = lessonReexplainService;
         this.idempotencyService = idempotencyService;
         this.clock = clock;
     }
@@ -71,6 +77,24 @@ public class LessonController {
     public LessonListView list(CurrentUser currentUser) {
         return lessonQueryService.list(currentUser.userId());
     }
+
+    /**
+     * 설명을 다른 각도로 한 번 더 (docs/05 §21.10, ADR-047). 상태를 바꾸지 않으므로 {@code Idempotency-Key}가 없고, 저장하는 것도
+     * 없다.
+     */
+    @PostMapping("/{lessonKey}/units/{unitKey}/reexplain")
+    @Operation(operationId = "lessonReexplain")
+    public ReexplainView reexplain(
+            CurrentUser currentUser,
+            @PathVariable @Pattern(regexp = LESSON_KEY) @Size(max = 140) String lessonKey,
+            @PathVariable @Pattern(regexp = UNIT_KEY) @Size(max = 140) String unitKey,
+            @Valid @RequestBody ReexplainRequest request) {
+        return lessonReexplainService.reexplain(
+                currentUser.userId(), lessonKey, unitKey, request.reason());
+    }
+
+    /** docs/05 §21.10. 자유 입력을 받지 않는다 — 고정 선택지 하나뿐이다(ADR-047). */
+    public record ReexplainRequest(@NotNull ConfusionReason reason) {}
 
     @GetMapping("/{lessonKey}")
     @Operation(operationId = "lessonGet")
