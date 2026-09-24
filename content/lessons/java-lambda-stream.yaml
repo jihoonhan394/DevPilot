@@ -1,0 +1,432 @@
+# DevPilot 개념 노트 — 람다와 Stream
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 2단계(DB와 트랜잭션)에서 쓴다. JAVA.COLLECTION·JAVA.GENERICS 노트를 먼저 본 것으로 전제한다
+# - JAVA.OPTIONAL의 선행 개념이라 그보다 앞에 온다
+lessons:
+  - key: LESSON.JAVA.LAMBDA_STREAM.001
+    skillCode: JAVA.LAMBDA_STREAM
+    title: 어떻게가 아니라 무엇을 (람다와 Stream)
+    whyItMatters: |-
+      목록을 거르고 바꾸고 모으는 코드는 어디에나 있다. 반복문으로 쓰면
+      **무엇을 하려는지가 어떻게 도는지에 묻힌다.** 임시 변수와 인덱스가 늘어나고
+      조건 하나를 바꾸려면 반복문 전체를 다시 읽어야 한다.
+      주문 목록을 응답으로 바꾸고, 합계를 내고, 회원별로 묶는 일이 전부 여기서 짧아진다.
+    oneLine: 람다는 함수를 값처럼 넘기는 문법이고, Stream은 그 함수들을 이어 붙여 목록을 한 번에 변환하는 흐름이다.
+    units:
+      - key: LESSON.JAVA.LAMBDA_STREAM.001.U1
+        title: 함수를 값으로 넘기기
+        minutes: 10
+        core: true
+        explain: |-
+          **추상 메서드가 하나뿐인 인터페이스**를 함수형 인터페이스라 하고,
+          그 자리에 람다를 쓸 수 있다. `(인자) -> 결과` 가 전부다.
+
+          자주 쓰는 것은 넷이다.
+
+          | 인터페이스 | 모양 | 쓰임 |
+          |---|---|---|
+          | `Predicate<T>` | `T -> boolean` | 거르기 |
+          | `Function<T, R>` | `T -> R` | 바꾸기 |
+          | `Consumer<T>` | `T -> void` | 쓰기만 |
+          | `Supplier<T>` | `() -> T` | 만들어 주기 |
+
+          람다가 하는 일이 **이미 있는 메서드를 그대로 부르는 것뿐**이면
+          메서드 참조로 더 짧게 쓴다 — `order -> order.getId()` 는 `Order::getId` 다.
+
+          주의할 것이 하나 있다. 람다 안에서 쓰는 바깥 지역 변수는
+          **사실상 바뀌지 않아야 한다.** 람다가 나중에 실행될 수 있어
+          그때 값이 달라져 있으면 곤란하기 때문이다.
+        example:
+          language: java
+          code: |-
+            record Order(long id, String status, int amount) {}
+
+            List<Order> orders = List.of(
+                    new Order(1, "PAID", 39000),
+                    new Order(2, "CANCELLED", 12000),
+                    new Order(3, "PAID", 78000));
+
+            Predicate<Order> isPaid = order -> "PAID".equals(order.status());
+            Function<Order, Long> toId = Order::id;          // 메서드 참조
+            Supplier<Order> empty = () -> new Order(0, "NONE", 0);
+
+            System.out.println(isPaid.test(orders.get(0)));
+            System.out.println(isPaid.negate().test(orders.get(0)));
+            System.out.println(toId.apply(orders.get(2)));
+            System.out.println(empty.get().status());
+          output: |-
+            true
+            false
+            3
+            NONE
+          note: |-
+            - `isPaid`는 **조건 자체를 담은 값**이다. 변수에 넣고 넘길 수 있다
+            - `negate()`로 뒤집었다 — 조건을 값으로 다루니 조합이 된다
+            - `Order::id` 는 `order -> order.id()` 와 같다. 짧고 오타가 없다
+            - `Supplier`는 **부를 때** 만든다. 비싼 기본값을 미룰 때 쓴다
+        predict:
+          question: '`Predicate<Order> cheap = order -> order.amount() < limit;` 에서 `limit`을 그 뒤에 바꾸면?'
+          choices:
+            - 컴파일 오류가 난다 — 람다가 쓰는 지역 변수는 바뀌면 안 된다
+            - 바뀐 값이 반영된다
+            - 옛 값이 그대로 쓰인다
+            - 실행 중 예외가 난다
+          answer: 컴파일 오류가 난다 — 람다가 쓰는 지역 변수는 바뀌면 안 된다
+          explanation: |-
+            람다는 **그 값을 복사해 들고 간다.** 나중에 바뀌면 어느 값을 써야 할지 모호해지므로
+            컴파일러가 아예 막는다. 필드는 이 제약을 받지 않지만,
+            그래서 여러 스레드에서 도는 람다가 필드를 건드리면 위험해진다.
+        complete:
+          question: 조건과 변환을 값으로 만들어 쓰세요.
+          code: |-
+            ___<Order> isBig = order -> order.amount() >= 50_000;
+            ___<Order, String> toStatus = Order::status;
+
+            System.out.println(isBig.test(orders.get(2)));
+            System.out.println(toStatus.apply(orders.get(0)));
+          answers:
+            - [Predicate]
+            - [Function]
+          explanation: |-
+            참·거짓을 돌려주면 `Predicate`, 다른 타입으로 바꾸면 `Function`이다.
+            둘 다 추상 메서드가 하나뿐이라 람다를 그대로 넣을 수 있다.
+        problem:
+          prompt: |-
+            주문 목록에 쓸 조건들을 **값으로** 만들어 조합하세요.
+
+            - `PAID` 상태인지, 금액이 5만 원 이상인지, 오늘 주문인지 — 세 조건을 각각 만드세요
+            - 세 조건을 조합해 "오늘 들어온 5만 원 이상 결제 완료 주문"을 거르세요
+            - 조건 하나를 뒤집은 "결제되지 않은 주문"도 만드세요
+            - 이 방식이 `if (a && b && c)` 를 반복문에 쓰는 것보다 나은 점을 하나 적으세요
+          deliverables:
+            - 세 조건과 조합한 조건의 코드
+            - 뒤집은 조건
+            - 반복문 방식보다 나은 점 하나
+          hints:
+            - 조건을 담는 함수형 인터페이스가 무엇인지 먼저 정하세요.
+            - 조건끼리 합치는 메서드가 그 인터페이스에 이미 있습니다.
+            - 조건에 이름이 붙으면 읽는 사람에게 무엇이 달라질까요?
+          modelAnswer: |-
+            ```java
+            Predicate<Order> isPaid = order -> "PAID".equals(order.status());
+            Predicate<Order> isBig = order -> order.amount() >= 50_000;
+            Predicate<Order> isToday = order -> order.orderedOn().equals(today);
+
+            Predicate<Order> bigPaidToday = isPaid.and(isBig).and(isToday);
+            Predicate<Order> notPaid = isPaid.negate();
+
+            List<Order> found = orders.stream().filter(bigPaidToday).toList();
+            ```
+
+            나은 점은 **조건에 이름이 생기는 것**이다.
+            `if (a && b && c)` 는 읽는 사람이 세 식을 해석해야 하지만
+            `bigPaidToday` 는 이름만 읽으면 된다.
+            게다가 조건을 다른 곳에서 재사용하거나 테스트로 따로 검증할 수도 있다.
+          selfChecks:
+            - 조건을 변수에 담아 이름을 붙였는가
+            - and와 negate로 조합했는가
+            - 같은 조건을 여러 곳에서 쓸 수 있게 됐는가
+            - 이름만 읽고 무엇을 거르는지 알 수 있는가
+      - key: LESSON.JAVA.LAMBDA_STREAM.001.U2
+        title: 거르고 바꾸고 모으기
+        minutes: 12
+        core: true
+        explain: |-
+          Stream은 **원본을 바꾸지 않고** 흐름을 만들어 변환한다.
+          세 토막으로 이뤄진다.
+
+          ```text
+          만들기(stream) → 중간 연산(filter·map·sorted) → 끝내기(toList·count·sum)
+          ```
+
+          중요한 성질이 하나 있다 — **중간 연산은 쌓아만 두고 실행하지 않는다.**
+          끝내는 연산이 올 때 비로소 한 번에 흐른다. 이것을 지연 평가라 한다.
+
+          그래서 이런 일이 가능하다. `filter` 뒤에 `findFirst`가 오면
+          **첫 번째를 찾는 순간 멈춘다.** 뒤의 원소는 보지도 않는다.
+
+          자주 쓰는 것만 알면 된다.
+
+          | 연산 | 하는 일 |
+          |---|---|
+          | `filter` | 조건에 맞는 것만 남긴다 |
+          | `map` | 각각을 다른 값으로 바꾼다 |
+          | `sorted` | 정렬한다 |
+          | `toList` | 목록으로 모은다 |
+          | `mapToInt(...).sum()` | 합을 구한다 |
+        example:
+          language: java
+          code: |-
+            record Order(long id, String status, int amount) {}
+
+            List<Order> orders = List.of(
+                    new Order(1, "PAID", 39000),
+                    new Order(2, "CANCELLED", 12000),
+                    new Order(3, "PAID", 78000));
+
+            List<Long> paidIds = orders.stream()
+                    .filter(order -> "PAID".equals(order.status()))
+                    .map(Order::id)
+                    .toList();
+
+            int total = orders.stream()
+                    .filter(order -> "PAID".equals(order.status()))
+                    .mapToInt(Order::amount)
+                    .sum();
+
+            Optional<Order> firstBig = orders.stream()
+                    .filter(order -> order.amount() >= 50_000)
+                    .findFirst();
+
+            System.out.println(paidIds);
+            System.out.println(total);
+            System.out.println(firstBig.map(Order::id).orElse(0L));
+            System.out.println(orders.size());
+          output: |-
+            [1, 3]
+            117000
+            3
+            3
+          note: |-
+            - `filter` → `map` → `toList` 가 "거르고 바꿔서 모은다"를 그대로 읽힌다
+            - `mapToInt`로 바꾸면 `sum()`을 쓸 수 있다. `Integer` 합을 손으로 안 돌려도 된다
+            - `findFirst`는 `Optional`을 준다 — 없을 수 있기 때문이다
+            - 마지막 줄이 3이다. **원본은 그대로다** — Stream은 새 결과를 만들 뿐이다
+        predict:
+          question: '`.filter(...)` 만 쓰고 `.toList()` 를 빼면 `filter` 안의 람다는 몇 번 불리나?'
+          choices:
+            - 한 번도 안 불린다 — 끝내는 연산이 없으면 흐르지 않는다
+            - 원소 수만큼 불린다
+            - 한 번만 불린다
+            - 컴파일 오류가 난다
+          answer: 한 번도 안 불린다 — 끝내는 연산이 없으면 흐르지 않는다
+          explanation: |-
+            중간 연산은 **계획만 세운다.** 끝내는 연산이 와야 실제로 흐른다.
+            그래서 Stream을 만들어 놓고 안 쓰면 아무 일도 일어나지 않는다.
+            "왜 로그가 안 찍히지?" 할 때 이 경우를 의심한다.
+        complete:
+          question: 결제 완료 주문의 금액을 큰 순서로 모으세요.
+          code: |-
+            List<Integer> amounts = orders.stream()
+                    .___(order -> "PAID".equals(order.status()))
+                    .map(Order::amount)
+                    .sorted(Comparator.reverseOrder())
+                    .___();
+          answers:
+            - [filter]
+            - [toList]
+          explanation: |-
+            거르는 것은 `filter`, 모으는 것은 `toList`다.
+            `toList`는 **바꿀 수 없는 목록**을 돌려준다 —
+            앞 노트에서 본 "밖으로 나가는 컬렉션은 닫아서"와 같은 방향이다.
+        problem:
+          prompt: |-
+            주문 목록을 다루는 반복문 코드를 Stream으로 다시 쓰세요.
+
+            ```java
+            List<String> result = new ArrayList<>();
+            int total = 0;
+            for (Order order : orders) {
+                if (!"PAID".equals(order.status())) continue;
+                if (order.amount() < 10_000) continue;
+                result.add(order.id() + ":" + order.amount());
+                total += order.amount();
+            }
+            ```
+
+            - 위 코드를 Stream 두 개로 나눠 쓰세요 (목록 하나, 합계 하나)
+            - 한 번 도는 것을 두 번 돌게 되는데, 그래도 괜찮은 이유와
+              **괜찮지 않을 수 있는 경우**를 각각 적으세요
+            - 거르는 조건이 하나 더 늘어날 때 두 방식 중 어느 쪽이 고치기 쉬운지 적으세요
+          deliverables:
+            - Stream으로 다시 쓴 코드
+            - 두 번 도는 것이 괜찮은 이유와 괜찮지 않을 수 있는 경우
+            - 조건이 늘어날 때 고치기 쉬운 쪽과 그 이유
+          hints:
+            - 두 가지 결과를 한 흐름에서 만들려고 애쓰지 마세요. 흐름을 나누는 편이 읽기 쉽습니다.
+            - 조건이 같다면 그 조건을 값으로 빼 두면 두 번 안 씁니다.
+            - 원소가 몇 개일 때 두 번 도는 것이 문제가 될까요?
+          modelAnswer: |-
+            ```java
+            Predicate<Order> target = order ->
+                    "PAID".equals(order.status()) && order.amount() >= 10_000;
+
+            List<String> result = orders.stream()
+                    .filter(target)
+                    .map(order -> order.id() + ":" + order.amount())
+                    .toList();
+
+            int total = orders.stream()
+                    .filter(target)
+                    .mapToInt(Order::amount)
+                    .sum();
+            ```
+
+            두 번 도는 것이 괜찮은 이유는 **목록이 메모리에 있고 연산이 싸기** 때문이다.
+            원소 수천 개까지는 차이를 느낄 수 없고, 읽기 쉬움이 더 값지다.
+
+            괜찮지 않은 경우는 **원소가 아주 많거나, 각 원소를 다루는 비용이 클 때**다.
+            예를 들어 각 주문마다 DB를 한 번 더 보거나 파일을 읽는다면 두 배가 된다.
+            그때는 한 번 돌면서 둘 다 모으는 방법을 쓴다.
+
+            조건이 늘 때는 **Stream 쪽이 낫다.** `target`에 `.and(...)`를 붙이면 끝이고,
+            반복문은 `continue` 한 줄을 어디에 넣을지 다시 읽어야 한다.
+          selfChecks:
+            - 공통 조건을 값으로 빼서 두 번 쓰지 않았는가
+            - 흐름을 억지로 하나로 합치지 않았는가
+            - 두 번 도는 것이 문제가 되는 조건을 구체적으로 적었는가
+            - 원본 목록이 바뀌지 않았는지 확인했는가
+      - key: LESSON.JAVA.LAMBDA_STREAM.001.U3
+        title: 묶어서 세기 (Collectors)
+        minutes: 12
+        core: false
+        explain: |-
+          `toList` 말고도 모으는 방법이 여럿 있고, `Collectors`에 모여 있다.
+          실무에서 자주 쓰는 것은 셋이다.
+
+          | 모으기 | 결과 |
+          |---|---|
+          | `groupingBy(키)` | `Map<키, List<값>>` — 키로 묶는다 |
+          | `toMap(키, 값)` | `Map<키, 값>` — 키 하나에 값 하나 |
+          | `joining(", ")` | 문자열 하나로 이어 붙인다 |
+
+          `groupingBy`는 뒤에 **또 다른 모으기**를 붙일 수 있다.
+          `groupingBy(키, counting())` 이면 `Map<키, Long>`이 되어 개수가 나온다.
+
+          `toMap`에는 함정이 있다 — **키가 겹치면 예외가 난다.**
+          겹칠 수 있다면 셋째 인자로 "겹쳤을 때 어느 것을 쓸지"를 알려 줘야 한다.
+
+          그리고 하나 더. 이 모든 것은 **메모리 안의 목록**에 쓰는 도구다.
+          DB에서 가져온 수만 건을 Stream으로 집계하고 있다면,
+          그 집계는 **질의로 하는 것이 맞다.**
+        example:
+          language: java
+          code: |-
+            record Order(long id, long memberId, String status, int amount) {}
+
+            List<Order> orders = List.of(
+                    new Order(1, 10, "PAID", 39000),
+                    new Order(2, 10, "CANCELLED", 12000),
+                    new Order(3, 20, "PAID", 78000));
+
+            Map<Long, List<Order>> byMember = orders.stream()
+                    .collect(Collectors.groupingBy(Order::memberId));
+
+            Map<String, Long> countByStatus = orders.stream()
+                    .collect(Collectors.groupingBy(Order::status, Collectors.counting()));
+
+            Map<Long, Order> byId = orders.stream()
+                    .collect(Collectors.toMap(Order::id, order -> order));
+
+            System.out.println(byMember.get(10L).size());
+            System.out.println(countByStatus);
+            System.out.println(byId.get(3L).amount());
+          output: |-
+            2
+            {PAID=2, CANCELLED=1}
+            78000
+          note: |-
+            - `groupingBy`가 회원별로 묶어 `Map<Long, List<Order>>`를 만들었다
+            - 뒤에 `counting()`을 붙이니 목록 대신 **개수**가 됐다
+            - `toMap`은 식별자로 찾는 지도를 만든다 — 키가 유일할 때만 안전하다
+            - 이 집계를 DB에서 수만 건 가져와 하고 있다면 `GROUP BY`로 옮겨야 한다
+        predict:
+          question: '`toMap(Order::memberId, order -> order)` 로 바꾸면 어떻게 되나?'
+          choices:
+            - IllegalStateException이 난다 — memberId 10이 두 번 나온다
+            - 나중 값으로 덮어쓴다
+            - 먼저 값이 남는다
+            - 컴파일 오류가 난다
+          answer: IllegalStateException이 난다 — memberId 10이 두 번 나온다
+          explanation: |-
+            `toMap`은 키 충돌을 **조용히 넘기지 않는다.** 어느 값을 버려야 할지
+            우리가 정해 주지 않았으므로 예외로 알린다.
+            겹칠 수 있다면 `toMap(키, 값, (a, b) -> b)` 처럼 규칙을 함께 준다.
+        complete:
+          question: 상태별 주문 금액 합계를 구하세요.
+          code: |-
+            Map<String, Integer> sumByStatus = orders.stream()
+                    .collect(Collectors.___(
+                            Order::status,
+                            Collectors.summingInt(Order::___)));
+          answers:
+            - [groupingBy]
+            - [amount]
+          explanation: |-
+            키로 묶는 것은 `groupingBy`, 묶인 것들의 합은 `summingInt`다.
+            `groupingBy`의 둘째 인자로 **그 그룹을 어떻게 모을지**를 준다.
+        problem:
+          prompt: |-
+            주문 목록에서 관리자 화면에 쓸 집계 세 가지를 만드세요.
+
+            - 회원별 주문 건수 — `Map<Long, Long>`
+            - 상태별 금액 합계 — `Map<String, Integer>`
+            - 회원별 가장 비싼 주문 — `Map<Long, Order>`
+
+            - 세 가지를 각각 Stream으로 작성하세요
+            - 세 번째에서 키가 겹치는 문제를 어떻게 다뤘는지 적으세요
+            - 주문이 **50만 건**이라면 이 코드를 그대로 쓰면 안 되는 이유와 대안을 적으세요
+          deliverables:
+            - 세 집계의 코드
+            - 키 충돌을 다룬 방법
+            - 50만 건일 때의 문제와 대안
+          hints:
+            - 앞의 둘은 groupingBy에 무엇을 덧붙이느냐의 문제입니다.
+            - 세 번째는 그룹마다 하나만 남겨야 합니다. 겹쳤을 때 규칙이 필요합니다.
+            - 50만 건을 애플리케이션으로 가져오면 어디에 담기나요?
+          modelAnswer: |-
+            ```java
+            Map<Long, Long> countByMember = orders.stream()
+                    .collect(Collectors.groupingBy(Order::memberId, Collectors.counting()));
+
+            Map<String, Integer> sumByStatus = orders.stream()
+                    .collect(Collectors.groupingBy(Order::status,
+                            Collectors.summingInt(Order::amount)));
+
+            Map<Long, Order> maxByMember = orders.stream()
+                    .collect(Collectors.toMap(
+                            Order::memberId,
+                            order -> order,
+                            (a, b) -> a.amount() >= b.amount() ? a : b));   // 겹치면 비싼 쪽
+            ```
+
+            세 번째는 `toMap`의 **셋째 인자**로 "겹쳤을 때 어느 것을 남길지"를 줬다.
+            이것 없이는 같은 회원의 두 번째 주문에서 예외가 난다.
+
+            50만 건이면 **그 전부를 애플리케이션 메모리로 가져오는 것**이 문제다.
+            조회에만 수 초가 걸리고 힙이 부족해질 수 있다.
+            대안은 집계를 DB에 시키는 것이다 —
+            `SELECT member_id, count(*) FROM orders GROUP BY member_id` 처럼
+            **결과만 가져온다.** Stream 집계는 이미 메모리에 있는 목록에 쓰는 도구다.
+          selfChecks:
+            - 세 집계를 모두 Stream으로 썼는가
+            - toMap의 키 충돌 규칙을 명시했는가
+            - 건수가 많을 때의 문제를 메모리 관점에서 설명했는가
+            - 집계를 DB로 옮기는 대안을 SQL로 적었는가
+    commonMistakes:
+      - 중간 연산만 쓰고 끝내는 연산을 빠뜨린다. 아무 일도 일어나지 않는데 오류도 없다 (U2)
+      - '`toMap`에서 키가 겹쳐 `IllegalStateException`이 난다. 겹침 규칙을 안 줬다 (U3)'
+      - DB에서 수만 건을 가져와 Stream으로 집계한다. 집계는 질의로 해야 한다 (U3)
+    inProject: |-
+      주문 시스템에서 엔티티를 응답으로 바꾸는 자리가 첫 쓰임이다 —
+      `orders.stream().map(OrderResponse::from).toList()`.
+      조건이 여럿인 필터는 `Predicate`로 빼서 이름을 붙이고,
+      상태별·회원별 집계는 건수가 적을 때만 Stream으로 하고
+      많아지면 `GROUP BY` 질의로 옮긴다.
+    sources:
+      - title: The Java Tutorials — Lambda Expressions
+        url: https://docs.oracle.com/javase/tutorial/java/javaOO/lambdaexpressions.html
+        versionScope: Java SE
+      - title: The Java Tutorials — Aggregate Operations
+        url: https://docs.oracle.com/javase/tutorial/collections/streams/index.html
+        versionScope: Java SE
+      - title: Java SE API — java.util.stream
+        url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/stream/package-summary.html
+        versionScope: Java SE 21+
+      - title: Java SE API — java.util.stream.Collectors
+        url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/stream/Collectors.html
+        versionScope: Java SE 21+
+    verifiedAt: 2026-09-24
