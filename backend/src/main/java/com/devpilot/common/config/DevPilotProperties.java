@@ -322,12 +322,19 @@ public record DevPilotProperties(
             @Positive int goodMinDays,
             @Positive int easyMinDays,
             @Positive int variantAfterFailures,
-            @Positive int suspendAfterFailures) {
+            @Positive int suspendAfterFailures,
+            @Positive int lessonHelpedFirstDueDays,
+            @Positive int lessonSolvedAloneFirstDueDays) {
 
         public Review {
             requireBasisPoints(hardMultiplier, "review.hard-multiplier");
             requireBasisPoints(goodMultiplier, "review.good-multiplier");
             requireBasisPoints(easyMultiplier, "review.easy-multiplier");
+            if (lessonHelpedFirstDueDays > lessonSolvedAloneFirstDueDays) {
+                throw new IllegalArgumentException(
+                        "devpilot.review.lesson-helped-first-due-days must not exceed"
+                                + " lesson-solved-alone-first-due-days");
+            }
             if (minIntervalDays > maxIntervalDays) {
                 throw new IllegalArgumentException(
                         "devpilot.review.min-interval-days must not exceed max-interval-days");

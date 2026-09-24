@@ -140,6 +140,15 @@ public class ReviewItem implements Persistable<UUID> {
      * interval_days = 1}, {@code status = ACTIVE}, 첫 due는 호출자가 계산한다. 가드를 통과한 값만 넣는다.
      */
     public static ReviewItem fromGap(GapValues values, Instant dueAt, Instant now) {
+        return fromGap(values, dueAt, now, 1);
+    }
+
+    /**
+     * 첫 간격을 지정해 만든다 (ADR-051). {@code intervalDays}가 첫 due까지의 날수와 같아야 다음 간격이 거기서부터 자란다 — 7일 뒤 처음 보는
+     * 카드가 {@code intervalDays = 1}이면 맞혀도 다음이 2일 뒤가 되어 사다리가 거꾸로 간다(docs/06 §6.2).
+     */
+    public static ReviewItem fromGap(
+            GapValues values, Instant dueAt, Instant now, int intervalDays) {
         ReviewItem item = new ReviewItem();
         item.id = UUID.randomUUID();
         item.userId = Objects.requireNonNull(values.userId(), "userId");
@@ -153,7 +162,7 @@ public class ReviewItem implements Persistable<UUID> {
         item.expectedAnswer = Objects.requireNonNull(values.expectedAnswer(), "expectedAnswer");
         item.rubric = List.copyOf(values.rubric());
         item.dueAt = Objects.requireNonNull(dueAt, "dueAt");
-        item.intervalDays = 1;
+        item.intervalDays = intervalDays;
         item.variantStatus = VariantStatus.NONE;
         item.status = ReviewItemStatus.ACTIVE;
         item.createdAt = Objects.requireNonNull(now, "now");

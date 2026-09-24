@@ -62,8 +62,18 @@ public class ReviewItemService {
     /** 카드 1장 upsert. 새로 만들었으면 {@code created = true}. 호출자 트랜잭션에 참여한다. */
     @Transactional
     public UpsertResult upsert(NewReviewItem command) {
+        return upsert(command, 1);
+    }
+
+    /**
+     * 첫 due를 오늘로부터 {@code afterDays} 뒤에 둔다 (ADR-051, docs/06 §6.3).
+     *
+     * <p>간격도 같은 값으로 시작한다 — 7일 뒤 처음 보는 카드가 간격 1로 시작하면 맞혀도 다음이 2일 뒤가 되어 사다리가 거꾸로 간다(§6.2). 이미 같은
+     * {@code conceptKey}가 있으면 새로 만들지 않고 due만 앞당긴다(뒤로 미루지는 않는다).
+     */
+    public UpsertResult upsert(NewReviewItem command, int afterDays) {
         Instant now = clock.instant();
-        Instant dueAt = nextPlanDayStart(command.userId(), now);
+        Instant dueAt = planDayStartAfter(command.userId(), now, afterDays);
         Optional<ReviewItem> existing =
                 reviewItemRepository.findByUserIdAndConceptKey(
                         command.userId(), command.conceptKey());
@@ -86,7 +96,8 @@ public class ReviewItemService {
                                         command.expectedAnswer(),
                                         command.rubric()),
                                 dueAt,
-                                now));
+                                now,
+                                afterDays));
         return new UpsertResult(created.getId(), true);
     }
 
@@ -162,10 +173,14 @@ public class ReviewItemService {
     }
 
     private Instant nextPlanDayStart(UUID userId, Instant now) {
+        return planDayStartAfter(userId, now, 1);
+    }
+
+    private Instant planDayStartAfter(UUID userId, Instant now, int afterDays) {
         UserTimeSettings time = userTimeSettingsProvider.timeSettings(userId);
         LocalDate today = PlanDayCalculator.planDate(now, time.zoneId(), time.dayStartHour());
         return PlanDayCalculator.planDayStart(
-                today.plusDays(1), time.zoneId(), time.dayStartHour());
+                today.plusDays(afterDays), time.zoneId(), time.dayStartHour());
     }
 
     /**

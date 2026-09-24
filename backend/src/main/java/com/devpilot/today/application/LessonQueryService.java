@@ -1,5 +1,6 @@
 package com.devpilot.today.application;
 
+import com.devpilot.common.config.DevPilotProperties;
 import com.devpilot.common.domain.ContentOrigin;
 import com.devpilot.common.error.ErrorCode;
 import com.devpilot.common.error.NotFoundException;
@@ -69,6 +70,7 @@ public class LessonQueryService {
     private final LearningEventQueryService learningEventQueryService;
     private final LearningEventRecorder learningEventRecorder;
     private final ReviewItemService reviewItemService;
+    private final DevPilotProperties.Review reviewSettings;
     private final Clock clock;
 
     public LessonQueryService(
@@ -77,12 +79,14 @@ public class LessonQueryService {
             LearningEventQueryService learningEventQueryService,
             LearningEventRecorder learningEventRecorder,
             ReviewItemService reviewItemService,
+            DevPilotProperties properties,
             Clock clock) {
         this.lessonRegistry = lessonRegistry;
         this.skillCatalogQueryService = skillCatalogQueryService;
         this.learningEventQueryService = learningEventQueryService;
         this.learningEventRecorder = learningEventRecorder;
         this.reviewItemService = reviewItemService;
+        this.reviewSettings = properties.review();
         this.clock = clock;
     }
 
@@ -212,24 +216,24 @@ public class LessonQueryService {
                                 lessonKey, unit.key(), helpLevel.name(), selfChecksMet),
                         null,
                         clock.instant()));
-        if (helpLevel != HelpLevel.NONE && skillId != null) {
-            registerReview(userId, skillId, unit);
+        if (skillId != null) {
+            registerReview(userId, skillId, unit, helpLevel);
         }
         return new FinishResult(unit.key(), helpLevel, selfChecksMet, clock.instant());
     }
 
     /**
-     * 도움을 받아 푼 단위는 복습으로 돌아온다 (재설계안 R-0 6번).
+     * 푼 단위는 모두 복습으로 돌아온다 (ADR-051, docs/06 §6.3).
      *
-     * <p><b>임시 연결이다.</b> 지금은 기존 scheduler에 그대로 얹어 다음 plan-day에 due가 된다 — 1·7·30일 간격 사다리와 "도움 없이 풀어도
-     * 7일 뒤 한 번"(D-10)은 `06` §6.2를 고치는 Step 3에서 온다.
+     * <p>첫 due가 도움 여부로 갈린다 — 막혀서 도움을 받았으면 <b>다음 날</b>, 혼자 풀었으면 <b>7일 뒤</b>다. 혼자 푼 것도 한 번은 돌아와야 한다.
+     * 그 자리에서 풀렸다는 것이 2주 뒤에도 떠오른다는 뜻은 아니기 때문이다(망각곡선).
      *
      * <p>{@code conceptKey}는 단위 key라서 같은 단위를 다시 풀면 카드가 하나 더 생기지 않고 due만 당겨진다({@code
      * ReviewItemService#upsert}). {@code sourceId}는 두지 않는다 — 단위를 가리키는 것은 UUID가 아니다(`04` §3).
      *
      * <p>skill을 찾지 못한 노트는 카드를 만들지 않는다. 복습은 skill 단위로 도는데 붙일 자리가 없기 때문이다.
      */
-    private void registerReview(UUID userId, UUID skillId, LessonUnit unit) {
+    private void registerReview(UUID userId, UUID skillId, LessonUnit unit, HelpLevel helpLevel) {
         LessonProblem problem = unit.problem();
         List<RubricItem> rubric = new ArrayList<>();
         for (int index = 0; index < problem.selfChecks().size(); index++) {
@@ -246,7 +250,10 @@ public class LessonQueryService {
                         ReviewType.EXPLAIN,
                         problem.prompt(),
                         problem.modelAnswer(),
-                        rubric));
+                        rubric),
+                helpLevel == HelpLevel.NONE
+                        ? reviewSettings.lessonSolvedAloneFirstDueDays()
+                        : reviewSettings.lessonHelpedFirstDueDays());
     }
 
     private Lesson lesson(String lessonKey) {

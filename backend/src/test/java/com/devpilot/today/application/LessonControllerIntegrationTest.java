@@ -347,13 +347,12 @@ class LessonControllerIntegrationTest extends ApiTestSupport {
     }
 
     /**
-     * 도움을 받아 푼 단위는 복습으로 돌아온다 (재설계안 R-0 6번, 임시 연결).
+     * 푼 단위는 모두 복습으로 돌아오고, 첫 due가 도움 여부로 갈린다 (ADR-051, docs/06 §6.3).
      *
-     * <p>지금까지는 단위를 풀어도 `UNIT_SOLVED` 이벤트만 남고 아무것도 돌아오지 않았다 — 소유자가 적은 8단계의 6번이 비어 있었다. 도움 없이 푼 것은
-     * 그대로 끝난다(7일 뒤 확인은 Step 3의 간격 사다리에서 온다).
+     * <p>혼자 푼 단위는 7일 뒤, 도움을 받은 단위는 다음 날이다. 간격도 그 값에서 시작해야 사다리가 거꾸로 가지 않는다(§6.2).
      */
     @Test
-    void shouldBringBackAUnitThatNeededHelpAndLeaveAnUnaidedOneAlone() throws Exception {
+    void shouldBringEverySolvedUnitBackWithFirstDueSplitByHelp() throws Exception {
         TestUser user = onboardedUser();
 
         api.postWithKey(
@@ -364,7 +363,12 @@ class LessonControllerIntegrationTest extends ApiTestSupport {
                         LESSON_KEY,
                         UNIT_KEY)
                 .andExpect(status().isOk());
-        assertThat(lessonUnitCards(user)).isEmpty();
+
+        // 혼자 푼 것도 돌아온다 — 7일 뒤, 간격도 7에서 시작한다
+        List<Map<String, Object>> alone = lessonUnitCards(user);
+        assertThat(alone).hasSize(1);
+        assertThat(alone.getFirst().get("concept_key")).isEqualTo(UNIT_KEY);
+        assertThat(alone.getFirst().get("interval_days")).isEqualTo(7);
 
         String secondUnit = LESSON_KEY + ".U2";
         api.postWithKey(
@@ -377,11 +381,17 @@ class LessonControllerIntegrationTest extends ApiTestSupport {
                 .andExpect(status().isOk());
 
         List<Map<String, Object>> cards = lessonUnitCards(user);
-        assertThat(cards).hasSize(1);
-        Map<String, Object> card = cards.getFirst();
-        assertThat(card.get("concept_key")).isEqualTo(secondUnit);
+        assertThat(cards).hasSize(2);
+        Map<String, Object> card =
+                cards.stream()
+                        .filter(row -> secondUnit.equals(row.get("concept_key")))
+                        .findFirst()
+                        .orElseThrow();
         assertThat(card.get("source_id")).isNull();
         assertThat(String.valueOf(card.get("prompt"))).isNotBlank();
+        // 막혔던 것은 다음 날 — 혼자 푼 것보다 6일 먼저 돌아온다
+        assertThat(card.get("interval_days")).isEqualTo(1);
+        assertThat(dueDaysBetween(user, secondUnit, UNIT_KEY)).isEqualTo(6);
         // 내일 due — 오늘 푼 것이 오늘 또 나오지는 않는다
         assertThat(api.body(api.get(user, "/api/v1/reviews/due")).path("items").toString())
                 .doesNotContain(secondUnit);
@@ -395,14 +405,28 @@ class LessonControllerIntegrationTest extends ApiTestSupport {
                         LESSON_KEY,
                         secondUnit)
                 .andExpect(status().isOk());
-        assertThat(lessonUnitCards(user)).hasSize(1);
+        assertThat(lessonUnitCards(user)).hasSize(2);
     }
 
     private List<Map<String, Object>> lessonUnitCards(TestUser user) {
         return jdbc.queryForList(
-                "select concept_key, source_id, prompt from devpilot.review_item"
+                "select concept_key, source_id, prompt, interval_days from devpilot.review_item"
                         + " where user_id = ? and source_type = 'LESSON_UNIT' order by concept_key",
                 userId(user));
+    }
+
+    /** 두 카드의 due 날짜 차이 (뒤 - 앞). 고정 시계와 DB 시각이 달라도 흔들리지 않는다. */
+    private long dueDaysBetween(TestUser user, String earlierKey, String laterKey) {
+        return jdbc.queryForObject(
+                "select ((select due_at from devpilot.review_item"
+                        + "   where user_id = ? and concept_key = ?)::date"
+                        + " - (select due_at from devpilot.review_item"
+                        + "   where user_id = ? and concept_key = ?)::date)",
+                Long.class,
+                userId(user),
+                laterKey,
+                userId(user),
+                earlierKey);
     }
 
     /**

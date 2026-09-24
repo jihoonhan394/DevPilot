@@ -756,7 +756,7 @@ redoCandidates(today, userId):
 
 | 학습 원리 | 이 문서에서 구현된 곳 | 어떤 형태로 |
 |---|---|---|
-| **간격 효과 (spacing)** | §6.2 간격 계산, §6.3 신규 항목 첫 due | 맞히면 간격을 2~3배로 늘려 다음 인출을 미룬다. 온보딩 카드도 하루 5장씩 나눠 첫 due를 분산한다 |
+| **간격 효과 (spacing)** | §6.2 간격 계산, §6.3 신규 항목 첫 due | 맞히면 간격을 2~3배로 늘려 다음 인출을 미룬다. 온보딩 카드도 하루 5장씩 나눠 첫 due를 분산한다. **혼자 푼 학습 단위도 7일 뒤 한 번 돌아온다**(ADR-051) — 그 자리에서 풀렸다는 것이 2주 뒤에도 떠오른다는 뜻은 아니다 |
 | **인출 연습 (retrieval practice / testing effect)** | §6.1 최종 등급, §9.1 HL-1·HL-2·HL-4, §5.3 RECALL·EXPLAIN task | 자료를 다시 보는 대신 먼저 떠올려 답하게 한다. 답을 보기 전에 힌트를 받으면 `HINT_CAP_*`으로 등급 상한을 걸어 "혼자 떠올린 것"으로 세지 않는다 |
 | **교차 학습 (interleaving)** | §6.5 `RV-INTERLEAVE`, §5.5 `FATIGUE_ONE_DAY`·`FATIGUE_TWO_DAYS` | 같은 skill 카드가 3장 연속 나오지 않도록 출제 순서를 재배치한다. 같은 skill이 이틀 연속 main task였으면 점수를 낮춘다 |
 | **생성 효과 (generation)** | §5.3 EXPLAIN·PROJECT_TASK·READ_CODE 제안, §9.5 RD-1 | 정답을 받기 전에 스스로 답·설명·구현을 만들어 보게 한다. 러버덕에서 AI는 답을 주지 않고 되묻기만 한다 |
@@ -811,7 +811,7 @@ review_count += 1, last_result = final, last_reviewed_at = now
 | 온보딩 seed 카드 복사 | priority(MUST→SHOULD→LATER), practicalImportance DESC, conceptKey ASC로 정렬 후 `index`번째 카드 → `planDayStart(today + floorDiv(index, 5))` (하루 5장씩 분산) |
 | 신규 seed 카드 (기존 사용자) | 기존 사용자의 마지막 due 이후부터 같은 방식으로 분산 |
 | challenge 실패 / coach finding / 수동 생성 | `planDayStart(today + 1)` |
-| **학습 단위를 도움받아 풂** (`05` §21.7의 `helpLevel ≠ NONE`) | `planDayStart(today + 1)`. `concept_key` = 단위 key, `review_type = EXPLAIN`, `origin = SEED`, `source_type = LESSON_UNIT`, `source_id` 없음, prompt = 단위의 `problem.prompt`, `expected_answer` = `problem.modelAnswer`, `rubric_json` = `selfChecks`를 `S1`·`S2`…로. skill을 찾지 못한 노트는 카드를 만들지 않는다(`review_item.skill_id`는 not null). **도움 없이 푼 단위는 카드를 만들지 않는다** — "도움 없이 풀어도 7일 뒤 한 번"(재설계안 D-10)은 §6.2 간격 사다리와 함께 온다 |
+| **학습 단위를 풂** (`05` §21.7) | **푼 단위는 모두 카드가 된다**(ADR-049 아님, ADR-051). 첫 due가 도움 여부로 갈린다 — `helpLevel ≠ NONE`이면 `planDayStart(today + devpilot.review.lesson-helped-first-due-days)`(기본 1), `helpLevel = NONE`이면 `… + lesson-solved-alone-first-due-days`(기본 7). **`interval_days`를 그 날수와 같게 시작한다** — 7일 뒤 처음 보는 카드가 간격 1로 시작하면 맞혀도 다음이 2일 뒤가 되어 사다리가 거꾸로 간다(§6.2). `concept_key` = 단위 key, `review_type = EXPLAIN`, `origin = SEED`, `source_type = LESSON_UNIT`, `source_id` 없음, prompt = 단위의 `problem.prompt`, `expected_answer` = `problem.modelAnswer`, `rubric_json` = `selfChecks`를 `S1`·`S2`…로. skill을 찾지 못한 노트는 카드를 만들지 않는다(`review_item.skill_id`는 not null) |
 | 같은 `concept_key`가 이미 있음 | 새로 만들지 않는다. `status=ACTIVE`, `due_at = min(기존 due_at, planDayStart(today + 1))` |
 
 ### 6.4 Leech · Variant (답변 처리 직후)
