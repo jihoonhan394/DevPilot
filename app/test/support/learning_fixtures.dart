@@ -143,6 +143,10 @@ DashboardView testDashboard({
   TaskStatus mainStatus = TaskStatus.inProgress,
   int dueReviewCount = 6,
   bool replanRecommended = false,
+  // 계획이 없는 상태를 만들 수 있어야 하므로 null 을 "기본값 쓰기"로 읽지 않는다.
+  bool withPlan = true,
+  MilestoneTimelineView? milestoneTimeline,
+  List<SkillCategorySummaryView>? skillCategories,
 }) => DashboardView(
   today: testToday,
   todaySummary: TodaySummaryView(
@@ -160,7 +164,44 @@ DashboardView testDashboard({
   weekCompletedSessions: 4,
   aiStatus: AiStatus.disabled,
   replanRecommended: replanRecommended,
+  milestoneTimeline: withPlan ? (milestoneTimeline ?? testTimeline()) : null,
+  skillCategories: withPlan ? (skillCategories ?? testSkillCategories()) : const [],
 );
+
+/// 2단계를 진행 중인 타임라인. `current`는 **진행으로** 정해진 값이다(ADR-044).
+MilestoneTimelineView testTimeline({int currentIndex = 1}) => MilestoneTimelineView(
+  planId: planId,
+  planVersion: 1,
+  todayMarker: testToday,
+  horizonDate: '2027-04-01',
+  milestones: [
+    for (final (index, title) in const ['기반 다지기', '회원과 인증', '상품과 CRUD'].indexed)
+      TimelineMilestoneView(
+        id: '00000000-0000-0000-0000-00000000000$index',
+        title: title,
+        startDate: '2026-09-0${index + 1}',
+        endDate: '2026-09-1${index + 1}',
+        priority: Priority.must,
+        status: MilestoneStatus.planned,
+        current: index == currentIndex,
+      ),
+  ],
+);
+
+List<SkillCategorySummaryView> testSkillCategories() => const [
+  SkillCategorySummaryView(
+    category: SkillCategory.java,
+    skillCount: 6,
+    avgPlanningLevelMilli: 1500,
+    avgTargetLevelMilli: 3000,
+  ),
+  SkillCategorySummaryView(
+    category: SkillCategory.spring,
+    skillCount: 4,
+    avgPlanningLevelMilli: 0,
+    avgTargetLevelMilli: 4000,
+  ),
+];
 
 BudgetView testBudget({RiskLevel risk = RiskLevel.high, int? ratioBp = 11950}) => BudgetView(
   planId: planId,

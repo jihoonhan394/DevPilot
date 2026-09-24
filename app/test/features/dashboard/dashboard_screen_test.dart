@@ -26,6 +26,49 @@ void main() {
     expect(find.textContaining('연속'), findsNothing);
   });
 
+  /// 지금 단계는 서버가 **진행으로** 정해 준다(ADR-044). 화면은 그 값을 그대로 쓴다.
+  testWidgets('shouldShowWhichStepOfTheProjectYouAreOn', (tester) async {
+    await pumpApp(tester, backend: backend, at: '/dashboard');
+
+    expect(find.byKey(const Key('dashboard.stepCard')), findsOneWidget);
+    expect(find.text('2/3단계'), findsOneWidget);
+    expect(find.text('회원과 인증'), findsOneWidget);
+    // 다음에 무엇이 오는지 보이면 순서가 읽힌다.
+    expect(find.text('다음: 상품과 CRUD'), findsOneWidget);
+  });
+
+  testWidgets('shouldSayEveryStepIsDoneWhenNoneIsCurrent', (tester) async {
+    backend.dashboardRepository.dashboard = testDashboard(
+      milestoneTimeline: testTimeline(currentIndex: -1),
+    );
+
+    await pumpApp(tester, backend: backend, at: '/dashboard');
+
+    expect(find.byKey(const Key('dashboard.stepAllDone')), findsOneWidget);
+    expect(find.byKey(const Key('dashboard.stepCard')), findsNothing);
+  });
+
+  /// "얼마나 남았는지"가 보이는 것이 이 줄의 목적이다.
+  testWidgets('shouldShowCurrentAndTargetLevelPerCategory', (tester) async {
+    await pumpApp(tester, backend: backend, at: '/dashboard');
+
+    expect(find.byKey(const Key('dashboard.category.java')), findsOneWidget);
+    expect(find.text('1.5 / 3.0'), findsOneWidget);
+    expect(find.text('0.0 / 4.0'), findsOneWidget);
+    expect(find.text('6개'), findsOneWidget);
+  });
+
+  /// 활성 계획이나 학습 목표가 없으면 서버가 null을 준다 — 그 자리를 비운다.
+  testWidgets('shouldHideProgressSectionsWithoutAPlan', (tester) async {
+    backend.dashboardRepository.dashboard = testDashboard(withPlan: false);
+
+    await pumpApp(tester, backend: backend, at: '/dashboard');
+
+    expect(find.byKey(const Key('dashboard.stepCard')), findsNothing);
+    expect(find.byKey(const Key('dashboard.stepAllDone')), findsNothing);
+    expect(find.text('얼마나 왔나'), findsNothing);
+  });
+
   testWidgets('shouldSendToTodayWhenNotGeneratedYet', (tester) async {
     backend.dashboardRepository.dashboard = testDashboard(generated: false, dueReviewCount: 0);
     await pumpApp(tester, backend: backend, at: '/dashboard');

@@ -192,6 +192,18 @@
 - Then 응답에 오늘 main 상태, `dueReviewCount = 3`, `weekStudyMinutes`(**이번 주 월요일부터** — D가 속한 ISO 주의 `weekStartDate` ~ D의 COMPLETED 세션 합)에 25분 포함
 - And 연속 학습 일수·이번 주 요약은 AC-36(S3)이다
 
+**S13. 지금 단계와 얼마나 왔나 (`05` §13.1, ADR-044)**
+- Given 활성 계획과 학습 목표가 있고 1단계를 아직 마치지 않았다
+- When `GET /dashboard`
+- Then `milestoneTimeline.milestones`에서 **`current = true`인 것이 정확히 하나**이고, 그것은 `sort_order`가 가장 앞선 **미완료** milestone이다 — 날짜로 정하지 않는다
+- And `skillCategories`는 활성 계획의 `deferred = false` skill만 category별로 묶고, `avgTargetLevelMilli > 0`이며 `avgPlanningLevelMilli < avgTargetLevelMilli`다
+- And 자기평가한 category(JAVA)는 `avgPlanningLevelMilli > 0`이다 — 온보딩 입력이 반영된다(`06` §7.5)
+- Given 모든 milestone을 마쳤다
+- Then `current = true`인 것이 하나도 없고, 화면은 카드 대신 "모든 단계를 마쳤어요" 한 줄을 둔다
+- Given 활성 계획이나 학습 목표가 없다
+- Then `milestoneTimeline`이 null이고 `skillCategories`가 비어 있다. 화면은 두 구역을 **숨긴다**
+- And 화면(SCR-DASHBOARD)은 `[n/전체단계]` 배지와 단계 제목, `다음: {다음 단계}`를 보이고, category마다 `지금 / 목표`를 소수 1자리로 보인다
+
 **S11. 과제 카드의 `whyItMatters`·확인 목록 (S3, `05` §8.1, `19` §3.11)**
 - Given main task의 skill `S`에 기술 트리 `whyItMatters`가 있고, `taskTypes`에 그 task의 `taskType`이 있으며 `skillCodes`에 `S`가 있는 체크리스트 `CHK.A.B`(`before` 3개·`after` 3개)가 있다
 - When `GET /today`

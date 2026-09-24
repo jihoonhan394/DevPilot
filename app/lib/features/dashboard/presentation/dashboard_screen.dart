@@ -21,8 +21,9 @@ final dashboardProvider = FutureProvider.autoDispose<DashboardView>(
   (ref) => ref.watch(dashboardRepositoryProvider).fetchDashboard(),
 );
 
-/// SCR-DASHBOARD, minimal (S2): today's state, due reviews and this week's study time
-/// (docs/02 §3.11). No streaks, rest days or shortfall percentages (U-3).
+/// SCR-DASHBOARD (docs/02 §3.11): 오늘 상태, due 복습, 이번 주 학습 시간에 더해
+/// **지금 단계**(프로젝트를 만드는 순서 중 어디인가)와 **얼마나 왔나**(category별 평균)를 보여 준다.
+/// 연속 일수·쉬는 날·부족률은 두지 않는다 (U-3).
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
@@ -85,6 +86,18 @@ class _DashboardContent extends StatelessWidget {
           key: const Key('dashboard.weekSummary'),
           style: Theme.of(context).textTheme.titleLarge,
         ),
+        if (view.milestoneTimeline case final timeline?) ...[
+          const SizedBox(height: AppSpacing.xl),
+          SectionTitle(l10n.dashboardStep),
+          const SizedBox(height: AppSpacing.sm),
+          _StepCard(timeline: timeline),
+        ],
+        if (view.skillCategories.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.xl),
+          SectionTitle(l10n.dashboardSkills),
+          const SizedBox(height: AppSpacing.sm),
+          for (final category in view.skillCategories) _CategoryRow(category: category),
+        ],
       ],
     );
   }
@@ -181,6 +194,115 @@ class _TodayCard extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 지금 단계 (docs/05 §13.1). 서버가 **진행으로** 정해 준다(ADR-044) — 화면은 날짜로 다시 계산하지 않는다.
+class _StepCard extends StatelessWidget {
+  const _StepCard({required this.timeline});
+
+  final MilestoneTimelineView timeline;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final current = timeline.current;
+    if (current == null) {
+      return Text(
+        l10n.dashboardStepAllDone,
+        key: const Key('dashboard.stepAllDone'),
+        style: theme.textTheme.titleMedium,
+      );
+    }
+    final ordinal = timeline.currentOrdinal!;
+    final next = ordinal < timeline.milestones.length ? timeline.milestones[ordinal] : null;
+    return Card(
+      key: const Key('dashboard.stepCard'),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                StatusBadge(
+                  label: l10n.dashboardStepOf(ordinal, timeline.milestones.length),
+                  tone: AppTone.primary,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    current.title,
+                    key: const Key('dashboard.stepTitle'),
+                    style: theme.textTheme.titleMedium,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            LinearProgressIndicator(
+              value: (ordinal - 1) / timeline.milestones.length,
+              // 몇 단계인지는 위 배지가 글로 읽어 준다.
+              semanticsLabel: '',
+            ),
+            if (next != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                l10n.dashboardStepNext(next.title),
+                key: const Key('dashboard.stepNext'),
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// category 한 줄: 지금 평균과 목표. **"얼마나 남았는지"가 보이는 것이 이 줄의 목적이다.**
+class _CategoryRow extends StatelessWidget {
+  const _CategoryRow({required this.category});
+
+  final SkillCategorySummaryView category;
+
+  /// milli 정수를 소수 한 자리로 (예: 1500 → 1.5).
+  static String _level(int milli) => (milli / 1000).toStringAsFixed(1);
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    return Padding(
+      key: Key('dashboard.category.${category.category.name}'),
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(category.category.label(l10n))),
+              Text(
+                l10n.dashboardSkillCount(category.skillCount),
+                style: theme.textTheme.bodySmall,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                l10n.dashboardSkillLevels(
+                  _level(category.avgPlanningLevelMilli),
+                  _level(category.avgTargetLevelMilli),
+                ),
+                style: theme.textTheme.labelLarge,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          // 진행은 옆의 "지금 / 목표" 숫자가 읽어 주므로 막대는 장식이다.
+          LinearProgressIndicator(value: category.progress, semanticsLabel: ''),
+        ],
       ),
     );
   }

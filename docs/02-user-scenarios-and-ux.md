@@ -2592,12 +2592,13 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ 보통       ┤ ●──●──●──●──┘        │
 │ 여유       ┤                       │
 │ 지금 [빠듯함] · 필요 ÷ 가능 120%     │
-│ 계획 v3                            │
-│ ━[Java 기본기]━┃━[Spring·JPA]━━━    │
-│        오늘 10/13      목표일 4/1   │
-│ 분야별 수준 (평균 / 목표)            │
-│ Java     ■■■■□□□  2.1 / 3.4        │
-│ Spring   ■■□□□□□  1.2 / 3.8        │
+│ 지금 단계                           │
+│ [2/9단계] 회원과 인증                │
+│ ━━━━━━━┃─────────────────────      │
+│ 다음: 상품과 CRUD                    │
+│ 얼마나 왔나 (지금 / 목표)            │
+│ Java     6개  ■■■■□□□  2.1 / 3.4   │
+│ Spring   4개  ■■□□□□□  1.2 / 3.8   │
 │ 자주 놓치는 관점 (최근 28일)         │
 │ 1 자원 수명 · 2 동시성 · 3 관측성     │
 │ 주간 리뷰 보기 >                     │
@@ -2614,7 +2615,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
   - 목표 일수·연속 기록 표시(불꽃·배지·게이지)·최고 기록·비교를 두지 않는다. 숫자 하나와 라벨뿐이다.
   - 재촉 문구("오늘도 이어 가세요")를 붙이지 않는다. 오늘 아직 완료가 없어도 어제까지의 수를 그대로 보인다(`05` §13.1 계산).
   - 이 줄은 SCR-DASHBOARD에만 둔다. SCR-TODAY·SCR-REVIEW-\*·SCR-PLAN에는 두지 않는다 — 매일 보는 화면에 연속 숫자를 두면 압박이 된다.
-- **차트 규칙**: `fl_chart` 사용. 위험 추세는 `risk.trend`(최대 8점, `snapshotDate` ASC)를 계단형 선(단색 `color.textPrimary`)으로 그리고 y축은 4단계 텍스트 라벨이다. milestone 타임라인은 `milestoneTimeline.milestones` 구간 막대 + 막대 안 제목·priority 텍스트, 오늘(`todayMarker`) 세로선, 목표일(`horizonDate` = `targetCompletionDate`) 표시 하나다. 분야별 수준은 `skillCategories`의 `avgPlanningLevelMilli`·`avgTargetLevelMilli`를 `milli / 1000` 소수 1자리로 보여주는 가로 막대(채움 = planning, 숫자 = 목표)다. 모든 차트는 같은 내용을 문장으로 함께 제공하고 `Semantics(label:)`에 넣는다.
+- **차트 규칙**: `fl_chart` 사용. 위험 추세는 `risk.trend`(최대 8점, `snapshotDate` ASC)를 계단형 선(단색 `color.textPrimary`)으로 그리고 y축은 4단계 텍스트 라벨이다. **지금 단계**는 차트가 아니라 카드 한 장이다 — `milestoneTimeline.milestones`에서 `current = true`인 것 하나를 `[n/전체단계]` 배지와 제목으로 보이고, 그 아래 진행 막대와 `다음: {다음 단계 제목}` 한 줄을 둔다. **어느 단계인지와 다음이 무엇인지**만 답하면 되는 자리라 구간 막대·날짜 축을 두지 않는다. `current`가 하나도 없으면(전부 마침) 카드 대신 한 줄을 둔다. `milestoneTimeline`이 null이면(활성 계획이나 학습 목표 없음) 구역 자체를 숨긴다. **얼마나 왔나**는 `skillCategories`의 `avgPlanningLevelMilli`·`avgTargetLevelMilli`를 `milli / 1000` 소수 1자리로 보여주는 가로 막대다 — 줄마다 `카테고리 이름 · skill 수 · 지금 / 목표`와 막대(채움 = planning ÷ target)다. 목록이 비면 구역을 숨긴다. 모든 차트는 같은 내용을 문장으로 함께 제공하고 `Semantics(label:)`에 넣는다.
 - **데이터**: 진입·화면 복귀 시 `GET /dashboard` 1회. S3 이전 빌드는 `streakDays = 0`, `weeklySummary = null`로 보고 두 영역을 숨긴다. S5 이전에는 `risk`, `milestoneTimeline`이 `null`, `skillCategories`, `weakThinkingAxes`가 `[]`이며 해당 섹션을 숨긴다.
 - **상태**
   - Loading: 섹션별 skeleton.
