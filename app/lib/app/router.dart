@@ -23,6 +23,9 @@ import 'package:devpilot_app/features/plan/presentation/plan_screen.dart';
 import 'package:devpilot_app/features/plan/presentation/plan_version_screen.dart';
 import 'package:devpilot_app/features/plan/presentation/replan_controller.dart';
 import 'package:devpilot_app/features/plan/presentation/replan_screen.dart';
+import 'package:devpilot_app/features/project/data/project_note_models.dart';
+import 'package:devpilot_app/features/project/presentation/project_detail_screen.dart';
+import 'package:devpilot_app/features/project/presentation/project_note_edit_screen.dart';
 import 'package:devpilot_app/features/project/presentation/projects_screen.dart';
 import 'package:devpilot_app/features/review/presentation/review_home_screen.dart';
 import 'package:devpilot_app/features/review/presentation/review_session_screen.dart';
@@ -163,7 +166,35 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
           trainingRoute(),
-          GoRoute(path: AppRoutes.projects, builder: (context, state) => const ProjectsScreen()),
+          GoRoute(
+            path: AppRoutes.projects,
+            builder: (context, state) => const ProjectsScreen(),
+            routes: [
+              // 기록 작성은 `:sideProjectId` 아래다 — 소유권을 부모와 함께 본다 (docs/07 §4.3)
+              GoRoute(
+                path: ':sideProjectId/notes/new',
+                builder: (context, state) => ProjectNoteEditScreen(
+                  sideProjectId: state.pathParameters['sideProjectId'] ?? '',
+                  noteType: state.uri.queryParameters['noteType'] == 'INCIDENT'
+                      ? SideProjectNoteType.incident
+                      : SideProjectNoteType.decision,
+                ),
+              ),
+              GoRoute(
+                path: ':sideProjectId/notes/:noteId',
+                builder: (context, state) => ProjectNoteEditScreen(
+                  sideProjectId: state.pathParameters['sideProjectId'] ?? '',
+                  noteId: state.pathParameters['noteId'],
+                ),
+              ),
+              GoRoute(
+                path: ':sideProjectId',
+                builder: (context, state) => ProjectDetailScreen(
+                  sideProjectId: state.pathParameters['sideProjectId'] ?? '',
+                ),
+              ),
+            ],
+          ),
           GoRoute(
             path: AppRoutes.settings,
             onExit: (context, state) => confirmLeave(context, settingsHasUnsavedChangesProvider),

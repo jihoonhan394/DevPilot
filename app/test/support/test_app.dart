@@ -14,6 +14,7 @@ import 'package:devpilot_app/features/onboarding/data/diagnostic_repository.dart
 import 'package:devpilot_app/features/onboarding/data/onboarding_repository.dart';
 import 'package:devpilot_app/features/plan/data/learning_goal_repository.dart';
 import 'package:devpilot_app/features/plan/data/plan_repository.dart';
+import 'package:devpilot_app/features/project/data/project_note_repository.dart';
 import 'package:devpilot_app/features/project/data/side_project_repository.dart';
 import 'package:devpilot_app/features/review/data/review_item_repository.dart';
 import 'package:devpilot_app/features/review/data/review_repository.dart';
@@ -85,6 +86,7 @@ Widget buildTestApp({
       lessonRepositoryProvider.overrideWithValue(fakes.lessonRepository),
       reviewItemRepositoryProvider.overrideWithValue(fakes.reviewItemRepository),
       tipRepositoryProvider.overrideWithValue(fakes.tipRepository),
+      projectNoteRepositoryProvider.overrideWithValue(fakes.projectNoteRepository),
       clockProvider.overrideWithValue(() => fakes.clock.now),
       ...overrides,
     ],

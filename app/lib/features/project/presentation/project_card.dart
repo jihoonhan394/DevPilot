@@ -20,6 +20,7 @@ import 'package:devpilot_app/features/settings/data/me_provider.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 enum _MenuAction { edit, pause, activate, done, delete }
@@ -113,36 +114,40 @@ class ProjectCard extends ConsumerWidget {
     );
     return Card(
       key: Key('projects.card.${project.id}'),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg,
-          AppSpacing.sm,
-          AppSpacing.xs,
-          AppSpacing.md,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: AppSpacing.sm),
-                  _ProjectTitle(project: project, isTodayTarget: isTodayTarget),
-                  if (description != null && description.isNotEmpty) ...[
+      // 카드를 누르면 상세로 간다 — 기록을 남기는 자리가 거기다 (docs/02 §3.16)
+      child: InkWell(
+        onTap: () => context.push(AppRoutes.projectDetail(project.id)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.sm,
+            AppSpacing.xs,
+            AppSpacing.md,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: AppSpacing.sm),
+                    _ProjectTitle(project: project, isTodayTarget: isTodayTarget),
+                    if (description != null && description.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(description, maxLines: 2, overflow: TextOverflow.ellipsis),
+                    ],
+                    if (stack != null && stack.isNotEmpty) Text(stack, style: textTheme.bodySmall),
+                    if (repoUrl != null && repoUrl.isNotEmpty) _RepoLink(url: repoUrl),
                     const SizedBox(height: AppSpacing.xs),
-                    Text(description, maxLines: 2, overflow: TextOverflow.ellipsis),
+                    Text(l10n.projectsUpdatedAt(updated), style: textTheme.bodySmall),
+                    _ExplainProjectButton(project: project),
                   ],
-                  if (stack != null && stack.isNotEmpty) Text(stack, style: textTheme.bodySmall),
-                  if (repoUrl != null && repoUrl.isNotEmpty) _RepoLink(url: repoUrl),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(l10n.projectsUpdatedAt(updated), style: textTheme.bodySmall),
-                  _ExplainProjectButton(project: project),
-                ],
+                ),
               ),
-            ),
-            _ProjectMenu(project: project, onSelected: (action) => _onMenu(context, ref, action)),
-          ],
+              _ProjectMenu(project: project, onSelected: (action) => _onMenu(context, ref, action)),
+            ],
+          ),
         ),
       ),
     );

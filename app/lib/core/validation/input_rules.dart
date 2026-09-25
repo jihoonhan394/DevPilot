@@ -18,6 +18,12 @@ abstract final class InputRules {
 
   /// 설명 기록 한 줄 (docs/02 SCR-TODAY 완료 시트, docs/05 §8.4).
   static const explainedNoteMaxLength = 500;
+
+  /// 프로젝트 기록의 본문 한 칸 (docs/05 §19.8).
+  static const projectNoteBodyMaxLength = 4000;
+
+  /// 프로젝트 기록의 제목 (docs/05 §19.8).
+  static const projectNoteTitleMaxLength = 200;
   static const focusSkillsMax = 10;
   static const selfReflectionMaxLength = 5000;
   static const reviewAnswerMaxLength = 5000;

@@ -110,6 +110,19 @@ final class ApiClient {
   Future<Map<String, Object?>> putJson(String path, {required Map<String, Object?> body}) =>
       _sendJson(() => _dio.put<Object?>(path, data: body));
 
+  /// GET [path] as a downloadable text file (docs/05 §19.13).
+  ///
+  /// 파일 이름은 `Content-Disposition`이 정한다 — 클라이언트가 지어내면 서버가 정한 날짜와 어긋난다.
+  Future<({String fileName, String markdown})> getFile(String path) async {
+    final response = await _send(
+      isGet: true,
+      () => _dio.get<String>(path, options: Options(responseType: ResponseType.plain)),
+    );
+    final disposition = response.headers.value('content-disposition') ?? '';
+    final match = RegExp('filename="([^"]+)"').firstMatch(disposition);
+    return (fileName: match?.group(1) ?? 'download.md', markdown: response.data?.toString() ?? '');
+  }
+
   /// DELETE [path]. The 204 body is ignored.
   Future<void> delete(String path) async {
     await _send(() => _dio.delete<Object?>(path));

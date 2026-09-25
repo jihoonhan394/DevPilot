@@ -1,3 +1,4 @@
+import 'package:devpilot_app/features/project/data/project_note_models.dart';
 import 'package:flutter/foundation.dart';
 
 /// What an entry screen already knows about a rubber duck target, passed as go_router `extra` to
@@ -55,6 +56,17 @@ abstract final class AppRoutes {
   static const planVersions = '/plan/versions';
   static const skills = '/skills';
   static const projects = '/projects';
+
+  /// SCR-PROJECT-DETAIL: `/projects/:sideProjectId`.
+  static String projectDetail(String sideProjectId) => '$projects/$sideProjectId';
+
+  /// SCR-PROJECT-NOTE-EDIT (생성): `/projects/:id/notes/new?noteType=`.
+  static String projectNoteNew(String sideProjectId, SideProjectNoteType noteType) =>
+      '$projects/$sideProjectId/notes/new?noteType=${noteType == SideProjectNoteType.incident ? 'INCIDENT' : 'DECISION'}';
+
+  /// SCR-PROJECT-NOTE-EDIT (수정): `/projects/:id/notes/:noteId`.
+  static String projectNote(String sideProjectId, String noteId) =>
+      '$projects/$sideProjectId/notes/$noteId';
   static const settings = '/settings';
   static const more = '/more';
 
@@ -184,6 +196,8 @@ enum RouteAccess {
     RegExp(r'^/review/items/[^/]+$'),
     RegExp(r'^/lessons/[^/]+$'),
     RegExp(r'^/tips/[^/]+$'),
+    RegExp(r'^/projects/[^/]+$'),
+    RegExp(r'^/projects/[^/]+/notes/[^/]+$'),
   ];
 
   static const _onboardedPaths = {
