@@ -30,6 +30,8 @@ public final class UserOwnedEndpoints {
     /** 공용 콘텐츠 조회에 쓰는 테스트 개념 노트 key (docs/05 §21). */
     public static final String SHARED_LESSON_KEY = "LESSON.TESTSPRING.MVC.001";
 
+    public static final String SHARED_TIP_KEY = "TIP.CONVENTION.NAMING.001";
+
     /** 그 노트의 첫 단위. */
     public static final String SHARED_UNIT_KEY = SHARED_LESSON_KEY + ".U1";
 
@@ -449,6 +451,41 @@ public final class UserOwnedEndpoints {
                         Kind.SHARED_CONTENT,
                         fixture -> new Object[] {},
                         NO_BODY,
+                        null),
+                // 오늘의 팁 (docs/05 §20). 본문은 콘텐츠라 모든 사용자가 같은 것을 본다 — 사용자별인 것은 feedback 뿐이다.
+                new EndpointCase(
+                        "E71",
+                        HttpMethod.GET,
+                        "/api/v1/tips/today",
+                        Kind.SHARED_CONTENT,
+                        NO_VARIABLES,
+                        NO_BODY,
+                        null),
+                new EndpointCase(
+                        "E72",
+                        HttpMethod.GET,
+                        "/api/v1/tips",
+                        Kind.SHARED_CONTENT,
+                        NO_VARIABLES,
+                        NO_BODY,
+                        null),
+                new EndpointCase(
+                        "E73",
+                        HttpMethod.GET,
+                        "/api/v1/tips/{tipKey}",
+                        Kind.SHARED_CONTENT,
+                        fixture -> new Object[] {SHARED_TIP_KEY},
+                        NO_BODY,
+                        null),
+                // 피드백은 (user_id, tip_key) 한 행이다. 경로에 남의 id를 넣을 자리가 없어 격리 case가 아니라
+                // ACCOUNT_ACTION이다 — 인증 검사에는 그대로 들어간다.
+                new EndpointCase(
+                        "E74",
+                        HttpMethod.POST,
+                        "/api/v1/tips/{tipKey}/feedback",
+                        Kind.ACCOUNT_ACTION,
+                        fixture -> new Object[] {SHARED_TIP_KEY},
+                        fixture -> Map.of("feedback", "KNEW_IT"),
                         null),
                 // ACCOUNT_ACTION
                 account("E30", HttpMethod.DELETE, "/api/v1/me", NO_BODY),

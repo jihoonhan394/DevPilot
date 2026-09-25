@@ -40,6 +40,12 @@ class MoreScreen extends ConsumerWidget {
             path: AppRoutes.lessonsPrefix,
           ),
           _MoreTile(
+            tileKey: const Key('more.tips'),
+            icon: Icons.lightbulb_outline,
+            label: l10n.tipsListTitle,
+            path: AppRoutes.tipsPrefix,
+          ),
+          _MoreTile(
             tileKey: const Key('more.projects'),
             icon: Icons.code,
             label: l10n.moreProjects,

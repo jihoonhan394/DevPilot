@@ -175,3 +175,33 @@ String skillLevelLabel(int level, AppLocalizations l10n) => switch (level) {
   5 => l10n.enumSkillLevel5,
   _ => l10n.enumUnknown,
 };
+
+extension TipSeriesLabel on TipSeries {
+  String label(AppLocalizations l10n) => switch (this) {
+    TipSeries.errorReading => l10n.enumTipSeriesErrorReading,
+    TipSeries.resource => l10n.enumTipSeriesResource,
+    TipSeries.logging => l10n.enumTipSeriesLogging,
+    TipSeries.httpIntegration => l10n.enumTipSeriesHttpIntegration,
+    TipSeries.database => l10n.enumTipSeriesDatabase,
+    TipSeries.operations => l10n.enumTipSeriesOperations,
+    TipSeries.convention => l10n.enumTipSeriesConvention,
+    TipSeries.unknown => l10n.enumUnknown,
+  };
+}
+
+extension TipLevelLabel on TipLevel {
+  String label(AppLocalizations l10n) => switch (this) {
+    TipLevel.basic => l10n.enumTipLevelBasic,
+    TipLevel.practical => l10n.enumTipLevelPractical,
+    TipLevel.unknown => l10n.enumUnknown,
+  };
+}
+
+extension TipFeedbackLabel on TipFeedback {
+  String label(AppLocalizations l10n) => switch (this) {
+    TipFeedback.knewIt => l10n.enumTipFeedbackKnewIt,
+    TipFeedback.learned => l10n.enumTipFeedbackLearned,
+    TipFeedback.willTry => l10n.enumTipFeedbackWillTry,
+    TipFeedback.unknown => l10n.enumUnknown,
+  };
+}

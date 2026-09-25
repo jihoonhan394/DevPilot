@@ -23,6 +23,7 @@ import 'fixtures.dart';
 import 'learning_fakes.dart';
 import 'learning_fixtures.dart';
 import 'lesson_fakes.dart';
+import 'tip_fakes.dart';
 import 'reading_fakes.dart';
 import 'review_item_fakes.dart';
 import 'rubber_duck_fakes.dart';
@@ -455,4 +456,5 @@ final class FakeBackend {
   final readingRepository = FakeReadingRepository();
   final lessonRepository = FakeLessonRepository();
   final reviewItemRepository = FakeReviewItemRepository();
+  final tipRepository = FakeTipRepository();
 }

@@ -115,8 +115,8 @@
 | `TaskType` (today.domain) | `RECALL`, `REVIEW`, `CHALLENGE`, `PROJECT_TASK`, `COACH_REVIEW`, `READING`, `READ_CODE`, `EXPLAIN`, `REDO` | learning_task — `READ_CODE`는 큐레이션 저장소 읽기(`06` §5, RC-1~4), `REDO`는 며칠 뒤 **AI 없이 혼자 다시 만드는 재현 과제**(`06` §5.10, RE-1~RE-8) |
 | `TaskStatus` (today.domain) | `PLANNED`, `IN_PROGRESS`, `COMPLETED`, `SKIPPED`, `DEFERRED` | learning_task |
 | `ReadingFeedback` (today.domain) | `HELPFUL`, `TOO_HARD`, `BORING` | learning_task.reading_feedback — `READ_CODE` 완료 때 사용자가 고르는 읽기 평가(선택, `05` §8.4). 규칙 입력이 아니다(`06` §5.3). 소스 점검(`19` §8.5)의 입력 |
-| `TipLevel` (learning.domain) | `BASIC`("기본기"), `PRACTICAL`("실무") | 저장하지 않는다. 오늘의 팁 콘텐츠(`content/tips/*.yaml`의 `level`)와 용어 사전(`content/terms/*.yaml`의 `level`)이 같은 값을 쓰고, `GET /tips`·`GET /terms` 응답과 필터에 나온다(`05` §20) |
-| `TipSeries` (learning.domain) | `ERROR_READING`, `RESOURCE`, `LOGGING`, `HTTP_INTEGRATION`, `DATABASE`, `OPERATIONS`, `CONVENTION` | 저장하지 않는다. 팁 묶음(`content/tips/*.yaml`의 `series`). `GET /tips`의 필터·응답(`05` §20.4) |
+| `TipLevel` (common.domain) | `BASIC`("기본기"), `PRACTICAL`("실무") | 저장하지 않는다. 오늘의 팁 콘텐츠(`content/tips/*.yaml`의 `level`)와 용어 사전(`content/terms/*.yaml`의 `level`)이 같은 값을 쓰고, `GET /tips`·`GET /terms` 응답과 필터에 나온다(`05` §20) |
+| `TipSeries` (common.domain) | `ERROR_READING`, `RESOURCE`, `LOGGING`, `HTTP_INTEGRATION`, `DATABASE`, `OPERATIONS`, `CONVENTION` | 저장하지 않는다. 팁 묶음(`content/tips/*.yaml`의 `series`). `GET /tips`의 필터·응답(`05` §20.4). 콘텐츠 분류라 `content` 모듈이 읽어야 해서 `common.domain`에 둔다(`03` §2.2: content는 learning에 의존하지 않는다) |
 | `TipFeedback` (learning.domain) | `KNEW_IT`("알고 있었어요"), `LEARNED`("새로 알았어요"), `WILL_TRY`("직접 해 볼래요") | user_daily_tip.feedback — 팁을 읽은 뒤 고른 값(`05` §20.3) |
 | `ReasonCode` (today.domain) | §5.1 | learning_task.reason_codes |
 | `SessionStatus` (learning.domain) | `IN_PROGRESS`, `COMPLETED`, `ABANDONED` | learning_session |

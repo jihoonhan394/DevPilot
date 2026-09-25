@@ -1,5 +1,6 @@
 import 'package:devpilot_app/core/api/api_enums.dart';
 import 'package:devpilot_app/core/api/learning_enums.dart';
+import 'package:devpilot_app/features/tip/data/tip_models.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'today_models.freezed.dart';
@@ -29,6 +30,9 @@ abstract class TodayView with _$TodayView {
 
     /// Other main tasks of the same day, sortOrder ASC.
     @Default(<MainTaskView>[]) List<MainTaskView> earlierMainTasks,
+
+    /// "해 볼게요"로 표시한 팁의 실험 후보 1건 (docs/06 §5.12 TIP-6). 과제가 아니라 남는 시간에 해 볼 것이다.
+    TipExperimentView? tipExperiment,
   }) = _TodayView;
 
   factory TodayView.fromJson(Map<String, Object?> json) => _$TodayViewFromJson(json);

@@ -1,6 +1,7 @@
 import 'package:devpilot_app/app/not_found_screen.dart';
 import 'package:devpilot_app/app/route_helpers.dart';
 import 'package:devpilot_app/app/routes.dart';
+import 'package:devpilot_app/core/api/learning_enums.dart';
 import 'package:devpilot_app/features/lesson/data/lesson_repository.dart';
 import 'package:devpilot_app/features/lesson/presentation/lesson_list_screen.dart';
 import 'package:devpilot_app/features/lesson/presentation/lesson_screen.dart';
@@ -13,6 +14,9 @@ import 'package:devpilot_app/features/review/presentation/review_items_screen.da
 import 'package:devpilot_app/features/rubber_duck/data/rubber_duck_enums.dart';
 import 'package:devpilot_app/features/rubber_duck/presentation/rubber_duck_input_guard.dart';
 import 'package:devpilot_app/features/rubber_duck/presentation/rubber_duck_screen.dart';
+import 'package:devpilot_app/features/tip/data/tip_repository.dart';
+import 'package:devpilot_app/features/tip/presentation/tip_detail_screen.dart';
+import 'package:devpilot_app/features/tip/presentation/tips_list_screen.dart';
 import 'package:devpilot_app/features/today/data/reading_repository.dart';
 import 'package:devpilot_app/features/today/presentation/diagnostics_screen.dart';
 import 'package:devpilot_app/features/today/presentation/read_code_screen.dart';
@@ -85,6 +89,41 @@ GoRoute trainingRoute() => GoRoute(
     ),
   ],
 );
+
+/// `/tips` (SCR-TIPS). 짧은 시간이 났을 때 하나씩 읽는 자리다.
+GoRoute tipsListRoute() => GoRoute(
+  path: AppRoutes.tipsPrefix,
+  builder: (context, state) => TipsListScreen(
+    series: _enumFrom(TipSeries.values, state.uri.queryParameters['series']),
+    level: _enumFrom(TipLevel.values, state.uri.queryParameters['level']),
+  ),
+);
+
+/// `/tips/:tipKey` (SCR-TIP-DETAIL). 지난 팁도 본문을 그대로 연다 (docs/05 §20.4a).
+GoRoute tipDetailRoute() => GoRoute(
+  path: '${AppRoutes.tipsPrefix}/:tipKey',
+  builder: (context, state) {
+    final tipKey = state.pathParameters['tipKey'] ?? '';
+    if (!tipKeyPattern.hasMatch(tipKey)) {
+      return const NotFoundScreen();
+    }
+    return TipDetailScreen(tipKey: tipKey);
+  },
+);
+
+/// 쿼리의 대문자 이름 → 열거형. 모르는 값은 필터를 걸지 않은 것으로 본다.
+T? _enumFrom<T extends Enum>(List<T> values, String? wireName) {
+  if (wireName == null) {
+    return null;
+  }
+  final wanted = wireName.replaceAll('_', '').toLowerCase();
+  for (final value in values) {
+    if (value.name.toLowerCase() == wanted) {
+      return value;
+    }
+  }
+  return null;
+}
 
 /// `/lessons` (SCR-LESSON-LIST). 노트 전부와 진행 — 이어서 할 것이 맨 위다.
 GoRoute lessonListRoute() => GoRoute(

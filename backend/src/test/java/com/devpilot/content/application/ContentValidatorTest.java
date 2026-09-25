@@ -715,6 +715,91 @@ class ContentValidatorTest {
     }
 
     /** 테스트 catalog 원본(가변 Map/List)에 접근한다. 호출마다 새로 읽으므로 서로 영향이 없다. */
+
+    // ---- 오늘의 팁 CV-90 ~ CV-96 (docs/19 §3.9, §4.3) ----------------------
+    // 팁은 운영 콘텐츠에만 있어서 운영 파일을 복사해 한 곳씩 망가뜨린다.
+
+    @Test
+    void shouldRejectTipKeyThatDoesNotMatchItsSeries() {
+        Fixture fixture = new Fixture(reader.read(PRODUCTION_CONTENT));
+        fixture.tips().getFirst().put("series", "CONVENTION");
+
+        assertThat(validator.validate(fixture.content).errors())
+                .anyMatch(issue -> "CV-90".equals(issue.rule()));
+    }
+
+    @Test
+    void shouldRejectDuplicateTipKey() {
+        Fixture fixture = new Fixture(reader.read(PRODUCTION_CONTENT));
+        List<Map<String, Object>> tips = fixture.tips();
+        tips.get(1).put("key", tips.getFirst().get("key"));
+
+        assertThat(validator.validate(fixture.content).errors())
+                .anyMatch(issue -> "CV-90".equals(issue.rule()));
+    }
+
+    /** 근거가 둘 다 없으면 확인할 길이 없는 이야기가 된다 — WARN이 아니라 ERROR인 이유다. */
+    @Test
+    void shouldRejectTipWithNeitherSourceUrlNorExperiment() {
+        Fixture fixture = new Fixture(reader.read(PRODUCTION_CONTENT));
+        Map<String, Object> tip = fixture.tips().getFirst();
+        tip.remove("sourceUrl");
+        tip.remove("experiment");
+
+        assertThat(validator.validate(fixture.content).errors())
+                .anyMatch(issue -> "CV-91".equals(issue.rule()));
+    }
+
+    @Test
+    void shouldRejectTipSourceOnUntrustedHost() {
+        Fixture fixture = new Fixture(reader.read(PRODUCTION_CONTENT));
+        fixture.withSourceUrl().put("sourceUrl", "https://blog.example.com/post");
+
+        assertThat(validator.validate(fixture.content).errors())
+                .anyMatch(issue -> "CV-92".equals(issue.rule()));
+    }
+
+    @Test
+    void shouldRejectTipSkillCodeWithoutRoleTarget() {
+        Fixture fixture = new Fixture(reader.read(PRODUCTION_CONTENT));
+        fixture.tips()
+                .getFirst()
+                .put("skillCodes", new ArrayList<Object>(List.of("NO.SUCH.SKILL")));
+
+        assertThat(validator.validate(fixture.content).errors())
+                .anyMatch(issue -> "CV-93".equals(issue.rule()));
+    }
+
+    @Test
+    void shouldRejectTipCauseThatIsTooShort() {
+        Fixture fixture = new Fixture(reader.read(PRODUCTION_CONTENT));
+        fixture.tips().getFirst().put("cause", "짧다");
+
+        assertThat(validator.validate(fixture.content).errors())
+                .anyMatch(issue -> "CV-94".equals(issue.rule()));
+    }
+
+    /** 은퇴 표시와 catalog의 목록이 어긋나면 조회되지 않는 팁이 생긴다 (docs/19 §8.2). */
+    @Test
+    void shouldRejectTipRetiredWithoutBeingListedInCatalog() {
+        Fixture fixture = new Fixture(reader.read(PRODUCTION_CONTENT));
+        fixture.tips().getFirst().put("retired", true);
+
+        assertThat(validator.validate(fixture.content).errors())
+                .anyMatch(issue -> "CV-95".equals(issue.rule()));
+    }
+
+    @Test
+    void shouldWarnWhenASeriesHasNoActiveTipLeft() {
+        Fixture fixture = new Fixture(reader.read(PRODUCTION_CONTENT));
+        String series = String.valueOf(fixture.tips().getFirst().get("series"));
+        fixture.tips().removeIf(tip -> series.equals(tip.get("series")));
+
+        assertThat(validator.validate(fixture.content).warnings())
+                .anyMatch(
+                        issue -> "CV-96".equals(issue.rule()) && issue.message().endsWith(series));
+    }
+
     static final class Fixture {
 
         final RawContent content;
@@ -786,6 +871,18 @@ class ContentValidatorTest {
 
         List<Map<String, Object>> lessons() {
             return maps(document("lessons/test.yaml").get("lessons"));
+        }
+
+        /** {@code sourceUrl}이 있는 첫 팁. 없는 팁에 host 검사를 걸면 CV-92가 아니라 CV-91이 난다. */
+        Map<String, Object> withSourceUrl() {
+            return tips().stream()
+                    .filter(tip -> tip.get("sourceUrl") != null)
+                    .findFirst()
+                    .orElseThrow();
+        }
+
+        List<Map<String, Object>> tips() {
+            return maps(document("tips/practical.yaml").get("tips"));
         }
 
         List<Map<String, Object>> lessonSources() {

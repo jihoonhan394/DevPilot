@@ -29,6 +29,9 @@ abstract final class AppRoutes {
   /// SCR-LESSON prefix: `/lessons/:lessonKey`.
   static const lessonsPrefix = '/lessons';
 
+  /// SCR-TIPS: `/tips`, SCR-TIP-DETAIL: `/tips/:tipKey`.
+  static const tipsPrefix = '/tips';
+
   /// SCR-READ-CODE prefix: `/today/read/:readingKey?taskId=`.
   static const readCodePrefix = '/today/read';
 
@@ -94,6 +97,9 @@ abstract final class AppRoutes {
 
   /// SCR-LESSON of [lessonKey].
   static String lesson(String lessonKey) => '$lessonsPrefix/$lessonKey';
+
+  /// SCR-TIP-DETAIL of [tipKey].
+  static String tip(String tipKey) => '$tipsPrefix/$tipKey';
 
   /// SCR-READ-CODE of [readingKey] for the Today READ_CODE task [taskId].
   static String readCode(String readingKey, {String? taskId}) =>
@@ -177,6 +183,7 @@ enum RouteAccess {
     RegExp(r'^/rubber-duck/[^/]+$'),
     RegExp(r'^/review/items/[^/]+$'),
     RegExp(r'^/lessons/[^/]+$'),
+    RegExp(r'^/tips/[^/]+$'),
   ];
 
   static const _onboardedPaths = {
@@ -197,6 +204,7 @@ enum RouteAccess {
     AppRoutes.training,
     AppRoutes.reviewItems,
     AppRoutes.lessonsPrefix,
+    AppRoutes.tipsPrefix,
   };
 
   static RouteAccess of(String path) {

@@ -41,7 +41,7 @@ final class CatalogChecks {
      * 없으면 개념 노트가 없는 것으로 본다 (docs/19 §3.14).
      */
     private static final Set<String> ALLOWED_FILE_KEYS =
-            Stream.concat(FILE_KEYS.stream(), Stream.of("conceptReadings", "lessons"))
+            Stream.concat(FILE_KEYS.stream(), Stream.of("conceptReadings", "lessons", "tips"))
                     .collect(Collectors.toUnmodifiableSet());
 
     private static final Set<String> RETIRED_KEYS =
@@ -52,7 +52,7 @@ final class CatalogChecks {
                     "curatedSourceIds",
                     "readingKeys");
 
-    /** 선택 키 {@code lessonKeys}까지 (docs/19 §3.1·§3.14). */
+    /** 선택 키 {@code lessonKeys}·{@code tipKeys}까지 (docs/19 §3.1·§3.9·§3.14). */
     private static final Set<String> RETIRED_ALLOWED_KEYS =
             Set.of(
                     "skillCodes",
@@ -60,7 +60,8 @@ final class CatalogChecks {
                     "conceptKeys",
                     "curatedSourceIds",
                     "readingKeys",
-                    "lessonKeys");
+                    "lessonKeys",
+                    "tipKeys");
 
     private static final List<String> LIST_KEYS =
             List.of("skillTrees", "roleTargets", "planTemplates", "reviewCards", "challenges");
@@ -110,6 +111,7 @@ final class CatalogChecks {
         context.retiredSourceIds = stringSet(values.get("curatedSourceIds"));
         context.retiredReadingKeys = stringSet(values.get("readingKeys"));
         context.retiredLessonKeys = stringSet(values.get("lessonKeys"));
+        context.retiredTipKeys = stringSet(values.get("tipKeys"));
     }
 
     private static void checkListedFiles(ValidationContext context) {
@@ -130,6 +132,7 @@ final class CatalogChecks {
         // conceptReadings는 생략할 수 있고 그때는 기본 경로를 읽는다 (docs/19 §3.1)
         listed.add(context.conceptReadingsFile());
         listed.addAll(context.fileList("lessons"));
+        listed.addAll(context.fileList("tips"));
         listed.addAll(context.fileList("checklists"));
         if (new HashSet<>(listed).size() != listed.size()) {
             context.error("CV-02", WHERE + "#files", "duplicate file entry");

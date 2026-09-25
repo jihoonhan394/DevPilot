@@ -187,6 +187,9 @@ devpilot:
     suspend-after-failures: 4
     lesson-helped-first-due-days: 1          # ADR-051 막혀서 도움받은 단위: 다음 날
     lesson-solved-alone-first-due-days: 7    # ADR-051 혼자 푼 단위: 7일 뒤 한 번
+  tips:                                     # 06 §5.12
+    experiment-minutes: 25                  # TIP-6 실험 후보의 표시 시간. 과제가 아니라 표시용이다
+
   rubberduck:
     max-turns: 5                            # 06 §9.5 RD-4
     stuck-turns-before-hint: 2             # RD-3

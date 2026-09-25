@@ -41,6 +41,48 @@ public class CursorCodec {
         return encodeRaw(Long.toString(sortKey), id);
     }
 
+    /**
+     * 콘텐츠 목록 cursor (docs/05 §1.5 마지막 행). 팁·용어는 DB 행이 아니라 UUID id가 없다 — {@code id}를 빈 문자열로 두고 유일한
+     * 콘텐츠 key 하나만으로 비교한다.
+     */
+    public String encodeContent(String key) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("v", VERSION);
+        payload.put("k", key);
+        payload.put("id", "");
+        return Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(jsonMapper.writeValueAsBytes(payload));
+    }
+
+    /**
+     * 콘텐츠 cursor → 그 key. cursor가 없으면 {@code null}이다.
+     *
+     * @throws BusinessValidationException 400 {@code INVALID_CURSOR}
+     */
+    public @Nullable String decodeContent(@Nullable String cursor) {
+        if (cursor == null || cursor.isEmpty()) {
+            return null;
+        }
+        if (cursor.length() > MAX_LENGTH) {
+            throw invalid();
+        }
+        try {
+            byte[] json = Base64.getUrlDecoder().decode(cursor.getBytes(StandardCharsets.US_ASCII));
+            JsonNode node = jsonMapper.readTree(json);
+            if (!node.isObject()
+                    || !node.path("v").isInt()
+                    || node.path("v").intValue() != VERSION
+                    || !node.path("k").isString()) {
+                throw invalid();
+            }
+            return node.path("k").stringValue();
+        } catch (IllegalArgumentException | JacksonException exception) {
+            throw new BusinessValidationException(
+                    ErrorCode.INVALID_CURSOR, "invalid cursor", exception);
+        }
+    }
+
     /** cursor가 없으면 {@code null}. */
     public @Nullable Position<Instant> decodeInstant(@Nullable String cursor) {
         return decode(cursor, Instant::parse);

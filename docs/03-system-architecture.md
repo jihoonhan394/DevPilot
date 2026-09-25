@@ -561,6 +561,8 @@ devpilot:
     easy-min-days: 4
     variant-after-failures: 2
     suspend-after-failures: 4
+  tips:
+    experiment-minutes: 25                  # 06 §5.12 TIP-6 실험 후보의 표시 시간. planner에 들어가지 않는다
   rubberduck:
     max-turns: 5                            # 06 §9.5 RD-4
     stuck-turns-before-hint: 2             # RD-3

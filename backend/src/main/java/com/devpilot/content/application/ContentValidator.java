@@ -45,6 +45,7 @@ public class ContentValidator {
         ConceptReadingChecks.check(context);
         LessonChecks.check(context);
         ChecklistChecks.check(context);
+        TipChecks.check(context);
         checkPlacementSmoke(context);
         return context.report();
     }

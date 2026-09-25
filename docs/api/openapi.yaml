@@ -1660,6 +1660,145 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - today
+  /api/v1/tips:
+    get:
+      operationId: todayListTips
+      parameters:
+      - in: query
+        name: series
+        required: false
+        schema:
+          type: string
+          enum:
+          - ERROR_READING
+          - RESOURCE
+          - LOGGING
+          - HTTP_INTEGRATION
+          - DATABASE
+          - OPERATIONS
+          - CONVENTION
+      - in: query
+        name: level
+        required: false
+        schema:
+          type: string
+          enum:
+          - BASIC
+          - PRACTICAL
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+          maxLength: 512
+          minLength: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CursorPageTipSummaryView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/tips/today:
+    get:
+      operationId: todayGetDailyTip
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyTipView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/tips/{tipKey}:
+    get:
+      operationId: todayGetTip
+      parameters:
+      - in: path
+        name: tipKey
+        required: true
+        schema:
+          type: string
+          maxLength: 120
+          minLength: 0
+          pattern: "^TIP\\.[A-Z0-9_]+\\.[A-Z0-9_]+\\.[0-9]{3}$"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyTipView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/tips/{tipKey}/feedback:
+    post:
+      operationId: todaySubmitTipFeedback
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: tipKey
+        required: true
+        schema:
+          type: string
+          maxLength: 120
+          minLength: 0
+          pattern: "^TIP\\.[A-Z0-9_]+\\.[A-Z0-9_]+\\.[0-9]{3}$"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TipFeedbackRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyTipView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
   /api/v1/today:
     get:
       operationId: todayGet
@@ -2400,6 +2539,83 @@ components:
       required:
       - items
       - nextCursor
+    CursorPageTipSummaryView:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TipSummaryView"
+        nextCursor:
+          type: string
+      required:
+      - items
+      - nextCursor
+    DailyTipView:
+      type: object
+      properties:
+        cause:
+          type: string
+        estimatedMinutes:
+          type: integer
+          format: int32
+        example:
+          type: string
+        experiment:
+          type: string
+        feedback:
+          type: string
+          enum:
+          - KNEW_IT
+          - LEARNED
+          - WILL_TRY
+        level:
+          type: string
+          enum:
+          - BASIC
+          - PRACTICAL
+        series:
+          type: string
+          enum:
+          - ERROR_READING
+          - RESOURCE
+          - LOGGING
+          - HTTP_INTEGRATION
+          - DATABASE
+          - OPERATIONS
+          - CONVENTION
+        shownOn:
+          type: string
+          format: date
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillRef"
+        sourceUrl:
+          type: string
+        symptom:
+          type: string
+        tipKey:
+          type: string
+        title:
+          type: string
+        whereToLook:
+          type: string
+      required:
+      - cause
+      - estimatedMinutes
+      - example
+      - experiment
+      - feedback
+      - level
+      - series
+      - shownOn
+      - skills
+      - sourceUrl
+      - symptom
+      - tipKey
+      - title
+      - whereToLook
     DashboardView:
       type: object
       properties:
@@ -5576,6 +5792,75 @@ components:
       - startDate
       - status
       - title
+    TipExperimentView:
+      type: object
+      properties:
+        estimatedMinutes:
+          type: integer
+          format: int32
+        experiment:
+          type: string
+        tipKey:
+          type: string
+        title:
+          type: string
+      required:
+      - estimatedMinutes
+      - experiment
+      - tipKey
+      - title
+    TipFeedbackRequest:
+      type: object
+      properties:
+        feedback:
+          type: string
+          enum:
+          - KNEW_IT
+          - LEARNED
+          - WILL_TRY
+      required:
+      - feedback
+    TipSummaryView:
+      type: object
+      properties:
+        estimatedMinutes:
+          type: integer
+          format: int32
+        feedback:
+          type: string
+          enum:
+          - KNEW_IT
+          - LEARNED
+          - WILL_TRY
+        level:
+          type: string
+          enum:
+          - BASIC
+          - PRACTICAL
+        series:
+          type: string
+          enum:
+          - ERROR_READING
+          - RESOURCE
+          - LOGGING
+          - HTTP_INTEGRATION
+          - DATABASE
+          - OPERATIONS
+          - CONVENTION
+        symptom:
+          type: string
+        tipKey:
+          type: string
+        title:
+          type: string
+      required:
+      - estimatedMinutes
+      - feedback
+      - level
+      - series
+      - symptom
+      - tipKey
+      - title
     TodayGenerateRequest:
       type: object
       properties:
@@ -5685,6 +5970,8 @@ components:
           format: date
         reviewTask:
           $ref: "#/components/schemas/ReviewTaskView"
+        tipExperiment:
+          $ref: "#/components/schemas/TipExperimentView"
       required:
       - availableMinutes
       - comebackMode
@@ -5697,6 +5984,7 @@ components:
       - mainTask
       - planDate
       - reviewTask
+      - tipExperiment
     UnitProgressView:
       type: object
       properties:

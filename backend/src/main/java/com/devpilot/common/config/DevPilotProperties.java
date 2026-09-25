@@ -43,6 +43,7 @@ public record DevPilotProperties(
         @Valid @NotNull Content content,
         @Valid @NotNull Ai ai,
         @Valid @NotNull Rubberduck rubberduck,
+        @Valid @NotNull Tips tips,
         @Valid @NotNull Training training,
         @Valid @NotNull Coach coach) {
 
@@ -575,6 +576,13 @@ public record DevPilotProperties(
             dontKnowPhrases = dontKnowPhrases == null ? List.of() : List.copyOf(dontKnowPhrases);
         }
     }
+
+    /**
+     * 오늘의 팁 설정 (docs/03 §9 {@code tips}).
+     *
+     * @param experimentMinutes TIP-6 실험 후보에 붙는 시간. <b>planner에 들어가지 않는</b> 표시용 값이다
+     */
+    public record Tips(@Positive int experimentMinutes) {}
 
     private static int requireBasisPoints(BigDecimal value, String name) {
         Objects.requireNonNull(value, name);

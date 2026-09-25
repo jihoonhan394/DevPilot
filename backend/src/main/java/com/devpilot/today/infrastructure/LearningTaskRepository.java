@@ -94,4 +94,17 @@ public interface LearningTaskRepository extends JpaRepository<LearningTask, UUID
                                                 com.devpilot.today.domain.TaskStatus.IN_PROGRESS))
             """)
     List<LearningTask> findOpenRedoOriginals(@Param("userId") UUID userId);
+
+    /** 최근 plan-day에 완료한 과제의 skill (docs/06 §5.12 묶음 2). */
+    @Query(
+            """
+            select distinct t.skillId from LearningTask t, DailyPlan p
+             where p.id = t.dailyPlanId and t.userId = :userId and t.skillId is not null
+               and t.status = com.devpilot.today.domain.TaskStatus.COMPLETED
+               and p.planDate >= :from and p.planDate < :today
+            """)
+    List<UUID> findRecentlyCompletedSkillIds(
+            @Param("userId") UUID userId,
+            @Param("from") LocalDate from,
+            @Param("today") LocalDate today);
 }

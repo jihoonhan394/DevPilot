@@ -8,6 +8,7 @@ import 'package:devpilot_app/core/widgets/badges.dart';
 import 'package:devpilot_app/core/widgets/screen_body.dart';
 import 'package:devpilot_app/features/today/data/today_models.dart';
 import 'package:devpilot_app/features/today/presentation/active_rubber_duck_tile.dart';
+import 'package:devpilot_app/features/today/presentation/daily_tip_card.dart';
 import 'package:devpilot_app/features/today/presentation/main_task_card.dart';
 import 'package:devpilot_app/features/today/presentation/today_actions.dart';
 import 'package:devpilot_app/features/today/presentation/today_state.dart';
@@ -33,6 +34,7 @@ class TodayGeneratedView extends StatelessWidget {
     final main = today.mainTask;
     final review = today.reviewTask;
     final footerWidget = footer;
+    final experiment = today.tipExperiment;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -49,6 +51,9 @@ class TodayGeneratedView extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           _ReviewTaskTile(task: review),
         ],
+        // 팁과 실험은 계획 아래다 — 오늘 할 일을 밀어내지 않는다 (docs/06 §5.12 TIP-6)
+        const DailyTipCard(),
+        if (experiment != null) TipExperimentTile(experiment: experiment),
         if (footerWidget != null) ...[const SizedBox(height: AppSpacing.xl), footerWidget],
       ],
     );

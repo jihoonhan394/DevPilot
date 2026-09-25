@@ -80,6 +80,15 @@ CURATED_REPO_KEY_RE = re.compile(r"^[a-z][a-z0-9-]{1,29}$")
 READING_KEY_RE = re.compile(r"^READ\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\.[0-9]{3}$")
 CONCEPT_READING_KEY_RE = re.compile(r"^DOC\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\.[0-9]{3}$")
 LESSON_KEY_RE = re.compile(r"^LESSON\.[A-Z][A-Z0-9_]*(\.[A-Z][A-Z0-9_]*)*\.[0-9]{3}$")
+# docs/19 §3.9: TIP.<SERIES>.<TOPIC>.NNN
+TIP_KEY_RE = re.compile(r"^TIP\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\.[0-9]{3}$")
+TIP_SERIES = {"ERROR_READING", "RESOURCE", "LOGGING", "HTTP_INTEGRATION", "DATABASE",
+              "OPERATIONS", "CONVENTION"}
+TIP_LEVELS = {"BASIC", "PRACTICAL"}
+# docs/19 §3.9 length table: field -> (min, max)
+TIP_TEXT_LIMITS = {"title": (5, 80), "symptom": (20, 500), "cause": (40, 800),
+                   "whereToLook": (20, 400), "experiment": (20, 500), "example": (20, 800)}
+
 # docs/19 §3.11: CHK.<A>.<B>[.<C>]
 CHECKLIST_KEY = re.compile(r"^CHK\.[A-Z][A-Z0-9_]*(\.[A-Z][A-Z0-9_]*){1,2}$")
 UNIT_KEY_RE = re.compile(r"^LESSON\.[A-Z][A-Z0-9_.]*\.[0-9]{3}\.U[0-9]{1,2}$")
@@ -172,6 +181,22 @@ def code_lines(text: str) -> list[str]:
     return hits
 
 
+def fenced_code_lines(text: str) -> list[str]:
+    """Lines inside the first fenced code block (docs/19 §3.9 CV-94)."""
+    lines = text.splitlines()
+    inside = False
+    body = []
+    for line in lines:
+        if line.strip().startswith("```"):
+            if inside:
+                break
+            inside = True
+            continue
+        if inside:
+            body.append(line)
+    return body
+
+
 def host_allowed(host: str) -> bool:
     host = (host or "").lower()
     return any(host == h or host.endswith("." + h) for h in TRUSTED_SOURCE_HOSTS)
@@ -246,12 +271,13 @@ def validate(content_dir: str):
         res.error("CV-01", "catalog.yaml", "catalogVersion must be an integer >= 1")
     files = catalog.get("files") or {}
     check_keys(files, {"skillTrees", "roleTargets", "planTemplates", "reviewCards", "challenges",
-                       "curatedSources", "curatedRepos", "conceptReadings", "lessons", "checklists"},
+                       "curatedSources", "curatedRepos", "conceptReadings", "lessons",
+                       "checklists", "tips"},
                {"skillTrees", "roleTargets", "planTemplates", "reviewCards", "challenges",
                 "curatedSources", "curatedRepos", "checklists"}, res, "catalog.yaml#files")
     retired = catalog.get("retired") or {}
     check_keys(retired, {"skillCodes", "challengeSeedKeys", "conceptKeys", "curatedSourceIds",
-                         "readingKeys"},
+                         "readingKeys", "lessonKeys", "tipKeys"},
                {"skillCodes", "challengeSeedKeys", "conceptKeys", "curatedSourceIds",
                 "readingKeys"}, res, "catalog.yaml#retired")
     retired_skills = set(retired.get("skillCodes") or [])
@@ -260,6 +286,7 @@ def validate(content_dir: str):
     retired_sources = set(retired.get("curatedSourceIds") or [])
     retired_readings = set(retired.get("readingKeys") or [])
     retired_lessons = set(retired.get("lessonKeys") or [])
+    retired_tips = set(retired.get("tipKeys") or [])
     diag_categories = catalog.get("diagnosticCategories") or []
     for c in diag_categories:
         if c not in SKILL_CATEGORIES:
@@ -282,6 +309,7 @@ def validate(content_dir: str):
     listed.append(concept_readings_rel)
     listed.extend(files.get("lessons") or [])
     listed.extend(files.get("checklists") or [])
+    listed.extend(files.get("tips") or [])
     if len(set(listed)) != len(listed):
         res.error("CV-02", "catalog.yaml#files", "duplicate file entry")
 
@@ -1087,6 +1115,94 @@ def validate(content_dir: str):
         if len(keys) > 1:
             res.warn("CV-113", "checklists",
                      f"{task_type}+{code} matches {len(keys)}: only {sorted(keys)[0]} is shown")
+
+    # ---- tips (CV-90..CV-96) ----------------------------------------------
+    # docs/19 §3.9. 저장하지 않는 콘텐츠다 — 사용자별로 남는 것은 user_daily_tip 한 행뿐이다(ADR-041).
+    tip_keys: set[str] = set()
+    seen_retired_tips: set[str] = set()
+    active_series: set[str] = set()
+    for trel in files.get("tips") or []:
+        path = os.path.join(content_dir, trel)
+        doc = load_yaml(path, res, trel)
+        if doc is None or not check_keys(doc, {"tips"}, {"tips"}, res, trel):
+            continue
+        entries = doc.get("tips") or []
+        if not isinstance(entries, list) or not entries:
+            res.error("CV-90", trel, "tips must be a non-empty list")
+            continue
+        for idx, tip in enumerate(entries):
+            where = f"{trel}#tips[{idx}]"
+            required = {"key", "series", "level", "skillCodes", "title", "symptom", "cause",
+                        "whereToLook", "estimatedMinutes"}
+            allowed = required | {"example", "experiment", "sourceUrl", "retired"}
+            if not check_keys(tip, allowed, required, res, where):
+                continue
+
+            key = tip.get("key")
+            if not isinstance(key, str) or not TIP_KEY_RE.match(key) or len(key) > 120:
+                res.error("CV-90", where, f"bad tip key {key!r}")
+                key = None
+            elif key in tip_keys:
+                res.error("CV-90", where, f"duplicate tip key {key}")
+            else:
+                tip_keys.add(key)
+            series = tip.get("series")
+            if series not in TIP_SERIES:
+                res.error("CV-90", where, f"unknown series {series!r}")
+            elif key is not None and key.split(".")[1] != series:
+                res.error("CV-90", where, "series must match the second segment of key")
+            if tip.get("level") not in TIP_LEVELS:
+                res.error("CV-90", where, f"unknown level {tip.get('level')!r}")
+
+            codes = tip.get("skillCodes") or []
+            if (not isinstance(codes, list) or not 1 <= len(codes) <= 4
+                    or len(set(codes)) != len(codes)):
+                res.error("CV-93", where, "skillCodes must be 1..4 distinct codes")
+            else:
+                for c in codes:
+                    if c not in codes_with_target:
+                        res.error("CV-93", where, f"skill without role target: {c}")
+
+            for field, (lo, hi) in TIP_TEXT_LIMITS.items():
+                value = tip.get(field)
+                if value is None and field in ("experiment", "example"):
+                    continue
+                if not isinstance(value, str) or not lo <= len(value.strip()) <= hi:
+                    res.error("CV-94", where, f"{field} length {lo}..{hi}")
+            example = tip.get("example")
+            if isinstance(example, str) and len(fenced_code_lines(example)) > 15:
+                res.error("CV-94", where, "example code must be at most 15 lines")
+            minutes = tip.get("estimatedMinutes")
+            if not is_int(minutes) or not 1 <= minutes <= 10:
+                res.error("CV-94", where, "estimatedMinutes must be an integer 1..10")
+
+            # CV-91: 근거가 없는 팁은 확인할 길이 없는 이야기가 된다
+            source_url = tip.get("sourceUrl")
+            if source_url is None and tip.get("experiment") is None:
+                res.error("CV-91", where, "tip needs sourceUrl or experiment")
+            elif source_url is not None:
+                u = urlparse(str(source_url))
+                if u.scheme != "https" or not host_allowed(u.hostname or ""):
+                    res.error("CV-92", where,
+                              f"sourceUrl must be https on a trusted host ({u.hostname})")
+
+            if tip.get("retired") is True:
+                if key is not None:
+                    seen_retired_tips.add(key)
+                    if key not in retired_tips:
+                        res.error("CV-95", where, f"retired tip is not in retired.tipKeys: {key}")
+            else:
+                if isinstance(series, str):
+                    active_series.add(series)
+                if key is not None and key in retired_tips:
+                    res.error("CV-95", where, f"tip is in retired.tipKeys but not retired: {key}")
+
+    for key in sorted(retired_tips - seen_retired_tips):
+        res.error("CV-95", "catalog.yaml#retired.tipKeys",
+                  f"retired tipKey has no retired tip: {key}")
+    if files.get("tips"):
+        for series in sorted(TIP_SERIES - active_series):
+            res.warn("CV-96", "tips", f"series has no active tip: {series}")
 
     # ---- lessons (CV-126..CV-136) -----------------------------------------
     # docs/19 §3.14. 가르치는 단계의 콘텐츠다 — 빠진 칸이 있으면 화면의 걸음 하나가 통째로 빈다.

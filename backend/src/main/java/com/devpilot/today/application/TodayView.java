@@ -19,6 +19,8 @@ import org.jspecify.annotations.Nullable;
  * @param reviewTask REVIEW 과제가 없으면 null
  * @param earlierMainTasks mainTask를 뺀 같은 날의 다른 학습 과제 — 재생성이 남긴 지난 main과 §5.6의 추가 과제 (sortOrder
  *     ASC). REVIEW는 들어가지 않는다
+ * @param tipExperiment "해 볼게요"로 표시한 팁의 실험 후보 1건 (docs/06 §5.12 TIP-6). 없으면 null. <b>과제가 아니다</b> —
+ *     planner에 들어가지 않는다
  */
 public record TodayView(
         UUID dailyPlanId,
@@ -31,7 +33,8 @@ public record TodayView(
         Instant generatedAt,
         @Nullable MainTaskView mainTask,
         @Nullable ReviewTaskView reviewTask,
-        List<MainTaskView> earlierMainTasks) {
+        List<MainTaskView> earlierMainTasks,
+        @Nullable TipExperimentView tipExperiment) {
 
     public TodayView {
         earlierMainTasks = List.copyOf(earlierMainTasks);

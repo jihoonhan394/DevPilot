@@ -3589,14 +3589,14 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 | 시점 | API |
 |---|---|
-| 진입(`?from=today` 또는 오늘의 팁) | `GET /tips/today` — 본문 전체(`DailyTipView`)와 현재 `feedback` |
+| 진입 | `GET /tips/{tipKey}` — 본문 전체(`DailyTipView`)와 현재 `feedback` (`05` §20.4a) |
 | 칩 선택 | `POST /tips/{tipKey}/feedback` `{feedback}` (IK) → 201(처음) / 200(이미 있음) `DailyTipView` |
 
-  - **데이터 한계**: 팁 본문 전체를 주는 endpoint는 `GET /tips/today` 하나다(`05` §20에 팁 단건 조회가 없다). 그래서 이 화면은 **오늘의 팁**에만 본문을 채운다. 경로의 `tipKey`가 오늘의 팁과 다르면 전체 영역에 `tip.detail.notToday` + "오늘의 팁 보기"(→ `/tips/{오늘의 tipKey}`)와 "목록으로"(→ `/tips`)를 두고, 요약(제목·증상)만 아는 경우에는 그 두 줄을 함께 보인다. SCR-NOT-FOUND로 보내지 않는다 — 없는 팁이 아니라 지금 본문을 받을 수 없는 팁이다.
+  - 지난 팁도 본문을 그대로 연다(`05` §20.4a). 다만 **아직 받아 본 적 없는 팁은 고를 수 없다** — 그런 팁은 `shownOn`이 `null`이라 칩 대신 `tip.feedback.notShownYet`을 보인다.
 - **상태**
   - Loading: 제목 + 본문 skeleton.
   - Empty: 해당 없음.
-  - Error: `404 RESOURCE_NOT_FOUND`(오늘 더 보여 줄 팁이 없음) → 전체 영역 `tip.detail.none` + "Today로". `400 VALIDATION_FAILED`(`Pattern` — 경로 형식이 틀림) → SCR-NOT-FOUND. 그 외 공통.
+  - Error: `404 RESOURCE_NOT_FOUND`(없는 `tipKey`) → SCR-NOT-FOUND. `400 VALIDATION_FAILED`(`Pattern` — 경로 형식이 틀림) → SCR-NOT-FOUND. 그 외 공통. 오늘 더 보여 줄 팁이 없을 때(`GET /tips/today` 404)는 SCR-TODAY 카드 자리를 비우는 것으로 끝나고, `tip.detail.none`은 목적지 없이 직접 들어온 경우에만 쓴다.
   - 칩 선택 실패: 토스트(§5.1) + 칩을 원래대로 되돌린다. `404`면 `tip.feedback.notShownYet`으로 바꾼다.
   - AI: 해당 없다(이 화면은 AI를 쓰지 않는다). Offline: 공통 — 읽기는 메모리의 값으로 되고 칩은 비활성.
 - **행동·검증**: 칩은 한 번에 하나만 선택된다. 전송 중에는 세 칩 모두 비활성. 뒤로 가면 SCR-TODAY가 팁 카드를 다시 읽어 라벨을 갱신한다. `?from=today`이고 히스토리가 없으면 `←`는 `/today`로 간다.
@@ -3618,7 +3618,6 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `tip.feedback.willTry` | 내일 Today에 '직접 해 보기'로 올려 둘게요. |
 | `tip.feedback.knewIt` | 이 팁은 다시 보여 주지 않을게요. |
 | `tip.feedback.notShownYet` | 아직 받아 본 팁이 아니라 여기서는 고를 수 없어요. |
-| `tip.detail.notToday` | 지금은 오늘 받은 팁만 자세히 볼 수 있어요. |
 | `tip.detail.none` | 오늘 보여 드릴 팁이 없어요. |
 
 #### SCR-TIPS
@@ -3649,7 +3648,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
   - 필터는 둘이다 — **시리즈**(`TipSeries` 7개 + "전체")와 **난이도**(`TipLevel` 2개 + "전체"). 고르면 쿼리(`?series=&level=`)와 요청 파라미터에 함께 반영하고, 바꾸면 cursor를 버리고 첫 페이지부터 다시 읽는다.
   - 정렬은 서버 정렬(`tipKey` ASC)을 그대로 쓴다. 클라이언트가 다시 정렬하지 않는다.
   - **"더 보기"는 버튼이다.** 스크롤 자동 로드가 아니라 목록 끝의 `nextCursor` 버튼으로 다음 페이지를 읽는다 — 짧게 읽는 목록이라 끝이 있는 편이 낫다. (스크롤 자동 로드를 쓰는 목록과 다르다는 뜻이고, 나머지 cursor 규칙은 §6.6과 같다.)
-  - 행을 누르면 SCR-TIP-DETAIL로 간다. **본문은 오늘의 팁에만 있으므로**(위 데이터 한계) 오늘의 팁이 아닌 행에는 `tips.list.todayOnly`를 한 줄 보이고, 그래도 열면 상세가 `tip.detail.notToday` 상태로 열린다. 오늘의 팁 행에는 `tips.list.todayBadge` 배지를 붙인다.
+  - 행을 누르면 SCR-TIP-DETAIL로 간다. 지난 팁도 본문이 그대로 열린다(`05` §20.4a). 오늘의 팁 행에는 `tips.list.todayBadge` 배지를 붙인다.
   - 은퇴한 팁은 목록에 없다(`retired = false`만, `05` §20.4). 이미 본 팁은 목록에 남는다.
 - **데이터**: 진입·필터 변경 `GET /tips?series=&level=&limit=&cursor=` → `CursorPage<TipSummaryView>`. 오늘의 팁 배지를 위해 진입 시 `GET /tips/today`를 한 번 더 읽는다(404면 배지 없이 목록만 보인다).
 - **상태**: Loading — 행 skeleton 4개. Empty — `tips.list.empty`(필터 결과 0건이면 `tips.list.emptyFilter` + "필터 지우기"). Error — 공통. 페이지 추가 로드 실패 → 목록 끝 "다시 불러오기" 행. `400 INVALID_CURSOR` → §5.1대로 첫 페이지부터 다시. Offline — 공통. AI — 해당 없음.
@@ -3664,7 +3663,6 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `tips.list.filter.clear` | 필터 지우기 |
 | `tips.list.more` | 더 보기 |
 | `tips.list.todayBadge` | 오늘의 팁 |
-| `tips.list.todayOnly` | 자세한 내용은 오늘의 팁으로 받은 날 볼 수 있어요. |
 | `tips.list.empty` | 아직 팁이 없어요. |
 | `tips.list.emptyFilter` | 조건에 맞는 팁이 없어요. |
 

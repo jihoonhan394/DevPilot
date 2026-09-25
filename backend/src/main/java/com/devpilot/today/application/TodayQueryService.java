@@ -52,6 +52,7 @@ public class TodayQueryService {
     private final SkillCatalogQueryService skillCatalogQueryService;
     private final ReviewQueryService reviewQueryService;
     private final ChecklistRegistry checklistRegistry;
+    private final TipExperimentFinder tipExperimentFinder;
     private final Clock clock;
 
     public TodayQueryService(
@@ -60,12 +61,14 @@ public class TodayQueryService {
             SkillCatalogQueryService skillCatalogQueryService,
             ReviewQueryService reviewQueryService,
             ChecklistRegistry checklistRegistry,
+            TipExperimentFinder tipExperimentFinder,
             Clock clock) {
         this.dailyPlanRepository = dailyPlanRepository;
         this.learningTaskRepository = learningTaskRepository;
         this.skillCatalogQueryService = skillCatalogQueryService;
         this.reviewQueryService = reviewQueryService;
         this.checklistRegistry = checklistRegistry;
+        this.tipExperimentFinder = tipExperimentFinder;
         this.clock = clock;
     }
 
@@ -152,7 +155,8 @@ public class TodayQueryService {
                 plan.getGeneratedAt(),
                 main == null ? null : toMainView(main, skills, redoSourceTypes),
                 review,
-                earlier);
+                earlier,
+                tipExperimentFinder.find(plan.getUserId(), plan.getPlanDate()).orElse(null));
     }
 
     /**

@@ -1,4 +1,4 @@
-package com.devpilot.learning.domain;
+package com.devpilot.common.domain;
 
 /**
  * 오늘의 팁 묶음 (docs/04 §3). 저장하지 않는다 — {@code content/tips/*.yaml}의 {@code series}이고 {@code GET

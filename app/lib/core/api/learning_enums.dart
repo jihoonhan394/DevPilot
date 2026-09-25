@@ -176,3 +176,48 @@ enum LearningEventType {
   planReplanned,
   unknown,
 }
+
+/// What the reader says after the tip of the day (docs/04 §3, docs/06 §5.12 TIP-4).
+///
+/// `learned` also makes a review card — the one place where reading turns into something that
+/// comes back (TIP-5).
+enum TipFeedback {
+  @JsonValue('KNEW_IT')
+  knewIt,
+  @JsonValue('LEARNED')
+  learned,
+  @JsonValue('WILL_TRY')
+  willTry,
+  unknown;
+
+  /// The three buttons of the tip card, without [unknown].
+  static const known = [knewIt, learned, willTry];
+}
+
+/// Tip groups (docs/04 §3, docs/19 §3.9). The second segment of a `tipKey`.
+enum TipSeries {
+  @JsonValue('ERROR_READING')
+  errorReading,
+  @JsonValue('RESOURCE')
+  resource,
+  @JsonValue('LOGGING')
+  logging,
+  @JsonValue('HTTP_INTEGRATION')
+  httpIntegration,
+  @JsonValue('DATABASE')
+  database,
+  @JsonValue('OPERATIONS')
+  operations,
+  @JsonValue('CONVENTION')
+  convention,
+  unknown,
+}
+
+/// How basic a tip is (docs/04 §3). Starter tracks see `basic` first (docs/06 §5.12).
+enum TipLevel {
+  @JsonValue('BASIC')
+  basic,
+  @JsonValue('PRACTICAL')
+  practical,
+  unknown,
+}

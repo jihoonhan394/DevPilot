@@ -1,5 +1,7 @@
 package com.devpilot.content.application;
 
+import com.devpilot.common.domain.TipLevel;
+import com.devpilot.common.domain.TipSeries;
 import com.devpilot.common.web.AxisLevels;
 import com.devpilot.plan.domain.MilestonePhase;
 import com.devpilot.plan.domain.PlanTemplate;
@@ -15,6 +17,7 @@ import com.devpilot.today.domain.CompleteQuestion;
 import com.devpilot.today.domain.ConceptReading;
 import com.devpilot.today.domain.CuratedReading;
 import com.devpilot.today.domain.CuratedRepo;
+import com.devpilot.today.domain.DailyTip;
 import com.devpilot.today.domain.Lesson;
 import com.devpilot.today.domain.LessonExample;
 import com.devpilot.today.domain.LessonProblem;
@@ -239,6 +242,32 @@ final class CatalogMapping {
             }
         }
         return checklists;
+    }
+
+    /** 오늘의 팁 (docs/19 §3.9). 은퇴한 것도 넣는다 — 이미 받은 사람이 본문을 다시 연다 (docs/05 §20.4a). */
+    static List<DailyTip> tips(List<Map<String, Object>> documents) {
+        List<DailyTip> tips = new ArrayList<>();
+        for (Map<String, Object> document : documents) {
+            for (Object value : RawYaml.asList(document.get("tips"))) {
+                Map<String, Object> tip = RawYaml.asMap(value);
+                tips.add(
+                        new DailyTip(
+                                (String) tip.get("key"),
+                                TipSeries.valueOf((String) tip.get("series")),
+                                TipLevel.valueOf((String) tip.get("level")),
+                                strings(tip.get("skillCodes")),
+                                (String) tip.get("title"),
+                                (String) tip.get("symptom"),
+                                (String) tip.get("cause"),
+                                (String) tip.get("example"),
+                                (String) tip.get("whereToLook"),
+                                (String) tip.get("experiment"),
+                                (String) tip.get("sourceUrl"),
+                                (Integer) tip.get("estimatedMinutes"),
+                                Boolean.TRUE.equals(tip.get("retired"))));
+            }
+        }
+        return tips;
     }
 
     /** 개념 노트 (docs/19 §3.14). 은퇴한 것도 넣는다 — 지난 학습 이벤트가 그 key를 가리킨다 (docs/19 §8.2). */

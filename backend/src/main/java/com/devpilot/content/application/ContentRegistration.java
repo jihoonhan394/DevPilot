@@ -6,6 +6,7 @@ import com.devpilot.review.application.SeedCardRegistry;
 import com.devpilot.today.application.ChecklistRegistry;
 import com.devpilot.today.application.ConceptReadingRegistry;
 import com.devpilot.today.application.CuratedReadingRegistry;
+import com.devpilot.today.application.DailyTipRegistry;
 import com.devpilot.today.application.LessonRegistry;
 import com.devpilot.today.domain.ConceptReading;
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ class ContentRegistration {
     private final CuratedReadingRegistry curatedReadingRegistry;
     private final ConceptReadingRegistry conceptReadingRegistry;
     private final LessonRegistry lessonRegistry;
+    private final DailyTipRegistry dailyTipRegistry;
     private final ChecklistRegistry checklistRegistry;
 
     ContentRegistration(
@@ -38,12 +40,14 @@ class ContentRegistration {
             CuratedReadingRegistry curatedReadingRegistry,
             ConceptReadingRegistry conceptReadingRegistry,
             LessonRegistry lessonRegistry,
+            DailyTipRegistry dailyTipRegistry,
             ChecklistRegistry checklistRegistry) {
         this.planTemplateRegistry = planTemplateRegistry;
         this.seedCardRegistry = seedCardRegistry;
         this.curatedReadingRegistry = curatedReadingRegistry;
         this.conceptReadingRegistry = conceptReadingRegistry;
         this.lessonRegistry = lessonRegistry;
+        this.dailyTipRegistry = dailyTipRegistry;
         this.checklistRegistry = checklistRegistry;
     }
 
@@ -63,6 +67,7 @@ class ContentRegistration {
         }
         registerConceptReadings(content, files);
         lessonRegistry.register(CatalogMapping.lessons(documents(content, catalog, "lessons")));
+        dailyTipRegistry.register(CatalogMapping.tips(documents(content, catalog, "tips")));
         checklistRegistry.register(
                 CatalogMapping.checklists(documents(content, catalog, "checklists")));
         return new Registered(
@@ -70,7 +75,8 @@ class ContentRegistration {
                 curatedReadingRegistry.all().size(),
                 conceptReadingRegistry.all().size(),
                 lessonRegistry.all().size(),
-                checklistRegistry.all().size());
+                checklistRegistry.all().size(),
+                dailyTipRegistry.all().size());
     }
 
     /**
@@ -106,5 +112,10 @@ class ContentRegistration {
 
     /** 등록 개수 (로그용). */
     record Registered(
-            int seedCards, int readings, int conceptReadings, int lessons, int checklists) {}
+            int seedCards,
+            int readings,
+            int conceptReadings,
+            int lessons,
+            int checklists,
+            int tips) {}
 }
