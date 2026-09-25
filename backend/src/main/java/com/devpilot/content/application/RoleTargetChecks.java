@@ -80,6 +80,30 @@ final class RoleTargetChecks {
         context.targets.putAll(byRole.getOrDefault(TargetRole.JAVA_BACKEND.name(), Map.of()));
         collectTargetsBySkill(context, byRole);
         checkPrerequisiteReadiness(context);
+        checkWhyItMattersCoverage(context);
+    }
+
+    /**
+     * CV-89: 어느 트랙에서든 {@code MUST}인 non-root skill에는 {@code whyItMatters}가 있어야 한다 (docs/19
+     * §3.2·§7.5).
+     *
+     * <p>그 문장이 과제 카드 맨 위에 그대로 붙는다(docs/05 §8.1) — MUST인데 비어 있으면 가장 자주 나오는 과제가 이유 없이 나온다.
+     */
+    private static void checkWhyItMattersCoverage(ValidationContext context) {
+        Set<String> mustAnywhere = new TreeSet<>();
+        context.targetsBySkill.forEach(
+                (code, targets) -> {
+                    for (Map<String, Object> target : targets) {
+                        if ("MUST".equals(target.get("priority"))) {
+                            mustAnywhere.add(code);
+                        }
+                    }
+                });
+        for (String code : mustAnywhere) {
+            if (!context.skillsWithWhyItMatters.contains(code)) {
+                context.error("CV-89", "skillTrees", "MUST skill needs whyItMatters: " + code);
+            }
+        }
     }
 
     /** skill code → 트랙별 role target. 진단 준비(CV-59)는 어느 트랙에서든 MUST면 된다. */

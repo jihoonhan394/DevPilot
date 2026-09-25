@@ -48,6 +48,9 @@ final class ValidationContext {
 
     final Set<String> nonRootCodes = new HashSet<>();
 
+    /** {@code whyItMatters}가 있는 non-root skill (CV-89, docs/19 §3.2). */
+    final Set<String> skillsWithWhyItMatters = new HashSet<>();
+
     /** JAVA_BACKEND role target: skill code → 원본. 기본 트랙 기준 검사(CV-18 등)가 쓴다. */
     final Map<String, Map<String, Object>> targets = new LinkedHashMap<>();
 

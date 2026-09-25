@@ -38,7 +38,7 @@ public class SkillDetailQueryService {
     private final SkillPrerequisiteRepository skillPrerequisiteRepository;
     private final UserSkillStateRepository userSkillStateRepository;
     private final PlanSkillTargetProvider planSkillTargetProvider;
-    private final SkillWhyItMattersProvider whyItMattersProvider;
+    private final WhyItMattersRegistry whyItMattersRegistry;
     private final LearningStageQueryService learningStageQueryService;
     private final PlanningLevelPolicy planningLevelPolicy;
 
@@ -47,14 +47,14 @@ public class SkillDetailQueryService {
             SkillPrerequisiteRepository skillPrerequisiteRepository,
             UserSkillStateRepository userSkillStateRepository,
             PlanSkillTargetProvider planSkillTargetProvider,
-            SkillWhyItMattersProvider whyItMattersProvider,
+            WhyItMattersRegistry whyItMattersRegistry,
             LearningStageQueryService learningStageQueryService,
             DevPilotProperties properties) {
         this.skillRepository = skillRepository;
         this.skillPrerequisiteRepository = skillPrerequisiteRepository;
         this.userSkillStateRepository = userSkillStateRepository;
         this.planSkillTargetProvider = planSkillTargetProvider;
-        this.whyItMattersProvider = whyItMattersProvider;
+        this.whyItMattersRegistry = whyItMattersRegistry;
         this.learningStageQueryService = learningStageQueryService;
         this.planningLevelPolicy = new PlanningLevelPolicy(properties.skill().selfAssessmentCap());
     }
@@ -84,7 +84,7 @@ public class SkillDetailQueryService {
                 new SkillRef(skill.getId(), skill.getCode(), skill.getName(), skill.getCategory()),
                 parentCode(skill),
                 skill.getDescription(),
-                whyItMattersProvider.whyItMatters(skill.getCode()).orElse(null),
+                whyItMattersRegistry.find(skill.getCode()).orElse(null),
                 skill.getMinutesPerLevelStep(),
                 prerequisiteCodes(skillId),
                 evidence,

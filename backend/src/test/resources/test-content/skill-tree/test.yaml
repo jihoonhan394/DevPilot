@@ -9,6 +9,7 @@ skills:
     category: JAVA
     parent: JAVA
     description: checked/unchecked 예외의 차이와 원인 보존을 이해하고 처리 계층을 고른다.
+    whyItMatters: 예외를 삼키면 실패한 요청이 성공처럼 지나가고, 로그에도 아무것도 남지 않는다.
     minutesPerLevelStep: 90
     prerequisites: []
   - code: JAVA.COLLECTION
@@ -16,6 +17,7 @@ skills:
     category: JAVA
     parent: JAVA
     description: List, Set, Map 구현체의 특성과 equals/hashCode 계약을 이해한다.
+    whyItMatters: 자료구조를 잘못 고르면 데이터가 늘었을 때만 느려져서, 적은 데이터로 하는 시험에서는 드러나지 않는다.
     minutesPerLevelStep: 90
     prerequisites: []
   - code: SPRING
@@ -39,6 +41,7 @@ skills:
     category: DATABASE
     parent: DATABASE
     description: B-tree 인덱스와 복합 인덱스 컬럼 순서가 조회 성능에 주는 영향을 설명한다.
+    whyItMatters: 조건에 맞지 않는 인덱스를 만들어 두면 실행 계획은 전체 스캔 그대로인데 쓰기만 느려진다.
     minutesPerLevelStep: 120
     prerequisites: []
   - code: WEB_HTTP
@@ -50,6 +53,7 @@ skills:
     category: WEB_HTTP
     parent: WEB_HTTP
     description: HTTP 메서드, 상태 코드, 헤더의 의미를 알고 API 응답을 설계한다.
+    whyItMatters: 상태 코드를 짐작으로 고르면 실패한 요청이 200으로 돌아가고, 부르는 쪽은 성공으로 처리한다.
     minutesPerLevelStep: 60
     prerequisites: []
   - code: NETWORK
@@ -80,6 +84,7 @@ skills:
     category: TESTING
     parent: TESTING
     description: JUnit 5로 단위 테스트를 작성하고 파라미터화 테스트를 쓴다.
+    whyItMatters: 테스트가 무엇을 확인하는지 읽히지 않으면, 깨졌을 때 고치는 대신 지우게 된다.
     minutesPerLevelStep: 60
     prerequisites: []
   - code: DEVOPS
@@ -91,6 +96,7 @@ skills:
     category: DEVOPS
     parent: DEVOPS
     description: 컨테이너 이미지를 만들고 실행하며 레이어 캐시를 이해한다.
+    whyItMatters: 내 컴퓨터에서만 되는 실행 환경을 남기면 서버에 올리는 날 무엇이 다른지 하나씩 맞춰 보게 된다.
     minutesPerLevelStep: 90
     prerequisites: []
   - code: SECURITY
@@ -125,5 +131,6 @@ skills:
     category: EXPLANATION
     parent: EXPLANATION
     description: 만든 프로젝트의 문제, 선택, 결과를 2분 안에 설명한다.
+    whyItMatters: 한 일을 순서대로 늘어놓기만 하면 듣는 사람은 무엇이 어려웠고 무엇을 내가 정했는지 알 수 없다.
     minutesPerLevelStep: 60
     prerequisites: []

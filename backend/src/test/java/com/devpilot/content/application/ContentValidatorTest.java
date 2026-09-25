@@ -800,6 +800,59 @@ class ContentValidatorTest {
                         issue -> "CV-96".equals(issue.rule()) && issue.message().endsWith(series));
     }
 
+    /**
+     * CV-89 (docs/19 §3.2·§7.5): MUST인 skill의 한 문장은 과제 카드 맨 위에 그대로 붙는다 — 비어 있으면 가장 자주 나오는 과제가 이유 없이
+     * 나온다.
+     */
+    @Test
+    void shouldRejectAMustSkillWithoutWhyItMatters() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        Map<String, Object> mustSkill =
+                fixture.skills().stream()
+                        .filter(skill -> "JAVA.EXCEPTION".equals(skill.get("code")))
+                        .findFirst()
+                        .orElseThrow();
+        mustSkill.remove("whyItMatters");
+
+        assertThat(validator.validate(fixture.content).errors())
+                .anyMatch(issue -> "CV-89".equals(issue.rule()));
+    }
+
+    /** SHOULD·LATER인 skill에는 없어도 된다 — 자주 나오지 않는 과제까지 한 문장씩 강요하지 않는다. */
+    @Test
+    void shouldAllowASkillWithoutWhyItMattersWhenItIsNeverMust() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        for (Map<String, Object> target : fixture.targets()) {
+            if ("JAVA.EXCEPTION".equals(target.get("skill"))) {
+                target.put("priority", "SHOULD");
+            }
+        }
+        fixture.trackTarget("test-starter.yaml", "JAVA.EXCEPTION").put("priority", "SHOULD");
+        fixture.trackTarget("test-integration.yaml", "JAVA.EXCEPTION").put("priority", "SHOULD");
+        fixture.skills().stream()
+                .filter(skill -> "JAVA.EXCEPTION".equals(skill.get("code")))
+                .findFirst()
+                .orElseThrow()
+                .remove("whyItMatters");
+
+        assertThat(validator.validate(fixture.content).errors())
+                .noneMatch(issue -> "CV-89".equals(issue.rule()));
+    }
+
+    /** root skill은 이 문장을 가질 수 없다 — 과제가 붙는 자리가 아니다 (CV-88). */
+    @Test
+    void shouldRejectWhyItMattersOnARootSkill() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        fixture.skills().stream()
+                .filter(skill -> !skill.containsKey("parent"))
+                .findFirst()
+                .orElseThrow()
+                .put("whyItMatters", "이 문장은 root skill에 있을 수 없고 길이는 충분히 길다.");
+
+        assertThat(validator.validate(fixture.content).errors())
+                .anyMatch(issue -> "CV-88".equals(issue.rule()));
+    }
+
     static final class Fixture {
 
         final RawContent content;

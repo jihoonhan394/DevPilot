@@ -126,7 +126,7 @@ content/
 | `category` | SkillCategory | Y | 13개 enum (`04` §3) | `skill.category` |
 | `parent` | string | root: 없음, non-root: Y | 존재하는 code, 같은 category, `code == parent + "." + SEGMENT` | `skill.parent_id` (code → id) |
 | `description` | string | Y | 10~300자, 1~2문장 | `skill.description` (READING task 설명에도 쓰임, `06` §5.3) |
-| `whyItMatters` | string | non-root 중 **어느 트랙에서든 MUST**인 skill: Y, 그 밖: 선택 | 20~200자, 한 문장. root는 가질 수 없다 (CV-88·CV-89) | 저장하지 않는다. `ContentSeeder`가 메모리에 등록하고 `GET /skills/{skillId}`·Today 과제 카드가 한 줄로 보인다 (`05` §6·§8.1) |
+| `whyItMatters` | string | non-root 중 **어느 트랙에서든 MUST**인 skill: Y, 그 밖: 선택 | 20~200자, 한 문장. root는 가질 수 없다 (CV-88·CV-89) | 저장하지 않는다. `ContentSeeder`가 `WhyItMattersRegistry`에 등록하고 `GET /skills/{skillId}`·Today 과제 카드가 한 줄로 보인다 (`05` §6·§8.1) |
 | `minutesPerLevelStep` | int | non-root: Y, root: 선택(기본 120) | non-root **60**~2000 (§7.5 작성 규칙을 CV-15가 강제), root 10~2000 | `skill.minutes_per_level_step` |
 | `prerequisites` | string[] | non-root: Y(빈 목록 허용), root: 금지 | 존재하는 non-root code, 자기 자신·중복 금지, 순환 금지 | `skill_prerequisite(skill_id, prerequisite_skill_id)` |
 | — | | | | `skill.catalog_version = catalogVersion`, `skill.active = true` |
@@ -146,7 +146,7 @@ skills:
     prerequisites: [SPRING.AOP_PROXY, DATABASE.TRANSACTION]
 ```
 
-`whyItMatters`는 **왜 이걸 지금 배우는지**를 한 문장으로 답한다. 과제 카드 맨 위에 그대로 붙으므로(`05` §8.1) "중요하다", "많이 쓰인다" 같은 빈 문장을 쓰지 않고 **모르면 무엇이 잘못되는지**를 쓴다. 작성 규칙은 §7.5.
+`whyItMatters`는 **왜 이걸 지금 배우는지**를 한 문장으로 답한다. 개념 노트(§3.14)에도 같은 이름의 필드가 있지만 **다른 값이다** — 노트 것은 그 노트를 왜 읽는지고, 이것은 그 기술을 왜 하는지다. 과제 카드 맨 위에 그대로 붙으므로(`05` §8.1) "중요하다", "많이 쓰인다" 같은 빈 문장을 쓰지 않고 **모르면 무엇이 잘못되는지**를 쓴다. 작성 규칙은 §7.5.
 
 ### 3.3 `role-targets/*.yaml`
 

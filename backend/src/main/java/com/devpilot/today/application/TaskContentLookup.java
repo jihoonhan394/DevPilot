@@ -1,10 +1,9 @@
 package com.devpilot.today.application;
 
+import com.devpilot.skill.application.WhyItMattersRegistry;
 import com.devpilot.today.application.TodayView.ChecklistView;
 import com.devpilot.today.domain.Checklist;
-import com.devpilot.today.domain.Lesson;
 import com.devpilot.today.domain.TaskType;
-import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 
@@ -18,11 +17,12 @@ import org.springframework.stereotype.Component;
 class TaskContentLookup {
 
     private final ChecklistRegistry checklistRegistry;
-    private final LessonRegistry lessonRegistry;
+    private final WhyItMattersRegistry whyItMattersRegistry;
 
-    TaskContentLookup(ChecklistRegistry checklistRegistry, LessonRegistry lessonRegistry) {
+    TaskContentLookup(
+            ChecklistRegistry checklistRegistry, WhyItMattersRegistry whyItMattersRegistry) {
         this.checklistRegistry = checklistRegistry;
-        this.lessonRegistry = lessonRegistry;
+        this.whyItMattersRegistry = whyItMattersRegistry;
     }
 
     /** 이 과제에 붙는 체크리스트. skill이 없거나 맞는 목록이 없으면 null. */
@@ -40,16 +40,12 @@ class TaskContentLookup {
     }
 
     /**
-     * 이 기술을 왜 하는지 한 줄 (docs/05 §6.4·§8.1). 노트가 없으면 null이라 화면이 줄 자체를 숨긴다.
+     * 이 기술을 왜 하는지 한 줄 (docs/05 §6.4·§8.1, docs/19 §3.2). 값이 없는 skill이면 null이라 화면이 줄 자체를 숨긴다.
      *
-     * <p>SCR-SKILL-DETAIL의 같은 줄과 같은 값이다 — 한 문장을 두 곳에서 다르게 적으면 어느 쪽이 맞는지 알 수 없다.
+     * <p>SCR-SKILL-DETAIL의 같은 줄과 <b>같은 출처</b>다 — 한 문장을 두 곳에서 다르게 적으면 어느 쪽이 맞는지 알 수 없다. 개념 노트에도 같은
+     * 이름의 필드가 있지만 그것은 그 노트를 왜 읽는지이고, 이건 그 기술을 왜 하는지다.
      */
     @Nullable String whyItMatters(@Nullable String skillCode) {
-        return skillCode == null
-                ? null
-                : Optional.ofNullable(skillCode)
-                        .flatMap(lessonRegistry::findBySkillCode)
-                        .map(Lesson::whyItMatters)
-                        .orElse(null);
+        return skillCode == null ? null : whyItMattersRegistry.find(skillCode).orElse(null);
     }
 }

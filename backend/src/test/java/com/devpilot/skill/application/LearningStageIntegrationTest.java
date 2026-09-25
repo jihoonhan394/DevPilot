@@ -139,6 +139,25 @@ class LearningStageIntegrationTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
     }
 
+    /**
+     * {@code whyItMatters}는 <b>기술 트리</b>의 문장이다 (docs/19 §3.2, BL-CNT-21).
+     *
+     * <p>개념 노트에도 같은 이름의 필드가 있지만 그것은 그 노트를 왜 읽는지이고, 이건 그 기술을 왜 하는지다. 한때 노트 쪽을 읽고 있었다 — 두 문장이 다르므로 어느
+     * 쪽을 보고 있는지 여기서 못 박는다.
+     */
+    @Test
+    void shouldTakeWhyItMattersFromTheSkillTreeNotTheLesson() throws Exception {
+        TestUser user = onboardedOwner();
+        UUID skillId =
+                jdbc.queryForObject(
+                        "select id from devpilot.skill where code = 'JAVA.EXCEPTION'", UUID.class);
+
+        JsonNode detail = api.body(api.get(user, SKILL, skillId).andExpect(status().isOk()));
+
+        assertThat(detail.get("whyItMatters").asString())
+                .isEqualTo("예외를 삼키면 실패한 요청이 성공처럼 지나가고, 로그에도 아무것도 남지 않는다.");
+    }
+
     @Test
     void shouldReturnNotFoundForAnUnknownSkill() throws Exception {
         TestUser user = onboardedOwner();

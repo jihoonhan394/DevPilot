@@ -67,6 +67,7 @@ final class CatalogMapping {
                                 SkillCategory.valueOf((String) skill.get("category")),
                                 (String) skill.get("parent"),
                                 (String) skill.get("description"),
+                                (String) skill.get("whyItMatters"),
                                 step == null
                                         ? DEFAULT_STEP
                                         : Math.toIntExact(RawYaml.longValue(step)),

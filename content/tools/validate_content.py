@@ -386,9 +386,7 @@ def validate(content_dir: str):
             res.error("CV-14", where, "name length 1..200")
         if not str_len_ok(s["description"], 10, 300):
             res.error("CV-14", where, "description length 10..300")
-        # CV-88: whyItMatters is optional here (CV-89 coverage for MUST skills is not
-        # implemented yet — the seed skills predate the field), but when present it must be
-        # a 20..200 char line and root skills must not have one.
+        # CV-88: 20..200자 한 문장이고 root skill에는 없다. CV-89는 role target을 다 읽은 뒤에 본다.
         if "whyItMatters" in s:
             if parent is None:
                 res.error("CV-88", where, "root skill must not have whyItMatters")
@@ -443,6 +441,11 @@ def validate(content_dir: str):
                 stack.append((nxt, iter(sorted(skills_by_code[nxt].get("prerequisites") or []))))
 
     non_root = {c for c, s in skills_by_code.items() if s.get("parent") is not None}
+    # CV-89: 어느 트랙에서든 MUST인 non-root skill에는 whyItMatters가 반드시 있다 (19 §3.2·§7.5)
+    why_it_matters: set[str] = {
+        c for c, s in skills_by_code.items()
+        if s.get("parent") is not None and s.get("whyItMatters")
+    }
 
     # ---- role targets (CV-20..CV-24) --------------------------------------
     targets_by_role: dict[str, dict[str, dict]] = defaultdict(dict)
@@ -495,6 +498,15 @@ def validate(content_dir: str):
         missing = sorted(non_root - set(targets_by_role[role]))
         for sk in missing:
             res.error("CV-21", f"roleTargets[{role}]", f"missing role target for {sk}")
+    # CV-89: MUST인 skill은 과제 카드 맨 위에 붙을 한 문장이 있어야 한다 (19 §7.5)
+    must_anywhere = {
+        sk
+        for targets in targets_by_role.values()
+        for sk, t in targets.items()
+        if t["priority"] == "MUST"
+    }
+    for sk in sorted(must_anywhere - why_it_matters):
+        res.error("CV-89", "skillTrees", f"MUST skill needs whyItMatters: {sk}")
     tgt = targets_by_role["JAVA_BACKEND"]
 
     # CV-18 prerequisite readiness reachability (06 §5.2, §5.4)

@@ -157,8 +157,8 @@ final class SkillTreeChecks {
     /**
      * CV-88: {@code whyItMatters}가 있으면 20~200자 한 문장이고 root skill에는 없다(docs/19 §3.2·§7.5).
      *
-     * <p>CV-89(어느 트랙에서든 MUST인 non-root skill에는 반드시 있다)는 아직 넣지 않는다 — seed skill이 이 필드보다 먼저
-     * 만들어졌다(BL-CNT-21에서 채운 뒤 켠다). 기준 검증기({@code content/tools/validate_content.py})도 같다.
+     * <p>CV-89(어느 트랙에서든 MUST인 non-root skill에는 반드시 있다)는 role target을 다 읽어야 알 수 있어 {@link
+     * RoleTargetChecks}가 마지막에 본다.
      */
     private static void checkWhyItMatters(
             ValidationContext context, String where, Map<String, Object> skill, boolean nonRoot) {
@@ -167,8 +167,14 @@ final class SkillTreeChecks {
         }
         if (!nonRoot) {
             context.error("CV-88", where, "root skill must not have whyItMatters");
-        } else if (!RawYaml.strLenOk(skill.get("whyItMatters"), MIN_WHY, MAX_WHY)) {
+            return;
+        }
+        if (!RawYaml.strLenOk(skill.get("whyItMatters"), MIN_WHY, MAX_WHY)) {
             context.error("CV-88", where, "whyItMatters length " + MIN_WHY + ".." + MAX_WHY);
+            return;
+        }
+        if (skill.get("code") instanceof String code) {
+            context.skillsWithWhyItMatters.add(code);
         }
     }
 
