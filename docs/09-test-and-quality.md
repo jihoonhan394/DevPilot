@@ -315,7 +315,7 @@ V10,10,GOOD,CORRECT,SELF_EXPLAIN,GOOD,,5,4
 
 **`FiveDayStudyThreadSimulationTest` — 닷새 시뮬레이션 (ADR-053·ADR-054, `06` §5.13·§12).** 규칙 하나하나는 vector가 덮는다. 이 테스트가 보는 것은 **여러 날을 이어 붙였을 때 무엇이 쌓이는가**다 — 매일 `POST /today/generate`로 main을 받아 실제로 끝내고(개념 익히기면 단위를 푼다), 그 결과가 다음 날 제안에 어떻게 반영되는지 표로 찍는다.
 
-- 확인하는 것: 손댄 skill 수 ≤ 3(이어감), 첫 `CHALLENGE` 앞에 같은 skill의 개념 익히기가 있었는지(가르친 뒤 시험), 마친 단위가 줄지 않는지(진행을 잃지 않음), `learnedUnitCount` > 0, `topicSwitchesPerWeek` ≤ 2
+- 확인하는 것: 손댄 skill 수 ≤ 3(이어감), 첫 `CHALLENGE` 앞에 같은 skill의 개념 익히기가 있었는지(가르친 뒤 시험), 마친 단위가 줄지 않는지(진행을 잃지 않음), `learnedUnitCount` > 0, `topicSwitchesPerWeekMilli` ≤ 2000 (닷새에 2회)
 - **`MetricsCalculator`(S6)가 생기기 전까지 `06` §12 네 지표의 실행 가능한 정의**다. 지표 이름을 그대로 쓴다
 - ADR-054를 찾아낸 테스트다. 규칙 vector는 전부 통과하는데 닷새를 이어 보니 첫 단계 skill이 한 번도 main이 되지 못했다 — **한 번의 판정으로는 안 보이는 결함**이 이 자리에서 나온다
 
@@ -789,6 +789,7 @@ DB 제약 자체는 `InvariantConstraintIntegrationTest`에서 JDBC로 직접 �
 
 | 테스트 | 계층 | 확인 |
 |---|---|---|
+| `MetricsCalculatorTest` | unit | `06` §12 vector 전부(MT-V1~MT-V12, `06-12-metrics.yaml`). 분모 0 → null, 쉰 날을 건너뛴 주제 전환, 약한 축 동률의 선언 순서 tiebreak를 따로 확인한다. `MetricsInput`을 채우는 쪽은 S5(BL-EVD-01)다 |
 | `ContentValidatorTest` | unit | `19` §4.1 CV-80~CV-87(코드 읽기)·CV-62(시간 제한)·CV-88~CV-89(`whyItMatters`)·CV-90~CV-96(오늘의 팁)·CV-100~CV-106(용어)·CV-110~CV-113(과제 체크리스트) 각각 1케이스 이상. 오류 주입 목록은 `19` §4.3 표(`repo` 미실재 → CV-84, `path`의 `..`·내림차순 `lines` → CV-85 2건, 양수 아닌 `lines` → CV-85, 없는 skill code·40자 미만 `question` → CV-86, key 중복 → CV-83, `pinnedCommit: null` → CV-82 WARN). 은퇴 규칙(`19` §8.2): `retired: true`인데 key가 `retired.readingKeys`에 없음 → CV-83, `retired.readingKeys`에 있는데 reading이 지워짐 → CV-83, 은퇴하지 않은 reading의 key가 `retired.readingKeys`에 있음 → CV-83. 은퇴한 reading만 남은 저장소는 CV-87 WARN 없음 |
 | `CuratedReadingRegistryTest` | unit | 테스트 콘텐츠 적재, key 조회, 없는 key → empty, 비활성 skill code는 `skills`에서 뺀다(`05` §19.7). `retired: true` reading도 key로 조회되고 `retired = true`다. 제안 후보 목록에는 없다(`06` §5.3) |
 | `ReadingControllerTest` | web slice | `readingKey` 패턴 위반 → 400 `VALIDATION_FAILED`(field `readingKey`, `Pattern`), 형식은 맞지만 없는 key → 404 `RESOURCE_NOT_FOUND`, 토큰 없음 → 401. **응답 JSON의 필드 집합이 `CuratedReadingView`·`CuratedRepoView` 정의와 정확히 같다 — 코드 본문을 담을 필드가 없다.** `startLine ≤ endLine`, `pinnedCommit`·`cloneHint` 포함 |

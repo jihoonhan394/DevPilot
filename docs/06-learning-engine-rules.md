@@ -1374,6 +1374,8 @@ AI 출력 파싱 직후 finding마다 순서대로 적용한다.
 
 기간: 기본 최근 28 plan-day. 주간: ISO week(월요일 시작, 사용자 plan-day 기준). 결과는 정수다.
 
+**분모가 0이면 0이 아니라 null이다.** 비율 지표(`independentSolveRateBp`·`averageHintLevelMilli`·`recallSuccessRateBp`·`taughtBeforeTestedBp`)는 셀 것이 없으면 값이 없다 — "0%"와 "잴 것이 없었다"는 다른 말이고, 0으로 적으면 아무것도 안 한 주가 실패한 주로 보인다.
+
 | 지표 | 계산 | 단위 |
 |---|---|---|
 | `completedSessions` | COMPLETED learning_session 수 | 개 |
@@ -1389,18 +1391,18 @@ AI 출력 파싱 직후 finding마다 순서대로 적용한다.
 | `learnedUnitCount` | 기간 내 `UNIT_SOLVED`의 **서로 다른** `(lessonKey, unitKey)` 수. 같은 단위를 다시 풀어도 1 (`04` §6) | 개 |
 | `completedLessonCount` | 그 사용자가 **모든 단위를 한 번 이상 마친** 노트 수 (기간 누적이 아니라 시점 값, `05` §21.9 `DONE`) | 개 |
 | `taughtBeforeTestedBp` | 기간 내 `CHALLENGE_SUBMITTED`가 있는 skill 중, **그 첫 제출보다 앞선** 같은 skill 노트의 `UNIT_SOLVED`가 있는 skill의 비율. 노트가 없는 skill은 분모에서 뺀다(가르칠 것이 없었다). 분모 0이면 null | bp |
-| `topicSwitchesPerWeek` | 기간 내 main task의 skill이 **바뀐 횟수** ÷ 주 수. 낮을수록 한 주제를 끝까지 간 것이다(§5.13). main이 없던 plan-day는 건너뛰고 센다 | 회/주 |
+| `topicSwitchesPerWeekMilli` | 기간 내 main task의 skill이 **바뀐 횟수** ÷ 주 수, `floorDiv(switches × 1000, weeks)`. 낮을수록 한 주제를 끝까지 간 것이다(§5.13). main이 없던 plan-day는 건너뛰고 앞뒤를 잇는다 — 쉰 날이 주제를 바꾼 것으로 세어지면 안 된다. `weeks = max(1, ceilDiv(days, 7))`. **단위가 milli인 이유**: 정수 "회/주"로 자르면 5회를 4주로 나눈 1회와 8회를 나눈 2회가 같은 칸에 들어가 추세가 안 보인다(`averageHintLevelMilli`와 같은 규칙, §1 N-6) | 1/1000 회/주 |
 | `riskLevel`, `ratioBp` | 기간 마지막 snapshot | — |
 | `weakThinkingAxes` | axis별 `MISSED` 비율(`MISSED / 전체 observation`) 상위 3개, observation 3개 이상인 axis만 | 목록 |
 | `requirementCoverageBp` | 최근 분석한 요구사항 문서(로드맵 비교에 붙여넣은 로드맵·기술 목록) 5개의 REQUIRED 항목 중 fit = READY 비율 | bp |
 
-**배우고 있나를 보는 네 지표 (§5.13과 짝)** — 위 네 줄(`learnedUnitCount`·`completedLessonCount`·`taughtBeforeTestedBp`·`topicSwitchesPerWeek`)은 **"이 도구를 쓰면 실제로 느는가"** 를 재려고 둔 것이다. 나머지 지표는 대부분 AI 평가 결과의 비율이라, 문제를 안 풀면 아예 값이 없고 배우는 구간이 통째로 안 보인다.
+**배우고 있나를 보는 네 지표 (§5.13과 짝)** — 위 네 줄(`learnedUnitCount`·`completedLessonCount`·`taughtBeforeTestedBp`·`topicSwitchesPerWeekMilli`)은 **"이 도구를 쓰면 실제로 느는가"** 를 재려고 둔 것이다. 나머지 지표는 대부분 AI 평가 결과의 비율이라, 문제를 안 풀면 아예 값이 없고 배우는 구간이 통째로 안 보인다.
 
 - `taughtBeforeTestedBp`가 낮으면 **문제부터 내고 있다.** 100%가 목표가 아니다 — 이미 아는 skill(KNOWLEDGE ≥ 2)은 노트를 건너뛰는 것이 맞다(TH-5). 낮아지는 **추세**가 신호다
-- `topicSwitchesPerWeek`가 높으면 **매일 주제가 바뀌고 있다.** 닷새에 2 이하가 정상 범위다(§5.13 시뮬레이션 기준)
+- `topicSwitchesPerWeekMilli`가 높으면 **매일 주제가 바뀌고 있다.** 닷새에 2회(= `2000`) 이하가 정상 범위다(§5.13 시뮬레이션 기준)
 - `learnedUnitCount`가 0인데 `studyMinutes`가 크면 **시간은 쓰는데 배우지는 않는 구간**이다. 문제만 풀고 있거나 막혀 있다
 
-`MetricsCalculator`는 S6에 만든다. 그전까지 이 네 값의 실행 가능한 정의는 `FiveDayStudyThreadSimulationTest`(`09` §5.4)다 — 닷새를 실제로 돌려 같은 값을 뽑는다.
+순수 규칙 `evidence.domain.MetricsCalculator`(2026-09-25)가 이 표의 계산을 전부 갖고 있고 vector는 `06-12-metrics.yaml`(MT-V1~MT-V12)이다. **세는 일은 호출자가 한다** — `MetricsInput`을 채워 넣는 `WeeklyReviewService`와 `weekly_review.metrics_json` 저장은 S5(BL-EVD-01~04, `evidence` 모듈)다. 그전까지 이 네 값을 실제 기록으로 보는 길은 `FiveDayStudyThreadSimulationTest`(`09` §5.4)뿐이다 — 닷새를 실제로 돌려 같은 값을 뽑는다.
 
 ---
 

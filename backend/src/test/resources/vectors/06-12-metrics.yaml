@@ -1,0 +1,74 @@
+# source: 06 §12 "지표", rows: 12
+# 적지 않은 입력은 0·빈 목록이다. days 를 적지 않으면 28 (기본 기간).
+# 기대값을 적지 않은 지표는 이 행에서 확인하지 않는다.
+vectors:
+  - id: MT-V1
+    case: 아무것도 하지 않은 기간 — 0이 아니라 null인 것들
+    expected:
+      completedSessions: 0
+      learnedUnitCount: 0
+      independentSolveRateBp: null
+      averageHintLevelMilli: null
+      recallSuccessRateBp: null
+      taughtBeforeTestedBp: null
+      topicSwitchesPerWeekMilli: 0
+  - id: MT-V2
+    case: 혼자 푼 비율 — 7/9 는 내림해서 7777bp
+    independentSolveCount: 7
+    ratedAttemptCount: 9
+    expected: { independentSolveRateBp: 7777 }
+  - id: MT-V3
+    case: 힌트를 한 번도 안 봤으면 평균 0
+    hintOrdinals: [0, 0, 0]
+    expected: { averageHintLevelMilli: 0 }
+  - id: MT-V4
+    case: 힌트 평균 — (0+1+3)/3 = 1.333
+    hintOrdinals: [0, 1, 3]
+    expected: { averageHintLevelMilli: 1333 }
+  - id: MT-V5
+    case: 다시 떠올린 비율 — 5/8
+    recallGoodOrEasyCount: 5
+    reviewAnswerCount: 8
+    expected: { recallSuccessRateBp: 6250 }
+  - id: MT-V6
+    case: 같은 단위를 여러 번 풀어도 하나다
+    solvedUnits:
+      - [LESSON.SPRING.TX.001, LESSON.SPRING.TX.001.U1]
+      - [LESSON.SPRING.TX.001, LESSON.SPRING.TX.001.U2]
+      - [LESSON.SPRING.TX.001, LESSON.SPRING.TX.001.U1]
+    expected: { learnedUnitCount: 2 }
+  - id: MT-V7
+    case: 가르친 뒤에 물었나 — 노트가 있는 skill 4개 중 3개
+    taughtBeforeTestedSkills: 3
+    testedSkillsWithLesson: 4
+    expected: { taughtBeforeTestedBp: 7500 }
+  - id: MT-V8
+    case: 노트가 있는 skill을 하나도 풀지 않았으면 잴 것이 없다
+    taughtBeforeTestedSkills: 0
+    testedSkillsWithLesson: 0
+    expected: { taughtBeforeTestedBp: null }
+  - id: MT-V9
+    case: 닷새 내내 같은 주제 — 바뀐 적 없다
+    days: 5
+    mainSkillCodesByDay: [A, A, A, A, A]
+    expected: { topicSwitchesPerWeekMilli: 0 }
+  - id: MT-V10
+    case: 닷새에 두 번 바뀌면 주 2회 (§5.13 정상 범위의 경계)
+    days: 5
+    mainSkillCodesByDay: [A, A, B, B, C]
+    expected: { topicSwitchesPerWeekMilli: 2000 }
+  - id: MT-V11
+    case: 쉰 날은 건너뛰고 앞뒤를 잇는다 — 사흘 쉬고 같은 주제로 돌아오면 바뀐 것이 아니다
+    days: 28
+    mainSkillCodesByDay: [A, A, A, B]
+    expected: { topicSwitchesPerWeekMilli: 250 }
+  - id: MT-V12
+    case: 약한 축 — MISSED 비율 상위 3개, 관찰 3개 미만은 뺀다
+    axisObservations:
+      CORRECTNESS: [4, 5]
+      SECURITY: [3, 5]
+      PERFORMANCE: [2, 5]
+      CONCURRENCY: [1, 5]
+      OBSERVABILITY: [2, 2]
+    expected:
+      weakThinkingAxes: [CORRECTNESS, SECURITY, PERFORMANCE]
