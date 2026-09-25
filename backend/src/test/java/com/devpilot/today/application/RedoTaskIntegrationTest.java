@@ -6,8 +6,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.devpilot.testsupport.ApiTestSupport;
 import com.devpilot.testsupport.IntegrationTest;
+import com.devpilot.testsupport.TestApi;
 import com.devpilot.testsupport.TestUser;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,9 +30,12 @@ class RedoTaskIntegrationTest extends ApiTestSupport {
     private static final String DUCK = "/api/v1/rubber-duck";
     private static final int AVAILABLE_MINUTES = 90;
 
+    /** 첫 milestone 안에서 PRACTICE challenge가 있는 skill (test-content). */
+    private static final String SKILL_WITH_CHALLENGE = "TESTING.JUNIT";
+
     @Test
     void shouldProposeRedoOfAChallengeFinishedDaysAgo() throws Exception {
-        TestUser user = onboardedOwner();
+        TestUser user = challengeUser();
         JsonNode origin = completedChallengeTask(user);
 
         JsonNode redo = redoTask(user);
@@ -57,7 +62,7 @@ class RedoTaskIntegrationTest extends ApiTestSupport {
     @Test
     void shouldLockAiAssistForTheRedoTargetWhileTheRedoIsOpen() throws Exception {
         // RE-5: 막히는 것은 그 대상 하나뿐이다
-        TestUser user = onboardedOwner();
+        TestUser user = challengeUser();
         JsonNode origin = completedChallengeTask(user);
         String challengeId = origin.path("challengeId").asString();
         redoTask(user);
@@ -90,7 +95,7 @@ class RedoTaskIntegrationTest extends ApiTestSupport {
     @Test
     void shouldRequireTheAnswerBeforeCompletingARedo() throws Exception {
         // RE-6: 답이 없으면 완료할 수 없다
-        TestUser user = onboardedOwner();
+        TestUser user = challengeUser();
         completedChallengeTask(user);
         String redoId = redoTask(user).path("id").asString();
         patch(user, redoId, Map.of("status", "IN_PROGRESS", "version", 0))
@@ -112,7 +117,7 @@ class RedoTaskIntegrationTest extends ApiTestSupport {
     @Test
     void shouldRejectTheRedoAnswerOnOtherTaskTypes() throws Exception {
         // RE-V15: 재현 과제가 아닌 곳에 답을 붙일 자리는 없다
-        TestUser user = onboardedOwner();
+        TestUser user = challengeUser();
         String reviewTaskId =
                 api.generateToday(user, AVAILABLE_MINUTES, "NORMAL")
                         .path("reviewTask")
@@ -134,7 +139,7 @@ class RedoTaskIntegrationTest extends ApiTestSupport {
     @Test
     void shouldCountAnAnswerOfTrueAsIndependentImplementationEvidence() throws Exception {
         // RE-8
-        TestUser user = onboardedOwner();
+        TestUser user = challengeUser();
         JsonNode origin = completedChallengeTask(user);
         String redoId = redoTask(user).path("id").asString();
         patch(user, redoId, Map.of("status", "IN_PROGRESS", "version", 0))
@@ -156,7 +161,7 @@ class RedoTaskIntegrationTest extends ApiTestSupport {
     @Test
     void shouldTurnAFailedRedoIntoAReviewCardInsteadOfEvidence() throws Exception {
         // RE-7
-        TestUser user = onboardedOwner();
+        TestUser user = challengeUser();
         JsonNode origin = completedChallengeTask(user);
         String redoId = redoTask(user).path("id").asString();
         patch(user, redoId, Map.of("status", "IN_PROGRESS", "version", 0))
@@ -188,7 +193,7 @@ class RedoTaskIntegrationTest extends ApiTestSupport {
      */
     @Test
     void shouldOfferTheSameOriginAgainAfterAFailedRedo() throws Exception {
-        TestUser user = onboardedOwner();
+        TestUser user = challengeUser();
         JsonNode origin = completedChallengeTask(user);
         String firstRedoId = redoTask(user).path("id").asString();
         patch(user, firstRedoId, Map.of("status", "IN_PROGRESS", "version", 0))
@@ -208,8 +213,24 @@ class RedoTaskIntegrationTest extends ApiTestSupport {
         assertThat(second.path("description").asString()).startsWith("8일 전에 한 과제입니다.");
     }
 
-    /** main이 CHALLENGE인 하루를 만들고 끝낸다. 재현 후보가 되는 원본이다 (RE-1). */
+    /** 문제가 있는 skill에 집중해 둔 사용자. 그래야 §5.3 2번(CHALLENGE)이 main으로 잡힌다. */
+    private TestUser challengeUser() throws Exception {
+        TestUser user = TestUser.owner();
+        Map<String, Object> request = TestApi.onboardingRequest();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> learningGoal = (Map<String, Object>) request.get("learningGoal");
+        learningGoal.put("focusSkillCodes", new ArrayList<>(List.of(SKILL_WITH_CHALLENGE)));
+        api.onboard(user, request);
+        return user;
+    }
+
+    /**
+     * main이 CHALLENGE인 하루를 만들고 끝낸다. 재현 후보가 되는 원본이다 (RE-1).
+     *
+     * <p>노트를 먼저 뗀다 — 남아 있으면 제안이 개념 익히기에서 멈춘다(docs/06 §5.13 TH-5).
+     */
     private JsonNode completedChallengeTask(TestUser user) throws Exception {
+        finishAllLessonUnits(user);
         JsonNode main = api.generateToday(user, AVAILABLE_MINUTES, "NORMAL").path("mainTask");
         assertThat(main.path("taskType").asString()).isEqualTo("CHALLENGE");
         String taskId = main.path("id").asString();

@@ -1,4 +1,6 @@
-# 테스트 challenge: PRACTICE 1 + DIAGNOSTIC 1 (JAVA). 합성 코드·문장이다
+# 테스트 challenge: PRACTICE 2 + DIAGNOSTIC 1 (JAVA). 합성 코드·문장이다
+# PRACTICE 하나는 첫 milestone skill(TESTING.JUNIT)에 둔다 — 지금 단계에 문제가 하나도 없으면
+# §5.3 2번 분기를 실제와 다르게 못 보게 된다(docs/06 §5.2 ADR-054).
 challenges:
   - seedKey: PRACTICE.SPRING.TRANSACTION.L2.001
     purpose: PRACTICE
@@ -35,6 +37,40 @@ challenges:
       QUESTION_ONLY: 재고 감소가 실패하는 순간 주문 저장은 어느 범위 안에서 실행되고 있을까요?
       CONCEPT_HINT: 선언적 트랜잭션이 어디에서 시작되고 같은 클래스 안의 호출이 어떻게 처리되는지 떠올려 보세요.
       DIRECTION: 트랜잭션이 시작되는 위치를 호출 흐름에서 찾고 두 작업이 그 범위 안에 들어오게 구조를 바꿔 보세요.
+  - seedKey: PRACTICE.TESTING.JUNIT.L1.001
+    purpose: PRACTICE
+    skills: [TESTING.JUNIT]
+    difficulty: 1
+    estimatedMinutes: 20
+    isTransfer: false
+    title: 실패를 먼저 보이는 테스트
+    scenario: |-
+      주문 취소가 배송 시작 뒤에도 되는 버그가 신고됐다. 고치기 전에 그 상황을 드러내는 테스트가 없다.
+    prompt: |-
+      1. 지금 코드에서 실패하는 테스트를 먼저 쓰세요.
+      2. 그 테스트가 무엇을 확인하는지 이름으로 드러내세요.
+      3. 고친 뒤 그 테스트가 통과하는 것을 보이세요.
+    constraints:
+      - 테스트를 지우거나 약하게 만들지 않는다
+    expectedConcepts:
+      - 실패하는 테스트 먼저
+      - 경계 조건
+    rubric:
+      - id: R1
+        criterion: 고치기 전에 실패하는 테스트를 만든다
+        weightBp: 6000
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 테스트 이름이 확인하는 조건을 드러낸다
+        weightBp: 4000
+        axis: EXPLANATION
+    commonMistakes:
+      - 고친 뒤에 통과하는 테스트만 쓴다
+    transferTargets: []
+    hints:
+      QUESTION_ONLY: 지금 이 버그를 드러내려면 어떤 상태에서 무엇을 호출해야 할까요?
+      CONCEPT_HINT: 테스트가 먼저 실패해야 그 테스트가 무엇을 지키는지 알 수 있습니다.
+      DIRECTION: 배송이 시작된 주문을 만들고 취소를 호출했을 때의 결과를 단언해 보세요.
   - seedKey: DIAGNOSTIC.JAVA.L3.001
     purpose: DIAGNOSTIC
     skills: [JAVA.EXCEPTION, JAVA.COLLECTION]

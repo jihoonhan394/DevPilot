@@ -11,6 +11,8 @@ const petclinicReadingKey = 'READ.PETCLINIC.CONTROLLER_SLICE.001';
 const petclinicCommit = '818c4136ea971c21674525f9053de0d9c7ad8cfe';
 const gitConceptReadingKey = 'DOC.GIT.BRANCHING.001';
 
+const lessonReadingKey = 'LESSON.JAVA.COLLECTION.001';
+
 ReadingView testReading({
   String key = petclinicReadingKey,
   String license = 'Apache-2.0',
@@ -83,10 +85,27 @@ ReadingView testConceptReading({String key = gitConceptReadingKey, bool retired 
       ),
     );
 
+/// 개념 노트를 가리키는 `READING` 과제의 자료 (docs/06 §5.13). 내용은 노트 화면이 따로 읽는다.
+ReadingView testLessonReading({String key = lessonReadingKey}) => ReadingView(
+  key: key,
+  kind: ReadingKind.lesson,
+  skills: const [
+    SkillRef(
+      id: 'b1000000-0000-4000-8000-00000000000b',
+      code: 'JAVA.COLLECTION',
+      name: '컬렉션',
+      category: SkillCategory.java,
+    ),
+  ],
+  estimatedMinutes: 22,
+  retired: false,
+);
+
 final class FakeReadingRepository implements ReadingRepository {
   final readings = <String, ReadingView>{
     petclinicReadingKey: testReading(),
     gitConceptReadingKey: testConceptReading(),
+    lessonReadingKey: testLessonReading(),
   };
   final fetched = <String>[];
 

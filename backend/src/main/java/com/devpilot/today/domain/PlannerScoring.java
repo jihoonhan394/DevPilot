@@ -75,23 +75,32 @@ public final class PlannerScoring {
      * ASC)으로 바꾼다. 결과는 code ASC.
      */
     public List<String> selectCandidates(CandidateInput input) {
-        Set<String> union = new TreeSet<>();
-        union.addAll(input.currentMilestoneSkills());
-        union.addAll(input.nextMilestoneSkills());
-        // due review가 있는 skill은 **이미 손대 본 것만** 넣는다 (ADR-044). 씨앗 카드는 아직 배우지 않은
-        // 뒷 단계 skill에도 미리 배정되어 있어서, 거르지 않으면 이 경로로 순서가 다시 뚫린다.
-        // 거른 카드도 복습 자체는 그대로 나온다 — REVIEW 과제는 main task 선정과 별개다(§5.6).
-        for (String code : input.dueSkills()) {
-            SkillProfile profile = input.skills().get(code);
-            if (profile != null && profile.lastPracticedAt() != null) {
-                union.add(code);
+        // 지금 단계가 먼저다 (ADR-044·ADR-054). 뒷 단계와 복습 due skill은 **지금 단계에 후보가
+        // 하나도 남지 않았을 때만** 본다 — 넣어 두면 점수가 뒤섞여 "지금 단계"라는 말이 무의미해진다.
+        Set<String> union = new TreeSet<>(input.currentMilestoneSkills());
+        if (usable(union, input).isEmpty()) {
+            union.addAll(input.nextMilestoneSkills());
+        }
+        if (usable(union, input).isEmpty()) {
+            // 씨앗 카드는 아직 배우지 않은 뒷 단계 skill에도 미리 배정된다. 거른 skill의 복습 자체는
+            // 그대로 나온다 — REVIEW 과제는 main task 선정과 별개다(§5.6).
+            for (String code : input.dueSkills()) {
+                SkillProfile profile = input.skills().get(code);
+                if (profile != null && profile.lastPracticedAt() != null) {
+                    union.add(code);
+                }
             }
         }
         // 계획 전체의 MUST/SHOULD를 여기 넣지 않는다 (ADR-044). 그러면 9개 단계의 skill이 첫날부터
         // 후보가 되고, 점수가 중요도·격차로 정렬하니 결과가 "중요도 순"이 된다 — 어디에 쓰는지
         // 모르는 채로 배우게 된다. 후보는 지금 단계와 그 다음 단계로 제한한다.
+        return List.copyOf(usable(union, input));
+    }
+
+    /** 제외 규칙과 선행 조건을 적용한 뒤 남는 후보 (§5.2 "제외"). */
+    private Set<String> usable(Set<String> codes, CandidateInput input) {
         Set<String> candidates = new TreeSet<>();
-        for (String code : union) {
+        for (String code : codes) {
             SkillProfile profile = input.skills().get(code);
             if (profile == null || excluded(code, profile, input)) {
                 continue;
@@ -103,7 +112,7 @@ public final class PlannerScoring {
                 candidates.add(code);
             }
         }
-        return List.copyOf(candidates);
+        return candidates;
     }
 
     private static boolean excluded(String code, SkillProfile profile, CandidateInput input) {
@@ -425,21 +434,21 @@ public final class PlannerScoring {
         return Optional.empty();
     }
 
-    /** 3a 이어하기(적용되면 3b 없음) → 3b 이틀 연속 → 3b 하루. */
+    /**
+     * 3 이어하기 (docs/06 §5.5). 어제 끝내지 못한 skill에만 가중치를 준다.
+     *
+     * <p>ADR-053으로 {@code FATIGUE_*}(같은 skill을 이어 하면 감점)는 폐지했다. 배우는 구간에는 이어 하는 것이 맞고, 그 구간이 너무 길어지는
+     * 것은 §5.13 TH-4의 연속 일수 상한이 막는다.
+     */
     private Optional<AppliedModifier> historyModifier(ScoreInput input) {
         RecentMain yesterday = input.yesterday();
         if (yesterday == null || !yesterday.skillCode().equals(input.skillCode())) {
             return Optional.empty();
         }
-        if (yesterday.status() == TaskStatus.IN_PROGRESS
-                || yesterday.status() == TaskStatus.DEFERRED) {
-            return Optional.of(modifier(PlannerModifier.CONTINUATION));
-        }
-        RecentMain dayBefore = input.dayBefore();
-        if (dayBefore != null && dayBefore.skillCode().equals(input.skillCode())) {
-            return Optional.of(modifier(PlannerModifier.FATIGUE_TWO_DAYS));
-        }
-        return Optional.of(modifier(PlannerModifier.FATIGUE_ONE_DAY));
+        return yesterday.status() == TaskStatus.IN_PROGRESS
+                        || yesterday.status() == TaskStatus.DEFERRED
+                ? Optional.of(modifier(PlannerModifier.CONTINUATION))
+                : Optional.empty();
     }
 
     /**
@@ -536,8 +545,6 @@ public final class PlannerScoring {
             int riskHighShould,
             int lowEnergyDeepTask,
             int highEnergyHardTask,
-            int fatigueOneDay,
-            int fatigueTwoDays,
             int continuation,
             int comebackHardTask,
             int monotonyThreeDays,
@@ -551,8 +558,6 @@ public final class PlannerScoring {
                 case LOW_ENERGY_DEEP_TASK -> lowEnergyDeepTask;
                 case HIGH_ENERGY_HARD_TASK -> highEnergyHardTask;
                 case CONTINUATION -> continuation;
-                case FATIGUE_TWO_DAYS -> fatigueTwoDays;
-                case FATIGUE_ONE_DAY -> fatigueOneDay;
                 case MONOTONY_THREE_DAYS -> monotonyThreeDays;
                 case MONOTONY_FIVE_DAYS -> monotonyFiveDays;
                 case COMEBACK_HARD_TASK -> comebackHardTask;

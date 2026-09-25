@@ -1,3 +1,4 @@
+import 'package:devpilot_app/app/routes.dart';
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/widgets/markdown_text.dart';
 import 'package:devpilot_app/features/today/data/reading_models.dart';
@@ -5,6 +6,7 @@ import 'package:devpilot_app/features/today/data/reading_repository.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// `ConceptReadingSection`: the material block of a `READING` main card (docs/02 SCR-TODAY,
@@ -16,18 +18,58 @@ import 'package:url_launcher/url_launcher.dart';
 /// block is hidden and the task still shows — its title and description are already in
 /// `MainTaskView`. `readingKey == null` (the skill has no concept reading) hides it too, so the
 /// card looks exactly as it did before.
-class ConceptReadingSection extends ConsumerWidget {
-  const ConceptReadingSection({super.key, required this.readingKey});
+/// The `READING` card's material block. One key can point at a concept document or at a concept
+/// note (docs/06 §5.13, D-1), so the block reads `kind` instead of guessing from the prefix.
+class ReadingMaterialSection extends ConsumerWidget {
+  const ReadingMaterialSection({super.key, required this.readingKey});
 
   final String readingKey;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final concept = ref.watch(readingProvider(readingKey)).value?.concept;
-    if (concept == null) {
+    final reading = ref.watch(readingProvider(readingKey)).value;
+    if (reading == null) {
       return const SizedBox.shrink();
     }
-    return _ConceptReadingBlock(concept: concept);
+    return switch (reading.kind) {
+      ReadingKind.lesson => _LessonBlock(lessonKey: reading.key),
+      ReadingKind.concept =>
+        reading.concept == null
+            ? const SizedBox.shrink()
+            : _ConceptReadingBlock(concept: reading.concept!),
+      ReadingKind.code || ReadingKind.unknown => const SizedBox.shrink(),
+    };
+  }
+}
+
+/// 개념 노트로 가는 자리. 노트 내용은 노트 화면이 따로 읽는다 — 여기서는 어디로 가는지만 보인다.
+class _LessonBlock extends StatelessWidget {
+  const _LessonBlock({required this.lessonKey});
+
+  final String lessonKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Column(
+      key: const Key('today.lessonMaterial'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: AppSpacing.md),
+        Semantics(
+          header: true,
+          child: Text(l10n.todayLessonMaterial, style: Theme.of(context).textTheme.titleSmall),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(l10n.todayLessonMaterialHint, style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: AppSpacing.sm),
+        FilledButton(
+          key: const Key('today.openLessonButton'),
+          onPressed: () => context.go(AppRoutes.lesson(lessonKey)),
+          child: Text(l10n.todayLessonOpen),
+        ),
+      ],
+    );
   }
 }
 

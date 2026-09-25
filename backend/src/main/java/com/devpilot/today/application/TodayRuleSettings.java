@@ -29,8 +29,6 @@ public final class TodayRuleSettings {
                         bp(modifiers.riskHighShould()),
                         bp(modifiers.lowEnergyDeepTask()),
                         bp(modifiers.highEnergyHardTask()),
-                        bp(modifiers.fatigueOneDay()),
-                        bp(modifiers.fatigueTwoDays()),
                         bp(modifiers.continuationBonus()),
                         bp(modifiers.comebackHardTask()),
                         bp(modifiers.monotonyThreeDays()),

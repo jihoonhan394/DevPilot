@@ -128,6 +128,7 @@ devpilot:
     INTEGRATION_ENGINEER: { max-task-difficulty: 4, read-code-min-knowledge: 1, challenge-min-knowledge: 1, basic-tips-first: false }  # 연동·구축 트랙 (06 §5.3)
   planner:
     weights: { practical-importance: 0.25, skill-gap: 0.20, review-urgency: 0.20, milestone-urgency: 0.15, project-need: 0.10, prerequisite-readiness: 0.10 }
+    study-thread-max-consecutive-days: 7   # 06 §5.13 TH-4 한 skill을 이어 갈 수 있는 최대 plan-day
     redo:                                  # 06 §5.10 RE-2·RE-3
       min-days-after: 3                    # 완료 3일 뒤부터 (경계 포함)
       max-days-after: 7                    # 7일 뒤까지 (경계 포함)
@@ -137,8 +138,6 @@ devpilot:
       risk-high-should: 0.80
       low-energy-deep-task: 0.70
       high-energy-hard-task: 1.10
-      fatigue-one-day: 0.80
-      fatigue-two-days: 0.60
       continuation-bonus: 1.15
       comeback-hard-task: 0.70             # 06 §5.5 COMEBACK_HARD_TASK (7_000bp)
       monotony-three-days: 0.70            # 06 §5.5 MONOTONY_THREE_DAYS (7_000bp)

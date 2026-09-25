@@ -34,6 +34,8 @@ class CodeReadingFlowTest extends ApiTestSupport {
         onboarding.put("sideProject", TestApi.sideProjectRequest("주문 시스템"));
         JsonNode onboarded = api.onboard(user, onboarding);
         assertThat(onboarded.path("sideProject").path("status").asString()).isEqualTo("ACTIVE");
+        // 노트가 남아 있으면 제안이 개념 익히기에서 멈춘다 (docs/06 §5.13 TH-5)
+        finishAllLessonUnits(user);
         skipSeedPracticeChallenges(user);
 
         // 2. Today 생성 → READ_CODE
@@ -91,9 +93,10 @@ class CodeReadingFlowTest extends ApiTestSupport {
                     .andExpect(status().isCreated());
         }
         String prompt = fakeAi().receivedCalls(AiOperation.RUBBER_DUCK).getLast().input();
+        // 대상 요약에 저장소·파일·질문이 그대로 들어간다. 어느 reading이 뽑혔는지에 의존하지 않는다
         assertThat(prompt)
                 .contains("Test Repository")
-                .contains("OrderService.java")
+                .contains(codeReading.path("path").asString())
                 .contains(codeReading.path("question").asString().substring(0, 20));
         api.post(user, RUBBER_DUCK + "/{sessionId}/complete", null, sessionId)
                 .andExpect(status().isOk())

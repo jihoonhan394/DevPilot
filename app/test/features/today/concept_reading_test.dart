@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../support/fake_backend.dart';
 import '../../support/learning_fixtures.dart';
 import '../../support/test_app.dart';
+import '../../support/widget_actions.dart';
 
 /// The READING main card on SCR-TODAY (docs/02 SCR-TODAY "main 카드 — READING", docs/06 §5.3,
 /// content docs/19 §3.13): with a concept reading the card names the document, opens it in a new
@@ -24,6 +25,24 @@ void main() {
 
   Future<void> openToday(WidgetTester tester) =>
       pumpApp(tester, backend: backend, at: AppRoutes.today);
+
+  /// 같은 READING 카드가 개념 노트를 가리킬 수도 있다 (docs/06 §5.13). 접두사가 아니라 kind로 가른다.
+  testWidgets('shouldPointAtTheConceptNoteWhenTheReadingIsALesson', (tester) async {
+    backend.todayRepository.today = testTodayView(
+      mainTask: readingTask(readingKey: lessonReadingKey),
+    );
+
+    await openToday(tester);
+
+    expect(backend.readingRepository.fetched, [lessonReadingKey]);
+    expect(find.byKey(const Key('today.lessonMaterial')), findsOneWidget);
+    expect(find.text('오늘 볼 개념 노트'), findsOneWidget);
+    // 개념 읽기 블록은 나오지 않는다 — 같은 칸이지만 다른 자료다
+    expect(find.byKey(const Key('today.conceptReading')), findsNothing);
+
+    await tapKey(tester, 'today.openLessonButton');
+    expect(locationOf(tester), AppRoutes.lesson(lessonReadingKey));
+  });
 
   testWidgets('shouldShowConceptReadingMaterialWhenTheTaskHasOne', (tester) async {
     backend.todayRepository.today = testTodayView(

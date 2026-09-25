@@ -62,7 +62,7 @@ class MainTaskCard extends StatelessWidget {
             // READING with a concept reading: what to read, where to open it and the three
             // points to answer (docs/02 SCR-TODAY). Hidden when the skill has no material.
             if (task.taskType == TaskType.reading && readingKey != null)
-              ConceptReadingSection(readingKey: readingKey),
+              ReadingMaterialSection(readingKey: readingKey),
             // 시작 전에는 무엇을 정하고 들어가는지, 하는 중에는 무엇을 보고 끝내는지 (docs/19 §3.11).
             // 마친 과제에는 붙이지 않는다 — 확인할 것이 남아 있지 않다.
             if (checklist != null && planned)

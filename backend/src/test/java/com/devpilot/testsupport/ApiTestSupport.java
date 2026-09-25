@@ -74,6 +74,35 @@ public abstract class ApiTestSupport {
     }
 
     /**
+     * 모든 개념 노트를 다 뗀 상태로 만든다 (docs/06 §5.3 1번, §5.13 TH-5).
+     *
+     * <p>노트에 안 푼 단위가 남아 있으면 제안이 <b>개념 익히기</b>에서 멈춘다 — 가르치고 나서 시험하기 때문이다. 그다음 분기(CHALLENGE ·
+     * READ_CODE · 개념 읽기)를 보려는 테스트는 먼저 이것을 부른다.
+     */
+    protected void finishAllLessonUnits(TestUser user) throws Exception {
+        JsonNode lessons = api.body(api.get(user, "/api/v1/lessons"));
+        for (JsonNode summary : lessons.path("lessons")) {
+            String lessonKey = summary.path("lessonKey").asString();
+            JsonNode lesson = api.body(api.get(user, "/api/v1/lessons/{key}", lessonKey));
+            for (JsonNode unit : lesson.path("units")) {
+                if (unit.path("progress").path("solved").asBoolean(false)) {
+                    continue;
+                }
+                Map<String, Object> request = new LinkedHashMap<>();
+                request.put("helpLevel", "NONE");
+                request.put("selfChecksMet", null);
+                api.postWithKey(
+                        user,
+                        UUID.randomUUID().toString(),
+                        "/api/v1/lessons/{lessonKey}/units/{unitKey}/finish",
+                        request,
+                        lessonKey,
+                        unit.path("unitKey").asString());
+            }
+        }
+    }
+
+    /**
      * {@code READ_CODE} 제안을 보려면 {@code docs/06} §5.3 1번(CHALLENGE)이 비어 있어야 한다. seed PRACTICE
      * challenge를 한 번씩 시작했다가 중단해 "최근 14 plan-day 안에 시도" 제외 조건에 걸리게 한다.
      */

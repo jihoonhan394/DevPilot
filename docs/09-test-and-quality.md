@@ -211,6 +211,8 @@ V10,10,GOOD,CORRECT,SELF_EXPLAIN,GOOD,,5,4
 | §5.4–5.5, §5.7 | `06-05-planner-score.yaml` (10행 — 1~6행은 factor·modifier, 7~10행은 `MONOTONY_*`. `devpilot.planner.weights.stage-gap = 0`으로 돌린다. §5.7 공통 조건) | `PlannerScoringTest` | unit |
 | §5.11 | `06-05-learning-stage.yaml` (ST-V1~ST-V12) | `LearningStageEvaluatorTest` | unit |
 | §5.12 | `06-05-daily-tip.yaml` (TIP-V1~TIP-V11) | `DailyTipSelectorTest` | unit |
+| §5.13 TH-1~TH-4 | `06-05-study-thread.yaml` (TH-V1~TH-V9) | `StudyThreadPolicyTest` | unit |
+| §5.13 TH-5, §12 네 지표 | — (닷새를 실제로 돌린다) | `FiveDayStudyThreadSimulationTest` | integration |
 | §5.5 comebackMode | `06-05-comeback-mode.csv` | `ComebackModePolicyTest` | unit |
 | §5.6 | `06-05-time-allocation.csv` (6행) | `TimeAllocatorTest` | unit |
 | §5.6 추가 과제 | `06-05-extra-tasks.yaml` (E-1~E-5) | `TimeAllocatorTest` | unit |
@@ -308,6 +310,12 @@ V10,10,GOOD,CORRECT,SELF_EXPLAIN,GOOD,,5,4
 - `skill_id`가 null인 세션은 이벤트를 남기지 않으므로(RD-7) 이 클래스의 입력이 될 수 없다. 그 경로는 `RubberDuckServiceIntegrationTest`(§10.6.2)가 확인한다.
 
 ### 5.4 재현 과제 · 학습 트랙 규칙 테스트
+
+**`FiveDayStudyThreadSimulationTest` — 닷새 시뮬레이션 (ADR-053·ADR-054, `06` §5.13·§12).** 규칙 하나하나는 vector가 덮는다. 이 테스트가 보는 것은 **여러 날을 이어 붙였을 때 무엇이 쌓이는가**다 — 매일 `POST /today/generate`로 main을 받아 실제로 끝내고(개념 익히기면 단위를 푼다), 그 결과가 다음 날 제안에 어떻게 반영되는지 표로 찍는다.
+
+- 확인하는 것: 손댄 skill 수 ≤ 3(이어감), 첫 `CHALLENGE` 앞에 같은 skill의 개념 익히기가 있었는지(가르친 뒤 시험), 마친 단위가 줄지 않는지(진행을 잃지 않음), `learnedUnitCount` > 0, `topicSwitchesPerWeek` ≤ 2
+- **`MetricsCalculator`(S6)가 생기기 전까지 `06` §12 네 지표의 실행 가능한 정의**다. 지표 이름을 그대로 쓴다
+- ADR-054를 찾아낸 테스트다. 규칙 vector는 전부 통과하는데 닷새를 이어 보니 첫 단계 skill이 한 번도 main이 되지 못했다 — **한 번의 판정으로는 안 보이는 결함**이 이 자리에서 나온다
 
 **`RedoTaskPolicyTest` — 재현 후보 (AC-31, S4, `06` §5.10).** `06-05-redo-candidate.yaml`에 RE-V1~RE-V11을 그대로 넣는다. 설정은 `min-days-after = 3`, `max-days-after = 7`, `max-attempts = 2`, `today = 2026-10-20`이다. 입력은 원본 task(유형, 완료 plan-day, `estimatedMinutes`, difficulty, `skillId`)와 그 원본을 가리키는 `REDO` task 목록(상태, 완료 plan-day, `withoutAi`)이고, 출력은 skill별로 고른 후보와 `daysAfter`(원본 완료일부터 오늘까지의 일수 — 과제 문구와 이유에 그대로 쓴다)다.
 

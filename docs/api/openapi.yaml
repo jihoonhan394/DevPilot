@@ -3856,6 +3856,7 @@ components:
           enum:
           - CODE
           - CONCEPT
+          - LESSON
         retired:
           type: boolean
         skills:

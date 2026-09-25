@@ -59,6 +59,12 @@ public final class TaskProposalPolicy {
         if (redo != null) {
             return redo(redo);
         }
+        // 1. 가르치고 나서 시험한다 (docs/06 §5.13 TH-5). 노트에 남은 단위가 있고 아직 아는 것이 적으면
+        // 문제·코드 읽기보다 먼저 개념을 뗀다 — 순서가 거꾸로면 답만 맞히고 어디에 쓰는지는 모른 채 지난다
+        LessonStep lessonStep = input.lessonStep();
+        if (lessonStep != null && planning.knowledge() < READING_MAX_KNOWLEDGE) {
+            return lesson(skill, lessonStep);
+        }
         int difficulty = Math.clamp(planning.implementation() + 1L, 1, track.maxTaskDifficulty());
         if (input.comebackMode()) {
             difficulty = Math.min(difficulty, COMEBACK_MAX_DIFFICULTY);
@@ -145,6 +151,36 @@ public final class TaskProposalPolicy {
     /** 개념 읽기 선택: key ASC 첫 번째 (docs/06 §5.3 "개념 읽기 선택"). 비면 자료 없이 제안한다. */
     static Optional<ConceptReading> firstConceptReading(List<ConceptReading> conceptReadings) {
         return conceptReadings.stream().min(Comparator.comparing(ConceptReading::key));
+    }
+
+    /**
+     * 개념 익히기 (docs/06 §5.3 1번). 새 {@code TaskType}을 만들지 않고 {@code READING}을 재사용한다 — {@code
+     * readingKey}가 노트 key를 가리키고 화면이 {@code kind}로 구분한다(docs/05 §19.7).
+     *
+     * <p>예상 시간은 오늘 낼 단위들의 합이라 노트 전체가 아니다. 며칠에 걸쳐 나눠 낸다(TH-2).
+     */
+    static Proposal lesson(SkillContext skill, LessonStep step) {
+        String more =
+                step.remainingAfter() == 0
+                        ? "이 단위를 마치면 이 노트가 끝납니다."
+                        : "마치면 " + step.remainingAfter() + "단위가 남습니다.";
+        String description =
+                "단위 "
+                        + step.unitKeys().size()
+                        + "개를 차례로 봅니다. 각 단위는 예측 → 빈칸 → 직접 만들기로 끝납니다. "
+                        + more;
+        return new Proposal(
+                TaskType.READING,
+                step.minutes(),
+                READING_DIFFICULTY,
+                truncate(skill.name() + " 개념 익히기 — " + step.firstUnitTitle(), TITLE_MAX),
+                truncate(description, DESCRIPTION_MAX),
+                null,
+                step.lessonKey(),
+                null,
+                null,
+                null,
+                null);
     }
 
     /** CHALLENGE: 제목 = challenge 제목, 설명 = scenario 앞 200자. */
@@ -394,7 +430,8 @@ public final class TaskProposalPolicy {
             List<ConceptReading> conceptReadings,
             @Nullable SideProjectRef activeSideProject,
             @Nullable String projectGuide,
-            RedoTaskPolicy.@Nullable RedoCandidate redoCandidate) {
+            RedoTaskPolicy.@Nullable RedoCandidate redoCandidate,
+            @Nullable LessonStep lessonStep) {
 
         public ProposalInput {
             challenges = List.copyOf(challenges);

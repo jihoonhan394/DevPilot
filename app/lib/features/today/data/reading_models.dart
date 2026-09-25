@@ -10,12 +10,18 @@ part 'reading_models.g.dart';
 // or the document URL.
 
 /// Which kind of material the key points at (docs/05 §19.7). Clients read this instead of
-/// guessing from the `READ.` / `DOC.` prefix.
+/// guessing from the `READ.` / `DOC.` / `LESSON.` prefix.
 enum ReadingKind {
   @JsonValue('CODE')
   code,
   @JsonValue('CONCEPT')
   concept,
+
+  /// 개념 노트 (docs/19 §3.14). Content comes from `GET /lessons/{key}`, not from this endpoint —
+  /// progress differs per person and this one does not know who is asking.
+  @JsonValue('LESSON')
+  lesson,
+  unknown,
 }
 
 @freezed
@@ -98,7 +104,7 @@ abstract class ReadingView with _$ReadingView {
 
   const factory ReadingView({
     required String key,
-    required ReadingKind kind,
+    @JsonKey(unknownEnumValue: ReadingKind.unknown) required ReadingKind kind,
     @Default(<SkillRef>[]) List<SkillRef> skills,
     int? estimatedMinutes,
 

@@ -98,6 +98,8 @@ class ConceptReadingTaskIntegrationTest extends ApiTestSupport {
         Map<String, Object> learningGoal = (Map<String, Object>) request.get("learningGoal");
         learningGoal.put("focusSkillCodes", new ArrayList<>(List.of(skillCode)));
         api.onboard(user, request);
+        // 개념 읽기 분기(4번)를 보려면 노트를 먼저 떼야 한다 (docs/06 §5.13 TH-5)
+        finishAllLessonUnits(user);
         skipSeedPracticeChallenges(user);
         return user;
     }

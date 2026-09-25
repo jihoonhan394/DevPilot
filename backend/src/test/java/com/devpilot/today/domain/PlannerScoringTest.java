@@ -386,12 +386,13 @@ class PlannerScoringTest {
     }
 
     /**
-     * REDO_DUE는 마지막에 붙고 앞의 modifier를 지우지 않는다 (docs/06 §5.5 6번).
+     * 같은 skill을 이어 해도 더는 깎지 않는다 (ADR-053, docs/06 §5.5).
      *
-     * <p>창(RE-2)이 며칠뿐이라 가중치를 주지만, 같은 skill을 이틀 연속 잡았다면 재현이라도 하루 쉬는 편이 낫다 — 창은 하루 밀릴 뿐이다.
+     * <p>어제 그 skill을 끝냈으면 modifier가 하나도 안 붙는다. 배우는 구간에 이어 하는 것은 정상이고, 너무 길어지는 것은 §5.13 TH-4의 연속 일수
+     * 상한이 막는다.
      */
     @Test
-    void shouldAddRedoDueLastWithoutRemovingFatigue() {
+    void shouldNotPenaliseContinuingTheSameSkill() {
         Factors factors = new Factors(500_000, 500_000, 0, 0, 0, 1_000_000);
         Context context = new Context(RiskLevel.LOW, EnergyLevel.NORMAL, false, List.of());
         RecentMain sameSkill = new RecentMain("T.A", TaskStatus.COMPLETED);
@@ -412,7 +413,7 @@ class PlannerScoringTest {
 
         assertThat(redo.modifiers())
                 .extracting(AppliedModifier::code)
-                .containsExactly(PlannerModifier.FATIGUE_TWO_DAYS, PlannerModifier.REDO_DUE);
+                .containsExactly(PlannerModifier.REDO_DUE);
         assertThat(redo.modifiers().getLast().multiplierBp()).isEqualTo(13_000);
     }
 

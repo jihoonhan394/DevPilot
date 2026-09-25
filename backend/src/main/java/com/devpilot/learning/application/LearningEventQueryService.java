@@ -119,6 +119,28 @@ public class LearningEventQueryService {
         return Map.copyOf(progress);
     }
 
+    /**
+     * 노트별로 마친 단위 key (docs/06 §5.13 TH-1). 어디까지 했는지를 따로 저장하지 않고 {@code UNIT_SOLVED}에서 계산한다.
+     *
+     * @return 노트 key → 마친 단위 key. 기록이 없는 노트는 키가 없다
+     */
+    public Map<String, Set<String>> solvedUnitKeys(UUID userId) {
+        Map<String, Set<String>> solved = new LinkedHashMap<>();
+        for (LearningEvent event :
+                learningEventRepository.findByUserIdAndEventTypeOrderByOccurredAtDesc(
+                        userId, LearningEventType.UNIT_SOLVED)) {
+            if (event.getInvalidatedAt() != null) {
+                continue;
+            }
+            Map<String, Object> payload = event.getPayload();
+            if (payload.get("lessonKey") instanceof String lessonKey
+                    && payload.get("unitKey") instanceof String unitKey) {
+                solved.computeIfAbsent(lessonKey, key -> new LinkedHashSet<>()).add(unitKey);
+            }
+        }
+        return Map.copyOf(solved);
+    }
+
     /** 이 대상의 가장 최근 이벤트 id (docs/05 §10.6 {@code evidenceSourceEventId}). */
     public Optional<UUID> latestEventIdForSource(
             UUID userId, LearningEventType eventType, UUID sourceId) {

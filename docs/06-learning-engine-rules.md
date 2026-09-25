@@ -231,11 +231,14 @@ ratioBp (저장·표시용) = effective == 0 ? null : floorDiv(requiredMust × 1
 
 **학습 순서는 프로젝트를 만드는 순서다**(ADR-044). milestone은 과목 묶음이 아니라 하나를 만들어 확인하기까지의 단계이고, 후보는 **지금 단계**로 제한한다. 중요도는 그 단계 **안에서** 순서를 정하는 데만 쓴다(§5.4).
 
-합집합(중복 제거):
+**차례로 보고, 앞이 비었을 때만 뒤를 본다**(ADR-054). 합집합이 아니다 — 합치면 점수가 뒤섞여 "지금 단계"라는 말이 무의미해진다.
+
 1. **현재 milestone**의 `milestone_skill`
-2. 현재 milestone 다음 순서의 `milestone_skill` — 현재 단계를 다 끝냈을 때 할 일이 없어지지 않게 하는 완충이다
-3. due review가 있고 **이미 손대 본** skill(`lastPracticedAt != null`). 씨앗 카드는 아직 배우지 않은 뒷 단계 skill에도 미리 배정되므로 거르지 않으면 이 경로로 순서가 뚫린다(ADR-044). **거른 skill의 복습 자체는 그대로 나온다** — REVIEW 과제는 main task 선정과 별개다(§5.6)
-4. **오늘 재현 후보가 있는 skill**(§5.10 RE-2). 이 경로로만 들어온 skill에는 아래 제외 규칙 중 "모든 축에서 `planningLevel ≥ target`" 하나를 적용하지 않는다 — 목표에 닿은 skill이라도 AI 없이 다시 만들 수 있는지는 아직 확인하지 않았기 때문이다
+2. 1번에 제외 규칙까지 적용한 뒤 후보가 **하나도 없으면** 현재 milestone 다음 순서의 `milestone_skill` — 현재 단계를 다 끝냈을 때 할 일이 없어지지 않게 하는 완충이다
+3. 2번까지도 비면 due review가 있고 **이미 손대 본** skill(`lastPracticedAt != null`). 씨앗 카드는 아직 배우지 않은 뒷 단계 skill에도 미리 배정되므로 거르지 않으면 이 경로로 순서가 뚫린다(ADR-044). **거른 skill의 복습 자체는 그대로 나온다** — REVIEW 과제는 main task 선정과 별개다(§5.6)
+4. **오늘 재현 후보가 있는 skill**(§5.10 RE-2)은 순서와 무관하게 언제나 후보다. 창(RE-2)이 며칠뿐이라 미룰 수 없다. 이 경로로만 들어온 skill에는 아래 제외 규칙 중 "모든 축에서 `planningLevel ≥ target`" 하나를 적용하지 않는다 — 목표에 닿은 skill이라도 AI 없이 다시 만들 수 있는지는 아직 확인하지 않았기 때문이다
+
+**왜 합집합을 그만뒀나 (ADR-054)** — 닷새 시뮬레이션에서 **첫 단계의 skill 넷이 한 번도 main이 되지 못했다.** 온보딩이 배정한 씨앗 카드가 뒷 단계 skill에 due를 만들고, 그 `reviewUrgency`가 첫 단계의 `skillGap`·`milestoneUrgency`를 매일 이겼다. 후보 목록에 넣는 순간 "지금 단계 먼저"는 점수 앞에서 사라진다.
 
 **현재 milestone** = `sort_order`가 가장 앞선 **미완료** milestone이다. 날짜로 정하지 않는다(ADR-044).
 
@@ -264,22 +267,31 @@ if comebackMode: d = min(d, 2)
 
 0. 이 skill에 오늘 제안할 재현 후보가 있으면(§5.10 RE-2)
    → REDO (estimated = §5.10 RE-4, difficulty = 원본 과제의 difficulty, `redoSourceTaskId` = 그 후보의 원본 task)
-1. else if `aiStatus ∉ {DISABLED, BALANCE_EXHAUSTED}`이고(평가가 AI에 의존하므로), **planning KNOWLEDGE ≥ trackDefaults.challengeMinKnowledge**이고(ADR-045 — 개념을 한 번도 안 본 skill에는 문제를 내지 않는다), 해당 skill에 VALIDATED challenge(PRACTICE, seed 또는 본인 소유)가 있고,
+1. else if **planning KNOWLEDGE < 2**이고 그 skill의 개념 노트(`19` §3.14)에 **안 푼 단위가 남아 있으면**(§5.13 TH-5)
+   → READING (**개념 익히기**. `readingKey` = 노트 key, estimated = 오늘 낼 단위들의 `minutes` 합, difficulty 1)
+2. else if `aiStatus ∉ {DISABLED, BALANCE_EXHAUSTED}`이고(평가가 AI에 의존하므로), **planning KNOWLEDGE ≥ trackDefaults.challengeMinKnowledge**이고(ADR-045 — 개념을 한 번도 안 본 skill에는 문제를 내지 않는다), 해당 skill에 VALIDATED challenge(PRACTICE, seed 또는 본인 소유)가 있고,
    최근 14 plan-day 안에 attempt하지 않았고 **해결(outcome ∈ {SOLVED_INDEPENDENTLY, SOLVED_WITH_HINTS})한 attempt가 없는** 문제가 difficulty d, 없으면 d−1(≥1) 순서로 있으면
    → CHALLENGE (estimated = challenge.estimated_minutes, difficulty = 찾은 문제의 difficulty)
    같은 difficulty에 여러 개면 seed_key ASC(null은 뒤), 그다음 ID ASC 첫 번째
-2. else if `aiStatus ∉ {DISABLED, BALANCE_EXHAUSTED}`이고(RC-1의 완료 조건이 러버덕이므로),
+3. else if `aiStatus ∉ {DISABLED, BALANCE_EXHAUSTED}`이고(RC-1의 완료 조건이 러버덕이므로),
    **planning KNOWLEDGE ≥ trackDefaults.readCodeMinKnowledge**이고(RC-3), 해당 skill의 선택 가능한 reading이 있으면
    → READ_CODE (estimated = reading.estimatedMinutes, difficulty 2)
-3. else if planning KNOWLEDGE < 2   → READING  (개념 읽기 후보가 있으면 estimated = conceptReading.estimatedMinutes,
+4. else if planning KNOWLEDGE < 2   → READING  (개념 읽기 후보가 있으면 estimated = conceptReading.estimatedMinutes,
                                                 없으면 estimated 25. 두 경우 모두 difficulty 1)
-4. else if projectNeed && energy != LOW && ACTIVE 사이드 프로젝트가 있으면(SP-1) → PROJECT_TASK (estimated 30, difficulty 3)
-5. else                               → EXPLAIN  (estimated 15, difficulty 2)
+5. else if projectNeed && energy != LOW && ACTIVE 사이드 프로젝트가 있으면(SP-1) → PROJECT_TASK (estimated 30, difficulty 3)
+6. else                               → EXPLAIN  (estimated 15, difficulty 2)
 ```
 
 **REDO의 자리 (0번)와 그 이유** — 재현 과제는 새로 배우는 과제가 아니라 **이미 한 것을 AI 없이 혼자 다시 만들어 확인하는 과제**다(§5.10). 창(RE-2)이 며칠뿐이고 창을 놓치면 그 기회는 사라지므로, 같은 skill 안에서는 다른 제안보다 앞선다. 다만 **skill 사이의 경쟁은 그대로 점수로 한다** — 재현 후보가 있다고 해서 그 skill이 자동으로 오늘의 main이 되지는 않고, §5.5의 `REDO_DUE` modifier로 가중치만 받는다. AI 상태와 무관하다(재현 과제는 AI를 쓰지 않는다).
 
-**CHALLENGE의 문턱 (ADR-045)** — 1번 분기는 `planning KNOWLEDGE ≥ trackDefaults.challengeMinKnowledge`(기본 1)일 때만 잡힌다. KNOWLEDGE 0이면 3번 READING으로 떨어지고, 개념을 한 번 마치면 KNOWLEDGE가 1이 되어(§7) 그때 열린다. 코드 읽기에만 문턱이 있고 문제 풀기에는 없던 비대칭을 없앤다. **진단(`DIAGNOSTIC`) challenge는 이 문턱을 받지 않는다** — 지금 수준을 재는 과제이지 가르치는 과제가 아니다(§7.4).
+**개념 익히기의 자리 (1번)와 그 이유** — **가르치고 나서 시험한다.** 개념 노트가 있는데 문제부터 내면, 답은 맞혀도 어디에 쓰는지 모른 채 지난다. 그래서 아는 것이 적은 구간(KNOWLEDGE < 2)에서는 노트를 다 뗄 때까지 CHALLENGE·READ_CODE보다 앞선다(TH-5).
+
+- 노트 하나를 하루에 다 하라고 내지 않는다. **다음 미완료 단위부터 오늘 시간이 되는 만큼**이고, 며칠에 걸칠 수 있다(§5.13 TH-2). 예산을 넘어도 한 단위는 낸다 — 안 그러면 시간이 넉넉한 날이 올 때까지 그 노트가 영영 안 나온다.
+- 새 `TaskType`을 만들지 않고 `READING`을 재사용한다(D-1). `reading_key`가 노트 key를 가리키고 화면은 `kind = LESSON`으로 구분한다(`05` §19.7).
+- KNOWLEDGE ≥ 2면 이 분기를 지나 문제로 간다. 이미 아는 사람에게 개념부터 시키지 않는다 — 노트는 화면에서 언제든 열 수 있다(`05` §21.9).
+- 진행(마친 단위)은 `UNIT_SOLVED`로만 판단한다. 따로 저장하지 않는다(TH-1).
+
+**CHALLENGE의 문턱 (ADR-045)** — 2번 분기는 `planning KNOWLEDGE ≥ trackDefaults.challengeMinKnowledge`(기본 1)일 때만 잡힌다. KNOWLEDGE 0이면 노트나 개념 읽기로 떨어지고, 개념을 한 번 마치면 KNOWLEDGE가 1이 되어(§7) 그때 열린다. 코드 읽기에만 문턱이 있고 문제 풀기에는 없던 비대칭을 없앤다. **진단(`DIAGNOSTIC`) challenge는 이 문턱을 받지 않는다** — 지금 수준을 재는 과제이지 가르치는 과제가 아니다(§7.4).
 
 **학습 트랙 기본값** — `d`의 상한은 고정 5가 아니라 학습 목표의 트랙 기본값 `trackDefaults.maxTaskDifficulty`다(`devpilot.tracks.<트랙>`, `03` §9). 트랙은 `READ_CODE`의 진입 문턱(RC-3, `trackDefaults.readCodeMinKnowledge`)과 오늘의 팁 정렬(§5.12, `trackDefaults.basicTipsFirst`)도 정한다. 그 밖의 planner 규칙(factor, weight, modifier, 시간 배분, 학습 단계)은 트랙과 무관하게 같다.
 
@@ -293,7 +305,7 @@ if comebackMode: d = min(d, 2)
 - 설정 키는 `devpilot.tracks.<트랙>.{max-task-difficulty, read-code-min-knowledge, basic-tips-first}`다. `TargetRole` 값마다 항목이 있어야 하고, 없으면 기동 실패다(`03` §9).
 - **트랙별 필수 목표 구성**은 규칙이 아니라 콘텐츠다(`19` §3.3). `INTEGRATION_ENGINEER`의 `role_skill_target`은 MUST를 **기본기 70% / 연동 20% / 배포·운영 10%** 비율로 고르고, 필수 목표 합계(§4.2의 `requiredMinutes` 합)가 **180~220시간**이 되게 맞춘다.
 
-**READ_CODE의 자리 (2번)와 그 이유** — CHALLENGE는 I축·K축 상승 규칙(§7.2)의 증거를 직접 만들므로 1번 자리를 유지한다. READ_CODE를 READING보다 **앞**에 두는 것은 §12의 핵심 루프(읽는다 → 만든다 → 설명한다)를 따르기 위해서다: 무엇인지 조금이라도 아는 상태(KNOWLEDGE ≥ `trackDefaults.readCodeMinKnowledge`)라면 요약 글을 한 번 더 읽는 것보다 검증된 실제 코드를 읽는 편이 낫다. 그 문턱 아래에서 코드를 읽으면 좌절하므로 RC-3이 이를 막고, 그때는 3번 READING으로 내려간다. 결과적으로 READING은 **문턱 미만**이거나 해당 skill에 reading 콘텐츠가 없을 때만 나온다(기본 트랙은 KNOWLEDGE = 0, 입문 트랙은 0~1).
+**READ_CODE의 자리 (3번)와 그 이유** — CHALLENGE는 I축·K축 상승 규칙(§7.2)의 증거를 직접 만들므로 1번 자리를 유지한다. READ_CODE를 개념 읽기보다 **앞**에 두는 것은 §12의 핵심 루프(읽는다 → 만든다 → 설명한다)를 따르기 위해서다: 무엇인지 조금이라도 아는 상태(KNOWLEDGE ≥ `trackDefaults.readCodeMinKnowledge`)라면 요약 글을 한 번 더 읽는 것보다 검증된 실제 코드를 읽는 편이 낫다. 그 문턱 아래에서 코드를 읽으면 좌절하므로 RC-3이 이를 막고, 그때는 4번 READING으로 내려간다. 결과적으로 READING은 **문턱 미만**이거나 해당 skill에 reading 콘텐츠가 없을 때만 나온다(기본 트랙은 KNOWLEDGE = 0, 입문 트랙은 0~1).
 
 **reading 선택 (결정적)**
 
@@ -409,15 +421,15 @@ score         = baseScore + stageGapBonus          # §5.5 modifier는 이 score
 | 1 | risk ≥ HIGH, priority=SHOULD | 8_000 | `RISK_HIGH_SHOULD` |
 | 2 | energy=LOW, 제안 estimated > 30 또는 difficulty ≥ 4 | 7_000 | `LOW_ENERGY_DEEP_TASK` |
 | 2 | energy=HIGH, difficulty ≥ 3 | 11_000 | `HIGH_ENERGY_HARD_TASK` |
-| 3a | 어제 main task가 같은 skill이고 상태가 IN_PROGRESS 또는 DEFERRED | 11_500 | `CONTINUATION` (3b 적용 안 함) |
-| 3b | 어제와 그제 main task가 모두 같은 skill (상태 무관) | 6_000 | `FATIGUE_TWO_DAYS` |
-| 3b | 어제 main task만 같은 skill | 8_000 | `FATIGUE_ONE_DAY` |
+| 3 | 어제 main task가 같은 skill이고 상태가 IN_PROGRESS 또는 DEFERRED | 11_500 | `CONTINUATION` |
 | 4 | 제안의 **과제 유형**이 최근 5 plan-day 연속 main과 같다 | 4_000 | `MONOTONY_FIVE_DAYS` |
 | 4 | 제안의 **과제 유형**이 최근 3 plan-day 연속 main과 같다 | 7_000 | `MONOTONY_THREE_DAYS` |
 | 5 | comebackMode, difficulty ≥ 3 | 7_000 | `COMEBACK_HARD_TASK` |
 | 6 | 제안이 `REDO`다 (§5.10 RE-2 창 안) | 13_000 | `REDO_DUE` |
 
-`REDO_DUE`를 마지막에 두는 이유: 앞의 modifier(특히 `FATIGUE_*`)가 재현 과제에도 그대로 적용돼야 한다. 같은 skill을 이틀 연속 main으로 잡았다면 재현이라도 하루 쉬는 편이 낫고, 창(RE-2)이 하루 밀릴 뿐이다.
+**`FATIGUE_ONE_DAY`·`FATIGUE_TWO_DAYS`는 폐지했다**(ADR-053, §5.13 TH-4). 같은 skill을 이어 하면 점수를 깎던 규칙인데, 개념 노트 하나가 여러 날에 걸치는 구조(§5.13)와 정면으로 부딪혔다 — 어제 절반 뗀 노트가 오늘은 감점을 받아 밀리고, 다음 날 또 밀린다. 이어 하는 구간이 너무 길어지는 것은 감점이 아니라 **연속 일수 상한**(TH-4)이 막는다.
+
+`REDO_DUE`를 마지막에 두는 이유: 앞의 modifier가 재현 과제에도 그대로 적용돼야 한다. 복귀 모드나 에너지 조건은 재현이라고 면제되지 않는다.
 
 **4번 과제 유형 단조로움 (`MONOTONY_*`)의 계산과 근거**
 
@@ -429,11 +441,11 @@ if run ≥ 5 → MONOTONY_FIVE_DAYS (4_000)      # 둘 중 하나만 적용한�
 elif run ≥ 3 → MONOTONY_THREE_DAYS (7_000)
 ```
 
-- **왜 필요한가** — `FATIGUE_*`는 **같은 skill**만 억제하고 **같은 과제 유형**은 보지 않는다. 그래서 §5.3의 마지막 분기(`EXPLAIN`)로 떨어지는 skill이 여럿이면 skill은 매일 바뀌어도 하는 일은 "내 말로 설명하기"만 몇 주씩 이어질 수 있다. 12주 시뮬레이션(`StudyJourneySimulationTest`)에서 실제로 **20 plan-day 연속 `EXPLAIN`**이 나왔다. 읽지도 만들지도 않고 설명만 하는 구간은 §12의 학습 루프(읽는다 → 만든다 → 설명한다)가 끊긴 상태다.
-- **왜 3일부터인가** — 같은 skill을 이어 하는 것(`FATIGUE_ONE_DAY`, 1일)보다 같은 유형을 이어 하는 것은 덜 해롭다. 유형이 같아도 다루는 기술이 다르면 새 내용을 배운다. 이틀 연속은 정상 범위로 두고(예: 이틀에 걸친 코드 읽기), **사흘째부터** 누른다.
+- **왜 필요한가** — 같은 skill을 이어 하는 것과 **같은 과제 유형**을 이어 하는 것은 다른 문제다. 그래서 §5.3의 마지막 분기(`EXPLAIN`)로 떨어지는 skill이 여럿이면 skill은 매일 바뀌어도 하는 일은 "내 말로 설명하기"만 몇 주씩 이어질 수 있다. 12주 시뮬레이션(`StudyJourneySimulationTest`)에서 실제로 **20 plan-day 연속 `EXPLAIN`**이 나왔다. 읽지도 만들지도 않고 설명만 하는 구간은 §12의 학습 루프(읽는다 → 만든다 → 설명한다)가 끊긴 상태다.
+- **왜 3일부터인가** — 유형이 같아도 다루는 기술이 다르면 새 내용을 배운다. 이틀 연속은 정상 범위로 두고(예: 이틀에 걸친 코드 읽기), **사흘째부터** 누른다.
 - **왜 7_000 / 4_000인가** — 7_000은 `LOW_ENERGY_DEEP_TASK`·`COMEBACK_HARD_TASK`와 같은 세기의 "조금 미루자"다. 점수가 크게 앞서는 후보는 그대로 선택된다. 닷새 연속이면 재료가 고갈됐다는 신호이므로 4_000으로 내려 **1위가 2.5배 앞서지 않는 한 다른 유형이 뒤집도록** 한다. 20일 연속이 나온 이상 뒤집을 수 있는 세기가 필요하다.
 - **한계** — 이 modifier는 후보 **사이**의 순서만 바꾼다. 모든 후보의 제안이 같은 유형이면(그 skill들에 challenge·reading 재료가 하나도 없는 경우) 아무것도 바뀌지 않는다. 그때는 콘텐츠를 채우는 것이 답이다(`19` §4.1 CV-125 WARN).
-- 배율은 `devpilot.planner.modifiers.{monotony-three-days, monotony-five-days}`다. 일수 3·5는 `FATIGUE_*`의 1·2일과 같이 규칙에 고정한다.
+- 배율은 `devpilot.planner.modifiers.{monotony-three-days, monotony-five-days}`다. 일수 3·5는 규칙에 고정한다.
 
 `comebackMode = (최근 3 plan-day(today−3 ~ today−1)에 COMPLETED 세션 없음) && (그 이전에 COMPLETED 세션이 1개 이상 있음)`
 
@@ -748,6 +760,38 @@ redoCandidates(today, userId):
 
 ---
 
+### 5.13 학습 묶음 — 어제의 다음 걸음 (`StudyThreadPolicy`)
+
+**배울 때는 한 주제를 이어서, 꺼낼 때는 섞어서.**
+
+복습은 섞어 내는 것이 맞다(§6.5 교차 학습). 그런데 **처음 배우는 구간까지** 매일 다른 주제로 바꾸면 무엇 하나 끝나지 않는다. 개념 노트 하나가 단위 3~6개이고 하루에 한두 단위씩 떼는 구조(§5.3 1번)에서, 어제 절반 뗀 노트가 오늘 다른 skill에 밀리면 그 노트는 영영 안 끝난다.
+
+| 규칙 | |
+|---|---|
+| **TH-1** | 묶음은 **저장하지 않는다**(ADR-042와 같은 방식). "진행 중인 묶음" = 최근 **7 plan-day** 안의 **가장 최근 main task**의 skill 중, 그 skill의 개념 노트에 **안 푼 단위가 남은** skill. 마친 단위는 `UNIT_SOLVED`로 판단한다(`04` §6) |
+| **TH-2** | 진행 중인 묶음이 있으면 **오늘의 main은 그 skill**이다. 점수 경쟁(§5.4)을 하지 않고 순위 맨 앞으로 올린다. 그 skill의 제안은 §5.3 1번(개념 익히기)이 잡는다 |
+| **TH-3** | 묶음이 없거나 닫혔으면 기존대로 §5.2 후보에서 §5.4 점수로 고른다 |
+| **TH-4** | `FATIGUE_ONE_DAY`·`FATIGUE_TWO_DAYS`는 **폐지**한다(ADR-053 — 묶음과 정면충돌). 대신 **한 skill 연속 `devpilot.planner.study-thread-max-consecutive-days`(기본 7) plan-day 상한** — 닿으면 묶음을 닫고 다음 skill로 간다. 막혀서 못 나가는 상황을 막는 장치다 |
+| **TH-5** | **Teach before test**: planning KNOWLEDGE < 2이고 그 skill의 노트에 안 푼 단위가 남아 있으면 CHALLENGE·READ_CODE를 내지 않는다(§5.3 1번이 앞서므로 자동으로 그렇게 된다). KNOWLEDGE ≥ 2면 이 문턱을 받지 않는다 — 이미 아는 사람에게 개념부터 시키지 않는다 |
+
+**연속 일수 세는 법** — 가장 최근부터 같은 skill이 이어진 plan-day 수다. **main이 없던 날은 목록에 없다** — 주말에 쉬어도 묶음이 끊기지 않는다. 쉰 날을 끊김으로 보면 평일에만 공부하는 사람은 묶음을 만들 수 없다.
+
+**묶음에 넣지 않은 것** — 이 판의 묶음은 **① 개념 익히기까지**다. 재설계안이 그린 `① → ② 종합 문제 → ③ 내 프로젝트에 쓰기` 중 ②·③은 아직 점수로 고른다. 노트를 다 떼면 묶음이 닫히고, 그 skill은 보통 같은 milestone 안에 남아 있어 다음 날 CHALLENGE로 다시 뽑힌다 — 다만 **보장되지는 않는다.** ②까지 묶는 것은 challenge 해결 상태를 묶음 판정에 넣어야 해서 따로 둔다.
+
+**Test vectors** (TH-V1~TH-V9, `max-consecutive-days = 7`)
+
+| # | recentMains (최근이 앞) | candidates | 노트 남은 skill | 이어갈 skill |
+|---|---|---|---|---|
+| TH-V1 | `[A]` | A, B | A | **A** |
+| TH-V2 | `[A]` | A, B | B | 없음 (A의 노트를 다 뗐다) |
+| TH-V3 | `[A]` | B, C | A, B | 없음 (A가 오늘 후보가 아니다) |
+| TH-V4 | `[]` | A, B | A | 없음 (첫날) |
+| TH-V5 | `[A, A]` | A, B | A | **A** (쉰 날은 목록에 없다) |
+| TH-V6 | `[A ×6]` | A, B | A | **A** (상한 전) |
+| TH-V7 | `[A ×7]` | A, B | A | 없음 (TH-4 상한) |
+| TH-V8 | `[A, B, A ×5]` | A, B | A | **A** (연속이 끊겨 다시 1일째) |
+| TH-V9 | `[B, A, A]` | A, B | A | 없음 (가장 최근 main만 본다) |
+
 ## 6. Review Scheduling (`FinalRatingPolicy`, `RuleBasedV1Scheduler`, `DueReviewSelector`)
 
 ### 6.0 무엇을 근거로 이렇게 정했나
@@ -758,7 +802,7 @@ redoCandidates(today, userId):
 |---|---|---|
 | **간격 효과 (spacing)** | §6.2 간격 계산, §6.3 신규 항목 첫 due | 맞히면 간격을 2~3배로 늘려 다음 인출을 미룬다. 온보딩 카드도 하루 5장씩 나눠 첫 due를 분산한다. **혼자 푼 학습 단위도 7일 뒤 한 번 돌아온다**(ADR-051) — 그 자리에서 풀렸다는 것이 2주 뒤에도 떠오른다는 뜻은 아니다 |
 | **인출 연습 (retrieval practice / testing effect)** | §6.1 최종 등급, §9.1 HL-1·HL-2·HL-4, §5.3 RECALL·EXPLAIN task | 자료를 다시 보는 대신 먼저 떠올려 답하게 한다. 답을 보기 전에 힌트를 받으면 `HINT_CAP_*`으로 등급 상한을 걸어 "혼자 떠올린 것"으로 세지 않는다 |
-| **교차 학습 (interleaving)** | §6.5 `RV-INTERLEAVE`, §5.5 `FATIGUE_ONE_DAY`·`FATIGUE_TWO_DAYS` | 같은 skill 카드가 3장 연속 나오지 않도록 출제 순서를 재배치한다. 같은 skill이 이틀 연속 main task였으면 점수를 낮춘다 |
+| **교차 학습 (interleaving)** | §6.5 `RV-INTERLEAVE` | 같은 skill 카드가 3장 연속 나오지 않도록 출제 순서를 재배치한다. **꺼낼 때만** 섞는다 — 처음 배우는 구간은 §5.13대로 한 주제를 이어 간다 |
 | **생성 효과 (generation)** | §5.3 EXPLAIN·PROJECT_TASK·READ_CODE 제안, §9.5 RD-1 | 정답을 받기 전에 스스로 답·설명·구현을 만들어 보게 한다. 러버덕에서 AI는 답을 주지 않고 되묻기만 한다 |
 | **정교화 (elaboration)** | §7.2 EXPLANATION 축 규칙(E2~E5), §8.1 `explanationCoverageBp`, §9.5 RD-2 | "왜 그런가"를 어디까지 설명했는지를 coverage로 재서 레벨 증거로 쓴다. 되묻는 질문은 설명의 빈틈과 틀린 전제를 겨냥한다 |
 | **적정 난이도 (desirable difficulty)** | §5.3 `d = planning IMPLEMENTATION + 1`, §5.5 `LOW_ENERGY_DEEP_TASK`·`HIGH_ENERGY_HARD_TASK`·`COMEBACK_HARD_TASK`, §6.4 leech | 지금 수준보다 한 단계 위를 낸다. 다만 컨디션이 낮거나 오래 쉬고 돌아온 날은 난이도를 낮추고, 4회 연속 실패한 카드는 중단해서 좌절을 막는다 |
@@ -1342,9 +1386,21 @@ AI 출력 파싱 직후 finding마다 순서대로 적용한다.
 | `completedRubberDuckSessions` | status = COMPLETED `rubber_duck_session` 수 (기간 내 `completed_at`의 plan-day). skill 유무와 무관하다 — 이벤트가 아니라 세션 행으로 센다(RD-7) | 개 |
 | `projectNoteCount` | 기간 내 `occurred_on`인 `side_project_note` 수 (유형 무관) | 개 |
 | `independentRedoCount` | 기간 내 `completed_at`의 plan-day가 들어오는 `REDO` 과제 중 `redo_without_ai = true`인 수 (§5.10 RE-8). 과제 행으로 센다 — `skill_id`가 없는 재현 과제는 없으므로(RE-1) 이벤트 수와 같지만, 기준은 행이다 | 개 |
+| `learnedUnitCount` | 기간 내 `UNIT_SOLVED`의 **서로 다른** `(lessonKey, unitKey)` 수. 같은 단위를 다시 풀어도 1 (`04` §6) | 개 |
+| `completedLessonCount` | 그 사용자가 **모든 단위를 한 번 이상 마친** 노트 수 (기간 누적이 아니라 시점 값, `05` §21.9 `DONE`) | 개 |
+| `taughtBeforeTestedBp` | 기간 내 `CHALLENGE_SUBMITTED`가 있는 skill 중, **그 첫 제출보다 앞선** 같은 skill 노트의 `UNIT_SOLVED`가 있는 skill의 비율. 노트가 없는 skill은 분모에서 뺀다(가르칠 것이 없었다). 분모 0이면 null | bp |
+| `topicSwitchesPerWeek` | 기간 내 main task의 skill이 **바뀐 횟수** ÷ 주 수. 낮을수록 한 주제를 끝까지 간 것이다(§5.13). main이 없던 plan-day는 건너뛰고 센다 | 회/주 |
 | `riskLevel`, `ratioBp` | 기간 마지막 snapshot | — |
 | `weakThinkingAxes` | axis별 `MISSED` 비율(`MISSED / 전체 observation`) 상위 3개, observation 3개 이상인 axis만 | 목록 |
 | `requirementCoverageBp` | 최근 분석한 요구사항 문서(로드맵 비교에 붙여넣은 로드맵·기술 목록) 5개의 REQUIRED 항목 중 fit = READY 비율 | bp |
+
+**배우고 있나를 보는 네 지표 (§5.13과 짝)** — 위 네 줄(`learnedUnitCount`·`completedLessonCount`·`taughtBeforeTestedBp`·`topicSwitchesPerWeek`)은 **"이 도구를 쓰면 실제로 느는가"** 를 재려고 둔 것이다. 나머지 지표는 대부분 AI 평가 결과의 비율이라, 문제를 안 풀면 아예 값이 없고 배우는 구간이 통째로 안 보인다.
+
+- `taughtBeforeTestedBp`가 낮으면 **문제부터 내고 있다.** 100%가 목표가 아니다 — 이미 아는 skill(KNOWLEDGE ≥ 2)은 노트를 건너뛰는 것이 맞다(TH-5). 낮아지는 **추세**가 신호다
+- `topicSwitchesPerWeek`가 높으면 **매일 주제가 바뀌고 있다.** 닷새에 2 이하가 정상 범위다(§5.13 시뮬레이션 기준)
+- `learnedUnitCount`가 0인데 `studyMinutes`가 크면 **시간은 쓰는데 배우지는 않는 구간**이다. 문제만 풀고 있거나 막혀 있다
+
+`MetricsCalculator`는 S6에 만든다. 그전까지 이 네 값의 실행 가능한 정의는 `FiveDayStudyThreadSimulationTest`(`09` §5.4)다 — 닷새를 실제로 돌려 같은 값을 뽑는다.
 
 ---
 

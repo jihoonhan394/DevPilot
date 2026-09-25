@@ -34,6 +34,7 @@ class TaskProposalPolicyTest {
 
     private static final String VECTOR_FILE = "06-05-task-proposal.yaml";
     private static final UUID PROJECT_ID = UUID.fromString("00000000-0000-0000-0000-00000000000a");
+    private static final String LESSON_KEY = "LESSON.S.001";
     private static final UUID REDO_SOURCE_ID =
             UUID.fromString("00000000-0000-0000-0000-00000000000b");
 
@@ -157,6 +158,7 @@ class TaskProposalPolicyTest {
                 List.of(),
                 null,
                 null,
+                null,
                 null);
     }
 
@@ -189,7 +191,8 @@ class TaskProposalPolicyTest {
                 List.of(),
                 sideProject == null ? null : new SideProjectRef(PROJECT_ID, sideProject),
                 (String) row.get("projectGuide"),
-                redoCandidate(row.get("redo")));
+                redoCandidate(row.get("redo")),
+                lessonStep(row.get("lesson")));
     }
 
     /**
@@ -216,6 +219,31 @@ class TaskProposalPolicyTest {
                         (Integer) redo.get("difficulty"),
                         LocalDate.parse("2026-10-10").minusDays(daysAfter)),
                 daysAfter);
+    }
+
+    /**
+     * vector의 {@code lesson} 값 → 개념 익히기 입력 (docs/06 §5.13 TH-2). 적지 않으면 노트가 없거나 다 뗀 것이다.
+     *
+     * <p>{@code {units, minutes, remainingAfter}}만 적는다 — 어느 단위가 남았는지는 {@code LessonStep.next}가 정하고
+     * 여기서는 그 결과를 받는다.
+     */
+    @SuppressWarnings("unchecked")
+    private static @Nullable LessonStep lessonStep(@Nullable Object value) {
+        if (value == null) {
+            return null;
+        }
+        Map<String, Object> lesson = (Map<String, Object>) value;
+        int units = (Integer) lesson.get("units");
+        List<String> unitKeys = new ArrayList<>();
+        for (int index = 1; index <= units; index++) {
+            unitKeys.add(LESSON_KEY + ".U" + index);
+        }
+        return new LessonStep(
+                LESSON_KEY,
+                "첫 단위",
+                unitKeys,
+                (Integer) lesson.get("minutes"),
+                (Integer) lesson.get("remainingAfter"));
     }
 
     private static TrackDefaults track(Object value) {

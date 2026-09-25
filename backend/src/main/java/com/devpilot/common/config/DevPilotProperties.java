@@ -165,6 +165,7 @@ public record DevPilotProperties(
             @Min(0) @Max(5) int maxExtraTasks,
             @Positive int challengeRepeatExclusionDays,
             @Positive int comebackInactiveDays,
+            @Positive int studyThreadMaxConsecutiveDays,
             @NotNull BigDecimal reviewMinutesPerCard,
             @NotNull BigDecimal reviewMaxShare,
             @NotNull BigDecimal defaultPracticalImportance,
@@ -240,8 +241,6 @@ public record DevPilotProperties(
             @NotNull BigDecimal riskHighShould,
             @NotNull BigDecimal lowEnergyDeepTask,
             @NotNull BigDecimal highEnergyHardTask,
-            @NotNull BigDecimal fatigueOneDay,
-            @NotNull BigDecimal fatigueTwoDays,
             @NotNull BigDecimal continuationBonus,
             @NotNull BigDecimal comebackHardTask,
             @NotNull BigDecimal monotonyThreeDays,
@@ -253,8 +252,6 @@ public record DevPilotProperties(
             requireBasisPoints(riskHighShould, "modifiers.risk-high-should");
             requireBasisPoints(lowEnergyDeepTask, "modifiers.low-energy-deep-task");
             requireBasisPoints(highEnergyHardTask, "modifiers.high-energy-hard-task");
-            requireBasisPoints(fatigueOneDay, "modifiers.fatigue-one-day");
-            requireBasisPoints(fatigueTwoDays, "modifiers.fatigue-two-days");
             requireBasisPoints(continuationBonus, "modifiers.continuation-bonus");
             requireBasisPoints(comebackHardTask, "modifiers.comeback-hard-task");
             requireBasisPoints(monotonyThreeDays, "modifiers.monotony-three-days");

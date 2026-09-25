@@ -9,6 +9,7 @@ import com.devpilot.today.domain.ConceptReadingSelection;
 import com.devpilot.today.domain.CuratedReading;
 import com.devpilot.today.domain.LearningTask;
 import com.devpilot.today.domain.Lesson;
+import com.devpilot.today.domain.LessonStep;
 import com.devpilot.today.domain.RedoTaskPolicy;
 import com.devpilot.today.domain.RedoTaskPolicy.RedoAttempt;
 import com.devpilot.today.domain.RedoTaskPolicy.RedoCandidate;
@@ -219,6 +220,46 @@ class ProposalOptionCollector {
         /** 오늘 이 skill에 걸 재현 후보 (docs/06 §5.10). 없으면 null이고 제안은 1번 분기부터 간다. */
         @Nullable RedoCandidate redoFor(String skillCode) {
             return redosBySkillCode.get(skillCode);
+        }
+
+        /**
+         * 그 skill의 노트에서 오늘 낼 몫 (docs/06 §5.13 TH-2). 노트가 없거나 다 떼었으면 null이다.
+         *
+         * @param budgetMinutes 오늘 main에 쓸 수 있는 시간. 이만큼만 잘라 낸다
+         */
+        @Nullable LessonStep lessonStepFor(
+                String skillCode, Map<String, Set<String>> solvedByLesson, int budgetMinutes) {
+            return lessons.findBySkillCode(skillCode)
+                    .filter(lesson -> !lesson.retired())
+                    .flatMap(
+                            lesson ->
+                                    LessonStep.next(
+                                            lesson,
+                                            solvedByLesson.getOrDefault(lesson.key(), Set.of()),
+                                            budgetMinutes))
+                    .orElse(null);
+        }
+
+        /** 노트에 안 푼 단위가 남은 skill (docs/06 §5.13 TH-1). 묶음이 살아 있는지 판단하는 값이다. */
+        Set<String> codesWithRemainingLesson(
+                Set<String> skillCodes, Map<String, Set<String>> solvedByLesson) {
+            Set<String> remaining = new HashSet<>();
+            for (String code : skillCodes) {
+                lessons.findBySkillCode(code)
+                        .filter(lesson -> !lesson.retired())
+                        .filter(
+                                lesson ->
+                                        lesson.units().stream()
+                                                .anyMatch(
+                                                        unit ->
+                                                                !solvedByLesson
+                                                                        .getOrDefault(
+                                                                                lesson.key(),
+                                                                                Set.of())
+                                                                        .contains(unit.key())))
+                        .ifPresent(lesson -> remaining.add(code));
+            }
+            return Set.copyOf(remaining);
         }
 
         /** 해당 skill code를 가진 reading 후보 (key ASC). */

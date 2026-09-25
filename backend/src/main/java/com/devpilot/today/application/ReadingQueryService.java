@@ -6,6 +6,8 @@ import com.devpilot.skill.application.SkillCatalogQueryService;
 import com.devpilot.skill.application.SkillRef;
 import com.devpilot.today.domain.ConceptReading;
 import com.devpilot.today.domain.CuratedReading;
+import com.devpilot.today.domain.Lesson;
+import com.devpilot.today.domain.LessonUnit;
 import com.devpilot.today.domain.ReadingKind;
 import java.util.List;
 import java.util.Map;
@@ -25,30 +27,52 @@ public class ReadingQueryService {
 
     private final CuratedReadingRegistry curatedReadingRegistry;
     private final ConceptReadingRegistry conceptReadingRegistry;
+    private final LessonRegistry lessonRegistry;
     private final SkillCatalogQueryService skillCatalogQueryService;
 
     public ReadingQueryService(
             CuratedReadingRegistry curatedReadingRegistry,
             ConceptReadingRegistry conceptReadingRegistry,
+            LessonRegistry lessonRegistry,
             SkillCatalogQueryService skillCatalogQueryService) {
         this.curatedReadingRegistry = curatedReadingRegistry;
         this.conceptReadingRegistry = conceptReadingRegistry;
+        this.lessonRegistry = lessonRegistry;
         this.skillCatalogQueryService = skillCatalogQueryService;
     }
 
-    /** 두 registry에 모두 없으면 404 {@code RESOURCE_NOT_FOUND}. */
+    /** 세 registry 어디에도 없으면 404 {@code RESOURCE_NOT_FOUND}. */
     public ReadingView get(String readingKey) {
         Optional<CuratedReading> code = curatedReadingRegistry.find(readingKey);
         if (code.isPresent()) {
             return toView(code.get());
         }
-        return conceptReadingRegistry
+        Optional<ConceptReading> concept = conceptReadingRegistry.find(readingKey);
+        if (concept.isPresent()) {
+            return toView(concept.get());
+        }
+        return lessonRegistry
                 .find(readingKey)
                 .map(this::toView)
                 .orElseThrow(
                         () ->
                                 new NotFoundException(
                                         ErrorCode.RESOURCE_NOT_FOUND, "reading not found"));
+    }
+
+    /**
+     * 개념 노트는 <b>어디로 가야 하는지만</b> 알려 준다 (docs/05 §19.7). 내용은 노트 화면이 {@code GET /lessons/{key}}로 따로
+     * 읽는다 — 진행(마친 단위)이 사용자마다 다르고 이 endpoint는 사용자와 무관하기 때문이다.
+     */
+    private ReadingView toView(Lesson lesson) {
+        return new ReadingView(
+                lesson.key(),
+                ReadingKind.LESSON,
+                resolve(List.of(lesson.skillCode())),
+                lesson.units().stream().mapToInt(LessonUnit::minutes).sum(),
+                lesson.retired(),
+                null,
+                null);
     }
 
     /** 러버덕 {@code CODE_READING} 대상 요약 등 다른 모듈이 쓰는 코드 읽기 조회. 없으면 빈 값. */

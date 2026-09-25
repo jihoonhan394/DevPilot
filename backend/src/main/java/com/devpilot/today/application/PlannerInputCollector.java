@@ -59,6 +59,9 @@ class PlannerInputCollector {
      */
     private static final int RECENT_MAIN_DAYS = PlannerScoring.MONOTONY_STRONG_DAYS;
 
+    /** 묶음을 찾아 거슬러 올라가는 범위 (docs/06 §5.13 TH-1). */
+    private static final int THREAD_LOOKBACK_DAYS = 7;
+
     /** 학습 목표가 없을 때 쓰는 트랙 (docs/06 §5.1). */
     private final SkillCatalogQueryService skillCatalogQueryService;
 
@@ -124,6 +127,8 @@ class PlannerInputCollector {
                 recentMains.yesterday(),
                 recentMains.dayBefore(),
                 recentMains.taskTypes(),
+                recentMains.skillCodes(),
+                learningEventQueryService.solvedUnitKeys(userId),
                 sideProjectQueryService
                         .findLatestActive(userId)
                         .map(project -> new SideProjectRef(project.id(), project.name()))
@@ -187,25 +192,25 @@ class PlannerInputCollector {
         @Nullable RecentMain yesterday = null;
         @Nullable RecentMain dayBefore = null;
         List<TaskType> taskTypes = new ArrayList<>();
+        List<String> skillCodes = new ArrayList<>();
         boolean unbroken = true;
-        for (int back = 1; back <= RECENT_MAIN_DAYS; back++) {
+        for (int back = 1; back <= THREAD_LOOKBACK_DAYS; back++) {
             Optional<LearningTask> main = todayQueryService.mainOf(userId, today.minusDays(back));
             if (back == 1) {
                 yesterday = toRecentMain(main, codes);
             } else if (back == 2) {
                 dayBefore = toRecentMain(main, codes);
             }
-            if (unbroken && main.isPresent()) {
+            if (unbroken && back <= RECENT_MAIN_DAYS && main.isPresent()) {
                 taskTypes.add(main.get().getTaskType());
-            } else {
+            } else if (back <= RECENT_MAIN_DAYS) {
                 unbroken = false;
             }
-            if (!unbroken && back >= 2) {
-                // 유형이 이미 끊겼고 어제·그제도 읽었다 — 더 거슬러 올라갈 이유가 없다
-                break;
-            }
+            // 묶음(§5.13 TH-1)은 쉰 날을 건너뛴다 — 주말에 쉬어도 하던 주제가 끊기지 않는다
+            main.map(LearningTask::getSkillId).map(codes::get).ifPresent(skillCodes::add);
         }
-        return new RecentMains(yesterday, dayBefore, List.copyOf(taskTypes));
+        return new RecentMains(
+                yesterday, dayBefore, List.copyOf(taskTypes), List.copyOf(skillCodes));
     }
 
     private static @Nullable RecentMain toRecentMain(
@@ -249,7 +254,8 @@ class PlannerInputCollector {
     private record RecentMains(
             @Nullable RecentMain yesterday,
             @Nullable RecentMain dayBefore,
-            List<TaskType> taskTypes) {}
+            List<TaskType> taskTypes,
+            List<String> skillCodes) {}
 
     /**
      * 모은 입력.
@@ -270,6 +276,8 @@ class PlannerInputCollector {
             @Nullable RecentMain yesterday,
             @Nullable RecentMain dayBefore,
             List<TaskType> recentMainTaskTypes,
+            List<String> recentMainSkillCodes,
+            Map<String, Set<String>> solvedUnitKeysByLesson,
             @Nullable SideProjectRef sideProject,
             Map<String, UUID> skillIdsByCode) {}
 }

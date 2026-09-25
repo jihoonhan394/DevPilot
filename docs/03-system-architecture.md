@@ -509,13 +509,12 @@ devpilot:
       risk-high-should: 0.80
       low-energy-deep-task: 0.70
       high-energy-hard-task: 1.10
-      fatigue-one-day: 0.80
-      fatigue-two-days: 0.60
       continuation-bonus: 1.15
       comeback-hard-task: 0.70             # 06 §5.5 COMEBACK_HARD_TASK (7_000bp)
       monotony-three-days: 0.70            # 06 §5.5 MONOTONY_THREE_DAYS — 같은 과제 유형 3일 연속 (7_000bp)
       monotony-five-days: 0.40             # 06 §5.5 MONOTONY_FIVE_DAYS — 5일 연속 (4_000bp)
       redo-due: 1.30                       # 06 §5.5 REDO_DUE (13_000bp)
+    study-thread-max-consecutive-days: 7   # 06 §5.13 TH-4 한 skill을 이어 갈 수 있는 최대 plan-day
     redo:                                  # 06 §5.10 재현 과제
       min-days-after: 3                    # RE-2 창 시작 (원본 완료·지난 재현 이후 일수, 경계 포함)
       max-days-after: 7                    # RE-2 창 끝 (경계 포함). min <= max가 아니면 기동 실패

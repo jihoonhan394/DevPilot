@@ -28,6 +28,7 @@ import com.devpilot.today.domain.ReasonTemplates;
 import com.devpilot.today.domain.ReasonTemplates.ReasonInput;
 import com.devpilot.today.domain.ReasonTemplates.ReasonParams;
 import com.devpilot.today.domain.ScoreBreakdown;
+import com.devpilot.today.domain.StudyThreadPolicy;
 import com.devpilot.today.domain.TaskProposalPolicy;
 import com.devpilot.today.domain.TaskProposalPolicy.ChallengeOption;
 import com.devpilot.today.domain.TaskProposalPolicy.Proposal;
@@ -44,6 +45,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -70,6 +72,7 @@ public class DailyPlanComposer {
     private final TaskProposalPolicy proposalPolicy = new TaskProposalPolicy();
     private final TimeAllocator timeAllocator;
     private final ReasonTemplates reasonTemplates;
+    private final StudyThreadPolicy studyThreadPolicy;
 
     DailyPlanComposer(
             PlanQueryService planQueryService,
@@ -88,6 +91,8 @@ public class DailyPlanComposer {
         this.scoring = new PlannerScoring(TodayRuleSettings.planner(properties));
         this.timeAllocator = new TimeAllocator(TodayRuleSettings.timeAllocation(properties));
         this.reasonTemplates = new ReasonTemplates(TodayRuleSettings.reasons(properties));
+        this.studyThreadPolicy =
+                new StudyThreadPolicy(properties.planner().studyThreadMaxConsecutiveDays());
     }
 
     /** 오늘 계획을 계산한다. 호출자 트랜잭션에서 읽는다. 활성 plan이 없으면 404 {@code PLAN_NOT_FOUND}. */
@@ -145,7 +150,7 @@ public class DailyPlanComposer {
         }
         List<Evaluated> evaluated = new ArrayList<>();
         for (String code : candidates) {
-            evaluated.add(evaluate(code, inputs, options));
+            evaluated.add(evaluate(code, inputs, options, allocation.mainBudget()));
         }
         Map<ScoredCandidate, Evaluated> byScore = new HashMap<>();
         evaluated.forEach(candidate -> byScore.put(candidate.scored(), candidate));
@@ -153,6 +158,8 @@ public class DailyPlanComposer {
                 scoring.rank(evaluated.stream().map(Evaluated::scored).toList()).stream()
                         .map(byScore::get)
                         .toList();
+        // TH-2: 개념 노트를 떼는 중이면 점수 경쟁에서 빼고 이어 간다 (docs/06 §5.13)
+        ranked = continueThread(ranked, inputs, options);
         Evaluated best = ranked.getFirst();
         Proposal main =
                 timeAllocator.fit(
@@ -175,8 +182,42 @@ public class DailyPlanComposer {
         return new Chosen(toTask(best, inputs, main, 1), List.copyOf(extras));
     }
 
+    /**
+     * 진행 중인 묶음의 skill을 맨 앞으로 (docs/06 §5.13 TH-2). 묶음이 없으면 순위를 그대로 둔다(TH-3).
+     *
+     * <p>순위에서 <b>빼지 않고 앞으로 옮기기만</b> 한다 — 나머지는 남는 시간에 낼 추가 과제 후보로 그대로 쓴다(TH-8).
+     */
+    private List<Evaluated> continueThread(
+            List<Evaluated> ranked,
+            Inputs inputs,
+            ProposalOptionCollector.ProposalOptions options) {
+        Set<String> codes = new HashSet<>();
+        ranked.forEach(candidate -> codes.add(candidate.skill().code()));
+        Optional<String> thread =
+                studyThreadPolicy.continuing(
+                        new StudyThreadPolicy.ThreadInput(
+                                inputs.recentMainSkillCodes(),
+                                codes,
+                                options.codesWithRemainingLesson(
+                                        codes, inputs.solvedUnitKeysByLesson())));
+        if (thread.isEmpty() || thread.get().equals(ranked.getFirst().skill().code())) {
+            return ranked;
+        }
+        List<Evaluated> reordered = new ArrayList<>();
+        ranked.stream()
+                .filter(candidate -> candidate.skill().code().equals(thread.get()))
+                .forEach(reordered::add);
+        ranked.stream()
+                .filter(candidate -> !candidate.skill().code().equals(thread.get()))
+                .forEach(reordered::add);
+        return List.copyOf(reordered);
+    }
+
     private Evaluated evaluate(
-            String code, Inputs inputs, ProposalOptionCollector.ProposalOptions options) {
+            String code,
+            Inputs inputs,
+            ProposalOptionCollector.ProposalOptions options,
+            int mainBudgetMinutes) {
         SkillProfile profile = inputs.profiles().get(code);
         SkillTarget target = inputs.targets().get(code);
         MilestoneContext milestone =
@@ -210,7 +251,9 @@ public class DailyPlanComposer {
                                 options.conceptReadingsFor(code),
                                 inputs.sideProject(),
                                 options.projectGuideFor(code),
-                                options.redoFor(code)));
+                                options.redoFor(code),
+                                options.lessonStepFor(
+                                        code, inputs.solvedUnitKeysByLesson(), mainBudgetMinutes)));
         ScoredCandidate scored =
                 scoring.score(
                         new ScoreInput(

@@ -3843,19 +3843,20 @@ public record SideProjectPatchRequest(
 | 오류 | 400 `VALIDATION_FAILED`(`Pattern`), 404 `RESOURCE_NOT_FOUND` |
 | Sprint · 요구사항 | S3 · FR-27, AC-28, RC-1~RC-4 |
 
-**두 종류를 한 endpoint가 돌려준다.** `learning_task.reading_key`가 `READ_CODE`의 **코드 읽기**(`curated-repos.yaml`, `19` §3.8)와 `READING`의 **개념 읽기**(`concept-readings.yaml`, `19` §3.13)를 한 칸에 담기 때문이다. key 하나가 어느 쪽인지는 `kind`로 알려 준다 — 클라이언트가 `READ.`·`DOC.` 접두사로 추측하지 않는다.
+**세 종류를 한 endpoint가 돌려준다.** `learning_task.reading_key`가 `READ_CODE`의 **코드 읽기**(`curated-repos.yaml`, `19` §3.8)와 `READING`의 **개념 읽기**(`concept-readings.yaml`, `19` §3.13)를 한 칸에 담기 때문이다. 개념 노트(`READING`의 **개념 익히기**, `19` §3.14, `06` §5.13)도 같은 칸을 쓴다. key 하나가 어느 쪽인지는 `kind`로 알려 준다 — 클라이언트가 `READ.`·`DOC.`·`LESSON.` 접두사로 추측하지 않는다. `kind = LESSON`이면 **어디로 갈지만** 알려 주고 내용은 `GET /lessons/{key}`가 준다(진행이 사람마다 다르고 이 endpoint는 사용자를 모른다).
 
 ```java
 public enum ReadingKind { CODE, CONCEPT }
 
 public record ReadingView(
         String key,                  // 예: "READ.PETCLINIC.CONTROLLER_SLICE.001", "DOC.GIT.BRANCHING.001"
-        ReadingKind kind,            // CODE = 저장소 코드 읽기, CONCEPT = 공식 문서 개념 읽기
+        ReadingKind kind,            // CODE = 저장소 코드 읽기, CONCEPT = 공식 문서 개념 읽기, LESSON = 개념 노트
         List<SkillRef> skills,       // skillCodes를 활성 skill로 해석한 것. 없는 code는 뺀다
         Integer estimatedMinutes,    // null 가능
         boolean retired,             // 은퇴한 단위(19 §8.2). true여도 조회는 된다
         CodeReadingView code,        // kind = CODE일 때만. 그 밖에는 null
         ConceptReadingView concept) {}  // kind = CONCEPT일 때만. 그 밖에는 null
+                                     // kind = LESSON이면 code·concept 모두 null이고 key로 노트를 연다
 
 public record CodeReadingView(
         CuratedRepoView repo,

@@ -31,16 +31,16 @@ vectors:
     expectedB: 388000
     selected: A
   - id: V03
-    condition: A가 어제·그제 main (둘 다 COMPLETED)
+    condition: A가 어제·그제 main (둘 다 COMPLETED) — ADR-053 이후 깎지 않는다
     risk: LOW
     energy: NORMAL
     yesterday: { code: A, status: COMPLETED }
     dayBefore: { code: A, status: COMPLETED }
     aProposal: { estimated: 15, difficulty: 2 }
     bProposal: { estimated: 20, difficulty: 2 }
-    expectedA: 312000
+    expectedA: 520000
     expectedB: 485000
-    selected: B
+    selected: A
   - id: V04
     condition: A가 어제 main, IN_PROGRESS
     risk: LOW
@@ -53,16 +53,16 @@ vectors:
     expectedB: 485000
     selected: A
   - id: V05
-    condition: A가 어제 main만 COMPLETED
+    condition: A가 어제 main만 COMPLETED — ADR-053 이후 깎지 않는다
     risk: LOW
     energy: NORMAL
     yesterday: { code: A, status: COMPLETED }
     dayBefore: null
     aProposal: { estimated: 15, difficulty: 2 }
     bProposal: { estimated: 20, difficulty: 2 }
-    expectedA: 416000
+    expectedA: 520000
     expectedB: 485000
-    selected: B
+    selected: A
   - id: V06
     condition: energy LOW, B 제안 CHALLENGE(40분, d2)
     risk: LOW

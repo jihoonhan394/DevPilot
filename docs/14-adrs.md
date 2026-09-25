@@ -1170,3 +1170,84 @@ allowlist를 그때그때 늘리는 것도 답이 아니다. 이 목록은 **AI�
 
 **대안** — 노트에서 공식 문서를 빼고 allowlist 안의 문서로만 쓰기. 실제로 이번에 그렇게 써 보았는데, GitHub Actions를 Gradle 문서로만 설명하게 되어 **정작 배우는 대상이 빠졌다.** 가드를 지키려다 가르치는 것을 버리는 교환이라 택하지 않았다.
 
+---
+
+## ADR-053 배울 때는 이어서, 꺼낼 때는 섞어서
+
+- **Status**: Accepted · **Date**: 2026-09-25 · **Related**: `06` §5.3·§5.5·§5.13, `05` §19.7, `03` §9
+
+**Context** — 개념 노트를 70장 썼는데 **Today가 그것을 모른다.** `TaskProposalPolicy`가 만드는 유형에 노트가 없고(`CHALLENGE`·`READ_CODE`·`READING`·`PROJECT_TASK`·`EXPLAIN`·`RECALL`·`REDO`), 노트로 가는 길은 화면의 버튼 두 개뿐이었다. 매일 열리는 화면이 가르치는 자료를 지나쳐 문제부터 내고 있었다 — **"가르치고 나서 시험한다"가 우연에 맡겨져 있었다.**
+
+노트를 계획에 넣으려 하자 곧바로 두 번째 문제가 드러났다. `FATIGUE_ONE_DAY`(×8,000)·`FATIGUE_TWO_DAYS`(×6,000)는 **같은 skill을 이어 하면 점수를 깎는다.** 노트 하나는 단위 3~6개이고 하루에 한두 단위씩 떼므로 여러 날에 걸친다. 어제 절반 뗀 노트가 오늘 감점을 받아 밀리고, 다음 날 또 밀린다. **무엇 하나 끝나지 않는 구조**다.
+
+두 규칙이 같은 가정 위에 있었다 — "같은 주제를 이어 하는 것은 지루하고 비효율적이다". 이것은 **복습에는 맞고 처음 배우는 구간에는 틀리다.** 섞어 내기(interleaving)의 근거는 인출 연습에 관한 것이지, 개념을 처음 익히는 구간에 관한 것이 아니다(§6.0).
+
+**Decision** — 셋을 함께 바꾼다.
+
+1. **개념 익히기를 제안 분기 1번에 넣는다**(§5.3). KNOWLEDGE < 2이고 그 skill의 노트에 안 푼 단위가 남아 있으면 `CHALLENGE`·`READ_CODE`보다 앞선다. 새 `TaskType`을 만들지 않고 `READING`을 재사용하고(D-1), `reading_key`가 노트 key를 가리킨다. 화면은 `kind = LESSON`으로 구분한다(`05` §19.7) — 접두사로 추측하지 않는다.
+
+2. **묶음을 만든다**(§5.13 `StudyThreadPolicy`). 최근 main의 skill에 노트가 남아 있으면 오늘도 그 skill이 main이다. 점수 경쟁을 하지 않는다. 저장하지 않고 `UNIT_SOLVED`에서 계산한다.
+
+3. **`FATIGUE_*`를 폐지한다.** 이어 하는 구간이 너무 길어지는 것은 감점이 아니라 **연속 7 plan-day 상한**(TH-4)이 막는다. 감점은 "오늘 하지 마라"이고 상한은 "이만큼 했으면 넘어가라"다 — 뒤가 원하는 것이다.
+
+**하루 몫을 자르는 법** — 노트 전체가 아니라 **다음 미완료 단위부터 오늘 시간이 되는 만큼**이다. 예산을 넘어도 **한 단위는 반드시 낸다.** 안 그러면 10분 남은 날에 12분짜리 단위가 남은 노트는 시간이 넉넉한 날이 올 때까지 영영 안 나온다.
+
+**Consequences**
+- 노트가 있는 skill은 노트를 다 뗀 뒤에야 문제가 나온다. 첫 며칠이 전부 개념 익히기가 될 수 있다 — 의도한 것이다.
+- 같은 skill이 최대 7일 연속 main이 된다. `MONOTONY_*`(같은 **유형** 3·5일 연속)는 그대로라 유형이 계속 `READING`이면 그쪽이 누른다. 묶음 안에서도 적용되므로 노트가 6단위를 넘으면 후반에 점수가 눌린다 — **묶음은 순위를 앞으로 올리는 것이라 눌려도 유지된다.**
+- 노트가 없는 skill은 동작이 그대로다.
+- `score_breakdown.modifiers`에서 `FATIGUE_*`가 사라진다. **지난 과제의 기록에는 남아 있다** — enum 값을 지우지 않고 읽기만 멈춘다면 좋겠지만, 이 값은 `learning_task.score_breakdown` JSON이라 CHECK도 migration도 없다. 과거 JSON에 든 문자열은 그대로 두고 앱은 모르는 code를 무시한다.
+- **남는 문제**: 묶음이 ①까지만이라 노트를 다 뗀 뒤 ② 종합 문제로 이어지는 것은 점수에 맡긴다. 같은 milestone 안이라 대개 이어지지만 보장은 아니다. ②·③까지 묶으려면 challenge 해결 상태를 묶음 판정에 넣어야 해서 따로 둔다.
+
+**대안** — `FATIGUE_*`를 두고 묶음일 때만 면제하기. 규칙이 둘로 갈려 "언제 깎이는지"를 설명할 수 없게 된다. 감점의 원래 목적(한 주제에 매몰되는 것 방지)은 연속 일수 상한이 더 직접적으로 달성한다.
+
+---
+
+## ADR-054 지금 단계가 비어야 다음을 본다
+
+- **Status**: Accepted · **Date**: 2026-09-25 · **Related**: `06` §5.2, ADR-044, ADR-053
+
+**Context** — ADR-053으로 개념 노트를 계획에 넣은 뒤 **닷새를 실제로 돌려 봤다**(`FiveDayStudyThreadSimulationTest`). 결과가 이랬다.
+
+```text
+day | skill              | type      | 마친 단위
+  1 | SPRING.TRANSACTION | CHALLENGE | 0
+  2 | SPRING.TRANSACTION | CHALLENGE | 0
+  3 | SPRING.TRANSACTION | CHALLENGE | 0
+  4 | SPRING.TRANSACTION | REDO      | 0
+  5 | SPRING.TRANSACTION | REDO      | 0
+```
+
+노트가 한 번도 안 나왔다. 그런데 `SPRING.TRANSACTION`은 **첫 단계 skill이 아니다.** 첫 단계의 넷(`WEB_HTTP.HTTP_BASICS`·`JAVA.EXCEPTION`·`JAVA.COLLECTION`·`TESTING.JUNIT`)은 전부 K0이고 전부 노트가 있는데, 닷새 내내 한 번도 main이 되지 못했다.
+
+원인은 §5.2가 후보를 **합집합**으로 만들기 때문이다. 온보딩이 배정한 씨앗 카드(111장)가 뒷 단계 skill에도 due를 만들고, 그 skill은 진단으로 `lastPracticedAt`이 있어 3번 경로를 통과한다. 후보에 들어오면 `reviewUrgency`가 첫 단계의 `skillGap`·`milestoneUrgency`를 이긴다.
+
+ADR-044는 "후보는 지금 단계로 제한한다"고 적어 두었는데, **2·3번 경로가 그 제한을 매일 우회하고 있었다.** 문서와 동작이 갈라진 자리다.
+
+**Decision** — 합집합을 그만두고 **차례로** 본다.
+
+1. 현재 milestone
+2. 1번에 제외 규칙까지 적용해 **후보가 0개면** 다음 milestone
+3. 2번까지 0개면 due review가 있고 이미 손대 본 skill
+4. 재현 후보(§5.10)는 순서와 무관하게 언제나 후보 — 창이 며칠뿐이라 미룰 수 없다
+
+같은 시뮬레이션이 이렇게 바뀌었다.
+
+```text
+day | skill                | type      | 자료                         | 마친 단위
+  1 | TESTING.JUNIT        | READING   | LESSON.TESTTESTING.JUNIT.001 | 1
+  2 | TESTING.JUNIT        | READING   | LESSON.TESTTESTING.JUNIT.001 | 2
+  3 | TESTING.JUNIT        | READING   | LESSON.TESTTESTING.JUNIT.001 | 3
+  4 | TESTING.JUNIT        | READ_CODE | READ.TESTREPO.ORDER_TEST.001 | 3
+  5 | WEB_HTTP.HTTP_BASICS | READING   | LESSON.TESTSPRING.MVC.001    | 4
+```
+
+노트를 사흘에 걸쳐 떼고(1→2→3단위), 다 뗀 날 같은 skill의 코드 읽기로 넘어가고, 그다음 skill로 옮겨 간다.
+
+**Consequences**
+- **복습은 그대로 나온다.** 3번에서 걸러지는 것은 "그 skill을 오늘의 main 주제로 삼을지"뿐이고, REVIEW 과제는 main 선정과 별개다(§5.6).
+- 뒷 단계 skill은 지금 단계를 마칠 때까지 main이 되지 않는다. 늦었다는 사실은 위험도와 replan 권고로 알린다(§4) — 단계를 건너뛰지 않는다는 ADR-044의 원칙 그대로다.
+- 지금 단계 skill이 전부 제외되면(목표 달성·deferred·선행 미준비) 자동으로 다음 단계로 내려간다. 할 일이 없어지지 않는다.
+- 테스트 fixture에 첫 단계 skill용 PRACTICE challenge를 하나 더했다. 지금 단계에 문제가 하나도 없으면 §5.3 2번 분기를 실제와 다르게 보게 된다.
+
+**대안** — 씨앗 카드 일괄 배포를 그만두기(재설계안 R-3). 근본 원인에 더 가깝지만 온보딩·복습 전반을 건드린다. 이번에는 planner 쪽에서 막고, 일괄 배포는 따로 다룬다.
