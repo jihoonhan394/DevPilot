@@ -5,6 +5,7 @@ import com.devpilot.common.error.ErrorCode;
 import java.nio.charset.StandardCharsets;
 import java.time.DateTimeException;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -91,6 +92,16 @@ public class CursorCodec {
     /** cursor가 없으면 {@code null}. */
     public @Nullable Position<Long> decodeLong(@Nullable String cursor) {
         return decode(cursor, Long::valueOf);
+    }
+
+    /** 날짜 정렬 목록 (docs/05 §19.10). {@code k}는 {@code LocalDate}의 ISO-8601이다. */
+    public String encode(LocalDate sortKey, UUID id) {
+        return encodeRaw(sortKey.toString(), id);
+    }
+
+    /** cursor가 없으면 {@code null}. */
+    public @Nullable Position<LocalDate> decodeLocalDate(@Nullable String cursor) {
+        return decode(cursor, LocalDate::parse);
     }
 
     private String encodeRaw(String key, UUID id) {

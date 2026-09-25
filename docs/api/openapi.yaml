@@ -1549,6 +1549,183 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - project
+  /api/v1/side-projects/{sideProjectId}/notes:
+    get:
+      operationId: projectListNotes
+      parameters:
+      - in: path
+        name: sideProjectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: noteType
+        required: false
+        schema:
+          type: string
+          enum:
+          - DECISION
+          - INCIDENT
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+          maxLength: 512
+          minLength: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CursorPageSideProjectNoteView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - project
+    post:
+      operationId: projectCreateNote
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: sideProjectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SideProjectNoteCreateRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SideProjectNoteView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - project
+  /api/v1/side-projects/{sideProjectId}/notes/{noteId}:
+    delete:
+      operationId: projectDeleteNote
+      parameters:
+      - in: path
+        name: sideProjectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: noteId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - project
+    get:
+      operationId: projectGetNote
+      parameters:
+      - in: path
+        name: sideProjectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: noteId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SideProjectNoteView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - project
+    patch:
+      operationId: projectUpdateNote
+      parameters:
+      - in: path
+        name: sideProjectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: noteId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SideProjectNotePatchRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SideProjectNoteView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - project
   /api/v1/skills/me:
     get:
       operationId: skillGetMyStates
@@ -2563,6 +2740,18 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SessionView"
+        nextCursor:
+          type: string
+      required:
+      - items
+      - nextCursor
+    CursorPageSideProjectNoteView:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SideProjectNoteView"
         nextCursor:
           type: string
       required:
@@ -5282,6 +5471,165 @@ components:
           minLength: 0
       required:
       - name
+    SideProjectNoteCreateRequest:
+      type: object
+      properties:
+        decisionChoice:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        decisionOptions:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        decisionRationale:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        incidentDetection:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        incidentFix:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        incidentPrevention:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        incidentSymptom:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        noteType:
+          type: string
+          enum:
+          - DECISION
+          - INCIDENT
+        occurredOn:
+          type: string
+          format: date
+        skillCode:
+          type: string
+          maxLength: 100
+          minLength: 0
+        title:
+          type: string
+          maxLength: 200
+          minLength: 0
+      required:
+      - noteType
+      - occurredOn
+      - title
+    SideProjectNotePatchRequest:
+      type: object
+      properties:
+        decisionChoice:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        decisionOptions:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        decisionRationale:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        incidentDetection:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        incidentFix:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        incidentPrevention:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        incidentSymptom:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        occurredOn:
+          type: string
+          format: date
+        skillCode:
+          type: string
+          maxLength: 100
+          minLength: 0
+        title:
+          type: string
+          maxLength: 200
+          minLength: 0
+        version:
+          type: integer
+          format: int64
+      required:
+      - version
+    SideProjectNoteView:
+      type: object
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        decisionChoice:
+          type: string
+        decisionOptions:
+          type: string
+        decisionRationale:
+          type: string
+        id:
+          type: string
+          format: uuid
+        incidentDetection:
+          type: string
+        incidentFix:
+          type: string
+        incidentPrevention:
+          type: string
+        incidentSymptom:
+          type: string
+        noteType:
+          type: string
+          enum:
+          - DECISION
+          - INCIDENT
+        occurredOn:
+          type: string
+          format: date
+        sideProjectId:
+          type: string
+          format: uuid
+        skill:
+          $ref: "#/components/schemas/SkillRef"
+        title:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+      required:
+      - createdAt
+      - decisionChoice
+      - decisionOptions
+      - decisionRationale
+      - id
+      - incidentDetection
+      - incidentFix
+      - incidentPrevention
+      - incidentSymptom
+      - noteType
+      - occurredOn
+      - sideProjectId
+      - skill
+      - title
+      - updatedAt
+      - version
     SideProjectPatchRequest:
       type: object
       properties:

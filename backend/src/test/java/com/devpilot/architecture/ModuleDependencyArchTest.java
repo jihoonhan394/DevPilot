@@ -82,6 +82,8 @@ class ModuleDependencyArchTest {
                                     "training",
                                     "review",
                                     "plan",
+                                    // 지표 projectNoteCount·증거 초안 입력 (docs/03 §2.2, docs/06 §12)
+                                    "project",
                                     "integration.ai")),
                     Map.entry(
                             "radar",
@@ -117,7 +119,8 @@ class ModuleDependencyArchTest {
                                     "coach",
                                     "evidence",
                                     "integration.ai")),
-                    Map.entry("project", Set.of("common", "integration.ai")),
+                    // skill: 기록에 붙이는 선택 skill 검증 (docs/03 §2.2, docs/05 §19.8)
+                    Map.entry("project", Set.of("common", "skill", "integration.ai")),
                     Map.entry(
                             "rubberduck",
                             Set.of(

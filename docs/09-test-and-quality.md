@@ -238,7 +238,8 @@ V10,10,GOOD,CORRECT,SELF_EXPLAIN,GOOD,,5,4
 | §10 | `06-10-verification-guard.csv` (7행) | `VerificationGuardTest` | unit |
 | §11.2 | — (절차 1~9, `restoredDeferrals`, `acceptedDeferrals`와 중복 시 400, `acceptedTargetRaises` 검증 RX-1~RX-8 — §5.3) | `ReplanServiceIntegrationTest` | integration |
 | `19` §5.4 (계획 템플릿 배치) | `19-05-plan-template-placement.yaml` (V1~V8. 입력은 `today`·`targetCompletionDate`뿐이고 창은 하나 `[today, targetCompletionDate]`. **milestone 9개** — `JAVA_BACKEND_DEFAULT`의 PREPARATION 8개 뒤에 CONSOLIDATION 1개. V6(62일, COMPRESSED)·V8(63일, SEQUENTIAL)은 모드 경계) | `PlanTemplatePlacementTest` | unit |
-| §12 | `06-12-metrics.yaml` (`projectNoteCount`·`independentRedoCount` 행 포함) | `StreakCalculatorTest` | unit | `05` §13.1 `streakDays`: 오늘 완료가 있을 때·없을 때(어제까지로 센다), 어제도 없으면 0, 첫 공백에서 멈춤, 같은 날 여러 과제는 하루, 366일 상한 |
+| §12 | `06-12-metrics.yaml` (`projectNoteCount`·`independentRedoCount` 행 포함) | `SideProjectNoteIntegrationTest` | integration | `05` §19.8~§19.12: 결정 기록의 세 항목·장애 기록의 네 항목(I-22), 유형이 섞이면 `VALUE_NOT_ALLOWED`, 미래 날짜 `DATE_OUT_OF_RANGE`, `noteType` 변경 시도 `MALFORMED_REQUEST`(PN-2), 바뀐 값이 없으면 version 유지, `occurredOn` DESC 목록과 유형 필터, 다른 프로젝트의 노트 id → 404 |
+| `StreakCalculatorTest` | unit | `05` §13.1 `streakDays`: 오늘 완료가 있을 때·없을 때(어제까지로 센다), 어제도 없으면 0, 첫 공백에서 멈춤, 같은 날 여러 과제는 하루, 366일 상한 |
 | `MetricsCalculatorTest` | unit |
 | §13 | `06-13-requirement-fit.csv` (4행 + skill 없음 → null, target fallback 순서) | `RequirementFitClassifierTest` | unit |
 

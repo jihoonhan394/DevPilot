@@ -337,12 +337,23 @@ class AuthorizationIsolationTest extends ApiTestSupport {
         learningGoalBody.put("targetCompletionDate", "2027-04-01");
         learningGoalBody.put("focusSkillCodes", List.of());
         learningGoalBody.put("version", 0);
+        String sideProjectNoteId =
+                api.body(
+                                api.postWithKey(
+                                        owner,
+                                        TestApi.newKey(),
+                                        "/api/v1/side-projects/{id}/notes",
+                                        UserOwnedEndpoints.noteBody(),
+                                        onboarded.path("sideProject").path("id").asString()))
+                        .path("id")
+                        .asString();
         IsolationFixture fixture =
                 new IsolationFixture(
                         invitedOnboarded.path("user").path("version").asLong(),
                         plan.path("id").asString(),
                         plan.path("milestones").get(0).path("id").asString(),
                         onboarded.path("sideProject").path("id").asString(),
+                        sideProjectNoteId,
                         today.path("mainTask").path("id").asString(),
                         session.path("id").asString(),
                         due.path("items").get(0).path("reviewItemId").asString(),

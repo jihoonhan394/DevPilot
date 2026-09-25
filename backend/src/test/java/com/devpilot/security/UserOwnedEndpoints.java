@@ -71,12 +71,14 @@ public final class UserOwnedEndpoints {
      *     §9.2)
      * @param lessonSkillId fixture 개념 노트가 붙은 skill id ({@code GET
      *     /skills/&#123;skillId&#125;/lesson}용, docs/05 §21.3)
+     * @param sideProjectNoteId owner 프로젝트의 기록 id (docs/05 §19.11)
      */
     public record IsolationFixture(
             long invitedMeVersion,
             String planId,
             String milestoneId,
             String sideProjectId,
+            String sideProjectNoteId,
             String taskId,
             String sessionId,
             String reviewItemId,
@@ -138,6 +140,50 @@ public final class UserOwnedEndpoints {
                         Kind.OWNED_RESOURCE,
                         fixture -> new Object[] {fixture.sideProjectId()},
                         fixture -> Map.of("name", "탈취", "version", 0),
+                        "RESOURCE_NOT_FOUND"),
+                // 프로젝트 기록 (docs/05 §19.9~§19.12). 부모와 자식의 소유를 함께 본다 (docs/07 §4.3)
+                new EndpointCase(
+                        "E76",
+                        HttpMethod.POST,
+                        "/api/v1/side-projects/{sideProjectId}/notes",
+                        Kind.OWNED_RESOURCE,
+                        fixture -> new Object[] {fixture.sideProjectId()},
+                        fixture -> noteBody(),
+                        "RESOURCE_NOT_FOUND"),
+                new EndpointCase(
+                        "E77",
+                        HttpMethod.GET,
+                        "/api/v1/side-projects/{sideProjectId}/notes",
+                        Kind.OWNED_RESOURCE,
+                        fixture -> new Object[] {fixture.sideProjectId()},
+                        NO_BODY,
+                        "RESOURCE_NOT_FOUND"),
+                new EndpointCase(
+                        "E78",
+                        HttpMethod.GET,
+                        "/api/v1/side-projects/{sideProjectId}/notes/{noteId}",
+                        Kind.OWNED_RESOURCE,
+                        fixture ->
+                                new Object[] {fixture.sideProjectId(), fixture.sideProjectNoteId()},
+                        NO_BODY,
+                        "RESOURCE_NOT_FOUND"),
+                new EndpointCase(
+                        "E79",
+                        HttpMethod.PATCH,
+                        "/api/v1/side-projects/{sideProjectId}/notes/{noteId}",
+                        Kind.OWNED_RESOURCE,
+                        fixture ->
+                                new Object[] {fixture.sideProjectId(), fixture.sideProjectNoteId()},
+                        fixture -> Map.of("title", "탈취", "version", 0),
+                        "RESOURCE_NOT_FOUND"),
+                new EndpointCase(
+                        "E80",
+                        HttpMethod.DELETE,
+                        "/api/v1/side-projects/{sideProjectId}/notes/{noteId}",
+                        Kind.OWNED_RESOURCE,
+                        fixture ->
+                                new Object[] {fixture.sideProjectId(), fixture.sideProjectNoteId()},
+                        NO_BODY,
                         "RESOURCE_NOT_FOUND"),
                 new EndpointCase(
                         "E06",
@@ -568,6 +614,18 @@ public final class UserOwnedEndpoints {
         body.put("targetId", targetId);
         body.put("conceptKey", "CONCEPT".equals(targetType) ? "SPRING.TRANSACTION.BOUNDARY" : null);
         body.put("skillCode", skillCode);
+        return body;
+    }
+
+    /** 결정 기록 하나 (docs/05 §19.9). 유형별 필수 세 항목이 다 있다. */
+    public static Map<String, Object> noteBody() {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("noteType", "DECISION");
+        body.put("title", "격리 확인용 기록");
+        body.put("occurredOn", "2026-10-05");
+        body.put("decisionChoice", "지금 값을 유지한다");
+        body.put("decisionOptions", "늘린다 / 줄인다 / 그대로");
+        body.put("decisionRationale", "실제 사용률을 아직 재 보지 않았다");
         return body;
     }
 

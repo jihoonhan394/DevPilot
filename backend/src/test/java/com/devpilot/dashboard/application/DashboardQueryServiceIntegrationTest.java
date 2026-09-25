@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.devpilot.testsupport.ApiTestSupport;
 import com.devpilot.testsupport.IntegrationTest;
+import com.devpilot.testsupport.TestApi;
 import com.devpilot.testsupport.TestUser;
 import java.time.Duration;
 import java.time.Instant;
@@ -51,6 +52,37 @@ class DashboardQueryServiceIntegrationTest extends ApiTestSupport {
         JsonNode weekly = dashboard.path("weeklySummary");
         assertThat(weekly.path("completedTasks").asInt()).isEqualTo(1);
         assertThat(weekly.path("notesWritten").asInt()).isZero();
+        // 기록을 하나 적으면 "적은 것"이 는다 — dashboard는 evidence의 지표 경로로 읽는다 (docs/03 §2.2)
+        UUID projectId =
+                jdbc.queryForObject(
+                        "select id from devpilot.side_project where user_id = ? limit 1",
+                        UUID.class,
+                        userId(user));
+        api.postWithKey(
+                user,
+                TestApi.newKey(),
+                "/api/v1/side-projects/{id}/notes",
+                Map.of(
+                        "noteType",
+                        "DECISION",
+                        "title",
+                        "커넥션 풀 크기를 그대로 두기로 했다",
+                        "occurredOn",
+                        "2026-10-05",
+                        "decisionChoice",
+                        "지금 값을 유지한다",
+                        "decisionOptions",
+                        "늘린다 / 줄인다 / 그대로",
+                        "decisionRationale",
+                        "실제 사용률을 아직 재 보지 않았다"),
+                projectId);
+
+        assertThat(
+                        api.body(api.get(user, DASHBOARD))
+                                .path("weeklySummary")
+                                .path("notesWritten")
+                                .asInt())
+                .isEqualTo(1);
         assertThat(weekly.path("studyMinutes").asInt())
                 .isEqualTo(dashboard.path("weekStudyMinutes").asInt());
     }
