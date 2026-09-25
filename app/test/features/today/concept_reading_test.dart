@@ -64,6 +64,8 @@ void main() {
 
     // The three points are a folded list to read, not checkboxes: nothing is sent back.
     expect(find.text('fast-forward merge와 그렇지 않은 merge가 갈리는 조건을 적어 보세요'), findsNothing);
+    await tester.ensureVisible(find.text('읽고 답할 3가지'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('읽고 답할 3가지'));
     await tester.pumpAndSettle();
     expect(find.text('fast-forward merge와 그렇지 않은 merge가 갈리는 조건을 적어 보세요'), findsOneWidget);

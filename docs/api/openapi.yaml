@@ -3508,6 +3508,10 @@ components:
         estimatedMinutes:
           type: integer
           format: int32
+        explainedNote:
+          type: string
+        explainedToPerson:
+          type: boolean
         id:
           type: string
           format: uuid
@@ -3572,12 +3576,16 @@ components:
         version:
           type: integer
           format: int64
+        whyItMatters:
+          type: string
       required:
       - challengeId
       - checklist
       - completedAt
       - description
       - estimatedMinutes
+      - explainedNote
+      - explainedToPerson
       - id
       - milestoneId
       - readingKey
@@ -3593,6 +3601,7 @@ components:
       - taskType
       - title
       - version
+      - whyItMatters
     MeResponse:
       type: object
       properties:

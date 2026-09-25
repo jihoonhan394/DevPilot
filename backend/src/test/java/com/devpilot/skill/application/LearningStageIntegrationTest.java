@@ -82,6 +82,63 @@ class LearningStageIntegrationTest extends ApiTestSupport {
         assertThat(completedStages(detail)).isEmpty();
     }
 
+    /**
+     * 설명하기 단계를 과제로 채우는 유일한 길 (docs/06 §5.11). 러버덕 말고는 이것뿐이라, 여기가 끊기면 그 칸은 영영 비어 있다.
+     *
+     * <p>{@code explainedToPerson = false}로 끝내면 채워지지 않는다 — 혼잣말은 설명이 아니다.
+     */
+    @Test
+    void shouldFillTheExplainStageOnlyWhenItWasSaidToAPerson() throws Exception {
+        TestUser user = onboardedOwner();
+        UUID skillId = anyActiveSkillId();
+
+        assertThat(completedStages(api.body(api.get(user, SKILL, skillId))))
+                .doesNotContain("EXPLAIN");
+
+        UUID taskId = explainTask(user, skillId);
+        api.patch(user, TASK, explainedRequest(false, 0), taskId).andExpect(status().isOk());
+        assertThat(completedStages(api.body(api.get(user, SKILL, skillId))))
+                .doesNotContain("EXPLAIN");
+
+        UUID second = explainTask(user, skillId);
+        api.patch(user, TASK, explainedRequest(true, 0), second).andExpect(status().isOk());
+
+        assertThat(completedStages(api.body(api.get(user, SKILL, skillId)))).contains("EXPLAIN");
+    }
+
+    /** 고른 답은 Today 응답에 그대로 돌아온다 (docs/05 §8.1, I-24) — 화면이 어제 고른 값을 다시 보일 수 있어야 한다. */
+    @Test
+    void shouldReturnTheExplainedAnswerInTheTodayResponse() throws Exception {
+        TestUser user = onboardedOwner();
+        UUID taskId = explainTask(user, anyActiveSkillId());
+
+        api.patch(user, TASK, explainedRequest(true, 0), taskId).andExpect(status().isOk());
+
+        JsonNode earlier = api.body(api.get(user, "/api/v1/today")).get("earlierMainTasks");
+        JsonNode explained =
+                earlier.valueStream()
+                        .filter(task -> taskId.toString().equals(task.get("id").asString()))
+                        .findFirst()
+                        .orElseThrow();
+        assertThat(explained.get("explainedToPerson").asBoolean()).isTrue();
+    }
+
+    /** 설명 기록은 {@code EXPLAIN}·{@code READ_CODE}에만 있다 (I-24). */
+    @Test
+    void shouldRejectTheExplainedAnswerOnAChallengeTask() throws Exception {
+        TestUser user = onboardedOwner();
+        JsonNode main = api.generateToday(user, 60, "NORMAL").get("mainTask");
+        assertThat(main.get("taskType").asString()).isNotEqualTo("EXPLAIN");
+
+        api.patch(
+                        user,
+                        TASK,
+                        explainedRequest(true, main.get("version").asInt()),
+                        main.get("id").asString())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
     @Test
     void shouldReturnNotFoundForAnUnknownSkill() throws Exception {
         TestUser user = onboardedOwner();
@@ -98,6 +155,31 @@ class LearningStageIntegrationTest extends ApiTestSupport {
 
         api.get(user, "/api/v1/skills/me").andExpect(status().isOk());
         api.get(user, "/api/v1/skills/tree").andExpect(status().isOk());
+    }
+
+    /** 그 skill의 {@code EXPLAIN} 과제 하나를 오늘 계획에 직접 넣는다 — planner 분기를 기다리지 않는다. */
+    private UUID explainTask(TestUser user, UUID skillId) throws Exception {
+        UUID planId =
+                UUID.fromString(
+                        api.generateToday(user, 60, "NORMAL").get("dailyPlanId").asString());
+        UUID taskId = UUID.randomUUID();
+        jdbc.update(
+                """
+                insert into devpilot.learning_task
+                    (id, user_id, daily_plan_id, skill_id, task_type, title, estimated_minutes,
+                     status, is_main, sort_order, version)
+                values (?, ?, ?, ?, 'EXPLAIN', ?, 20, 'IN_PROGRESS', false, 90, 0)
+                """,
+                taskId,
+                userId(user),
+                planId,
+                skillId,
+                "설명하기");
+        return taskId;
+    }
+
+    private static Map<String, Object> explainedRequest(boolean toPerson, int version) {
+        return Map.of("status", "COMPLETED", "explainedToPerson", toPerson, "version", version);
     }
 
     private UUID anyActiveSkillId() {

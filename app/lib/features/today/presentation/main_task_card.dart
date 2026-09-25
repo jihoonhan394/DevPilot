@@ -177,6 +177,34 @@ class _TaskHeading extends StatelessWidget {
             l10n.todayMainEstimated(formatMinutes(task.estimatedMinutes, l10n)),
             style: textTheme.bodyMedium,
           ),
+          ?_whyItMatters(context, l10n),
+        ],
+      ),
+    );
+  }
+
+  /// "왜 오늘?"과 다르다 — 저쪽은 오늘 이 과제를 고른 이유이고, 이 줄은 그 기술을 왜 하는지다 (docs/02 SCR-TODAY).
+  ///
+  /// 값이 없는 skill과 skill 없는 과제에서는 줄 전체를 숨긴다.
+  Widget? _whyItMatters(BuildContext context, AppLocalizations l10n) {
+    final why = task.whyItMatters;
+    if (why == null || why.isEmpty) {
+      return null;
+    }
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.todayWhyItMatters, style: textTheme.labelMedium),
+          Text(
+            why,
+            key: const Key('today.whyItMatters'),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: textTheme.bodySmall,
+          ),
         ],
       ),
     );

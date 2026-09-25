@@ -15,6 +15,9 @@ abstract final class InputRules {
   static const milestoneMaxCount = 24;
   static const milestoneMaxSkills = 30;
   static const replanReasonMaxLength = 1000;
+
+  /// 설명 기록 한 줄 (docs/02 SCR-TODAY 완료 시트, docs/05 §8.4).
+  static const explainedNoteMaxLength = 500;
   static const focusSkillsMax = 10;
   static const selfReflectionMaxLength = 5000;
   static const reviewAnswerMaxLength = 5000;

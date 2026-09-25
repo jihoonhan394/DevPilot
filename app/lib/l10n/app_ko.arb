@@ -2540,5 +2540,17 @@
   "skillDetailStageHowReview": "이 기술의 복습 카드에 한 번 답하면 채워져요.",
   "@skillDetailStageHowReview": {"description": "How to fill REVIEW."},
   "skillDetailStageHowRedo": "재현 과제를 AI 도움 없이 마치면 채워져요.",
-  "@skillDetailStageHowRedo": {"description": "How to fill REDO."}
+  "@skillDetailStageHowRedo": {"description": "How to fill REDO."},
+  "todayExplainedToPerson": "다른 사람에게 설명했어요",
+  "@todayExplainedToPerson": {"description": "SCR-TODAY complete sheet: said it out loud to a person."},
+  "todayExplainedToPersonHelp": "사람에게 말로 설명했으면 골라 주세요. 러버덕으로 설명한 것도 같은 단계로 쳐요.",
+  "@todayExplainedToPersonHelp": {"description": "Why the box matters: it fills the EXPLAIN learning stage."},
+  "todayExplainedNote": "한 줄 메모 (선택)",
+  "@todayExplainedNote": {"description": "Optional note about the explanation."},
+  "todayExplainedNoteHint": "누구에게 설명했는지, 어디서 막혔는지",
+  "@todayExplainedNoteHint": {"description": "Hint for the explanation note."},
+  "todayExplainedNoteMaskingNote": "비밀값은 저장 전에 가려요.",
+  "@todayExplainedNoteMaskingNote": {"description": "The note is masked before it is stored."},
+  "todayWhyItMatters": "왜 중요한가",
+  "@todayWhyItMatters": {"description": "SCR-TODAY main card: why this skill matters (not why today)."}
 }

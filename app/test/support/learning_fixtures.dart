@@ -34,6 +34,7 @@ MainTaskView testMainTask({
   List<ReasonView> reasons = _reasons,
   String? redoSourceTaskId,
   TaskType? redoSourceTaskType,
+  String? whyItMatters = '트랜잭션 경계를 모르면 롤백이 안 되는 자리를 못 찾는다.',
   int version = 0,
 }) => MainTaskView(
   id: id,
@@ -44,6 +45,7 @@ MainTaskView testMainTask({
   milestoneId: milestoneFoundationId,
   title: title,
   description: '5문장 이내로 설명하고 예시를 하나 드세요.',
+  whyItMatters: whyItMatters,
   estimatedMinutes: estimatedMinutes,
   status: status,
   reasons: reasons,

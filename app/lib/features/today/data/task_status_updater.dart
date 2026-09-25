@@ -21,21 +21,20 @@ final class TaskStatusUpdater {
   };
 
   /// Sends the change. Without [knownVersion] the version is read from `GET /today` first
-  /// (the Review screen only knows the task id). [readingFeedback] goes with a READ_CODE
-  /// completion only, [redoWithoutAi] with a REDO completion only (docs/06 §5.10 RE-6).
+  /// (the Review screen only knows the task id). [answers] carries the values that only a
+  /// completion may send (docs/05 §8.4) — the caller decides which of them fit this task type.
   Future<void> update(
     String taskId,
     TaskStatus target, {
     int? knownVersion,
-    ReadingFeedback? readingFeedback,
-    bool? redoWithoutAi,
+    TaskCompletionAnswers answers = noCompletionAnswers,
   }) async {
     final version = knownVersion ?? _findTask(await _repository.fetchToday(), taskId)?.version;
     if (version == null) {
       throw const ApiException(code: ApiErrorCode.resourceNotFound, status: 404);
     }
     try {
-      await _send(taskId, target, version, readingFeedback, redoWithoutAi);
+      await _send(taskId, target, version, answers);
     } on ApiException catch (error) {
       if (!_recheckCodes.contains(error.code)) {
         rethrow;
@@ -50,7 +49,7 @@ final class TaskStatusUpdater {
       if (error.code != ApiErrorCode.concurrentModification) {
         rethrow;
       }
-      await _send(taskId, target, current.version, readingFeedback, redoWithoutAi);
+      await _send(taskId, target, current.version, answers);
     }
   }
 
@@ -58,14 +57,15 @@ final class TaskStatusUpdater {
     String taskId,
     TaskStatus target,
     int version,
-    ReadingFeedback? readingFeedback,
-    bool? redoWithoutAi,
+    TaskCompletionAnswers answers,
   ) => _repository.updateTaskStatus(
     taskId,
     TaskStatusPatchRequest(
       status: target,
-      readingFeedback: readingFeedback,
-      redoWithoutAi: redoWithoutAi,
+      readingFeedback: answers.readingFeedback,
+      redoWithoutAi: answers.redoWithoutAi,
+      explainedToPerson: answers.explainedToPerson,
+      explainedNote: answers.explainedNote,
       version: version,
     ),
   );

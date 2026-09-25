@@ -13,12 +13,16 @@ import 'package:flutter/material.dart';
 /// inside it (the input stays). [readingFeedback] is null unless the reading chips were shown and
 /// one was chosen. [understood] is null unless the sheet asked (see [CompleteSessionSheet.askUnderstanding]).
 /// [redoWithoutAi] is null unless the sheet asked (see [CompleteSessionSheet.askRedoAnswer]).
+/// [explainedToPerson] and [explainedNote] are null unless the learner ticked the box — not
+/// ticking it means "I did not say this to anyone", which is a fine answer, not a missing one.
 typedef CompleteSessionSubmit = Future<Object?> Function(
   int actualMinutes,
   String reflection,
   ReadingFeedback? readingFeedback, {
   bool? understood,
   bool? redoWithoutAi,
+  bool? explainedToPerson,
+  String? explainedNote,
 });
 
 /// `CompleteSessionSheet` of SCR-TODAY and SCR-REVIEW-SESSION (docs/02 SCR-TODAY 완료 시트):
@@ -32,6 +36,7 @@ Future<void> showCompleteSessionSheet(
   bool askReadingFeedback = false,
   bool askUnderstanding = false,
   bool askRedoAnswer = false,
+  bool askExplained = false,
 }) => showFormModal<void>(
   context,
   builder: (_) => CompleteSessionSheet(
@@ -42,6 +47,7 @@ Future<void> showCompleteSessionSheet(
     askReadingFeedback: askReadingFeedback,
     askUnderstanding: askUnderstanding,
     askRedoAnswer: askRedoAnswer,
+    askExplained: askExplained,
   ),
 );
 
@@ -55,6 +61,7 @@ class CompleteSessionSheet extends StatefulWidget {
     this.askReadingFeedback = false,
     this.askUnderstanding = false,
     this.askRedoAnswer = false,
+    this.askExplained = false,
   });
 
   static const step = 5;
@@ -72,6 +79,12 @@ class CompleteSessionSheet extends StatefulWidget {
   /// 이 과제의 결과 그 자체라 고르기 전에는 보낼 수 없다. "혼자 했다"만 독립 구현 증거가 되고(RE-8), "도움을 받았다"는
   /// 어디서 막혔는지 묻는 복습 카드가 된다(RE-7) — 둘 중 어느 쪽도 벌이 아니다.
   final bool askRedoAnswer;
+
+  /// EXPLAIN·READ_CODE 과제를 끝낼 때만 묻는다: 사람에게 설명했나 (docs/02 SCR-TODAY 완료 시트).
+  ///
+  /// **선택 사항이다.** 켜면 그 기술의 설명하기 학습 단계가 채워지고(docs/06 §5.11), 켜지 않아도 과제는 그대로 완료된다 —
+  /// 말한 적이 없으면 켜지 않는 것이 맞다.
+  final bool askExplained;
 
   final String title;
   final int initialMinutes;
@@ -93,12 +106,17 @@ class _CompleteSessionSheetState extends State<CompleteSessionSheet> {
   /// 〃 (재현 과제의 답, RE-6).
   bool? _redoWithoutAi;
 
+  /// 사람에게 설명했다고 켰나. 켜지 않으면 메모와 함께 아예 보내지 않는다.
+  var _explained = false;
+  final _explainedNote = TextEditingController();
+
   var _submitting = false;
   Object? _error;
 
   @override
   void dispose() {
     _reflection.dispose();
+    _explainedNote.dispose();
     super.dispose();
   }
 
@@ -117,6 +135,11 @@ class _CompleteSessionSheetState extends State<CompleteSessionSheet> {
       _feedback,
       understood: _understood,
       redoWithoutAi: _redoWithoutAi,
+      // 켜지 않았으면 두 값을 모두 빼고 보낸다 — 켜지 않고 메모만 보내면 서버가 400이다 (docs/05 §8.4)
+      explainedToPerson: widget.askExplained && _explained ? true : null,
+      explainedNote: widget.askExplained && _explained && _explainedNote.text.isNotEmpty
+          ? _explainedNote.text
+          : null,
     );
     if (!mounted) {
       return;
@@ -192,6 +215,16 @@ class _CompleteSessionSheetState extends State<CompleteSessionSheet> {
               withoutAi: _redoWithoutAi,
               enabled: !_submitting,
               onChanged: (answer) => setState(() => _redoWithoutAi = answer),
+            ),
+          ],
+          if (widget.askExplained) ...[
+            const SizedBox(height: AppSpacing.lg),
+            _ExplainedField(
+              explained: _explained,
+              note: _explainedNote,
+              enabled: !_submitting,
+              secretBlocked: apiFailure?.code == ApiErrorCode.secretDetectedBlocked,
+              onChanged: (value) => setState(() => _explained = value),
             ),
           ],
           if (generalError != null) InlineError(message: generalError),
@@ -416,6 +449,62 @@ class _MinutesStepper extends StatelessWidget {
           onPressed: enabled && minutes < maxMinutes ? () => onStep(1) : null,
           icon: const Icon(Icons.add),
         ),
+      ],
+    );
+  }
+}
+
+/// "다른 사람에게 설명했어요" 체크와, 켰을 때만 펼쳐지는 한 줄 메모 (docs/02 SCR-TODAY 완료 시트).
+///
+/// 체크를 켜야 메모가 나오는 이유: 서버는 `explainedToPerson` 없이 메모만 오면 400을 준다(docs/05 §8.4). 화면에서 먼저 막는다.
+class _ExplainedField extends StatelessWidget {
+  const _ExplainedField({
+    required this.explained,
+    required this.note,
+    required this.enabled,
+    required this.secretBlocked,
+    required this.onChanged,
+  });
+
+  final bool explained;
+  final TextEditingController note;
+  final bool enabled;
+  final bool secretBlocked;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        CheckboxListTile(
+          key: const Key('completeSheet.explainedCheck'),
+          value: explained,
+          onChanged: enabled ? (value) => onChanged(value ?? false) : null,
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+          title: Text(l10n.todayExplainedToPerson),
+          subtitle: Text(l10n.todayExplainedToPersonHelp, style: textTheme.bodySmall),
+        ),
+        if (explained) ...[
+          TextField(
+            key: const Key('completeSheet.explainedNoteField'),
+            controller: note,
+            enabled: enabled,
+            minLines: 1,
+            maxLines: 2,
+            // 500자에서 입력이 멈추고 남은 글자 수가 보인다 (docs/02 SCR-TODAY 완료 시트 그림)
+            maxLength: InputRules.explainedNoteMaxLength,
+            decoration: InputDecoration(
+              labelText: l10n.todayExplainedNote,
+              hintText: l10n.todayExplainedNoteHint,
+              helperText: l10n.todayExplainedNoteMaskingNote,
+            ),
+          ),
+          if (secretBlocked) InlineError(message: l10n.projectsSecretBlocked),
+        ],
       ],
     );
   }

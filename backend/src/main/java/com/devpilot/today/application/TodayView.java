@@ -46,8 +46,11 @@ public record TodayView(
      * @param challengeId CHALLENGE일 때만
      * @param sideProjectId PROJECT_TASK일 때만 (생성 시점 고정, 프로젝트가 삭제되면 null)
      * @param readingKey READ_CODE일 때만
+     * @param whyItMatters 이 기술을 왜 하는지 한 줄. 콘텐츠 값이고 노트가 없으면 null (docs/05 §6.4와 같은 값)
      * @param checklist 과제의 taskType·skill에 맞는 목록. 맞는 것이 없거나 skill이 없으면 null
      * @param reasons 1~3개 (docs/06 §5.8)
+     * @param explainedToPerson {@code EXPLAIN}·{@code READ_CODE}에 값이 있을 때만 (I-24)
+     * @param explainedNote 〃 (마스킹본, ≤ 500자)
      */
     public record MainTaskView(
             UUID id,
@@ -64,10 +67,13 @@ public record TodayView(
             @Nullable Boolean redoWithoutAi,
             String title,
             @Nullable String description,
+            @Nullable String whyItMatters,
             @Nullable ChecklistView checklist,
             int estimatedMinutes,
             TaskStatus status,
             List<ReasonView> reasons,
+            @Nullable Boolean explainedToPerson,
+            @Nullable String explainedNote,
             @Nullable Instant completedAt,
             long version) {
 

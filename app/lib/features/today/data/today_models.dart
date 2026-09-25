@@ -62,6 +62,9 @@ abstract class MainTaskView with _$MainTaskView {
     required String title,
     String? description,
 
+    /// 이 기술을 왜 하는지 한 줄 (docs/05 §6.4·§8.1). 노트가 없으면 null이라 줄 자체를 숨긴다.
+    String? whyItMatters,
+
     /// 시작 전·끝내기 전 확인 목록 (docs/05 §8.1). 맞는 목록이 없거나 skill이 없는 과제면 null이다.
     ChecklistView? checklist,
     required int estimatedMinutes,
@@ -69,6 +72,12 @@ abstract class MainTaskView with _$MainTaskView {
 
     /// 1~3 reasons with server-made text (docs/06 §5.8).
     required List<ReasonView> reasons,
+
+    /// "다른 사람에게 설명했어요"의 답 (I-24). `EXPLAIN`·`READ_CODE`에 값이 있을 때만.
+    bool? explainedToPerson,
+
+    /// 그때 적은 한 줄 (마스킹본).
+    String? explainedNote,
     DateTime? completedAt,
     required int version,
   }) = _MainTaskView;
@@ -148,15 +157,39 @@ abstract class TodayGenerateRequest with _$TodayGenerateRequest {
 /// `TaskStatusPatchRequest` (docs/05 §8.4). [redoWithoutAi] is required when a REDO task is
 /// completed and rejected elsewhere. [readingFeedback] is sent only when chosen, only when
 /// a READ_CODE task is completed; otherwise the field is left out of the body.
+///
+/// [explainedToPerson]·[explainedNote]는 `EXPLAIN`·`READ_CODE` 완료에만 붙는다. 체크를 켜지 않으면 둘 다 빠진다 —
+/// 켜지 않고 메모만 보내면 서버가 400이다.
 @freezed
 abstract class TaskStatusPatchRequest with _$TaskStatusPatchRequest {
   const factory TaskStatusPatchRequest({
     required TaskStatus status,
     @JsonKey(includeIfNull: false) ReadingFeedback? readingFeedback,
     @JsonKey(includeIfNull: false) bool? redoWithoutAi,
+    @JsonKey(includeIfNull: false) bool? explainedToPerson,
+    @JsonKey(includeIfNull: false) String? explainedNote,
     required int version,
   }) = _TaskStatusPatchRequest;
 
   factory TaskStatusPatchRequest.fromJson(Map<String, Object?> json) =>
       _$TaskStatusPatchRequestFromJson(json);
 }
+
+/// 완료 요청에만 붙는 답들 (docs/05 §8.4). 완료가 아니면 전부 null이다.
+///
+/// 하나로 묶은 이유: 시트에서 controller를 거쳐 updater까지 네 값이 같이 흘러가는데, 이름 붙은 인자로 늘어놓으면 중간 단계마다
+/// 빠뜨리기 쉽다.
+typedef TaskCompletionAnswers = ({
+  ReadingFeedback? readingFeedback,
+  bool? redoWithoutAi,
+  bool? explainedToPerson,
+  String? explainedNote,
+});
+
+/// 아무 답도 고르지 않은 상태 ("여기까지 기록", 또는 완료가 아닌 전이).
+const TaskCompletionAnswers noCompletionAnswers = (
+  readingFeedback: null,
+  redoWithoutAi: null,
+  explainedToPerson: null,
+  explainedNote: null,
+);

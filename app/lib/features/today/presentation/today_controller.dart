@@ -19,8 +19,7 @@ final class TodayController extends AsyncNotifier<TodayScreenData> {
   final _createPlanKeys = IdempotencyKeyCache();
 
   /// A status change still owed after its session was finished (docs/02 §4.2).
-  ({String taskId, TaskStatus target, ReadingFeedback? feedback, bool? redoWithoutAi})?
-  _pendingStatus;
+  ({String taskId, TaskStatus target, TaskCompletionAnswers answers})? _pendingStatus;
 
   TodayRepository get _today => ref.read(todayRepositoryProvider);
 
@@ -137,6 +136,8 @@ final class TodayController extends AsyncNotifier<TodayScreenData> {
     required bool partial,
     ReadingFeedback? readingFeedback,
     bool? redoWithoutAi,
+    bool? explainedToPerson,
+    String? explainedNote,
   }) async {
     final data = state.value;
     final main = data?.mainTask;
@@ -158,13 +159,22 @@ final class TodayController extends AsyncNotifier<TodayScreenData> {
       _setBusy(false);
       return TodayActionFailed(error);
     }
+    // 과제 종류에 맞지 않는 값을 보내면 서버가 400이다 (docs/05 §8.4). 여기서 걸러 낸다
+    final explainAllowed = main.taskType == TaskType.explain || main.taskType == TaskType.readCode;
     _pendingStatus = (
       taskId: main.id,
       target: partial ? TaskStatus.deferred : TaskStatus.completed,
-      // READ_CODE completion only (docs/05 §8.4); any other request with it is a 400.
-      feedback: partial || main.taskType != TaskType.readCode ? null : readingFeedback,
-      // REDO completion only, and there it is required (docs/06 §5.10 RE-6).
-      redoWithoutAi: partial || main.taskType != TaskType.redo ? null : redoWithoutAi,
+      answers: (
+        // READ_CODE completion only (docs/05 §8.4); any other request with it is a 400.
+        readingFeedback: partial || main.taskType != TaskType.readCode ? null : readingFeedback,
+        // REDO completion only, and there it is required (docs/06 §5.10 RE-6).
+        redoWithoutAi: partial || main.taskType != TaskType.redo ? null : redoWithoutAi,
+        // EXPLAIN·READ_CODE completion only. 체크를 켜지 않았으면 메모까지 같이 빠진다
+        explainedToPerson: partial || !explainAllowed ? null : explainedToPerson,
+        explainedNote: partial || !explainAllowed || explainedToPerson != true
+            ? null
+            : explainedNote,
+      ),
     );
     return _sendPendingStatus(knownVersion: main.version);
   }
@@ -187,19 +197,20 @@ final class TodayController extends AsyncNotifier<TodayScreenData> {
           pending.taskId,
           pending.target,
           knownVersion: knownVersion,
-          readingFeedback: pending.feedback,
-          redoWithoutAi: pending.redoWithoutAi,
+          answers: pending.answers,
         );
       } on ApiException catch (error) {
-        if (knownVersion == null || _isReadingWithoutDuck(pending.target, error)) {
+        // 같은 본문을 다시 보내도 답이 같은 오류는 다시 보내지 않는다 — 이 재시도의 목적은 낡은 version 하나뿐이다
+        if (knownVersion == null ||
+            _isReadingWithoutDuck(pending.target, error) ||
+            error.code == ApiErrorCode.secretDetectedBlocked) {
           rethrow;
         }
         // One more try with the version read again (docs/02 §4.2).
         await _statusUpdater.update(
           pending.taskId,
           pending.target,
-          readingFeedback: pending.feedback,
-          redoWithoutAi: pending.redoWithoutAi,
+          answers: pending.answers,
         );
       }
       _pendingStatus = null;
@@ -212,6 +223,11 @@ final class TodayController extends AsyncNotifier<TodayScreenData> {
         _pendingStatus = null;
         reload();
         return const TodayReadingNeedsDuck();
+      }
+      // 같은 본문을 다시 보내도 또 막힌다 — 메모를 고쳐야 한다. 시트를 닫지 않고 그 자리에 보인다
+      // (docs/02 SCR-TODAY 완료 시트). 세션은 이미 기록됐고 재전송은 같은 IK라 안전하다.
+      if (error.code == ApiErrorCode.secretDetectedBlocked) {
+        return TodayActionFailed(error);
       }
       return TodayStatusRetryNeeded(error);
     }

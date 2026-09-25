@@ -7,11 +7,9 @@ import com.devpilot.common.time.PlanDayCalculator;
 import com.devpilot.review.application.ReviewQueryService;
 import com.devpilot.skill.application.SkillCatalogQueryService;
 import com.devpilot.skill.application.SkillRef;
-import com.devpilot.today.application.TodayView.ChecklistView;
 import com.devpilot.today.application.TodayView.MainTaskView;
 import com.devpilot.today.application.TodayView.ReasonView;
 import com.devpilot.today.application.TodayView.ReviewTaskView;
-import com.devpilot.today.domain.Checklist;
 import com.devpilot.today.domain.DailyPlan;
 import com.devpilot.today.domain.LearningTask;
 import com.devpilot.today.domain.ReasonTemplates;
@@ -51,7 +49,7 @@ public class TodayQueryService {
     private final LearningTaskRepository learningTaskRepository;
     private final SkillCatalogQueryService skillCatalogQueryService;
     private final ReviewQueryService reviewQueryService;
-    private final ChecklistRegistry checklistRegistry;
+    private final TaskContentLookup taskContentLookup;
     private final TipExperimentFinder tipExperimentFinder;
     private final Clock clock;
 
@@ -60,14 +58,14 @@ public class TodayQueryService {
             LearningTaskRepository learningTaskRepository,
             SkillCatalogQueryService skillCatalogQueryService,
             ReviewQueryService reviewQueryService,
-            ChecklistRegistry checklistRegistry,
+            TaskContentLookup taskContentLookup,
             TipExperimentFinder tipExperimentFinder,
             Clock clock) {
         this.dailyPlanRepository = dailyPlanRepository;
         this.learningTaskRepository = learningTaskRepository;
         this.skillCatalogQueryService = skillCatalogQueryService;
         this.reviewQueryService = reviewQueryService;
-        this.checklistRegistry = checklistRegistry;
+        this.taskContentLookup = taskContentLookup;
         this.tipExperimentFinder = tipExperimentFinder;
         this.clock = clock;
     }
@@ -257,26 +255,16 @@ public class TodayQueryService {
                 task.getRedoWithoutAi(),
                 task.getTitle(),
                 task.getDescription(),
-                checklistView(task.getTaskType(), skill),
+                taskContentLookup.whyItMatters(skill == null ? null : skill.code()),
+                taskContentLookup.checklist(
+                        task.getTaskType(), skill == null ? null : skill.code()),
                 task.getEstimatedMinutes(),
                 task.getStatus(),
                 reasons,
+                task.getExplainedToPerson(),
+                task.getExplainedNote(),
                 task.getCompletedAt(),
                 task.getVersion());
-    }
-
-    /** 이 과제에 붙는 체크리스트 (docs/05 §8.1). skill이 없거나 맞는 목록이 없으면 null. */
-    private @Nullable ChecklistView checklistView(TaskType taskType, @Nullable SkillRef skill) {
-        if (skill == null) {
-            return null;
-        }
-        return checklistRegistry
-                .find(taskType, skill.code())
-                .map(
-                        (Checklist checklist) ->
-                                new ChecklistView(
-                                        checklist.key(), checklist.before(), checklist.after()))
-                .orElse(null);
     }
 
     /**

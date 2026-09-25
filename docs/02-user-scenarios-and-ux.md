@@ -3841,6 +3841,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 - 5 성공 후 6이 실패하면: `GET /today` → 새 `version`으로 6을 1회 재시도 → 그래도 실패하면 토스트 `common.error.retry` 버튼으로 6만 다시 시도한다(세션 완료는 반복하지 않는다).
 - "여기까지 기록": 5와 같되(0분이면 `…/abandon`) 6의 status는 `DEFERRED`.
+- 6이 `422 SECRET_DETECTED_BLOCKED`(`explainedNote`)이면 **재시도하지 않는다** — 같은 본문은 다시 보내도 막힌다. 완료 시트를 닫지 않고 메모 아래 인라인 `projects.secretBlocked`를 보이고 입력을 그대로 둔다(§3.5 설명 기록). 5는 이미 끝났고 같은 Idempotency-Key로 다시 보내므로 메모를 고쳐 다시 제출해도 세션이 두 번 기록되지 않는다.
 - `READ_CODE`의 6이 `409 INVALID_STATE_TRANSITION`이면(RC-1 — 이 task의 러버덕이 `COMPLETED`가 아님) 재시도하지 않고 토스트 `today.readCode.needDuck` + SCR-READ-CODE로 안내한다. task는 `IN_PROGRESS`로 남고, 러버덕을 마친 뒤 Today "완료"는 진행 중 세션이 없으면 5를 건너뛰고 6만 보낸다. 클라이언트는 러버덕 `COMPLETED`를 확인했을 때만 "완료"를 보이므로(§3.5) 드문 경우다.
 - "오늘은 건너뛰기"(PLANNED): `PATCH … {status: SKIPPED}` → 토스트 "되돌리기"(→ `PLANNED`).
 - `mainTask = null`(후보 없음): 1~7 대신 복습 줄과 "계획 조정"만 보인다(§3.5).

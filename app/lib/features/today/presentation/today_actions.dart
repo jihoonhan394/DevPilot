@@ -163,22 +163,38 @@ Future<void> openCompleteSheet(BuildContext context, WidgetRef ref, {required bo
     askUnderstanding: !partial,
     // RE-6: 재현 과제는 답이 있어야 완료된다. 그 답이 이 과제의 결과다
     askRedoAnswer: !partial && data?.mainTask?.taskType == TaskType.redo,
-    onSubmit: (minutes, reflection, feedback, {understood, redoWithoutAi}) async {
-      // 모른 채로 "완료"하면 그 개념은 다시 나오지 않는다 — 미룸으로 두어 내일 이어 가게 한다.
-      final stillStuck = understood == false;
-      helpedRedo = !partial && !stillStuck && redoWithoutAi == false;
-      final result = await ref
-          .read(todayControllerProvider.notifier)
-          .finish(
-            actualMinutes: minutes,
-            reflection: reflection,
-            partial: partial || stillStuck,
-            readingFeedback: stillStuck ? null : feedback,
-            redoWithoutAi: stillStuck ? null : redoWithoutAi,
-          );
-      outcome = result;
-      return result is TodayActionFailed ? result.error : null;
-    },
+    // 설명하기 학습 단계를 과제로 채우는 유일한 길이다 (docs/06 §5.11). 선택 사항이다
+    askExplained:
+        !partial &&
+        (data?.mainTask?.taskType == TaskType.explain ||
+            data?.mainTask?.taskType == TaskType.readCode),
+    onSubmit:
+        (
+          minutes,
+          reflection,
+          feedback, {
+          understood,
+          redoWithoutAi,
+          explainedToPerson,
+          explainedNote,
+        }) async {
+          // 모른 채로 "완료"하면 그 개념은 다시 나오지 않는다 — 미룸으로 두어 내일 이어 가게 한다.
+          final stillStuck = understood == false;
+          helpedRedo = !partial && !stillStuck && redoWithoutAi == false;
+          final result = await ref
+              .read(todayControllerProvider.notifier)
+              .finish(
+                actualMinutes: minutes,
+                reflection: reflection,
+                partial: partial || stillStuck,
+                readingFeedback: stillStuck ? null : feedback,
+                redoWithoutAi: stillStuck ? null : redoWithoutAi,
+                explainedToPerson: stillStuck ? null : explainedToPerson,
+                explainedNote: stillStuck ? null : explainedNote,
+              );
+          outcome = result;
+          return result is TodayActionFailed ? result.error : null;
+        },
   );
   // RE-7: 도움을 받아 끝낸 재현은 벌이 아니라 복습 한 장이 된다. 그 카드가 어디 있는지 바로 알려 준다
   if (helpedRedo && outcome is TodayActionDone && context.mounted) {
