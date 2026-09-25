@@ -1,7 +1,6 @@
 package com.devpilot.today.application;
 
 import com.devpilot.common.config.TrackDefaults;
-import com.devpilot.common.web.AxisLevels;
 import com.devpilot.goal.application.LearningGoalQueryService;
 import com.devpilot.learning.application.LearningEventQueryService;
 import com.devpilot.learning.domain.LearningEventType;
@@ -13,10 +12,8 @@ import com.devpilot.project.application.SideProjectQueryService;
 import com.devpilot.review.application.ReviewQueryService;
 import com.devpilot.review.application.ReviewQueryService.DueSummary;
 import com.devpilot.skill.application.SkillCatalogQueryService;
-import com.devpilot.skill.application.SkillDetailView;
+import com.devpilot.skill.application.SkillInfo;
 import com.devpilot.skill.application.SkillRef;
-import com.devpilot.skill.application.UserSkillStateQueryService;
-import com.devpilot.skill.application.UserSkillStateQueryService.PlanningState;
 import com.devpilot.today.domain.EnergyLevel;
 import com.devpilot.today.domain.LearningTask;
 import com.devpilot.today.domain.PlannerScoring;
@@ -65,7 +62,7 @@ class PlannerInputCollector {
     /** 학습 목표가 없을 때 쓰는 트랙 (docs/06 §5.1). */
     private final SkillCatalogQueryService skillCatalogQueryService;
 
-    private final UserSkillStateQueryService userSkillStateQueryService;
+    private final SkillProfiles skillProfiles;
     private final LearningEventQueryService learningEventQueryService;
     private final ReviewQueryService reviewQueryService;
     private final LearningGoalQueryService learningGoalQueryService;
@@ -74,14 +71,14 @@ class PlannerInputCollector {
 
     PlannerInputCollector(
             SkillCatalogQueryService skillCatalogQueryService,
-            UserSkillStateQueryService userSkillStateQueryService,
+            SkillProfiles skillProfiles,
             LearningEventQueryService learningEventQueryService,
             ReviewQueryService reviewQueryService,
             LearningGoalQueryService learningGoalQueryService,
             SideProjectQueryService sideProjectQueryService,
             TodayQueryService todayQueryService) {
         this.skillCatalogQueryService = skillCatalogQueryService;
-        this.userSkillStateQueryService = userSkillStateQueryService;
+        this.skillProfiles = skillProfiles;
         this.learningEventQueryService = learningEventQueryService;
         this.reviewQueryService = reviewQueryService;
         this.learningGoalQueryService = learningGoalQueryService;
@@ -90,9 +87,9 @@ class PlannerInputCollector {
     }
 
     Inputs collect(UUID userId, LocalDate today, PlanView plan, Context context, DueSummary due) {
-        Map<UUID, SkillDetailView> skills = skillCatalogQueryService.activeSkillDetails();
+        Map<UUID, SkillInfo> skills = skillCatalogQueryService.activeSkillDetails();
         Map<UUID, String> codes = new HashMap<>();
-        for (SkillDetailView skill : skills.values()) {
+        for (SkillInfo skill : skills.values()) {
             codes.put(skill.id(), skill.code());
         }
         Map<String, Integer> overdueByCode = new HashMap<>();
@@ -109,7 +106,7 @@ class PlannerInputCollector {
                 today,
                 context,
                 learningGoalQueryService.trackDefaults(userId),
-                profiles(userId, skills, codes),
+                skillProfiles.of(userId, skills, codes),
                 targets(plan),
                 milestones(plan),
                 overdueByCode,
@@ -135,28 +132,6 @@ class PlannerInputCollector {
                         .orElse(null),
                 codes.entrySet().stream()
                         .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey)));
-    }
-
-    private Map<String, SkillProfile> profiles(
-            UUID userId, Map<UUID, SkillDetailView> skills, Map<UUID, String> codes) {
-        Map<UUID, PlanningState> states = userSkillStateQueryService.planningStates(userId);
-        Map<String, SkillProfile> profiles = new HashMap<>();
-        for (SkillDetailView skill : skills.values()) {
-            PlanningState state = states.get(skill.id());
-            profiles.put(
-                    skill.code(),
-                    new SkillProfile(
-                            skill.code(),
-                            skill.name(),
-                            skill.description(),
-                            state == null ? AxisLevels.ZERO : state.planning(),
-                            state == null ? null : state.lastPracticedAt(),
-                            skill.prerequisiteIds().stream()
-                                    .map(codes::get)
-                                    .filter(code -> code != null)
-                                    .toList()));
-        }
-        return profiles;
     }
 
     private static Map<String, SkillTarget> targets(PlanView plan) {

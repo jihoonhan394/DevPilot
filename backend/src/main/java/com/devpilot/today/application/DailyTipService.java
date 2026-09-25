@@ -5,8 +5,6 @@ import com.devpilot.common.error.ErrorCode;
 import com.devpilot.common.error.NotFoundException;
 import com.devpilot.common.security.CurrentUser;
 import com.devpilot.common.time.PlanDayCalculator;
-import com.devpilot.common.web.CursorCodec;
-import com.devpilot.common.web.CursorPage;
 import com.devpilot.learning.application.LearningEventRecorder;
 import com.devpilot.learning.domain.LearningEventType;
 import com.devpilot.learning.domain.TipFeedback;
@@ -59,7 +57,6 @@ public class DailyTipService {
     private final LearningEventRecorder learningEventRecorder;
     private final SkillCatalogQueryService skillCatalogQueryService;
     private final ReviewItemService reviewItemService;
-    private final CursorCodec cursorCodec;
     private final Clock clock;
 
     DailyTipService(
@@ -69,7 +66,6 @@ public class DailyTipService {
             LearningEventRecorder learningEventRecorder,
             SkillCatalogQueryService skillCatalogQueryService,
             ReviewItemService reviewItemService,
-            CursorCodec cursorCodec,
             Clock clock) {
         this.dailyTipRegistry = dailyTipRegistry;
         this.userDailyTipRepository = userDailyTipRepository;
@@ -77,7 +73,6 @@ public class DailyTipService {
         this.learningEventRecorder = learningEventRecorder;
         this.skillCatalogQueryService = skillCatalogQueryService;
         this.reviewItemService = reviewItemService;
-        this.cursorCodec = cursorCodec;
         this.clock = clock;
     }
 
@@ -163,47 +158,6 @@ public class DailyTipService {
         DailyTip tip = requireTip(tipKey);
         return toView(
                 tip, userDailyTipRepository.findByUserIdAndTipKey(userId, tipKey).orElse(null));
-    }
-
-    /**
-     * {@code GET /tips} (docs/05 §20.4). 은퇴하지 않은 팁, {@code tipKey} ASC.
-     *
-     * <p>콘텐츠 목록이라 UUID id가 없다 — cursor는 {@code tipKey} 하나로 비교한다(docs/05 §1.5 마지막 행).
-     */
-    @Transactional(readOnly = true)
-    public CursorPage<TipSummaryView> list(
-            UUID userId,
-            @Nullable String series,
-            @Nullable String level,
-            int limit,
-            @Nullable String cursor) {
-        String after = cursorCodec.decodeContent(cursor);
-        Map<String, TipFeedback> feedback = userDailyTipRepository.feedbackByTipKey(userId);
-        List<TipSummaryView> page = new ArrayList<>();
-        String next = null;
-        for (DailyTip tip : dailyTipRegistry.all()) {
-            if (tip.retired()
-                    || (series != null && !tip.series().name().equals(series))
-                    || (level != null && !tip.level().name().equals(level))
-                    || (after != null && tip.key().compareTo(after) <= 0)) {
-                continue;
-            }
-            if (page.size() == limit) {
-                // 한 건 더 보이면 다음 페이지가 있다는 뜻이다. 그 건은 담지 않는다
-                next = cursorCodec.encodeContent(page.getLast().tipKey());
-                break;
-            }
-            page.add(
-                    new TipSummaryView(
-                            tip.key(),
-                            tip.series(),
-                            tip.level(),
-                            tip.title(),
-                            tip.symptom(),
-                            tip.estimatedMinutes(),
-                            feedback.get(tip.key())));
-        }
-        return new CursorPage<>(page, next);
     }
 
     /**

@@ -2,7 +2,7 @@ package com.devpilot.onboarding.application;
 
 import com.devpilot.plan.application.PlanQueryService;
 import com.devpilot.skill.application.SkillCatalogQueryService;
-import com.devpilot.skill.application.SkillDetailView;
+import com.devpilot.skill.application.SkillInfo;
 import com.devpilot.skill.application.SkillTargetView;
 import com.devpilot.skill.application.UserSkillStateQueryService;
 import com.devpilot.skill.application.UserSkillStateQueryService.AssessmentState;
@@ -69,7 +69,7 @@ public class DiagnosticSuggestionService {
         if (assessments.isEmpty()) {
             return List.of();
         }
-        Map<UUID, SkillDetailView> skills = skillCatalogQueryService.activeSkillDetails();
+        Map<UUID, SkillInfo> skills = skillCatalogQueryService.activeSkillDetails();
         boolean diagnosticMode =
                 assessments.values().stream().noneMatch(state -> state.selfAssessedLevel() != null);
         Map<SkillCategory, Integer> targetCategories =
@@ -121,12 +121,12 @@ public class DiagnosticSuggestionService {
     /** category → 자기평가 최댓값 ({@code SkillCategory} 선언 순서 유지). */
     private static Map<SkillCategory, Integer> targetCategories(
             Map<UUID, AssessmentState> assessments,
-            Map<UUID, SkillDetailView> skills,
+            Map<UUID, SkillInfo> skills,
             boolean diagnosticMode) {
         Map<SkillCategory, Integer> maxLevels = new EnumMap<>(SkillCategory.class);
         assessments.forEach(
                 (skillId, state) -> {
-                    SkillDetailView skill = skills.get(skillId);
+                    SkillInfo skill = skills.get(skillId);
                     if (skill == null || !state.active()) {
                         return;
                     }
@@ -152,14 +152,14 @@ public class DiagnosticSuggestionService {
     private static Set<SkillCategory> excludedCategories(
             List<DiagnosticCandidate> candidates,
             Set<UUID> diagnosed,
-            Map<UUID, SkillDetailView> skills) {
+            Map<UUID, SkillInfo> skills) {
         Set<SkillCategory> excluded = new HashSet<>();
         for (DiagnosticCandidate candidate : candidates) {
             if (!diagnosed.contains(candidate.id())) {
                 continue;
             }
             for (UUID skillId : candidate.skillIds()) {
-                SkillDetailView skill = skills.get(skillId);
+                SkillInfo skill = skills.get(skillId);
                 if (skill != null) {
                     excluded.add(skill.category());
                 }
@@ -172,7 +172,7 @@ public class DiagnosticSuggestionService {
             SkillCategory category,
             List<DiagnosticCandidate> candidates,
             Map<UUID, AssessmentState> assessments,
-            Map<UUID, SkillDetailView> skills,
+            Map<UUID, SkillInfo> skills,
             Map<UUID, SkillTargetView> targets) {
         List<Selected> ranked = new ArrayList<>();
         for (DiagnosticCandidate candidate : candidates) {
@@ -188,11 +188,11 @@ public class DiagnosticSuggestionService {
             DiagnosticCandidate candidate,
             SkillCategory category,
             Map<UUID, AssessmentState> assessments,
-            Map<UUID, SkillDetailView> skills,
+            Map<UUID, SkillInfo> skills,
             Map<UUID, SkillTargetView> targets) {
         Set<UUID> eligible = new LinkedHashSet<>();
         for (UUID skillId : candidate.skillIds()) {
-            SkillDetailView skill = skills.get(skillId);
+            SkillInfo skill = skills.get(skillId);
             AssessmentState state = assessments.get(skillId);
             if (skill != null && skill.category() == category && state != null && state.active()) {
                 eligible.add(skillId);
@@ -202,7 +202,7 @@ public class DiagnosticSuggestionService {
     }
 
     private static Comparator<UUID> skillOrder(
-            Map<UUID, SkillDetailView> skills, Map<UUID, SkillTargetView> targets) {
+            Map<UUID, SkillInfo> skills, Map<UUID, SkillTargetView> targets) {
         return Comparator.<UUID>comparingInt(skillId -> priorityRank(targets.get(skillId)))
                 .thenComparing(
                         skillId -> importanceBp(targets.get(skillId)), Comparator.reverseOrder())
@@ -210,7 +210,7 @@ public class DiagnosticSuggestionService {
     }
 
     private static Comparator<Selected> order(
-            Map<UUID, SkillDetailView> skills, Map<UUID, SkillTargetView> targets) {
+            Map<UUID, SkillInfo> skills, Map<UUID, SkillTargetView> targets) {
         return Comparator.<Selected>comparingInt(
                         selected -> priorityRank(targets.get(selected.skillId())))
                 .thenComparing(

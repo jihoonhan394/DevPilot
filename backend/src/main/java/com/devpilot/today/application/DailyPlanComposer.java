@@ -265,7 +265,8 @@ public class DailyPlanComposer {
                                 proposal.difficulty(),
                                 profile.lastPracticedAt(),
                                 inputs.yesterday(),
-                                inputs.dayBefore()),
+                                inputs.dayBefore(),
+                                profile.stageGap()),
                         new PlannerScoring.Context(
                                 inputs.context().risk(),
                                 inputs.context().energy(),

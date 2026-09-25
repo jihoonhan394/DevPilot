@@ -42,7 +42,8 @@ public final class TodayRuleSettings {
                         FixedPointMath.toMicros(planner.reviewUrgencyBase()),
                         FixedPointMath.toMicros(planner.reviewUrgencyPerOverdueDay()),
                         FixedPointMath.toMicros(planner.leechReviewUrgency())),
-                planner.lowEnergyLongTaskMinutes());
+                planner.lowEnergyLongTaskMinutes(),
+                Math.toIntExact(FixedPointMath.toMicros(weights.stageGap())));
     }
 
     public static TimeAllocator.Settings timeAllocation(DevPilotProperties properties) {

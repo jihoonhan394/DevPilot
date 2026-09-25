@@ -98,6 +98,15 @@ final class TipChecks {
                         activeSeries);
             }
         }
+        checkCoverage(context, retiredKeys, seenRetired, activeSeries);
+    }
+
+    /** CV-95 뒷부분과 CV-96. 파일을 다 읽은 뒤에야 알 수 있는 두 가지다. */
+    private static void checkCoverage(
+            ValidationContext context,
+            Set<String> retiredKeys,
+            Set<String> seenRetired,
+            Set<String> activeSeries) {
         // CV-95: retired.tipKeys 의 모든 key 는 retired: true 팁으로 파일에 남아 있어야 한다
         for (String key : retiredKeys) {
             if (!seenRetired.contains(key)) {

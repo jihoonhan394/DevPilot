@@ -71,7 +71,8 @@ class PlannerScoringTest {
                                 aProposal[1],
                                 null,
                                 yesterday,
-                                dayBefore),
+                                dayBefore,
+                                0),
                         context);
         ScoredCandidate b =
                 scoring.score(
@@ -84,7 +85,8 @@ class PlannerScoringTest {
                                 bProposal[1],
                                 null,
                                 yesterday,
-                                dayBefore),
+                                dayBefore,
+                                0),
                         context);
 
         assertThat(a.finalScore()).as(id).isEqualTo(expectedA);
@@ -361,7 +363,8 @@ class PlannerScoringTest {
                                 "설명",
                                 AxisLevels.ZERO,
                                 null,
-                                List.of("S.BASE1", "S.BASE2", "S.BASE3")),
+                                List.of("S.BASE1", "S.BASE2", "S.BASE3"),
+                                0),
                         "S.BASE1",
                         profile("S.BASE1", new AxisLevels(0, 1, 0, 0)),
                         "S.BASE2",
@@ -408,7 +411,8 @@ class PlannerScoringTest {
                                 2,
                                 null,
                                 sameSkill,
-                                sameSkill),
+                                sameSkill,
+                                0),
                         context);
 
         assertThat(redo.modifiers())
@@ -433,12 +437,13 @@ class PlannerScoringTest {
                                 2,
                                 Instant.parse("2026-10-01T00:00:00Z"),
                                 null,
-                                null),
+                                null,
+                                0),
                         context);
         ScoredCandidate neverPracticed =
                 scoring.score(
                         new ScoreInput(
-                                "T.B", null, same, TaskType.EXPLAIN, 15, 2, null, null, null),
+                                "T.B", null, same, TaskType.EXPLAIN, 15, 2, null, null, null, 0),
                         context);
         ScoredCandidate important =
                 scoring.score(
@@ -451,12 +456,13 @@ class PlannerScoringTest {
                                 2,
                                 null,
                                 null,
-                                null),
+                                null,
+                                0),
                         context);
         ScoredCandidate sameNeverPracticed =
                 scoring.score(
                         new ScoreInput(
-                                "T.D", null, same, TaskType.EXPLAIN, 15, 2, null, null, null),
+                                "T.D", null, same, TaskType.EXPLAIN, 15, 2, null, null, null, 0),
                         context);
 
         assertThat(important.finalScore()).isEqualTo(practiced.finalScore());
@@ -479,7 +485,16 @@ class PlannerScoringTest {
         Factors factors = new Factors(500_000, 500_000, 0, 0, 0, 1_000_000);
         ScoreInput hard =
                 new ScoreInput(
-                        "H", Priority.LATER, factors, TaskType.CHALLENGE, 30, 4, null, null, null);
+                        "H",
+                        Priority.LATER,
+                        factors,
+                        TaskType.CHALLENGE,
+                        30,
+                        4,
+                        null,
+                        null,
+                        null,
+                        0);
 
         ScoredCandidate high =
                 scoring.score(
@@ -502,7 +517,7 @@ class PlannerScoringTest {
     void shouldPressSameTaskTypeOnlyAfterThreeConsecutiveDays() {
         Factors factors = new Factors(500_000, 500_000, 0, 0, 0, 1_000_000);
         ScoreInput explain =
-                new ScoreInput("E", null, factors, TaskType.EXPLAIN, 15, 2, null, null, null);
+                new ScoreInput("E", null, factors, TaskType.EXPLAIN, 15, 2, null, null, null, 0);
 
         assertThat(modifiers(explain, List.of(TaskType.EXPLAIN, TaskType.EXPLAIN))).isEmpty();
         assertThat(
@@ -541,7 +556,8 @@ class PlannerScoringTest {
                                         2,
                                         null,
                                         null,
-                                        null),
+                                        null,
+                                        0),
                                 List.of(TaskType.EXPLAIN, TaskType.EXPLAIN, TaskType.EXPLAIN)))
                 .isEmpty();
     }
@@ -599,13 +615,13 @@ class PlannerScoringTest {
     }
 
     private static SkillProfile profile(String code, AxisLevels planning) {
-        return new SkillProfile(code, code, "설명", planning, null, List.of());
+        return new SkillProfile(code, code, "설명", planning, null, List.of(), 0);
     }
 
     /** 이미 손대 본 skill (docs/06 §5.2 3번: due 경로는 이 skill만 후보로 넣는다). */
     private static SkillProfile practiced(String code, AxisLevels planning) {
         return new SkillProfile(
-                code, code, "설명", planning, Instant.parse("2026-09-01T00:00:00Z"), List.of());
+                code, code, "설명", planning, Instant.parse("2026-09-01T00:00:00Z"), List.of(), 0);
     }
 
     static Stream<Arguments> vectors() {

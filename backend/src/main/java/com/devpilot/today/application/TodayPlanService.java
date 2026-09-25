@@ -12,7 +12,6 @@ import com.devpilot.today.application.DailyPlanComposer.Composition;
 import com.devpilot.today.domain.DailyPlan;
 import com.devpilot.today.domain.EnergyLevel;
 import com.devpilot.today.domain.LearningTask;
-import com.devpilot.today.domain.ReadingFeedback;
 import com.devpilot.today.domain.TaskProposalPolicy;
 import com.devpilot.today.domain.TaskStatus;
 import com.devpilot.today.domain.TaskType;
@@ -25,7 +24,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,7 +42,7 @@ public class TodayPlanService {
     private final DailyPlanComposer dailyPlanComposer;
     private final TodayQueryService todayQueryService;
     private final CodeReadingCompletionProvider codeReadingCompletionProvider;
-    private final RedoCompletion redoCompletion;
+    private final TaskCompletion taskCompletion;
     private final Clock clock;
 
     public TodayPlanService(
@@ -53,14 +51,14 @@ public class TodayPlanService {
             DailyPlanComposer dailyPlanComposer,
             TodayQueryService todayQueryService,
             CodeReadingCompletionProvider codeReadingCompletionProvider,
-            RedoCompletion redoCompletion,
+            TaskCompletion taskCompletion,
             Clock clock) {
         this.dailyPlanRepository = dailyPlanRepository;
         this.learningTaskRepository = learningTaskRepository;
         this.dailyPlanComposer = dailyPlanComposer;
         this.todayQueryService = todayQueryService;
         this.codeReadingCompletionProvider = codeReadingCompletionProvider;
-        this.redoCompletion = redoCompletion;
+        this.taskCompletion = taskCompletion;
         this.clock = clock;
     }
 
@@ -113,13 +111,9 @@ public class TodayPlanService {
      * {@code COMPLETED} 러버덕 세션이 있어야 한다(RC-1, docs/06 §9.5).
      */
     @Transactional
-    public TaskStatusView updateTaskStatus(
-            UUID userId,
-            UUID taskId,
-            TaskStatus status,
-            @Nullable ReadingFeedback readingFeedback,
-            @Nullable Boolean redoWithoutAi,
-            long version) {
+    public TaskStatusView updateTaskStatus(UUID userId, UUID taskId, TaskStatusChange change) {
+        TaskStatus status = change.status();
+        Boolean redoWithoutAi = change.redoWithoutAi();
         LearningTask task =
                 learningTaskRepository
                         .findByIdAndUserId(taskId, userId)
@@ -127,23 +121,11 @@ public class TodayPlanService {
                                 () ->
                                         new NotFoundException(
                                                 ErrorCode.RESOURCE_NOT_FOUND, "task not found"));
-        if (task.getVersion() != version) {
+        if (task.getVersion() != change.version()) {
             throw new ConflictException(
                     ErrorCode.CONCURRENT_MODIFICATION, "task version does not match");
         }
-        if (task.isMain()
-                && task.getStatus() == TaskStatus.SKIPPED
-                && status == TaskStatus.PLANNED) {
-            boolean activeMainExists =
-                    learningTaskRepository
-                            .findByDailyPlanIdOrderBySortOrderAscIdAsc(task.getDailyPlanId())
-                            .stream()
-                            .anyMatch(LearningTask::isActiveMain);
-            if (activeMainExists) {
-                throw new ConflictException(
-                        ErrorCode.INVALID_STATE_TRANSITION, "another main task is active");
-            }
-        }
+        checkNoOtherActiveMain(task, status);
         boolean readCodeCompletion =
                 task.getTaskType() == TaskType.READ_CODE && status == TaskStatus.COMPLETED;
         if (readCodeCompletion
@@ -154,10 +136,15 @@ public class TodayPlanService {
         }
         boolean redoCompletionRequest =
                 task.getTaskType() == TaskType.REDO && status == TaskStatus.COMPLETED;
-        validateCompletionFields(
-                readingFeedback, readCodeCompletion, redoWithoutAi, redoCompletionRequest);
+        boolean explainAllowed =
+                task.getTaskType() == TaskType.EXPLAIN || task.getTaskType() == TaskType.READ_CODE;
+        validateCompletionFields(change, readCodeCompletion, redoCompletionRequest, explainAllowed);
         task.changeStatus(status, clock.instant());
-        task.recordReadingFeedback(readingFeedback);
+        task.recordReadingFeedback(change.readingFeedback());
+        // 마스킹은 저장 직전에 한다 — 원문이 어느 필드에도 남지 않는다 (docs/07 §6)
+        task.recordExplained(
+                change.explainedToPerson(),
+                taskCompletion.maskNote(userId, change.explainedNote()));
         if (redoWithoutAi != null) {
             task.answerRedo(redoWithoutAi);
         }
@@ -172,25 +159,52 @@ public class TodayPlanService {
                         .findById(task.getDailyPlanId())
                         .map(DailyPlan::getPlanDate)
                         .orElseThrow(() -> new IllegalStateException("task without daily plan"));
-        if (redoCompletionRequest) {
-            redoCompletion.complete(userId, task, redoWithoutAi, planDate);
+        if (status == TaskStatus.COMPLETED) {
+            taskCompletion.complete(
+                    userId, task, planDate, redoCompletionRequest ? redoWithoutAi : null);
         }
         return TaskStatusView.of(task, planDate);
+    }
+
+    /** {@code SKIPPED → PLANNED} main은 같은 daily plan에 활성 main이 없을 때만 된다 (docs/05 §8.4, I-04). */
+    private void checkNoOtherActiveMain(LearningTask task, TaskStatus status) {
+        if (!task.isMain()
+                || task.getStatus() != TaskStatus.SKIPPED
+                || status != TaskStatus.PLANNED) {
+            return;
+        }
+        boolean activeMainExists =
+                learningTaskRepository
+                        .findByDailyPlanIdOrderBySortOrderAscIdAsc(task.getDailyPlanId())
+                        .stream()
+                        .anyMatch(LearningTask::isActiveMain);
+        if (activeMainExists) {
+            throw new ConflictException(
+                    ErrorCode.INVALID_STATE_TRANSITION, "another main task is active");
+        }
     }
 
     /**
      * 완료 요청에만 붙는 값들의 허용·필수 여부 (docs/05 §8.4 400 단계). 상태를 바꾸기 전에 모두 확인한다 — 하나라도 어긋나면 아무것도 바꾸지 않는다.
      */
     private static void validateCompletionFields(
-            @Nullable ReadingFeedback readingFeedback,
+            TaskStatusChange change,
             boolean readCodeCompletion,
-            @Nullable Boolean redoWithoutAi,
-            boolean redoCompletionRequest) {
-        if (readingFeedback != null && !readCodeCompletion) {
+            boolean redoCompletionRequest,
+            boolean explainAllowed) {
+        Boolean redoWithoutAi = change.redoWithoutAi();
+        if (change.readingFeedback() != null && !readCodeCompletion) {
             throw notAllowed("readingFeedback", "reading feedback is not allowed for this task");
         }
         if (redoWithoutAi != null && !redoCompletionRequest) {
             throw notAllowed("redoWithoutAi", "redo answer is not allowed for this task");
+        }
+        // I-24: 설명 기록은 EXPLAIN·READ_CODE에만 있다 (docs/05 §8.4)
+        if (change.explainedToPerson() != null && !explainAllowed) {
+            throw notAllowed("explainedToPerson", "explained answer is not allowed for this task");
+        }
+        if (change.explainedNote() != null && !explainAllowed) {
+            throw notAllowed("explainedNote", "explained note is not allowed for this task");
         }
         // RE-6: 답이 없으면 완료할 수 없다. "혼자 했나"가 이 과제의 결과 그 자체다
         if (redoCompletionRequest && redoWithoutAi == null) {

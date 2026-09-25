@@ -134,7 +134,7 @@ public class SkillCatalogQueryService {
      * 활성 non-root skill의 계산용 정보 (id → 정보). 비활성 skill은 map에 없다 — 규칙은 비활성 skill을 계산에서 뺀다(docs/06
      * §4.1, §5.2).
      */
-    public Map<UUID, SkillDetailView> activeSkillDetails() {
+    public Map<UUID, SkillInfo> activeSkillDetails() {
         Map<UUID, Skill> active =
                 skillRepository.findByActiveTrue().stream()
                         .filter(skill -> skill.getParentId() != null)
@@ -148,12 +148,12 @@ public class SkillCatalogQueryService {
                         .add(required);
             }
         }
-        Map<UUID, SkillDetailView> details = new HashMap<>();
+        Map<UUID, SkillInfo> details = new HashMap<>();
         for (Skill skill : active.values()) {
             String description = skill.getDescription();
             details.put(
                     skill.getId(),
-                    new SkillDetailView(
+                    new SkillInfo(
                             skill.getId(),
                             skill.getCode(),
                             skill.getName(),

@@ -109,6 +109,18 @@ public class LearningTask implements Persistable<UUID> {
     @Column(name = "reading_feedback")
     private @Nullable ReadingFeedback readingFeedback;
 
+    /**
+     * 설명하기 과제·코드 읽기의 "사람에게 설명했나" (docs/04 I-24). {@code EXPLAIN}·{@code READ_CODE}가 아니면 null이다.
+     *
+     * <p>{@code true}일 때만 학습 단계의 "설명하기"가 채워진다(docs/06 §5.11) — 혼잣말은 설명이 아니다.
+     */
+    @Column(name = "explained_to_person")
+    private @Nullable Boolean explainedToPerson;
+
+    /** 누구에게 어떻게 설명했는지 한 줄. <b>마스킹본</b>이다 (docs/05 §1.11). */
+    @Column(name = "explained_note")
+    private @Nullable String explainedNote;
+
     @Version private @Nullable Long version;
 
     protected LearningTask() {
@@ -201,6 +213,21 @@ public class LearningTask implements Persistable<UUID> {
     public void recordReadingFeedback(@Nullable ReadingFeedback feedback) {
         if (feedback != null) {
             this.readingFeedback = feedback;
+        }
+    }
+
+    /**
+     * 설명 기록을 저장한다 (docs/05 §8.4, I-24). {@code null}이면 바꾸지 않는다 — 허용 여부는 호출자가 확인한다({@code
+     * EXPLAIN}·{@code READ_CODE}일 때만).
+     *
+     * @param note 이미 마스킹을 거친 값이어야 한다
+     */
+    public void recordExplained(@Nullable Boolean toPerson, @Nullable String note) {
+        if (toPerson != null) {
+            this.explainedToPerson = toPerson;
+        }
+        if (note != null) {
+            this.explainedNote = note;
         }
     }
 
@@ -332,6 +359,14 @@ public class LearningTask implements Persistable<UUID> {
      * 재현 과제를 끝내며 "AI 도움 없이 끝냈나?"에 답한다 (docs/06 §5.10 RE-6). 답이 없으면 완료할 수 없다(I-21) — DB 제약 {@code
      * learning_task_redo_answer_required}도 같은 것을 막는다.
      */
+    public @Nullable Boolean getExplainedToPerson() {
+        return explainedToPerson;
+    }
+
+    public @Nullable String getExplainedNote() {
+        return explainedNote;
+    }
+
     public void answerRedo(boolean withoutAi) {
         this.redoWithoutAi = withoutAi;
     }

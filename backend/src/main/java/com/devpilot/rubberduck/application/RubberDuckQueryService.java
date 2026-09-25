@@ -19,7 +19,7 @@ import com.devpilot.rubberduck.domain.RubberDuckTurn;
 import com.devpilot.rubberduck.infrastructure.RubberDuckSessionRepository;
 import com.devpilot.rubberduck.infrastructure.RubberDuckTurnRepository;
 import com.devpilot.skill.application.SkillCatalogQueryService;
-import com.devpilot.skill.application.SkillDetailView;
+import com.devpilot.skill.application.SkillInfo;
 import com.devpilot.skill.application.SkillRef;
 import com.devpilot.skill.application.UserSkillStateQueryService;
 import com.devpilot.skill.application.UserSkillStateQueryService.PlanningState;
@@ -132,7 +132,7 @@ public class RubberDuckQueryService {
 
     Set<String> knownSkillCodes() {
         return skillCatalogQueryService.activeSkillDetails().values().stream()
-                .map(SkillDetailView::code)
+                .map(SkillInfo::code)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 

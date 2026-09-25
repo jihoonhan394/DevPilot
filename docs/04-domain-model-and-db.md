@@ -404,6 +404,7 @@ coverage 계산은 서버가 한다(`06` §8.1).
 | `TIP_VIEWED` | (없음 — `source_type`·`source_id` 모두 null) | 팁 `skillCodes`의 첫 활성 skill (없으면 null) | `{ tipKey, series, level }` — 팁을 보여 준 시점에 1회(`05` §20.2). `feedback`은 담지 않는다(고르지 않을 수 있다 — 값은 `user_daily_tip`에 있다) | `TIP_VIEWED:{tipKey}` |
 | `TERM_CARD_CREATED` | REVIEW_ITEM (정방향 카드 `review_item.id`) | 용어 `skillCodes`의 첫 활성 skill | `{ termKey, conceptKey, cardCount }` — `conceptKey`는 정방향 카드의 것(`TERM:{termKey}`), `cardCount`는 이번에 만든 카드 수(`05` §20.7) | `TERM_CARD:{termKey}:{skillId}` |
 | `UNIT_SOLVED` | (없음 — `source_type`·`source_id` 모두 null) | 노트의 skill | `{ lessonKey, unitKey, helpLevel, selfChecksMet }` — `helpLevel`은 `NONE`·`HINT`·`DUCK`·`ANSWER`(앱이 센 값, `05` §21.7), `selfChecksMet`은 모범 답안과 견준 개수(견주지 않고 넘어갔으면 없다). 단위를 마칠 때 **한 번에** 기록한다 — 이벤트를 나중에 고치지 않는다 | (없음 — 같은 단위를 여러 번 풀 수 있다) |
+| `TASK_COMPLETED` | `LEARNING_TASK` / `learning_task.id` | 과제의 skill (없으면 기록하지 않는다) | `{ taskId, taskType, explainedToPerson }` — `taskType`은 `CHALLENGE`·`PROJECT_TASK`·`READING`·`READ_CODE`·`EXPLAIN` 다섯 뿐이다(`REDO`는 `REDO_COMPLETED`가 따로 남긴다). `explainedToPerson`은 `EXPLAIN`·`READ_CODE`에만 있고 그 외 null. **학습 단계 6칸의 입력이고 레벨 규칙(`06` §7.1)에는 쓰지 않는다** | `TASK_COMPLETED:{taskId}` |
 | `EVIDENCE_ACCEPTED` | EVIDENCE | evidence skill | `{ evidenceId }` | `EVIDENCE_ACCEPTED:{evidenceId}` |
 | `PLAN_REPLANNED` | LEARNING_PLAN | null | `{ fromPlanId, toPlanId, fromVersion, toVersion, deferredSkillCodes[], reducedSkillCodes[] }` | `REPLANNED:{toPlanId}` |
 
@@ -499,6 +500,7 @@ coverage 계산은 서버가 한다(`06` §8.1).
 | `V9__rubberduck_project.sql` | S1(`side_project`) · S3(러버덕, 읽기 평가) | `side_project`, `rubber_duck_session`, `rubber_duck_turn`, `learning_task.side_project_id`·`reading_key`(+ CHECK `learning_task_reading_key_type`)·`reading_feedback`(`varchar(20)` null, 값 CHECK `HELPFUL`/`TOO_HARD`/`BORING` + CHECK `learning_task_reading_feedback_type`)·`coach_review.side_project_id` 추가 |
 | `V10__track_notes_redo.sql` | S3(학습 트랙 3종, 프로젝트 기록, 경험 기록 분류, 오늘의 팁, 용어 카드, 설명 기록, 문제 시간 제한, 개념 읽기) · S4(재현 과제) | 아래 §10.1 |
 | `V11__lesson_events.sql` | 개념 노트(학습 단위) | `learning_event.event_type` CHECK에 `UNIT_SOLVED`를 더해 다시 만든다(`learning_event_event_type_check`). **이것 하나뿐이다** — 개념 노트 본문은 콘텐츠이고 DB 테이블이 없다(`19` §3.14), 사용자 답도 저장하지 않는다(`05` §21.6) |
+| `V14__task_completed_event.sql` | 학습 단계 6칸 | `learning_event.event_type` CHECK에 `TASK_COMPLETED`를 더해 다시 만든다(`learning_event_event_type_check`). **이것 하나뿐이다** — 단계는 저장하지 않고 이벤트에서 파생 계산한다(ADR-042, `06` §5.11). 이 이벤트가 없으면 여섯 칸 중 세 칸(개념 읽기·코드 읽기·만들기의 `PROJECT_TASK`)을 판정할 입력이 없다 |
 
 ### 10.1 `V10__track_notes_redo.sql` (내용)
 

@@ -19,6 +19,9 @@ abstract interface class SkillRepository {
 
   /// `GET /skills/{skillId}/history?cursor=` — level changes, newest first.
   Future<CursorPage<SkillStateChangeView>> fetchHistory({required String skillId, String? cursor});
+
+  /// `GET /skills/{skillId}` (docs/05 §6.4). 학습 단계 6칸이 들어 있다. 비활성 skill도 열린다.
+  Future<SkillDetailView> fetchDetail(String skillId);
 }
 
 final class ApiSkillRepository implements SkillRepository {
@@ -37,6 +40,10 @@ final class ApiSkillRepository implements SkillRepository {
   @override
   Future<UserSkillStatesResponse> fetchMyStates() async =>
       UserSkillStatesResponse.fromJson(await _apiClient.getJson('/skills/me'));
+
+  @override
+  Future<SkillDetailView> fetchDetail(String skillId) async =>
+      SkillDetailView.fromJson(await _apiClient.getJson('/skills/$skillId'));
 
   @override
   Future<CursorPage<SkillStateChangeView>> fetchHistory({

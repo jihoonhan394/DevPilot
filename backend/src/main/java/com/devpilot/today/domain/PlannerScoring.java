@@ -372,7 +372,7 @@ public final class PlannerScoring {
 
     /** base score와 modifier를 적용한 final score. */
     public ScoredCandidate score(ScoreInput input, Context context) {
-        long base = baseScore(input.factors());
+        long base = Math.addExact(baseScore(input.factors()), stageGapBonus(input.stageGap()));
         List<AppliedModifier> modifiers = new ArrayList<>();
         riskModifier(input.priority(), context.risk()).ifPresent(modifiers::add);
         energyModifier(input, context.energy()).ifPresent(modifiers::add);
@@ -390,6 +390,17 @@ public final class PlannerScoring {
             score = FixedPointMath.applyMultiplierBp(score, modifier.multiplierBp());
         }
         return new ScoredCandidate(input, base, modifiers, score);
+    }
+
+    /**
+     * {@code floorDiv(stageGap × stageGapWeightMicro, 1_000_000)} (docs/06 §5.4).
+     *
+     * <p>한 바퀴를 아직 못 돈 skill을 <b>조금</b> 앞세운다. 상한이 factor 가중합 최댓값의 0.5%라 순서를 뒤집지 못하고, 점수가 거의 같은 후보
+     * 사이에서만 갈린다.
+     */
+    public long stageGapBonus(int stageGap) {
+        return FixedPointMath.floorDiv(
+                Math.multiplyExact((long) stageGap, settings.stageGapWeightMicro()), MICRO);
     }
 
     /** {@code floorDiv(Σ factor × WEIGHT_BP, 10_000)}. */
@@ -511,12 +522,19 @@ public final class PlannerScoring {
         }
     }
 
-    /** {@code devpilot.planner.*}를 정수로 바꾼 값. */
+    /**
+     * {@code devpilot.planner.*}를 정수로 바꾼 값.
+     *
+     * @param stageGapWeightMicro 학습 단계 보너스의 상한 (docs/06 §5.4, 기본 5_000). {@code WEIGHT_BP}에 넣지 않는
+     *     이유는 합이 10_000인 정규화된 가중합에 한 factor를 더하면 나머지 여섯의 비중이 모두 달라지기 때문이다 — 이건 순서를 뒤집는 근거가 아니라 비슷한
+     *     점수 사이의 tiebreak다
+     */
     public record Settings(
             Weights weights,
             Modifiers modifiers,
             FactorSettings factors,
-            int lowEnergyLongTaskMinutes) {}
+            int lowEnergyLongTaskMinutes,
+            int stageGapWeightMicro) {}
 
     /** factor 가중치 (bp, 합 10_000). */
     public record Weights(
@@ -585,6 +603,7 @@ public final class PlannerScoring {
      *
      * @param planning docs/06 §7.5 planning level
      * @param prerequisiteCodes 선행 skill code
+     * @param stageGap 학습 단계 6칸 중 못 채운 몫 (docs/06 §5.11 ST-5). 0칸이면 {@code 1_000_000}
      */
     public record SkillProfile(
             String code,
@@ -592,7 +611,8 @@ public final class PlannerScoring {
             String description,
             AxisLevels planning,
             @Nullable Instant lastPracticedAt,
-            List<String> prerequisiteCodes) {
+            List<String> prerequisiteCodes,
+            int stageGap) {
 
         public SkillProfile {
             prerequisiteCodes = List.copyOf(prerequisiteCodes);
@@ -689,7 +709,8 @@ public final class PlannerScoring {
             int difficulty,
             @Nullable Instant lastPracticedAt,
             @Nullable RecentMain yesterday,
-            @Nullable RecentMain dayBefore) {}
+            @Nullable RecentMain dayBefore,
+            int stageGap) {}
 
     /**
      * 오늘의 공통 입력.

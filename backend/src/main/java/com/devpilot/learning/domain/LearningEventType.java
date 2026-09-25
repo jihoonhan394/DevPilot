@@ -28,5 +28,8 @@ public enum LearningEventType {
     TERM_CARD_CREATED,
 
     /** 개념 노트의 학습 단위를 마쳤다 (docs/04 §6, docs/05 §21.7). 복습 일정의 입력이고 레벨의 증거가 아니다. */
-    UNIT_SOLVED
+    UNIT_SOLVED,
+
+    /** 과제를 끝낸 사실 (docs/06 §5.11). 학습 단계 6칸의 입력이고 레벨 규칙에는 쓰지 않는다. */
+    TASK_COMPLETED
 }

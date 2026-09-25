@@ -127,7 +127,8 @@ devpilot:
     JAVA_BACKEND_STARTER: { max-task-difficulty: 3, read-code-min-knowledge: 2, challenge-min-knowledge: 1, basic-tips-first: true }   # 입문 트랙: 쉬운 기본값, 기초 팁 먼저
     INTEGRATION_ENGINEER: { max-task-difficulty: 4, read-code-min-knowledge: 1, challenge-min-knowledge: 1, basic-tips-first: false }  # 연동·구축 트랙 (06 §5.3)
   planner:
-    weights: { practical-importance: 0.25, skill-gap: 0.20, review-urgency: 0.20, milestone-urgency: 0.15, project-need: 0.10, prerequisite-readiness: 0.10 }
+    # 앞의 여섯은 합이 1.0이어야 한다. stage-gap 은 그 가중합 위에 얹는 보너스라 합에 넣지 않는다 (06 §5.4)
+    weights: { practical-importance: 0.25, skill-gap: 0.20, review-urgency: 0.20, milestone-urgency: 0.15, project-need: 0.10, prerequisite-readiness: 0.10, stage-gap: 0.005 }
     study-thread-max-consecutive-days: 7   # 06 §5.13 TH-4 한 skill을 이어 갈 수 있는 최대 plan-day
     redo:                                  # 06 §5.10 RE-2·RE-3
       min-days-after: 3                    # 완료 3일 뒤부터 (경계 포함)

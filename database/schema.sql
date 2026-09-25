@@ -1,6 +1,6 @@
 -- =====================================================================
 -- DevPilot database schema (PostgreSQL 16 — 자체 서버 공용 인스턴스. PG 17 전용 문법 사용 금지)
--- Status: Accepted (v2) · Last updated: 2026-09-21 (V11: 개념 노트의 학습 단위 이벤트 UNIT_SOLVED)
+-- Status: Accepted (v2) · Last updated: 2026-09-25 (V14: 학습 단계 6칸의 입력 TASK_COMPLETED)
 -- Related: docs/04-domain-model-and-db.md (enum registry, state machines, JSON schemas)
 --
 -- 이 파일은 설계 기준(최종 형태)이다. 실제 적용은 Flyway migration으로 나눠서 한다
@@ -165,7 +165,7 @@ create table learning_event (
                        'DIAGNOSTIC_PASSED','DIAGNOSTIC_FAILED',
                        'EVIDENCE_ACCEPTED','PLAN_REPLANNED',
                        'REDO_COMPLETED','TIP_VIEWED','TERM_CARD_CREATED',
-                       'UNIT_SOLVED')),
+                       'UNIT_SOLVED','TASK_COMPLETED')),
     source_type        varchar(30) check (source_type in (
                        'LEARNING_SESSION','CHALLENGE_ATTEMPT','CHALLENGE_SUBMISSION','REVIEW_ITEM',
                        'COACH_REVIEW','COACH_FINDING','EVIDENCE','LEARNING_PLAN','RUBBER_DUCK_SESSION',

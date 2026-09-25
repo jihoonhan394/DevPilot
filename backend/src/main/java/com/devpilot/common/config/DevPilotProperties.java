@@ -211,14 +211,20 @@ public record DevPilotProperties(
         }
     }
 
-    /** planner factor 가중치. 합이 정확히 1.0(10_000bp)이어야 한다 (docs/03 §9 끝). */
+    /**
+     * planner factor 가중치. 앞의 여섯은 합이 정확히 1.0(10_000bp)이어야 한다 (docs/03 §9 끝).
+     *
+     * @param stageGap 학습 단계 보너스 (docs/06 §5.4·§5.11). <b>합 검사에 넣지 않는다</b> — 정규화된 가중합에 얹는 tiebreak라
+     *     여기 들어가면 나머지 여섯의 비중이 달라진다
+     */
     public record Weights(
             @NotNull BigDecimal practicalImportance,
             @NotNull BigDecimal skillGap,
             @NotNull BigDecimal reviewUrgency,
             @NotNull BigDecimal milestoneUrgency,
             @NotNull BigDecimal projectNeed,
-            @NotNull BigDecimal prerequisiteReadiness) {
+            @NotNull BigDecimal prerequisiteReadiness,
+            @NotNull BigDecimal stageGap) {
 
         public Weights {
             long sum =

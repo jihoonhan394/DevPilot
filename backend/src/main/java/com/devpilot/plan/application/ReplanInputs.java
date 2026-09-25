@@ -4,7 +4,7 @@ import com.devpilot.goal.application.LearningGoalQueryService;
 import com.devpilot.integration.ai.masking.SecretMasker;
 import com.devpilot.skill.application.RoleSkillTargetView;
 import com.devpilot.skill.application.SkillCatalogQueryService;
-import com.devpilot.skill.application.SkillDetailView;
+import com.devpilot.skill.application.SkillInfo;
 import com.devpilot.skill.application.SkillRef;
 import com.devpilot.skill.domain.TargetRole;
 import java.util.ArrayList;
@@ -46,7 +46,7 @@ class ReplanInputs {
         return skillCatalogQueryService.roleTargets(role);
     }
 
-    Map<UUID, SkillDetailView> activeSkillDetails() {
+    Map<UUID, SkillInfo> activeSkillDetails() {
         return skillCatalogQueryService.activeSkillDetails();
     }
 

@@ -23,11 +23,11 @@ import 'fixtures.dart';
 import 'learning_fakes.dart';
 import 'learning_fixtures.dart';
 import 'lesson_fakes.dart';
-import 'tip_fakes.dart';
 import 'reading_fakes.dart';
 import 'review_item_fakes.dart';
 import 'rubber_duck_fakes.dart';
 import 'skill_history_fakes.dart';
+import 'tip_fakes.dart';
 import 'training_fakes.dart';
 
 export 'learning_fakes.dart';
@@ -313,6 +313,19 @@ final class FakeSkillRepository implements SkillRepository {
 
   @override
   Future<UserSkillStatesResponse> fetchMyStates() async => testSkillStates();
+
+  /// `GET /skills/{skillId}`. 설정하면 그 오류로 실패한다 — 단계 영역만 인라인 오류가 되는지 본다.
+  SkillDetailView detail = testSkillDetail();
+  ApiException? detailFailure;
+
+  @override
+  Future<SkillDetailView> fetchDetail(String skillId) async {
+    final failure = detailFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return detail;
+  }
 
   @override
   Future<CursorPage<SkillStateChangeView>> fetchHistory({

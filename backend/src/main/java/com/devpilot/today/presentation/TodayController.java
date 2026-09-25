@@ -78,12 +78,6 @@ public class TodayController {
             CurrentUser currentUser,
             @PathVariable UUID taskId,
             @Valid @RequestBody TaskStatusPatchRequest request) {
-        return todayPlanService.updateTaskStatus(
-                currentUser.userId(),
-                taskId,
-                request.status(),
-                request.readingFeedback(),
-                request.redoWithoutAi(),
-                request.version());
+        return todayPlanService.updateTaskStatus(currentUser.userId(), taskId, request.toChange());
     }
 }

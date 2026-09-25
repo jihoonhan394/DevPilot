@@ -231,3 +231,22 @@ enum SideProjectStatus {
   /// Wire value for query parameters (`GET /side-projects?status=`).
   String get wireName => _$SideProjectStatusEnumMap[this]!;
 }
+
+/// 한 기술을 한 바퀴 도는 여섯 단계 (docs/04 §3, docs/06 §5.11).
+///
+/// **만들기가 먼저다** — 무엇을 만들다 막혀 봐야 읽을 이유가 생긴다. 이 선언 순서가 화면의 6칸 순서이고, 순서는 표시 순서이지 선행 조건이 아니다(ST-2).
+enum LearningStage {
+  @JsonValue('BUILD')
+  build,
+  @JsonValue('READ_CONCEPT')
+  readConcept,
+  @JsonValue('READ_CODE')
+  readCode,
+  @JsonValue('EXPLAIN')
+  explain,
+  @JsonValue('REVIEW')
+  review,
+  @JsonValue('REDO')
+  redo,
+  unknown,
+}

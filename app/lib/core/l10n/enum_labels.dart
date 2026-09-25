@@ -205,3 +205,26 @@ extension TipFeedbackLabel on TipFeedback {
     TipFeedback.unknown => l10n.enumUnknown,
   };
 }
+
+extension LearningStageLabel on LearningStage {
+  String label(AppLocalizations l10n) => switch (this) {
+    LearningStage.build => l10n.enumLearningStageBuild,
+    LearningStage.readConcept => l10n.enumLearningStageReadConcept,
+    LearningStage.readCode => l10n.enumLearningStageReadCode,
+    LearningStage.explain => l10n.enumLearningStageExplain,
+    LearningStage.review => l10n.enumLearningStageReview,
+    LearningStage.redo => l10n.enumLearningStageRedo,
+    LearningStage.unknown => l10n.enumUnknown,
+  };
+
+  /// 그 칸을 채우는 방법 한 줄 (docs/02 SCR-SKILL-DETAIL). 미완료 칸에만 보인다.
+  String how(AppLocalizations l10n) => switch (this) {
+    LearningStage.build => l10n.skillDetailStageHowBuild,
+    LearningStage.readConcept => l10n.skillDetailStageHowReadConcept,
+    LearningStage.readCode => l10n.skillDetailStageHowReadCode,
+    LearningStage.explain => l10n.skillDetailStageHowExplain,
+    LearningStage.review => l10n.skillDetailStageHowReview,
+    LearningStage.redo => l10n.skillDetailStageHowRedo,
+    LearningStage.unknown => l10n.enumUnknown,
+  };
+}

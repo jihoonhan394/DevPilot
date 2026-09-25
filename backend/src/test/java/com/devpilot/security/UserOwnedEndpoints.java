@@ -452,6 +452,16 @@ public final class UserOwnedEndpoints {
                         fixture -> new Object[] {},
                         NO_BODY,
                         null),
+                // skill 상세 (docs/05 §6.4). catalog는 공용이고 사용자별인 것은 레벨·목표·학습 단계뿐이다.
+                // 그래서 SHARED_CONTENT가 아니라 SCOPED_COLLECTION처럼 "남의 것이 보이지 않는지"를 본다.
+                new EndpointCase(
+                        "E75",
+                        HttpMethod.GET,
+                        "/api/v1/skills/{skillId}",
+                        Kind.SCOPED_COLLECTION,
+                        fixture -> new Object[] {fixture.skillId()},
+                        NO_BODY,
+                        null),
                 // 오늘의 팁 (docs/05 §20). 본문은 콘텐츠라 모든 사용자가 같은 것을 본다 — 사용자별인 것은 feedback 뿐이다.
                 new EndpointCase(
                         "E71",

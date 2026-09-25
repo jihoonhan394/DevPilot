@@ -241,3 +241,34 @@ SideProjectView testProject({
   updatedAt: testInstant,
   version: version,
 );
+
+/// 학습 단계 6칸. 선언 순서를 그대로 쓴다 — 화면이 정렬하지 않는지 보려면 응답이 그 순서여야 한다.
+List<LearningStageView> testLearningStages({Set<LearningStage> completed = const {}}) => [
+  for (final stage in LearningStage.values)
+    if (stage != LearningStage.unknown)
+      LearningStageView(
+        stage: stage,
+        completed: completed.contains(stage),
+        completedAt: completed.contains(stage) ? DateTime.utc(2026, 9, 20, 3) : null,
+      ),
+];
+
+SkillDetailView testSkillDetail({
+  String skillId = _javaCollectionId,
+  String? whyItMatters = '컬렉션 선택이 틀리면 데이터가 많아졌을 때 느려지는 자리가 여기다.',
+  Set<LearningStage> completed = const {},
+}) => SkillDetailView(
+  skill: SkillRef(
+    id: skillId,
+    code: 'JAVA.COLLECTION',
+    name: 'Collection',
+    category: SkillCategory.java,
+  ),
+  parentCode: 'JAVA',
+  description: '자료구조와 컬렉션',
+  whyItMatters: whyItMatters,
+  minutesPerLevelStep: 120,
+  evidenceLevels: const AxisLevels(knowledge: 1, implementation: 1, explanation: 0, debugging: 0),
+  planningLevels: const AxisLevels(knowledge: 1, implementation: 1, explanation: 0, debugging: 0),
+  learningStages: testLearningStages(completed: completed),
+);

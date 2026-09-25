@@ -1596,6 +1596,31 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - skill
+  /api/v1/skills/{skillId}:
+    get:
+      operationId: skillGet
+      parameters:
+      - in: path
+        name: skillId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillDetailView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - skill
   /api/v1/skills/{skillId}/history:
     get:
       operationId: skillGetHistory
@@ -2917,6 +2942,7 @@ components:
           - TIP_VIEWED
           - TERM_CARD_CREATED
           - UNIT_SOLVED
+          - TASK_COMPLETED
         id:
           type: string
           format: uuid
@@ -3231,6 +3257,27 @@ components:
       - targetRole
       - updatedAt
       - version
+    LearningStageView:
+      type: object
+      properties:
+        completed:
+          type: boolean
+        completedAt:
+          type: string
+          format: date-time
+        stage:
+          type: string
+          enum:
+          - BUILD
+          - READ_CONCEPT
+          - READ_CODE
+          - EXPLAIN
+          - REVIEW
+          - REDO
+      required:
+      - completed
+      - completedAt
+      - stage
     LessonExampleView:
       type: object
       properties:
@@ -5294,6 +5341,45 @@ components:
       - avgTargetLevelMilli
       - category
       - skillCount
+    SkillDetailView:
+      type: object
+      properties:
+        description:
+          type: string
+        evidenceLevels:
+          $ref: "#/components/schemas/AxisLevels"
+        learningStages:
+          type: array
+          items:
+            $ref: "#/components/schemas/LearningStageView"
+        minutesPerLevelStep:
+          type: integer
+          format: int32
+        parentCode:
+          type: string
+        planningLevels:
+          $ref: "#/components/schemas/AxisLevels"
+        prerequisiteCodes:
+          type: array
+          items:
+            type: string
+        skill:
+          $ref: "#/components/schemas/SkillRef"
+        target:
+          $ref: "#/components/schemas/SkillTargetView"
+        whyItMatters:
+          type: string
+      required:
+      - description
+      - evidenceLevels
+      - learningStages
+      - minutesPerLevelStep
+      - parentCode
+      - planningLevels
+      - prerequisiteCodes
+      - skill
+      - target
+      - whyItMatters
     SkillNodeView:
       type: object
       properties:
@@ -5683,6 +5769,12 @@ components:
     TaskStatusPatchRequest:
       type: object
       properties:
+        explainedNote:
+          type: string
+          maxLength: 500
+          minLength: 0
+        explainedToPerson:
+          type: boolean
         readingFeedback:
           type: string
           enum:

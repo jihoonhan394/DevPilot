@@ -9,7 +9,7 @@ import com.devpilot.goal.application.LearningGoalView;
 import com.devpilot.plan.application.StudyBudgetService.TargetLine;
 import com.devpilot.plan.domain.ReplanSuggestionPolicy.TargetItem;
 import com.devpilot.skill.application.SkillCatalogQueryService;
-import com.devpilot.skill.application.SkillDetailView;
+import com.devpilot.skill.application.SkillInfo;
 import com.devpilot.skill.application.UserSkillStateQueryService;
 import com.devpilot.skill.application.UserSkillStateQueryService.PlanningState;
 import java.time.LocalDate;
@@ -65,11 +65,11 @@ class StudyBudgetInputs {
 
     /** 활성 skill 목표만 규칙 입력으로 바꾼다(비활성 skill 제외, docs/06 §4.1). */
     List<TargetItem> targetItems(UUID userId, List<TargetLine> targets) {
-        Map<UUID, SkillDetailView> skills = skillCatalogQueryService.activeSkillDetails();
+        Map<UUID, SkillInfo> skills = skillCatalogQueryService.activeSkillDetails();
         Map<UUID, PlanningState> planning = userSkillStateQueryService.planningStates(userId);
         List<TargetItem> items = new ArrayList<>();
         for (TargetLine target : targets) {
-            SkillDetailView skill = skills.get(target.skillId());
+            SkillInfo skill = skills.get(target.skillId());
             if (skill == null) {
                 continue;
             }

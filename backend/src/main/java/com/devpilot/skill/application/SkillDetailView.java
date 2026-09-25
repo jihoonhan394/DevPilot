@@ -1,31 +1,40 @@
 package com.devpilot.skill.application;
 
-import com.devpilot.skill.domain.SkillCategory;
+import com.devpilot.common.web.AxisLevels;
+import com.devpilot.skill.domain.LearningStage;
+import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 
 /**
- * 규칙 입력에 쓰는 활성 skill 정보 (planner docs/06 §5, budget docs/06 §4.2). 목록·트리 응답이 아니라 다른 모듈의 계산용이다.
+ * skill 상세 (docs/05 §6.4). SCR-SKILL-DETAIL이 그리는 값 전부다.
  *
- * @param description 없으면 빈 문자열
- * @param minutesPerLevelStep 한 레벨을 올리는 데 드는 분 (docs/19 §3.2)
- * @param prerequisiteIds 활성 선행 skill id
+ * @param whyItMatters 이 기술을 왜 하는지 한 줄. 콘텐츠 값이고 노트가 없으면 null
+ * @param target 활성 plan의 목표. 없으면 null
+ * @param learningStages <b>항상 6칸</b>이고 {@code LearningStage} 선언 순서다. 저장하지 않고 기록에서 파생 계산한다(ADR-042)
  */
 public record SkillDetailView(
-        UUID id,
-        String code,
-        String name,
-        SkillCategory category,
-        String description,
+        SkillRef skill,
+        @Nullable String parentCode,
+        @Nullable String description,
+        @Nullable String whyItMatters,
         int minutesPerLevelStep,
-        List<UUID> prerequisiteIds) {
+        List<String> prerequisiteCodes,
+        AxisLevels evidenceLevels,
+        AxisLevels planningLevels,
+        @Nullable SkillTargetView target,
+        List<LearningStageView> learningStages) {
 
     public SkillDetailView {
-        prerequisiteIds = List.copyOf(prerequisiteIds);
+        prerequisiteCodes = List.copyOf(prerequisiteCodes);
+        learningStages = List.copyOf(learningStages);
     }
 
-    /** 응답용 참조. */
-    public SkillRef ref() {
-        return new SkillRef(id, code, name, category);
-    }
+    /**
+     * 한 칸.
+     *
+     * @param completedAt 그 칸을 채운 가장 이른 기록의 시각 (docs/06 §5.11 ST-3). 완료가 아니면 null
+     */
+    public record LearningStageView(
+            LearningStage stage, boolean completed, @Nullable Instant completedAt) {}
 }

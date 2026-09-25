@@ -16,7 +16,7 @@ import com.devpilot.review.domain.ReviewRating;
 import com.devpilot.review.infrastructure.ReviewAnswerRepository;
 import com.devpilot.review.infrastructure.ReviewItemRepository;
 import com.devpilot.skill.application.SkillCatalogQueryService;
-import com.devpilot.skill.application.SkillDetailView;
+import com.devpilot.skill.application.SkillInfo;
 import com.devpilot.skill.application.SkillRef;
 import com.devpilot.skill.application.SkillTargetView;
 import java.time.Clock;
@@ -83,7 +83,7 @@ public class ReviewQueryService {
         boolean comebackMode = dueReviewInputs.isComebackMode(userId, today);
         int cap = cap(comebackMode);
         int effectiveCap = limit == null ? cap : Math.min(limit, cap);
-        Map<UUID, SkillDetailView> skills = skillCatalogQueryService.activeSkillDetails();
+        Map<UUID, SkillInfo> skills = skillCatalogQueryService.activeSkillDetails();
         Map<UUID, ReviewItem> items = new HashMap<>();
         Selection selection =
                 selector.select(
@@ -109,7 +109,7 @@ public class ReviewQueryService {
      * dueCount).
      */
     public DueSummary dueSummary(UUID userId, LocalDate today, ZoneId zone, int dayStartHour) {
-        Map<UUID, SkillDetailView> skills = skillCatalogQueryService.activeSkillDetails();
+        Map<UUID, SkillInfo> skills = skillCatalogQueryService.activeSkillDetails();
         List<Candidate> due =
                 selector.select(
                                 candidates(
@@ -218,7 +218,7 @@ public class ReviewQueryService {
             LocalDate today,
             ZoneId zone,
             int dayStartHour,
-            Map<UUID, SkillDetailView> skills,
+            Map<UUID, SkillInfo> skills,
             Map<UUID, ReviewItem> byId) {
         Map<UUID, SkillTargetView> targets = dueReviewInputs.activePlanTargets(userId);
         List<ReviewItem> active =
@@ -247,10 +247,10 @@ public class ReviewQueryService {
     private static DueReviewItemView toView(
             ReviewItem item,
             Candidate candidate,
-            Map<UUID, SkillDetailView> skills,
+            Map<UUID, SkillInfo> skills,
             ZoneId zone,
             int dayStartHour) {
-        SkillDetailView skill = skills.get(item.getSkillId());
+        SkillInfo skill = skills.get(item.getSkillId());
         return new DueReviewItemView(
                 item.getId(),
                 skill.code(),

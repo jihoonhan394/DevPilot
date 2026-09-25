@@ -37,7 +37,9 @@ public final class TestRuleSettings {
                         12_000, 8_000, 7_000, 11_000, 11_500, 7_000, 7_000, 4_000, 13_000),
                 new PlannerScoring.FactorSettings(
                         300_000, 500_000, 200_000, 100_000, 300_000, 100_000, 1_000_000),
-                30);
+                30,
+                // 06 §5.4: 가중합 위에 얹는 보너스. §5.4 vector는 stageGap 자체를 0으로 둬서 이 값과 무관하다
+                5_000);
     }
 
     public static TimeAllocator.Settings timeAllocation() {

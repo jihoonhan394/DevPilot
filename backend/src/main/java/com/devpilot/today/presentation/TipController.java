@@ -8,6 +8,7 @@ import com.devpilot.common.web.CursorPage;
 import com.devpilot.learning.domain.TipFeedback;
 import com.devpilot.today.application.DailyTipService;
 import com.devpilot.today.application.DailyTipView;
+import com.devpilot.today.application.TipListQueryService;
 import com.devpilot.today.application.TipSummaryView;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -44,10 +45,15 @@ public class TipController {
     private static final String TIP_KEY = "^TIP\\.[A-Z0-9_]+\\.[A-Z0-9_]+\\.[0-9]{3}$";
 
     private final DailyTipService dailyTipService;
+    private final TipListQueryService tipListQueryService;
     private final IdempotencyService idempotencyService;
 
-    public TipController(DailyTipService dailyTipService, IdempotencyService idempotencyService) {
+    public TipController(
+            DailyTipService dailyTipService,
+            TipListQueryService tipListQueryService,
+            IdempotencyService idempotencyService) {
         this.dailyTipService = dailyTipService;
+        this.tipListQueryService = tipListQueryService;
         this.idempotencyService = idempotencyService;
     }
 
@@ -66,7 +72,7 @@ public class TipController {
             @RequestParam(required = false) @Nullable TipLevel level,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
             @RequestParam(required = false) @Nullable @Size(max = 512) String cursor) {
-        return dailyTipService.list(
+        return tipListQueryService.list(
                 currentUser.userId(),
                 series == null ? null : series.name(),
                 level == null ? null : level.name(),

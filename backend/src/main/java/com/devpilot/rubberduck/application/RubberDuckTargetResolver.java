@@ -11,7 +11,7 @@ import com.devpilot.review.application.ReviewQueryService.ReviewItemRef;
 import com.devpilot.rubberduck.domain.RubberDuckSession;
 import com.devpilot.rubberduck.domain.RubberDuckTargetType;
 import com.devpilot.skill.application.SkillCatalogQueryService;
-import com.devpilot.skill.application.SkillDetailView;
+import com.devpilot.skill.application.SkillInfo;
 import com.devpilot.skill.application.SkillRef;
 import com.devpilot.today.application.ReadingQueryService;
 import com.devpilot.today.application.TodayQueryService;
@@ -137,7 +137,7 @@ class RubberDuckTargetResolver {
     Optional<UUID> skillIdForConceptKey(String conceptKey) {
         UUID best = null;
         int bestLength = 0;
-        for (SkillDetailView skill : skillCatalogQueryService.activeSkillDetails().values()) {
+        for (SkillInfo skill : skillCatalogQueryService.activeSkillDetails().values()) {
             String code = skill.code();
             boolean prefix =
                     conceptKey.equals(code)
@@ -156,8 +156,8 @@ class RubberDuckTargetResolver {
         if (skillId == null) {
             return List.of();
         }
-        Map<UUID, SkillDetailView> details = skillCatalogQueryService.activeSkillDetails();
-        SkillDetailView skill = details.get(skillId);
+        Map<UUID, SkillInfo> details = skillCatalogQueryService.activeSkillDetails();
+        SkillInfo skill = details.get(skillId);
         if (skill == null) {
             return List.of();
         }
@@ -166,7 +166,7 @@ class RubberDuckTargetResolver {
         skill.prerequisiteIds().stream()
                 .map(details::get)
                 .filter(Objects::nonNull)
-                .map(SkillDetailView::code)
+                .map(SkillInfo::code)
                 .forEach(codes::add);
         return List.copyOf(codes);
     }

@@ -4,11 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fake_backend.dart';
-import '../../support/fixtures.dart';
 import '../../support/learning_fixtures.dart';
 import '../../support/test_app.dart';
 import '../../support/tip_fakes.dart';
-import '../../support/widget_actions.dart';
 
 /// SCR-TODAY 팁 카드 · SCR-TIP-DETAIL · SCR-TIPS (docs/02 §3.17, docs/06 §5.12, BL-TIP-01~05).
 void main() {

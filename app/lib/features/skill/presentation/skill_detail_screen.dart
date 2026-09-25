@@ -8,7 +8,9 @@ import 'package:devpilot_app/core/widgets/screen_body.dart';
 import 'package:devpilot_app/core/widgets/skeleton.dart';
 import 'package:devpilot_app/features/skill/data/skill_repository.dart';
 import 'package:devpilot_app/features/skill/domain/skill_overview.dart';
+import 'package:devpilot_app/features/skill/presentation/learning_stage_section.dart';
 import 'package:devpilot_app/features/skill/presentation/skill_detail_actions.dart';
+import 'package:devpilot_app/features/skill/presentation/skill_detail_controller.dart';
 import 'package:devpilot_app/features/skill/presentation/skill_history_section.dart';
 import 'package:devpilot_app/features/skill/presentation/skill_tree_controller.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
@@ -81,6 +83,9 @@ class _SkillDetail extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Text(description),
         ],
+        _WhyItMatters(skillId: row.node.id),
+        const SizedBox(height: AppSpacing.lg),
+        LearningStageSection(skillId: row.node.id),
         const SizedBox(height: AppSpacing.lg),
         _AxisTable(row: row),
         const SizedBox(height: AppSpacing.lg),
@@ -100,6 +105,29 @@ class _SkillDetail extends StatelessWidget {
         const SizedBox(height: AppSpacing.xl),
         SkillHistorySection(skillId: row.node.id),
       ],
+    );
+  }
+}
+
+/// 이 기술을 왜 하는지 한 줄 (docs/05 §6.4). 노트가 없으면 줄 자체를 숨긴다 — 빈 자리를 남기지 않는다.
+class _WhyItMatters extends ConsumerWidget {
+  const _WhyItMatters({required this.skillId});
+
+  final String skillId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final why = ref.watch(skillDetailProvider(skillId)).value?.whyItMatters;
+    if (why == null || why.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.sm),
+      child: Text(
+        why,
+        key: const Key('skillDetail.whyItMatters'),
+        style: Theme.of(context).textTheme.bodyMedium,
+      ),
     );
   }
 }

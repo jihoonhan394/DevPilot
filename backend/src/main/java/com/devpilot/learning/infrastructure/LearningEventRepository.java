@@ -64,6 +64,35 @@ public interface LearningEventRepository extends JpaRepository<LearningEvent, UU
             @Param("skillId") UUID skillId,
             @Param("since") Instant since);
 
+    /**
+     * 학습 단계 판정 입력 (docs/06 §5.11): 사용자·skill의 <b>계정 전체 기간</b> 이벤트 중 판정이 보는 종류만. ST-4에 따라 §7.1의 60일
+     * 창을 쓰지 않는다 — 한 바퀴를 돌았는지는 기간을 잘라 보지 않는다.
+     */
+    @Query(
+            """
+            select e from LearningEvent e
+             where e.userId = :userId and e.skillId = :skillId
+               and e.eventType in :types and e.invalidatedAt is null
+             order by e.occurredAt asc, e.id asc
+            """)
+    List<LearningEvent> findForStages(
+            @Param("userId") UUID userId,
+            @Param("skillId") UUID skillId,
+            @Param("types") Collection<LearningEventType> types);
+
+    /** 여러 skill의 단계 입력을 한 번에 (docs/06 §5.4 planner). skill 수만큼 조회하지 않는다. */
+    @Query(
+            """
+            select e from LearningEvent e
+             where e.userId = :userId and e.skillId in :skillIds
+               and e.eventType in :types and e.invalidatedAt is null
+             order by e.occurredAt asc, e.id asc
+            """)
+    List<LearningEvent> findForStagesBySkills(
+            @Param("userId") UUID userId,
+            @Param("skillIds") Collection<UUID> skillIds,
+            @Param("types") Collection<LearningEventType> types);
+
     /** 이 대상의 가장 최근 이벤트 id (docs/05 §10.6 {@code evidenceSourceEventId}). */
     @Query(
             """

@@ -6,6 +6,7 @@ import com.devpilot.learning.infrastructure.LearningEventRepository;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -25,6 +26,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class LearningEventQueryService {
 
     private final LearningEventRepository learningEventRepository;
+
+    /** docs/06 §5.11 "보는 이벤트" 표. 나머지 이벤트는 단계와 무관하다. */
+    private static final Set<LearningEventType> STAGE_EVENT_TYPES =
+            Set.of(
+                    LearningEventType.TASK_COMPLETED,
+                    LearningEventType.RUBBER_DUCK_COMPLETED,
+                    LearningEventType.REVIEW_ANSWERED,
+                    LearningEventType.REDO_COMPLETED);
 
     public LearningEventQueryService(LearningEventRepository learningEventRepository) {
         this.learningEventRepository = learningEventRepository;
@@ -82,6 +91,53 @@ public class LearningEventQueryService {
                                             : null));
         }
         return List.copyOf(latest.values());
+    }
+
+    /**
+     * 학습 단계 판정 입력 (docs/06 §5.11). 판정이 보는 네 종류만, 계정 전체 기간에서 오래된 순으로 준다.
+     *
+     * <p>payload만 읽는다 — {@code learning_task}·러버덕 세션을 거슬러 읽지 않는다. 단계는 저장하지 않는 파생 값이라(ADR-042) 판정에
+     * 필요한 값이 이벤트 안에 다 들어 있어야 하고, 실제로 들어 있다.
+     */
+    public List<StageEventView> stageEvents(UUID userId, UUID skillId) {
+        List<StageEventView> views = new ArrayList<>();
+        for (LearningEvent event :
+                learningEventRepository.findForStages(userId, skillId, STAGE_EVENT_TYPES)) {
+            views.add(toStageView(event));
+        }
+        return List.copyOf(views);
+    }
+
+    /**
+     * 여러 skill의 단계 입력을 한 번에 (docs/06 §5.4 planner). 후보 skill 수만큼 조회하지 않는다.
+     *
+     * @return skill id → 이벤트(오래된 순). 기록이 없는 skill은 키가 없다
+     */
+    public Map<UUID, List<StageEventView>> stageEventsBySkill(
+            UUID userId, Collection<UUID> skillIds) {
+        if (skillIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, List<StageEventView>> bySkill = new LinkedHashMap<>();
+        for (LearningEvent event :
+                learningEventRepository.findForStagesBySkills(
+                        userId, skillIds, STAGE_EVENT_TYPES)) {
+            UUID skillId = event.getSkillId();
+            if (skillId != null) {
+                bySkill.computeIfAbsent(skillId, id -> new ArrayList<>()).add(toStageView(event));
+            }
+        }
+        return Map.copyOf(bySkill);
+    }
+
+    private static StageEventView toStageView(LearningEvent event) {
+        Map<String, Object> payload = event.getPayload();
+        return new StageEventView(
+                event.getEventType(),
+                event.getOccurredAt(),
+                payload.get("taskType") instanceof String taskType ? taskType : null,
+                payload.get("explainedToPerson") instanceof Boolean explained ? explained : null,
+                payload.get("withoutAi") instanceof Boolean withoutAi ? withoutAi : null);
     }
 
     /**
@@ -188,6 +244,20 @@ public class LearningEventQueryService {
                 event.getOccurredAt(),
                 event.getPayload());
     }
+
+    /**
+     * 학습 단계 판정에 주는 이벤트 1건 (docs/06 §5.11).
+     *
+     * @param taskType {@code TASK_COMPLETED}에만 있는 값. 나머지는 null
+     * @param explainedToPerson {@code EXPLAIN} 과제에만 있는 값
+     * @param withoutAi {@code REDO_COMPLETED}에만 있는 값
+     */
+    public record StageEventView(
+            LearningEventType eventType,
+            Instant occurredAt,
+            @Nullable String taskType,
+            @Nullable Boolean explainedToPerson,
+            @Nullable Boolean withoutAi) {}
 
     /**
      * 단위를 마친 기록 (docs/04 §6 {@code UNIT_SOLVED}).
