@@ -141,6 +141,11 @@ public class LearningEventQueryService {
         return Map.copyOf(solved);
     }
 
+    /** 그 사용자가 한 번이라도 이벤트를 남긴 skill (ADR-055 backfill). "배운 적 있는 skill"이라는 뜻이다. */
+    public Set<UUID> skillIdsWithAnyEvent(UUID userId) {
+        return Set.copyOf(learningEventRepository.findSkillIdsWithAnyEvent(userId));
+    }
+
     /** 이 대상의 가장 최근 이벤트 id (docs/05 §10.6 {@code evidenceSourceEventId}). */
     public Optional<UUID> latestEventIdForSource(
             UUID userId, LearningEventType eventType, UUID sourceId) {

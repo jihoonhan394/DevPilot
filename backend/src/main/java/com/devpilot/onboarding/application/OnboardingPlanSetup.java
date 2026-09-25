@@ -7,7 +7,6 @@ import com.devpilot.plan.application.PlanSummaryView;
 import com.devpilot.plan.application.StudyBudgetService;
 import com.devpilot.review.application.SeedCardAssignmentService;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -49,9 +48,9 @@ class OnboardingPlanSetup {
                                 command.learningGoal().targetCompletionDate(),
                                 today,
                                 command.useTemplate()));
-        int assignedSeedCards =
-                seedCardAssignmentService.assignForNewUser(
-                        userId, today, ZoneId.of(command.timezone()), command.dayStartHour());
+        // ADR-055: seed 카드는 그 skill을 처음 배울 때 배정한다. 온보딩에서는 하나도 깔지 않는다 —
+        // 111장을 미리 깔면 첫 23일의 복습이 배운 적 없는 개념으로 찬다
+        int assignedSeedCards = 0;
         studyBudgetService.upsertSnapshot(userId, today);
         PlanSummaryView activePlan = planQueryService.findActiveSummary(userId).orElse(plan);
         return new Result(activePlan, assignedSeedCards);

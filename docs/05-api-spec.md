@@ -932,7 +932,7 @@ public record OnboardingResponse(
         LearningGoalView learningGoal,                      // §5.1
         PlanSummaryView activePlan,                         // §7.1
         SideProjectView sideProject,                        // §19.1. 온보딩 뒤에는 언제나 있다 (ADR-050)
-        int assignedSeedCardCount,
+        int assignedSeedCardCount,   // 항상 0 (ADR-055). 호환을 위해 남긴 필드다
         List<DiagnosticSuggestionView> suggestedDiagnostics) {}  // §4.2. runDiagnostic = false면 []
 ```
 
@@ -975,7 +975,7 @@ public record OnboardingResponse(
   "sideProject": { "id": "3f7c…", "name": "주문 시스템", "description": "회원가입 · 상품 · 주문 · 취소까지 직접 만드는 학습용 백엔드",
                    "repoUrl": "https://github.com/example/order-service", "stack": "Spring Boot, PostgreSQL", "status": "ACTIVE",
                    "createdAt": "2026-09-30T12:10:44Z", "updatedAt": "2026-09-30T12:10:44Z", "version": 0 },
-  "assignedSeedCardCount": 184,
+  "assignedSeedCardCount": 0,          // 항상 0 (ADR-055). 카드는 그 skill을 배울 때 생긴다
   "suggestedDiagnostics": [
     { "category": "JAVA", "selfAssessedLevel": 3,
       "skill": { "id": "…", "code": "JAVA.EXCEPTION", "name": "Exception", "category": "JAVA" },
@@ -1007,7 +1007,7 @@ public record OnboardingResponse(
    - `runDiagnostic = true`(진단 모드): `self_assessed_level`은 **전부 `null`**이다. 시작점은 진단 결과가 정한다(`06-learning-engine-rules.md` §7.4 `DIAG_PASSED`/`DIAG_FAILED`). 진단을 하나도 풀지 않으면 4축 0에서 시작한다.
 6. `learning_plan` INSERT (`06-learning-engine-rules.md` §11.3): `plan_version = 1`, `status = ACTIVE`, `learning_goal_id`, `title` = 템플릿 `planTitle`(`06-learning-engine-rules.md` §11.3, 예: `Java 백엔드 성장 계획`), `supersedes_plan_id = null`, `change_reason = null`. `role_skill_target(target_role)` 전체를 `plan_skill_target`으로 복사한다(`adjustment = ROLE_DEFAULT`).
 7. `useTemplate = true`면 JAVA_BACKEND plan 템플릿의 milestone을 `06-learning-engine-rules.md` §11.3이 가리키는 계획 템플릿 배치 알고리즘(`19-content-spec.md` §5)으로 날짜를 정해 `plan_milestone`(`status = PLANNED`, `sort_order` = 템플릿 순서)·`milestone_skill`로 만든다. `false`면 milestone 없이 plan만 만든다(사용자가 Plan 화면에서 replan으로 추가).
-8. (S2부터) seed 복습 카드를 사용자 `review_item`으로 복사한다(`SeedCardAssignmentService.assignForNewUser`, `source_type = SEED_CARD`, `origin = SEED`). 첫 due 분산은 `06-learning-engine-rules.md` §6.3 첫 행. target이 없는 skill의 카드는 정렬에서 LATER 뒤에 둔다(`06-learning-engine-rules.md` §6.5 "없음"과 같은 위치). `assignedSeedCardCount` = 복사한 행 수. S1 빌드에는 이 단계가 없고 `assignedSeedCardCount = 0`이다(S2 배포 후 backfill, `04-domain-model-and-db.md` §9).
+8. **seed 복습 카드는 여기서 복사하지 않는다**(ADR-055). 그 skill을 처음 배울 때 `SeedCardAssignmentService.assignForSkill`이 그 skill 것만 복사한다(`06` §6.3). 온보딩 응답의 `assignedSeedCardCount`는 **항상 0**이고, 필드는 호환을 위해 남긴다. 111장을 미리 깔면 첫 23일의 복습이 배운 적 없는 개념으로 차기 때문이다.
 9. (S2부터) 오늘 날짜로 `plan_progress_snapshot`을 upsert한다(`06-learning-engine-rules.md` §3, §4.1~§4.3). `activePlan.latestRiskLevel`, `latestRatioBp`는 이 값이다. S1 빌드에는 이 단계가 없고 두 값은 `null`이다.
 10. `sideProject`가 있으면 `side_project` INSERT(`status = ACTIVE`, `user_id` = 요청 사용자). `name`·`description`·`stack`은 마스킹 후 저장한다(§1.11). `null`이면 만들지 않는다 — 이때 planner는 `PROJECT_TASK`를 제안하지 않는다(SP-1, `06-learning-engine-rules.md` §5.3). 기본 이름("주문 시스템")은 **클라이언트가 채워 보낸다**(`02-user-scenarios-and-ux.md` SCR-ONBOARDING). 서버는 기본값을 만들지 않는다.
 11. 커밋 후 `suggestedDiagnostics`를 §4.2 규칙으로 계산한다. `runDiagnostic = false`면 `[]`다.

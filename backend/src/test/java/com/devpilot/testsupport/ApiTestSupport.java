@@ -3,6 +3,7 @@ package com.devpilot.testsupport;
 import com.devpilot.integration.ai.api.AiBalance;
 import com.devpilot.integration.ai.budget.AiBalanceMonitor;
 import com.devpilot.integration.ai.fake.FakeAiProvider;
+import com.devpilot.review.application.SeedCardAssignmentService;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -28,6 +29,7 @@ public abstract class ApiTestSupport {
     @Autowired protected TestJwksServer jwksServer;
     @Autowired protected JsonMapper jsonMapper;
     @Autowired protected JdbcTemplate jdbc;
+    @Autowired protected SeedCardAssignmentService seedCardAssignmentService;
 
     @Autowired protected ObjectProvider<FakeAiProvider> fakeAiProviders;
     @Autowired protected AiBalanceMonitor aiBalanceMonitor;
@@ -71,6 +73,29 @@ public abstract class ApiTestSupport {
         TestUser user = TestUser.owner();
         api.onboard(user);
         return user;
+    }
+
+    /**
+     * 복습 카드가 <b>미리</b> 있어야 하는 테스트용 (ADR-055).
+     *
+     * <p>온보딩은 더 이상 seed 카드를 깔지 않는다 — 그 skill을 처음 배울 때 배정된다. 복습 자체를 시험하는 테스트는 "이미 여러 skill을 배운 사람"이
+     * 출발점이므로, 계획에 있는 skill마다 실제 배정 경로를 직접 부른다.
+     *
+     * @return 배정한 카드 수
+     */
+    protected int assignSeedCardsAsIfStudied(TestUser user) {
+        UUID userId = userId(user);
+        List<UUID> skillIds =
+                jdbc
+                        .queryForList(
+                                "select skill_id::text from devpilot.user_skill_state"
+                                        + " where user_id = ?::uuid",
+                                String.class,
+                                userId.toString())
+                        .stream()
+                        .map(UUID::fromString)
+                        .toList();
+        return seedCardAssignmentService.assignForSkills(userId, skillIds);
     }
 
     /**

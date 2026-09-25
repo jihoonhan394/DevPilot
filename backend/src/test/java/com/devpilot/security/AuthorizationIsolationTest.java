@@ -280,8 +280,11 @@ class AuthorizationIsolationTest extends ApiTestSupport {
         Map<String, Object> onboarding = TestApi.onboardingRequest();
         onboarding.put("sideProject", TestApi.sideProjectRequest("A의 주문 서비스"));
         JsonNode onboarded = api.onboard(owner, onboarding);
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(owner);
         TestUser invited = TestUser.invited();
         JsonNode invitedOnboarded = api.onboard(invited);
+        assignSeedCardsAsIfStudied(invited);
 
         JsonNode plan = activePlan(owner);
         JsonNode goal = api.body(api.get(owner, "/api/v1/learning-goal"));

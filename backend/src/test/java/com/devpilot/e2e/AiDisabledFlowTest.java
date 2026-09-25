@@ -37,6 +37,8 @@ class AiDisabledFlowTest extends ApiTestSupport {
 
         // 2. 온보딩·계획·대시보드는 정상
         api.onboard(user);
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         api.get(user, "/api/v1/plans/active").andExpect(status().isOk());
         api.get(user, "/api/v1/dashboard").andExpect(status().isOk());
 

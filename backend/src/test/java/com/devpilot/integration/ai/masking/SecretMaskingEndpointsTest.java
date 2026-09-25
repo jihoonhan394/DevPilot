@@ -38,6 +38,8 @@ class SecretMaskingEndpointsTest extends ApiTestSupport {
     @Test
     void shouldBlockPrivateKeyInSelfReflectionAndKeepSessionInProgress() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         String sessionId = api.startSession(user, null).path("session").path("id").asString();
         clock.advance(Duration.ofMinutes(20));
 
@@ -73,6 +75,8 @@ class SecretMaskingEndpointsTest extends ApiTestSupport {
     @Test
     void shouldBlockPrivateKeyInReviewAnswerAndStoreMaskedAnswer() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         List<String> due = dueIds(user);
         Map<String, Object> blocked = TestApi.answerRequest("GOOD", "SELF_EXPLAIN");
         blocked.put("answerText", PRIVATE_KEY);
@@ -104,6 +108,8 @@ class SecretMaskingEndpointsTest extends ApiTestSupport {
     @Test
     void shouldBlockPrivateKeyInSideProjectAndStoreMaskedFields() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         Map<String, Object> blocked = TestApi.sideProjectRequest("주문 시스템");
         blocked.put("description", "설정 " + PRIVATE_KEY);
 
@@ -175,6 +181,8 @@ class SecretMaskingEndpointsTest extends ApiTestSupport {
     @Test
     void shouldBlockPrivateKeyInReplanPreviewAndCommit() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         JsonNode plan = activePlan(user);
         String planId = plan.path("id").asString();
         Map<String, Object> blocked = replanRequest(plan, "사유 " + PRIVATE_KEY);
@@ -215,6 +223,8 @@ class SecretMaskingEndpointsTest extends ApiTestSupport {
     @Test
     void shouldBlockPrivateKeyInMilestoneDescription() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         JsonNode plan = activePlan(user);
         JsonNode milestone = plan.path("milestones").get(0);
         String planId = plan.path("id").asString();
@@ -246,6 +256,8 @@ class SecretMaskingEndpointsTest extends ApiTestSupport {
     void shouldMaskBeforeLookingUpResource() throws Exception {
         // 마스킹은 조회보다 먼저다(docs/05 §1.11 순서): 없는 세션이어도 private key면 422
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
 
         api.post(
                         user,

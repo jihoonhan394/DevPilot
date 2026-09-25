@@ -221,6 +221,8 @@ class RedoTaskIntegrationTest extends ApiTestSupport {
         Map<String, Object> learningGoal = (Map<String, Object>) request.get("learningGoal");
         learningGoal.put("focusSkillCodes", new ArrayList<>(List.of(SKILL_WITH_CHALLENGE)));
         api.onboard(user, request);
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         return user;
     }
 

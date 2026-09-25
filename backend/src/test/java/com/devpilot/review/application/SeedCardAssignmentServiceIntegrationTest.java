@@ -29,7 +29,9 @@ class SeedCardAssignmentServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldCopySeedCardsInPriorityImportanceAndKeyOrder() throws Exception {
         TestUser user = TestUser.owner();
-        int assigned = api.onboard(user).path("assignedSeedCardCount").asInt();
+        api.onboard(user);
+        // ADR-055: 온보딩이 아니라 그 skill을 배울 때 배정된다
+        int assigned = assignSeedCardsAsIfStudied(user);
 
         Map<String, Instant> due = dueByConceptKey(userId(user));
 
@@ -60,46 +62,68 @@ class SeedCardAssignmentServiceIntegrationTest extends ApiTestSupport {
     }
 
     @Test
-    void shouldBackfillMissingCardsForExistingUserOnlyOnce() throws Exception {
-        // AC-11 S5 마지막 항목: 카드가 없는 사용자 → 기동 backfill로 N행, 다시 실행해도 변화 없음
+    void shouldBackfillOnlyMissingCardsAndOnlyOnce() throws Exception {
+        // AC-11 S5: 이미 배운 skill에 새 콘텐츠가 생기면 채워 넣고, 다시 실행해도 변화 없음
         TestUser user = onboardedOwner();
         UUID userId = userId(user);
-        jdbc.update("delete from devpilot.review_item where user_id = ?", userId);
+        assignSeedCardsAsIfStudied(user);
+        Map<String, Instant> before = dueByConceptKey(userId);
 
         seedCardAssignmentService.backfillAll();
 
-        Map<String, Instant> due = dueByConceptKey(userId);
-        assertThat(due).hasSize(10);
-        assertThat(due.values().stream().filter(DAY_0::equals).count()).isEqualTo(5);
-        assertThat(due.values().stream().filter(DAY_1::equals).count()).isEqualTo(5);
+        // 이미 다 있으면 아무것도 더하지 않는다 — due도 그대로다
+        assertThat(dueByConceptKey(userId)).isEqualTo(before).hasSize(10);
 
         seedCardAssignmentService.backfillAll();
 
-        assertThat(dueByConceptKey(userId)).isEqualTo(due);
+        assertThat(dueByConceptKey(userId)).isEqualTo(before);
     }
 
+    /** ADR-055: 아직 배우지 않은 skill에는 backfill도 카드를 만들지 않는다. */
     @Test
-    void shouldScheduleNewCardsAfterLastSeedDue() throws Exception {
-        // docs/06 §6.3 "신규 seed 카드": 마지막 seed due(D + 1) 다음 plan-day부터
+    void shouldNotBackfillForSkillsTheLearnerHasNotStarted() throws Exception {
         TestUser user = onboardedOwner();
         UUID userId = userId(user);
-        jdbc.update(
-                "delete from devpilot.review_item where user_id = ? and concept_key in"
-                        + " ('SYSTEM_DESIGN.CACHING.INVALIDATION', 'JAVA.EXCEPTION.CAUSE_CHAIN')",
-                userId);
 
         seedCardAssignmentService.backfillAll();
 
+        assertThat(dueByConceptKey(userId)).isEmpty();
+    }
+
+    /**
+     * docs/06 §6.3 "그 skill을 처음 배울 때": 나중에 시작한 skill의 카드는 <b>앞선 카드의 마지막 due 다음날부터</b> 붙는다.
+     *
+     * <p>이것이 ADR-055의 핵심 효과다 — 한 번에 111장을 깔지 않으므로, 배우기 시작한 순서대로 복습이 쌓인다.
+     */
+    @Test
+    void shouldScheduleALaterSkillsCardsAfterTheEarlierOnes() throws Exception {
+        TestUser user = onboardedOwner();
+        UUID userId = userId(user);
+        UUID first = skillId("JAVA.EXCEPTION");
+        UUID later = skillId("SYSTEM_DESIGN.CACHING");
+
+        seedCardAssignmentService.assignForSkill(userId, first);
+        Map<String, Instant> afterFirst = dueByConceptKey(userId);
+        seedCardAssignmentService.assignForSkill(userId, later);
+
         Map<String, Instant> due = dueByConceptKey(userId);
-        assertThat(due).hasSize(10);
-        assertThat(due.get("JAVA.EXCEPTION.CAUSE_CHAIN")).isEqualTo(DAY_2);
-        assertThat(due.get("SYSTEM_DESIGN.CACHING.INVALIDATION")).isEqualTo(DAY_2);
+        assertThat(afterFirst).containsOnlyKeys("JAVA.EXCEPTION.CAUSE_CHAIN");
+        assertThat(due.get("JAVA.EXCEPTION.CAUSE_CHAIN")).isEqualTo(DAY_0);
+        // 나중에 시작한 skill은 앞 카드의 due 다음 날로 밀린다
+        assertThat(due.get("SYSTEM_DESIGN.CACHING.INVALIDATION")).isEqualTo(DAY_1);
+    }
+
+    private UUID skillId(String code) {
+        return UUID.fromString(
+                jdbc.queryForObject(
+                        "select id::text from devpilot.skill where code = ?", String.class, code));
     }
 
     @Test
     void shouldNotTouchExistingCardsWhenBackfilling() throws Exception {
         TestUser user = onboardedOwner();
         UUID userId = userId(user);
+        assignSeedCardsAsIfStudied(user);
         jdbc.update(
                 "update devpilot.review_item set interval_days = 9, review_count = 3 where user_id"
                         + " = ?",

@@ -70,7 +70,10 @@ class OnboardingToTodayFlowTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.activePlan.planVersion").value(1))
                 // ADR-050: 정하지 않아도 기본 프로젝트가 생긴다
                 .andExpect(jsonPath("$.sideProject.name").value("주문 시스템"))
-                .andExpect(jsonPath("$.assignedSeedCardCount").value(10));
+                // ADR-055: 온보딩은 카드를 깔지 않는다. 그 skill을 배울 때 생긴다
+                .andExpect(jsonPath("$.assignedSeedCardCount").value(0));
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
 
         // 4. 다시 온보딩
         api.post(user, "/api/v1/onboarding", TestApi.onboardingRequest())

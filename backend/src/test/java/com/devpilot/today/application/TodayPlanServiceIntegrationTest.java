@@ -43,6 +43,8 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
     void shouldGenerateMainAndReviewTaskWithinBudget() throws Exception {
         // AC-02 S1 (due 5장: reviewMinutes = min(ceilDiv(5 × 15000, 10000) = 8, 30 × 25% = 7) = 7)
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
 
         JsonNode today = api.generateToday(user, 30, "NORMAL");
 
@@ -109,6 +111,8 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
     void shouldRejectInvalidGenerateRequests() throws Exception {
         // AC-02 S3
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
 
         api.post(user, GENERATE, TestApi.todayRequest(4, "NORMAL", false))
                 .andExpect(status().isBadRequest())
@@ -137,6 +141,8 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldTreatOmittedForceAsFalse() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
 
         api.post(user, GENERATE, Map.of("availableMinutes", 30, "energyLevel", "LOW"))
                 .andExpect(status().isOk())
@@ -153,6 +159,8 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
     void shouldSkipReviewTaskAndProposeShortRecallWhenOnlyFiveMinutes() throws Exception {
         // AC-02 S3 마지막 행
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
 
         JsonNode today = api.generateToday(user, 5, "NORMAL");
 
@@ -165,6 +173,8 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
     void shouldFillLeftoverBudgetWithExtraTasks() throws Exception {
         // docs/06 §5.6 "추가 과제": 남는 시간이 15분 이상이면 다음 후보로 최대 3개를 더 만든다
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
 
         JsonNode today = api.generateToday(user, 240, "NORMAL");
 
@@ -198,6 +208,8 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
     void shouldNotAddExtraTasksWhenNoBudgetIsLeft() throws Exception {
         // docs/06 §5.6: 남은 예산이 extra-task-min-minutes(15) 미만이면 추가 과제를 만들지 않는다
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
 
         JsonNode today = api.generateToday(user, 30, "NORMAL");
 
@@ -208,6 +220,8 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
     void shouldRegeneratePlannedMainAndIncreaseGenerationCount() throws Exception {
         // docs/06 §5.9 1행
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         JsonNode first = api.generateToday(user, 30, "NORMAL");
         String firstMain = first.path("mainTask").path("id").asString();
 
@@ -235,6 +249,8 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
     void shouldRejectRegenerationWhileMainIsInProgressUnlessForced() throws Exception {
         // docs/06 §5.9 2·3행
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         JsonNode main = api.generateToday(user, 30, "NORMAL").path("mainTask");
         patch(user, main.path("id").asString(), "IN_PROGRESS", 0).andExpect(status().isOk());
 
@@ -259,6 +275,8 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
     void shouldRejectRegenerationAfterCompletionUnlessForced() throws Exception {
         // docs/06 §5.9 4·5행
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         JsonNode main = api.generateToday(user, 30, "NORMAL").path("mainTask");
         String mainId = main.path("id").asString();
         patch(user, mainId, "IN_PROGRESS", 0).andExpect(status().isOk());
@@ -288,6 +306,8 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
     void shouldKeepOneActiveMainWhenSkippedTaskIsReplanned() throws Exception {
         // AC-02 S5 두 번째 항목
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         String first = api.generateToday(user, 30, "NORMAL").path("mainTask").path("id").asString();
         patch(user, first, "SKIPPED", 0).andExpect(status().isOk());
         api.generateToday(user, 30, "NORMAL");
@@ -301,6 +321,8 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldAllowSkippedMainBackToPlannedWhenNoActiveMain() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         String mainId =
                 api.generateToday(user, 30, "NORMAL").path("mainTask").path("id").asString();
         patch(user, mainId, "SKIPPED", 0).andExpect(status().isOk());
@@ -315,6 +337,8 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
     void shouldRejectTransitionsOutsideTable() throws Exception {
         // docs/04 §4.1 PATCH 행
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         JsonNode today = api.generateToday(user, 30, "NORMAL");
         String mainId = today.path("mainTask").path("id").asString();
 
@@ -348,9 +372,13 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldHideOtherUsersTask() throws Exception {
         TestUser owner = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(owner);
         String mainId =
                 api.generateToday(owner, 30, "NORMAL").path("mainTask").path("id").asString();
         TestUser other = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(other);
 
         patch(other, mainId, "SKIPPED", 0)
                 .andExpect(status().isNotFound())
@@ -362,6 +390,8 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
     void shouldKeepSingleActiveMainUnderConcurrentGeneration() throws Exception {
         // AC-02 S5 첫 항목
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         String token = api.token(user);
         CountDownLatch start = new CountDownLatch(1);
         ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -416,6 +446,10 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.code").value("ONBOARDING_REQUIRED"));
 
         TestUser user = onboardedOwner();
+
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+
+        assignSeedCardsAsIfStudied(user);
         api.get(user, TODAY)
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("TODAY_NOT_GENERATED"));
@@ -431,6 +465,8 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
     void shouldStartInComebackModeAfterThreeInactivePlanDays() throws Exception {
         // AC-02 S7: 마지막 COMPLETED 세션 plan_date = D − 4
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         insertCompletedSession(user, "2026-10-01");
 
         JsonNode today = api.generateToday(user, 60, "NORMAL");
@@ -449,6 +485,8 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldNotUseComebackModeWhenRecentlyActive() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         insertCompletedSession(user, "2026-10-03");
 
         assertThat(api.generateToday(user, 60, "NORMAL").path("comebackMode").asBoolean())
@@ -493,6 +531,8 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
     void shouldUsePreviousPlanDayBeforeDayStartHour() throws Exception {
         // AC-17 S2·S3
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         clock.setInstant(Instant.parse("2026-10-05T15:40:00Z"));
 
         JsonNode today = api.generateToday(user, 30, "NORMAL");
@@ -520,6 +560,8 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldReplayGenerationWithSameKey() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         String key = TestApi.newKey();
         JsonNode first =
                 api.body(

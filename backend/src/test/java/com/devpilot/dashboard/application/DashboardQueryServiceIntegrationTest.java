@@ -30,6 +30,8 @@ class DashboardQueryServiceIntegrationTest extends ApiTestSupport {
     void shouldSummarizeTodayDueReviewsAndWeekStudy() throws Exception {
         // AC-02 S10: S1(생성) + S9(세션 25분 완료) 뒤
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         JsonNode today = api.generateToday(user, 30, "NORMAL");
         String mainId = today.path("mainTask").path("id").asString();
         String sessionId = api.startSession(user, mainId).path("session").path("id").asString();
@@ -70,6 +72,8 @@ class DashboardQueryServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldShowNotGeneratedTodayAndCountOnlyThisIsoWeek() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         UUID userId = userId(user);
         // 지난 주 일요일(2026-10-04) 세션은 이번 주(2026-10-05 월 ~) 합에 들어가지 않는다
         insertCompletedSession(userId, "2026-10-04", 40);
@@ -92,6 +96,8 @@ class DashboardQueryServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldShowReplanRecommendationAfterTargetDateChange() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         Map<String, Object> goal =
                 Map.of(
                         "targetRole",
@@ -111,6 +117,8 @@ class DashboardQueryServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldMarkTheFirstUnfinishedMilestoneAsCurrent() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
 
         JsonNode timeline =
                 api.body(api.get(user, DASHBOARD).andExpect(status().isOk()))
@@ -136,6 +144,8 @@ class DashboardQueryServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldSummarizeSkillCategoriesFromTheActivePlan() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
 
         JsonNode categories =
                 api.body(api.get(user, DASHBOARD).andExpect(status().isOk()))

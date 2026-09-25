@@ -82,4 +82,10 @@ public interface LearningEventRepository extends JpaRepository<LearningEvent, UU
     @Query("select e from LearningEvent e where e.userId = :userId and e.id in :ids")
     List<LearningEvent> findAllForUser(
             @Param("userId") UUID userId, @Param("ids") Collection<UUID> ids);
+
+    /** 그 사용자가 이벤트를 남긴 skill (ADR-055). */
+    @Query(
+            "select distinct e.skillId from LearningEvent e"
+                    + " where e.userId = :userId and e.skillId is not null")
+    List<UUID> findSkillIdsWithAnyEvent(@Param("userId") UUID userId);
 }

@@ -133,6 +133,8 @@ class CodeReadingTaskIntegrationTest extends ApiTestSupport {
     void shouldRejectFeedbackOnOtherTaskTypes() throws Exception {
         // AC-28 S5a: READ_CODE가 아닌 과제
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         JsonNode today = api.generateToday(user, 30, "NORMAL");
         String reviewTaskId = today.path("reviewTask").path("id").asString();
 
@@ -151,6 +153,8 @@ class CodeReadingTaskIntegrationTest extends ApiTestSupport {
     /** §5.3 1번(CHALLENGE)을 비워 READ_CODE가 제안되게 한 사용자. */
     private TestUser readCodeUser() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         // 노트가 남아 있으면 제안이 개념 익히기에서 멈춘다 (docs/06 §5.13 TH-5)
         finishAllLessonUnits(user);
         skipSeedPracticeChallenges(user);

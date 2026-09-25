@@ -25,6 +25,8 @@ class SeedReviewFlowTest extends ApiTestSupport {
     void shouldScheduleSeedCardsByRatingAndHint() throws Exception {
         // 1. 온보딩
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         UUID userId = userId(user);
 
         // 2. 오늘 due 5장

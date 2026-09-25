@@ -44,6 +44,8 @@ class ReviewServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldListItemsOfDescendantSkillsWhenFilteringByAParent() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
 
         JsonNode byLeaf =
                 api.body(api.get(user, ITEMS + "?skillId=" + skillId("SPRING.TRANSACTION")));
@@ -68,6 +70,8 @@ class ReviewServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldReturnDueSeedCardsWithAnswerAndRubric() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
 
         JsonNode due = api.body(api.get(user, DUE).andExpect(status().isOk()));
 
@@ -95,6 +99,8 @@ class ReviewServiceIntegrationTest extends ApiTestSupport {
     void shouldScheduleGoodAnswerAndRecordEvent() throws Exception {
         // AC-05 S2
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         String itemId = firstDueId(user);
         jdbc.update("update devpilot.review_item set interval_days = 2 where id = ?::uuid", itemId);
 
@@ -149,6 +155,8 @@ class ReviewServiceIntegrationTest extends ApiTestSupport {
     void shouldCapRatingByHintLevel() throws Exception {
         // AC-05 S3
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         List<String> ids = dueIds(user);
 
         JsonNode conceptHint = api.answerReview(user, ids.get(0), "EASY", "CONCEPT_HINT");
@@ -166,6 +174,8 @@ class ReviewServiceIntegrationTest extends ApiTestSupport {
     void shouldSuspendLeechAndHideItFromDueList() throws Exception {
         // AC-05 S4 (suspend-after-failures 4)
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         String itemId = firstDueId(user);
         jdbc.update(
                 "update devpilot.review_item set consecutive_failures = 3 where id = ?::uuid",
@@ -192,6 +202,8 @@ class ReviewServiceIntegrationTest extends ApiTestSupport {
     void shouldSelectCapOfActiveDueItemsInInterleavedOrder() throws Exception {
         // AC-05 S5, AC-29 S2: ACTIVE due 25장(seed 5 + 추가 20), SUSPENDED 2, ARCHIVED 1
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         UUID userId = userId(user);
         for (int i = 0; i < 20; i++) {
             insertItem(userId, i % 2 == 0 ? "JAVA.EXCEPTION" : "DATABASE.INDEX", "ACTIVE", i);
@@ -219,6 +231,8 @@ class ReviewServiceIntegrationTest extends ApiTestSupport {
     void shouldUsePlanDayBoundaryForDueItems() throws Exception {
         // AC-17 S4
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
 
         clock.setInstant(Instant.parse("2026-10-05T18:59:59Z"));
         assertThat(dueIds(user)).hasSize(5);
@@ -243,6 +257,8 @@ class ReviewServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldRejectAnswerBeforeDue() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         String notYet =
                 jdbc.queryForObject(
                         "select id::text from devpilot.review_item where user_id = ? and due_at ="
@@ -263,6 +279,8 @@ class ReviewServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldValidateAnswerRequest() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         String itemId = firstDueId(user);
 
         api.post(user, ANSWER, TestApi.answerRequest("GOOD", "QUESTION_ONLY"), itemId)
@@ -296,6 +314,8 @@ class ReviewServiceIntegrationTest extends ApiTestSupport {
     void shouldTreatOmittedOrNullFlagsAsFalse() throws Exception {
         // 두 flag는 wrapper라 생략·null 모두 false (TodayGenerateRequest.force와 같은 규칙)
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         List<String> ids = dueIds(user);
         Map<String, Object> explicitNull = TestApi.answerRequest("GOOD", "SELF_EXPLAIN");
         explicitNull.put("evaluate", null);
@@ -326,6 +346,8 @@ class ReviewServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldEvaluateAnswerWithRubricWhenAiIsAvailable() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         Map<String, Object> request = TestApi.answerRequest("GOOD", "SELF_EXPLAIN");
         request.put("evaluate", true);
 
@@ -342,6 +364,8 @@ class ReviewServiceIntegrationTest extends ApiTestSupport {
     void shouldReplayAnswerWithSameKey() throws Exception {
         // AC-10 S5
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         String itemId = firstDueId(user);
         String key = TestApi.newKey();
         JsonNode first =
@@ -371,8 +395,12 @@ class ReviewServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldHideOtherUsersReviewItem() throws Exception {
         TestUser owner = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(owner);
         String itemId = firstDueId(owner);
         TestUser other = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(other);
 
         api.post(other, ANSWER, TestApi.answerRequest("GOOD", "SELF_EXPLAIN"), itemId)
                 .andExpect(status().isNotFound())

@@ -3,6 +3,7 @@ package com.devpilot.review.application;
 import com.devpilot.common.time.PlanDayCalculator;
 import com.devpilot.common.time.UserTimeSettingsProvider;
 import com.devpilot.common.time.UserTimeSettingsProvider.UserTimeSettings;
+import com.devpilot.learning.application.LearningEventQueryService;
 import com.devpilot.plan.application.PlanQueryService;
 import com.devpilot.review.domain.ReviewItem;
 import com.devpilot.review.domain.ReviewItemSourceType;
@@ -17,6 +18,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -33,6 +35,9 @@ import org.springframework.transaction.annotation.Transactional;
  * review_item}으로 복사한다({@code source_type = SEED_CARD}, {@code origin = SEED}). 첫 due는 정렬(priority
  * MUST → SHOULD → LATER → 목표 없음, practicalImportance DESC, conceptKey ASC) 후 하루 5장씩 나눈다. 이미 있는
  * concept key는 건너뛴다(I-06). 비활성 skill의 카드는 복사하지 않는다.
+ *
+ * <p><b>배정 시점은 그 skill을 처음 배울 때다</b>(ADR-055). 온보딩에서 전부 복사하던 것을 그만뒀다 — 111장을 하루 5장씩 깔면 첫 23일의 복습이
+ * <b>배운 적 없는 개념</b>으로 채워진다. 모르는 것이 매일 복습 칸에 있으면 그 칸을 안 보게 되고, 정작 배운 것의 복습까지 같이 묻힌다.
  */
 @Service
 public class SeedCardAssignmentService {
@@ -44,6 +49,7 @@ public class SeedCardAssignmentService {
     private final ReviewItemRepository reviewItemRepository;
     private final SkillCatalogQueryService skillCatalogQueryService;
     private final PlanQueryService planQueryService;
+    private final LearningEventQueryService learningEventQueryService;
     private final UserTimeSettingsProvider userTimeSettingsProvider;
     private final Clock clock;
 
@@ -52,25 +58,50 @@ public class SeedCardAssignmentService {
             ReviewItemRepository reviewItemRepository,
             SkillCatalogQueryService skillCatalogQueryService,
             PlanQueryService planQueryService,
+            LearningEventQueryService learningEventQueryService,
             UserTimeSettingsProvider userTimeSettingsProvider,
             Clock clock) {
         this.seedCardRegistry = seedCardRegistry;
         this.reviewItemRepository = reviewItemRepository;
         this.skillCatalogQueryService = skillCatalogQueryService;
         this.planQueryService = planQueryService;
+        this.learningEventQueryService = learningEventQueryService;
         this.userTimeSettingsProvider = userTimeSettingsProvider;
         this.clock = clock;
     }
 
     /**
-     * 온보딩 시 복사 (docs/05 §4.1 8단계). 호출자 트랜잭션에 참여한다. 온보딩이 만든 plan의 목표로 정렬하므로 plan 생성 뒤에 부른다.
+     * 그 skill을 처음 배울 때 그 skill의 카드만 복사한다 (ADR-055, docs/06 §6.3).
      *
-     * @param today 온보딩 요청의 timezone·dayStartHour로 계산한 plan-day
-     * @return 복사한 카드 수 ({@code assignedSeedCardCount})
+     * <p>첫 due는 <b>그 사용자의 마지막 seed due 다음 날부터</b> 하루 5장씩이다. 오늘부터 깔면 여러 skill을 잇따라 시작한 주에 한 날짜에 카드가
+     * 겹쳐 쌓인다.
+     *
+     * @return 복사한 카드 수. 이미 다 있으면 0
      */
     @Transactional
-    public int assignForNewUser(UUID userId, LocalDate today, ZoneId zone, int dayStartHour) {
-        return assign(userId, today, zone, dayStartHour);
+    public int assignForSkill(UUID userId, UUID skillId) {
+        return assignForSkills(userId, Set.of(skillId));
+    }
+
+    /**
+     * 여러 skill의 카드를 <b>한 번에</b> 배정한다. 하루 5장 분산이 skill 경계를 넘어 이어지도록 한 호출로 처리한다 — skill마다 따로 부르면 각
+     * 호출이 앞 호출의 마지막 due 뒤에서 시작해 날짜가 불필요하게 벌어진다.
+     */
+    @Transactional
+    public int assignForSkills(UUID userId, Collection<UUID> skillIds) {
+        if (skillIds.isEmpty()) {
+            return 0;
+        }
+        UserTimeSettings settings = userTimeSettingsProvider.timeSettings(userId);
+        ZoneId zone = settings.zoneId();
+        int dayStartHour = settings.dayStartHour();
+        LocalDate today = PlanDayCalculator.planDate(clock.instant(), zone, dayStartHour);
+        return assign(
+                userId,
+                nextSeedStart(userId, today, zone, dayStartHour),
+                zone,
+                dayStartHour,
+                Set.copyOf(skillIds));
     }
 
     /**
@@ -88,24 +119,33 @@ public class SeedCardAssignmentService {
             ZoneId zone = settings.zoneId();
             int dayStartHour = settings.dayStartHour();
             LocalDate today = PlanDayCalculator.planDate(now, zone, dayStartHour);
-            Optional<Instant> latestDue =
-                    reviewItemRepository.findLatestDueAt(userId, ReviewItemSourceType.SEED_CARD);
-            LocalDate start =
-                    latestDue
-                            .map(
-                                    due ->
-                                            PlanDayCalculator.planDate(due, zone, dayStartHour)
-                                                    .plusDays(1))
-                            .filter(date -> date.isAfter(today))
-                            .orElse(today);
-            total += assign(userId, start, zone, dayStartHour);
+            Set<UUID> studied = new HashSet<>(reviewItemRepository.findSkillIdsWithItems(userId));
+            studied.addAll(learningEventQueryService.skillIdsWithAnyEvent(userId));
+            total +=
+                    assign(
+                            userId,
+                            nextSeedStart(userId, today, zone, dayStartHour),
+                            zone,
+                            dayStartHour,
+                            studied);
         }
         return total;
     }
 
-    private int assign(UUID userId, LocalDate startDate, ZoneId zone, int dayStartHour) {
+    /** 마지막 seed due 다음 plan-day (없거나 지났으면 오늘). 새 카드를 이미 쌓인 것 뒤에 붙인다. */
+    private LocalDate nextSeedStart(UUID userId, LocalDate today, ZoneId zone, int dayStartHour) {
+        Optional<Instant> latestDue =
+                reviewItemRepository.findLatestDueAt(userId, ReviewItemSourceType.SEED_CARD);
+        return latestDue
+                .map(due -> PlanDayCalculator.planDate(due, zone, dayStartHour).plusDays(1))
+                .filter(date -> date.isAfter(today))
+                .orElse(today);
+    }
+
+    private int assign(
+            UUID userId, LocalDate startDate, ZoneId zone, int dayStartHour, Set<UUID> skillIds) {
         List<SeedCard> cards = seedCardRegistry.cards();
-        if (cards.isEmpty()) {
+        if (cards.isEmpty() || skillIds.isEmpty()) {
             return 0;
         }
         Set<String> existing = new HashSet<>(reviewItemRepository.findConceptKeys(userId));
@@ -117,6 +157,7 @@ public class SeedCardAssignmentService {
                 cards.stream()
                         .filter(card -> !existing.contains(card.conceptKey()))
                         .filter(card -> skills.containsKey(card.skillCode()))
+                        .filter(card -> skillIds.contains(skills.get(card.skillCode()).id()))
                         .sorted(order(skills, targets))
                         .toList();
         Instant now = clock.instant();

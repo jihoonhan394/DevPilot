@@ -235,7 +235,7 @@ ratioBp (저장·표시용) = effective == 0 ? null : floorDiv(requiredMust × 1
 
 1. **현재 milestone**의 `milestone_skill`
 2. 1번에 제외 규칙까지 적용한 뒤 후보가 **하나도 없으면** 현재 milestone 다음 순서의 `milestone_skill` — 현재 단계를 다 끝냈을 때 할 일이 없어지지 않게 하는 완충이다
-3. 2번까지도 비면 due review가 있고 **이미 손대 본** skill(`lastPracticedAt != null`). 씨앗 카드는 아직 배우지 않은 뒷 단계 skill에도 미리 배정되므로 거르지 않으면 이 경로로 순서가 뚫린다(ADR-044). **거른 skill의 복습 자체는 그대로 나온다** — REVIEW 과제는 main task 선정과 별개다(§5.6)
+3. 2번까지도 비면 due review가 있고 **이미 손대 본** skill(`lastPracticedAt != null`). ADR-055로 씨앗 카드가 배운 skill에만 생기지만, 진단으로 evidence만 있고 배우지는 않은 skill이 남을 수 있어 이 조건은 그대로 둔다(ADR-044). **거른 skill의 복습 자체는 그대로 나온다** — REVIEW 과제는 main task 선정과 별개다(§5.6)
 4. **오늘 재현 후보가 있는 skill**(§5.10 RE-2)은 순서와 무관하게 언제나 후보다. 창(RE-2)이 며칠뿐이라 미룰 수 없다. 이 경로로만 들어온 skill에는 아래 제외 규칙 중 "모든 축에서 `planningLevel ≥ target`" 하나를 적용하지 않는다 — 목표에 닿은 skill이라도 AI 없이 다시 만들 수 있는지는 아직 확인하지 않았기 때문이다
 
 **왜 합집합을 그만뒀나 (ADR-054)** — 닷새 시뮬레이션에서 **첫 단계의 skill 넷이 한 번도 main이 되지 못했다.** 온보딩이 배정한 씨앗 카드가 뒷 단계 skill에 due를 만들고, 그 `reviewUrgency`가 첫 단계의 `skillGap`·`milestoneUrgency`를 매일 이겼다. 후보 목록에 넣는 순간 "지금 단계 먼저"는 점수 앞에서 사라진다.
@@ -852,8 +852,8 @@ review_count += 1, last_result = final, last_reviewed_at = now
 
 | 생성 경로 | due |
 |---|---|
-| 온보딩 seed 카드 복사 | priority(MUST→SHOULD→LATER), practicalImportance DESC, conceptKey ASC로 정렬 후 `index`번째 카드 → `planDayStart(today + floorDiv(index, 5))` (하루 5장씩 분산) |
-| 신규 seed 카드 (기존 사용자) | 기존 사용자의 마지막 due 이후부터 같은 방식으로 분산 |
+| **그 skill을 처음 배울 때** seed 카드 복사 (ADR-055) | 그 skill의 카드만, priority(MUST→SHOULD→LATER), practicalImportance DESC, conceptKey ASC로 정렬 후 `index`번째 카드 → `planDayStart(start + floorDiv(index, 5))` (하루 5장씩 분산). `start`는 **그 사용자의 마지막 seed due 다음 plan-day**(없거나 지났으면 오늘) — 여러 skill을 잇따라 시작해도 한 날짜에 겹쳐 쌓이지 않는다. 트리거는 `skill_id`가 있는 학습 이벤트다(`SeedCardOnFirstStudy`) |
+| 신규 seed 카드 (기존 사용자) | 기동 시 backfill이 **이미 카드가 있는 skill**에만 같은 방식으로 더한다. 아직 시작도 안 한 skill에는 미리 깔지 않는다 |
 | challenge 실패 / coach finding / 수동 생성 | `planDayStart(today + 1)` |
 | **학습 단위를 풂** (`05` §21.7) | **푼 단위는 모두 카드가 된다**(ADR-049 아님, ADR-051). 첫 due가 도움 여부로 갈린다 — `helpLevel ≠ NONE`이면 `planDayStart(today + devpilot.review.lesson-helped-first-due-days)`(기본 1), `helpLevel = NONE`이면 `… + lesson-solved-alone-first-due-days`(기본 7). **`interval_days`를 그 날수와 같게 시작한다** — 7일 뒤 처음 보는 카드가 간격 1로 시작하면 맞혀도 다음이 2일 뒤가 되어 사다리가 거꾸로 간다(§6.2). `concept_key` = 단위 key, `review_type = EXPLAIN`, `origin = SEED`, `source_type = LESSON_UNIT`, `source_id` 없음, prompt = 단위의 `problem.prompt`, `expected_answer` = `problem.modelAnswer`, `rubric_json` = `selfChecks`를 `S1`·`S2`…로. skill을 찾지 못한 노트는 카드를 만들지 않는다(`review_item.skill_id`는 not null) |
 | 같은 `concept_key`가 이미 있음 | 새로 만들지 않는다. `status=ACTIVE`, `due_at = min(기존 due_at, planDayStart(today + 1))` |

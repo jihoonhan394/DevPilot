@@ -311,6 +311,8 @@ V10,10,GOOD,CORRECT,SELF_EXPLAIN,GOOD,,5,4
 
 ### 5.4 재현 과제 · 학습 트랙 규칙 테스트
 
+**seed 카드 배정 (ADR-055).** 온보딩은 카드를 깔지 않으므로, **복습을 쓰는 통합 테스트는 `ApiTestSupport.assignSeedCardsAsIfStudied(user)`로 "이미 배운 사람"을 만들고 시작한다.** 이 헬퍼는 계획에 있는 skill을 한 번에 넘겨 실제 배정 경로(`assignForSkills`)를 부른다 — skill마다 따로 부르면 하루 5장 분산이 skill 경계에서 끊겨 날짜가 벌어진다. `SeedCardAssignmentServiceIntegrationTest`가 배정 시점과 backfill 범위를 덮는다.
+
 **`FiveDayStudyThreadSimulationTest` — 닷새 시뮬레이션 (ADR-053·ADR-054, `06` §5.13·§12).** 규칙 하나하나는 vector가 덮는다. 이 테스트가 보는 것은 **여러 날을 이어 붙였을 때 무엇이 쌓이는가**다 — 매일 `POST /today/generate`로 main을 받아 실제로 끝내고(개념 익히기면 단위를 푼다), 그 결과가 다음 날 제안에 어떻게 반영되는지 표로 찍는다.
 
 - 확인하는 것: 손댄 skill 수 ≤ 3(이어감), 첫 `CHALLENGE` 앞에 같은 skill의 개념 익히기가 있었는지(가르친 뒤 시험), 마친 단위가 줄지 않는지(진행을 잃지 않음), `learnedUnitCount` > 0, `topicSwitchesPerWeek` ≤ 2

@@ -58,7 +58,7 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
                                 // ADR-050: 만들 것을 정하지 않아도 기본 프로젝트를 준다
                                 .andExpect(jsonPath("$.sideProject.name").value("주문 시스템"))
                                 .andExpect(jsonPath("$.sideProject.status").value("ACTIVE"))
-                                .andExpect(jsonPath("$.assignedSeedCardCount").value(10))
+                                .andExpect(jsonPath("$.assignedSeedCardCount").value(0))
                                 .andExpect(jsonPath("$.suggestedDiagnostics").isEmpty()));
         UUID userId = userId(user);
 
@@ -75,6 +75,8 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
                 .containsEntry("risk_level", "LOW");
         assertThat(body.path("activePlan").path("latestRatioBp").asInt())
                 .isEqualTo(((Number) snapshot.get("ratio_bp")).intValue());
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
         assertThat(
                         count(
                                 "select count(*) from devpilot.review_item where user_id = ? and"
@@ -357,6 +359,8 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldRejectSecondOnboarding() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
 
         api.post(user, ONBOARDING, TestApi.onboardingRequest())
                 .andExpect(status().isConflict())

@@ -40,6 +40,13 @@ public interface ReviewItemRepository extends JpaRepository<ReviewItem, UUID> {
     @Query("select i.conceptKey from ReviewItem i where i.userId = :userId")
     List<String> findConceptKeys(@Param("userId") UUID userId);
 
+    /**
+     * 그 사용자에게 카드가 하나라도 있는 skill (ADR-055 backfill). 이미 배우기 시작한 skill이라는 뜻이라, 새 seed 콘텐츠를 여기에만 더한다 —
+     * 아직 시작도 안 한 skill에 미리 깔지 않는다.
+     */
+    @Query("select distinct i.skillId from ReviewItem i where i.userId = :userId")
+    List<UUID> findSkillIdsWithItems(@Param("userId") UUID userId);
+
     /** 이 출처 카드의 가장 늦은 due. 없으면 empty (docs/06 §6.3 "신규 seed 카드" 행). */
     @Query(
             "select max(i.dueAt) from ReviewItem i where i.userId = :userId and i.sourceType ="
