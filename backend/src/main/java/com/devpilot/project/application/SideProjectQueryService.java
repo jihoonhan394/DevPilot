@@ -5,6 +5,7 @@ import com.devpilot.common.error.NotFoundException;
 import com.devpilot.common.web.CursorCodec;
 import com.devpilot.common.web.CursorPage;
 import com.devpilot.project.domain.SideProject;
+import com.devpilot.project.domain.SideProjectKind;
 import com.devpilot.project.domain.SideProjectStatus;
 import com.devpilot.project.infrastructure.SideProjectRepository;
 import java.time.Instant;
@@ -72,8 +73,8 @@ public class SideProjectQueryService {
     /** planner 대상 (docs/06 SP-3): {@code updated_at}이 가장 최근인 {@code ACTIVE} 하나. 없으면 empty. */
     public Optional<SideProjectView> findLatestActive(UUID userId) {
         return sideProjectRepository
-                .findFirstByUserIdAndStatusOrderByUpdatedAtDescIdDesc(
-                        userId, SideProjectStatus.ACTIVE)
+                .findFirstByUserIdAndStatusAndKindOrderByUpdatedAtDescIdDesc(
+                        userId, SideProjectStatus.ACTIVE, SideProjectKind.SIDE)
                 .map(SideProjectQueryService::toView);
     }
 
@@ -94,6 +95,7 @@ public class SideProjectQueryService {
                 project.getRepoUrl(),
                 project.getStack(),
                 project.getStatus(),
+                project.getKind(),
                 Objects.requireNonNull(project.getCreatedAt(), "createdAt"),
                 Objects.requireNonNull(project.getUpdatedAt(), "updatedAt"),
                 project.getVersion());

@@ -2,6 +2,7 @@ import 'package:devpilot_app/app/explain_with_duck_button.dart';
 import 'package:devpilot_app/app/routes.dart';
 import 'package:devpilot_app/core/api/api_enums.dart';
 import 'package:devpilot_app/core/l10n/display_format.dart';
+import 'package:devpilot_app/core/l10n/enum_labels.dart';
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/theme/devpilot_colors.dart';
 import 'package:devpilot_app/core/time/time_zone_support.dart';
@@ -176,7 +177,7 @@ class _ExplainProjectButton extends StatelessWidget {
   }
 }
 
-/// Name, status badge and the "Today 과제 대상" label.
+/// Name, status badge, 지난 경험 라벨, and the "Today 과제 대상" label.
 class _ProjectTitle extends StatelessWidget {
   const _ProjectTitle({required this.project, required this.isTodayTarget});
 
@@ -192,6 +193,13 @@ class _ProjectTitle extends StatelessWidget {
       children: [
         Text(project.name, style: Theme.of(context).textTheme.titleMedium),
         SideProjectStatusBadge(status: project.status),
+        // SIDE는 기본값이라 라벨을 붙이지 않는다 — 라벨이 둘이면 목록이 시끄러워진다 (docs/02 §3.15)
+        if (project.kind == SideProjectKind.pastWork)
+          StatusBadge(
+            key: const Key('projects.pastWork'),
+            label: project.kind.label(AppLocalizations.of(context)),
+            tone: AppTone.neutral,
+          ),
         if (isTodayTarget)
           StatusBadge(
             key: const Key('projects.todayTarget'),

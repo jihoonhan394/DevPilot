@@ -4,6 +4,7 @@ import com.devpilot.common.config.DevPilotProperties;
 import com.devpilot.common.error.ApiFieldError;
 import com.devpilot.project.application.SideProjectService;
 import com.devpilot.project.application.SideProjectView;
+import com.devpilot.project.domain.SideProjectKind;
 import java.util.List;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -42,6 +43,7 @@ class OnboardingSideProjectSetup {
                 defaults.defaultName(),
                 defaults.defaultDescription(),
                 null,
-                defaults.defaultStack());
+                defaults.defaultStack(),
+                SideProjectKind.SIDE);
     }
 }

@@ -250,3 +250,14 @@ enum LearningStage {
   redo,
   unknown,
 }
+
+/// 사이드 프로젝트 분류 (docs/04 §3, I-23). 상태가 아니라 분류라 전이표가 없다.
+///
+/// `pastWork`는 Today의 프로젝트 과제 대상에서 빠진다 — 이미 끝난 일에 오늘 할 과제를 붙일 수는 없다(docs/06 SP-3).
+enum SideProjectKind {
+  @JsonValue('SIDE')
+  side,
+  @JsonValue('PAST_WORK')
+  pastWork,
+  unknown,
+}

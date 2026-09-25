@@ -228,3 +228,11 @@ extension LearningStageLabel on LearningStage {
     LearningStage.unknown => l10n.enumUnknown,
   };
 }
+
+extension SideProjectKindLabel on SideProjectKind {
+  String label(AppLocalizations l10n) => switch (this) {
+    SideProjectKind.side => l10n.enumSideProjectKindSide,
+    SideProjectKind.pastWork => l10n.enumSideProjectKindPastWork,
+    SideProjectKind.unknown => l10n.enumUnknown,
+  };
+}

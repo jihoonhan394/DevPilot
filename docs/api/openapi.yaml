@@ -1633,6 +1633,31 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - project
+  /api/v1/side-projects/{sideProjectId}/notes/export:
+    get:
+      operationId: projectExportNotes
+      parameters:
+      - in: path
+        name: sideProjectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            text/markdown;charset=UTF-8:
+              schema:
+                type: string
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - project
   /api/v1/side-projects/{sideProjectId}/notes/{noteId}:
     delete:
       operationId: projectDeleteNote
@@ -5436,6 +5461,11 @@ components:
           type: string
           maxLength: 1000
           minLength: 0
+        kind:
+          type: string
+          enum:
+          - SIDE
+          - PAST_WORK
         name:
           type: string
           maxLength: 100
@@ -5637,6 +5667,11 @@ components:
           type: string
           maxLength: 1000
           minLength: 0
+        kind:
+          type: string
+          enum:
+          - SIDE
+          - PAST_WORK
         name:
           type: string
           maxLength: 100
@@ -5671,6 +5706,11 @@ components:
         id:
           type: string
           format: uuid
+        kind:
+          type: string
+          enum:
+          - SIDE
+          - PAST_WORK
         name:
           type: string
         repoUrl:
@@ -5693,6 +5733,7 @@ components:
       - createdAt
       - description
       - id
+      - kind
       - name
       - repoUrl
       - stack

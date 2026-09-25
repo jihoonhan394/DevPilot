@@ -1,5 +1,6 @@
 package com.devpilot.project.application;
 
+import com.devpilot.project.domain.SideProjectKind;
 import com.devpilot.project.domain.SideProjectStatus;
 import java.time.Instant;
 import java.util.UUID;
@@ -17,6 +18,7 @@ public record SideProjectView(
         @Nullable String repoUrl,
         @Nullable String stack,
         SideProjectStatus status,
+        SideProjectKind kind,
         Instant createdAt,
         Instant updatedAt,
         long version) {}

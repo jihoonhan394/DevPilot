@@ -238,9 +238,7 @@ V10,10,GOOD,CORRECT,SELF_EXPLAIN,GOOD,,5,4
 | §10 | `06-10-verification-guard.csv` (7행) | `VerificationGuardTest` | unit |
 | §11.2 | — (절차 1~9, `restoredDeferrals`, `acceptedDeferrals`와 중복 시 400, `acceptedTargetRaises` 검증 RX-1~RX-8 — §5.3) | `ReplanServiceIntegrationTest` | integration |
 | `19` §5.4 (계획 템플릿 배치) | `19-05-plan-template-placement.yaml` (V1~V8. 입력은 `today`·`targetCompletionDate`뿐이고 창은 하나 `[today, targetCompletionDate]`. **milestone 9개** — `JAVA_BACKEND_DEFAULT`의 PREPARATION 8개 뒤에 CONSOLIDATION 1개. V6(62일, COMPRESSED)·V8(63일, SEQUENTIAL)은 모드 경계) | `PlanTemplatePlacementTest` | unit |
-| §12 | `06-12-metrics.yaml` (`projectNoteCount`·`independentRedoCount` 행 포함) | `SideProjectNoteIntegrationTest` | integration | `05` §19.8~§19.12: 결정 기록의 세 항목·장애 기록의 네 항목(I-22), 유형이 섞이면 `VALUE_NOT_ALLOWED`, 미래 날짜 `DATE_OUT_OF_RANGE`, `noteType` 변경 시도 `MALFORMED_REQUEST`(PN-2), 바뀐 값이 없으면 version 유지, `occurredOn` DESC 목록과 유형 필터, 다른 프로젝트의 노트 id → 404 |
-| `StreakCalculatorTest` | unit | `05` §13.1 `streakDays`: 오늘 완료가 있을 때·없을 때(어제까지로 센다), 어제도 없으면 0, 첫 공백에서 멈춤, 같은 날 여러 과제는 하루, 366일 상한 |
-| `MetricsCalculatorTest` | unit |
+| §12 | `06-12-metrics.yaml` (`projectNoteCount`·`independentRedoCount` 행 포함) | `MetricsCalculatorTest` | unit |
 | §13 | `06-13-requirement-fit.csv` (4행 + skill 없음 → null, target fallback 순서) | `RequirementFitClassifierTest` | unit |
 
 - vector 외에 **경계값 테스트**를 같은 클래스에 추가한다: `availableMinutes` 5·720, interval 1·60, risk 경계 8,000·10,000·12,500bp, 확장 제안 경계 `ratioBp` 7,000·7,001과 `expandedRatioBp` 9,000·9,001, coverage 3,999·4,000·7,999·8,000bp, cooldown 23:59:59·24:00:00, 러버덕 방치 24:00:00·24:00:01(`<` 비교, §10.6.5).
@@ -792,6 +790,8 @@ DB 제약 자체는 `InvariantConstraintIntegrationTest`에서 JDBC로 직접 �
 | 테스트 | 계층 | 확인 |
 |---|---|---|
 | `MetricsCalculatorTest` | unit | `06` §12 vector 전부(MT-V1~MT-V12, `06-12-metrics.yaml`). 분모 0 → null, 쉰 날을 건너뛴 주제 전환, 약한 축 동률의 선언 순서 tiebreak를 따로 확인한다. `MetricsInput`을 채우는 쪽은 S5(BL-EVD-01)다 |
+| `StreakCalculatorTest` | unit | `05` §13.1 `streakDays`: 오늘 완료가 있을 때·없을 때(어제까지로 센다), 어제도 없으면 0, 첫 공백에서 멈춤, 같은 날 여러 과제는 하루, 366일 상한 |
+| `SideProjectNoteIntegrationTest` | integration | `05` §19.8~§19.13: 결정 기록의 세 항목·장애 기록의 네 항목(I-22), 유형이 섞이면 `VALUE_NOT_ALLOWED`, 미래 날짜 `DATE_OUT_OF_RANGE`, `noteType` 변경 시도 `MALFORMED_REQUEST`(PN-2), 바뀐 값이 없으면 version 유지, `occurredOn` DESC 목록과 유형 필터, 다른 프로젝트의 노트 id → 404. 내보내기(§19.13): `occurredOn` ASC·기록 0건이어도 제목만 있는 문서. `PAST_WORK`로 바꾸면 `PROJECT_TASK` 대상에서 빠지고 기록은 남는다(SP-3, I-23) |
 | `ContentValidatorTest` | unit | `19` §4.1 CV-80~CV-87(코드 읽기)·CV-62(시간 제한)·CV-88~CV-89(`whyItMatters`)·CV-90~CV-96(오늘의 팁)·CV-100~CV-106(용어)·CV-110~CV-113(과제 체크리스트) 각각 1케이스 이상. 오류 주입 목록은 `19` §4.3 표(`repo` 미실재 → CV-84, `path`의 `..`·내림차순 `lines` → CV-85 2건, 양수 아닌 `lines` → CV-85, 없는 skill code·40자 미만 `question` → CV-86, key 중복 → CV-83, `pinnedCommit: null` → CV-82 WARN). 은퇴 규칙(`19` §8.2): `retired: true`인데 key가 `retired.readingKeys`에 없음 → CV-83, `retired.readingKeys`에 있는데 reading이 지워짐 → CV-83, 은퇴하지 않은 reading의 key가 `retired.readingKeys`에 있음 → CV-83. 은퇴한 reading만 남은 저장소는 CV-87 WARN 없음 |
 | `CuratedReadingRegistryTest` | unit | 테스트 콘텐츠 적재, key 조회, 없는 key → empty, 비활성 skill code는 `skills`에서 뺀다(`05` §19.7). `retired: true` reading도 key로 조회되고 `retired = true`다. 제안 후보 목록에는 없다(`06` §5.3) |
 | `ReadingControllerTest` | web slice | `readingKey` 패턴 위반 → 400 `VALIDATION_FAILED`(field `readingKey`, `Pattern`), 형식은 맞지만 없는 key → 404 `RESOURCE_NOT_FOUND`, 토큰 없음 → 401. **응답 JSON의 필드 집합이 `CuratedReadingView`·`CuratedRepoView` 정의와 정확히 같다 — 코드 본문을 담을 필드가 없다.** `startLine ≤ endLine`, `pinnedCommit`·`cloneHint` 포함 |

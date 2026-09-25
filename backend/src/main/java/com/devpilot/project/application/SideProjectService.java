@@ -8,6 +8,7 @@ import com.devpilot.common.error.FieldErrorCodes;
 import com.devpilot.common.web.validation.InputRules;
 import com.devpilot.integration.ai.masking.SecretMasker;
 import com.devpilot.project.domain.SideProject;
+import com.devpilot.project.domain.SideProjectKind;
 import com.devpilot.project.domain.SideProjectStatus;
 import com.devpilot.project.infrastructure.SideProjectRepository;
 import java.util.ArrayList;
@@ -73,7 +74,9 @@ public class SideProjectService {
                                 name,
                                 emptyToNull(description),
                                 emptyToNull(command.repoUrl()),
-                                emptyToNull(stack)));
+                                emptyToNull(stack),
+                                // 생략하면 지금 만드는 것이다 (docs/05 §19.2)
+                                command.kind() == null ? SideProjectKind.SIDE : command.kind()));
         sideProjectRepository.saveAndFlush(project);
         return SideProjectQueryService.toView(project);
     }
@@ -112,7 +115,8 @@ public class SideProjectService {
                         change(description),
                         change(command.repoUrl()),
                         change(stack),
-                        command.status());
+                        command.status(),
+                        command.kind());
         if (changed) {
             sideProjectRepository.flush();
         }
@@ -149,7 +153,8 @@ public class SideProjectService {
             String name,
             @Nullable String description,
             @Nullable String repoUrl,
-            @Nullable String stack) {}
+            @Nullable String stack,
+            @Nullable SideProjectKind kind) {}
 
     /** PATCH 입력 (docs/05 §19.5). {@code null}은 변경하지 않음. */
     public record SideProjectPatchCommand(
@@ -158,5 +163,6 @@ public class SideProjectService {
             @Nullable String repoUrl,
             @Nullable String stack,
             @Nullable SideProjectStatus status,
+            @Nullable SideProjectKind kind,
             long version) {}
 }

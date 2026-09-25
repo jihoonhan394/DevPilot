@@ -159,6 +159,14 @@ public final class UserOwnedEndpoints {
                         NO_BODY,
                         "RESOURCE_NOT_FOUND"),
                 new EndpointCase(
+                        "E81",
+                        HttpMethod.GET,
+                        "/api/v1/side-projects/{sideProjectId}/notes/export",
+                        Kind.OWNED_RESOURCE,
+                        fixture -> new Object[] {fixture.sideProjectId()},
+                        NO_BODY,
+                        "RESOURCE_NOT_FOUND"),
+                new EndpointCase(
                         "E78",
                         HttpMethod.GET,
                         "/api/v1/side-projects/{sideProjectId}/notes/{noteId}",

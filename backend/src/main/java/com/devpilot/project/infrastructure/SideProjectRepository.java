@@ -1,6 +1,7 @@
 package com.devpilot.project.infrastructure;
 
 import com.devpilot.project.domain.SideProject;
+import com.devpilot.project.domain.SideProjectKind;
 import com.devpilot.project.domain.SideProjectStatus;
 import java.time.Instant;
 import java.util.List;
@@ -47,7 +48,11 @@ public interface SideProjectRepository extends JpaRepository<SideProject, UUID> 
             @Param("id") UUID id,
             Limit limit);
 
-    /** planner 대상 (SP-3): {@code updated_at}이 가장 최근인 {@code ACTIVE} 하나. */
-    Optional<SideProject> findFirstByUserIdAndStatusOrderByUpdatedAtDescIdDesc(
-            UUID userId, SideProjectStatus status);
+    /**
+     * planner 대상 (docs/06 SP-3): {@code updated_at}이 가장 최근인 {@code ACTIVE}이고 {@code SIDE}인 하나.
+     *
+     * <p>{@code PAST_WORK}는 빠진다 — 이미 끝난 일에 오늘 할 과제를 붙일 수는 없다(I-23).
+     */
+    Optional<SideProject> findFirstByUserIdAndStatusAndKindOrderByUpdatedAtDescIdDesc(
+            UUID userId, SideProjectStatus status, SideProjectKind kind);
 }

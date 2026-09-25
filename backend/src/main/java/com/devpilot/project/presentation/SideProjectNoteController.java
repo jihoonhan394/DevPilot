@@ -3,6 +3,7 @@ package com.devpilot.project.presentation;
 import com.devpilot.common.idempotency.IdempotencyService;
 import com.devpilot.common.security.CurrentUser;
 import com.devpilot.common.web.CursorPage;
+import com.devpilot.project.application.SideProjectNoteExporter;
 import com.devpilot.project.application.SideProjectNoteQueryService;
 import com.devpilot.project.application.SideProjectNoteService;
 import com.devpilot.project.application.SideProjectNoteView;
@@ -16,6 +17,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -43,14 +45,17 @@ public class SideProjectNoteController {
 
     private final SideProjectNoteService noteService;
     private final SideProjectNoteQueryService noteQueryService;
+    private final SideProjectNoteExporter noteExporter;
     private final IdempotencyService idempotencyService;
 
     public SideProjectNoteController(
             SideProjectNoteService noteService,
             SideProjectNoteQueryService noteQueryService,
+            SideProjectNoteExporter noteExporter,
             IdempotencyService idempotencyService) {
         this.noteService = noteService;
         this.noteQueryService = noteQueryService;
+        this.noteExporter = noteExporter;
         this.idempotencyService = idempotencyService;
     }
 
@@ -85,6 +90,21 @@ public class SideProjectNoteController {
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
             @RequestParam(required = false) @Nullable @Size(max = 512) String cursor) {
         return noteQueryService.list(currentUser.userId(), sideProjectId, noteType, limit, cursor);
+    }
+
+    /**
+     * 기록 Markdown 내려받기 (docs/05 §19.13). 경로가 {@code {noteId}}보다 우선한다 — {@code export}는 UUID가 아니다.
+     */
+    @GetMapping(value = "/export", produces = "text/markdown;charset=UTF-8")
+    @Operation(operationId = "projectExportNotes")
+    public ResponseEntity<String> export(
+            CurrentUser currentUser, @PathVariable UUID sideProjectId) {
+        SideProjectNoteExporter.Export export = noteExporter.export(currentUser, sideProjectId);
+        return ResponseEntity.ok()
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + export.fileName() + "\"")
+                .body(export.markdown());
     }
 
     @GetMapping("/{noteId}")

@@ -1,6 +1,7 @@
 package com.devpilot.project.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -12,6 +13,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
+import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
 
 /**
@@ -156,6 +159,48 @@ class SideProjectNoteIntegrationTest extends ApiTestSupport {
                 .andExpect(status().isNotFound());
     }
 
+    /** 내보내기 (docs/05 §19.13). 본문은 저장된 마스킹본 그대로다. */
+    @Test
+    void shouldExportEveryNoteAsMarkdownOldestFirst() throws Exception {
+        TestUser user = onboardedOwner();
+        UUID projectId = anyProjectId(user);
+        api.postWithKey(user, TestApi.newKey(), NOTES, decision(), projectId);
+        api.postWithKey(user, TestApi.newKey(), NOTES, incident(), projectId);
+
+        MvcResult result =
+                api.get(user, NOTES + "/export", projectId)
+                        .andExpect(status().isOk())
+                        .andExpect(
+                                header().string(
+                                                HttpHeaders.CONTENT_DISPOSITION,
+                                                org.hamcrest.Matchers.containsString(
+                                                        "notes-" + projectId + "-")))
+                        .andReturn();
+        String markdown = result.getResponse().getContentAsString();
+
+        assertThat(markdown).startsWith("# ");
+        assertThat(markdown).contains("기록 2건");
+        // occurredOn ASC — 장애(10-02)가 결정(10-03)보다 앞이다
+        assertThat(markdown.indexOf("배포 뒤 응답이 멈췄다"))
+                .isLessThan(markdown.indexOf("조회 전용 복제본을 두지 않기로 했다"));
+        assertThat(markdown).contains("- 재발 방지: 풀 사용률에 경보를 걸었다");
+    }
+
+    /** 기록이 없어도 제목만 있는 문서를 준다 — 빈 응답이 아니라 "아직 없다"는 문서다. */
+    @Test
+    void shouldExportATitleOnlyDocumentWhenThereAreNoNotes() throws Exception {
+        TestUser user = onboardedOwner();
+
+        String markdown =
+                api.get(user, NOTES + "/export", anyProjectId(user))
+                        .andExpect(status().isOk())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString();
+
+        assertThat(markdown).contains("기록 0건");
+    }
+
     @Test
     void shouldDeleteAndThenNotFindIt() throws Exception {
         TestUser user = onboardedOwner();
@@ -167,6 +212,31 @@ class SideProjectNoteIntegrationTest extends ApiTestSupport {
 
         api.delete(user, NOTE, projectId, noteId).andExpect(status().isNoContent());
         api.get(user, NOTE, projectId, noteId).andExpect(status().isNotFound());
+    }
+
+    /**
+     * {@code PAST_WORK}는 planner의 {@code PROJECT_TASK} 대상에서 빠진다 (docs/06 SP-3, I-23).
+     *
+     * <p>이미 끝난 일에 오늘 할 과제를 붙일 수는 없다. 분류를 바꿔도 이미 만든 과제와 기록은 그대로 남는다.
+     */
+    @Test
+    void shouldLeavePastWorkOutOfTodaysProjectTasks() throws Exception {
+        TestUser user = onboardedOwner();
+        UUID projectId = anyProjectId(user);
+        api.postWithKey(user, TestApi.newKey(), NOTES, decision(), projectId);
+
+        api.patch(
+                        user,
+                        "/api/v1/side-projects/{id}",
+                        Map.of("kind", "PAST_WORK", "version", 0),
+                        projectId)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.kind").value("PAST_WORK"));
+
+        // 기록은 그대로 남는다 — 분류는 상태가 아니다
+        assertThat(api.body(api.get(user, NOTES, projectId)).get("items")).hasSize(1);
+        assertThat(api.generateToday(user, 60, "NORMAL").get("mainTask").get("taskType").asString())
+                .isNotEqualTo("PROJECT_TASK");
     }
 
     private UUID anyProjectId(TestUser user) {

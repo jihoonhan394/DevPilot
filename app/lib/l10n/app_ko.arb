@@ -2560,5 +2560,13 @@
   "dashboardWeekTasks": "끝낸 과제 {tasks}개 · 적은 기록 {notes}개",
   "@dashboardWeekTasks": {"description": "Counts of finished tasks and written notes.", "placeholders": {"tasks": {"type": "int"}, "notes": {"type": "int"}}},
   "dashboardStreak": "이어서 학습한 날 {days}일",
-  "@dashboardStreak": {"description": "Days in a row with a finished task. Hidden at 0 (docs/02 U-3)."}
+  "@dashboardStreak": {"description": "Days in a row with a finished task. Hidden at 0 (docs/02 U-3)."},
+  "enumSideProjectKindSide": "지금 만드는 것",
+  "@enumSideProjectKindSide": {"description": "SideProjectKind.SIDE."},
+  "enumSideProjectKindPastWork": "지난 경험",
+  "@enumSideProjectKindPastWork": {"description": "SideProjectKind.PAST_WORK — left out of Today's project tasks."},
+  "projectsKindChanged": "다음 계획부터 Today 프로젝트 과제에서 빠져요. 이미 만든 과제와 기록은 그대로 있어요.",
+  "@projectsKindChanged": {"description": "Toast after switching a project to PAST_WORK."},
+  "projectsFieldKind": "종류",
+  "@projectsFieldKind": {"description": "Label of the project kind segment."}
 }
