@@ -2194,6 +2194,34 @@ components:
       - requiredShouldMinutes
       - riskLevel
       - today
+    BuiltItemView:
+      type: object
+      properties:
+        planDate:
+          type: string
+          format: date
+        taskId:
+          type: string
+          format: uuid
+        taskType:
+          type: string
+          enum:
+          - RECALL
+          - REVIEW
+          - CHALLENGE
+          - PROJECT_TASK
+          - COACH_REVIEW
+          - READING
+          - READ_CODE
+          - EXPLAIN
+          - REDO
+        title:
+          type: string
+      required:
+      - planDate
+      - taskId
+      - taskType
+      - title
     ChallengeSummaryView:
       type: object
       properties:
@@ -2664,6 +2692,9 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SkillCategorySummaryView"
+        streakDays:
+          type: integer
+          format: int32
         today:
           type: string
           format: date
@@ -2693,6 +2724,8 @@ components:
         weekStudyMinutes:
           type: integer
           format: int32
+        weeklySummary:
+          $ref: "#/components/schemas/WeeklySummaryView"
       required:
       - aiStatus
       - dueReviewCount
@@ -2700,12 +2733,14 @@ components:
       - replanRecommended
       - risk
       - skillCategories
+      - streakDays
       - today
       - todaySummary
       - weakThinkingAxes
       - weekCompletedSessions
       - weekStartDate
       - weekStudyMinutes
+      - weeklySummary
     DeferSuggestionView:
       type: object
       properties:
@@ -6184,6 +6219,27 @@ components:
             $ref: "#/components/schemas/UserSkillStateView"
       required:
       - items
+    WeeklySummaryView:
+      type: object
+      properties:
+        builtThisWeek:
+          type: array
+          items:
+            $ref: "#/components/schemas/BuiltItemView"
+        completedTasks:
+          type: integer
+          format: int32
+        notesWritten:
+          type: integer
+          format: int32
+        studyMinutes:
+          type: integer
+          format: int32
+      required:
+      - builtThisWeek
+      - completedTasks
+      - notesWritten
+      - studyMinutes
   securitySchemes:
     bearerAuth:
       bearerFormat: JWT

@@ -903,10 +903,10 @@
     "description": "SCR-DASHBOARD: week section heading.",
     "placeholders": {"date": {"type": "String", "example": "10월 12일"}}
   },
-  "dashboardWeekSummary": "{sessions}회 · {duration}",
+  "dashboardWeekSummary": "공부한 시간 {duration} ({sessions}회)",
   "@dashboardWeekSummary": {
-    "description": "SCR-DASHBOARD: completed sessions and study time of the week.",
-    "placeholders": {"sessions": {"type": "int"}, "duration": {"type": "String", "example": "3시간 10분"}}
+    "description": "SCR-DASHBOARD: study time of the week, after what was built (docs/02 §3.11).",
+    "placeholders": {"duration": {"type": "String", "example": "3시간 10분"}, "sessions": {"type": "int"}}
   },
 
   "planBudgetAvailable": "{date}까지 가능 약 {hours}시간",
@@ -2552,5 +2552,13 @@
   "todayExplainedNoteMaskingNote": "비밀값은 저장 전에 가려요.",
   "@todayExplainedNoteMaskingNote": {"description": "The note is masked before it is stored."},
   "todayWhyItMatters": "왜 중요한가",
-  "@todayWhyItMatters": {"description": "SCR-TODAY main card: why this skill matters (not why today)."}
+  "@todayWhyItMatters": {"description": "SCR-TODAY main card: why this skill matters (not why today)."},
+  "dashboardBuilt": "이번 주에 만든 것",
+  "@dashboardBuilt": {"description": "SCR-DASHBOARD: heading of what was finished this week."},
+  "dashboardBuiltNone": "이번 주에 마친 과제가 아직 없어요.",
+  "@dashboardBuiltNone": {"description": "Nothing was finished this week. A fact, not a nudge."},
+  "dashboardWeekTasks": "끝낸 과제 {tasks}개 · 적은 기록 {notes}개",
+  "@dashboardWeekTasks": {"description": "Counts of finished tasks and written notes.", "placeholders": {"tasks": {"type": "int"}, "notes": {"type": "int"}}},
+  "dashboardStreak": "이어서 학습한 날 {days}일",
+  "@dashboardStreak": {"description": "Days in a row with a finished task. Hidden at 0 (docs/02 U-3)."}
 }

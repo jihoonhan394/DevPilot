@@ -22,6 +22,7 @@ import com.devpilot.today.infrastructure.LearningTaskRepository;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -115,6 +116,43 @@ public class TodayQueryService {
                             return TodaySummary.of(main, review);
                         });
     }
+
+    /**
+     * 완료한 과제가 1건 이상인 plan-day (docs/05 §13.1 {@code streakDays}). 최근 {@code days}일까지만 본다.
+     *
+     * <p>세는 규칙은 {@code dashboard.domain.StreakCalculator}에 있다 — 여기서는 날짜만 준다.
+     */
+    public List<LocalDate> completedTaskDays(UUID userId, LocalDate today, int days) {
+        return learningTaskRepository.findCompletedTaskDays(
+                userId, today.minusDays(days - 1L), today);
+    }
+
+    /**
+     * 그 기간에 완료한 과제 (docs/05 §13.1 {@code weeklySummary}). {@code plan_date} DESC, {@code
+     * sort_order} DESC.
+     *
+     * <p>조립은 호출자가 한다 — 응답 record는 {@code dashboard} 모듈 것이고 {@code today}는 그쪽에 의존하지 않는다(docs/03
+     * §2.2).
+     */
+    public List<CompletedTaskView> completedTasks(UUID userId, LocalDate from, LocalDate to) {
+        List<CompletedTaskView> views = new ArrayList<>();
+        for (LearningTask task : learningTaskRepository.findCompletedBetween(userId, from, to)) {
+            LocalDate planDate =
+                    dailyPlanRepository
+                            .findById(task.getDailyPlanId())
+                            .map(DailyPlan::getPlanDate)
+                            .orElse(null);
+            if (planDate != null) {
+                views.add(
+                        new CompletedTaskView(
+                                task.getId(), task.getTaskType(), task.getTitle(), planDate));
+            }
+        }
+        return List.copyOf(views);
+    }
+
+    /** 완료한 과제 1건 (docs/05 §13.1). */
+    public record CompletedTaskView(UUID id, TaskType taskType, String title, LocalDate planDate) {}
 
     /** 응답 view. 같은 모듈의 생성 서비스가 저장 직후 응답을 만들 때도 쓴다. */
     TodayView toView(DailyPlan plan, ZoneId zone, int dayStartHour) {

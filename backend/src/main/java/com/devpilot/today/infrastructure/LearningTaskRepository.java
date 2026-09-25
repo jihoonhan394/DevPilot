@@ -107,4 +107,35 @@ public interface LearningTaskRepository extends JpaRepository<LearningTask, UUID
             @Param("userId") UUID userId,
             @Param("from") LocalDate from,
             @Param("today") LocalDate today);
+
+    /**
+     * 완료한 과제가 1건 이상인 plan-day (docs/05 §13.1 {@code streakDays}). 최신순.
+     *
+     * <p>세션이 아니라 <b>과제</b>로 센다 — 복습만 한 날도 이어 간 날이다.
+     */
+    @Query(
+            """
+            select distinct p.planDate from LearningTask t, DailyPlan p
+             where p.id = t.dailyPlanId and t.userId = :userId
+               and t.status = com.devpilot.today.domain.TaskStatus.COMPLETED
+               and p.planDate >= :from and p.planDate <= :to
+             order by p.planDate desc
+            """)
+    List<LocalDate> findCompletedTaskDays(
+            @Param("userId") UUID userId, @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    /**
+     * 그 기간에 완료한 과제 (docs/05 §13.1 {@code weeklySummary}). {@code plan_date} DESC, {@code
+     * sort_order} DESC — 최근에 만든 것이 먼저다.
+     */
+    @Query(
+            """
+            select t from LearningTask t, DailyPlan p
+             where p.id = t.dailyPlanId and t.userId = :userId
+               and t.status = com.devpilot.today.domain.TaskStatus.COMPLETED
+               and p.planDate >= :from and p.planDate <= :to
+             order by p.planDate desc, t.sortOrder desc, t.id desc
+            """)
+    List<LearningTask> findCompletedBetween(
+            @Param("userId") UUID userId, @Param("from") LocalDate from, @Param("to") LocalDate to);
 }

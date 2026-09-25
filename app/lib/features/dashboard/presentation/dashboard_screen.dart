@@ -78,14 +78,25 @@ class _DashboardContent extends StatelessWidget {
         const SizedBox(height: AppSpacing.xl),
         SectionTitle(l10n.dashboardWeek(l10n.commonMonthDay(weekStart.toDateTime()))),
         const SizedBox(height: AppSpacing.sm),
+        // 만든 것 → 끝낸 것 → 적은 것 → 시간. 결과물이 공부 시간보다 앞이다 (docs/02 §3.11)
+        ?_weeklySummary(context, l10n, view),
         Text(
           l10n.dashboardWeekSummary(
-            view.weekCompletedSessions,
             formatMinutes(view.weekStudyMinutes, l10n),
+            view.weekCompletedSessions,
           ),
           key: const Key('dashboard.weekSummary'),
           style: Theme.of(context).textTheme.titleLarge,
         ),
+        // U-3의 예외다. 0이면 줄 자체를 숨기고, 목표·불꽃·재촉 문구를 붙이지 않는다
+        if (view.streakDays > 0) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            l10n.dashboardStreak(view.streakDays),
+            key: const Key('dashboard.streak'),
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ],
         if (view.milestoneTimeline case final timeline?) ...[
           const SizedBox(height: AppSpacing.xl),
           SectionTitle(l10n.dashboardStep),
@@ -99,6 +110,69 @@ class _DashboardContent extends StatelessWidget {
           for (final category in view.skillCategories) _CategoryRow(category: category),
         ],
       ],
+    );
+  }
+}
+
+/// 이번 주에 만든 것과 그 수 (docs/05 §13.1, docs/02 §3.11). S3 이전 빌드는 `weeklySummary`가 없어 영역을 숨긴다.
+Widget? _weeklySummary(BuildContext context, AppLocalizations l10n, DashboardView view) {
+  final summary = view.weeklySummary;
+  if (summary == null) {
+    return null;
+  }
+  final textTheme = Theme.of(context).textTheme;
+  return Padding(
+    padding: const EdgeInsets.only(bottom: AppSpacing.md),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(l10n.dashboardBuilt, style: textTheme.labelLarge),
+        const SizedBox(height: AppSpacing.xs),
+        if (summary.builtThisWeek.isEmpty)
+          Text(
+            l10n.dashboardBuiltNone,
+            key: const Key('dashboard.builtNone'),
+            style: textTheme.bodySmall,
+          )
+        else
+          for (final item in summary.builtThisWeek) _BuiltRow(item: item),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          l10n.dashboardWeekTasks(summary.completedTasks, summary.notesWritten),
+          key: const Key('dashboard.weekTasks'),
+          style: textTheme.bodyMedium,
+        ),
+      ],
+    ),
+  );
+}
+
+/// 만든 것 한 줄. 눌러도 아무 데도 가지 않는다 — 과제 상세 화면이 없고, 읽는 목록이다.
+class _BuiltRow extends StatelessWidget {
+  const _BuiltRow({required this.item});
+
+  final BuiltItemView item;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('[${item.taskType.label(l10n)}] ', style: textTheme.labelSmall),
+          Expanded(
+            child: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            l10n.commonMonthDay(LocalDate.parse(item.planDate).toDateTime()),
+            style: textTheme.bodySmall,
+          ),
+        ],
+      ),
     );
   }
 }

@@ -21,7 +21,7 @@ void main() {
     expect(find.text('진행 중 · 약 15분'), findsOneWidget);
     expect(find.text('복습 6장 남음'), findsOneWidget);
     expect(find.text('이번 주 (9월 14일 월요일부터)'), findsOneWidget);
-    expect(find.text('4회 · 3시간 10분'), findsOneWidget);
+    expect(find.text('공부한 시간 3시간 10분 (4회)'), findsOneWidget);
     // No streaks, rest days or shortfall numbers (U-3).
     expect(find.textContaining('연속'), findsNothing);
   });
@@ -99,7 +99,7 @@ void main() {
 
     expect(find.text('문제가 생겼어요. 잠시 후 다시 시도해 주세요.'), findsOneWidget);
     await tapKey(tester, 'common.retryButton');
-    expect(find.text('4회 · 3시간 10분'), findsOneWidget);
+    expect(find.text('공부한 시간 3시간 10분 (4회)'), findsOneWidget);
   });
 
   testWidgets('shouldGoBackToTodayFromDashboard', (tester) async {

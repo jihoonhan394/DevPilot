@@ -238,7 +238,8 @@ V10,10,GOOD,CORRECT,SELF_EXPLAIN,GOOD,,5,4
 | §10 | `06-10-verification-guard.csv` (7행) | `VerificationGuardTest` | unit |
 | §11.2 | — (절차 1~9, `restoredDeferrals`, `acceptedDeferrals`와 중복 시 400, `acceptedTargetRaises` 검증 RX-1~RX-8 — §5.3) | `ReplanServiceIntegrationTest` | integration |
 | `19` §5.4 (계획 템플릿 배치) | `19-05-plan-template-placement.yaml` (V1~V8. 입력은 `today`·`targetCompletionDate`뿐이고 창은 하나 `[today, targetCompletionDate]`. **milestone 9개** — `JAVA_BACKEND_DEFAULT`의 PREPARATION 8개 뒤에 CONSOLIDATION 1개. V6(62일, COMPRESSED)·V8(63일, SEQUENTIAL)은 모드 경계) | `PlanTemplatePlacementTest` | unit |
-| §12 | `06-12-metrics.yaml` (`projectNoteCount`·`independentRedoCount` 행 포함) | `MetricsCalculatorTest` | unit |
+| §12 | `06-12-metrics.yaml` (`projectNoteCount`·`independentRedoCount` 행 포함) | `StreakCalculatorTest` | unit | `05` §13.1 `streakDays`: 오늘 완료가 있을 때·없을 때(어제까지로 센다), 어제도 없으면 0, 첫 공백에서 멈춤, 같은 날 여러 과제는 하루, 366일 상한 |
+| `MetricsCalculatorTest` | unit |
 | §13 | `06-13-requirement-fit.csv` (4행 + skill 없음 → null, target fallback 순서) | `RequirementFitClassifierTest` | unit |
 
 - vector 외에 **경계값 테스트**를 같은 클래스에 추가한다: `availableMinutes` 5·720, interval 1·60, risk 경계 8,000·10,000·12,500bp, 확장 제안 경계 `ratioBp` 7,000·7,001과 `expandedRatioBp` 9,000·9,001, coverage 3,999·4,000·7,999·8,000bp, cooldown 23:59:59·24:00:00, 러버덕 방치 24:00:00·24:00:01(`<` 비교, §10.6.5).

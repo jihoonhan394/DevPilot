@@ -19,6 +19,8 @@ import org.jspecify.annotations.Nullable;
  * []}다(전자는 스냅샷 추세, 후자는 코드 리뷰의 사고 축이라 출처가 다르다).
  *
  * @param dueReviewCount docs/06 §6.5 대상 수에 cap 적용
+ * @param streakDays 이어 온 날 수 (docs/05 §13.1). 오늘 아직 완료가 없으면 어제까지로 센다
+ * @param weeklySummary 이번 주 요약 — <b>만든 것이 먼저다</b>
  * @param weekStartDate 오늘이 속한 ISO week의 월요일
  * @param weekStudyMinutes {@code plan_date ∈ [weekStartDate, today]}인 COMPLETED 세션의 {@code
  *     actual_minutes} 합
@@ -27,6 +29,8 @@ public record DashboardView(
         LocalDate today,
         TodaySummaryView todaySummary,
         int dueReviewCount,
+        int streakDays,
+        WeeklySummaryView weeklySummary,
         LocalDate weekStartDate,
         int weekStudyMinutes,
         int weekCompletedSessions,
@@ -111,4 +115,28 @@ public record DashboardView(
             int skillCount,
             int avgPlanningLevelMilli,
             int avgTargetLevelMilli) {}
+
+    /**
+     * 이번 주 요약 (docs/05 §13.1). <b>필드 순서가 화면 순서다</b>: 만든 것 → 끝낸 것 → 적은 것 → 시간.
+     *
+     * <p>만든 것을 맨 앞에 두는 이유는 숫자보다 <b>무엇을 만들었는지</b>가 먼저 보여야 하기 때문이다 — 시간만 큰 주는 시간만 쓴 주일 수 있다.
+     *
+     * @param builtThisWeek 이번 주에 완료한 {@code CHALLENGE}·{@code PROJECT_TASK}·{@code REDO}, 최대 5개
+     * @param completedTasks 같은 기간의 완료 과제 수 (REVIEW 포함)
+     * @param notesWritten 같은 기간에 적은 프로젝트 기록 수. 프로젝트 기록(BL-PRJ-02)이 아직 없어 0이다
+     * @param studyMinutes {@code weekStudyMinutes}와 같은 값
+     */
+    public record WeeklySummaryView(
+            List<BuiltItemView> builtThisWeek,
+            int completedTasks,
+            int notesWritten,
+            int studyMinutes) {
+
+        public WeeklySummaryView {
+            builtThisWeek = List.copyOf(builtThisWeek);
+        }
+    }
+
+    /** 이번 주에 만든 것 한 줄 (docs/05 §13.1). */
+    public record BuiltItemView(UUID taskId, TaskType taskType, String title, LocalDate planDate) {}
 }

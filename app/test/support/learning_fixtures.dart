@@ -153,6 +153,8 @@ DashboardView testDashboard({
   bool withPlan = true,
   MilestoneTimelineView? milestoneTimeline,
   List<SkillCategorySummaryView>? skillCategories,
+  int streakDays = 3,
+  WeeklySummaryView? weeklySummary,
 }) => DashboardView(
   today: testToday,
   todaySummary: TodaySummaryView(
@@ -165,6 +167,8 @@ DashboardView testDashboard({
     reviewTaskStatus: generated ? TaskStatus.planned : null,
   ),
   dueReviewCount: dueReviewCount,
+  streakDays: streakDays,
+  weeklySummary: weeklySummary ?? testWeeklySummary(),
   weekStartDate: '2026-09-14',
   weekStudyMinutes: 190,
   weekCompletedSessions: 4,
@@ -172,6 +176,29 @@ DashboardView testDashboard({
   replanRecommended: replanRecommended,
   milestoneTimeline: withPlan ? (milestoneTimeline ?? testTimeline()) : null,
   skillCategories: withPlan ? (skillCategories ?? testSkillCategories()) : const [],
+);
+
+/// 이번 주 요약. 필드 순서가 곧 화면 순서라 fixture도 그 순서로 둔다 (docs/05 §13.1).
+WeeklySummaryView testWeeklySummary({List<BuiltItemView>? built}) => WeeklySummaryView(
+  builtThisWeek:
+      built ??
+      const [
+        BuiltItemView(
+          taskId: 'f1000000-0000-4000-8000-000000000001',
+          taskType: TaskType.challenge,
+          title: '트랜잭션 경계 옮기기',
+          planDate: '2026-09-24',
+        ),
+        BuiltItemView(
+          taskId: 'f1000000-0000-4000-8000-000000000002',
+          taskType: TaskType.redo,
+          title: '재고 차감 다시 만들기',
+          planDate: '2026-09-22',
+        ),
+      ],
+  completedTasks: 7,
+  notesWritten: 0,
+  studyMinutes: 190,
 );
 
 /// 2단계를 진행 중인 타임라인. `current`는 **진행으로** 정해진 값이다(ADR-044).

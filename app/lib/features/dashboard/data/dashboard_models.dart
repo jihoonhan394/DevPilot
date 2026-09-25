@@ -14,6 +14,12 @@ abstract class DashboardView with _$DashboardView {
     required TodaySummaryView todaySummary,
     required int dueReviewCount,
 
+    /// 이어 온 날 수. 0이면 줄 자체를 숨긴다 (docs/02 U-3 예외).
+    @Default(0) int streakDays,
+
+    /// 이번 주 요약. S3 이전 빌드는 null이라 영역을 숨긴다.
+    WeeklySummaryView? weeklySummary,
+
     /// Monday of today's ISO week.
     required String weekStartDate,
     required int weekStudyMinutes,
@@ -109,4 +115,33 @@ abstract class SkillCategorySummaryView with _$SkillCategorySummaryView {
   /// 0.0~1.0. 목표가 0이면 0이다 (나눌 것이 없다).
   double get progress =>
       avgTargetLevelMilli == 0 ? 0 : (avgPlanningLevelMilli / avgTargetLevelMilli).clamp(0.0, 1.0);
+}
+
+/// 이번 주 요약 (docs/05 §13.1). **필드 순서가 화면 순서다**: 만든 것 → 끝낸 것 → 적은 것 → 시간.
+///
+/// 결과물을 공부 시간보다 앞에 둔다 — 시간은 노력이지 결과가 아니다.
+@freezed
+abstract class WeeklySummaryView with _$WeeklySummaryView {
+  const factory WeeklySummaryView({
+    @Default(<BuiltItemView>[]) List<BuiltItemView> builtThisWeek,
+    required int completedTasks,
+    required int notesWritten,
+    required int studyMinutes,
+  }) = _WeeklySummaryView;
+
+  factory WeeklySummaryView.fromJson(Map<String, Object?> json) =>
+      _$WeeklySummaryViewFromJson(json);
+}
+
+/// 이번 주에 만든 것 한 줄. 눌러도 아무 데도 가지 않는다 — 읽는 목록이다.
+@freezed
+abstract class BuiltItemView with _$BuiltItemView {
+  const factory BuiltItemView({
+    required String taskId,
+    @JsonKey(unknownEnumValue: TaskType.unknown) required TaskType taskType,
+    required String title,
+    required String planDate,
+  }) = _BuiltItemView;
+
+  factory BuiltItemView.fromJson(Map<String, Object?> json) => _$BuiltItemViewFromJson(json);
 }

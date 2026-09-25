@@ -24,7 +24,49 @@ import tools.jackson.databind.JsonNode;
 @IntegrationTest
 class DashboardQueryServiceIntegrationTest extends ApiTestSupport {
 
+    private static final String TASK = "/api/v1/today/tasks/{taskId}";
+
     private static final String DASHBOARD = "/api/v1/dashboard";
+
+    /**
+     * 이번 주 요약과 연속 학습 일수 (docs/05 §13.1, BL-DSH-01·02).
+     *
+     * <p>오늘 과제 하나를 끝내면 연속은 1이고, 만든 것 목록에는 그 과제가 들어간다. {@code notesWritten}은 프로젝트 기록(BL-PRJ-02)이 아직
+     * 없어 0이다.
+     */
+    @Test
+    void shouldCountTodaysFinishedTaskAsTheStreakAndAsSomethingBuilt() throws Exception {
+        TestUser user = onboardedOwner();
+        JsonNode main = api.generateToday(user, 60, "NORMAL").path("mainTask");
+        String taskId = main.path("id").asString();
+        int version = main.path("version").asInt();
+        api.patch(user, TASK, Map.of("status", "IN_PROGRESS", "version", version), taskId)
+                .andExpect(status().isOk());
+        api.patch(user, TASK, Map.of("status", "COMPLETED", "version", version + 1), taskId)
+                .andExpect(status().isOk());
+
+        JsonNode dashboard = api.body(api.get(user, DASHBOARD).andExpect(status().isOk()));
+
+        assertThat(dashboard.path("streakDays").asInt()).isEqualTo(1);
+        JsonNode weekly = dashboard.path("weeklySummary");
+        assertThat(weekly.path("completedTasks").asInt()).isEqualTo(1);
+        assertThat(weekly.path("notesWritten").asInt()).isZero();
+        assertThat(weekly.path("studyMinutes").asInt())
+                .isEqualTo(dashboard.path("weekStudyMinutes").asInt());
+    }
+
+    /** 아무것도 끝내지 않았으면 연속은 0이고 만든 것 목록은 비어 있다 — 없는 값을 지어내지 않는다. */
+    @Test
+    void shouldReportZeroStreakBeforeAnythingIsFinished() throws Exception {
+        TestUser user = onboardedOwner();
+        api.generateToday(user, 60, "NORMAL");
+
+        JsonNode dashboard = api.body(api.get(user, DASHBOARD).andExpect(status().isOk()));
+
+        assertThat(dashboard.path("streakDays").asInt()).isZero();
+        assertThat(dashboard.path("weeklySummary").path("builtThisWeek")).isEmpty();
+        assertThat(dashboard.path("weeklySummary").path("completedTasks").asInt()).isZero();
+    }
 
     @Test
     void shouldSummarizeTodayDueReviewsAndWeekStudy() throws Exception {
