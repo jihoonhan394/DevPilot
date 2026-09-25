@@ -105,6 +105,16 @@ class SettingsScreen extends ConsumerWidget {
             const InstallSettingsSection(),
             const Divider(),
             ListTile(
+              key: const Key('settings.resetLink'),
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.restart_alt),
+              title: Text(l10n.settingsReset),
+              subtitle: Text(l10n.settingsResetDesc),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(AppRoutes.settingsReset),
+            ),
+            const Divider(),
+            ListTile(
               key: const Key('settings.logoutButton'),
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.logout),

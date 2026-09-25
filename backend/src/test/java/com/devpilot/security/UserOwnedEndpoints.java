@@ -583,6 +583,16 @@ public final class UserOwnedEndpoints {
                         NO_BODY,
                         null),
                 // ACCOUNT_ACTION
+                // 진도 초기화는 경로에 남의 id를 넣을 자리가 없다 (docs/05 §3.7) — ACCOUNT_ACTION 이다.
+                // 확인 문구가 틀리면 400 이라 여기서는 정확한 문구를 보낸다
+                new EndpointCase(
+                        "E82",
+                        HttpMethod.POST,
+                        "/api/v1/me/reset",
+                        Kind.ACCOUNT_ACTION,
+                        NO_VARIABLES,
+                        fixture -> Map.of("confirmation", "초기화합니다", "includeProjects", false),
+                        null),
                 account("E30", HttpMethod.DELETE, "/api/v1/me", NO_BODY),
                 account(
                         "E31",

@@ -13,6 +13,7 @@ import 'package:devpilot_app/features/project/data/side_project_models.dart';
 import 'package:devpilot_app/features/project/data/side_project_repository.dart';
 import 'package:devpilot_app/features/settings/data/me_repository.dart';
 import 'package:devpilot_app/features/settings/data/me_response.dart';
+import 'package:devpilot_app/features/settings/data/progress_reset_response.dart';
 import 'package:devpilot_app/features/settings/data/update_me_request.dart';
 import 'package:devpilot_app/features/skill/data/skill_history_models.dart';
 import 'package:devpilot_app/features/skill/data/skill_models.dart';
@@ -61,6 +62,31 @@ final class FakeMeRepository implements MeRepository {
   final updateFailures = <ApiException>[];
   final updates = <UpdateMeRequest>[];
   var fetchCount = 0;
+
+  /// 보낸 초기화 요청. 확인 문구와 체크박스가 그대로 갔는지 본다.
+  final resets = <({String confirmation, bool includeProjects})>[];
+
+  /// 설정하면 초기화가 그 오류로 실패한다.
+  ApiException? resetFailure;
+
+  @override
+  Future<ProgressResetResponse> resetProgress({
+    required String confirmation,
+    required bool includeProjects,
+    required IdempotencyKey idempotencyKey,
+  }) async {
+    final failure = resetFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    resets.add((confirmation: confirmation, includeProjects: includeProjects));
+    me = me.copyWith(onboardingCompleted: false);
+    return ProgressResetResponse(
+      resetAt: DateTime.utc(2026, 9, 26),
+      deletedRows: 12,
+      projectsDeleted: includeProjects,
+    );
+  }
 
   @override
   Future<MeResponse> fetchMe() async {

@@ -824,6 +824,36 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - user
+  /api/v1/me/reset:
+    post:
+      operationId: userResetProgress
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProgressResetRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgressResetResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - user
   /api/v1/onboarding:
     post:
       operationId: onboardingComplete
@@ -4502,6 +4532,32 @@ components:
       - title
       - traceId
       - type
+    ProgressResetRequest:
+      type: object
+      properties:
+        confirmation:
+          type: string
+          maxLength: 50
+          minLength: 0
+        includeProjects:
+          type: boolean
+      required:
+      - confirmation
+    ProgressResetResponse:
+      type: object
+      properties:
+        deletedRows:
+          type: integer
+          format: int32
+        projectsDeleted:
+          type: boolean
+        resetAt:
+          type: string
+          format: date-time
+      required:
+      - deletedRows
+      - projectsDeleted
+      - resetAt
     ReadingView:
       type: object
       properties:

@@ -179,6 +179,9 @@ class _ResultNotes extends ConsumerWidget {
         ),
         if (response.assignedSeedCardCount > 0)
           Text(l10n.onboardingPlanCards(response.assignedSeedCardCount)),
+        const SizedBox(height: AppSpacing.md),
+        // 계획만 보여 주고 끝내면 다음에 뭘 하는지 모른다 (docs/02 §3.4, BL-CLI-49)
+        const _NextSteps(key: Key('onboarding.plan.next')),
         if (result.runDiagnostic) ...[
           const SizedBox(height: AppSpacing.md),
           Card(
@@ -204,6 +207,33 @@ class _ResultNotes extends ConsumerWidget {
             ),
           ),
         ],
+      ],
+    );
+  }
+}
+
+/// 계획 다음에 무엇이 오는지 세 줄 (docs/02 §3.4, BL-CLI-49).
+class _NextSteps extends StatelessWidget {
+  const _NextSteps({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l10n.onboardingPlanNextTitle, style: theme.textTheme.titleSmall),
+        const SizedBox(height: AppSpacing.xs),
+        for (final (index, step) in [
+          l10n.onboardingPlanNextStep1,
+          l10n.onboardingPlanNextStep2,
+          l10n.onboardingPlanNextStep3,
+        ].indexed)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+            child: Text('${index + 1}. $step', style: theme.textTheme.bodySmall),
+          ),
       ],
     );
   }

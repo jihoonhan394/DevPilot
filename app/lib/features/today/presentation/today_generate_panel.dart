@@ -5,6 +5,7 @@ import 'package:devpilot_app/core/widgets/empty_state.dart';
 import 'package:devpilot_app/features/today/presentation/today_actions.dart';
 import 'package:devpilot_app/features/today/presentation/today_controller.dart';
 import 'package:devpilot_app/features/today/presentation/today_diagnostic_card.dart';
+import 'package:devpilot_app/features/today/presentation/today_first_run_card.dart';
 import 'package:devpilot_app/features/today/presentation/today_input_controller.dart';
 import 'package:devpilot_app/features/today/presentation/today_input_fields.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
@@ -30,6 +31,8 @@ class TodayGeneratePanel extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // 무엇부터 하는지를 먼저 말한다 (docs/02 SCR-TODAY, BL-CLI-49). 닫으면 다시 뜨지 않는다
+        const TodayFirstRunCard(),
         // 처음 여는 사람에게는 시간·컨디션을 왜 묻는지가 보이지 않는다.
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.lg),

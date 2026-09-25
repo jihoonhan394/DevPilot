@@ -30,6 +30,7 @@ import 'package:devpilot_app/features/project/presentation/projects_screen.dart'
 import 'package:devpilot_app/features/review/presentation/review_home_screen.dart';
 import 'package:devpilot_app/features/review/presentation/review_session_screen.dart';
 import 'package:devpilot_app/features/settings/data/me_provider.dart';
+import 'package:devpilot_app/features/settings/presentation/progress_reset_screen.dart';
 import 'package:devpilot_app/features/settings/presentation/settings_controller.dart';
 import 'package:devpilot_app/features/settings/presentation/settings_screen.dart';
 import 'package:devpilot_app/features/skill/presentation/skill_detail_screen.dart';
@@ -201,6 +202,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.settings,
             onExit: (context, state) => confirmLeave(context, settingsHasUnsavedChangesProvider),
             builder: (context, state) => const SettingsScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.settingsReset,
+            builder: (context, state) => const ProgressResetScreen(),
           ),
           GoRoute(path: AppRoutes.more, builder: (context, state) => const MoreScreen()),
         ],

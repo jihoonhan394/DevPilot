@@ -85,6 +85,13 @@ class _OnboardingGoalScreenState extends ConsumerState<OnboardingGoalScreen> {
               onChanged: (date) =>
                   _editDraft((draft) => draft.copyWith(targetCompletionDate: date.toIso())),
             ),
+            const SizedBox(height: AppSpacing.xs),
+            // 목표일이 무엇을 정하는지 말해 준다 (docs/02 §3.4, BL-CLI-49) — 계획 전체가 여기서 역산된다
+            Text(
+              l10n.onboardingGoalTargetDateHelp,
+              key: const Key('onboarding.targetDateHelp'),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ],
         );
       },

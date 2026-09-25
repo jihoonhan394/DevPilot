@@ -71,6 +71,9 @@ abstract final class AppRoutes {
   static String projectNote(String sideProjectId, String noteId) =>
       '$projects/$sideProjectId/notes/$noteId';
   static const settings = '/settings';
+
+  /// SCR-ACCOUNT-RESET: 계정은 두고 진도만 되돌린다 (docs/02 §3.14).
+  static const settingsReset = '/settings/reset';
   static const more = '/more';
 
   /// Where `/` and a finished login go (docs/02 §2.3, U-1).

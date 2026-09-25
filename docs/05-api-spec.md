@@ -881,6 +881,43 @@ END:VCALENDAR
 
 ---
 
+### 3.7 `POST /me/reset` — 학습 진도 초기화
+
+| 항목 | 값 |
+|---|---|
+| operationId | `userResetProgress` |
+| 인증 / IK | Bearer / IK |
+| 온보딩 전 | 허용 (지울 것이 없으면 아무것도 지우지 않고 200) |
+| 요청 | `ProgressResetRequest` |
+| 응답 | 200 `ProgressResetResponse` |
+| 오류 | 400 `VALIDATION_FAILED`(`confirmation` 불일치 → code `VALUE_NOT_ALLOWED`) |
+| Sprint · 요구사항 | S3 · BL-SEC-19, ADR-056 |
+
+```java
+public record ProgressResetRequest(
+        @NotBlank String confirmation,   // 정확히 "초기화합니다" (02 §3.2)
+        boolean includeProjects) {}      // true면 사이드 프로젝트와 그 기록도 지운다
+
+public record ProgressResetResponse(
+        Instant resetAt,
+        int deletedRows,                 // 지운 행 수 합계 (화면에는 쓰지 않는다. 로그·테스트용)
+        boolean projectsDeleted) {}
+```
+
+`DELETE /me`(§3.4)와 **다른 동작**이다. 저쪽은 계정 삭제 요청이라 이후 거의 모든 요청이 403이 된다. 이쪽은 계정을 그대로 두고 **온보딩 이전 상태로 되돌린다.**
+
+동작:
+1. `confirmation`이 정확히 `초기화합니다`가 아니면 400 `VALIDATION_FAILED`(field `confirmation`, code `VALUE_NOT_ALLOWED`). 앞뒤 공백은 지우고 비교한다.
+2. 한 트랜잭션에서 그 사용자의 진도 행을 지운다(ADR-056 목록). `user_id`를 가진 테이블은 전부 대상이고, 부모를 지우면 자식은 FK cascade로 따라간다.
+3. **남기는 것**: `app_user`(계정), `ai_call_log`(비용·감사 — `user_id`는 그대로 둔다), `idempotency_record`(요청 중복 처리용이고 자체 TTL이 있다 — 학습 진도가 아니다), `side_project`·`side_project_note`(`includeProjects = false`일 때), 솔루션 콘텐츠(`skill`, `skill_prerequisite`, `role_skill_target`, `owner_user_id`가 null인 `challenge`).
+4. `app_user`의 `onboarding_completed_at = null`, `calendar_token_hash = null`(피드 즉시 중단). `display_name`·시간 설정은 그대로 둔다 — 온보딩에서 다시 받는다.
+5. 감사 로그 `ACCOUNT_PROGRESS_RESET`(`userRef`, `resetAt`, `deletedRows`, `projectsDeleted`).
+6. 최근 로그인 재인증을 요구하지 않는다(ADR-056) — 계정을 잃게 하는 동작이 아니고, 남의 진도를 지우려면 이미 그 사람의 토큰이 있어야 한다.
+7. 클라이언트는 200을 받으면 `meProvider`를 무효화하고 `/onboarding/goal`로 보낸다. `onboardingCompleted = false`이므로 온보딩 가드(§1.4.4)가 같은 곳으로 보낸다.
+
+- **멱등**: 이미 초기화된 사용자가 다시 부르면 지울 것이 없어 `deletedRows = 0`으로 200이다.
+- 지우는 테이블 목록은 코드에 박혀 있다. 새 사용자 테이블이 생기면 빠뜨릴 수 있으므로, `information_schema`에서 `user_id`를 가진 테이블을 읽어 목록과 대조하는 테스트를 둔다(`09` §9).
+
 ## 4. Onboarding 모듈
 
 Controller: `OnboardingController`. Service: `OnboardingService`, `DiagnosticSuggestionService`, 도메인 `SelfAssessmentPropagation` (`03-system-architecture.md` §3.2).

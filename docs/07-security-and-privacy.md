@@ -391,6 +391,7 @@ userRef = lowercase hex( HMAC-SHA256(key = DEVPILOT_LOG_HASH_KEY, message = user
 | `AUTH_USER_PROVISIONED` | `UserProvisioningService.resolve`, `app_user` INSERT가 실제로 1행 삽입했을 때 | `userRef: string`, `matchedBy: "EMAIL" \| "SUBJECT"` |
 | `AUTH_USER_REJECTED` | `UserProvisioningService.resolve`, allowlist 거부 또는 `is_anonymous` 거부 | `subjectRef: string`, `existingUser: boolean`, `reason: "NOT_IN_ALLOWLIST" \| "ANONYMOUS_USER"` |
 | `ACCOUNT_DELETION_REQUESTED` | `AccountDeletionService.request`, `ACTIVE → DELETION_REQUESTED` 커밋 후 | `userRef: string`, `requestedAt: ISO-8601 instant` |
+| `ACCOUNT_PROGRESS_RESET` | `ProgressResetService.reset` 커밋 후 (`05` §3.7, ADR-056) | `userRef: string`, `resetAt: ISO-8601 instant`, `deletedRows: int`, `projectsDeleted: bool` |
 | `ACCOUNT_DELETION_COMPLETED` | `AccountDeletionJob`, 사용자 행 삭제 커밋 후 | `userRef: string`, `externalAuthId: uuid`, `requestedAt: instant`, `completedAt: instant`, `allowlistRemoval: "MANUAL_REQUIRED"` |
 | `DATA_EXPORTED` | `AccountExportService`, 응답 직렬화 완료 후 | `userRef: string`, `format: "JSON"`, `bytes: long` |
 | `AI_BUDGET_WARNING` | `AiGateway`, `ai_call_log` 기록으로 서비스 전체 월 비용 비율이 8,000bp 미만 → 이상으로 바뀐 호출 직후 (기동 후 월당 최대 1회) | `month: "YYYY-MM"`(`devpilot.time.default-zone` = Asia/Seoul 달력 월), `spentMicroUsd: long`, `budgetMicroUsd: long`, `ratioBp: int` |

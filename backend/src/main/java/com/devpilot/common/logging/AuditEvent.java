@@ -12,6 +12,7 @@ public enum AuditEvent {
     AUTH_USER_PROVISIONED(Set.of("userRef", "matchedBy")),
     AUTH_USER_REJECTED(Set.of("subjectRef", "existingUser", "reason")),
     ACCOUNT_DELETION_REQUESTED(Set.of("userRef", "requestedAt")),
+    ACCOUNT_PROGRESS_RESET(Set.of("userRef", "resetAt", "deletedRows", "projectsDeleted")),
     ACCOUNT_DELETION_COMPLETED(
             Set.of("userRef", "externalAuthId", "requestedAt", "completedAt", "allowlistRemoval")),
     DATA_EXPORTED(Set.of("userRef", "format", "bytes")),

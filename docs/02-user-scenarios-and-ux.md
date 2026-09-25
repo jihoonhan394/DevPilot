@@ -132,6 +132,7 @@
 | `/radar/new` | SCR-REQUIREMENT-NEW | Y | Y | S7 |
 | `/radar/:requirementDocId` | SCR-REQUIREMENT-DETAIL | Y | Y | S7 |
 | `/settings` | SCR-SETTINGS | Y | N | S1 (AI 사용량 S3, 캘린더 S5, export·삭제 S6) |
+| `/settings/reset` | SCR-ACCOUNT-RESET | Y | N | S3 |
 | `/settings/delete-account` | SCR-ACCOUNT-DELETE | Y | N | S6 |
 | `/more` | SCR-MORE | Y | Y | S2 (폭 ≥ 600이면 `/today`로 redirect) |
 | 그 외 | SCR-NOT-FOUND | N | N | S0 |
@@ -326,6 +327,7 @@ go_router `redirect`는 아래 순서로 평가하고 처음 해당하는 규칙
 | 로드맵 비교 `sourceUrl` | SCR-REQUIREMENT-NEW | 선택, `http://` 또는 `https://`, ≤ 2000자 | `validation.url` |
 | 로드맵 비교 `sourceText` | SCR-REQUIREMENT-NEW | 공백 아닌 문자 1개 이상, UTF-8 20000 bytes 이하 | `radar.new.validation.tooLarge` |
 | 계정 삭제 확인 문구 | SCR-ACCOUNT-DELETE | 정확히 `삭제합니다` | — (버튼 비활성) |
+| 진도 초기화 확인 문구 | SCR-ACCOUNT-RESET | 정확히 `초기화합니다` | — (버튼 비활성) |
 
 private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYPTED|PGP) )?PRIVATE KEY( BLOCK)?-----`
 
@@ -663,6 +665,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `onboarding.goal.track.javaBackendStarter.desc` | 개발을 막 시작했다면 여기부터. 필수 항목이 적고 과제가 쉬워요 |
 | `onboarding.goal.track.mustCount` | 필수 {count}개 |
 | `onboarding.goal.track.locked` | 트랙은 나중에 바꿀 수 없어요. |
+| `onboarding.goal.targetDate.help` | 이 날짜에서 거꾸로 계산해 하루 분량이 정해져요. 처음이면 3개월쯤이 무난해요. |
 | `onboarding.goal.track.reset` | 트랙을 바꿔서 수준 입력을 다시 받아요. |
 | `onboarding.goal.completion` | 목표일 |
 | `onboarding.goal.completion.help` | 목표일까지 남은 시간으로 무엇을 먼저 할지 정해요. |
@@ -701,6 +704,10 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `onboarding.project.skip.cancel` | 프로젝트 만들기 |
 | `onboarding.submit` | 계획 만들기 |
 | `onboarding.plan.title` | 계획을 만들었어요 |
+| `onboarding.plan.next.title` | 앞으로 이렇게 진행돼요 |
+| `onboarding.plan.next.step1` | 매일 Today에서 오늘 할 것 하나를 받아요 |
+| `onboarding.plan.next.step2` | 혼자 해 보고, 막히면 힌트를 한 단계씩 열어요 |
+| `onboarding.plan.next.step3` | 끝낸 것은 1일·1주·1개월 뒤 복습으로 돌아와요 |
 | `onboarding.plan.cards` | 복습 카드 {count}장을 하루 5장씩 나눠 두었어요. |
 | `onboarding.plan.project` | 사이드 프로젝트: {name} |
 | `onboarding.plan.noProject` | 사이드 프로젝트 없이 시작해요. 프로젝트 과제는 제안되지 않아요. |
@@ -722,6 +729,15 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 ```text
 ┌────────────────────────────────┐
 │ 10월 13일 (화)      진행 현황 > │
+│ ┌ 처음이신가요? ───────────  ✕ ┐│  BL-CLI-49, 닫기 전까지만
+│ │ 매일 여는 곳은 여기 하나예요. ││
+│ │ 1. 시간과 컨디션을 고르면      ││
+│ │    오늘 할 것 하나를 골라 드려요││
+│ │ 2. 혼자 해 보고, 막히면 힌트를 ││
+│ │    한 단계씩 열어요            ││
+│ │ 3. 끝낸 것은 1일·1주·1개월 뒤  ││
+│ │    복습으로 돌아와요           ││
+│ └──────────────────────────────┘│
 │                                │
 │ 오늘 얼마나 할 수 있나요?        │
 │ [15분][30분][45분✓][60분]       │
@@ -1044,10 +1060,19 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
   - 오늘의 팁 카드는 **읽기만 한다** — 여기서는 "알고 있었어요 / 새로 알았어요 / 직접 해 볼래요"를 고를 수 없고 SCR-TIP-DETAIL에서 고른다. 상세에서 고르고 돌아오면 `GET /tips/today`를 다시 읽어 라벨을 갱신한다.
   - 확인 목록·`whyItMatters`는 화면에서 편집할 수 없다. 콘텐츠가 바뀌면 다음 조회부터 새 문구가 보인다(`05` §8.1).
   - 스크린 리더: main 카드 전체를 하나의 semantics 그룹으로 읽는다("문제 풀이, 트랜잭션 전파 수정하기, 약 35분, 왜 중요한가 있음, 이유 3개"). 확인 목록은 펼쳤을 때 "시작 전 확인, 3개 항목"으로 읽고 각 항목을 목록으로 읽는다. 팁 카드는 "오늘의 팁, {제목}, 약 {n}분"으로 읽는다.
+- **처음 안내 카드** (BL-CLI-49): 맨 위에 `today.firstRun.*` 카드를 두고 **세 걸음의 순서**를 말한다. 어디에 무엇이 있는지가 아니라 **무엇부터 하는지**를 말하는 자리다 — 목적지 이름만으로는 처음 쓰는 사람이 시작점을 찾지 못한다.
+  - `✕`로 닫으면 `KeyValueStore`에 `devpilot.today.firstRun.dismissed.{externalAuthId}` = `"1"`을 쓰고 다시 보이지 않는다. 저장이 막힌 브라우저(사생활 보호 모드)에서는 매번 보이지만 화면은 그대로 동작한다(§8.3).
+  - **생성 전 레이아웃에서만** 보인다. 오늘 계획을 이미 만든 뒤에는 안내가 아니라 방해다.
 - **문구**
 
 | key | 문구 |
 |---|---|
+| `today.firstRun.title` | 처음이신가요? |
+| `today.firstRun.lead` | 매일 여는 곳은 여기 하나예요. |
+| `today.firstRun.step1` | 시간과 컨디션을 고르면 오늘 할 것 하나를 골라 드려요 |
+| `today.firstRun.step2` | 혼자 해 보고, 막히면 힌트를 한 단계씩 열어요 |
+| `today.firstRun.step3` | 끝낸 것은 1일·1주·1개월 뒤 복습으로 돌아와요 |
+| `today.firstRun.dismiss` | 닫기 |
 | `today.dashboardLink` | 진행 현황 |
 | `today.minutes.question` | 오늘 얼마나 할 수 있나요? |
 | `today.minutes.custom` | 직접 입력 |
@@ -2741,6 +2766,8 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ ─────────────────────────────  │
 │ 내 데이터                             │
 │ 내 데이터 내려받기 (JSON)              │
+│ 학습 진도 초기화                   >   │
+│ 계정은 그대로 두고 처음부터 다시 시작해요│
 │ 계정 삭제                          >   │
 │ ─────────────────────────────  │
 │ 로그아웃                               │
@@ -2839,6 +2866,71 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `settings.logout` | 로그아웃 |
 | `settings.version` | 버전 {version} ({sha}) |
 
+#### SCR-ACCOUNT-RESET
+
+- **목적**: 계정은 그대로 두고 **학습 진도만** 온보딩 이전으로 되돌린다(ADR-056, BL-SEC-19). 계정 삭제(SCR-ACCOUNT-DELETE)와 다른 화면이다 — 저쪽은 계정을 잃고, 이쪽은 다시 시작한다. **진입**: SCR-SETTINGS "학습 진도 초기화". **Sprint**: S3.
+- **레이아웃** (`/settings/reset`)
+
+```text
+┌────────────────────────────────┐
+│ ←  학습 진도 초기화               │
+│ 계정은 그대로 두고 처음부터 다시   │
+│ 시작해요. 되돌릴 수 없어요.        │
+│ ────────────────────────────── │
+│ 지워지는 것                       │
+│ · 학습 목표와 계획                 │
+│ · 오늘 계획·과제·세션 기록         │
+│ · 기술 레벨과 변경 이력            │
+│ · 복습 카드와 답변                 │
+│ · 문제 풀이 기록과 러버덕 대화     │
+│ 남는 것                           │
+│ · 계정과 로그인                    │
+│ · 개념 노트·문제·용어 (콘텐츠)     │
+│ · 사이드 프로젝트와 그 기록        │
+│ ────────────────────────────── │
+│ ☐ 사이드 프로젝트 기록도 함께 지우기│
+│                                │
+│ 확인을 위해 초기화합니다 를 입력하세요│
+│ ┌────────────────────────────┐ │
+│ │                            │ │
+│ └────────────────────────────┘ │
+│ ┌────────────────────────────┐ │
+│ │        초기화하기            │ │  입력이 정확할 때만 활성
+│ └────────────────────────────┘ │
+└────────────────────────────────┘
+```
+
+- **규칙**
+  - **무엇이 지워지고 무엇이 남는지 먼저 보인다.** 확인 입력은 그다음이다 — 되돌릴 수 없는 일에서 "예/아니오"만 묻지 않는다(§3.2 계정 삭제와 같은 방식).
+  - 확인 입력이 앞뒤 공백을 지운 뒤 정확히 `초기화합니다`일 때만 "초기화하기"가 활성된다. 다른 값이면 오류 문구를 띄우지 않고 버튼만 꺼 둔다.
+  - 체크박스를 켜면 `includeProjects: true`로 보내고, "남는 것"의 사이드 프로젝트 줄이 "지워지는 것"으로 옮겨 간다 — **보낼 값과 화면이 어긋나지 않게** 한다.
+  - 요청 중에는 버튼을 비활성한다(§6.6). 같은 행동을 재시도하면 같은 IK를 쓴다.
+- **데이터**: "초기화하기" → `POST /me/reset` `{confirmation, includeProjects}` (IK) → 200 `ProgressResetResponse`.
+- **성공 뒤**: `meProvider`를 무효화하고 온보딩 첫 단계(`/onboarding/goal`)로 보낸다. 토스트 `settings.reset.done`. 온보딩 draft가 남아 있으면 지운다 — 지난 입력이 새 시작에 끼어들면 안 된다.
+- **상태**: Loading — 버튼 spinner. Error — 토스트(§5.1) + 버튼 복구. Offline — 버튼 비활성. AI — 해당 없음.
+- **문구**
+
+| key | 문구 |
+|---|---|
+| `settings.reset` | 학습 진도 초기화 |
+| `settings.reset.desc` | 계정은 그대로 두고 처음부터 다시 시작해요 |
+| `settings.reset.title` | 학습 진도 초기화 |
+| `settings.reset.lead` | 계정은 그대로 두고 처음부터 다시 시작해요. 되돌릴 수 없어요. |
+| `settings.reset.removedTitle` | 지워지는 것 |
+| `settings.reset.removed.plan` | 학습 목표와 계획 |
+| `settings.reset.removed.today` | 오늘 계획·과제·세션 기록 |
+| `settings.reset.removed.skill` | 기술 레벨과 변경 이력 |
+| `settings.reset.removed.review` | 복습 카드와 답변 |
+| `settings.reset.removed.training` | 문제 풀이 기록과 러버덕 대화 |
+| `settings.reset.keptTitle` | 남는 것 |
+| `settings.reset.kept.account` | 계정과 로그인 |
+| `settings.reset.kept.content` | 개념 노트·문제·용어 |
+| `settings.reset.kept.projects` | 사이드 프로젝트와 그 기록 |
+| `settings.reset.includeProjects` | 사이드 프로젝트 기록도 함께 지우기 |
+| `settings.reset.confirmLabel` | 확인을 위해 초기화합니다 를 입력하세요 |
+| `settings.reset.button` | 초기화하기 |
+| `settings.reset.done` | 처음부터 다시 시작해요. |
+
 #### SCR-ACCOUNT-DELETE
 
 - **목적**: 삭제 범위를 알리고, 최근 재로그인과 확인 문구 입력 후 계정 삭제를 요청한다(FR-23, AC-15). **진입**: SCR-SETTINGS "계정 삭제", 재로그인 후 복귀(`?reauth=1`). **Sprint**: S6.
@@ -2882,10 +2974,54 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 #### SCR-MORE
 
-- **목적**: 모바일에서 하단 탭에 없는 목적지로 이동한다. **진입**: 하단 탭 More(폭 < 600만). **Sprint**: S2.
-- **레이아웃**: `ListTile` 목록(아이콘 + 라벨 + `>`), flag가 켜진 항목만: 사이드 프로젝트(`/projects`), 문제 풀이(`/training`), 코드 리뷰(`/coach`), 기술(`/skills`), 오늘의 팁(`/tips`, `tips` flag), 용어 사전(`/terms`, `terms` flag), 진행 현황(`/dashboard`), 주간 리뷰(`/weekly`), 증거(`/evidence`), 로드맵 비교(`/radar`), 설정(`/settings`). AI 상태가 `DISABLED`/`BALANCE_EXHAUSTED`/`BUDGET_WARNING`이면 목록 위에 §6.5 배너.
+- **목적**: 모바일에서 하단 탭에 없는 목적지로 이동한다. **진입**: 하단 탭 More(폭 < 600만). **Sprint**: S2 (그룹·설명은 S3, BL-CLI-49).
+- **레이아웃**: **세 묶음**으로 나눈 `ListTile` 목록이다. 각 줄은 아이콘 + 라벨 + **한 줄 설명** + `>`이고, flag가 켜진 항목만 보인다. AI 상태가 `DISABLED`/`BALANCE_EXHAUSTED`/`BUDGET_WARNING`이면 목록 위에 §6.5 배너.
+
+```text
+┌────────────────────────────────┐
+│ 더보기                          │
+│ 배우기                           │  more.group.learn
+│ 📖 개념 노트                  > │
+│    개념을 처음 배울 때 읽는 글    │
+│ 💡 오늘의 팁                  > │
+│    3분짜리 실무 증상 하나         │
+│ 🔤 용어 사전                  > │
+│    말이 헷갈릴 때 찾는 곳         │
+│ 🏋 문제 풀이                  > │
+│    직접 풀어 보는 문제            │
+│ 내 기록                          │  more.group.record
+│ 🌳 기술                       > │
+│    내 기술이 어디까지 왔는지      │
+│ 💻 사이드 프로젝트            > │
+│    내가 만든 것과 그때 내린 결정  │
+│ 📊 진행 현황                  > │
+│    이번 주에 무엇을 했는지        │
+│ 설정                             │  more.group.settings
+│ ⚙ 설정                        > │
+│    시간·알림·계정                 │
+└────────────────────────────────┘
+```
+
+  - **묶음은 "무엇을 하러 가는가"로 나눈다** — 기능 이름만 늘어놓으면 처음 쓰는 사람은 어디부터 열어야 할지 알 수 없다(BL-CLI-49). 설명은 그 화면이 **무엇을 위한 곳인지** 한 줄로 말하고, 기능을 나열하지 않는다.
+  - 아직 만들지 않은 목적지(코드 리뷰 `/coach`, 주간 리뷰 `/weekly`, 증거 `/evidence`, 로드맵 비교 `/radar`)는 flag가 켜지면 각각 배우기·내 기록 묶음에 같은 형식으로 붙인다.
 - **데이터**: `meProvider`(캐시). **상태**: 없음.
-- **문구**: `more.title` = "더보기", `more.projects` = "사이드 프로젝트", `more.training` = "문제 풀이", `more.coach` = "코드 리뷰", `more.skills` = "기술", `more.tips` = "오늘의 팁", `more.terms` = "용어 사전", `more.dashboard` = "진행 현황", `more.weekly` = "주간 리뷰", `more.evidence` = "증거", `more.radar` = "로드맵 비교", `more.settings` = "설정"
+- **문구**
+
+| key | 문구 |
+|---|---|
+| `more.title` | 더보기 |
+| `more.group.learn` | 배우기 |
+| `more.group.record` | 내 기록 |
+| `more.group.settings` | 설정 |
+| `more.lessons` / `.desc` | 개념 노트 / 개념을 처음 배울 때 읽는 글 |
+| `more.tips` / `.desc` | 오늘의 팁 / 3분짜리 실무 증상 하나 |
+| `more.terms` / `.desc` | 용어 사전 / 말이 헷갈릴 때 찾는 곳 |
+| `more.training` / `.desc` | 문제 풀이 / 직접 풀어 보는 문제 |
+| `more.skills` / `.desc` | 기술 / 내 기술이 어디까지 왔는지 |
+| `more.projects` / `.desc` | 사이드 프로젝트 / 내가 만든 것과 그때 내린 결정 |
+| `more.dashboard` / `.desc` | 진행 현황 / 이번 주에 무엇을 했는지 |
+| `more.settings` / `.desc` | 설정 / 시간·알림·계정 |
+| `more.coach` / `more.weekly` / `more.evidence` / `more.radar` | 코드 리뷰 / 주간 리뷰 / 증거 / 로드맵 비교 |
 
 #### SCR-NOT-FOUND
 

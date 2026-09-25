@@ -121,6 +121,15 @@ public class AppUser extends BaseTimeEntity {
     }
 
     /**
+     * 온보딩 이전으로 되돌린다 (docs/05 §3.7, ADR-056). 계정·표시 이름·시간 설정은 <b>그대로 둔다</b> — 온보딩이 다시 받는다. 캘린더 토큰은
+     * 지워 피드를 즉시 끊는다.
+     */
+    public void resetProgress() {
+        onboardingCompletedAt = null;
+        calendarTokenHash = null;
+    }
+
+    /**
      * {@code ACTIVE → DELETION_REQUESTED} (docs/04 §4.7, docs/05 §3.4). 캘린더 토큰을 지워 피드를 즉시 끊는다. 이미
      * 요청 상태면 호출하지 않는다(서비스가 멱등 처리).
      */
