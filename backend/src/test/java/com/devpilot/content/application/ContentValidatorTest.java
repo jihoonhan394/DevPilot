@@ -800,6 +800,138 @@ class ContentValidatorTest {
                         issue -> "CV-96".equals(issue.rule()) && issue.message().endsWith(series));
     }
 
+    // ---- 용어 사전 CV-100 ~ CV-106 (docs/19 §3.10, §4.3) --------------------
+    // 표기가 흔들리면 읽을 때마다 같은 것인지 다시 확인해야 한다. 그래서 유일성 규칙이 대부분 ERROR다.
+
+    @Test
+    void shouldRejectTermKeyThatDoesNotMatchThePattern() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        fixture.terms().getFirst().put("key", "TERM.DATABASE");
+
+        assertThat(validator.validate(fixture.content).errors())
+                .anyMatch(issue -> "CV-100".equals(issue.rule()));
+    }
+
+    @Test
+    void shouldRejectDuplicateTermKey() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        List<Map<String, Object>> terms = fixture.terms();
+        terms.get(1).put("key", terms.getFirst().get("key"));
+
+        assertThat(validator.validate(fixture.content).errors())
+                .anyMatch(issue -> "CV-100".equals(issue.rule()));
+    }
+
+    /** 한 표기가 두 뜻을 가리키면 검색 결과에서 어느 쪽인지 알 수 없다. */
+    @Test
+    void shouldRejectTwoTermsWithTheSameRepresentative() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        List<Map<String, Object>> terms = fixture.terms();
+        terms.get(1).put("representative", terms.getFirst().get("representative"));
+
+        assertThat(validator.validate(fixture.content).errors())
+                .anyMatch(issue -> "CV-101".equals(issue.rule()));
+    }
+
+    @Test
+    void shouldRejectAliasThatIsAnotherTermsRepresentative() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        List<Map<String, Object>> terms = fixture.terms();
+        terms.get(1).put("aliases", list(terms.getFirst().get("representative")));
+
+        assertThat(validator.validate(fixture.content).errors())
+                .anyMatch(issue -> "CV-101".equals(issue.rule()));
+    }
+
+    @Test
+    void shouldRejectDefinitionThatIsMoreThanOneSentence() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        fixture.terms().getFirst().put("definition", "앞 문장은 여기까지다. 뒤 문장은 여기서 시작한다.");
+
+        assertThat(validator.validate(fixture.content).errors())
+                .anyMatch(issue -> "CV-102".equals(issue.rule()));
+    }
+
+    @Test
+    void shouldRejectTermSourceOnAnUntrustedHost() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        fixture.terms().getFirst().put("sourceUrl", "https://blog.example.com/what-is-an-index");
+
+        assertThat(validator.validate(fixture.content).errors())
+                .anyMatch(issue -> "CV-102".equals(issue.rule()));
+    }
+
+    @Test
+    void shouldRejectConfusableWithThatPointsAtNothing() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        fixture.terms().getFirst().put("confusableWith", list("TERM.DATABASE.NOT_THERE"));
+
+        assertThat(validator.validate(fixture.content).errors())
+                .anyMatch(issue -> "CV-103".equals(issue.rule()));
+    }
+
+    @Test
+    void shouldRejectTermSkillWithoutARoleTarget() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        fixture.terms().getFirst().put("skillCodes", list("DATABASE"));
+
+        assertThat(validator.validate(fixture.content).errors())
+                .anyMatch(issue -> "CV-103".equals(issue.rule()));
+    }
+
+    /**
+     * CV-106: 정의 안에 대표 표기를 쓰면 역방향 카드({@code TERM:{key}:REVERSE})의 답이 문제에 그대로 나온다 — 맞혀도 아무것도 말해 주지
+     * 않는 카드가 된다.
+     */
+    @Test
+    void shouldRejectDefinitionThatContainsItsOwnRepresentative() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        Map<String, Object> term = fixture.terms().getFirst();
+        term.put("definition", term.get("representative") + "는 찾을 자리를 미리 정렬해 둔 자료 구조다.");
+
+        assertThat(validator.validate(fixture.content).errors())
+                .anyMatch(issue -> "CV-106".equals(issue.rule()));
+    }
+
+    @Test
+    void shouldRejectActiveTermThatIsListedAsRetired() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        fixture.retired("termKeys").add(fixture.terms().getFirst().get("key"));
+
+        assertThat(validator.validate(fixture.content).errors())
+                .anyMatch(issue -> "CV-105".equals(issue.rule()));
+    }
+
+    @Test
+    void shouldRejectConfusableWithThatPointsAtARetiredTerm() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        List<Map<String, Object>> terms = fixture.terms();
+        Map<String, Object> retiredTerm =
+                terms.stream()
+                        .filter(term -> Boolean.TRUE.equals(term.get("retired")))
+                        .findFirst()
+                        .orElseThrow();
+        terms.getFirst().put("confusableWith", list(retiredTerm.get("key")));
+
+        assertThat(validator.validate(fixture.content).errors())
+                .anyMatch(issue -> "CV-105".equals(issue.rule()));
+    }
+
+    /** CV-104는 WARN이다 — 고칠 곳은 용어가 아니라 그 표기를 쓴 <b>본문</b>이다. */
+    @Test
+    void shouldWarnWhenOtherContentUsesAnAliasSpelling() {
+        Fixture fixture = new Fixture(reader.read(TEST_CONTENT));
+        fixture.testTips().getFirst().put("title", "검사 예외를 언제 그대로 올릴지 정한다");
+
+        ContentValidationReport report = validator.validate(fixture.content);
+
+        assertThat(report.errors()).isEmpty();
+        assertThat(report.warnings())
+                .anyMatch(
+                        issue ->
+                                "CV-104".equals(issue.rule()) && issue.message().contains("체크 예외"));
+    }
+
     /**
      * CV-89 (docs/19 §3.2·§7.5): MUST인 skill의 한 문장은 과제 카드 맨 위에 그대로 붙는다 — 비어 있으면 가장 자주 나오는 과제가 이유 없이
      * 나온다.
@@ -936,6 +1068,15 @@ class ContentValidatorTest {
 
         List<Map<String, Object>> tips() {
             return maps(document("tips/practical.yaml").get("tips"));
+        }
+
+        List<Map<String, Object>> terms() {
+            return maps(document("terms/test.yaml").get("terms"));
+        }
+
+        /** 테스트 catalog의 팁. {@link #tips()}는 운영 파일을 읽는다. */
+        List<Map<String, Object>> testTips() {
+            return maps(document("tips/test.yaml").get("tips"));
         }
 
         List<Map<String, Object>> lessonSources() {

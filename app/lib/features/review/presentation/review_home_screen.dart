@@ -153,6 +153,14 @@ class _CardLinks extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.go(AppRoutes.reviewItemsNew),
           ),
+        // 말이 헷갈릴 때 찾는 자리 (SCR-TERMS, docs/02 §3.17)
+        ListTile(
+          key: const Key('review.home.termsLink'),
+          contentPadding: EdgeInsets.zero,
+          title: Text(l10n.reviewHomeTerms),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.go(AppRoutes.termsPrefix),
+        ),
       ],
     );
   }

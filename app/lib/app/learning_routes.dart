@@ -14,6 +14,9 @@ import 'package:devpilot_app/features/review/presentation/review_items_screen.da
 import 'package:devpilot_app/features/rubber_duck/data/rubber_duck_enums.dart';
 import 'package:devpilot_app/features/rubber_duck/presentation/rubber_duck_input_guard.dart';
 import 'package:devpilot_app/features/rubber_duck/presentation/rubber_duck_screen.dart';
+import 'package:devpilot_app/features/term/data/term_repository.dart';
+import 'package:devpilot_app/features/term/presentation/term_detail_screen.dart';
+import 'package:devpilot_app/features/term/presentation/terms_list_screen.dart';
 import 'package:devpilot_app/features/tip/data/tip_repository.dart';
 import 'package:devpilot_app/features/tip/presentation/tip_detail_screen.dart';
 import 'package:devpilot_app/features/tip/presentation/tips_list_screen.dart';
@@ -108,6 +111,27 @@ GoRoute tipDetailRoute() => GoRoute(
       return const NotFoundScreen();
     }
     return TipDetailScreen(tipKey: tipKey);
+  },
+);
+
+/// `/terms` (SCR-TERMS). 말이 헷갈릴 때 찾는 자리다. 검색어와 기술 필터는 라우트에 남는다.
+GoRoute termsListRoute() => GoRoute(
+  path: AppRoutes.termsPrefix,
+  builder: (context, state) => TermsListScreen(
+    query: state.uri.queryParameters[AppRoutes.queryParameter],
+    skillId: state.uri.queryParameters[AppRoutes.skillIdParameter],
+  ),
+);
+
+/// `/terms/:termKey` (SCR-TERM-DETAIL). 은퇴한 용어도 그대로 열린다 (docs/05 §20.6).
+GoRoute termDetailRoute() => GoRoute(
+  path: '${AppRoutes.termsPrefix}/:termKey',
+  builder: (context, state) {
+    final termKey = state.pathParameters['termKey'] ?? '';
+    if (!termKeyPattern.hasMatch(termKey)) {
+      return const NotFoundScreen();
+    }
+    return TermDetailScreen(termKey: termKey);
   },
 );
 

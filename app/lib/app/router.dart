@@ -117,7 +117,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           lessonListRoute(),
           lessonRoute(),
           tipsListRoute(),
+          termsListRoute(),
           tipDetailRoute(),
+          termDetailRoute(),
           GoRoute(path: AppRoutes.dashboard, builder: (context, state) => const DashboardScreen()),
           GoRoute(
             path: AppRoutes.review,

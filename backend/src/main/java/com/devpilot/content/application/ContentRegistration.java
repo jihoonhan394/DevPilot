@@ -1,13 +1,6 @@
 package com.devpilot.content.application;
 
 import com.devpilot.content.domain.RawContent;
-import com.devpilot.plan.application.PlanTemplateRegistry;
-import com.devpilot.review.application.SeedCardRegistry;
-import com.devpilot.today.application.ChecklistRegistry;
-import com.devpilot.today.application.ConceptReadingRegistry;
-import com.devpilot.today.application.CuratedReadingRegistry;
-import com.devpilot.today.application.DailyTipRegistry;
-import com.devpilot.today.application.LessonRegistry;
 import com.devpilot.today.domain.ConceptReading;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,10 +8,9 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 
 /**
- * 검증을 마친 콘텐츠를 메모리 registry에 등록한다 (docs/04 §9, docs/19 §3.12 7번): plan template → {@link
- * PlanTemplateRegistry}, review card → {@link SeedCardRegistry}, curated reading(은퇴한 것 포함) → {@link
- * CuratedReadingRegistry}, 개념 읽기(은퇴한 것 포함) → {@link ConceptReadingRegistry}, 개념 노트(은퇴한 것 포함) →
- * {@link LessonRegistry}. {@link ContentSeeder}가 부른다.
+ * 검증을 마친 콘텐츠를 메모리 registry에 등록한다 (docs/04 §9, docs/19 §3.12 7번): plan template, review card,
+ * curated reading(은퇴한 것 포함), 개념 읽기(은퇴한 것 포함), 개념 노트(은퇴한 것 포함), 오늘의 팁, 과제 체크리스트, 용어 사전. 받을 registry는
+ * {@link ContentRegistries}에 모여 있다. {@link ContentSeeder}가 부른다.
  */
 @Component
 class ContentRegistration {
@@ -26,29 +18,10 @@ class ContentRegistration {
     /** {@code files.conceptReadings}를 생략했을 때의 경로 (docs/19 §3.1·§3.13). */
     private static final String DEFAULT_CONCEPT_READINGS = "concept-readings.yaml";
 
-    private final PlanTemplateRegistry planTemplateRegistry;
-    private final SeedCardRegistry seedCardRegistry;
-    private final CuratedReadingRegistry curatedReadingRegistry;
-    private final ConceptReadingRegistry conceptReadingRegistry;
-    private final LessonRegistry lessonRegistry;
-    private final DailyTipRegistry dailyTipRegistry;
-    private final ChecklistRegistry checklistRegistry;
+    private final ContentRegistries registries;
 
-    ContentRegistration(
-            PlanTemplateRegistry planTemplateRegistry,
-            SeedCardRegistry seedCardRegistry,
-            CuratedReadingRegistry curatedReadingRegistry,
-            ConceptReadingRegistry conceptReadingRegistry,
-            LessonRegistry lessonRegistry,
-            DailyTipRegistry dailyTipRegistry,
-            ChecklistRegistry checklistRegistry) {
-        this.planTemplateRegistry = planTemplateRegistry;
-        this.seedCardRegistry = seedCardRegistry;
-        this.curatedReadingRegistry = curatedReadingRegistry;
-        this.conceptReadingRegistry = conceptReadingRegistry;
-        this.lessonRegistry = lessonRegistry;
-        this.dailyTipRegistry = dailyTipRegistry;
-        this.checklistRegistry = checklistRegistry;
+    ContentRegistration(ContentRegistries registries) {
+        this.registries = registries;
     }
 
     /** 등록하고 개수를 돌려준다. */
@@ -56,27 +29,38 @@ class ContentRegistration {
         documents(content, catalog, "planTemplates")
                 .forEach(
                         document ->
-                                planTemplateRegistry.register(CatalogMapping.template(document)));
-        seedCardRegistry.register(
-                CatalogMapping.reviewCards(documents(content, catalog, "reviewCards")));
+                                registries
+                                        .planTemplates()
+                                        .register(CatalogMapping.template(document)));
+        registries
+                .seedCards()
+                .register(CatalogMapping.reviewCards(documents(content, catalog, "reviewCards")));
         Map<String, Object> files = RawYaml.asMap(catalog.get("files"));
         Object curatedRepos = files.get("curatedRepos");
         if (curatedRepos instanceof String path) {
-            curatedReadingRegistry.register(
-                    CatalogMapping.curatedReadings(RawYaml.asMap(content.document(path).root())));
+            registries
+                    .curatedReadings()
+                    .register(
+                            CatalogMapping.curatedReadings(
+                                    RawYaml.asMap(content.document(path).root())));
         }
         registerConceptReadings(content, files);
-        lessonRegistry.register(CatalogMapping.lessons(documents(content, catalog, "lessons")));
-        dailyTipRegistry.register(CatalogMapping.tips(documents(content, catalog, "tips")));
-        checklistRegistry.register(
-                CatalogMapping.checklists(documents(content, catalog, "checklists")));
+        registries
+                .lessons()
+                .register(CatalogMapping.lessons(documents(content, catalog, "lessons")));
+        registries.tips().register(CatalogMapping.tips(documents(content, catalog, "tips")));
+        registries
+                .checklists()
+                .register(CatalogMapping.checklists(documents(content, catalog, "checklists")));
+        registries.terms().register(CatalogMapping.terms(documents(content, catalog, "terms")));
         return new Registered(
-                seedCardRegistry.cards().size(),
-                curatedReadingRegistry.all().size(),
-                conceptReadingRegistry.all().size(),
-                lessonRegistry.all().size(),
-                checklistRegistry.all().size(),
-                dailyTipRegistry.all().size());
+                registries.seedCards().cards().size(),
+                registries.curatedReadings().all().size(),
+                registries.conceptReadings().all().size(),
+                registries.lessons().all().size(),
+                registries.checklists().all().size(),
+                registries.tips().all().size(),
+                registries.terms().all().size());
     }
 
     /**
@@ -91,13 +75,13 @@ class ContentRegistration {
         List<String> collisions =
                 readings.stream()
                         .map(ConceptReading::key)
-                        .filter(key -> curatedReadingRegistry.find(key).isPresent())
+                        .filter(key -> registries.curatedReadings().find(key).isPresent())
                         .toList();
         if (!collisions.isEmpty()) {
             throw new IllegalStateException(
                     "reading key collides with a code reading: " + collisions);
         }
-        conceptReadingRegistry.register(readings);
+        registries.conceptReadings().register(readings);
     }
 
     static List<Map<String, Object>> documents(
@@ -117,5 +101,6 @@ class ContentRegistration {
             int conceptReadings,
             int lessons,
             int checklists,
-            int tips) {}
+            int tips,
+            int terms) {}
 }

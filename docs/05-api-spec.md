@@ -4165,6 +4165,7 @@ public record TermView(
         List<SkillRef> skills,
         TipLevel level,                     // 팁과 같은 난이도 enum (04 §3)
         String sourceUrl,
+        boolean retired,                    // 은퇴한 용어. 검색에는 없지만 이 조회로는 열린다 (19 §8.2)
         List<CreatedCardView> cards) {}     // 이 용어로 이미 만든 복습 카드. 없으면 []
 
 public record TermRefView(String termKey, String representative, String english) {}

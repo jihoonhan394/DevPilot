@@ -22,6 +22,8 @@ files:
     - checklists/test.yaml
   tips:
     - tips/test.yaml
+  terms:
+    - terms/test.yaml
   curatedSources: curated-sources.yaml
   curatedRepos: curated-repos.yaml
   conceptReadings: concept-readings.yaml
@@ -34,3 +36,4 @@ retired:
   # 코드 읽기(READ.*)와 개념 읽기(DOC.*)가 한 목록을 같이 쓴다 (19 §3.1, CV-120)
   readingKeys: [READ.TESTREPO.LEGACY_CONTROLLER.001, DOC.TESTJAVA.LEGACY.001]
   tipKeys: []
+  termKeys: [TERM.TESTING.OLD_WORD]

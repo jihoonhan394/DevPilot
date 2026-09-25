@@ -1,0 +1,120 @@
+# DevPilot 용어 사전 — HTTP · 보안 · 운영
+# Spec: docs/19-content-spec.md §3.10
+terms:
+  - key: TERM.WEB_HTTP.IDEMPOTENCY
+    representative: 멱등성
+    english: idempotency
+    definition: |-
+      같은 요청을 한 번 보내든 여러 번 보내든 서버에 남는 결과가 달라지지 않는 성질이다.
+    example: |-
+      결제 요청에 키를 붙여, 응답을 못 받고 다시 보내도 두 번 결제되지 않게 했다.
+    confusableWith: [TERM.WEB_HTTP.RETRY]
+    skillCodes: [WEB_HTTP.IDEMPOTENCY, WEB_HTTP.REST_API_DESIGN]
+    level: PRACTICAL
+    sourceUrl: https://www.rfc-editor.org/rfc/rfc9110.html
+    retired: false
+
+  - key: TERM.WEB_HTTP.RETRY
+    representative: 재시도
+    english: retry
+    definition: |-
+      실패한 요청을 잠시 뒤 다시 보내는 것으로, 받는 쪽이 같은 요청을 구분하지 못하면 같은 일이 두 번 일어난다.
+    example: |-
+      타임아웃마다 곧바로 다시 보내다가 상대 서버를 더 밀어붙여, 간격을 점점 늘리도록 바꿨다.
+    confusableWith: [TERM.WEB_HTTP.IDEMPOTENCY]
+    skillCodes: [PRACTICAL_ENGINEERING.RESOURCE_TIMEOUT, WEB_HTTP.IDEMPOTENCY]
+    level: PRACTICAL
+    sourceUrl: https://www.rfc-editor.org/rfc/rfc9110.html
+    retired: false
+
+  - key: TERM.SECURITY.AUTHENTICATION
+    representative: 인증
+    english: authentication
+    definition: |-
+      요청을 보낸 쪽이 자기가 말하는 그 사람이 맞는지 확인하는 일이고, 실패하면 401이다.
+    example: |-
+      토큰이 만료돼 401이 떨어졌는데 로그에는 권한 부족이라고 적혀 있어 한참 헤맸다.
+    confusableWith: [TERM.SECURITY.AUTHORIZATION]
+    skillCodes: [SECURITY.AUTHN_AUTHZ, WEB_HTTP.AUTH_SESSION_TOKEN]
+    level: BASIC
+    sourceUrl: https://www.rfc-editor.org/rfc/rfc9110.html
+    retired: false
+
+  - key: TERM.SECURITY.AUTHORIZATION
+    representative: 인가
+    english: authorization
+    aliases: [권한 부여]
+    definition: |-
+      누구인지 이미 안 상태에서 그 자원에 손대도 되는지 정하는 일이고, 거절하면 403이다.
+    example: |-
+      남의 주문 번호로 조회가 되길래, 소유자가 아니면 404를 주도록 고쳤다.
+    confusableWith: [TERM.SECURITY.AUTHENTICATION]
+    skillCodes: [SECURITY.AUTHN_AUTHZ, SPRING.SECURITY]
+    level: BASIC
+    sourceUrl: https://www.rfc-editor.org/rfc/rfc9110.html
+    retired: false
+
+  - key: TERM.WEB_HTTP.CORS
+    representative: CORS
+    english: cross-origin resource sharing
+    definition: |-
+      다른 출처에서 온 브라우저 요청을 서버가 응답 헤더로 허락해 주는 규칙이다.
+    example: |-
+      로컬 화면에서만 요청이 막혀 서버를 의심했는데, 허용 출처 목록에 개발 주소가 빠져 있었다.
+    confusableWith: []
+    skillCodes: [WEB_HTTP.CORS]
+    level: BASIC
+    sourceUrl: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
+    retired: false
+
+  - key: TERM.SECURITY.SECRET
+    representative: 비밀값
+    english: secret
+    definition: |-
+      새어 나가면 그대로 남의 권한이 되는 문자열로, 저장소와 로그 어디에도 남기지 않는다.
+    example: |-
+      설정 파일에 적혀 있던 API 키를 환경 변수로 옮기고, 지난 커밋에 남은 것은 발급을 새로 받았다.
+    confusableWith: []
+    skillCodes: [SECURITY.SECRET_MANAGEMENT, SECURITY.SENSITIVE_DATA_LOGGING]
+    level: BASIC
+    sourceUrl: https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html
+    retired: false
+
+  - key: TERM.DEVOPS.CONTAINER_IMAGE
+    representative: 컨테이너 이미지
+    english: container image
+    definition: |-
+      실행에 필요한 파일과 설정을 한 덩어리로 굳혀 둔 읽기 전용 꾸러미로, 그것을 띄운 것이 컨테이너다.
+    example: |-
+      내 장비에서는 되던 것이 서버에서 안 돼서, 같은 태그를 그대로 받아 띄워 보고 설정 차이를 찾았다.
+    confusableWith: []
+    skillCodes: [DEVOPS.DOCKER]
+    level: BASIC
+    sourceUrl: https://docs.docker.com/get-started/docker-overview/
+    retired: false
+
+  - key: TERM.DEVOPS.REBASE
+    representative: 리베이스
+    english: rebase
+    definition: |-
+      내 커밋들을 다른 커밋 위로 옮겨 다시 얹는 것으로, 커밋 해시가 새로 만들어진다.
+    example: |-
+      공유 브랜치에 이걸 하고 강제로 밀어서 다른 사람 커밋이 사라졌다.
+    confusableWith: [TERM.DEVOPS.MERGE]
+    skillCodes: [DEVOPS.GIT]
+    level: PRACTICAL
+    sourceUrl: https://git-scm.com/docs/git-rebase
+    retired: false
+
+  - key: TERM.DEVOPS.MERGE
+    representative: 병합
+    english: merge
+    definition: |-
+      두 갈래의 변경을 하나로 합치면서 갈라진 흔적을 커밋 하나로 남기는 것이다.
+    example: |-
+      충돌 표시를 그대로 커밋해 버려서 빌드가 깨졌다.
+    confusableWith: [TERM.DEVOPS.REBASE]
+    skillCodes: [DEVOPS.GIT]
+    level: BASIC
+    sourceUrl: https://git-scm.com/docs/git-merge
+    retired: false

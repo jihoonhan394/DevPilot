@@ -1887,6 +1887,113 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - today
+  /api/v1/terms:
+    get:
+      operationId: reviewListTerms
+      parameters:
+      - in: query
+        name: q
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          minLength: 0
+      - in: query
+        name: skillId
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+          maxLength: 512
+          minLength: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CursorPageTermSummaryView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - review
+  /api/v1/terms/{termKey}:
+    get:
+      operationId: reviewGetTerm
+      parameters:
+      - in: path
+        name: termKey
+        required: true
+        schema:
+          type: string
+          maxLength: 120
+          minLength: 0
+          pattern: "^TERM\\.[A-Z][A-Z0-9_]*\\.[A-Z][A-Z0-9_]*$"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TermView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - review
+  /api/v1/terms/{termKey}/card:
+    post:
+      operationId: reviewCreateTermCard
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: termKey
+        required: true
+        schema:
+          type: string
+          maxLength: 120
+          minLength: 0
+          pattern: "^TERM\\.[A-Z][A-Z0-9_]*\\.[A-Z][A-Z0-9_]*$"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TermCardResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - review
   /api/v1/tips:
     get:
       operationId: todayListTips
@@ -2688,6 +2795,29 @@ components:
       - verifiedAt
       - versionScope
       - whyRead
+    CreatedCardView:
+      type: object
+      properties:
+        conceptKey:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        reviewItemId:
+          type: string
+          format: uuid
+        reviewType:
+          type: string
+          enum:
+          - RECALL
+          - BUG_SPOT
+          - EXPLAIN
+          - CHOICE
+      required:
+      - conceptKey
+      - dueDate
+      - reviewItemId
+      - reviewType
     CuratedRepoView:
       type: object
       properties:
@@ -2801,6 +2931,18 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SkillStateChangeView"
+        nextCursor:
+          type: string
+      required:
+      - items
+      - nextCursor
+    CursorPageTermSummaryView:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TermSummaryView"
         nextCursor:
           type: string
       required:
@@ -6279,6 +6421,111 @@ components:
       - status
       - taskType
       - version
+    TermCardResponse:
+      type: object
+      properties:
+        cards:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreatedCardView"
+        createdCount:
+          type: integer
+          format: int32
+        termKey:
+          type: string
+      required:
+      - cards
+      - createdCount
+      - termKey
+    TermRefView:
+      type: object
+      properties:
+        english:
+          type: string
+        representative:
+          type: string
+        termKey:
+          type: string
+      required:
+      - english
+      - representative
+      - termKey
+    TermSummaryView:
+      type: object
+      properties:
+        cardCreated:
+          type: boolean
+        definition:
+          type: string
+        english:
+          type: string
+        level:
+          type: string
+          enum:
+          - BASIC
+          - PRACTICAL
+        representative:
+          type: string
+        termKey:
+          type: string
+      required:
+      - cardCreated
+      - definition
+      - english
+      - level
+      - representative
+      - termKey
+    TermView:
+      type: object
+      properties:
+        aliases:
+          type: array
+          items:
+            type: string
+        cards:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreatedCardView"
+        confusableWith:
+          type: array
+          items:
+            $ref: "#/components/schemas/TermRefView"
+        definition:
+          type: string
+        english:
+          type: string
+        example:
+          type: string
+        level:
+          type: string
+          enum:
+          - BASIC
+          - PRACTICAL
+        representative:
+          type: string
+        retired:
+          type: boolean
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillRef"
+        sourceUrl:
+          type: string
+        termKey:
+          type: string
+      required:
+      - aliases
+      - cards
+      - confusableWith
+      - definition
+      - english
+      - example
+      - level
+      - representative
+      - retired
+      - skills
+      - sourceUrl
+      - termKey
     TimelineMilestoneView:
       type: object
       properties:

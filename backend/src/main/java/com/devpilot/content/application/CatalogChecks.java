@@ -34,7 +34,8 @@ final class CatalogChecks {
                     "challenges",
                     "curatedSources",
                     "curatedRepos",
-                    "checklists");
+                    "checklists",
+                    "terms");
 
     /**
      * {@code conceptReadings}는 선택이다 — 생략하면 기본 경로를 읽는다 (docs/19 §3.1·§3.13). {@code lessons}도 선택이다 —
@@ -50,7 +51,8 @@ final class CatalogChecks {
                     "challengeSeedKeys",
                     "conceptKeys",
                     "curatedSourceIds",
-                    "readingKeys");
+                    "readingKeys",
+                    "termKeys");
 
     /** 선택 키 {@code lessonKeys}·{@code tipKeys}까지 (docs/19 §3.1·§3.9·§3.14). */
     private static final Set<String> RETIRED_ALLOWED_KEYS =
@@ -60,6 +62,7 @@ final class CatalogChecks {
                     "conceptKeys",
                     "curatedSourceIds",
                     "readingKeys",
+                    "termKeys",
                     "lessonKeys",
                     "tipKeys");
 
@@ -112,6 +115,7 @@ final class CatalogChecks {
         context.retiredReadingKeys = stringSet(values.get("readingKeys"));
         context.retiredLessonKeys = stringSet(values.get("lessonKeys"));
         context.retiredTipKeys = stringSet(values.get("tipKeys"));
+        context.retiredTermKeys = stringSet(values.get("termKeys"));
     }
 
     private static void checkListedFiles(ValidationContext context) {
@@ -134,6 +138,7 @@ final class CatalogChecks {
         listed.addAll(context.fileList("lessons"));
         listed.addAll(context.fileList("tips"));
         listed.addAll(context.fileList("checklists"));
+        listed.addAll(context.fileList("terms"));
         if (new HashSet<>(listed).size() != listed.size()) {
             context.error("CV-02", WHERE + "#files", "duplicate file entry");
         }

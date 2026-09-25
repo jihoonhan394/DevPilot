@@ -39,7 +39,8 @@ public class YamlContentReader {
                     "reviewCards",
                     "challenges",
                     "checklists",
-                    "tips");
+                    "tips",
+                    "terms");
 
     /** {@code files.lessons}는 선택 목록이다 — 없으면 노트가 없는 것으로 본다 (docs/19 §3.1·§3.14). */
     private static final String LESSONS = "lessons";

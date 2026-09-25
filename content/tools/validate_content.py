@@ -82,6 +82,8 @@ CONCEPT_READING_KEY_RE = re.compile(r"^DOC\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\.[0
 LESSON_KEY_RE = re.compile(r"^LESSON\.[A-Z][A-Z0-9_]*(\.[A-Z][A-Z0-9_]*)*\.[0-9]{3}$")
 # docs/19 §3.9: TIP.<SERIES>.<TOPIC>.NNN
 TIP_KEY_RE = re.compile(r"^TIP\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\.[0-9]{3}$")
+TERM_KEY_RE = re.compile(r"^TERM\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*$")
+SENTENCE_END_RE = re.compile(r"[.!?]")
 TIP_SERIES = {"ERROR_READING", "RESOURCE", "LOGGING", "HTTP_INTEGRATION", "DATABASE",
               "OPERATIONS", "CONVENTION"}
 TIP_LEVELS = {"BASIC", "PRACTICAL"}
@@ -197,6 +199,18 @@ def fenced_code_lines(text: str) -> list[str]:
     return body
 
 
+def walk_strings(path: str, node):
+    """(경로, 문자열) 쌍을 모두 내놓는다 (CV-104). 경로는 보고 위치로 쓴다."""
+    if isinstance(node, str):
+        yield path, node
+    elif isinstance(node, dict):
+        for key, value in node.items():
+            yield from walk_strings(f"{path}.{key}", value)
+    elif isinstance(node, list):
+        for index, item in enumerate(node):
+            yield from walk_strings(f"{path}[{index}]", item)
+
+
 def host_allowed(host: str) -> bool:
     host = (host or "").lower()
     return any(host == h or host.endswith("." + h) for h in TRUSTED_SOURCE_HOSTS)
@@ -272,14 +286,15 @@ def validate(content_dir: str):
     files = catalog.get("files") or {}
     check_keys(files, {"skillTrees", "roleTargets", "planTemplates", "reviewCards", "challenges",
                        "curatedSources", "curatedRepos", "conceptReadings", "lessons",
-                       "checklists", "tips"},
+                       "checklists", "tips", "terms"},
                {"skillTrees", "roleTargets", "planTemplates", "reviewCards", "challenges",
-                "curatedSources", "curatedRepos", "checklists"}, res, "catalog.yaml#files")
+                "curatedSources", "curatedRepos", "checklists", "terms"},
+               res, "catalog.yaml#files")
     retired = catalog.get("retired") or {}
     check_keys(retired, {"skillCodes", "challengeSeedKeys", "conceptKeys", "curatedSourceIds",
-                         "readingKeys", "lessonKeys", "tipKeys"},
+                         "readingKeys", "lessonKeys", "tipKeys", "termKeys"},
                {"skillCodes", "challengeSeedKeys", "conceptKeys", "curatedSourceIds",
-                "readingKeys"}, res, "catalog.yaml#retired")
+                "readingKeys", "termKeys"}, res, "catalog.yaml#retired")
     retired_skills = set(retired.get("skillCodes") or [])
     retired_seed = set(retired.get("challengeSeedKeys") or [])
     retired_concepts = set(retired.get("conceptKeys") or [])
@@ -287,6 +302,7 @@ def validate(content_dir: str):
     retired_readings = set(retired.get("readingKeys") or [])
     retired_lessons = set(retired.get("lessonKeys") or [])
     retired_tips = set(retired.get("tipKeys") or [])
+    retired_terms = set(retired.get("termKeys") or [])
     diag_categories = catalog.get("diagnosticCategories") or []
     for c in diag_categories:
         if c not in SKILL_CATEGORIES:
@@ -310,6 +326,7 @@ def validate(content_dir: str):
     listed.extend(files.get("lessons") or [])
     listed.extend(files.get("checklists") or [])
     listed.extend(files.get("tips") or [])
+    listed.extend(files.get("terms") or [])
     if len(set(listed)) != len(listed):
         res.error("CV-02", "catalog.yaml#files", "duplicate file entry")
 
@@ -1215,6 +1232,151 @@ def validate(content_dir: str):
     if files.get("tips"):
         for series in sorted(TIP_SERIES - active_series):
             res.warn("CV-96", "tips", f"series has no active tip: {series}")
+
+    # ---- terms (CV-100..CV-106) -------------------------------------------
+    # docs/19 3.10. 표기가 흔들리면 읽을 때마다 같은 것인지 다시 확인해야 한다 - 표기는 representative 하나다.
+    term_entries: list[tuple[str, dict]] = []
+    term_keys: set[str] = set()
+    for rel in files.get("terms") or []:
+        doc = load_yaml(os.path.join(content_dir, rel), res, rel)
+        if doc is None or not check_keys(doc, {"terms"}, {"terms"}, res, rel):
+            continue
+        entries = doc.get("terms") or []
+        if not isinstance(entries, list) or not entries:
+            res.error("CV-100", rel, "terms must be a non-empty list")
+            continue
+        for idx, term in enumerate(entries):
+            where = f"{rel}#terms[{idx}]"
+            required = {"key", "representative", "english", "definition", "example",
+                        "skillCodes", "level", "sourceUrl"}
+            allowed = required | {"aliases", "confusableWith", "retired"}
+            if not check_keys(term, allowed, required, res, where):
+                continue
+            if term.get("level") not in TIP_LEVELS:
+                res.error("CV-100", where, f"unknown level {term.get('level')!r}")
+            key = term.get("key")
+            if not isinstance(key, str) or not TERM_KEY_RE.match(key) or len(key) > 120:
+                res.error("CV-100", where, f"bad term key {key!r}")
+                continue
+            if key in term_keys:
+                res.error("CV-100", where, f"duplicate term key {key}")
+                continue
+            term_keys.add(key)
+            term_entries.append((where, term))
+
+    # CV-101: 한 표기는 한 뜻만 가리킨다 - 대표 표기도 별칭도 저장소 전체에서 유일하다
+    spelling_owner: dict[str, str] = {}
+    alias_to_representative: dict[str, str] = {}
+    for where, term in term_entries:
+        representative = str(term.get("representative") or "").strip()
+        if not 1 <= len(representative) <= 40:
+            res.error("CV-101", where, "representative length 1..40")
+        if not 1 <= len(str(term.get("english") or "").strip()) <= 60:
+            res.error("CV-101", where, "english length 1..60")
+        raw_aliases = term.get("aliases") or []
+        if not isinstance(raw_aliases, list) or len(raw_aliases) > 5:
+            res.error("CV-101", where, "aliases must be 0..5 strings")
+            raw_aliases = raw_aliases if isinstance(raw_aliases, list) else []
+        spellings = [representative]
+        for alias in raw_aliases:
+            alias = str(alias or "").strip()
+            if not 1 <= len(alias) <= 40:
+                res.error("CV-101", where, "alias length 1..40")
+            elif alias == representative:
+                res.error("CV-101", where, f"alias equals representative: {alias}")
+            else:
+                spellings.append(alias)
+                alias_to_representative.setdefault(alias, representative)
+        for spelling in spellings:
+            if not spelling:
+                continue
+            previous = spelling_owner.setdefault(spelling, where)
+            if previous != where:
+                res.error("CV-101", where, f"spelling already used at {previous}: {spelling}")
+
+    seen_retired_terms: set[str] = set()
+    active_terms: set[str] = set()
+    for where, term in term_entries:
+        key = term["key"]
+        # CV-102: 정의는 한 문장, 예문은 한 줄, 근거는 신뢰 호스트의 https
+        definition = str(term.get("definition") or "").strip()
+        if not 20 <= len(definition) <= 300:
+            res.error("CV-102", where, "definition length 20..300")
+        elif len(SENTENCE_END_RE.findall(definition)) != 1 or definition[-1] not in ".!?":
+            res.error("CV-102", where, "definition must be one sentence")
+        example = str(term.get("example") or "").strip()
+        if not 20 <= len(example) <= 300:
+            res.error("CV-102", where, "example length 20..300")
+        elif len(example.splitlines()) > 1:
+            res.error("CV-102", where, "example must be a single line")
+        u = urlparse(str(term.get("sourceUrl") or ""))
+        if u.scheme != "https" or not host_allowed(u.hostname or ""):
+            res.error("CV-102", where, f"sourceUrl must be https on a trusted host ({u.hostname})")
+
+        # CV-106: 정의가 역방향 카드의 답을 미리 말해 버리면 그 카드는 맞혀도 쓸모가 없다
+        own = [str(term.get("representative") or "").strip()]
+        own += [str(a or "").strip() for a in (term.get("aliases") or [])]
+        for spelling in own:
+            if spelling and spelling in definition:
+                res.error("CV-106", where, f"definition contains the answer: {spelling}")
+                break
+
+        # CV-103: confusableWith 와 skillCodes
+        confusable = term.get("confusableWith") or []
+        if not isinstance(confusable, list) or len(confusable) > 3:
+            res.error("CV-103", where, "confusableWith must be 0..3 keys")
+            confusable = confusable if isinstance(confusable, list) else []
+        for other in confusable:
+            if other == key:
+                res.error("CV-103", where, "confusableWith must not contain itself")
+            elif other not in term_keys:
+                res.error("CV-103", where, f"unknown term key: {other}")
+        codes = term.get("skillCodes") or []
+        if (not isinstance(codes, list) or not 1 <= len(codes) <= 4
+                or len(set(codes)) != len(codes)):
+            res.error("CV-103", where, "skillCodes must be 1..4 distinct codes")
+        else:
+            for c in codes:
+                if c not in codes_with_target:
+                    res.error("CV-103", where, f"skill without role target: {c}")
+
+        # CV-105: 은퇴 표시와 catalog 목록이 서로 맞는다
+        if term.get("retired") is True:
+            seen_retired_terms.add(key)
+            if key not in retired_terms:
+                res.error("CV-105", where, f"retired term is not in retired.termKeys: {key}")
+        else:
+            active_terms.add(key)
+            if key in retired_terms:
+                res.error("CV-105", where, f"term is in retired.termKeys but not retired: {key}")
+
+    for key in sorted(retired_terms - seen_retired_terms):
+        res.error("CV-105", "catalog.yaml#retired.termKeys",
+                  f"retired termKey has no retired term: {key}")
+    for where, term in term_entries:
+        for other in term.get("confusableWith") or []:
+            if other in seen_retired_terms and other not in active_terms:
+                res.error("CV-105", where, f"confusableWith points at a retired term: {other}")
+
+    # CV-104 (WARN): 별칭 표기가 다른 콘텐츠 본문에 나타나면 그 자리에 대표 표기를 쓰라는 경고다
+    if alias_to_representative:
+        scanned: list[str] = []
+        for fkey, value in files.items():
+            if fkey in ("skillTrees", "roleTargets", "terms"):
+                continue
+            scanned.extend([value] if isinstance(value, str) else (value or []))
+        for rel in scanned:
+            doc = load_yaml(os.path.join(content_dir, rel), res, rel)
+            if doc is None:
+                continue
+            reported: set[tuple[str, str]] = set()
+            for path, text in walk_strings(rel, doc):
+                for alias, representative in alias_to_representative.items():
+                    if alias in text and (path, alias) not in reported:
+                        reported.add((path, alias))
+                        res.warn("CV-104", path,
+                                 f"use the representative spelling {representative}"
+                                 f" instead of {alias}")
 
     # ---- lessons (CV-126..CV-136) -----------------------------------------
     # docs/19 §3.14. 가르치는 단계의 콘텐츠다 — 빠진 칸이 있으면 화면의 걸음 하나가 통째로 빈다.

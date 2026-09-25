@@ -33,6 +33,9 @@ abstract final class AppRoutes {
   /// SCR-TIPS: `/tips`, SCR-TIP-DETAIL: `/tips/:tipKey`.
   static const tipsPrefix = '/tips';
 
+  /// SCR-TERMS: `/terms?q=&skillId=`, SCR-TERM-DETAIL: `/terms/:termKey`.
+  static const termsPrefix = '/terms';
+
   /// SCR-READ-CODE prefix: `/today/read/:readingKey?taskId=`.
   static const readCodePrefix = '/today/read';
 
@@ -85,6 +88,7 @@ abstract final class AppRoutes {
   static const targetIdParameter = 'targetId';
   static const conceptKeyParameter = 'conceptKey';
   static const skillCodeParameter = 'skillCode';
+  static const queryParameter = 'q';
 
   /// Fragment of SCR-TRAINING-ATTEMPT that scrolls to the Hint Ladder (docs/02 RD-3 hand-off).
   static const hintsFragment = 'hints';
@@ -112,6 +116,13 @@ abstract final class AppRoutes {
 
   /// SCR-TIP-DETAIL of [tipKey].
   static String tip(String tipKey) => '$tipsPrefix/$tipKey';
+
+  /// SCR-TERM-DETAIL of [termKey].
+  static String term(String termKey) => '$termsPrefix/$termKey';
+
+  /// SCR-TERMS with the search kept in the route (docs/02 §3.17).
+  static String termsFor({String? query, String? skillId}) =>
+      _withQuery(termsPrefix, {queryParameter: query, skillIdParameter: skillId});
 
   /// SCR-READ-CODE of [readingKey] for the Today READ_CODE task [taskId].
   static String readCode(String readingKey, {String? taskId}) =>
@@ -196,6 +207,7 @@ enum RouteAccess {
     RegExp(r'^/review/items/[^/]+$'),
     RegExp(r'^/lessons/[^/]+$'),
     RegExp(r'^/tips/[^/]+$'),
+    RegExp(r'^/terms/[^/]+$'),
     RegExp(r'^/projects/[^/]+$'),
     RegExp(r'^/projects/[^/]+/notes/[^/]+$'),
   ];
@@ -219,6 +231,7 @@ enum RouteAccess {
     AppRoutes.reviewItems,
     AppRoutes.lessonsPrefix,
     AppRoutes.tipsPrefix,
+    AppRoutes.termsPrefix,
   };
 
   static RouteAccess of(String path) {

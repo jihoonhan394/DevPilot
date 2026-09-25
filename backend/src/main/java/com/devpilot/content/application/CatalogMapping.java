@@ -8,6 +8,7 @@ import com.devpilot.plan.domain.PlanTemplate;
 import com.devpilot.review.domain.ReviewType;
 import com.devpilot.review.domain.RubricItem;
 import com.devpilot.review.domain.SeedCard;
+import com.devpilot.review.domain.Term;
 import com.devpilot.skill.application.SkillCatalogSeedService;
 import com.devpilot.skill.domain.Priority;
 import com.devpilot.skill.domain.SkillCategory;
@@ -243,6 +244,30 @@ final class CatalogMapping {
             }
         }
         return checklists;
+    }
+
+    /** {@code terms/*.yaml} → {@link Term} (docs/19 §3.10). 은퇴한 용어도 담는다. */
+    static List<Term> terms(List<Map<String, Object>> documents) {
+        List<Term> terms = new ArrayList<>();
+        for (Map<String, Object> document : documents) {
+            for (Object value : RawYaml.asList(document.get("terms"))) {
+                Map<String, Object> term = RawYaml.asMap(value);
+                terms.add(
+                        new Term(
+                                (String) term.get("key"),
+                                (String) term.get("representative"),
+                                (String) term.get("english"),
+                                strings(term.get("aliases")),
+                                (String) term.get("definition"),
+                                (String) term.get("example"),
+                                strings(term.get("confusableWith")),
+                                strings(term.get("skillCodes")),
+                                TipLevel.valueOf((String) term.get("level")),
+                                (String) term.get("sourceUrl"),
+                                Boolean.TRUE.equals(term.get("retired"))));
+            }
+        }
+        return terms;
     }
 
     /** 오늘의 팁 (docs/19 §3.9). 은퇴한 것도 넣는다 — 이미 받은 사람이 본문을 다시 연다 (docs/05 §20.4a). */

@@ -110,8 +110,8 @@ public class ContentSeeder implements ApplicationRunner {
         int backfilled = seedCardAssignmentService.backfillAll();
         log.info(
                 "content seed finished catalogVersion={} dbVersion={} warnings={} seedCards={}"
-                        + " readings={} conceptReadings={} lessons={} backfilledCards={}"
-                        + " durationMs={}",
+                        + " readings={} conceptReadings={} lessons={} terms={}"
+                        + " backfilledCards={} durationMs={}",
                 catalogVersion,
                 dbVersion,
                 report.warnings().size(),
@@ -119,6 +119,7 @@ public class ContentSeeder implements ApplicationRunner {
                 registered.readings(),
                 registered.conceptReadings(),
                 registered.lessons(),
+                registered.terms(),
                 backfilled,
                 (System.nanoTime() - started) / 1_000_000);
     }

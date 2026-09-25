@@ -1,0 +1,110 @@
+# DevPilot 용어 사전 — 데이터베이스
+# Spec: docs/19-content-spec.md §3.10
+# - 표기는 representative 하나다. 흔들리는 말은 aliases로 내린다 (CV-101·CV-104)
+# - definition에 대표 표기를 쓰지 않는다 — 역방향 복습 카드의 답이 문제에 들어간다 (CV-106)
+terms:
+  - key: TERM.DATABASE.INDEX
+    representative: 인덱스
+    english: index
+    definition: |-
+      찾을 행의 자리를 미리 정렬해 따로 만들어 둔 자료 구조로, 읽기는 빨라지고 쓰기는 느려진다.
+    example: |-
+      주문 목록이 느려서 status와 created_at을 묶어 하나 만들었더니 응답이 1.2초에서 40ms가 됐다.
+    confusableWith: [TERM.DATABASE.EXECUTION_PLAN]
+    skillCodes: [DATABASE.INDEX]
+    level: BASIC
+    sourceUrl: https://www.postgresql.org/docs/16/indexes.html
+    retired: false
+
+  - key: TERM.DATABASE.COLUMN
+    representative: 컬럼
+    english: column
+    aliases: [칼럼]
+    definition: |-
+      테이블에서 같은 뜻과 같은 타입을 가진 값들이 세로로 모인 자리다.
+    example: |-
+      주문 테이블에 상태 컬럼을 하나 더하면서 기본값과 not null을 같이 정했다.
+    confusableWith: []
+    skillCodes: [DATABASE.MODELING, DATABASE.SQL_BASICS]
+    level: BASIC
+    sourceUrl: https://www.postgresql.org/docs/16/ddl-basics.html
+    retired: false
+
+  - key: TERM.DATABASE.EXECUTION_PLAN
+    representative: 실행 계획
+    english: execution plan
+    aliases: [쿼리 플랜]
+    definition: |-
+      데이터베이스가 그 SQL을 어떤 순서로 어떤 경로를 거쳐 처리할지 스스로 정한 결과다.
+    example: |-
+      EXPLAIN ANALYZE로 열어 보니 Index Scan을 기대한 자리에 Seq Scan이 찍혀 있었다.
+    confusableWith: [TERM.DATABASE.INDEX]
+    skillCodes: [DATABASE.INDEX.EXPLAIN_PLAN, DATABASE.INDEX]
+    level: PRACTICAL
+    sourceUrl: https://www.postgresql.org/docs/16/using-explain.html
+    retired: false
+
+  - key: TERM.DATABASE.TRANSACTION
+    representative: 트랜잭션
+    english: transaction
+    definition: |-
+      여러 개의 쓰기를 하나로 묶어 전부 반영되거나 전부 되돌아가게 하는 작업 단위다.
+    example: |-
+      재고 차감과 주문 저장을 하나로 묶어, 중간에 실패해도 재고만 줄어 있는 일이 없게 했다.
+    confusableWith: [TERM.DATABASE.ISOLATION_LEVEL, TERM.DATABASE.LOCK]
+    skillCodes: [DATABASE.TRANSACTION, SPRING.TRANSACTION]
+    level: BASIC
+    sourceUrl: https://www.postgresql.org/docs/16/tutorial-transactions.html
+    retired: false
+
+  - key: TERM.DATABASE.ISOLATION_LEVEL
+    representative: 격리 수준
+    english: isolation level
+    definition: |-
+      동시에 도는 작업들이 서로의 중간 상태를 얼마나 볼 수 있는지 정해 두는 단계다.
+    example: |-
+      READ COMMITTED에서는 같은 조회를 두 번 해도 그 사이에 커밋된 값이 섞여 결과가 달라질 수 있다.
+    confusableWith: [TERM.DATABASE.TRANSACTION, TERM.DATABASE.LOCK]
+    skillCodes: [DATABASE.TRANSACTION]
+    level: PRACTICAL
+    sourceUrl: https://www.postgresql.org/docs/16/transaction-iso.html
+    retired: false
+
+  - key: TERM.DATABASE.LOCK
+    representative: 잠금
+    english: lock
+    definition: |-
+      같은 행을 두 작업이 동시에 고치지 못하게 한쪽을 기다리게 만드는 장치다.
+    example: |-
+      재고 차감 구간만 비관적으로 걸어, 주문 두 건이 같은 순간에 들어와도 수량이 음수가 되지 않게 했다.
+    confusableWith: [TERM.DATABASE.ISOLATION_LEVEL]
+    skillCodes: [DATABASE.TRANSACTION.LOCKING, DATABASE.TRANSACTION]
+    level: PRACTICAL
+    sourceUrl: https://www.postgresql.org/docs/16/explicit-locking.html
+    retired: false
+
+  - key: TERM.DATABASE.N_PLUS_ONE
+    representative: N+1 조회
+    english: N+1 select
+    definition: |-
+      목록을 한 번 읽은 뒤 행마다 연관 데이터를 한 번씩 더 읽어, 질의 수가 행 수만큼 늘어나는 현상이다.
+    example: |-
+      주문 100건을 불러왔더니 회원을 찾는 질의가 100번 더 나갔다.
+    confusableWith: [TERM.DATABASE.PERSISTENCE_CONTEXT]
+    skillCodes: [DATABASE.JPA.FETCH_STRATEGY, SPRING.DATA_JPA]
+    level: PRACTICAL
+    sourceUrl: https://hibernate.org/orm/documentation/7.0/
+    retired: false
+
+  - key: TERM.DATABASE.PERSISTENCE_CONTEXT
+    representative: 영속성 컨텍스트
+    english: persistence context
+    definition: |-
+      한 작업 단위 안에서 읽어 온 엔티티를 기억해 두고, 같은 것을 다시 찾으면 그대로 돌려주며 바뀐 값은 끝에 한꺼번에 반영하는 자리다.
+    example: |-
+      같은 회원을 두 번 조회했는데 SQL은 한 번만 나갔고, 필드를 고치자 save 없이 UPDATE가 나갔다.
+    confusableWith: [TERM.DATABASE.N_PLUS_ONE]
+    skillCodes: [DATABASE.JPA.PERSISTENCE_CONTEXT, DATABASE.JPA]
+    level: PRACTICAL
+    sourceUrl: https://hibernate.org/orm/documentation/7.0/
+    retired: false

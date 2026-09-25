@@ -2,7 +2,7 @@
 # Spec: docs/19-content-spec.md §3.1
 # - catalogVersion: seed 대상 파일(이 파일에 나열된 모든 파일)이 바뀌면 1 올린다 (§8)
 # - YamlContentReader는 여기 나열된 파일만 읽는다. 나열 순서대로 읽는다
-catalogVersion: 52
+catalogVersion: 53
 files:
   skillTrees:
     - skill-tree/java-backend.yaml
@@ -39,9 +39,14 @@ files:
     - challenges/devops.yaml
     - challenges/practical-engineering.yaml
     - challenges/diagnostic.yaml
-  # 개념 노트 (19 §3.14). 가르치는 단계의 본문이다 — 없으면 그 skill은 문제부터 나온다
   tips:
     - tips/practical.yaml
+  # 용어 사전 (19 §3.10). 표기는 representative 하나이고 저장소의 다른 콘텐츠도 그 표기를 쓴다 (CV-104)
+  terms:
+    - terms/database.yaml
+    - terms/java-spring.yaml
+    - terms/web-ops.yaml
+  # 개념 노트 (19 §3.14). 가르치는 단계의 본문이다 — 없으면 그 skill은 문제부터 나온다
   lessons:
     - lessons/devops-linux-docker.yaml
     - lessons/cs-io-model.yaml
@@ -115,6 +120,7 @@ retired:
   challengeSeedKeys: []
   conceptKeys: []
   curatedSourceIds: []
+  termKeys: []
   # 은퇴한 reading은 curated-repos.yaml에 retired: true로 남는다 (19 §8.2, CV-83)
   # 2026-09-19 소스 점검: restbucks(라이선스 명시 없음) → modular-monolith로 교체
   readingKeys:

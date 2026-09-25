@@ -28,6 +28,7 @@ import 'reading_fakes.dart';
 import 'review_item_fakes.dart';
 import 'rubber_duck_fakes.dart';
 import 'skill_history_fakes.dart';
+import 'term_fakes.dart';
 import 'tip_fakes.dart';
 import 'training_fakes.dart';
 
@@ -471,5 +472,6 @@ final class FakeBackend {
   final lessonRepository = FakeLessonRepository();
   final reviewItemRepository = FakeReviewItemRepository();
   final tipRepository = FakeTipRepository();
+  final termRepository = FakeTermRepository();
   final projectNoteRepository = FakeProjectNoteRepository();
 }
