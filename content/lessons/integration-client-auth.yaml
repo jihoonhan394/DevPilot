@@ -1,0 +1,441 @@
+# DevPilot 개념 노트 — 연동 인증
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 인증·인가 노트(LESSON.SECURITY.AUTHN_AUTHZ.001)는 "사람이 로그인한다"를 다룬다.
+#   여기서는 "시스템이 시스템에게 자기를 증명한다"를 다룬다 — 겹치지 않게 쓴다
+# - 예제는 주문 시스템 상황으로 쓴다 (CV-134)
+lessons:
+  - key: LESSON.INTEGRATION.CLIENT_AUTH.001
+    skillCode: INTEGRATION.CLIENT_AUTH
+    title: 사람이 없는 자리에서 자기를 증명하기 (연동 인증)
+    whyItMatters: |-
+      주문 시스템이 배송사 API를 부를 때, 그 자리에는 로그인 화면을 볼 사람이 없다.
+      새벽 세 시에 도는 배치도 마찬가지다. 그래서 사람용 로그인을 그대로 쓰려다
+      아이디와 비밀번호를 설정 파일에 적어 두게 되고, 그것이 저장소에 올라간다.
+      시스템이 시스템에게 자기를 증명하는 방법은 따로 있다. 모르면 키가 URL과 로그에 남고,
+      한 번 새면 바꿀 방법이 없어 서비스를 세운 채로 교체하게 된다.
+    oneLine: 연동 인증(client authentication)은 사람의 개입 없이 한 시스템이 다른 시스템에게 자기가 누구인지 증명하는 일이다.
+    units:
+      - key: LESSON.INTEGRATION.CLIENT_AUTH.001.U1
+        title: 사람 인증과 시스템 인증을 구분하기
+        minutes: 8
+        core: true
+        explain: |-
+          로그인 화면은 **사람이 거기 있다**는 것을 전제한다. 비밀번호를 기억했다가 치고,
+          문자로 온 번호를 옮겨 적고, "이 앱을 허용하시겠습니까"에 예를 누른다.
+
+          연동에는 그 사람이 없다. 새벽 배치, 서버 간 호출, 웹훅 재전송에는 화면이 없다.
+          그래서 증명의 주체가 바뀐다.
+
+          | | 사람 인증 | 시스템 인증 |
+          |---|---|---|
+          | 누구를 증명하나 | 이 **사용자** | 이 **프로그램** |
+          | 비밀 | 사람 머릿속 | 설정·비밀 저장소 |
+          | 만료되면 | 다시 로그인 | 스스로 다시 받아야 한다 |
+          | 새면 | 그 사람만 | **그 연동 전체** |
+
+          OAuth 2.0은 이 자리를 위해 별도의 방식을 둔다. 규격은 이렇게 적는다 —
+          "클라이언트는 **자기 자신의 자격 증명만으로** 액세스 토큰을 요청할 수 있다."
+          그리고 못을 박는다. "client credentials 방식은 **confidential client만** 써야 한다."
+
+          confidential client는 비밀을 지킬 수 있는 곳이다. 우리 서버는 되고,
+          브라우저에서 도는 Flutter 웹이나 배포된 모바일 앱은 아니다.
+          앱에 심은 비밀은 심은 것이 아니라 **공개한 것**이다.
+        example:
+          language: text
+          code: |-
+            [사람 인증]
+            사용자 → 로그인 화면 → 아이디/비밀번호 → 세션 또는 토큰
+                     (사람이 있다)
+
+            [시스템 인증 — 주문 시스템이 배송사를 부른다]
+            주문 서버 → 배송사 토큰 발급 → 액세스 토큰 → 배송 예약 API
+                        (client_id + client_secret)      (Authorization: Bearer ...)
+
+            [하면 안 되는 것]
+            주문 서버 → 배송사 로그인 화면 ... 사람이 없다
+            주문 서버 → 담당자 계정의 아이디/비밀번호를 설정에 적어 둔다
+                        └ 그 사람의 계정이 정리되면 연동이 멈춘다
+                        └ 그 사람 권한 전부를 프로그램이 갖는다
+          note: |-
+            아래 두 줄이 실무에서 가장 흔한 실수다. **사람 계정을 프로그램에 빌려주는 것**은
+            편해 보이지만, 권한이 과하게 넓고 사람의 사정(계정 정리·비밀번호 변경)에 연동이 끌려다닌다.
+        predict:
+          question: 배포된 모바일 앱 안에 client_secret을 넣어 두면 어떻게 되나요?
+          choices:
+            - 앱은 confidential client가 아니므로 비밀이 아니게 된다
+            - 앱 스토어가 암호화해 주므로 안전하다
+            - 사용자마다 다른 값이 심어져 안전하다
+          answer: 앱은 confidential client가 아니므로 비밀이 아니게 된다
+          explanation: |-
+            설치된 앱은 사용자의 기기에 있고, 기기는 사용자의 것이다. 패키지를 풀면 안에 있는 문자열이 보인다.
+            규격이 client credentials를 confidential client로 제한하는 이유가 이것이다.
+            앱이 필요한 것은 앱의 비밀이 아니라 **그 사용자의** 토큰이다.
+        complete:
+          question: 배송사 토큰을 받는 요청의 빈칸을 채우세요.
+          code: |-
+            POST /oauth2/token HTTP/1.1
+            Host: api.example-delivery.test
+            Content-Type: application/x-www-form-urlencoded
+
+            grant_type=___
+          answers:
+            - [client_credentials]
+          explanation: |-
+            규격은 `grant_type`을 "REQUIRED. 값은 반드시 `client_credentials`여야 한다"고 정한다.
+            `scope`는 선택이고, refresh token은 이 방식에서 "포함되지 않아야 한다(SHOULD NOT)".
+            프로그램은 만료되면 같은 요청을 다시 보내면 되므로 refresh가 필요 없다.
+        problem:
+          prompt: |-
+            주문 시스템이 정산을 위해 매일 새벽 카드사 API에서 전날 승인 내역을 받아 옵니다.
+            지금은 담당자 개인 계정의 아이디와 비밀번호를 `application.yml`에 적어 두고,
+            로그인 API를 부른 뒤 받은 세션 쿠키로 조회하고 있습니다.
+
+            이 방식이 왜 위험한지 세 가지로 적고, 무엇으로 바꿔야 하는지 한 문단으로 쓰세요.
+            코드를 쓰지 않아도 됩니다.
+          deliverables:
+            - 지금 방식의 위험 3가지 (각각 "무슨 일이 언제 터지는가"까지)
+            - 바꿔야 할 방식과 그 이유 한 문단
+            - 바꾼 뒤에도 남는 위험 1가지
+          hints:
+            - 그 담당자의 계정이 내일 잠긴다고 생각해 보세요. 그리고 비밀번호를 바꾼다고 생각해 보세요.
+            - 개인 계정은 그 사람이 할 수 있는 **모든 것**을 할 수 있습니다. 배치가 필요한 것은 조회뿐입니다.
+            - 바꾼 뒤에도 어딘가에는 비밀이 남습니다. 그것을 어디에 두고 언제 바꿀지가 다음 문제입니다.
+          modelAnswer: |-
+            **위험 3가지**
+
+            1. **사람에 묶인다.** 담당자 계정이 잠기거나 비밀번호가 바뀌면 새벽 배치가 조용히 실패한다.
+               실패를 아침에 알게 되고, 그날 정산이 밀린다.
+            2. **권한이 과하다.** 개인 계정은 조회뿐 아니라 그 사람이 할 수 있는 모든 것을 할 수 있다.
+               배치 코드에 버그가 있거나 키가 새면 피해 범위가 그 사람의 권한 전체다.
+            3. **추적이 안 된다.** 감사 로그에 "그 사람이 했다"로 남는다. 사람이 한 일과
+               프로그램이 한 일을 구분할 수 없어, 사고가 났을 때 무엇이 원인인지 가릴 수 없다.
+
+            **바꿀 방식**
+
+            연동 전용 클라이언트를 카드사에 등록하고 `client_credentials`로 토큰을 받는다.
+            이 방식은 사람이 없는 자리를 위해 만들어진 것이고, 발급된 자격 증명은 그 연동 하나에만
+            묶이므로 필요한 scope(조회)만 줄 수 있다. 사람의 사정과 분리되고, 감사 로그에도
+            그 클라이언트로 남는다. 우리 서버는 비밀을 지킬 수 있으므로 confidential client 조건을 만족한다.
+
+            **남는 위험**
+
+            `client_secret`은 여전히 어딘가에 있어야 한다. 저장소가 아니라 환경변수나 비밀 저장소에 두고,
+            **언제 어떻게 바꿀지**를 미리 정해 둬야 한다. 바꿀 방법이 없는 비밀은 새는 순간 서비스를 세운다.
+          selfChecks:
+            - 위험 3가지를 "무슨 일이 언제 터지는가"까지 적었는가
+            - 개인 계정과 연동 전용 자격 증명의 차이를 권한 범위로 설명했는가
+            - 바꾼 뒤에도 비밀이 남는다는 것과 교체 방법이 필요하다는 것을 적었는가
+      - key: LESSON.INTEGRATION.CLIENT_AUTH.001.U2
+        title: 비밀을 어디에 실어 보낼지 정하기
+        minutes: 10
+        core: true
+        prerequisiteUnits:
+          - LESSON.INTEGRATION.CLIENT_AUTH.001.U1
+        explain: |-
+          자격 증명을 요청의 **어디에** 넣느냐가 사고의 절반을 가른다.
+
+          OAuth 2.0 규격은 두 가지를 허용하되 순서를 매긴다.
+          기본은 HTTP Basic이다. 인가 서버는 요청 본문에 `client_id`와 `client_secret`을
+          담는 방식을 지원해도 되지만, 규격은 이렇게 적는다 —
+          "요청 본문에 자격 증명을 담는 것은 **권장되지 않으며(NOT RECOMMENDED)**,
+          HTTP Basic을 쓸 수 없는 클라이언트로 제한되어야 한다."
+
+          받은 토큰을 쓸 때는 선택지가 더 좁다. Bearer 토큰 규격은
+          "클라이언트는 bearer 토큰으로 요청할 때 **반드시 TLS(https)** 또는 그에 준하는
+          전송 보안을 써야 한다"고 못 박고, 이어서 말한다 —
+          "bearer 토큰은 페이지 URL(예: 쿼리 문자열)에 실리지 **않아야 한다(SHOULD NOT)**."
+          이유도 규격이 직접 적는다. URL은 **브라우저 기록과 웹 서버 로그**에 남는다.
+
+          정리하면 자리는 셋뿐이고 하나만 옳다.
+
+          | 어디 | 판단 |
+          |---|---|
+          | `?token=...` 쿼리 문자열 | **안 된다.** 접근 로그·리퍼러·기록에 그대로 남는다 |
+          | 요청 본문 | 토큰 발급 때만, HTTP Basic을 못 쓸 때만 |
+          | `Authorization` 헤더 | **기본.** 로그에 안 남고 규격이 요구하는 방식이다 |
+        example:
+          language: http
+          code: |-
+            # 1) 토큰 받기 — client_id/client_secret 은 Basic 으로
+            POST /oauth2/token HTTP/1.1
+            Host: api.example-delivery.test
+            Authorization: Basic b3JkZXItc3ZjOnMzY3JldA==
+            Content-Type: application/x-www-form-urlencoded
+
+            grant_type=client_credentials&scope=shipment:write
+
+            # 2) 받은 토큰으로 부르기 — Bearer 로
+            POST /v1/shipments HTTP/1.1
+            Host: api.example-delivery.test
+            Authorization: Bearer mF_9.B5f-4.1JqM
+            Content-Type: application/json
+
+            {"orderId":"ORD-1024","address":"..."}
+          output: |-
+            HTTP/1.1 200 OK
+            Content-Type: application/json
+
+            {"access_token":"mF_9.B5f-4.1JqM","token_type":"Bearer","expires_in":3600}
+          note: |-
+            `Basic` 값은 `client_id:client_secret`을 base64로 옮긴 것이다. **암호화가 아니라 인코딩**이다 —
+            누구나 되돌릴 수 있으므로 TLS가 없으면 평문과 같다. 그래서 규격이 TLS를 요구한다.
+            `expires_in: 3600`은 한 시간 뒤 다시 받아야 한다는 뜻이고, refresh token은 오지 않는다.
+        predict:
+          question: |-
+            아래 요청은 무엇이 잘못됐나요?
+
+            `GET /v1/shipments?access_token=mF_9.B5f-4.1JqM`
+          choices:
+            - 토큰이 URL에 있어 서버 접근 로그와 브라우저 기록에 남는다
+            - GET 으로는 토큰을 쓸 수 없다
+            - access_token 대신 token 이라는 이름을 써야 한다
+          answer: 토큰이 URL에 있어 서버 접근 로그와 브라우저 기록에 남는다
+          explanation: |-
+            규격이 직접 드는 이유가 그것이다 — "브라우저 기록, 웹 서버 로그"에 노출된다.
+            메서드는 문제가 아니고 파라미터 이름도 문제가 아니다. **자리**가 문제다.
+            `Authorization: Bearer ...` 헤더로 옮기면 된다.
+        complete:
+          question: 배송사 API를 부르는 헤더 두 줄의 빈칸을 채우세요.
+          code: |-
+            POST /v1/shipments HTTP/1.1
+            Host: api.example-delivery.test
+            ___: Bearer mF_9.B5f-4.1JqM
+            Content-Type: ___
+          answers:
+            - [Authorization]
+            - [application/json]
+          explanation: |-
+            Bearer 규격의 형식은 `credentials = "Bearer" 1*SP b64token`이다 —
+            `Bearer` 뒤에 공백 하나 이상, 그다음 토큰. 헤더 이름은 `Authorization`이다.
+            본문이 JSON이므로 `Content-Type`은 `application/json`이다.
+        problem:
+          prompt: |-
+            주문 시스템에서 배송사 API를 부르는 Spring `RestClient` 설정을 만드세요.
+
+            - `client_id`와 `client_secret`은 환경변수에서 읽고, 코드·설정 파일에 값을 적지 않습니다
+            - 토큰은 한 번 받아 만료 전까지 재사용하고, 만료되면 다시 받습니다
+            - 토큰과 비밀이 로그에 찍히지 않아야 합니다
+
+            토큰 저장은 메모리에 두는 가장 단순한 형태로 충분합니다.
+          deliverables:
+            - 토큰을 받아 오는 메서드 (요청 형식과 자격 증명을 싣는 자리가 규격대로일 것)
+            - 만료를 판단해 재사용하거나 다시 받는 부분
+            - 비밀과 토큰이 로그에 남지 않게 한 방법 한 줄 설명
+          starterCode: |-
+            @Component
+            class DeliveryTokenProvider {
+
+                private final RestClient restClient;
+                private final String clientId;
+                private final String clientSecret;
+                private final Clock clock;
+
+                // TODO: 토큰과 만료 시각을 들고 있을 자리
+
+                String accessToken() {
+                    // TODO
+                }
+            }
+          hints:
+            - 자격 증명을 싣는 자리는 두 곳 중 하나였습니다. 규격이 기본으로 삼은 쪽을 쓰세요.
+            - 만료 판단에 `Instant.now()`를 직접 부르지 마세요. `Clock`이 이미 주입돼 있습니다.
+            - 만료 직전에 받은 토큰은 쓰는 도중에 죽습니다. 여유를 조금 두고 갱신하세요.
+          modelAnswer: |-
+            ```java
+            @Component
+            class DeliveryTokenProvider {
+
+                /** 만료 직전 토큰은 쓰는 도중 죽는다. 60초 여유를 두고 미리 받는다. */
+                private static final Duration REFRESH_MARGIN = Duration.ofSeconds(60);
+
+                private final RestClient restClient;
+                private final String clientId;
+                private final String clientSecret;
+                private final Clock clock;
+
+                private String token;
+                private Instant expiresAt = Instant.EPOCH;
+
+                synchronized String accessToken() {
+                    if (token != null && clock.instant().isBefore(expiresAt.minus(REFRESH_MARGIN))) {
+                        return token;
+                    }
+                    TokenResponse issued =
+                            restClient
+                                    .post()
+                                    .uri("/oauth2/token")
+                                    // 규격의 기본은 HTTP Basic 이다. 본문에 담는 방식은 NOT RECOMMENDED
+                                    .headers(headers -> headers.setBasicAuth(clientId, clientSecret))
+                                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                    .body("grant_type=client_credentials&scope=shipment:write")
+                                    .retrieve()
+                                    .body(TokenResponse.class);
+                    token = issued.accessToken();
+                    expiresAt = clock.instant().plusSeconds(issued.expiresIn());
+                    return token;
+                }
+
+                record TokenResponse(
+                        @JsonProperty("access_token") String accessToken,
+                        @JsonProperty("expires_in") long expiresIn) {}
+            }
+            ```
+
+            **왜 이렇게 했나**
+
+            - 자격 증명은 `setBasicAuth`로 헤더에 싣는다. 요청 본문에 담는 방식은 규격이
+              "권장되지 않는다"고 적은 쪽이다.
+            - 만료는 `Clock`으로 판단한다. 무인자 `Instant.now()`는 테스트에서 시간을 고정할 수 없다.
+            - `REFRESH_MARGIN`이 없으면 만료 1초 전에 받은 토큰으로 호출을 시작해 401을 맞는다.
+            - **로그를 남기지 않는다.** 토큰도 비밀도 찍지 않는다. 실패했을 때 남길 것은
+              상태 코드와 `error` 값이지 토큰 자체가 아니다.
+          selfChecks:
+            - 자격 증명을 Basic 헤더에 실었는가 (본문에 담지 않았는가)
+            - 만료 판단에 주입된 Clock 을 썼는가
+            - 만료 직전 갱신을 위한 여유를 뒀는가
+            - 토큰과 client_secret 을 로그에 남기지 않았는가
+      - key: LESSON.INTEGRATION.CLIENT_AUTH.001.U3
+        title: 401과 403을 구분해 읽고 답하기
+        minutes: 10
+        core: true
+        prerequisiteUnits:
+          - LESSON.INTEGRATION.CLIENT_AUTH.001.U2
+        explain: |-
+          연동이 실패했을 때 "인증 오류"라고만 적힌 로그는 아무것도 알려 주지 않는다.
+          Bearer 규격은 응답으로 무엇을 줘야 하는지, 각각이 무슨 뜻인지 정해 두었다.
+
+          실패한 자원 서버는 `WWW-Authenticate` 헤더로 이유를 말한다.
+
+          ```text
+          HTTP/1.1 401 Unauthorized
+          WWW-Authenticate: Bearer realm="example",
+                            error="invalid_token",
+                            error_description="The access token expired"
+          ```
+
+          `error` 값은 셋이고, 상태 코드가 각각 다르다.
+
+          | error | 뜻 | 상태 |
+          |---|---|---|
+          | `invalid_request` | 요청이 잘못됐다(형식·파라미터) | 400 |
+          | `invalid_token` | 토큰이 만료·폐기·손상됐다 | **401** |
+          | `insufficient_scope` | 토큰은 유효하나 **권한이 모자란다** | **403** |
+
+          이 구분이 실무에서 곧바로 행동을 가른다.
+
+          - **401 `invalid_token`** → 토큰을 다시 받아 **한 번** 재시도한다. 흔하고 정상이다.
+          - **403 `insufficient_scope`** → 다시 받아도 똑같다. **scope 설정 문제**다.
+            여기서 재시도 루프를 돌면 상대 서버를 두드리기만 한다.
+        example:
+          language: java
+          code: |-
+            ShipmentResponse reserve(ShipmentRequest request) {
+                try {
+                    return call(request, tokenProvider.accessToken());
+                } catch (HttpClientErrorException.Unauthorized failure) {
+                    // 401: 토큰이 죽었다. 버리고 한 번만 다시 받는다
+                    tokenProvider.invalidate();
+                    return call(request, tokenProvider.accessToken());
+                } catch (HttpClientErrorException.Forbidden failure) {
+                    // 403: 다시 받아도 같다. scope 문제이므로 여기서 멈춘다
+                    throw new DeliveryScopeException(
+                            "shipment:write scope missing for this client", failure);
+                }
+            }
+          output: |-
+            401 → 토큰 재발급 후 1회 재시도 → 200
+            403 → DeliveryScopeException (재시도하지 않음)
+          note: |-
+            재시도를 **한 번만** 하는 것이 중요하다. 자격 증명 자체가 틀렸다면 몇 번을 받아도 401이고,
+            무한 재시도는 상대 서버 입장에서 공격과 구분되지 않는다. 403에 재시도를 걸지 않는 이유도 같다 —
+            바뀔 수 있는 것이 없는 실패에 재시도는 비용만 늘린다.
+        predict:
+          question: |-
+            토큰은 유효한데 `403 insufficient_scope`가 돌아왔습니다. 토큰을 다시 받으면 해결될까요?
+          choices:
+            - 아니다. 같은 scope 로 다시 받으므로 결과가 같다
+            - 그렇다. 새 토큰에는 더 넓은 권한이 담긴다
+            - 그렇다. 재발급하면 서버가 권한을 다시 계산한다
+          answer: 아니다. 같은 scope 로 다시 받으므로 결과가 같다
+          explanation: |-
+            `insufficient_scope`는 "토큰이 가진 것보다 더 높은 권한이 필요하다"는 뜻이다.
+            토큰이 상한 것이 아니라 **처음부터 그 권한이 없었다.** 같은 요청으로 다시 받으면 같은 scope가 온다.
+            고칠 곳은 코드가 아니라 클라이언트 등록의 scope이거나, 토큰 요청의 `scope` 파라미터다.
+        complete:
+          question: 만료된 토큰을 받은 자원 서버가 돌려줄 응답의 빈칸을 채우세요.
+          code: |-
+            HTTP/1.1 ___ Unauthorized
+            WWW-Authenticate: Bearer realm="shop",
+                              error="___"
+          answers:
+            - ["401"]
+            - [invalid_token]
+          explanation: |-
+            규격의 표가 그대로 답이다 — `invalid_token`은 "만료·폐기·손상된" 토큰이고 401에 대응한다.
+            403은 `insufficient_scope`의 자리이고, 400은 `invalid_request`의 자리다.
+        problem:
+          prompt: |-
+            배송사 연동에서 실패를 분류해 기록하는 부분을 만드세요.
+
+            주문 시스템의 운영자가 로그만 보고 "내가 할 일"과 "상대에게 말할 일"을
+            구분할 수 있어야 합니다. 토큰과 비밀은 어떤 경우에도 로그에 남지 않습니다.
+          deliverables:
+            - 401 / 403 / 400 을 각각 어떻게 처리할지 (재시도 여부 포함)
+            - 각 경우에 로그로 남길 내용 (남기지 말아야 할 것도 함께)
+            - 운영자가 로그를 보고 판단할 수 있는지 한 줄로 설명
+          hints:
+            - 셋 중 재시도가 의미 있는 것은 하나뿐입니다.
+            - 로그에 남길 것은 "무엇이 일어났나"가 아니라 "누가 무엇을 해야 하나"입니다.
+            - "`error_description` 은 상대가 준 문자열입니다. 그대로 믿고 길이 제한 없이 넣지 마세요."
+          modelAnswer: |-
+            **처리**
+
+            | 상태 | error | 처리 |
+            |---|---|---|
+            | 401 | `invalid_token` | 토큰을 버리고 **1회** 재발급 후 재시도. 또 401이면 실패로 기록 |
+            | 403 | `insufficient_scope` | **재시도하지 않는다.** 설정 문제로 기록하고 중단 |
+            | 400 | `invalid_request` | 재시도하지 않는다. 우리가 보낸 요청이 잘못됐다 |
+
+            **로그**
+
+            ```text
+            WARN  delivery.reserve failed orderRef=a3f1 status=403 error=insufficient_scope
+                  action=CHECK_CLIENT_SCOPE
+            WARN  delivery.reserve retried orderRef=a3f1 status=401 error=invalid_token outcome=OK
+            ```
+
+            남기는 것: 상태 코드, `error` 값, 우리 쪽 식별자(주문 번호가 아니라 해시한 참조),
+            그리고 **무엇을 해야 하는지**(`action`).
+            남기지 않는 것: 액세스 토큰, `client_secret`, `Authorization` 헤더, 요청 본문 전체.
+            `error_description`은 상대가 준 문자열이므로 길이를 잘라 넣거나 아예 빼고 `error`만 쓴다.
+
+            **왜 이러면 판단이 되나**
+
+            `action=CHECK_CLIENT_SCOPE`가 찍히면 운영자는 코드를 보지 않고 바로
+            "배송사에 등록된 우리 클라이언트의 scope를 확인하자"로 간다.
+            401 뒤에 `outcome=OK`가 붙으면 정상 갱신이므로 아무것도 하지 않아도 된다는 뜻이다.
+          selfChecks:
+            - 401 에만 재시도를 걸고 403·400 에는 걸지 않았는가
+            - 재시도를 한 번으로 제한했는가
+            - 로그에 토큰·비밀·Authorization 헤더가 없는가
+            - 로그만 보고 무엇을 해야 하는지 알 수 있는가
+    commonMistakes:
+      - client_secret 을 application.yml 에 적고 저장소에 올린다. 한 번 올라간 비밀은 커밋을 지워도 기록에 남으므로, 지우는 것이 아니라 **바꾸는 것**이 유일한 대응이다.
+      - 토큰을 매 호출마다 새로 받는다. 동작은 하지만 발급 요청이 호출 수만큼 늘어 상대 서버의 속도 제한에 걸린다 — `429 Too Many Requests`가 뜨면 이것부터 의심한다.
+      - 401 에 무한 재시도를 건다. 자격 증명이 틀렸다면 몇 번을 받아도 401이고, 로그만 가득 차고 상대는 우리를 공격으로 본다.
+    inProject: |-
+      주문 시스템이 바깥을 부르는 자리는 셋이다 — 결제 승인, 배송 예약, 정산 내역 조회.
+      셋 다 사람이 없는 자리이므로 여기서 배운 방식이 그대로 들어간다.
+      토큰을 받아 두는 컴포넌트 하나를 만들어 세 곳이 함께 쓰고,
+      client_secret 은 환경변수로 읽어 `.env` 에 두고 저장소에는 `.env.example` 만 올린다.
+    sources:
+      - title: RFC 6749 — The OAuth 2.0 Authorization Framework
+        url: https://www.rfc-editor.org/rfc/rfc6749
+        versionScope: OAuth 2.0
+      - title: "RFC 6750 — The OAuth 2.0 Authorization Framework: Bearer Token Usage"
+        url: https://www.rfc-editor.org/rfc/rfc6750
+        versionScope: OAuth 2.0 Bearer
+    verifiedAt: 2026-09-30
