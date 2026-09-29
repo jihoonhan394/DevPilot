@@ -12,6 +12,11 @@
 # IntelliJ Run Configuration 사용 시 Working directory = $PROJECT_DIR$/backend
 # 기본값이 없는 placeholder(${VAR})는 값이 없으면 기동이 실패한다. 의도된 동작이다.
 
+# 개발 PC에서는 8080을 다른 로컬 서버(Tomcat 등)가 쓰는 일이 잦다. local 프로필만 8081로 띄운다 —
+# application.yml 의 8080 은 운영(컨테이너 안)에서 그대로 쓴다. docs/18 §5·§6.3 과 같은 값이다.
+server:
+  port: 8081
+
 spring:
   config:
     import: optional:file:../.env[.properties]
