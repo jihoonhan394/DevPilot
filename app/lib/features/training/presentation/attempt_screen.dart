@@ -103,7 +103,9 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
         children: [
           AiUnavailableBanner(status: ref.watch(aiStatusProvider)),
           Expanded(
+            // 답과 코드를 쓰는 화면이라 읽기 폭(960)보다 넓게 쓴다 (docs/02 §2.1 예외).
             child: ScreenBody(
+              wide: true,
               child: screen.when(
                 loading: () => const SkeletonList(count: 3, lines: 3),
                 error: (error, _) => ErrorView(error: error, onRetry: _controller.reload),

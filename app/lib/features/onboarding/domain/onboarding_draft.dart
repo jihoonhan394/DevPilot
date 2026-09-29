@@ -14,6 +14,11 @@ abstract class OnboardingDraft with _$OnboardingDraft {
     /// Null until edited; the field starts with `GET /me.displayName`.
     String? displayName,
 
+    /// The learning track (docs/02 §3.4). Locked once onboarding is submitted — `PUT
+    /// /learning-goal` rejects a different value (docs/05 §5.2), so this is the only place to
+    /// choose it.
+    @Default(TargetRole.javaBackend) TargetRole targetRole,
+
     /// The target date (목표일); null until chosen.
     String? targetCompletionDate,
     @Default(OnboardingDefaults.weekdayStudyMinutes) int weekdayStudyMinutes,
@@ -23,8 +28,11 @@ abstract class OnboardingDraft with _$OnboardingDraft {
     /// Null until chosen; the screen starts with the browser zone.
     String? timezone,
 
-    /// Step 3 default is the short diagnostic (docs/02 step 3).
-    @Default(true) bool runDiagnostic,
+    /// Step 3 default is the self-assessment (docs/02 step 3). The short diagnostic is offered but
+    /// not the default: every seed diagnostic is difficulty 3 and its verdict is pass/fail, so it
+    /// yields level 3 or nothing — coarser than the five self-assessment steps. Make it the default
+    /// again once the diagnostics have a difficulty ladder.
+    @Default(false) bool runDiagnostic,
 
     /// Self-assessment level (0~4) per category; missing categories count as 0.
     @Default(<SkillCategory, int>{}) Map<SkillCategory, int> selfAssessmentLevels,

@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fake_backend.dart';
 import '../../support/fixtures.dart';
+import '../../support/learning_fixtures.dart';
 import '../../support/test_app.dart';
 import '../../support/training_fixtures.dart';
 import '../../support/widget_actions.dart';
@@ -89,6 +90,31 @@ void main() {
     expect(find.text('Spring 확인 문제 · 약 10분'), findsOneWidget);
 
     await tapKey(tester, 'today.diagnosticAllButton');
+    expect(locationOf(tester), AppRoutes.diagnostics);
+  });
+
+  // 진단의 다른 입구(온보딩 5단계, Today 생성 전 카드, 진단 결과 화면)는 조건이 한 번 닫히면
+  // 다시 열리지 않는다. 아래 둘이 그 고립을 막는 문이라 사라지면 안 된다.
+  testWidgets('shouldKeepTheDiagnosticCardAfterTheDayIsGenerated', (tester) async {
+    backend.todayRepository.today = testTodayView();
+    await pumpApp(tester, backend: backend);
+
+    // 계획이 이미 있는 화면인데도 남은 진단 카드가 보인다
+    expect(find.byKey(const Key('today.generateButton')), findsNothing);
+    expect(find.byKey(const Key('today.diagnosticCard')), findsOneWidget);
+
+    await tapKey(tester, 'today.diagnosticAllButton');
+    expect(locationOf(tester), AppRoutes.diagnostics);
+  });
+
+  testWidgets('shouldReachDiagnosticsFromMoreEvenWithNothingLeftToSuggest', (tester) async {
+    backend.diagnosticRepository.suggestions = [];
+    // 폭이 600 이상이면 /more 는 /today 로 redirect 한다 (docs/02 §2.3)
+    usePhoneScreen(tester);
+    await pumpApp(tester, backend: backend, at: AppRoutes.more);
+
+    // 제안이 하나도 없어 카드가 숨어도 더보기 항목은 남아 있어야 한다
+    await tapKeyInList(tester, 'more.diagnostics');
     expect(locationOf(tester), AppRoutes.diagnostics);
   });
 

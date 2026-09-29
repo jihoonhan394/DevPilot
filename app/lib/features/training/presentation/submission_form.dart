@@ -179,8 +179,9 @@ class _AnswerField extends StatelessWidget {
     return TextField(
       key: const Key('attempt.answerField'),
       controller: controller,
-      minLines: 3,
-      maxLines: 10,
+      // 설명은 문제당 여러 문단이 나온다. 코드 입력란(6~16줄)보다 작으면 쓰다가 스크롤이 생긴다.
+      minLines: 8,
+      maxLines: 24,
       onChanged: (_) => onChanged(),
       decoration: InputDecoration(
         labelText: l10n.trainingSubmitAnswer,

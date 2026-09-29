@@ -5,6 +5,8 @@ import 'package:devpilot_app/app/not_found_screen.dart';
 import 'package:devpilot_app/app/routes.dart';
 import 'package:devpilot_app/core/api/api_exception.dart';
 import 'package:devpilot_app/core/api/learning_enums.dart';
+import 'package:devpilot_app/core/history/recent_store.dart';
+import 'package:devpilot_app/core/history/record_visit.dart';
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/widgets/ai_status_widgets.dart';
 import 'package:devpilot_app/core/widgets/error_view.dart';
@@ -49,25 +51,32 @@ class ReadCodeScreen extends ConsumerWidget {
     if (reading.hasValue && reading.requireValue.code == null) {
       return const NotFoundScreen();
     }
-    return Scaffold(
-      appBar: AppBar(title: Semantics(header: true, child: Text(l10n.readCodeTitle))),
-      body: Column(
-        children: [
-          AiUnavailableBanner(status: ref.watch(aiStatusProvider)),
-          Expanded(
-            child: ScreenBody(
-              child: reading.when(
-                loading: () => const SkeletonList(count: 3, lines: 3),
-                error: (error, _) => ErrorView(
-                  error: error,
-                  onRetry: () => ref.invalidate(readingProvider(readingKey)),
+    // 읽기 목록 API가 없다(GET /readings/{key} 는 단건이고 사용자를 모른다). 끝난 과제는 Today 에서
+    // 빠지므로 읽었던 파일로 돌아갈 길은 이 방문 기록뿐이다.
+    return RecordVisit(
+      kind: RecentKind.readCode,
+      route: AppRoutes.readCode(readingKey),
+      title: reading.value?.code?.repo.name,
+      child: Scaffold(
+        appBar: AppBar(title: Semantics(header: true, child: Text(l10n.readCodeTitle))),
+        body: Column(
+          children: [
+            AiUnavailableBanner(status: ref.watch(aiStatusProvider)),
+            Expanded(
+              child: ScreenBody(
+                child: reading.when(
+                  loading: () => const SkeletonList(count: 3, lines: 3),
+                  error: (error, _) => ErrorView(
+                    error: error,
+                    onRetry: () => ref.invalidate(readingProvider(readingKey)),
+                  ),
+                  data: (reading) =>
+                      _ReadingGuide(reading: reading, code: reading.code!, taskId: taskId),
                 ),
-                data: (reading) =>
-                    _ReadingGuide(reading: reading, code: reading.code!, taskId: taskId),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

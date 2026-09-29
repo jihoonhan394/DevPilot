@@ -44,6 +44,10 @@
 | Tablet | 600 ~ 1023 | 좌측 `NavigationRail`(아이콘 + 아래 라벨, 폭 80), 데스크톱과 같은 목적지 | 최대 720, 가운데 정렬 |
 | Desktop | ≥ 1024 | 좌측 `NavigationRail` extended(아이콘 + 오른쪽 라벨, 폭 220) | 최대 960. 2단 레이아웃을 쓰는 화면은 §3에 명시 |
 
+**예외 — 답을 쓰는 화면은 1200이다.** 960은 **읽는** 폭이다. 그 안에 설명 입력란과 코드 입력란을
+넣으면 쓰는 쪽이 좁아진다. 긴 답과 코드를 함께 쓰는 화면(SCR-ATTEMPT)은 Desktop에서 최대 1200을
+쓴다(`ScreenBody(wide: true)`). Tablet·Mobile은 그대로다 — 거기서는 화면이 이미 한계다.
+
 - 최소 지원 폭은 360이다. 360~599는 같은 레이아웃이다.
 - 화면 방향 전환이나 창 크기 변경 시 입력 중인 내용은 유지한다(상태는 Riverpod provider에 둔다).
 - **하단 탭은 v3에서도 4개(Today · Review · Plan · More)를 유지한다.** 러버덕은 중심 기능이지만 탭으로 두지 않는다 — ① 러버덕 세션은 항상 대상(읽은 코드, 문제, 복습 카드, 개념, 프로젝트 작업)이 있어야 시작되므로 그 대상 화면에서 여는 편이 결정 비용이 낮고(U-2), ② 세션 목록 API가 없어(`05` §9.10) 탭 첫 화면이 빈 화면이 되며, ③ Today가 `READ_CODE`·`PROJECT_TASK`로 러버덕을 매일 끌어오고 진행 중 세션은 Today에서 이어 열 수 있고(§3.5), ④ 360px에서 탭 5개는 라벨이 좁아진다. 사이드 프로젝트는 자주 여는 화면이 아니므로 More(모바일)·rail(태블릿·데스크톱)에 둔다.
@@ -68,6 +72,7 @@
 - Dashboard(`/dashboard`)와 Weekly(`/weekly`)는 목적지가 아니다. SCR-TODAY 헤더의 "진행 현황" 링크, SCR-MORE, SCR-PLAN에서 진입한다.
 - 러버덕(`/rubber-duck/*`)은 목적지가 아니다. 진입점: SCR-READ-CODE "읽었으면 설명하기", SCR-TODAY(PROJECT_TASK·EXPLAIN 카드, 진행 중 세션 이어 하기), SCR-TRAINING-ATTEMPT 결과, SCR-REVIEW-SESSION 끝 화면, SCR-REVIEW-ITEMS 메뉴, SCR-SKILL-DETAIL "개념 설명하기", SCR-PROJECTS·SCR-PROJECT-DETAIL "이 프로젝트 작업 설명하기", SCR-PROJECT-DETAIL 기록 카드 `⋮` "러버덕으로 설명하기". 러버덕 화면은 하단 탭·rail을 숨기는 집중 화면이다(SCR-REVIEW-SESSION과 같음).
 - 사이드 프로젝트 상세(`/projects/:sideProjectId`)와 기록 편집(`…/notes/*`)도 목적지가 아니다. 진입점은 SCR-PROJECTS 카드와 SCR-TODAY `PROJECT_TASK` 카드의 "이 프로젝트 기록"이다.
+- 진단(`/today/diagnostics`)도 목적지가 아니다. 진입점: SCR-MORE "지금 수준 확인"(**항상 열려 있다**), SCR-TODAY의 진단 카드(생성 전·후 모두), 온보딩 5단계, 진단 결과 화면. 뒤의 셋은 조건이 닫히면 다시 열리지 않으므로 SCR-MORE 항목을 지우지 않는다.
 - 팁(`/tips*`)과 용어(`/terms*`)도 목적지가 아니다. 진입점: 팁은 SCR-TODAY 오늘의 팁 카드 "자세히"와 SCR-MORE "오늘의 팁", 용어는 SCR-REVIEW-HOME "용어 찾기"와 SCR-MORE "용어 사전", SCR-TIP-DETAIL·SCR-TERM-DETAIL 안의 용어 링크다. 하단 탭·rail을 그대로 두는 보통 화면이다(러버덕 같은 집중 화면이 아니다).
 - 현재 라우트가 목적지 하위(예: `/training/attempts/…`, `/today/read/…`)면 해당 목적지를 선택 상태로 표시한다. `/dashboard`, `/weekly/*`, `/tips*`는 Mobile에서 More, 그 외에서는 Today를 선택 상태로 표시한다. `/terms*`는 Review를 선택 상태로 표시한다(복습 카드를 만드는 화면이다).
 - 하위 화면은 앱 바 뒤로가기(`←`)를 둔다. 목적지 화면에는 뒤로가기가 없다.
@@ -539,14 +544,15 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ 지금 수준을 확인해요             │
 │                                │
 │ ┌────────────────────────────┐ │
-│ │ (●) 짧은 진단으로 시작 [권장] │ │
-│ │ 분야마다 1문제, 최대 5문제예요.│ │
-│ │ 계획을 만든 뒤 바로 풀어요.    │ │
-│ │ 스스로 고르는 것보다 정확해요. │ │
+│ │ (●) 직접 고르기       [권장] │ │
+│ │ 분야별 수준을 직접 골라요.     │ │
+│ │ 다섯 단계라 더 촘촘하고, 여기서 │ │
+│ │ 정한 수준이 첫 과제 난이도예요. │ │
 │ └────────────────────────────┘ │
 │ ┌────────────────────────────┐ │
-│ │ ( ) 진단 건너뛰고 직접 고르기 │ │
-│ │ 분야별 수준을 직접 골라요.     │ │
+│ │ ( ) 짧은 진단      [문제 풀기]│ │
+│ │ 분야마다 1문제, 최대 5문제예요.│ │
+│ │ 지금은 모두 같은 난이도예요.   │ │
 │ └────────────────────────────┘ │
 │                                │
 │ ▸ 지금 프로젝트에 필요한 기술     │
@@ -569,10 +575,10 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ … 13개 카테고리                 │
 ```
 
-- 기본 선택 = 짧은 진단(`runDiagnostic=true`, `selfAssessments=[]`). 자기평가를 고르면 `runDiagnostic=false`, `selfAssessments` 13개(`05` §4.1: 진단 모드에서 자기평가를 보내면 `MUTUALLY_EXCLUSIVE`, 자기평가 모드에서 비우면 `ONE_OF_REQUIRED`).
+- **기본 선택 = 자기평가**(`runDiagnostic=false`). seed 진단이 전부 difficulty 3이고 판정이 통과/실패뿐이라(`06` §7.4) 나오는 값이 3 아니면 0이다 — 다섯 단계 자기평가보다 거칠다. **진단에 난이도 사다리가 생기면 기본값을 되돌린다.** 진단을 고르면 `runDiagnostic=true`, `selfAssessments=[]`. 자기평가를 고르면 `runDiagnostic=false`, `selfAssessments` 13개(`05` §4.1: 진단 모드에서 자기평가를 보내면 `MUTUALLY_EXCLUSIVE`, 자기평가 모드에서 비우면 `ONE_OF_REQUIRED`).
 - `diagnostics` flag가 꺼진 빌드(S1~S2)는 두 카드 없이 자기평가 칩만 보여주고(제목 `onboarding.level.titleSelf`) `runDiagnostic=false`로 보낸다. 이 사용자는 S3 이후 자기평가 3 이상인 분야에 한해 Today에서 진단을 제안받는다(FR-15).
 - 진단 문제는 이 단계에서 풀지 않는다. 서버가 제출 응답의 `suggestedDiagnostics`(카테고리당 1문제, 최대 5개, `05` §4.2)로 문제를 정하므로 5단계 이후 SCR-DIAGNOSTICS에서 푼다.
-- 자기평가: 카테고리 순서는 §3.1 `SkillCategory` 표 순서. 선택지는 `ChoiceChip` 5개(0~4), 기본 0. 3 이상을 고른 카테고리가 있으면 칩 아래에 `onboarding.level.diagnosticNote`를 보여준다(S3 이후).
+- 자기평가: 카테고리 순서는 §3.1 `SkillCategory` 표 순서. 선택지는 `ChoiceChip` 5개(0~4), 기본 0. **한 번도 고르지 않은 카테고리가 있으면 칩 아래에 `onboarding.level.unsetNote`로 남은 개수를 알린다** — 손대지 않으면 0으로 나가고, 전부 0이면 계획이 첫날부터 CRITICAL이 된다. 3 이상을 고른 카테고리가 있으면 칩 아래에 `onboarding.level.diagnosticNote`를 보여준다(S3 이후).
 - "프로젝트에 필요한 기술" 펼침: `GET /skills/tree?role=JAVA_BACKEND`의 skill을 카테고리별 검색 목록으로 보여주고 최대 10개 선택.
 - "다음"은 항상 활성이다(두 방식 모두 기본값이 있다). 여기서는 아직 제출하지 않는다.
 
@@ -659,10 +665,10 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `onboarding.goal.title` | 무엇을, 언제까지 공부할지 정해요 |
 | `onboarding.goal.displayName` | 표시 이름 |
 | `onboarding.goal.role` | 학습 트랙 |
-| `onboarding.goal.track.javaBackend` | Java 백엔드 |
+| 트랙 이름 | 새 키를 두지 않고 §3.1 `TargetRole` 라벨(`enumTargetRole*`)을 그대로 쓴다 — 같은 문구를 두 곳에 두지 않는다 |
 | `onboarding.goal.track.javaBackend.desc` | Spring Boot · JPA · DB를 실무 수준으로 |
-| `onboarding.goal.track.javaBackendStarter` | Java 백엔드 입문 |
 | `onboarding.goal.track.javaBackendStarter.desc` | 개발을 막 시작했다면 여기부터. 필수 항목이 적고 과제가 쉬워요 |
+| `onboarding.goal.track.integrationEngineer.desc` | 기본기 위에 외부 시스템 연동과 배포·운영을 더 다뤄요. 쉽게 만든 판이 아니라 다른 구성이에요 |
 | `onboarding.goal.track.mustCount` | 필수 {count}개 |
 | `onboarding.goal.track.locked` | 트랙은 나중에 바꿀 수 없어요. |
 | `onboarding.goal.targetDate.help` | 이 날짜에서 거꾸로 계산해 하루 분량이 정해져요. 처음이면 3개월쯤이 무난해요. |
@@ -1021,7 +1027,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | 시점 | API |
 |---|---|
 | 진입, 탭 재선택, 화면 복귀(visibility) | `GET /today` (404 `TODAY_NOT_GENERATED` → 생성 전 레이아웃) |
-| 생성 전 레이아웃 표시 시 (S3) | `GET /diagnostics/suggestions` (실패해도 카드만 숨김) |
+| **생성 전·생성 후 레이아웃 모두 (S3)** | `GET /diagnostics/suggestions` (실패해도 카드만 숨김). **카드는 남은 진단이 있을 때만 그려진다** — 생성 전에만 두면 계획을 한 번 만든 사용자는 진단에 도달할 수 없다(다른 입구인 온보딩 5단계·진단 결과 화면도 한 번 닫히면 열리지 않는다). 항상 열려 있는 입구는 SCR-MORE의 "지금 수준 확인"이다 |
 | 진입 시, 기기에 진행 중 러버덕·READ_CODE 완료 기록이 있을 때 (S3) | `GET /rubber-duck/{sessionId}` (실패하면 해당 줄·버튼만 기본 상태) |
 | 진입·화면 복귀, 계획이 있을 때 (S3, `tips` flag) | `GET /tips/today` (404 `RESOURCE_NOT_FOUND` = 더 보여 줄 팁이 없음 → 카드만 숨김. 그 밖의 실패도 카드만 숨기고 화면 오류로 만들지 않는다) |
 | 진입 시, "시작" 직전 | `GET /learning-sessions?from={planDate}&to={planDate}` → `IN_PROGRESS` 세션(있으면 1개)과 그 `learningTaskId` 확인 |
@@ -2480,6 +2486,9 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | 7 | 다음 걸음 | 노트의 `inProject`, 다음 단위 또는 "오늘은 여기까지" | — |
 
 - **"이미 안다 → 문제부터"**: 0·1·2에서 항상 보이는 버튼. 누르면 5로 건너뛴다. 도움 없이 풀면 그 단위는 끝이다(`06` R-0 1번).
+- **"이 단위는 알아요 → 건너뛰기"**: 0·1·2에서 위 버튼 아래 함께 보인다. 누르면 걸음을 더 걷지 않고 그 단위를 바로 마친다 — `POST …/finish`를 `helpLevel = NONE`, `selfChecksMet` 없이 부르고 7번(다음 걸음)으로 간다. 문제까지 푸는 위 버튼과 다르다.
+  - 필요한 이유: `lessonMaxKnowledge`가 4인 트랙(연동·입문)은 **이미 아는 분야에도 노트를 먼저 낸다**(ADR-057). 아는 단위를 10초에 지나갈 수 없으면 노트가 지루한 관문이 된다.
+  - `UNIT_SOLVED`는 복습 일정의 입력이고 레벨의 증거가 아니므로(`04` §6), 눌러도 레벨은 오르지 않는다. 같은 단위는 나중에 다시 풀 수 있다(dedupe 하지 않는다).
 - **막혔을 때**(5번 화면): `힌트 보기`(1개씩, 콘텐츠의 `hints`) → `오리에게 설명하기`(러버덕) → `모범 답안 보기`. 이 순서대로 버튼이 하나씩 열린다. 옆에 안내 한 줄: "15분 넘게 막히면 도움을 쓰세요."
 - **도움 단계는 앱이 센다.** 무엇을 열었는지가 `POST …/finish`의 `helpLevel`이다(`05` §21.7). 서버가 추적하지 않는다. 모범 답안은 `GET …/answer`로 가져온다.
 - **`prerequisiteUnits`**: 5번 화면의 도움 목록 맨 위에 "먼저 볼 개념"으로 둔다. 아직 만들지 않은 단위를 가리키면 그 줄은 보이지 않는다.
@@ -3013,6 +3022,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `more.group.learn` | 배우기 |
 | `more.group.record` | 내 기록 |
 | `more.group.settings` | 설정 |
+| `more.diagnostics` / `.desc` | 지금 수준 확인 / 분야마다 한 문제, 풀면 그 분야의 시작 수준이 정해져요 — **진단의 다른 입구는 모두 한 번 닫히면 열리지 않으므로 여기가 항상 열려 있는 문이다** |
 | `more.lessons` / `.desc` | 개념 노트 / 개념을 처음 배울 때 읽는 글 |
 | `more.tips` / `.desc` | 오늘의 팁 / 3분짜리 실무 증상 하나 |
 | `more.terms` / `.desc` | 용어 사전 / 말이 헷갈릴 때 찾는 곳 |
@@ -3943,7 +3953,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | 2 | 이메일 입력 → "로그인" | SCR-LOGIN | `POST /api/v1/dev/token {email}` | allowlist 확인 → 서명 토큰 발급 (`supabase` 모드면 GitHub OAuth) |
 | 3 | — | SCR-AUTH-CALLBACK | `GET /me` | JIT: allowlist 통과 → `app_user` INSERT(기본값). 실패 시 403 → SCR-NOT-ALLOWED |
 | 4 | — | → `/onboarding/goal` | `onboardingCompleted=false` | — |
-| 5 | 표시 이름·목표일 입력(학습 트랙은 Java 백엔드 고정) → 다음 | 1단계 | draft 저장 | — |
+| 5 | 표시 이름·학습 트랙·목표일 입력 → 다음 | 1단계 | draft 저장 | — |
 | 6 | 시간 입력 → 다음 | 2단계 | draft 저장 | — |
 | 7 | "짧은 진단으로 시작"(기본) 그대로 → 다음 | 3단계 | draft 저장(`runDiagnostic=true`) | — |
 | 8 | 이름 "주문 시스템" 그대로 → "계획 만들기" | 4단계 | `POST /onboarding` (IK) `{…, runDiagnostic: true, selfAssessments: [], sideProject: {name: "주문 시스템", description}}` | 한 트랜잭션: learning_goal, `user_skill_state`(진단 모드 — `self_assessed_level` 모두 null), plan v1(ACTIVE, 9개 milestone)·plan_skill_target, seed review_item 복사(하루 5장 분산), `side_project`(ACTIVE), `onboarding_completed_at`, 오늘 snapshot → 커밋 후 `suggestedDiagnostics`(카테고리당 1개, 최대 5개) |
@@ -3954,7 +3964,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | 13 | — | 생성 후 레이아웃 | 응답 표시 | — |
 
 분기:
-- 3단계에서 "진단 건너뛰고 직접 고르기": 7에서 13개 카테고리 수준을 고르고 8에 `runDiagnostic: false, selfAssessments: [13개]`를 보낸다([서버] 카테고리 값을 `self_assessed_level`에 전파). 5단계에는 진단 카드가 없고 primary는 "그대로 시작"이다. 자기평가 3 이상인 분야는 Today에서 진단 카드로 제안된다(§4.6).
+- 3단계에서 "진단 건너뛰고 직접 고르기": 7에서 14개 카테고리 수준을 고르고 8에 `runDiagnostic: false, selfAssessments: [14개]`를 보낸다([서버] 카테고리 값을 `self_assessed_level`에 전파). 5단계에는 진단 카드가 없고 primary는 "그대로 시작"이다. 자기평가 3 이상인 분야는 Today에서 진단 카드로 제안된다(§4.6).
 - 4단계에서 "건너뛰기" → 대화상자 "건너뛰고 계획 만들기" → 8을 `sideProject: null`로 보낸다([서버] `side_project` 없음 → planner가 `PROJECT_TASK`를 제안하지 않음, SP-1). 5단계에 `onboarding.plan.noProject`.
 - `diagnostics` flag가 꺼진 빌드(S1~S2): 3단계는 자기평가만 있다(위 첫 분기와 같음).
 

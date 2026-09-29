@@ -5,7 +5,13 @@ import 'package:flutter/material.dart';
 /// on mobile, at most 720 on tablet and 960 on desktop, centered. The body is one selection scope,
 /// so any text on the screen can be dragged and copied.
 class ScreenBody extends StatelessWidget {
-  const ScreenBody({super.key, required this.child, this.controller, this.maxWidth});
+  const ScreenBody({
+    super.key,
+    required this.child,
+    this.controller,
+    this.maxWidth,
+    this.wide = false,
+  });
 
   final Widget child;
   final ScrollController? controller;
@@ -13,9 +19,13 @@ class ScreenBody extends StatelessWidget {
   /// Narrower limit for forms; the breakpoint width applies when it is larger.
   final double? maxWidth;
 
-  static double contentWidthFor(double screenWidth) {
+  /// Screens where the reader writes long answers with code use the wider desktop measure
+  /// (docs/02 §2.1 exception). Tablet and mobile are unchanged — there the screen is the limit.
+  final bool wide;
+
+  static double contentWidthFor(double screenWidth, {bool wide = false}) {
     if (screenWidth >= AppBreakpoints.desktop) {
-      return AppBreakpoints.desktopContentWidth;
+      return wide ? AppBreakpoints.wideContentWidth : AppBreakpoints.desktopContentWidth;
     }
     if (screenWidth >= AppBreakpoints.tablet) {
       return AppBreakpoints.tabletContentWidth;
@@ -25,7 +35,7 @@ class ScreenBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final breakpointWidth = contentWidthFor(MediaQuery.sizeOf(context).width);
+    final breakpointWidth = contentWidthFor(MediaQuery.sizeOf(context).width, wide: wide);
     final limit = maxWidth;
     final width = limit != null && limit < breakpointWidth ? limit : breakpointWidth;
     return SingleChildScrollView(

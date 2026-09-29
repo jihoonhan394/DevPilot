@@ -50,6 +50,11 @@ abstract final class OnboardingRules {
   static bool hasHighSelfAssessment(OnboardingDraft draft) =>
       draft.selfAssessmentLevels.values.any((level) => level >= 3);
 
+  /// Categories the reader has not touched yet. They are sent as 0, which is a real answer ("모름")
+  /// and not the same as "skipped" — so the screen says how many are still unset (docs/02 step 3).
+  static int unsetCategoryCount(OnboardingDraft draft) =>
+      SkillCategory.known.where((c) => !draft.selfAssessmentLevels.containsKey(c)).length;
+
   /// Builds `POST /onboarding`. [withProject] false sends `sideProject: null` (skip, SP-1).
   static OnboardingRequest buildRequest({
     required OnboardingDraft draft,
@@ -70,12 +75,12 @@ abstract final class OnboardingRules {
       weekdayStudyMinutes: draft.weekdayStudyMinutes,
       weekendStudyMinutes: draft.weekendStudyMinutes,
       learningGoal: LearningGoalInput(
-        targetRole: TargetRole.javaBackend,
+        targetRole: draft.targetRole,
         targetCompletionDate: completion,
         focusSkillCodes: draft.focusSkillCodes,
       ),
       runDiagnostic: draft.runDiagnostic,
-      // Diagnostic mode must send []; self-assessment sends all 13 categories (docs/05 §4.1).
+      // Diagnostic mode must send []; self-assessment sends all 14 categories (docs/05 §4.1).
       selfAssessments: draft.runDiagnostic
           ? const []
           : [

@@ -70,6 +70,9 @@ abstract final class AppRoutes {
   /// SCR-PROJECT-NOTE-EDIT (수정): `/projects/:id/notes/:noteId`.
   static String projectNote(String sideProjectId, String noteId) =>
       '$projects/$sideProjectId/notes/$noteId';
+
+  /// SCR-RECENT: 이 브라우저에서 최근 연 화면 (docs/02 §3.19).
+  static const recent = '/recent';
   static const settings = '/settings';
 
   /// SCR-ACCOUNT-RESET: 계정은 두고 진도만 되돌린다 (docs/02 §3.14).
@@ -235,6 +238,7 @@ enum RouteAccess {
     AppRoutes.lessonsPrefix,
     AppRoutes.tipsPrefix,
     AppRoutes.termsPrefix,
+    AppRoutes.recent,
   };
 
   static RouteAccess of(String path) {

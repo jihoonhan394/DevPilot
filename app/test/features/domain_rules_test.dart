@@ -54,7 +54,11 @@ void main() {
 
     test('shouldBuildDiagnosticRequestWithEmptySelfAssessments', () {
       final request = OnboardingRules.buildRequest(
-        draft: draft.copyWith(selfAssessmentLevels: {SkillCategory.java: 3}),
+        // 진단 모드를 명시한다 — 기본값이 무엇이든 이 테스트의 주장은 같아야 한다.
+        draft: draft.copyWith(
+          runDiagnostic: true,
+          selfAssessmentLevels: {SkillCategory.java: 3},
+        ),
         displayName: ' MT ',
         timezone: 'Asia/Seoul',
         projectName: '주문 시스템',

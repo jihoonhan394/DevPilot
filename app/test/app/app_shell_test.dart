@@ -32,10 +32,11 @@ void main() {
     expect(locationOf(tester), '/plan');
 
     await tapKey(tester, 'shell.nav.more');
-    expect(find.byKey(const Key('more.lessons')), findsOneWidget);
-    expect(find.byKey(const Key('more.skills')), findsOneWidget);
-    expect(find.byKey(const Key('more.dashboard')), findsOneWidget);
-    await tapKey(tester, 'more.settings');
+    // 더보기 목록이 길어 아래쪽 항목은 접혀 있다 — ListView 가 아직 만들지 않았으므로 스크롤부터
+    await expectKeyInList(tester, 'more.lessons');
+    await expectKeyInList(tester, 'more.skills');
+    await expectKeyInList(tester, 'more.dashboard');
+    await tapKeyInList(tester, 'more.settings');
     expect(locationOf(tester), '/settings');
     // Settings lives under More on mobile.
     expect(bottomBar(tester).selectedIndex, 3);
@@ -47,7 +48,7 @@ void main() {
     await pumpApp(tester);
 
     await tapKey(tester, 'shell.nav.more');
-    await tapKey(tester, 'more.dashboard');
+    await tapKeyInList(tester, 'more.dashboard');
 
     expect(locationOf(tester), '/dashboard');
     expect(find.text('진행 현황'), findsWidgets);

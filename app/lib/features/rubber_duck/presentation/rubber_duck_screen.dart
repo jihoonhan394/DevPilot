@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:devpilot_app/app/not_found_screen.dart';
 import 'package:devpilot_app/app/routes.dart';
 import 'package:devpilot_app/core/api/api_exception.dart';
+import 'package:devpilot_app/core/history/recent_store.dart';
+import 'package:devpilot_app/core/history/record_visit.dart';
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/widgets/ai_status_widgets.dart';
 import 'package:devpilot_app/core/widgets/error_view.dart';
@@ -104,54 +106,62 @@ class _RubberDuckScreenState extends ConsumerState<RubberDuckScreen> {
     final session = data?.session;
     final ended = session != null && !session.inProgress;
     final actions = _actions(context);
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          key: const Key('rubberDuck.exitButton'),
-          tooltip: l10n.rubberDuckExit,
-          icon: const Icon(Icons.close),
-          onPressed: actions.exit,
+    final sessionId = widget.route.sessionId;
+    // 서버에 세션 목록이 없다(docs/05 §9.5~§9.10) — 끝난 대화로 돌아갈 길은 이 방문 기록뿐이다.
+    // 아직 세션이 없는 `/rubber-duck/new` 는 돌아갈 곳이 없으므로 적지 않는다.
+    return RecordVisit(
+      kind: RecentKind.rubberDuck,
+      route: sessionId == null ? '' : AppRoutes.rubberDuckSession(sessionId),
+      title: sessionId == null ? null : session?.targetTitle,
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            key: const Key('rubberDuck.exitButton'),
+            tooltip: l10n.rubberDuckExit,
+            icon: const Icon(Icons.close),
+            onPressed: actions.exit,
+          ),
+          title: Semantics(
+            header: true,
+            child: Text(ended ? l10n.rubberDuckSummaryTitle : l10n.rubberDuckTitle),
+          ),
+          actions: [
+            if (session != null && session.inProgress)
+              _SessionActions(
+                turnCount: session.turnCount,
+                maxTurns: session.maxTurns,
+                onAbandon: data!.busy ? null : actions.abandon,
+              ),
+          ],
         ),
-        title: Semantics(
-          header: true,
-          child: Text(ended ? l10n.rubberDuckSummaryTitle : l10n.rubberDuckTitle),
-        ),
-        actions: [
-          if (session != null && session.inProgress)
-            _SessionActions(
-              turnCount: session.turnCount,
-              maxTurns: session.maxTurns,
-              onAbandon: data!.busy ? null : actions.abandon,
-            ),
-        ],
-      ),
-      body: Column(
-        children: [
-          AiUnavailableBanner(status: ref.watch(aiStatusProvider)),
-          Expanded(
-            child: ScreenBody(
-              child: screen.when(
-                loading: () => const SkeletonList(count: 2, lines: 3),
-                // RE-5: 재현 과제가 열려 있는 동안은 이 대상만 잠긴다. 다시 시도해도 같으므로 재시도 대신
-                // 왜 그런지와 돌아갈 곳을 준다.
-                error: (error, _) =>
-                    error is ApiException && error.code == ApiErrorCode.aiAssistLockedForRedo
-                    ? const _RedoLocked()
-                    : ErrorView(
-                        error: error,
-                        onRetry: () => ref.read(provider.notifier).reload(),
-                      ),
-                data: (data) => RubberDuckBody(
-                  data: data,
-                  preview: widget.preview,
-                  input: _input,
-                  inputFocus: _inputFocus,
-                  actions: actions,
+        body: Column(
+          children: [
+            AiUnavailableBanner(status: ref.watch(aiStatusProvider)),
+            Expanded(
+              child: ScreenBody(
+                child: screen.when(
+                  loading: () => const SkeletonList(count: 2, lines: 3),
+                  // RE-5: 재현 과제가 열려 있는 동안은 이 대상만 잠긴다. 다시 시도해도 같으므로 재시도 대신
+                  // 왜 그런지와 돌아갈 곳을 준다.
+                  error: (error, _) =>
+                      error is ApiException && error.code == ApiErrorCode.aiAssistLockedForRedo
+                      ? const _RedoLocked()
+                      : ErrorView(
+                          error: error,
+                          onRetry: () => ref.read(provider.notifier).reload(),
+                        ),
+                  data: (data) => RubberDuckBody(
+                    data: data,
+                    preview: widget.preview,
+                    input: _input,
+                    inputFocus: _inputFocus,
+                    actions: actions,
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

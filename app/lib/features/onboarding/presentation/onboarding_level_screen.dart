@@ -91,19 +91,22 @@ class _LevelModeCards extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // 자기평가가 먼저이고 권장이다 — seed 진단이 전부 난이도 3이라 통과/실패 둘뿐이고,
+          // 다섯 단계짜리 자기평가보다 거칠다. 진단에 난이도 사다리가 생기면 되돌린다.
+          _ModeCard(
+            tileKey: const Key('onboarding.level.self'),
+            value: false,
+            title: l10n.onboardingLevelSelf,
+            description: l10n.onboardingLevelSelfDesc,
+            badge: l10n.onboardingLevelSelfBadge,
+          ),
+          const SizedBox(height: AppSpacing.md),
           _ModeCard(
             tileKey: const Key('onboarding.level.diagnostic'),
             value: true,
             title: l10n.onboardingLevelDiagnostic,
             description: l10n.onboardingLevelDiagnosticDesc,
             badge: l10n.onboardingLevelDiagnosticBadge,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _ModeCard(
-            tileKey: const Key('onboarding.level.self'),
-            value: false,
-            title: l10n.onboardingLevelSelf,
-            description: l10n.onboardingLevelSelfDesc,
           ),
         ],
       ),
@@ -129,6 +132,16 @@ class _SelfAssessment extends StatelessWidget {
         Text(l10n.onboardingLevelHelp, style: textTheme.bodySmall),
         const SizedBox(height: AppSpacing.sm),
         _SelfAssessmentChips(levels: draft.selfAssessmentLevels, onChanged: onChanged),
+        // 손대지 않은 분야는 조용히 0으로 나간다. 그 상태로 넘기면 계획이 "아무것도 모른다"에서
+        // 시작하고 첫날부터 위험도가 CRITICAL이 된다. 몇 개 남았는지 말해 준다.
+        if (OnboardingRules.unsetCategoryCount(draft) > 0) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            l10n.onboardingLevelUnset(OnboardingRules.unsetCategoryCount(draft)),
+            key: const Key('onboarding.level.unsetNote'),
+            style: textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.error),
+          ),
+        ],
         if (OnboardingRules.hasHighSelfAssessment(draft)) ...[
           const SizedBox(height: AppSpacing.sm),
           Text(
@@ -178,7 +191,7 @@ class _ModeCard extends StatelessWidget {
   }
 }
 
-/// 13 categories × 5 chips (0~4), in `SkillCategory` order (docs/02 step 3).
+/// 14 categories × 5 chips (0~4), in `SkillCategory` order (docs/02 step 3).
 class _SelfAssessmentChips extends StatelessWidget {
   const _SelfAssessmentChips({required this.levels, required this.onChanged});
 

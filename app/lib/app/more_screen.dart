@@ -37,6 +37,15 @@ class MoreScreen extends ConsumerWidget {
             child: BudgetWarningNote(status: aiStatus),
           ),
           _GroupHeader(key: const Key('more.group.learn'), label: l10n.moreGroupLearn),
+          // 진단의 다른 입구(온보딩 5단계, Today 생성 전 카드, 진단 결과 화면)는 모두 한 번 닫히면
+          // 다시 열리지 않는다. 여기가 항상 열려 있는 유일한 문이다.
+          _MoreTile(
+            tileKey: const Key('more.diagnostics'),
+            icon: Icons.straighten,
+            label: l10n.moreDiagnostics,
+            description: l10n.moreDiagnosticsDesc,
+            path: AppRoutes.diagnostics,
+          ),
           _MoreTile(
             tileKey: const Key('more.lessons'),
             icon: Icons.menu_book_outlined,
@@ -66,6 +75,16 @@ class MoreScreen extends ConsumerWidget {
             path: AppRoutes.training,
           ),
           _GroupHeader(key: const Key('more.group.record'), label: l10n.moreGroupRecord),
+          // 서버에 "내가 한 일" 목록이 없어서 러버덕 대화와 코드 읽기는 끝나면 다시 못 연다.
+          // 이 브라우저가 기억한 방문 기록이 그 자리를 메운다
+          // (DevPilot-ops/reachability-audit-2026-09-29.md).
+          _MoreTile(
+            tileKey: const Key('more.recent'),
+            icon: Icons.history,
+            label: l10n.moreRecent,
+            description: l10n.moreRecentDesc,
+            path: AppRoutes.recent,
+          ),
           _MoreTile(
             tileKey: const Key('more.skills'),
             icon: Icons.account_tree_outlined,

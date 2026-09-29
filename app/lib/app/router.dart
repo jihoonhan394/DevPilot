@@ -11,6 +11,7 @@ import 'package:devpilot_app/core/auth/auth_controller.dart';
 import 'package:devpilot_app/features/auth/presentation/login_screen.dart';
 import 'package:devpilot_app/features/auth/presentation/not_allowed_screen.dart';
 import 'package:devpilot_app/features/dashboard/presentation/dashboard_screen.dart';
+import 'package:devpilot_app/features/history/presentation/recent_screen.dart';
 import 'package:devpilot_app/features/onboarding/presentation/onboarding_goal_screen.dart';
 import 'package:devpilot_app/features/onboarding/presentation/onboarding_level_screen.dart';
 import 'package:devpilot_app/features/onboarding/presentation/onboarding_plan_screen.dart';
@@ -207,6 +208,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.settingsReset,
             builder: (context, state) => const ProgressResetScreen(),
           ),
+          GoRoute(path: AppRoutes.recent, builder: (context, state) => const RecentScreen()),
           GoRoute(path: AppRoutes.more, builder: (context, state) => const MoreScreen()),
         ],
       ),

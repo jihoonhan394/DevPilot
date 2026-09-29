@@ -11,6 +11,30 @@ Future<void> tapVisible(WidgetTester tester, Finder finder) async {
 
 Future<void> tapKey(WidgetTester tester, String key) => tapVisible(tester, find.byKey(Key(key)));
 
+/// Taps [key] in a lazily built list. `ensureVisible` needs the element to exist, but a `ListView`
+/// does not build children far below the fold — so a long list throws `No element` instead of
+/// scrolling. Scroll first, then tap.
+Future<void> tapKeyInList(WidgetTester tester, String key, {Finder? list}) async {
+  final finder = find.byKey(Key(key));
+  if (finder.evaluate().isEmpty) {
+    await tester.scrollUntilVisible(finder, 200, scrollable: list ?? find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+  }
+  await tapVisible(tester, finder);
+}
+
+/// Scrolls [key] into the tree, then expects it to be there. Same reason as [tapKeyInList]: a
+/// `ListView` does not build what is far below the fold, so a plain `findsOneWidget` on a long list
+/// fails for a widget that exists in the screen.
+Future<void> expectKeyInList(WidgetTester tester, String key, {Finder? list}) async {
+  final finder = find.byKey(Key(key));
+  if (finder.evaluate().isEmpty) {
+    await tester.scrollUntilVisible(finder, 200, scrollable: list ?? find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+  }
+  expect(finder, findsOneWidget);
+}
+
 /// Replaces the text of the field with [key].
 Future<void> enterTextByKey(WidgetTester tester, String key, String text) async {
   final finder = find.byKey(Key(key));

@@ -11,6 +11,7 @@ import 'package:devpilot_app/features/today/presentation/active_rubber_duck_tile
 import 'package:devpilot_app/features/today/presentation/daily_tip_card.dart';
 import 'package:devpilot_app/features/today/presentation/main_task_card.dart';
 import 'package:devpilot_app/features/today/presentation/today_actions.dart';
+import 'package:devpilot_app/features/today/presentation/today_diagnostic_card.dart';
 import 'package:devpilot_app/features/today/presentation/today_state.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -51,6 +52,10 @@ class TodayGeneratedView extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           _ReviewTaskTile(task: review),
         ],
+        // 남은 진단이 있으면 계획을 만든 뒤에도 보여 준다. 생성 전 패널에만 두면 한 번 계획을
+        // 만든 사용자는 주소를 직접 치기 전에는 수준을 잴 방법이 없다. 남은 것이 없으면 스스로 숨는다.
+        const SizedBox(height: AppSpacing.md),
+        const TodayDiagnosticCard(),
         // 팁과 실험은 계획 아래다 — 오늘 할 일을 밀어내지 않는다 (docs/06 §5.12 TIP-6)
         const DailyTipCard(),
         if (experiment != null) TipExperimentTile(experiment: experiment),
