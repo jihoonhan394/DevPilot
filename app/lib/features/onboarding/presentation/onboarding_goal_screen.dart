@@ -4,6 +4,7 @@ import 'package:devpilot_app/core/l10n/enum_labels.dart';
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/time/local_date.dart';
 import 'package:devpilot_app/core/validation/input_rules.dart';
+import 'package:devpilot_app/core/widgets/app_toast.dart';
 import 'package:devpilot_app/features/onboarding/domain/onboarding_rules.dart';
 import 'package:devpilot_app/features/onboarding/presentation/onboarding_copy.dart';
 import 'package:devpilot_app/features/onboarding/presentation/onboarding_draft_controller.dart';
@@ -11,6 +12,7 @@ import 'package:devpilot_app/features/onboarding/presentation/onboarding_step_sc
 import 'package:devpilot_app/features/onboarding/presentation/onboarding_submit_controller.dart';
 import 'package:devpilot_app/features/onboarding/presentation/onboarding_target_date.dart';
 import 'package:devpilot_app/features/settings/data/me_provider.dart';
+import 'package:devpilot_app/features/skill/data/skill_repository.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -46,6 +48,22 @@ class _OnboardingGoalScreenState extends ConsumerState<OnboardingGoalScreen> {
   void _editDraft(OnboardingDraftEdit change) =>
       ref.read(onboardingDraftProvider.notifier).edit(change);
 
+  /// Switching tracks changes which categories step 3 asks about and what the plan preview holds,
+  /// so the step 3 inputs are dropped and asked again (docs/02 §3.4).
+  void _pickTrack(TargetRole role) {
+    if (role == ref.read(onboardingDraftProvider).targetRole) {
+      return;
+    }
+    _editDraft(
+      (draft) => draft.copyWith(
+        targetRole: role,
+        selfAssessmentLevels: const {},
+        focusSkillCodes: const [],
+      ),
+    );
+    showToast(context, AppLocalizations.of(context).onboardingGoalTrackReset);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -72,10 +90,12 @@ class _OnboardingGoalScreenState extends ConsumerState<OnboardingGoalScreen> {
               onChanged: (value) => _editDraft((draft) => draft.copyWith(displayName: value)),
             ),
             const SizedBox(height: AppSpacing.lg),
-            InputDecorator(
-              key: const Key('onboarding.roleField'),
-              decoration: InputDecoration(labelText: l10n.onboardingGoalRole, enabled: false),
-              child: Text(TargetRole.javaBackend.label(l10n)),
+            _TrackRadios(selected: draft.targetRole, onChanged: _pickTrack),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              l10n.onboardingGoalTrackLocked,
+              key: const Key('onboarding.goal.trackLocked'),
+              style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: AppSpacing.xl),
             OnboardingTargetDate(
@@ -95,6 +115,59 @@ class _OnboardingGoalScreenState extends ConsumerState<OnboardingGoalScreen> {
           ],
         );
       },
+    );
+  }
+}
+
+/// The three learning tracks (docs/02 §3.4). Each row is name + one line + how many skills the
+/// track marks MUST. The count comes from `GET /skills/tree?role=`; a failed lookup leaves the
+/// number out rather than blocking the step.
+class _TrackRadios extends ConsumerWidget {
+  const _TrackRadios({required this.selected, required this.onChanged});
+
+  final TargetRole selected;
+  final ValueChanged<TargetRole> onChanged;
+
+  String _describe(TargetRole role, AppLocalizations l10n) => switch (role) {
+    TargetRole.javaBackend => l10n.onboardingGoalTrackJavaBackendDesc,
+    TargetRole.javaBackendStarter => l10n.onboardingGoalTrackJavaBackendStarterDesc,
+    TargetRole.integrationEngineer => l10n.onboardingGoalTrackIntegrationEngineerDesc,
+    TargetRole.unknown => '',
+  };
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    return InputDecorator(
+      key: const Key('onboarding.roleField'),
+      decoration: InputDecoration(labelText: l10n.onboardingGoalRole, border: InputBorder.none),
+      child: RadioGroup<TargetRole>(
+        groupValue: selected,
+        onChanged: (picked) {
+          if (picked != null) {
+            onChanged(picked);
+          }
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final role in TargetRole.known)
+              RadioListTile<TargetRole>(
+                key: Key('onboarding.goal.track.${role.name}'),
+                value: role,
+                contentPadding: EdgeInsets.zero,
+                title: Text(role.label(l10n)),
+                subtitle: Text(
+                  switch (ref.watch(roleMustCountProvider(role))) {
+                    AsyncData(:final value) =>
+                      '${_describe(role, l10n)} · ${l10n.onboardingGoalTrackMustCount(value)}',
+                    _ => _describe(role, l10n),
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

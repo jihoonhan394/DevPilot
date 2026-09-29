@@ -1,5 +1,4 @@
 import 'package:devpilot_app/app/routes.dart';
-import 'package:devpilot_app/core/api/api_enums.dart';
 import 'package:devpilot_app/core/l10n/enum_labels.dart';
 import 'package:devpilot_app/core/l10n/validation_messages.dart';
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
@@ -101,9 +100,13 @@ class _GoalForm extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         InputDecorator(
+          key: const Key('goal.roleField'),
           decoration: InputDecoration(labelText: l10n.onboardingGoalRole, enabled: false),
-          child: Text(TargetRole.javaBackend.label(l10n)),
+          child: Text(form.goal.targetRole.label(l10n)),
         ),
+        const SizedBox(height: AppSpacing.xs),
+        // 읽기 전용이다 — 서버도 PUT /learning-goal에서 트랙 변경을 막는다 (docs/02 §3.15, docs/05 §5.2)
+        Text(l10n.onboardingGoalTrackLocked, style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: AppSpacing.lg),
         DateField(
           key: const Key('goal.completionField'),

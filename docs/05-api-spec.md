@@ -950,7 +950,7 @@ public record OnboardingRequest(
         @NotNull Boolean useTemplate) {}
 
 public record LearningGoalInput(
-        @NotNull TargetRole targetRole,              // 학습 트랙: JAVA_BACKEND | JAVA_BACKEND_STARTER (04 §3)
+        @NotNull TargetRole targetRole,              // 학습 트랙: JAVA_BACKEND | JAVA_BACKEND_STARTER | INTEGRATION_ENGINEER (04 §3)
         @NotNull LocalDate targetCompletionDate,     // 목표일 (날짜 하나)
         @NotNull @Size(max = 10) @UniqueElements List<@NotBlank @Size(max = 100) String> focusSkillCodes) {}
 

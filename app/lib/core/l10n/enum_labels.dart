@@ -56,6 +56,8 @@ extension TargetAdjustmentLabel on TargetAdjustment {
 extension TargetRoleLabel on TargetRole {
   String label(AppLocalizations l10n) => switch (this) {
     TargetRole.javaBackend => l10n.enumTargetRoleJavaBackend,
+    TargetRole.javaBackendStarter => l10n.enumTargetRoleJavaBackendStarter,
+    TargetRole.integrationEngineer => l10n.enumTargetRoleIntegrationEngineer,
     TargetRole.unknown => l10n.enumUnknown,
   };
 }
@@ -91,6 +93,7 @@ extension SkillCategoryLabel on SkillCategory {
     SkillCategory.testing => l10n.enumSkillCategoryTesting,
     SkillCategory.devops => l10n.enumSkillCategoryDevops,
     SkillCategory.security => l10n.enumSkillCategorySecurity,
+    SkillCategory.integration => l10n.enumSkillCategoryIntegration,
     SkillCategory.practicalEngineering => l10n.enumSkillCategoryPracticalEngineering,
     SkillCategory.systemDesign => l10n.enumSkillCategorySystemDesign,
     SkillCategory.explanation => l10n.enumSkillCategoryExplanation,

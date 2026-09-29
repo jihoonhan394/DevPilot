@@ -72,6 +72,14 @@ final skillTreeProvider = FutureProvider<SkillTreeResponse>((ref) {
   return ref.watch(skillRepositoryProvider).fetchTree();
 });
 
+/// How many skills a track marks MUST, for the track radios of SCR-ONBOARDING step 1
+/// (docs/02 §3.4). One request per track; the screen leaves the number out when it fails.
+final roleMustCountProvider = FutureProvider.family<int, TargetRole>((ref, role) async {
+  ref.watch(authStateProvider.select((authState) => authState.accessToken));
+  final tree = await ref.watch(skillRepositoryProvider).fetchTree(role: role);
+  return tree.skills.where((skill) => skill.roleTarget?.priority == Priority.must).length;
+});
+
 /// The signed-in user's skill states, re-read each time a skill screen opens.
 final mySkillStatesProvider = FutureProvider.autoDispose<UserSkillStatesResponse>(
   (ref) => ref.watch(skillRepositoryProvider).fetchMyStates(),

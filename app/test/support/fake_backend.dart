@@ -333,10 +333,17 @@ final class FakeSkillRepository implements SkillRepository {
   final historyFailures = <ApiException>[];
   static const historyPageSize = 2;
 
+  /// Roles asked for, in order — SCR-ONBOARDING step 1 asks once per track (docs/02 §3.4).
+  final treeRoles = <TargetRole>[];
+
+  /// Per-track answer; a track without an entry gets [testSkillTree].
+  final treeByRole = <TargetRole, SkillTreeResponse>{};
+
   @override
   Future<SkillTreeResponse> fetchTree({TargetRole role = TargetRole.javaBackend}) async {
     treeFetchCount++;
-    return testSkillTree();
+    treeRoles.add(role);
+    return treeByRole[role] ?? testSkillTree();
   }
 
   @override

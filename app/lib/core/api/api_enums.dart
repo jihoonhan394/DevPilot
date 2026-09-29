@@ -11,7 +11,17 @@ part 'api_enums.g.dart';
 enum TargetRole {
   @JsonValue('JAVA_BACKEND')
   javaBackend,
+  @JsonValue('JAVA_BACKEND_STARTER')
+  javaBackendStarter,
+  @JsonValue('INTEGRATION_ENGINEER')
+  integrationEngineer,
   unknown;
+
+  /// The 3 real tracks, without [unknown]. Declaration order is the display order (docs/02 §3.4).
+  static List<TargetRole> get known => [
+    for (final role in values)
+      if (role != unknown) role,
+  ];
 
   /// Wire value for query parameters (`GET /skills/tree?role=`).
   String get wireName => _$TargetRoleEnumMap[this]!;
@@ -129,6 +139,8 @@ enum SkillCategory {
   devops,
   @JsonValue('SECURITY')
   security,
+  @JsonValue('INTEGRATION')
+  integration,
   @JsonValue('PRACTICAL_ENGINEERING')
   practicalEngineering,
   @JsonValue('SYSTEM_DESIGN')
@@ -137,7 +149,7 @@ enum SkillCategory {
   explanation,
   unknown;
 
-  /// The 13 real categories, without [unknown].
+  /// The 14 real categories, without [unknown].
   static List<SkillCategory> get known => [
     for (final category in values)
       if (category != unknown) category,
