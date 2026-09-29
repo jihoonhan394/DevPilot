@@ -1,8 +1,9 @@
-# source: 06 §5.3, rows: 24
+# source: 06 §5.3, rows: 26
 # 분기 7개(REDO·개념 익히기·CHALLENGE·READ_CODE·READING·PROJECT_TASK·EXPLAIN) + d−1 fallback + 복귀 모드 + ACTIVE 프로젝트 없음
 # + 제안 분기 T-1~T-5
-# + 학습 트랙 T-6~T-9 + CHALLENGE 문턱 T-10·T-11(ADR-045).
-# track을 적지 않으면 JAVA_BACKEND(maxDifficulty 5, minKnowledge 1, challengeMinKnowledge 1)다.
+# + 학습 트랙 T-6~T-9 + CHALLENGE 문턱 T-10·T-11(ADR-045) + 개념 노트 문턱 T-12·T-13(ADR-057).
+# track을 적지 않으면 JAVA_BACKEND(maxDifficulty 5, minKnowledge 1, challengeMinKnowledge 1,
+# lessonMaxKnowledge 2)다.
 # planning은 K|I. challenges·readings는 호출자가 조건(14 plan-day 안 시도·제안, 해결, 완료)을 거른 뒤의 후보다.
 vectors:
   - id: V01
@@ -289,12 +290,38 @@ vectors:
     readings: []
     expected: { type: CHALLENGE, estimated: 30, difficulty: 2, challengeSeedKey: PRACTICE.S.L2.001 }
   - id: V24
-    case: 이미 아는 skill(KNOWLEDGE 2)은 노트가 남아 있어도 문제부터 (TH-5는 K < 2에만 건다)
+    case: 이미 아는 skill(KNOWLEDGE 2)은 노트가 남아 있어도 문제부터 (기본 트랙의 문턱은 2)
     planning: "2|1"
     energy: NORMAL
     comebackMode: false
     aiAvailable: true
     projectNeed: false
+    challenges:
+      - { seedKey: PRACTICE.S.L2.001, difficulty: 2, estimated: 30 }
+    readings: []
+    lesson: { units: 2, minutes: 22, remainingAfter: 2 }
+    expected: { type: CHALLENGE, estimated: 30, difficulty: 2, challengeSeedKey: PRACTICE.S.L2.001 }
+  - id: V25
+    case: T-12 문턱 4인 트랙은 KNOWLEDGE 3에도 노트를 먼저 낸다 — 자기평가만으로는 못 건너뛴다 (ADR-057)
+    planning: "3|1"
+    energy: NORMAL
+    comebackMode: false
+    aiAvailable: true
+    projectNeed: false
+    track: { maxDifficulty: 4, minKnowledge: 1, lessonMaxKnowledge: 4 }
+    challenges:
+      - { seedKey: PRACTICE.S.L2.001, difficulty: 2, estimated: 30 }
+    readings: []
+    lesson: { units: 2, minutes: 22, remainingAfter: 2 }
+    expected: { type: READING, estimated: 22, difficulty: 1, readingKey: LESSON.S.001 }
+  - id: V26
+    case: T-13 기록으로 4에 닿으면 노트를 지나간다 — 근거는 자기평가가 아니라 evidence (ADR-057)
+    planning: "4|1"
+    energy: NORMAL
+    comebackMode: false
+    aiAvailable: true
+    projectNeed: false
+    track: { maxDifficulty: 4, minKnowledge: 1, lessonMaxKnowledge: 4 }
     challenges:
       - { seedKey: PRACTICE.S.L2.001, difficulty: 2, estimated: 30 }
     readings: []

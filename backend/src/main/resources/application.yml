@@ -123,9 +123,9 @@ devpilot:
     default-zone: Asia/Seoul
     default-day-start-hour: 4
   tracks:                                  # 학습 트랙 기본값. 키는 TargetRole 값 (04 §3). 누락되면 기동 실패
-    JAVA_BACKEND:         { max-task-difficulty: 5, read-code-min-knowledge: 1, challenge-min-knowledge: 1, basic-tips-first: false }  # 06 §5.3, RC-3, ADR-045
-    JAVA_BACKEND_STARTER: { max-task-difficulty: 3, read-code-min-knowledge: 2, challenge-min-knowledge: 1, basic-tips-first: true }   # 입문 트랙: 쉬운 기본값, 기초 팁 먼저
-    INTEGRATION_ENGINEER: { max-task-difficulty: 4, read-code-min-knowledge: 1, challenge-min-knowledge: 1, basic-tips-first: false }  # 연동·구축 트랙 (06 §5.3)
+    JAVA_BACKEND:         { max-task-difficulty: 5, read-code-min-knowledge: 1, challenge-min-knowledge: 1, lesson-max-knowledge: 2, basic-tips-first: false }  # 06 §5.3, RC-3, ADR-045
+    JAVA_BACKEND_STARTER: { max-task-difficulty: 3, read-code-min-knowledge: 2, challenge-min-knowledge: 1, lesson-max-knowledge: 4, basic-tips-first: true }   # 입문 트랙: 쉬운 기본값, 기초 팁 먼저
+    INTEGRATION_ENGINEER: { max-task-difficulty: 4, read-code-min-knowledge: 1, challenge-min-knowledge: 1, lesson-max-knowledge: 4, basic-tips-first: false }  # 연동·구축 트랙 (06 §5.3)
   planner:
     # 앞의 여섯은 합이 1.0이어야 한다. stage-gap 은 그 가중합 위에 얹는 보너스라 합에 넣지 않는다 (06 §5.4)
     weights: { practical-importance: 0.25, skill-gap: 0.20, review-urgency: 0.20, milestone-urgency: 0.15, project-need: 0.10, prerequisite-readiness: 0.10, stage-gap: 0.005 }
@@ -243,7 +243,7 @@ devpilot:
       COACH_RESPONSE_FEEDBACK: { mode: SYNC,  thinking: false, max-tokens: 2000,  timeout: 20s,  max-retries: 0, input-token-budget: 6000 }
       CHALLENGE_GENERATE:      { mode: ASYNC, thinking: true,  reasoning-effort: high, max-tokens: 32000, timeout: 180s, max-retries: 1, input-token-budget: 4000 }
       CHALLENGE_EVALUATE:      { mode: ASYNC, thinking: true,  reasoning-effort: low,  max-tokens: 16000, timeout: 120s, max-retries: 1, input-token-budget: 8000 }
-      HINT_GENERATE:           { mode: SYNC,  thinking: false, max-tokens: 3000,  timeout: 20s,  max-retries: 0, input-token-budget: 6000 }
+      HINT_GENERATE:           { mode: SYNC,  thinking: false, max-tokens: 3000,  timeout: 20s,  max-retries: 1, input-token-budget: 6000 }   # level·길이 위반은 피드백을 붙여 한 번 더 묻는다 — 실패한 힌트는 0초여도 쓸모가 없다
       REVIEW_VARIANT:          { mode: ASYNC, thinking: false, max-tokens: 4000,  timeout: 60s,  max-retries: 1, input-token-budget: 3000 }   # Later
       REVIEW_EVALUATE:         { mode: SYNC,  thinking: false, max-tokens: 2000,  timeout: 20s,  max-retries: 0, input-token-budget: 3000 }
       EVIDENCE_DRAFT:          { mode: ASYNC, thinking: true,  reasoning-effort: low,  max-tokens: 16000, timeout: 120s, max-retries: 1, input-token-budget: 6000 }

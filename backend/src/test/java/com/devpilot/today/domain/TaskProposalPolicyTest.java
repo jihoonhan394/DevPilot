@@ -39,7 +39,7 @@ class TaskProposalPolicyTest {
             UUID.fromString("00000000-0000-0000-0000-00000000000b");
 
     /** {@code devpilot.tracks.JAVA_BACKEND} (docs/06 §5.3 표). track을 적지 않은 vector가 쓴다. */
-    private static final TrackDefaults BASE_TRACK = new TrackDefaults(5, 1, 1, false);
+    private static final TrackDefaults BASE_TRACK = new TrackDefaults(5, 1, 1, 2, false);
 
     private final TaskProposalPolicy policy = new TaskProposalPolicy();
 
@@ -129,7 +129,7 @@ class TaskProposalPolicyTest {
     @Test
     void shouldStepDownFromTrackCeilingAndFallThroughWhenNoChallengeFits() {
         // docs/09 §5.3 학습 트랙 추가 케이스: 상한 3에서 d3이 없으면 d2, d2·d1도 없으면 다음 분기
-        TrackDefaults starter = new TrackDefaults(3, 2, 1, true);
+        TrackDefaults starter = new TrackDefaults(3, 2, 1, 3, true);
         SkillContext skill =
                 new SkillContext("S", "Skill S", "설명", new AxisLevels(2, 4, 0, 0), false);
         ChallengeOption hard =
@@ -252,10 +252,12 @@ class TaskProposalPolicyTest {
         }
         Map<String, Object> track = map(value);
         Object challengeMin = track.get("challengeMinKnowledge");
+        Object lessonMax = track.get("lessonMaxKnowledge");
         return new TrackDefaults(
                 (Integer) track.get("maxDifficulty"),
                 (Integer) track.get("minKnowledge"),
                 challengeMin == null ? BASE_TRACK.challengeMinKnowledge() : (Integer) challengeMin,
+                lessonMax == null ? BASE_TRACK.lessonMaxKnowledge() : (Integer) lessonMax,
                 false);
     }
 

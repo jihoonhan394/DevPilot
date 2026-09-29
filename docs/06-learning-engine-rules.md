@@ -267,7 +267,7 @@ if comebackMode: d = min(d, 2)
 
 0. 이 skill에 오늘 제안할 재현 후보가 있으면(§5.10 RE-2)
    → REDO (estimated = §5.10 RE-4, difficulty = 원본 과제의 difficulty, `redoSourceTaskId` = 그 후보의 원본 task)
-1. else if **planning KNOWLEDGE < 2**이고 그 skill의 개념 노트(`19` §3.14)에 **안 푼 단위가 남아 있으면**(§5.13 TH-5)
+1. else if **planning KNOWLEDGE < trackDefaults.lessonMaxKnowledge**이고 그 skill의 개념 노트(`19` §3.14)에 **안 푼 단위가 남아 있으면**(§5.13 TH-5)
    → READING (**개념 익히기**. `readingKey` = 노트 key, estimated = 오늘 낼 단위들의 `minutes` 합, difficulty 1)
 2. else if `aiStatus ∉ {DISABLED, BALANCE_EXHAUSTED}`이고(평가가 AI에 의존하므로), **planning KNOWLEDGE ≥ trackDefaults.challengeMinKnowledge**이고(ADR-045 — 개념을 한 번도 안 본 skill에는 문제를 내지 않는다), 해당 skill에 VALIDATED challenge(PRACTICE, seed 또는 본인 소유)가 있고,
    최근 14 plan-day 안에 attempt하지 않았고 **해결(outcome ∈ {SOLVED_INDEPENDENTLY, SOLVED_WITH_HINTS})한 attempt가 없는** 문제가 difficulty d, 없으면 d−1(≥1) 순서로 있으면
@@ -284,25 +284,26 @@ if comebackMode: d = min(d, 2)
 
 **REDO의 자리 (0번)와 그 이유** — 재현 과제는 새로 배우는 과제가 아니라 **이미 한 것을 AI 없이 혼자 다시 만들어 확인하는 과제**다(§5.10). 창(RE-2)이 며칠뿐이고 창을 놓치면 그 기회는 사라지므로, 같은 skill 안에서는 다른 제안보다 앞선다. 다만 **skill 사이의 경쟁은 그대로 점수로 한다** — 재현 후보가 있다고 해서 그 skill이 자동으로 오늘의 main이 되지는 않고, §5.5의 `REDO_DUE` modifier로 가중치만 받는다. AI 상태와 무관하다(재현 과제는 AI를 쓰지 않는다).
 
-**개념 익히기의 자리 (1번)와 그 이유** — **가르치고 나서 시험한다.** 개념 노트가 있는데 문제부터 내면, 답은 맞혀도 어디에 쓰는지 모른 채 지난다. 그래서 아는 것이 적은 구간(KNOWLEDGE < 2)에서는 노트를 다 뗄 때까지 CHALLENGE·READ_CODE보다 앞선다(TH-5).
+**개념 익히기의 자리 (1번)와 그 이유** — **가르치고 나서 시험한다.** 개념 노트가 있는데 문제부터 내면, 답은 맞혀도 어디에 쓰는지 모른 채 지난다. 그래서 아는 것이 적은 구간(KNOWLEDGE < `trackDefaults.lessonMaxKnowledge`)에서는 노트를 다 뗄 때까지 CHALLENGE·READ_CODE보다 앞선다(TH-5).
 
 - 노트 하나를 하루에 다 하라고 내지 않는다. **다음 미완료 단위부터 오늘 시간이 되는 만큼**이고, 며칠에 걸칠 수 있다(§5.13 TH-2). 예산을 넘어도 한 단위는 낸다 — 안 그러면 시간이 넉넉한 날이 올 때까지 그 노트가 영영 안 나온다.
 - 새 `TaskType`을 만들지 않고 `READING`을 재사용한다(D-1). `reading_key`가 노트 key를 가리키고 화면은 `kind = LESSON`으로 구분한다(`05` §19.7).
-- KNOWLEDGE ≥ 2면 이 분기를 지나 문제로 간다. 이미 아는 사람에게 개념부터 시키지 않는다 — 노트는 화면에서 언제든 열 수 있다(`05` §21.9).
+- 문턱 이상이면 이 분기를 지나 문제로 간다. 이미 아는 사람에게 개념부터 시키지 않는다 — 노트는 화면에서 언제든 열 수 있다(`05` §21.9).
+- 조건이 **미만**이므로 문턱 **4**는 "KNOWLEDGE 3까지는 노트를 낸다"는 뜻이다. 자기평가 상한이 3이라(§7.5) 문턱 4에서는 **자기평가만으로 노트를 건너뛸 수 없고** evidence가 4에 닿은 skill만 지나간다(ADR-057). 아는 단위는 화면의 "이 단위는 알아요"로 바로 넘긴다(`02` SCR-LESSON).
 - 진행(마친 단위)은 `UNIT_SOLVED`로만 판단한다. 따로 저장하지 않는다(TH-1).
 
 **CHALLENGE의 문턱 (ADR-045)** — 2번 분기는 `planning KNOWLEDGE ≥ trackDefaults.challengeMinKnowledge`(기본 1)일 때만 잡힌다. KNOWLEDGE 0이면 노트나 개념 읽기로 떨어지고, 개념을 한 번 마치면 KNOWLEDGE가 1이 되어(§7) 그때 열린다. 코드 읽기에만 문턱이 있고 문제 풀기에는 없던 비대칭을 없앤다. **진단(`DIAGNOSTIC`) challenge는 이 문턱을 받지 않는다** — 지금 수준을 재는 과제이지 가르치는 과제가 아니다(§7.4).
 
-**학습 트랙 기본값** — `d`의 상한은 고정 5가 아니라 학습 목표의 트랙 기본값 `trackDefaults.maxTaskDifficulty`다(`devpilot.tracks.<트랙>`, `03` §9). 트랙은 `READ_CODE`의 진입 문턱(RC-3, `trackDefaults.readCodeMinKnowledge`)과 오늘의 팁 정렬(§5.12, `trackDefaults.basicTipsFirst`)도 정한다. 그 밖의 planner 규칙(factor, weight, modifier, 시간 배분, 학습 단계)은 트랙과 무관하게 같다.
+**학습 트랙 기본값** — `d`의 상한은 고정 5가 아니라 학습 목표의 트랙 기본값 `trackDefaults.maxTaskDifficulty`다(`devpilot.tracks.<트랙>`, `03` §9). 트랙은 `READ_CODE`의 진입 문턱(RC-3, `trackDefaults.readCodeMinKnowledge`), 개념 노트의 상한(TH-5, `trackDefaults.lessonMaxKnowledge`), 오늘의 팁 정렬(§5.12, `trackDefaults.basicTipsFirst`)도 정한다. 그 밖의 planner 규칙(factor, weight, modifier, 시간 배분, 학습 단계)은 트랙과 무관하게 같다.
 
-| 트랙 (`TargetRole`) | `maxTaskDifficulty` | `readCodeMinKnowledge` | `basicTipsFirst` |
-|---|---|---|---|
-| `JAVA_BACKEND` | 5 | 1 | false |
-| `JAVA_BACKEND_STARTER` | 3 | 2 | **true** |
-| `INTEGRATION_ENGINEER` | 4 | 1 | false |
+| 트랙 (`TargetRole`) | `maxTaskDifficulty` | `readCodeMinKnowledge` | `lessonMaxKnowledge` | `basicTipsFirst` |
+|---|---|---|---|---|
+| `JAVA_BACKEND` | 5 | 1 | 2 | false |
+| `JAVA_BACKEND_STARTER` | 3 | 2 | **4** | **true** |
+| `INTEGRATION_ENGINEER` | 4 | 1 | **4** | false |
 
 - 같은 planning level이라도 입문 트랙(`JAVA_BACKEND_STARTER`)에서는 난이도 4·5 challenge가, 연동 트랙(`INTEGRATION_ENGINEER`)에서는 난이도 5 challenge가 제안되지 않는다.
-- 설정 키는 `devpilot.tracks.<트랙>.{max-task-difficulty, read-code-min-knowledge, basic-tips-first}`다. `TargetRole` 값마다 항목이 있어야 하고, 없으면 기동 실패다(`03` §9).
+- 설정 키는 `devpilot.tracks.<트랙>.{max-task-difficulty, read-code-min-knowledge, lesson-max-knowledge, basic-tips-first}`다. `TargetRole` 값마다 항목이 있어야 하고, 없으면 기동 실패다(`03` §9).
 - **트랙별 필수 목표 구성**은 규칙이 아니라 콘텐츠다(`19` §3.3). `INTEGRATION_ENGINEER`의 `role_skill_target`은 MUST를 **기본기 70% / 연동 20% / 배포·운영 10%** 비율로 고르고, 필수 목표 합계(§4.2의 `requiredMinutes` 합)가 **180~220시간**이 되게 맞춘다.
 
 **READ_CODE의 자리 (3번)와 그 이유** — CHALLENGE는 I축·K축 상승 규칙(§7.2)의 증거를 직접 만들므로 1번 자리를 유지한다. READ_CODE를 개념 읽기보다 **앞**에 두는 것은 §12의 핵심 루프(읽는다 → 만든다 → 설명한다)를 따르기 위해서다: 무엇인지 조금이라도 아는 상태(KNOWLEDGE ≥ `trackDefaults.readCodeMinKnowledge`)라면 요약 글을 한 번 더 읽는 것보다 검증된 실제 코드를 읽는 편이 낫다. 그 문턱 아래에서 코드를 읽으면 좌절하므로 RC-3이 이를 막고, 그때는 4번 READING으로 내려간다. 결과적으로 READING은 **문턱 미만**이거나 해당 skill에 reading 콘텐츠가 없을 때만 나온다(기본 트랙은 KNOWLEDGE = 0, 입문 트랙은 0~1).
@@ -377,6 +378,8 @@ task 제목 템플릿:
 | T-7 | `JAVA_BACKEND_STARTER` (max d 3, minK 2) | (4,4) | 같음 | **CHALLENGE d3** — `d = clamp(5, 1, 3) = 3`, d3이 없으면 d2 |
 | T-8 | `JAVA_BACKEND_STARTER` | (1,1) | 선택 가능한 reading 있음, CHALLENGE 없음 | **READING** (25, d1) — KNOWLEDGE 1 < `readCodeMinKnowledge` 2 |
 | T-9 | `JAVA_BACKEND_STARTER` | (2,1) | 같음 | **READ_CODE** — KNOWLEDGE 2 ≥ 2 |
+| T-12 | `INTEGRATION_ENGINEER` (lessonMaxK 4) | (3,1) | 노트에 안 푼 단위 2개, d2 challenge 있음 | **READING** (노트, d1) — 자기평가 상한이 3이라 KNOWLEDGE 3은 기록 없이도 나온다. 문턱 4가 이를 잡는다(ADR-057) |
+| T-13 | `INTEGRATION_ENGINEER` | (4,1) | 같음 | **CHALLENGE d2** — evidence로 4에 닿은 skill만 노트를 지나간다 |
 
 **Test vectors (개념 읽기 선택)** — 공통: 3번 분기(READING)로 내려온 상태, 트랙 `JAVA_BACKEND`. `plan-day`는 오늘 기준이다.
 
@@ -772,7 +775,7 @@ redoCandidates(today, userId):
 | **TH-2** | 진행 중인 묶음이 있으면 **오늘의 main은 그 skill**이다. 점수 경쟁(§5.4)을 하지 않고 순위 맨 앞으로 올린다. 그 skill의 제안은 §5.3 1번(개념 익히기)이 잡는다 |
 | **TH-3** | 묶음이 없거나 닫혔으면 기존대로 §5.2 후보에서 §5.4 점수로 고른다 |
 | **TH-4** | `FATIGUE_ONE_DAY`·`FATIGUE_TWO_DAYS`는 **폐지**한다(ADR-053 — 묶음과 정면충돌). 대신 **한 skill 연속 `devpilot.planner.study-thread-max-consecutive-days`(기본 7) plan-day 상한** — 닿으면 묶음을 닫고 다음 skill로 간다. 막혀서 못 나가는 상황을 막는 장치다 |
-| **TH-5** | **Teach before test**: planning KNOWLEDGE < 2이고 그 skill의 노트에 안 푼 단위가 남아 있으면 CHALLENGE·READ_CODE를 내지 않는다(§5.3 1번이 앞서므로 자동으로 그렇게 된다). KNOWLEDGE ≥ 2면 이 문턱을 받지 않는다 — 이미 아는 사람에게 개념부터 시키지 않는다 |
+| **TH-5** | **Teach before test**: planning KNOWLEDGE < `trackDefaults.lessonMaxKnowledge`이고 그 skill의 노트에 안 푼 단위가 남아 있으면 CHALLENGE·READ_CODE를 내지 않는다(§5.3 1번이 앞서므로 자동으로 그렇게 된다). 문턱 이상이면 이 문턱을 받지 않는다 — 이미 아는 사람에게 개념부터 시키지 않는다. 근거는 자기평가가 아니라 기록이다(ADR-057) |
 
 **연속 일수 세는 법** — 가장 최근부터 같은 skill이 이어진 plan-day 수다. **main이 없던 날은 목록에 없다** — 주말에 쉬어도 묶음이 끊기지 않는다. 쉰 날을 끊김으로 보면 평일에만 공부하는 사람은 묶음을 만들 수 없다.
 

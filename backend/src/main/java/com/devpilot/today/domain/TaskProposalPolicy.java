@@ -13,6 +13,7 @@ import org.jspecify.annotations.Nullable;
  *
  * <pre>
  * d = clamp(planning IMPLEMENTATION + 1, 1, trackDefaults.maxTaskDifficulty), 복귀 모드면 min(d, 2)
+ * 0. 노트에 남은 단위 + planning KNOWLEDGE &lt; trackDefaults.lessonMaxKnowledge → READING (개념 익히기, ADR-057)
  * 1. AI 가능 + planning KNOWLEDGE ≥ trackDefaults.challengeMinKnowledge (ADR-045)
  *    + 조건을 만족하는 challenge(difficulty d, 없으면 d−1) → CHALLENGE
  * 2. AI 가능 + planning KNOWLEDGE ≥ trackDefaults.readCodeMinKnowledge + 선택 가능한 reading
@@ -60,9 +61,10 @@ public final class TaskProposalPolicy {
             return redo(redo);
         }
         // 1. 가르치고 나서 시험한다 (docs/06 §5.13 TH-5). 노트에 남은 단위가 있고 아직 아는 것이 적으면
-        // 문제·코드 읽기보다 먼저 개념을 뗀다 — 순서가 거꾸로면 답만 맞히고 어디에 쓰는지는 모른 채 지난다
+        // 문제·코드 읽기보다 먼저 개념을 뗀다 — 순서가 거꾸로면 답만 맞히고 어디에 쓰는지는 모른 채 지난다.
+        // 문턱은 트랙이 정한다 (ADR-057): 4면 자기평가로는 못 건너뛰고 실제 기록으로만 지나간다
         LessonStep lessonStep = input.lessonStep();
-        if (lessonStep != null && planning.knowledge() < READING_MAX_KNOWLEDGE) {
+        if (lessonStep != null && planning.knowledge() < track.lessonMaxKnowledge()) {
             return lesson(skill, lessonStep);
         }
         int difficulty = Math.clamp(planning.implementation() + 1L, 1, track.maxTaskDifficulty());

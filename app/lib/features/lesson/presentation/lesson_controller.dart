@@ -152,10 +152,17 @@ final class UnitWalkController extends Notifier<UnitWalkState> {
   }
 
   /// 단위를 마쳤다고 기록한다. 사용자가 쓴 답은 보내지 않는다.
-  Future<void> finish() async {
-    final met = state.selfChecks.isEmpty ? null : state.metCount;
+  Future<void> finish() => _finish(_help.level, state.selfChecks.isEmpty ? null : state.metCount);
+
+  /// "이건 알아요" — 걸음을 다 거치지 않고 단위를 마친다 (docs/02 SCR-LESSON, ADR-057).
+  /// 문턱이 4인 트랙에서는 이미 아는 분야에도 노트가 나오므로, 아는 단위는 빠르게 지나갈 수 있어야 한다.
+  /// 도움을 쓰지 않았으니 `NONE`이고, 견주지 않았으니 `selfChecksMet`은 보내지 않는다.
+  /// `UNIT_SOLVED`는 복습 일정의 입력이고 레벨의 증거가 아니다(`04` §6) — 눌러도 레벨은 오르지 않는다.
+  Future<void> alreadyKnow() => _finish(HelpLevel.none, null);
+
+  Future<void> _finish(HelpLevel helpLevel, int? met) async {
     final body = <String, Object?>{
-      'helpLevel': _help.level.name.toUpperCase(),
+      'helpLevel': helpLevel.name.toUpperCase(),
       'selfChecksMet': ?met,
     };
     await _run(() async {
@@ -163,7 +170,7 @@ final class UnitWalkController extends Notifier<UnitWalkState> {
       await _repository.finishUnit(
         target.lessonKey,
         target.unitKey,
-        helpLevel: _help.level,
+        helpLevel: helpLevel,
         selfChecksMet: met,
         idempotencyKey: _finishKeys.keyFor(body),
       );

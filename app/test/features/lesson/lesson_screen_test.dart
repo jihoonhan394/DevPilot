@@ -101,6 +101,34 @@ void main() {
     expect(find.byKey(const Key('lesson.answerField')), findsOneWidget);
   });
 
+  // ADR-057. 문턱이 3인 트랙은 이미 아는 분야에도 노트를 내므로, 아는 단위는 걸음을 다 거치지 않고 지나간다.
+  // helpLevel 은 NONE 이고 견주지 않았으므로 selfChecksMet 은 보내지 않는다.
+  testWidgets('shouldFinishTheUnitWithoutWalkingItWhenTheLearnerAlreadyKnowsIt', (tester) async {
+    await openLesson(tester);
+
+    await tapKey(tester, 'lesson.startButton');
+    await tapKey(tester, 'lesson.alreadyKnowButton');
+
+    final recorded = backend.lessonRepository.finished.single;
+    expect(recorded.helpLevel, HelpLevel.none);
+    expect(recorded.selfChecksMet, isNull);
+    expect(find.byKey(const Key('lesson.nextUnitButton')), findsOneWidget);
+  });
+
+  testWidgets('shouldOfferAlreadyKnowOnTheExplainAndExampleStepsOnly', (tester) async {
+    await openLesson(tester);
+
+    await tapKey(tester, 'lesson.startButton');
+    expect(find.byKey(const Key('lesson.alreadyKnowButton')), findsOneWidget);
+    await tapKey(tester, 'lesson.nextButton');
+    expect(find.byKey(const Key('lesson.alreadyKnowButton')), findsOneWidget);
+
+    // 예측 걸음부터는 이미 걷기 시작했으므로 건너뛰기를 내밀지 않는다
+    await tapKey(tester, 'lesson.nextButton');
+    expect(find.byKey(const Key('lesson.predictQuestion')), findsOneWidget);
+    expect(find.byKey(const Key('lesson.alreadyKnowButton')), findsNothing);
+  });
+
   testWidgets('shouldGradeThePredictionImmediately', (tester) async {
     backend.lessonRepository.predictCorrect = false;
     await openLesson(tester);

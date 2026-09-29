@@ -484,10 +484,23 @@ class _SkipToProblem extends StatelessWidget {
     if (!view.state.step.canSkipToProblem) {
       return const SizedBox.shrink();
     }
-    return TextButton(
-      key: const Key('lesson.skipButton'),
-      onPressed: view.controller.skipToProblem,
-      child: Text(AppLocalizations.of(context).lessonSkipToProblem),
+    final l10n = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextButton(
+          key: const Key('lesson.skipButton'),
+          onPressed: view.controller.skipToProblem,
+          child: Text(l10n.lessonSkipToProblem),
+        ),
+        // 이 단위 자체를 지나간다. 문제까지 건너뛰는 위 버튼과 다르다 (ADR-057):
+        // 문턱이 4인 트랙은 이미 아는 분야에도 노트를 내므로, 아는 단위는 10초에 지나갈 수 있어야 한다
+        TextButton(
+          key: const Key('lesson.alreadyKnowButton'),
+          onPressed: view.state.busy ? null : view.controller.alreadyKnow,
+          child: Text(l10n.lessonAlreadyKnowUnit),
+        ),
+      ],
     );
   }
 }
