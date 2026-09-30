@@ -1,0 +1,484 @@
+# DevPilot 개념 노트 — 배치·증분 동기화
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 레거시 표준화 노트(LESSON.INTEGRATION.LEGACY_DATA.001)는 "한 묶음을 어떻게 바꿔 넣을까"를 다룬다.
+#   여기서는 "어디부터 어디까지 가져올까"를 다룬다 — 겹치지 않게 쓴다
+# - 기준 버전: PostgreSQL 16 (AGENTS.md §0). PG 17 전용 문법은 쓰지 않는다
+# - 예제는 주문 시스템 상황으로 쓴다 (CV-134)
+lessons:
+  - key: LESSON.INTEGRATION.BATCH_SYNC.001
+    skillCode: INTEGRATION.BATCH_SYNC
+    title: 어디부터 어디까지 가져올까 (증분 동기화)
+    whyItMatters: |-
+      처음에는 전체를 가져온다. 데이터가 만 건일 때는 3초면 끝난다.
+      백만 건이 되는 날 그 배치가 40분을 돌고, 그 동안 상대 DB가 느려져 항의가 온다.
+      그래서 "지난번 이후로 바뀐 것만" 가져오게 바꾸는데, 여기서 조용히 데이터가 빠진다.
+      기준 시각을 잘못 잡으면 **매번 몇 건씩 건너뛰고**, 그 사실은 몇 달 뒤 대조할 때 드러난다.
+      주문 시스템이 POS 매출을 매일 받아올 때 그대로 겪는 문제다.
+    oneLine: 증분 동기화(incremental sync)는 전체를 다시 가져오는 대신 지난번 이후로 바뀐 것만 가져오는 방식이고, 그 경계를 정확히 잡는 일이 전부다.
+    units:
+      - key: LESSON.INTEGRATION.BATCH_SYNC.001.U1
+        title: 전체 적재와 증분을 구분해 고르기
+        minutes: 8
+        core: true
+        explain: |-
+          두 방식은 목적이 다르다. 하나를 고르는 것이 아니라 **둘 다 있어야** 한다.
+
+          | | 전체 적재 | 증분 동기화 |
+          |---|---|---|
+          | 가져오는 것 | 전부 | 지난번 이후 바뀐 것 |
+          | 비용 | 크다. 데이터에 비례 | 작다. 변경량에 비례 |
+          | 언제 | 처음, 그리고 **어긋났을 때** | 평소 |
+          | 틀리면 | 느리다 | **조용히 빠진다** |
+
+          마지막 줄이 둘의 차이를 만든다. 전체 적재가 틀리면 오래 걸리는 것으로 끝나지만,
+          증분이 틀리면 결과가 조용히 달라진다.
+
+          그래서 실무 규칙은 이렇게 된다.
+
+          - 평소에는 증분으로 돈다
+          - **전체 적재를 언제든 돌릴 수 있게 남겨 둔다.** 증분이 어긋난 날의 유일한 복구 수단이다
+          - 주기적으로 **대조**한다 — 건수나 합계를 비교해 어긋났는지 본다
+
+          전체 적재를 버리는 순간 복구 수단이 없어진다. 증분만 있는 연동은
+          "한 번 빠지면 영원히 빠진 채로" 돈다.
+        example:
+          language: text
+          code: |-
+            [초기 1회]        전체 적재 — 2020-01-01 ~ 어제까지 전부
+            [매일 03:00]      증분      — 지난 커서 이후
+            [매주 일요일]     대조      — 최근 30일 건수·합계 비교
+            [어긋났을 때]     전체 적재 — 그 구간만 다시
+
+            대조에서 어긋남을 찾는 예
+              우리: 2026-09-15 매출 142건 4,120,000원
+              상대: 2026-09-15 매출 145건 4,205,000원
+              → 3건 빠졌다. 그 날짜 구간만 전체 적재로 다시 가져온다
+          note: |-
+            대조를 건수만으로 하면 **같은 건수에 다른 값**인 경우를 놓친다.
+            건수와 합계를 함께 보는 것이 최소이고, 정산처럼 중요한 데이터면
+            날짜별 합계를 저장해 두고 비교한다.
+        predict:
+          question: 증분 동기화만 만들고 전체 적재를 없애면 무엇이 문제가 되나요?
+          choices:
+            - 한 번 빠진 데이터를 되돌릴 방법이 없어진다
+            - 증분이 더 빠르므로 문제가 없다
+            - 상대가 알아서 다시 보내 준다
+          answer: 한 번 빠진 데이터를 되돌릴 방법이 없어진다
+          explanation: |-
+            증분은 "지난번 이후"만 본다. 한 번 건너뛴 구간은 다음에도 "지난번 이전"이므로
+            다시 보지 않는다. 전체 적재는 그 구간을 다시 가져올 수 있는 유일한 길이다.
+            빠른 것과 복구 가능한 것은 다른 요구사항이고, 둘 다 필요하다.
+        complete:
+          question: 증분이 어긋난 것을 발견하는 방법의 빈칸을 채우세요.
+          code: |-
+            주기적으로 우리와 상대의 같은 구간을 비교한다.
+            비교할 값: 건수, 그리고 ___
+          answers:
+            - [합계, 금액 합계, 합계 금액]
+          explanation: |-
+            건수만 비교하면 "3건이 사라지고 3건이 중복된" 경우를 놓친다.
+            건수와 합계가 둘 다 같으면 어긋났을 확률이 훨씬 낮아진다.
+            둘 다 같은데도 다른 경우가 있지만, 그것까지 잡으려면 건별 대조가 필요하고 비용이 다르다.
+        problem:
+          prompt: |-
+            주문 시스템이 POS 매출을 매일 증분으로 받아옵니다.
+            지금은 증분 배치만 있고, 어긋났는지 확인하는 장치가 없습니다.
+
+            대조 작업을 설계하세요. 코드는 필요 없고, **무엇을 언제 어떻게 비교하고
+            어긋났을 때 무엇을 하는지**를 적으면 됩니다.
+          deliverables:
+            - 비교할 값과 구간 (왜 그 구간인지)
+            - 주기와, 어긋남을 발견했을 때의 조치
+            - 대조 자체가 상대 시스템에 부담이 되지 않게 하는 방법
+          hints:
+            - 전 기간을 매번 대조하면 대조가 전체 적재보다 무거워집니다.
+            - 어긋남은 최근에 생겼을 가능성이 높지만, 오래된 구간에서 발견될 수도 있습니다.
+            - 조치에는 "누가 언제까지"가 있어야 합니다. 알림만 띄우고 끝나면 아무도 안 봅니다.
+          modelAnswer: |-
+            **비교할 값과 구간**
+
+            날짜별 `건수`와 `금액 합계`. 구간은 **최근 30일**을 기본으로 한다.
+            전 기간을 매번 대조하면 대조가 전체 적재보다 무거워지고,
+            하루만 보면 어제 이전에 생긴 어긋남을 영원히 못 찾는다.
+            30일은 "정산 마감 전에 잡을 수 있는 범위"라는 기준으로 고른 값이다.
+
+            분기마다 한 번은 **전 기간**을 대조한다. 오래된 구간의 어긋남은 드물지만
+            한 번도 보지 않으면 없다고 말할 수 없다.
+
+            **주기와 조치**
+
+            | 주기 | 범위 | 어긋나면 |
+            |---|---|---|
+            | 매주 일요일 04:00 | 최근 30일 | 어긋난 **날짜만** 전체 적재로 재적재. 자동 |
+            | 매 분기 첫 일요일 | 전 기간 | 담당자에게 보고서. 사람이 판단 |
+
+            자동 재적재는 upsert 이므로 안전하다(같은 자연 키로 덮어쓴다).
+            재적재 후에도 어긋나면 자동으로 멈추고 담당자에게 넘긴다 —
+            같은 날짜를 무한히 재적재하는 것은 원인을 가리기만 한다.
+
+            **상대 부담 줄이기**
+
+            - 대조는 **집계만** 요청한다. 건별 데이터를 다시 받지 않는다
+            - 새벽(04:00)에 돈다. 증분 배치(03:00) 뒤이고 영업 시작 전이다
+            - 30일을 한 번에 묻지 않고 날짜별로 나눠 묻되, 동시에 여러 개를 보내지 않는다
+            - 상대가 집계 API를 주지 않으면 **명세 협의에 넣는다.** 건별로 다 받아 우리가 세는 것은
+              대조가 아니라 전체 적재다
+          selfChecks:
+            - 건수와 합계를 함께 비교하는가
+            - 구간을 정하고 그 범위를 고른 이유를 적었는가
+            - 어긋났을 때 누가 언제까지 무엇을 하는지 적었는가
+            - 대조가 상대에게 주는 부담을 줄일 방법을 적었는가
+      - key: LESSON.INTEGRATION.BATCH_SYNC.001.U2
+        title: 커서를 시각이 아니라 처리한 지점으로 잡기
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.INTEGRATION.BATCH_SYNC.001.U1
+        explain: |-
+          "지난번 이후"를 무엇으로 나타낼까. 가장 먼저 떠오르는 것은 시각이다.
+          그리고 그것이 가장 자주 데이터를 빠뜨린다.
+
+          이렇게 쓴다고 하자 — `updated_at > 지난번_실행시각`.
+          배치가 03:00:00에 시작해서 03:00:10에 끝났고, 다음 커서를 **시작 시각**으로 저장했다.
+          그 사이 03:00:05에 커밋된 행은? 다음 실행에서 `> 03:00:00`이므로 **잡힌다.** 괜찮다.
+
+          그런데 다음 커서를 **끝난 시각**(03:00:10)으로 저장하면,
+          03:00:05에 커밋된 행은 이번에도 안 보였고(트랜잭션이 아직 안 끝났다)
+          다음에도 `> 03:00:10`에 걸리지 않아 **영원히 빠진다.**
+
+          이것이 시각 커서의 본질적 함정이다. `updated_at`은 **행을 고친 시각**이고,
+          우리가 보는 것은 **커밋된 시각**이다. 둘은 다르고, 순서도 뒤집힐 수 있다.
+
+          문서가 근거를 준다. Read Committed 에서 `SELECT`는
+          "쿼리가 시작되는 순간의 스냅샷"을 본다. 그리고 경고가 붙는다 —
+          "같은 트랜잭션 안이어도, 첫 `SELECT`가 시작된 뒤 두 번째가 시작되기 전에
+          다른 트랜잭션이 커밋하면 두 `SELECT`가 **다른 데이터를 볼 수 있다**."
+
+          그래서 안전한 커서는 셋 중 하나다.
+
+          | 커서 | 안전한가 |
+          |---|---|
+          | 실행 시각 | ✗ 커밋 시점과 어긋난다 |
+          | **단조 증가 ID** | ○ 가장 안전. 상대가 주면 이것을 쓴다 |
+          | **시각 + 겹침(overlap)** | △ 실용적. 조금 되짚어 중복을 upsert 로 흡수한다 |
+        example:
+          language: sql
+          code: |-
+            -- 나쁜 커서: 끝난 시각을 저장한다. 실행 중 커밋된 행이 영원히 빠진다
+            select * from pos_sale where updated_at > :lastRunEnd;
+
+            -- 실용적 커서: 겹침을 둔다. 중복은 upsert 가 흡수한다
+            select * from pos_sale
+             where updated_at > :lastCursor - interval '10 minutes'
+             order by updated_at;
+
+            -- 가장 안전한 커서: 단조 증가 ID
+            select * from pos_sale where id > :lastId order by id limit 5000;
+          output: |-
+            겹침 없음  → 03:00:05 커밋 행이 빠진다 (되돌릴 수 없다)
+            겹침 10분  → 같은 행을 몇 번 더 읽는다 → upsert 가 흡수 → 결과 동일
+            ID 커서    → 중복도 누락도 없다 (상대가 단조 증가 ID를 줄 때만)
+          note: |-
+            겹침의 크기는 **상대 트랜잭션이 얼마나 길 수 있는지**로 정한다.
+            10분은 예시이고, 상대가 긴 배치 안에서 커밋하면 그보다 커야 한다.
+            겹침을 두면 중복이 생기므로 **upsert 가 전제**다 — 앞 노트의 자연 키가 여기서 쓰인다.
+        predict:
+          question: |-
+            배치가 03:00:00 에 시작해 03:00:10 에 끝났고 커서를 03:00:10 으로 저장했습니다.
+            03:00:05 에 커밋된 행은 어떻게 되나요?
+          choices:
+            - 이번에도 다음에도 잡히지 않아 영원히 빠진다
+            - 다음 실행에서 잡힌다
+            - 상대가 다시 보내 준다
+          answer: 이번에도 다음에도 잡히지 않아 영원히 빠진다
+          explanation: |-
+            이번 실행의 `SELECT`는 03:00:00 무렵의 스냅샷을 봤으므로 그 행이 없었다.
+            다음 실행은 `updated_at > 03:00:10`을 보므로 `updated_at`이 03:00:05인 행을 지나친다.
+            **양쪽에서 놓친다.** 겹침을 두거나 단조 증가 ID 커서를 쓰면 막을 수 있다.
+        complete:
+          question: 겹침을 둔 증분 조회의 빈칸을 채우세요.
+          code: |-
+            select * from pos_sale
+             where updated_at > :lastCursor - interval '10 minutes'
+             order by updated_at;
+            -- 이 방식이 안전한 전제는 적재가 ___ 라는 것이다
+          answers:
+            - [upsert, 멱등, idempotent, 자연 키 upsert]
+          explanation: |-
+            겹침은 **같은 행을 일부러 다시 읽는다.** 적재가 그냥 `insert`면 중복 줄이 생긴다.
+            자연 키에 `on conflict do update`를 쓰는 적재라면 두 번 읽어도 결과가 같으므로
+            겹침이 공짜 안전장치가 된다. 전제가 깨지면 이 방식도 깨진다.
+        problem:
+          prompt: |-
+            POS 매출 증분 배치가 지금 이렇게 되어 있습니다.
+
+            ```java
+            Instant now = Instant.now();
+            List<PosSale> changed = pos.findUpdatedAfter(cursorStore.get());
+            loader.load(changed);
+            cursorStore.set(now);   // 실행을 시작한 시각
+            ```
+
+            문제를 세 개 찾고 고치세요. 적재는 자연 키 upsert 라고 가정합니다.
+          deliverables:
+            - 문제 3개와 각각 어떤 상황에서 데이터가 빠지거나 어긋나는지
+            - 고친 코드
+            - 남는 위험 1가지
+          hints:
+            - 커서를 저장하는 자리가 이상합니다. 적재가 실패하면 어떻게 됩니까.
+            - 무인자 `Instant.now()` 는 이 저장소의 규칙에 걸립니다.
+            - 겹침이 없습니다. 상대 트랜잭션이 길면 무엇이 빠집니까.
+          modelAnswer: |-
+            **문제 3개**
+
+            1. **적재 실패에도 커서가 전진한다.** `loader.load`가 예외를 던지면
+               `cursorStore.set`은 실행되지 않지만, 일부만 적재되고 예외가 난 경우
+               다음 실행이 그 구간을 다시 읽어야 한다 — 지금 구조는 성공/실패가
+               부분 적재를 구분하지 못한다. 커서는 **적재가 끝난 뒤**, 그리고
+               **실제로 읽은 마지막 지점**으로 저장해야 한다.
+            2. **무인자 `Instant.now()`.** 이 저장소는 주입된 `Clock`을 쓴다.
+               시각을 고정할 수 없으면 이 배치의 경계 동작을 테스트할 방법이 없다.
+            3. **겹침이 없다.** 상대 트랜잭션이 배치 실행 시간과 겹쳐 커밋되면
+               그 행은 이번에도 다음에도 안 보인다.
+
+            **고친 코드**
+
+            ```java
+            /** 상대 트랜잭션이 이보다 길면 늘린다. 중복은 자연 키 upsert 가 흡수한다. */
+            private static final Duration OVERLAP = Duration.ofMinutes(10);
+
+            void sync() {
+                Instant from = cursorStore.get().minus(OVERLAP);
+                List<PosSale> changed = pos.findUpdatedAfter(from);
+                if (changed.isEmpty()) {
+                    return;   // 커서를 전진시키지 않는다. 빈 결과는 전진할 근거가 아니다
+                }
+                loader.load(changed);
+                // 읽은 마지막 지점을 커서로 쓴다. 실행 시각이 아니다
+                Instant lastSeen =
+                        changed.stream().map(PosSale::updatedAt).max(Comparator.naturalOrder()).orElseThrow();
+                cursorStore.set(lastSeen);
+            }
+            ```
+
+            **왜 이렇게 했나**
+
+            - 커서를 `lastSeen`(실제로 읽은 마지막 `updated_at`)으로 둔다.
+              실행 시각과 데이터의 시각이 어긋나는 문제가 사라진다.
+            - `load`가 실패하면 `set`에 닿지 않으므로 커서가 그대로다. 다음 실행이 같은 구간을
+              다시 읽고, upsert 이므로 이미 들어간 것은 덮어써진다.
+            - 결과가 비면 커서를 움직이지 않는다. 움직이면 상대가 늦게 커밋한 행을 건너뛴다.
+            - `Clock`이 필요한 자리가 남아 있으면 주입해서 쓴다. `Instant.now()`는 쓰지 않는다.
+
+            **남는 위험**
+
+            상대의 `updated_at`이 **단조 증가하지 않는 경우.** 상대가 과거 시각으로 행을 고치거나
+            시계를 되돌리면 `lastSeen` 뒤에 더 작은 값이 생기고, 겹침 범위를 벗어나면 빠진다.
+            이것은 커서로 막을 수 없고 **대조**(U1)로 잡는다. 그래서 둘이 함께 있어야 한다.
+          selfChecks:
+            - 커서를 실행 시각이 아니라 읽은 마지막 지점으로 바꿨는가
+            - 겹침을 두고 그 전제(upsert)를 적었는가
+            - 빈 결과에 커서를 전진시키지 않았는가
+            - 주입된 Clock 을 쓰고 Instant.now() 를 없앴는가
+      - key: LESSON.INTEGRATION.BATCH_SYNC.001.U3
+        title: 죽은 자리에서 다시 시작하게 만들기
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.INTEGRATION.BATCH_SYNC.001.U2
+        explain: |-
+          배치는 죽는다. 서버가 재시작되고, 상대가 타임아웃을 주고, 메모리가 모자란다.
+          50만 건 중 20만 건을 넣고 죽었을 때 무엇이 남아 있어야 하는가.
+
+          나쁜 답은 둘이다.
+
+          - **전부 한 트랜잭션.** 50만 건을 한 번에 커밋하려다 죽으면 **0건**이다.
+            매일 40분을 돌고 매일 0건을 얻을 수도 있다.
+          - **기록 없이 한 건씩 커밋.** 20만 건은 남았지만 어디까지 했는지 모른다.
+            다시 돌리면 처음부터 시작한다.
+
+          답은 **묶음(chunk) + 묶음마다 커서 저장**이다.
+
+          ```text
+          5,000건 읽기 → 적재 → 커서 저장 → 커밋
+          5,000건 읽기 → 적재 → 커서 저장 → 커밋
+          ...
+          죽으면 → 마지막 저장된 커서부터 다시
+          ```
+
+          묶음 크기는 "죽었을 때 잃어도 되는 양"으로 정한다.
+          너무 크면 재시작 비용이 크고, 너무 작으면 커밋이 잦아 느려진다.
+
+          그리고 **겹치기 실행**을 막아야 한다. 배치가 아직 도는데 다음 주기가 시작되면
+          같은 구간을 두 번 처리한다. upsert 라서 결과는 같지만 상대 부하가 두 배가 되고,
+          커서가 서로를 덮어써 뒤로 갈 수 있다.
+        example:
+          language: java
+          code: |-
+            /** 죽었을 때 잃는 양이 곧 묶음 크기다. 커밋이 잦으면 느리고, 크면 재시작이 비싸다. */
+            private static final int CHUNK = 5_000;
+
+            void sync() {
+                if (!lock.tryAcquire("pos-sync")) {
+                    log.info("job=pos-sync skipped reason=ALREADY_RUNNING");
+                    return;   // 겹쳐 돌지 않는다
+                }
+                try {
+                    while (true) {
+                        List<PosSale> chunk = pos.findUpdatedAfter(cursorStore.get().minus(OVERLAP), CHUNK);
+                        if (chunk.isEmpty()) {
+                            return;
+                        }
+                        loadAndAdvance(chunk);   // 적재와 커서 저장을 한 트랜잭션으로
+                    }
+                } finally {
+                    lock.release("pos-sync");
+                }
+            }
+
+            @Transactional
+            void loadAndAdvance(List<PosSale> chunk) {
+                loader.load(chunk);
+                cursorStore.set(maxUpdatedAt(chunk));
+            }
+          output: |-
+            20만 건에서 죽음 → 다음 실행은 마지막 커밋된 커서부터 (약 20만 건 지점)
+            겹쳐 실행       → 두 번째는 ALREADY_RUNNING 으로 건너뜀
+          note: |-
+            적재와 커서 저장이 **한 트랜잭션**이어야 한다. 따로 커밋하면 사이에서 죽었을 때
+            둘이 어긋난다 — 적재는 됐는데 커서가 안 갔으면 다시 읽고(upsert 라 괜찮다),
+            커서만 갔으면 **그 묶음이 빠진다.** 후자를 막기 위해 순서와 경계가 중요하다.
+        predict:
+          question: 적재와 커서 저장을 따로 커밋하는데 그 사이에서 배치가 죽으면 어떻게 되나요?
+          choices:
+            - 커서만 전진한 경우 그 묶음이 빠진다
+            - 아무 문제 없다. 다음에 다시 읽는다
+            - DB 가 자동으로 되돌린다
+          answer: 커서만 전진한 경우 그 묶음이 빠진다
+          explanation: |-
+            순서에 따라 결과가 다르다. 적재 먼저면 다시 읽어도 upsert 로 흡수되므로 안전하지만,
+            커서 먼저면 그 묶음을 다시 읽지 않아 영원히 빠진다.
+            한 트랜잭션으로 묶으면 이 순서를 고민할 필요가 없어진다.
+        complete:
+          question: 겹쳐 실행되는 것을 막는 부분의 빈칸을 채우세요.
+          code: |-
+            if (!lock.tryAcquire("pos-sync")) {
+                log.info("job=pos-sync skipped reason=___");
+                return;
+            }
+          answers:
+            - [ALREADY_RUNNING, RUNNING, IN_PROGRESS]
+          explanation: |-
+            건너뛴 이유를 로그에 남기는 것이 중요하다. 이유 없이 조용히 return 하면
+            "배치가 며칠째 안 돌았다"를 아무도 모른다. 반대로 이 로그가 매일 찍히면
+            배치가 주기보다 오래 걸린다는 뜻이므로 묶음 크기나 주기를 손봐야 한다.
+        problem:
+          prompt: |-
+            POS 매출 증분 배치를 재실행에 안전하게 만드세요.
+
+            요구는 넷입니다.
+            - 중간에 죽어도 다음 실행이 죽은 자리 근처에서 이어간다
+            - 같은 배치가 겹쳐 돌지 않는다
+            - 한 번에 너무 많이 읽어 메모리를 넘기지 않는다
+            - 운영자가 로그만 보고 진행 상황과 건너뛴 이유를 알 수 있다
+
+            적재는 자연 키 upsert 이고 커서 저장소가 있다고 가정합니다.
+          deliverables:
+            - 묶음 처리 구조 (트랜잭션 경계를 분명하게)
+            - 겹침 방지 방법과 건너뛸 때의 로그
+            - 묶음 크기를 정하는 기준 한 줄
+            - 무한 루프에 빠지지 않게 하는 장치
+          hints:
+            - 적재와 커서 저장이 한 트랜잭션이 아니면 순서를 고민해야 합니다.
+            - 커서가 전진하지 않는 묶음이 계속 나오면 while 이 멈추지 않습니다.
+            - 로그에 진행 건수와 커서를 남기면 어디까지 갔는지 알 수 있습니다.
+          modelAnswer: |-
+            ```java
+            private static final int CHUNK = 5_000;
+            private static final Duration OVERLAP = Duration.ofMinutes(10);
+            /** 커서가 전진하지 않는 묶음이 이만큼 이어지면 멈춘다. 무한 루프 방지. */
+            private static final int MAX_STALE_CHUNKS = 3;
+
+            void sync() {
+                if (!lock.tryAcquire(JOB)) {
+                    log.info("job={} skipped reason=ALREADY_RUNNING", JOB);
+                    return;
+                }
+                long loaded = 0;
+                int stale = 0;
+                try {
+                    while (true) {
+                        Instant before = cursorStore.get();
+                        List<PosSale> chunk = pos.findUpdatedAfter(before.minus(OVERLAP), CHUNK);
+                        if (chunk.isEmpty()) {
+                            break;
+                        }
+                        loadAndAdvance(chunk);
+                        loaded += chunk.size();
+                        stale = cursorStore.get().equals(before) ? stale + 1 : 0;
+                        if (stale >= MAX_STALE_CHUNKS) {
+                            log.warn("job={} stopped reason=CURSOR_NOT_ADVANCING cursor={}", JOB, before);
+                            break;
+                        }
+                    }
+                    log.info("job={} finished loaded={} cursor={}", JOB, loaded, cursorStore.get());
+                } finally {
+                    lock.release(JOB);
+                }
+            }
+
+            /** 적재와 커서 저장은 한 트랜잭션이다. 사이에서 죽으면 둘이 어긋난다. */
+            @Transactional
+            void loadAndAdvance(List<PosSale> chunk) {
+                loader.load(chunk);
+                cursorStore.set(maxUpdatedAt(chunk));
+            }
+            ```
+
+            **묶음 크기 기준**
+
+            "죽었을 때 다시 해도 괜찮은 양"이다. 5,000건은 재시작에 몇 초,
+            메모리에 몇 MB 수준이라 둘 다 감당된다.
+            상대가 느리면 줄이고, 배치가 주기를 넘기면 늘린다.
+
+            **무한 루프 장치**
+
+            같은 `updated_at`을 가진 행이 묶음 크기보다 많으면 커서가 전진하지 못하고
+            같은 묶음을 계속 읽는다. `MAX_STALE_CHUNKS`로 끊고 경고를 남긴다.
+            근본 해결은 커서에 `(updated_at, id)` 두 값을 쓰는 것이고,
+            상대가 ID를 주면 그쪽이 낫다.
+
+            **로그**
+
+            ```text
+            INFO  job=pos-sync finished loaded=48213 cursor=2026-09-30T02:58:11Z
+            INFO  job=pos-sync skipped reason=ALREADY_RUNNING
+            WARN  job=pos-sync stopped reason=CURSOR_NOT_ADVANCING cursor=2026-09-30T02:41:00Z
+            ```
+
+            세 줄로 판단이 된다 — 정상이면 건수와 커서, 겹쳤으면 이유,
+            멈췄으면 무엇이 문제인지. `skipped`가 매일 찍히면 주기나 묶음을 손볼 신호다.
+          selfChecks:
+            - 적재와 커서 저장을 한 트랜잭션으로 묶었는가
+            - 겹침을 막고 건너뛴 이유를 로그에 남겼는가
+            - 묶음 크기를 정하는 기준을 적었는가
+            - 커서가 전진하지 않을 때 멈추는 장치를 뒀는가
+    commonMistakes:
+      - 커서를 배치 실행 시각으로 저장한다. 실행 중에 커밋된 행이 이번에도 다음에도 잡히지 않아 조용히 빠지고, 대조를 하지 않으면 몇 달 뒤에 발견된다.
+      - 전체를 한 트랜잭션으로 적재한다. 50만 건 중 49만 건에서 죽으면 남는 것은 0건이고, 매일 같은 자리에서 죽으면 영영 못 넣는다.
+      - 증분만 만들고 전체 적재를 없앤다. 한 번 빠진 구간을 되돌릴 방법이 사라진다 — 증분은 "지난번 이후"만 보기 때문이다.
+    inProject: |-
+      주문 시스템에서 증분이 필요한 자리는 POS 매출 수신이다.
+      초기 전체 적재를 한 번 만들어 두고, 매일 증분으로 돌리고, 매주 건수·합계를 대조한다.
+      커서 저장소와 실행 잠금은 다른 배치도 쓰게 공통으로 빼 두면 좋다.
+    sources:
+      - title: PostgreSQL 16 — Transaction Isolation
+        url: https://www.postgresql.org/docs/16/transaction-iso.html
+        versionScope: PostgreSQL 16
+      - title: PostgreSQL 16 — INSERT (ON CONFLICT)
+        url: https://www.postgresql.org/docs/16/sql-insert.html
+        versionScope: PostgreSQL 16
+    verifiedAt: 2026-09-30
