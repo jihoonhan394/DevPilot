@@ -10,6 +10,7 @@ import 'package:devpilot_app/features/lesson/presentation/lesson_entry_button.da
 import 'package:devpilot_app/features/today/data/today_models.dart';
 import 'package:devpilot_app/features/today/presentation/concept_reading_section.dart';
 import 'package:devpilot_app/features/today/presentation/main_task_actions.dart';
+import 'package:devpilot_app/features/today/presentation/next_step_line.dart';
 import 'package:devpilot_app/features/today/presentation/today_state.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -35,6 +36,8 @@ class MainTaskCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // 무엇을 먼저 눌러야 하는지 한 줄로 말한다 (docs/02 SCR-TODAY "지금 할 일")
+            NextStepLine(task: task),
             _TaskHeading(task: task),
             if (description != null && description.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.sm),

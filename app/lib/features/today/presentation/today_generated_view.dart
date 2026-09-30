@@ -12,6 +12,7 @@ import 'package:devpilot_app/features/today/presentation/daily_tip_card.dart';
 import 'package:devpilot_app/features/today/presentation/main_task_card.dart';
 import 'package:devpilot_app/features/today/presentation/today_actions.dart';
 import 'package:devpilot_app/features/today/presentation/today_diagnostic_card.dart';
+import 'package:devpilot_app/features/today/presentation/today_first_run_card.dart';
 import 'package:devpilot_app/features/today/presentation/today_state.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -39,6 +40,8 @@ class TodayGeneratedView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // 계획을 만든 뒤에도 안내를 둔다 — 계획이 이미 있는 채로 처음 여는 사람도 있다
+        const TodayFirstRunCard(),
         if (today.comebackMode) ...[const _ComebackBanner(), const SizedBox(height: AppSpacing.md)],
         _SummaryBar(today: today, data: data),
         const SizedBox(height: AppSpacing.lg),

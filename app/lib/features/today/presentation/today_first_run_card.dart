@@ -37,7 +37,9 @@ final class FirstRunDismissed extends Notifier<bool> {
 /// SCR-TODAY 맨 위 안내 (docs/02 SCR-TODAY, BL-CLI-49).
 ///
 /// <b>어디에 무엇이 있는지가 아니라 무엇부터 하는지를 말한다</b> — 목적지 이름만 늘어놓으면 처음 쓰는 사람은 시작점을
-/// 찾지 못한다. 생성 전 레이아웃에서만 보이고, 닫으면 이 브라우저에서 다시 뜨지 않는다.
+/// 찾지 못한다. **생성 전과 후 둘 다** 보이고, 닫으면 이 브라우저에서 다시 뜨지 않는다 — 계획을 만든 뒤에
+/// 사라지면, 계획이 이미 있는 채로 처음 여는 사람(다른 기기, 또는 계획만 먼저 만들어진 경우)은 안내를 한 번도
+/// 보지 못한다.
 class TodayFirstRunCard extends ConsumerWidget {
   const TodayFirstRunCard({super.key});
 

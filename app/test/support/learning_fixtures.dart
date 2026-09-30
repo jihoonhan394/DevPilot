@@ -35,6 +35,7 @@ MainTaskView testMainTask({
   String? redoSourceTaskId,
   TaskType? redoSourceTaskType,
   String? whyItMatters = '트랜잭션 경계를 모르면 롤백이 안 되는 자리를 못 찾는다.',
+  String? readingKey,
   int version = 0,
 }) => MainTaskView(
   id: id,
@@ -51,6 +52,7 @@ MainTaskView testMainTask({
   reasons: reasons,
   redoSourceTaskId: redoSourceTaskId,
   redoSourceTaskType: redoSourceTaskType,
+  readingKey: readingKey,
   completedAt: status == TaskStatus.completed ? testNow : null,
   version: version,
 );
