@@ -33,6 +33,23 @@ void main() {
     expect(find.textContaining('직접 풀고 설명한 기록만'), findsOneWidget);
   });
 
+  /// 빼는 축이 있으면 그것도 말한다 — 조용히 빼면 왜 안 움직이는지 알 수 없다 (ADR-061).
+  testWidgets('shouldNameTheAxesItCountsAndTheOnesItLeavesOut', (tester) async {
+    await pumpApp(tester, backend: backend, at: AppRoutes.buildable);
+
+    expect(find.text('지금 세는 축: 지식 · 구현 · 설명'), findsOneWidget);
+    expect(find.textContaining('빼고 보는 축: 문제 인지'), findsOneWidget);
+  });
+
+  /// 뺄 축이 없으면 그 줄은 나오지 않는다.
+  testWidgets('shouldNotMentionLeftOutAxesWhenThereAreNone', (tester) async {
+    backend.planRepository.buildable = testBuildable(uncountedAxes: const []);
+
+    await pumpApp(tester, backend: backend, at: AppRoutes.buildable);
+
+    expect(find.byKey(const Key('buildable.uncountedAxes')), findsNothing);
+  });
+
   /// 모자란 축만 적는다 — 채워진 축까지 늘어놓으면 무엇이 남았는지가 묻힌다.
   testWidgets('shouldListOnlyTheAxesThatAreStillShort', (tester) async {
     await pumpApp(tester, backend: backend, at: AppRoutes.buildable);

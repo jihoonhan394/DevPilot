@@ -1743,6 +1743,7 @@ public record MilestoneIdMappingView(UUID previousId, UUID newId) {}
 
 - 활성 plan의 milestone을 **만드는 순서**(`sortOrder` ASC)로 늘어놓고, 각 단계를 여는 skill이 **근거 레벨**로 목표에 닿았는지 본다. 규칙은 `06-learning-engine-rules.md` §11.4다.
 - 자기평가로 올라간 계획 레벨은 세지 않는다(ADR-060). 대시보드 타임라인의 `current`(§13.1)와 다를 수 있다.
+- `countedAxes`는 지금 잴 수 있는 축, `uncountedAxes`는 아직 잴 방법이 없어 빼고 보는 축이다(`06` §7.6, ADR-061). 화면이 그것을 보여 준다 — 조용히 빼면 왜 안 움직이는지 알 수 없다.
 - 요청 시점에 계산하고 저장하지 않는다. AI를 부르지 않는다.
 
 ```json
@@ -1753,6 +1754,8 @@ public record MilestoneIdMappingView(UUID previousId, UUID newId) {}
   "buildableStepCount": 1,
   "stepCount": 9,
   "nextStepId": "a2…",
+  "countedAxes": ["KNOWLEDGE", "IMPLEMENTATION", "EXPLANATION"],
+  "uncountedAxes": ["DEBUGGING"],
   "steps": [
     { "milestoneId": "a1…", "title": "코어 도메인", "description": "주문 한 건을 받아 저장하고 돌려주는 자리를 만든다…",
       "sortOrder": 0, "startDate": "2026-09-30", "endDate": "2026-10-25",
@@ -3346,7 +3349,7 @@ public record SkillCategorySummaryView(
 | `weeklySummary` | `builtThisWeek`: `plan_date ∈ [weekStartDate, today]`이고 `status = COMPLETED`인 `CHALLENGE`·`PROJECT_TASK`·`REDO` task를 `plan_date` DESC, `sort_order` DESC로 최대 5개. `completedTasks`: 같은 기간의 `COMPLETED` task 수(REVIEW task 포함). `notesWritten`: 같은 기간의 `side_project_note` 수(`occurred_on` 기준 — 기록을 적은 날이 아니라 **일이 있었던 날**로 센다. `06` §12 `projectNoteCount`와 같은 기준이다). dashboard는 `project`를 직접 의존하지 않고 `evidence.application.LearningMetricsQueryService`로 읽는다(`03-system-architecture.md` §2.2). `studyMinutes`: `weekStudyMinutes`와 같은 값 |
 | `risk.trend` | 사용자의 `plan_progress_snapshot`에서 서로 다른 `snapshot_date` 최근 8개. 같은 날짜에 여러 행(replan)이 있으면 `generated_at`이 가장 늦은 행 |
 | `skillCategories` | 활성 plan의 `plan_skill_target` 중 `deferred = false`인 skill을 category별로 묶는다. `n` = skill 수. `avgPlanningLevelMilli = floorDiv(Σ_skill Σ_axis planning × 1000, n × 4)`, `avgTargetLevelMilli = floorDiv(Σ_skill Σ_axis target × 1000, n × 4)` (planning은 `06-learning-engine-rules.md` §7.5). `n ≥ 1`인 category만, `SkillCategory` 선언 순서 |
-| `milestoneTimeline.milestones[].current` | **`sort_order`가 가장 앞선 미완료 milestone 하나만 true**다(ADR-044, `06` §5.2). 날짜로 정하지 않는다 — Today가 고르는 단계와 같아야 하고, 날짜로 판정하면 쉬었을 때 두 화면이 다른 단계를 가리킨다. 전부 끝냈으면 모두 false다. 학습 목표가 없으면 `milestoneTimeline` 자체가 null이다(`horizonDate`를 만들 수 없다) |
+| `milestoneTimeline.milestones[].current` | **`sort_order`가 가장 앞선 미완료 milestone 하나만 true**다(ADR-044, `06` §5.2·§7.6). 완료 판정의 목표는 지금 잴 수 있는 축만 본다(ADR-061) — Today와 같은 기준이어야 두 화면이 같은 단계를 가리킨다. 날짜로 정하지 않는다 — Today가 고르는 단계와 같아야 하고, 날짜로 판정하면 쉬었을 때 두 화면이 다른 단계를 가리킨다. 전부 끝냈으면 모두 false다. 학습 목표가 없으면 `milestoneTimeline` 자체가 null이다(`horizonDate`를 만들 수 없다) |
 | `weakThinkingAxes` | `06-learning-engine-rules.md` §12 `weakThinkingAxes`, 기간 최근 28 plan-day |
 | `aiStatus` | §1.9.1 |
 | `replanRecommended` | 활성 plan의 `replan_recommended` (없으면 false) |

@@ -124,6 +124,7 @@ BuildableView testBuildable({
   List<BuildableStepView>? steps,
   String? nextStepId = milestoneAuthId,
   int buildableStepCount = 1,
+  List<SkillAxis> uncountedAxes = const [SkillAxis.debugging],
 }) => BuildableView(
   planId: planId,
   planVersion: 1,
@@ -131,6 +132,8 @@ BuildableView testBuildable({
   buildableStepCount: buildableStepCount,
   stepCount: steps?.length ?? 3,
   nextStepId: nextStepId,
+  countedAxes: const [SkillAxis.knowledge, SkillAxis.implementation, SkillAxis.explanation],
+  uncountedAxes: uncountedAxes,
   steps:
       steps ??
       [

@@ -21,6 +21,12 @@ abstract class BuildableView with _$BuildableView {
     /// The step to build now. Null once every step is buildable.
     String? nextStepId,
 
+    /// Axes that can be measured today (docs/06 §7.6).
+    required List<SkillAxis> countedAxes,
+
+    /// Axes left out because there is no way to record them yet. Can be empty.
+    required List<SkillAxis> uncountedAxes,
+
     /// Build order (`sortOrder` ASC).
     required List<BuildableStepView> steps,
   }) = _BuildableView;

@@ -11,6 +11,7 @@ import com.devpilot.plan.application.MilestoneView;
 import com.devpilot.plan.application.PlanQueryService;
 import com.devpilot.plan.application.PlanSkillTargetView;
 import com.devpilot.plan.application.PlanView;
+import com.devpilot.skill.application.MeasurableAxes;
 import com.devpilot.skill.application.UserSkillStateQueryService;
 import com.devpilot.skill.application.UserSkillStateView;
 import com.devpilot.skill.domain.Priority;
@@ -43,14 +44,17 @@ class DashboardProgressAssembler {
     private final PlanQueryService planQueryService;
     private final LearningGoalQueryService learningGoalQueryService;
     private final UserSkillStateQueryService userSkillStateQueryService;
+    private final MeasurableAxes measurableAxes;
 
     DashboardProgressAssembler(
             PlanQueryService planQueryService,
             LearningGoalQueryService learningGoalQueryService,
-            UserSkillStateQueryService userSkillStateQueryService) {
+            UserSkillStateQueryService userSkillStateQueryService,
+            MeasurableAxes measurableAxes) {
         this.planQueryService = planQueryService;
         this.learningGoalQueryService = learningGoalQueryService;
         this.userSkillStateQueryService = userSkillStateQueryService;
+        this.measurableAxes = measurableAxes;
     }
 
     /** 활성 plan. 없으면 null — 타임라인과 카테고리 요약이 모두 비워진다. */
@@ -64,7 +68,8 @@ class DashboardProgressAssembler {
 
     /**
      * milestone 타임라인 (docs/05 §13.1). <b>{@code current}는 날짜가 아니라 진행으로 정한다</b>(ADR-044) — Today가
-     * 고르는 단계와 같아야 한다. 날짜로 판정하면 쉬었을 때 두 화면이 다른 단계를 가리킨다.
+     * 고르는 단계와 같아야 한다. 날짜로 판정하면 쉬었을 때 두 화면이 다른 단계를 가리킨다. 목표는 지금 잴 수 있는 축만 본다(docs/06 §7.6) — Today와
+     * 같은 기준이어야 두 화면이 같은 단계를 가리킨다.
      */
     @Nullable MilestoneTimelineView timeline(
             UUID userId, @Nullable PlanView plan, LocalDate today) {
@@ -108,7 +113,7 @@ class DashboardProgressAssembler {
         }
         return plan.milestones().stream()
                 .sorted(Comparator.comparingInt(MilestoneView::sortOrder))
-                .filter(milestone -> !isComplete(milestone, targets, planning))
+                .filter(milestone -> !isComplete(milestone, targets, planning, measurableAxes))
                 .map(MilestoneView::id)
                 .findFirst()
                 .orElse(null);
@@ -126,7 +131,8 @@ class DashboardProgressAssembler {
     private static boolean isComplete(
             MilestoneView milestone,
             Map<String, PlanSkillTargetView> targets,
-            Map<String, AxisLevels> planning) {
+            Map<String, AxisLevels> planning,
+            MeasurableAxes measurableAxes) {
         List<PlanSkillTargetView> gate = gate(milestone, targets, Priority.MUST);
         if (gate.isEmpty()) {
             gate = gate(milestone, targets, Priority.SHOULD);
@@ -136,7 +142,7 @@ class DashboardProgressAssembler {
         }
         for (PlanSkillTargetView target : gate) {
             AxisLevels levels = planning.get(target.skill().code());
-            if (levels == null || !allMet(levels, target.targets())) {
+            if (levels == null || !allMet(levels, measurableAxes.forProgress(target.targets()))) {
                 return false;
             }
         }

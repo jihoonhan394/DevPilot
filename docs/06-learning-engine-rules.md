@@ -242,7 +242,7 @@ ratioBp (저장·표시용) = effective == 0 ? null : floorDiv(requiredMust × 1
 
 **현재 milestone** = `sort_order`가 가장 앞선 **미완료** milestone이다. 날짜로 정하지 않는다(ADR-044).
 
-- **완료**: 그 milestone의 `milestone_skill` 중 `plan_skill_target.priority = MUST`인 skill이 **전부** 모든 축에서 `planningLevel ≥ target`이고 **`lastPracticedAt != null`** 이다(ADR-049). MUST가 하나도 없으면 SHOULD로 같은 판정을 한다. 둘 다 없으면 그 milestone은 완료로 본다(넘어간다).
+- **완료**: 그 milestone의 `milestone_skill` 중 `plan_skill_target.priority = MUST`인 skill이 **전부** `planningLevel ≥ target`이고 **`lastPracticedAt != null`** 이다(ADR-049). 목표는 **지금 잴 수 있는 축만** 본다(§7.6, ADR-061). MUST가 하나도 없으면 SHOULD로 같은 판정을 한다. 둘 다 없으면 그 milestone은 완료로 본다(넘어간다).
   - **주장은 증거가 아니다**(ADR-049). `planningLevel`은 자기평가를 섞은 값이라(§7.5) 손대 본 적 없는 skill도 목표를 덮을 수 있다. 입문 트랙은 목표 최고치와 자기평가 상한이 둘 다 3이어서, 모든 category에 3을 주면 92개 skill이 전부 달성으로 계산되고 첫날부터 후보가 0이 됐다. 증거가 하나라도 있어야 목표에 닿은 것으로 본다.
   - 자기평가가 버려지는 것은 아니다. 그 skill은 후보로 남아 **자기평가한 수준의 난이도**로 제안되고(§5.3), 풀어 내면 그때 증거가 생겨 넘어간다. 진단 통과(`DIAGNOSTIC_PASSED`, §7.4)도 증거다.
 - 모든 milestone이 완료면 현재 milestone은 없고 1·2번은 비어 있다. 후보는 3·4번만 남는다.
@@ -1033,7 +1033,36 @@ planningLevel_axis = self_assessment_active ? max(evidenceLevel_axis, selfCap) :
 - 증거 레벨이 자기평가를 넘어서면 증거 레벨을 쓴다. 이벤트가 생겼다고 해서 자기평가 값이 사라지지 않는다.
 - 부정적 증거(하락 규칙, 진단 실패)가 나오면 자기평가를 더 이상 쓰지 않는다.
 
-### 7.6 Test vectors
+### 7.6 지금 잴 수 있는 축 (`MeasurableAxes`, ADR-061)
+
+`devpilot.skill.measurable-axes`는 **지금 근거를 쌓을 수 있는 축**을 적는다. 현재 값은 `[KNOWLEDGE, IMPLEMENTATION, EXPLANATION]`이다.
+
+DEBUGGING은 §7.2에서 `COACH_*` 이벤트로만 오르는데 coach 모듈이 S4라 아직 없다. 그런데 연동 트랙의 MUST skill 29개 중 22개가 디버깅 목표 ≥ 1이다. 목표를 그대로 두면 **어떤 skill도 "목표에 닿음"이 될 수 없고, 그러면 어떤 milestone도 끝나지 않아** 다음 셋이 전부 첫 단계에 갇힌다.
+
+| 쓰는 곳 | 무엇이 막히나 |
+|---|---|
+| §5.2 현재 milestone·후보 제외 | Today가 1단계 skill만 영원히 돌린다 |
+| `05` §13.1 타임라인 `current` | 대시보드가 1단계를 계속 가리킨다 |
+| §11.4 만들 수 있는 단계 | 모든 단계가 `NEXT`/`NOT_YET`에 머문다 |
+
+**규칙**: 위 세 곳에 들어가는 목표는 **잴 수 없는 축을 0으로 내린 값**을 쓴다. 저장된 `plan_skill_target`은 바꾸지 않는다 — 판정에서 빼는 것이지 목표를 낮추는 것이 아니다.
+
+- **예산·위험도(§3·§4)는 그대로 둔다.** 나중에 들일 시간은 지금도 계획에 들어 있어야 한다. 빼면 남은 일이 실제보다 적어 보인다.
+- **상승 규칙(§7.2)도 그대로다.** 축이 오를 길이 생기면 그때 오른다.
+- coach가 들어오면 설정에 `DEBUGGING`을 더하는 것으로 끝난다. 값이 `SkillAxis`에 없으면 **기동 실패**다(skill 모듈이 검사).
+- 화면은 세는 축과 빼는 축을 함께 보인다(`05` §7.10 `countedAxes`·`uncountedAxes`). 조용히 빼면 "왜 9/10에서 안 움직이나"를 알 수 없다.
+
+**Test vectors**
+
+| ID | 입력 | 기대 |
+|---|---|---|
+| MA-1 | 목표 (3,3,3,2), 측정 가능 = K·I·E | 판정용 목표 (3,3,3,0) |
+| MA-2 | 근거 (3,3,3,0), 목표 (3,3,3,2) | 목표에 닿음 — D는 세지 않는다 |
+| MA-3 | 근거 (3,2,3,0), 목표 (3,3,3,2) | 아직 — I가 모자라다 |
+| MA-4 | 측정 가능 = 네 축 전부 | 목표가 그대로다 |
+| MA-5 | 설정이 비었거나 모르는 축 이름 | 기동 실패 |
+
+### 7.7 Test vectors
 
 | # | 현재 (K,I,E,D) | 60일 이벤트 요약 | 결과 |
 |---|---|---|---|
@@ -1377,7 +1406,7 @@ milestone은 과목 순서가 아니라 **사이드 프로젝트를 만드는 �
 
 - **관문 skill** = 그 milestone의 `plan_skill_target` 중 `deferred = false`이고 `priority = MUST`인 것. MUST가 하나도 없으면 SHOULD로, 둘 다 없으면 관문이 없다(§11.4 BS-1). 대시보드 타임라인이 단계 완료를 보는 방식과 같다(ADR-044).
 - **닿음 판정은 근거 레벨(`user_skill_state`의 `*_level`)로만 한다.** 자기평가로 올라간 계획 레벨(§7.5)은 세지 않는다 — 이 화면은 "안다고 답한 것"이 아니라 "직접 해본 기록"에 답한다(ADR-060). 그래서 대시보드 타임라인의 "지금 단계"와 다를 수 있고, **그 차이가 이 화면이 하는 말이다.**
-- `shortfall(skill) = Σ_axis max(0, target_axis − evidence_axis)`. 근거가 없는 skill은 4축 0으로 본다.
+- `shortfall(skill) = Σ_axis max(0, target_axis − evidence_axis)`, **지금 쟴 수 있는 축만**(§7.6, ADR-061). 근거가 없는 skill은 4축 0으로 본다.
 - 단계 상태:
 
 | 상태 | 조건 |

@@ -2640,6 +2640,15 @@ components:
         buildableStepCount:
           type: integer
           format: int32
+        countedAxes:
+          type: array
+          items:
+            type: string
+            enum:
+            - KNOWLEDGE
+            - IMPLEMENTATION
+            - EXPLANATION
+            - DEBUGGING
         nextStepId:
           type: string
           format: uuid
@@ -2659,14 +2668,25 @@ components:
         today:
           type: string
           format: date
+        uncountedAxes:
+          type: array
+          items:
+            type: string
+            enum:
+            - KNOWLEDGE
+            - IMPLEMENTATION
+            - EXPLANATION
+            - DEBUGGING
       required:
       - buildableStepCount
+      - countedAxes
       - nextStepId
       - planId
       - planVersion
       - stepCount
       - steps
       - today
+      - uncountedAxes
     BuiltItemView:
       type: object
       properties:

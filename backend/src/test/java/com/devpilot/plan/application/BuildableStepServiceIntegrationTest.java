@@ -45,6 +45,28 @@ class BuildableStepServiceIntegrationTest extends ApiTestSupport {
                 .isEqualTo("예외와 컬렉션, HTTP 기초를 다지고 첫 테스트를 쓴다.");
     }
 
+    /**
+     * ADR-061: 디버깅 목표가 있어도 단계가 열린다. coach 모듈이 없어 그 축은 근거를 쌓을 길 자체가 없고, 세면 어떤 단계도 영원히 안 열린다. 응답이 세는
+     * 축과 뺀 축을 함께 말한다.
+     */
+    @Test
+    void shouldNotLetAnAxisWithoutAWayToMeasureItBlockAStep() throws Exception {
+        TestUser user = onboardedOwner();
+        // 테스트 role target의 기반 다지기 MUST 넷은 모두 디버깅 목표가 2 이상이다.
+        raiseEvidenceToTarget(user, "JAVA.EXCEPTION");
+        raiseEvidenceToTarget(user, "JAVA.COLLECTION");
+        raiseEvidenceToTarget(user, "WEB_HTTP.HTTP_BASICS");
+        raiseEvidenceToTarget(user, "TESTING.JUNIT");
+        assertThat(debuggingLevel(user, "JAVA.EXCEPTION")).isZero();
+
+        JsonNode buildable = api.body(api.get(user, BUILDABLE));
+
+        assertThat(buildable.path("steps").get(0).path("status").asString()).isEqualTo("BUILDABLE");
+        assertThat(names(buildable.path("countedAxes")))
+                .containsExactly("KNOWLEDGE", "IMPLEMENTATION", "EXPLANATION");
+        assertThat(names(buildable.path("uncountedAxes"))).containsExactly("DEBUGGING");
+    }
+
     /** BS-6: MUST가 있으면 그것만 관문이다 — SHOULD는 단계를 막지 않는다. */
     @Test
     void shouldGateOnMustTargetsOnly() throws Exception {
@@ -124,18 +146,36 @@ class BuildableStepServiceIntegrationTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.code").value("ONBOARDING_REQUIRED"));
     }
 
-    /** 근거 레벨을 그 skill의 계획 목표까지 올린다. */
+    /**
+     * 근거 레벨을 그 skill의 계획 목표까지 올린다 — <b>디버깅 축은 빼고</b>. coach 모듈이 없어 그 축은 실제로 0에서 움직이지 않는다(docs/06
+     * §7.6). 실제와 같은 상태로 두어야 단계가 열리는지가 진짜 검사가 된다.
+     */
     private void raiseEvidenceToTarget(TestUser user, String skillCode) {
         jdbc.update(
                 "update devpilot.user_skill_state s set knowledge_level = t.target_knowledge_level,"
                     + " implementation_level = t.target_implementation_level, explanation_level ="
-                    + " t.target_explanation_level, debugging_level = t.target_debugging_level from"
-                    + " devpilot.plan_skill_target t, devpilot.learning_plan p, devpilot.skill k"
-                    + " where p.id = t.plan_id and k.id = t.skill_id and t.skill_id = s.skill_id"
-                    + " and p.user_id = s.user_id and p.status = 'ACTIVE' and s.user_id = ? and"
-                    + " k.code = ?",
+                    + " t.target_explanation_level from devpilot.plan_skill_target t,"
+                    + " devpilot.learning_plan p, devpilot.skill k where p.id = t.plan_id and k.id"
+                    + " = t.skill_id and t.skill_id = s.skill_id and p.user_id = s.user_id and"
+                    + " p.status = 'ACTIVE' and s.user_id = ? and k.code = ?",
                 userId(user),
                 skillCode);
+    }
+
+    private int debuggingLevel(TestUser user, String skillCode) {
+        Integer level =
+                jdbc.queryForObject(
+                        "select s.debugging_level from devpilot.user_skill_state s join"
+                                + " devpilot.skill k on k.id = s.skill_id where s.user_id = ? and"
+                                + " k.code = ?",
+                        Integer.class,
+                        userId(user),
+                        skillCode);
+        return level == null ? 0 : level;
+    }
+
+    private static List<String> names(JsonNode values) {
+        return values.valueStream().map(JsonNode::asString).toList();
     }
 
     private static List<String> titles(JsonNode steps) {

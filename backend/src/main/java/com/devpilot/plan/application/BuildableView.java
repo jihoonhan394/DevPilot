@@ -3,6 +3,7 @@ package com.devpilot.plan.application;
 import com.devpilot.common.web.AxisLevels;
 import com.devpilot.plan.domain.BuildableStatus;
 import com.devpilot.skill.application.SkillRef;
+import com.devpilot.skill.domain.SkillAxis;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -14,6 +15,8 @@ import org.jspecify.annotations.Nullable;
  *
  * @param buildableStepCount {@code BUILDABLE} 단계 수
  * @param nextStepId 지금 만들 차례인 단계. 전부 닿았으면 null
+ * @param countedAxes 지금 세는 축 (docs/06 §7.6)
+ * @param uncountedAxes 아직 잴 방법이 없어 빼고 보는 축. 비어 있을 수 있다
  */
 public record BuildableView(
         UUID planId,
@@ -22,9 +25,13 @@ public record BuildableView(
         int buildableStepCount,
         int stepCount,
         @Nullable UUID nextStepId,
+        List<SkillAxis> countedAxes,
+        List<SkillAxis> uncountedAxes,
         List<BuildableStepView> steps) {
 
     public BuildableView {
+        countedAxes = List.copyOf(countedAxes);
+        uncountedAxes = List.copyOf(uncountedAxes);
         steps = List.copyOf(steps);
     }
 

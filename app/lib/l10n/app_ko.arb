@@ -2897,5 +2897,9 @@
   "buildableTodayLinkNone": "지금 만들 차례가 어디인지 보기",
   "@buildableTodayLinkNone": {"description": "SCR-TODAY: the same line when nothing is buildable yet."},
   "buildablePlanLink": "지금 만들 수 있는 것 보기",
-  "@buildablePlanLink": {"description": "SCR-PLAN: link to SCR-BUILDABLE."}
+  "@buildablePlanLink": {"description": "SCR-PLAN: link to SCR-BUILDABLE."},
+  "buildableCountedAxes": "지금 세는 축: {axes}",
+  "@buildableCountedAxes": {"description": "SCR-BUILDABLE: which axes readiness counts (docs/06 §7.6).", "placeholders": {"axes": {"type": "String"}}},
+  "buildableUncountedAxes": "빼고 보는 축: {axes} — 아직 잴 방법이 없어요. 잴 수 있게 되면 다시 셉니다.",
+  "@buildableUncountedAxes": {"description": "SCR-BUILDABLE: why an axis is left out (ADR-061).", "placeholders": {"axes": {"type": "String"}}}
 }

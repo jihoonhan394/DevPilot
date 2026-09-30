@@ -224,8 +224,10 @@ V10,10,GOOD,CORRECT,SELF_EXPLAIN,GOOD,,5,4
 | §6.4 | — (failures 2/4 경계, variant 상태) | `ReviewServiceIntegrationTest` | integration |
 | §6.5 | `06-06-due-selection.yaml` (경계: `due_at = planDayStart(today + 1)`은 제외) | `DueReviewSelectorTest` | unit |
 | §6.5 3단계, §6.6 RV-INTERLEAVE | `06-06-interleave.yaml` (3행 (a)~(c). §5.3) | `DueReviewSelectorTest` | unit |
-| §7.2–7.4, §7.6 #1–12, #15–17 | `06-07-skill-level.yaml` (+ 러버덕 설명 증거 경계 RB-1~RB-6 §5.3, 독립 구현 증거 RD-V1~RD-V4 §5.4) | `SkillLevelRulesTest` | unit |
-| §7.5, §7.6 #13–14 | `06-07-planning-level.csv` | `PlanningLevelPolicyTest` | unit |
+| §7.2–7.4, §7.7 #1–12, #15–17 | `06-07-skill-level.yaml` (+ 러버덕 설명 증거 경계 RB-1~RB-6 §5.3, 독립 구현 증거 RD-V1~RD-V4 §5.4) | `SkillLevelRulesTest` | unit |
+| §7.5, §7.7 #13–14 | `06-07-planning-level.csv` | `PlanningLevelPolicyTest` | unit |
+| §7.6 MA-1~MA-5 | — (테스트 안에 있다) | `MeasurableAxesTest` | unit |
+| §11.4 BS-1~BS-9 | — (테스트 안에 있다) | `BuildableStepEvaluatorTest` | unit |
 | §8.1 | `06-08-rubric-coverage.yaml` (6행) | `RubricScorerTest` | unit |
 | §8.2 | `06-08-rubric-coverage.yaml`의 outcome 컬럼 | `AttemptOutcomeCalculatorTest` | unit |
 | §8.3 | — | `SubmissionEvaluationTaskIntegrationTest` | integration |
@@ -349,7 +351,7 @@ V10,10,GOOD,CORRECT,SELF_EXPLAIN,GOOD,,5,4
 | RL-5 | `REDO`가 `COMPLETED`·`SKIPPED`·`DEFERRED` | 정상 — 잠금은 `PLANNED`·`IN_PROGRESS`뿐이다 |
 | RL-6 | A의 `REDO`가 열려 있을 때 B가 같은 seed challenge의 hint 요청 | 정상 — 잠금은 사용자별이다 |
 
-**`SkillLevelRulesTest` — 독립 구현 증거 (AC-31, `06` §7.2·§7.6 #16–17).**
+**`SkillLevelRulesTest` — 독립 구현 증거 (AC-31, `06` §7.2·§7.7 #16–17).**
 
 | id | 현재 I | 최근 60일 이벤트 | 기대 |
 |---|---|---|---|

@@ -73,6 +73,8 @@ class _Steps extends StatelessWidget {
           key: const Key('buildable.intro'),
           style: theme.textTheme.bodySmall?.copyWith(color: DevPilotColors.of(context).neutral),
         ),
+        const SizedBox(height: AppSpacing.xs),
+        _Axes(counted: buildable.countedAxes, uncounted: buildable.uncountedAxes),
         const SizedBox(height: AppSpacing.lg),
         for (final step in buildable.steps) _StepCard(step: step),
       ],
@@ -88,6 +90,41 @@ class _Steps extends StatelessWidget {
     }
     return l10n.buildableSummary(buildable.buildableStepCount, buildable.stepCount);
   }
+}
+
+/// 무엇을 세고 무엇을 빼는지 (docs/06 §7.6, ADR-061). 조용히 빼면 "왜 9/10에서 안 움직이나"를 알 수 없다.
+class _Axes extends StatelessWidget {
+  const _Axes({required this.counted, required this.uncounted});
+
+  final List<SkillAxis> counted;
+  final List<SkillAxis> uncounted;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final style = Theme.of(
+      context,
+    ).textTheme.bodySmall?.copyWith(color: DevPilotColors.of(context).neutral);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.buildableCountedAxes(_labels(l10n, counted)),
+          key: const Key('buildable.countedAxes'),
+          style: style,
+        ),
+        if (uncounted.isNotEmpty)
+          Text(
+            l10n.buildableUncountedAxes(_labels(l10n, uncounted)),
+            key: const Key('buildable.uncountedAxes'),
+            style: style,
+          ),
+      ],
+    );
+  }
+
+  String _labels(AppLocalizations l10n, List<SkillAxis> axes) =>
+      axes.map((axis) => axis.label(l10n)).join(' · ');
 }
 
 /// 한 단계. 지금 만들 차례인 단계만 색을 쓴다 — 다 칠하면 어디부터 볼지 알 수 없다.

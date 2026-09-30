@@ -11,6 +11,7 @@ import com.devpilot.plan.domain.BuildableStepEvaluator.Gap;
 import com.devpilot.plan.domain.BuildableStepEvaluator.GateSkill;
 import com.devpilot.plan.domain.BuildableStepEvaluator.StepInput;
 import com.devpilot.plan.domain.BuildableStepEvaluator.StepReadiness;
+import com.devpilot.skill.application.MeasurableAxes;
 import com.devpilot.skill.application.SkillRef;
 import com.devpilot.skill.application.UserSkillStateQueryService;
 import com.devpilot.skill.application.UserSkillStateView;
@@ -38,14 +39,17 @@ public class BuildableStepService {
 
     private final PlanQueryService planQueryService;
     private final UserSkillStateQueryService userSkillStateQueryService;
+    private final MeasurableAxes measurableAxes;
     private final Clock clock;
 
     BuildableStepService(
             PlanQueryService planQueryService,
             UserSkillStateQueryService userSkillStateQueryService,
+            MeasurableAxes measurableAxes,
             Clock clock) {
         this.planQueryService = planQueryService;
         this.userSkillStateQueryService = userSkillStateQueryService;
+        this.measurableAxes = measurableAxes;
         this.clock = clock;
     }
 
@@ -67,7 +71,7 @@ public class BuildableStepService {
         List<StepReadiness> readiness =
                 BuildableStepEvaluator.evaluate(
                         milestones.stream()
-                                .map(milestone -> stepInput(milestone, targets))
+                                .map(milestone -> stepInput(milestone, targets, measurableAxes))
                                 .toList(),
                         evidence);
 
@@ -85,7 +89,15 @@ public class BuildableStepService {
             steps.add(toView(milestone, step, targets));
         }
         return new BuildableView(
-                plan.id(), plan.planVersion(), today, buildable, steps.size(), nextStepId, steps);
+                plan.id(),
+                plan.planVersion(),
+                today,
+                buildable,
+                steps.size(),
+                nextStepId,
+                measurableAxes.axes(),
+                measurableAxes.unmeasured(),
+                steps);
     }
 
     /**
@@ -93,21 +105,31 @@ public class BuildableStepService {
      * 본다 — 대시보드 타임라인이 단계 완료를 보는 방식과 같다(ADR-044).
      */
     private static StepInput stepInput(
-            MilestoneView milestone, Map<String, PlanSkillTargetView> targets) {
-        List<GateSkill> gate = gate(milestone, targets, Priority.MUST);
+            MilestoneView milestone,
+            Map<String, PlanSkillTargetView> targets,
+            MeasurableAxes measurableAxes) {
+        List<GateSkill> gate = gate(milestone, targets, Priority.MUST, measurableAxes);
         if (gate.isEmpty()) {
-            gate = gate(milestone, targets, Priority.SHOULD);
+            gate = gate(milestone, targets, Priority.SHOULD, measurableAxes);
         }
         return new StepInput(milestone.id(), gate);
     }
 
+    /** 목표는 지금 잴 수 있는 축만 본다(docs/06 §7.6) — 잴 수 없는 축을 남기면 단계가 영영 안 열린다. */
     private static List<GateSkill> gate(
-            MilestoneView milestone, Map<String, PlanSkillTargetView> targets, Priority priority) {
+            MilestoneView milestone,
+            Map<String, PlanSkillTargetView> targets,
+            Priority priority,
+            MeasurableAxes measurableAxes) {
         return milestone.skillCodes().stream()
                 .map(targets::get)
                 .filter(target -> target != null && !target.deferred())
                 .filter(target -> target.priority() == priority)
-                .map(target -> new GateSkill(target.skill().code(), target.targets()))
+                .map(
+                        target ->
+                                new GateSkill(
+                                        target.skill().code(),
+                                        measurableAxes.forProgress(target.targets())))
                 .toList();
     }
 

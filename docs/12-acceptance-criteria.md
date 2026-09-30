@@ -559,7 +559,7 @@
 | 테스트 클래스 | `PlanningLevelPolicyTest`, `SkillLevelRulesTest`, `SkillStateUpdaterIntegrationTest`, `UserSkillStateQueryServiceIntegrationTest`, `LearningStageEvaluatorTest`, `SkillDetailQueryIntegrationTest`, `CodingRulesArchTest`(ARCH-11) |
 
 **S1. 규칙 vector**
-- `06` §7.6 표 15행이 모두 통과한다(S1에는 13~14행, S3에 전체)
+- `06` §7.7 표 15행이 모두 통과한다(S1에는 13~14행, S3에 전체)
 
 **S2. 독립 해결 + 설명 성공 → 증거 반영**
 - Given A의 `JAVA.EXCEPTION` state (K, I, E, D) = (1, 1, 1, 0), cooldown 없음

@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
@@ -361,12 +363,18 @@ public record DevPilotProperties(
         }
     }
 
-    /** skill 규칙 설정 (docs/06 §7). S1은 {@code selfAssessmentCap}(planning level)만 쓴다. */
+    /**
+     * skill 규칙 설정 (docs/06 §7).
+     *
+     * @param measurableAxes 지금 근거를 쌓을 수 있는 축의 이름 (docs/06 §7.6). 값이 {@code SkillAxis}에 있는지는 skill
+     *     모듈이 기동 시 확인한다 — common은 도메인 모듈을 알지 못한다(docs/03 §2.2)
+     */
     public record Skill(
             @Positive int ruleWindowDays,
             @NotNull Duration axisChangeCooldown,
             @Min(0) @Max(5) int selfAssessmentCap,
-            @Min(0) @Max(5) int diagnosticMaxLevel) {}
+            @Min(0) @Max(5) int diagnosticMaxLevel,
+            @NotEmpty Set<@NotBlank String> measurableAxes) {}
 
     /**
      * 사이드 프로젝트 기본값 (ADR-050). 온보딩에서 만들 것을 정하지 않은 사람에게 주는 프로젝트다.
