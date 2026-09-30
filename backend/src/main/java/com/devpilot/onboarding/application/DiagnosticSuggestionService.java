@@ -30,11 +30,17 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <ol>
  *   <li>대상 category — {@code SkillCategory} 선언 순서, 최대 {@code MAX_SUGGESTIONS}개. 진단 모드(자기평가가 하나도
- *       없음)는 활성 자기평가가 있는 category 전부, 자기평가 모드는 그 category의 자기평가 최댓값이 3 이상인 것
+ *       없음)는 활성 자기평가가 있는 category 전부, 자기평가 모드는 그 category의 자기평가 최댓값이 {@code
+ *       SELF_ASSESSMENT_THRESHOLD} 이상인 것
  *   <li>그 category에 이미 {@code DIAGNOSTIC} attempt가 있으면 category 전체를 제외한다
  *   <li>후보: {@code VALIDATED} 공용 {@code DIAGNOSTIC} challenge 중 그 category의 활성 자기평가 skill을 가진 것
- *   <li>정렬: priority(MUST→SHOULD→LATER→없음) → practicalImportance DESC → {@code seed_key} ASC
+ *   <li>정렬: <b>난이도 거리</b>(ADR-058) → priority(MUST→SHOULD→LATER→없음) → practicalImportance DESC →
+ *       {@code seed_key} ASC
  * </ol>
+ *
+ * <p>난이도 거리는 주장한 수준을 재기 위한 것이다(ADR-058). 자기평가 모드의 목표는 {@code min(claimedLevel, 3)}이고 같은 난이도가 가장 앞,
+ * 없으면 목표보다 낮은 쪽이 먼저다 — 주장보다 어려운 문제를 내면 정직하게 답한 사람이 떨어져 자기평가가 꺼진다. 진단 모드는 {@code difficulty}가 그대로
+ * 레벨이 되므로 (docs/06 §7.4) 가장 높은 난이도를 고른다.
  */
 @Service
 @Transactional(readOnly = true)
@@ -43,8 +49,14 @@ public class DiagnosticSuggestionService {
     /** category당 1문제, 최대 5개 (docs/05 §4.2 1단계). */
     static final int MAX_SUGGESTIONS = 5;
 
-    /** 자기평가 모드에서 진단을 제안하는 최소 자기평가 레벨 (docs/05 §4.2 1단계). */
-    static final int SELF_ASSESSMENT_THRESHOLD = 3;
+    /**
+     * 자기평가 모드에서 진단을 제안하는 최소 자기평가 레벨 (docs/05 §4.2 1단계, ADR-058). 1이므로 0만 빠진다 — 0은 확인할 주장이 없고 개념
+     * 노트부터 가는 것이 맞다(ADR-057).
+     */
+    static final int SELF_ASSESSMENT_THRESHOLD = 1;
+
+    /** 자기평가 상한 (docs/06 §7.5 {@code devpilot.skill.self-assessment-cap}과 같은 값). */
+    private static final int CLAIM_CAP = 3;
 
     private final ChallengeQueryService challengeQueryService;
     private final SkillCatalogQueryService skillCatalogQueryService;
@@ -94,7 +106,13 @@ public class DiagnosticSuggestionService {
                 continue;
             }
             Optional<Selected> selected =
-                    select(category, candidates, assessments, skills, targets);
+                    select(
+                            category,
+                            candidates,
+                            assessments,
+                            skills,
+                            targets,
+                            targetDifficulty(diagnosticMode, entry.getValue()));
             if (selected.isEmpty()) {
                 continue;
             }
@@ -173,14 +191,35 @@ public class DiagnosticSuggestionService {
             List<DiagnosticCandidate> candidates,
             Map<UUID, AssessmentState> assessments,
             Map<UUID, SkillInfo> skills,
-            Map<UUID, SkillTargetView> targets) {
+            Map<UUID, SkillTargetView> targets,
+            @Nullable Integer targetDifficulty) {
         List<Selected> ranked = new ArrayList<>();
         for (DiagnosticCandidate candidate : candidates) {
             Optional<UUID> skillId =
                     leadingSkill(candidate, category, assessments, skills, targets);
             skillId.ifPresent(id -> ranked.add(new Selected(candidate, id)));
         }
-        return ranked.stream().min(order(skills, targets));
+        return ranked.stream().min(order(skills, targets, targetDifficulty));
+    }
+
+    /**
+     * 재려는 난이도 (ADR-058). 자기평가 모드는 주장한 수준({@code min(claimed, 3)}), 진단 모드는 null — 그때는 {@code
+     * difficulty}가 레벨이 되므로 가장 높은 것을 고른다.
+     */
+    private static @Nullable Integer targetDifficulty(boolean diagnosticMode, int claimedLevel) {
+        return diagnosticMode ? null : Math.min(claimedLevel, CLAIM_CAP);
+    }
+
+    /**
+     * 목표 난이도에서 얼마나 먼지. 같으면 0이고, 같은 거리면 <b>낮은 쪽이 먼저다</b> — 주장보다 어려운 문제는 정직하게 답한 사람을 떨어뜨려 자기평가를 끄기
+     * 때문이다(ADR-058).
+     */
+    private static int difficultyRank(int difficulty, @Nullable Integer targetDifficulty) {
+        if (targetDifficulty == null) {
+            return -difficulty; // 진단 모드: 높은 난이도가 앞선다
+        }
+        int distance = Math.abs(difficulty - targetDifficulty);
+        return distance * 2 + (difficulty > targetDifficulty ? 1 : 0);
     }
 
     /** challenge가 여러 skill에 걸치면 정렬에서 가장 앞선 skill (docs/05 §4.2 4단계). */
@@ -210,9 +249,13 @@ public class DiagnosticSuggestionService {
     }
 
     private static Comparator<Selected> order(
-            Map<UUID, SkillInfo> skills, Map<UUID, SkillTargetView> targets) {
+            Map<UUID, SkillInfo> skills,
+            Map<UUID, SkillTargetView> targets,
+            @Nullable Integer targetDifficulty) {
         return Comparator.<Selected>comparingInt(
-                        selected -> priorityRank(targets.get(selected.skillId())))
+                        selected ->
+                                difficultyRank(selected.candidate().difficulty(), targetDifficulty))
+                .thenComparingInt(selected -> priorityRank(targets.get(selected.skillId())))
                 .thenComparing(
                         selected -> importanceBp(targets.get(selected.skillId())),
                         Comparator.reverseOrder())

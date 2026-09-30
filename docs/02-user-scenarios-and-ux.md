@@ -576,7 +576,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 ```
 
 - **기본 선택 = 자기평가**(`runDiagnostic=false`). seed 진단이 전부 difficulty 3이고 판정이 통과/실패뿐이라(`06` §7.4) 나오는 값이 3 아니면 0이다 — 다섯 단계 자기평가보다 거칠다. **진단에 난이도 사다리가 생기면 기본값을 되돌린다.** 진단을 고르면 `runDiagnostic=true`, `selfAssessments=[]`. 자기평가를 고르면 `runDiagnostic=false`, `selfAssessments` 13개(`05` §4.1: 진단 모드에서 자기평가를 보내면 `MUTUALLY_EXCLUSIVE`, 자기평가 모드에서 비우면 `ONE_OF_REQUIRED`).
-- `diagnostics` flag가 꺼진 빌드(S1~S2)는 두 카드 없이 자기평가 칩만 보여주고(제목 `onboarding.level.titleSelf`) `runDiagnostic=false`로 보낸다. 이 사용자는 S3 이후 자기평가 3 이상인 분야에 한해 Today에서 진단을 제안받는다(FR-15).
+- `diagnostics` flag가 꺼진 빌드(S1~S2)는 두 카드 없이 자기평가 칩만 보여주고(제목 `onboarding.level.titleSelf`) `runDiagnostic=false`로 보낸다. 이 사용자는 S3 이후 자기평가 **1 이상**인 분야에서 Today의 진단 제안을 받는다(FR-15, ADR-058).
 - 진단 문제는 이 단계에서 풀지 않는다. 서버가 제출 응답의 `suggestedDiagnostics`(카테고리당 1문제, 최대 5개, `05` §4.2)로 문제를 정하므로 5단계 이후 SCR-DIAGNOSTICS에서 푼다.
 - 자기평가: 카테고리 순서는 §3.1 `SkillCategory` 표 순서. 선택지는 `ChoiceChip` 5개(0~4), 기본 0. **한 번도 고르지 않은 카테고리가 있으면 칩 아래에 `onboarding.level.unsetNote`로 남은 개수를 알린다** — 손대지 않으면 0으로 나가고, 전부 0이면 계획이 첫날부터 CRITICAL이 된다. 3 이상을 고른 카테고리가 있으면 칩 아래에 `onboarding.level.diagnosticNote`를 보여준다(S3 이후).
 - "프로젝트에 필요한 기술" 펼침: `GET /skills/tree?role=JAVA_BACKEND`의 skill을 카테고리별 검색 목록으로 보여주고 최대 10개 선택.
@@ -3964,7 +3964,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | 13 | — | 생성 후 레이아웃 | 응답 표시 | — |
 
 분기:
-- 3단계에서 "진단 건너뛰고 직접 고르기": 7에서 14개 카테고리 수준을 고르고 8에 `runDiagnostic: false, selfAssessments: [14개]`를 보낸다([서버] 카테고리 값을 `self_assessed_level`에 전파). 5단계에는 진단 카드가 없고 primary는 "그대로 시작"이다. 자기평가 3 이상인 분야는 Today에서 진단 카드로 제안된다(§4.6).
+- 3단계에서 "진단 건너뛰고 직접 고르기": 7에서 14개 카테고리 수준을 고르고 8에 `runDiagnostic: false, selfAssessments: [14개]`를 보낸다([서버] 카테고리 값을 `self_assessed_level`에 전파). 5단계에는 진단 카드가 없고 primary는 "그대로 시작"이다. 자기평가 1 이상인 분야는 Today에서 진단 카드로 제안된다(§4.6, ADR-058 — 0은 확인할 주장이 없어 빠진다).
 - 4단계에서 "건너뛰기" → 대화상자 "건너뛰고 계획 만들기" → 8을 `sideProject: null`로 보낸다([서버] `side_project` 없음 → planner가 `PROJECT_TASK`를 제안하지 않음, SP-1). 5단계에 `onboarding.plan.noProject`.
 - `diagnostics` flag가 꺼진 빌드(S1~S2): 3단계는 자기평가만 있다(위 첫 분기와 같음).
 

@@ -142,7 +142,7 @@ class _SelfAssessment extends StatelessWidget {
             style: textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.error),
           ),
         ],
-        if (OnboardingRules.hasHighSelfAssessment(draft)) ...[
+        if (OnboardingRules.hasCheckableSelfAssessment(draft)) ...[
           const SizedBox(height: AppSpacing.sm),
           Text(
             l10n.onboardingLevelDiagnosticNote,

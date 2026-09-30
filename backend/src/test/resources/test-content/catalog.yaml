@@ -27,7 +27,7 @@ files:
   curatedSources: curated-sources.yaml
   curatedRepos: curated-repos.yaml
   conceptReadings: concept-readings.yaml
-diagnosticCategories: [JAVA]
+diagnosticCategories: [JAVA, SPRING]
 retired:
   skillCodes: []
   challengeSeedKeys: []

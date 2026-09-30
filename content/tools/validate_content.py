@@ -792,8 +792,10 @@ def validate(content_dir: str):
             if ch["isTransfer"] is True and is_int(ch["difficulty"]) and ch["difficulty"] < 3:
                 res.error("CV-58", where, "isTransfer=true requires difficulty >= 3")
             if ch["purpose"] == "DIAGNOSTIC":
-                if ch["difficulty"] != 3:
-                    res.error("CV-59", where, "DIAGNOSTIC difficulty must be 3")
+                # ADR-058: 진단은 주장한 수준을 재므로 1~3 사다리를 둔다. 4·5는 진단으로 쓰지 않는다 —
+                # 자기평가 상한이 3이고 그보다 높은 주장은 확인할 대상이 아니다.
+                if ch["difficulty"] not in (1, 2, 3):
+                    res.error("CV-59", where, "DIAGNOSTIC difficulty must be 1, 2 or 3")
                 if is_int(ch["estimatedMinutes"]) and ch["estimatedMinutes"] > 15:
                     res.error("CV-59", where, "DIAGNOSTIC estimatedMinutes must be <= 15")
                 if ch["isTransfer"]:

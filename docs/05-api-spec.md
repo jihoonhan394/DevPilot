@@ -1080,13 +1080,15 @@ public record DiagnosticSuggestionView(
 선택 규칙 (`DiagnosticSuggestionService`, 결정적):
 1. 대상 category — `SkillCategory` 선언 순서로 처리하고, 결과는 **최대 5개**로 자른다(category당 1문제, 설계 §8).
    - **진단 모드**(`user_skill_state` 중 `self_assessed_level`이 `null`이 아닌 행이 하나도 없음 = 온보딩에서 `runDiagnostic = true`): `self_assessment_active = true`인 행이 있는 category 전부.
-   - **자기평가 모드**: `self_assessment_active = true`인 행의 `self_assessed_level` 최댓값이 3 이상인 category.
+   - **자기평가 모드**: `self_assessment_active = true`인 행의 `self_assessed_level` 최댓값이 **1 이상**인 category(ADR-058). 0은 확인할 주장이 없어 빼고, 그 분야는 개념 노트부터 간다(ADR-057).
 2. 그 category에서 **진단을 실제로 받은 경우** category 전체를 제외한다 — 그 category의 `purpose = DIAGNOSTIC` challenge에 `status ∈ {SUBMITTED, EVALUATED}`인 attempt가 있을 때다. 진단은 category당 1회 제안한다.
    - `STARTED`(시작만 함)는 **제외하지 않고 이어서 풀도록 그대로 제안**한다. 응답의 `activeAttemptId`가 그 attempt다.
    - `ABANDONED`(제출 없이 그만둠)도 **제외하지 않는다.** 진단을 받지 않았기 때문이다.
    - 왜 이렇게 바꿨나: 이전 규칙은 상태와 무관하게 제외해서, 진단을 열었다가 나오기만 해도 그 category를 **영영 진단받지 못했다.** 그러면 그 category의 모든 skill이 0에서 시작하고 계획에서 뒤로 밀린다(2026-09-21 실사용에서 확인).
 3. 후보 challenge: `status = VALIDATED`, `purpose = DIAGNOSTIC`, `owner_user_id IS NULL`, `challenge_skill` 중 하나 이상이 그 category에 속하고 해당 skill의 `self_assessment_active = true`.
-4. 정렬: 대상 skill의 활성 plan `plan_skill_target.priority`(MUST → SHOULD → LATER → target 없음) → `practical_importance` DESC → `challenge.seed_key` ASC. 첫 번째 1개를 고른다. challenge가 여러 skill에 걸치면 이 정렬에서 가장 앞선 skill을 `skill`로 쓴다.
+4. 정렬: **난이도 거리**(ADR-058) → 대상 skill의 활성 plan `plan_skill_target.priority`(MUST → SHOULD → LATER → target 없음) → `practical_importance` DESC → `challenge.seed_key` ASC. 첫 번째 1개를 고른다. challenge가 여러 skill에 걸치면 이 정렬에서 가장 앞선 skill을 `skill`로 쓴다.
+   - **난이도 거리**는 주장한 수준을 재기 위한 것이다. 자기평가 모드의 목표 난이도는 `min(claimedLevel, 3)`이고, `difficulty`가 목표와 같은 것이 가장 앞이다. 같은 것이 없으면 **목표보다 낮은 쪽**이 먼저다 — 주장보다 어려운 문제를 내면 정직하게 답한 사람이 떨어져 `self_assessment_active`가 꺼진다.
+   - **진단 모드**는 목표가 없다. 이 모드에서는 `difficulty`가 그대로 레벨이 되므로(`06` §7.4) **가장 높은 난이도**를 고른다.
 5. 후보가 없는 category는 결과에서 뺀다.
 
 - 제안은 저장하지 않는다. 사용자는 `POST /challenges/{challengeId}/attempts`(§10.5)로 시작하고, 평가 결과는 `DIAGNOSTIC_PASSED`/`DIAGNOSTIC_FAILED` 규칙(`06-learning-engine-rules.md` §7.4)을 따른다. 이벤트 payload `claimedLevel`은 평가 시점 해당 skill의 `self_assessed_level`이다.

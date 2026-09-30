@@ -46,9 +46,10 @@ abstract final class OnboardingRules {
       GoalDateRules.completionViolation(LocalDate.tryParse(draft.targetCompletionDate), today) ==
           null;
 
-  /// Categories whose chosen level is 3 or more get the diagnostic note (docs/02 step 3).
-  static bool hasHighSelfAssessment(OnboardingDraft draft) =>
-      draft.selfAssessmentLevels.values.any((level) => level >= 3);
+  /// Categories answered 1 or more get the diagnostic note (docs/02 step 3, ADR-058). 0 is a real
+  /// answer ("모름") with no claim to verify, so it does not earn a check question.
+  static bool hasCheckableSelfAssessment(OnboardingDraft draft) =>
+      draft.selfAssessmentLevels.values.any((level) => level >= 1);
 
   /// Categories the reader has not touched yet. They are sent as 0, which is a real answer ("모름")
   /// and not the same as "skipped" — so the screen says how many are still unset (docs/02 step 3).

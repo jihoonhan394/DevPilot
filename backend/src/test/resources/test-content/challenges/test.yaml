@@ -1,4 +1,5 @@
-# 테스트 challenge: PRACTICE 2 + DIAGNOSTIC 1 (JAVA). 합성 코드·문장이다
+# 테스트 challenge: PRACTICE 2 + DIAGNOSTIC 3 (JAVA L2·L3, SPRING L2). 합성 코드·문장이다
+# JAVA 에 L2·L3 둘을 두는 이유: 주장한 수준에 맞는 난이도를 고르는지(ADR-058) 보려면 고를 것이 둘이어야 한다
 # PRACTICE 하나는 첫 milestone skill(TESTING.JUNIT)에 둔다 — 지금 단계에 문제가 하나도 없으면
 # §5.3 2번 분기를 실제와 다르게 못 보게 된다(docs/06 §5.2 ADR-054).
 challenges:
@@ -71,6 +72,68 @@ challenges:
       QUESTION_ONLY: 지금 이 버그를 드러내려면 어떤 상태에서 무엇을 호출해야 할까요?
       CONCEPT_HINT: 테스트가 먼저 실패해야 그 테스트가 무엇을 지키는지 알 수 있습니다.
       DIRECTION: 배송이 시작된 주문을 만들고 취소를 호출했을 때의 결과를 단언해 보세요.
+  - seedKey: DIAGNOSTIC.JAVA.L2.001
+    purpose: DIAGNOSTIC
+    skills: [JAVA.EXCEPTION]
+    difficulty: 2
+    estimatedMinutes: 8
+    isTransfer: false
+    title: 예외 삼키기 진단
+    scenario: |-
+      파일을 읽는 코드가 실패해도 아무 로그 없이 빈 목록을 돌려준다는 보고가 있다.
+    prompt: |-
+      1. 실패가 조용히 사라지는 지점을 찾으세요.
+      2. 호출한 쪽이 실패를 알 수 있게 고치세요.
+    expectedConcepts:
+      - 빈 catch
+      - 원인 보존
+    rubric:
+      - id: R1
+        criterion: 예외를 삼키는 catch 를 찾아 고친다
+        weightBp: 6000
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 호출한 쪽이 실패를 구분할 수 있어야 하는 이유를 설명한다
+        weightBp: 4000
+        axis: EXPLANATION
+    commonMistakes:
+      - 로그만 추가하고 호출한 쪽에는 여전히 빈 값을 돌려준다
+    transferTargets: []
+    hints:
+      QUESTION_ONLY: 빈 목록을 받은 쪽은 파일이 비었는지 실패했는지 구분할 수 있을까요?
+      CONCEPT_HINT: 실패를 값으로 감추면 호출한 쪽이 판단할 근거를 잃습니다.
+      DIRECTION: catch 블록 안에서 무엇을 하고 있는지 적어 보고, 그 자리에서 호출한 쪽에 무엇을 알려야 할지 정해 보세요.
+  - seedKey: DIAGNOSTIC.SPRING.L2.001
+    purpose: DIAGNOSTIC
+    skills: [SPRING.TRANSACTION]
+    difficulty: 2
+    estimatedMinutes: 8
+    isTransfer: false
+    title: 트랜잭션 경계 진단
+    scenario: |-
+      같은 클래스 안에서 부른 메서드에 붙은 트랜잭션 설정이 동작하지 않는다는 보고가 있다.
+    prompt: |-
+      1. 설정이 무시되는 이유를 설명하세요.
+      2. 고치는 방법을 하나 제시하세요.
+    expectedConcepts:
+      - 프록시 경유
+      - 트랜잭션 전파
+    rubric:
+      - id: R1
+        criterion: 같은 객체 안의 호출이 프록시를 지나지 않는다는 것을 설명한다
+        weightBp: 6000
+        axis: EXPLANATION
+      - id: R2
+        criterion: 빈을 분리하는 등 프록시를 지나게 하는 수정을 제시한다
+        weightBp: 4000
+        axis: IMPLEMENTATION
+    commonMistakes:
+      - 애노테이션이 붙어 있으므로 동작한다고 답한다
+    transferTargets: []
+    hints:
+      QUESTION_ONLY: 그 호출은 무엇을 거쳐 가나요?
+      CONCEPT_HINT: 설정은 프록시가 가로채어 동작합니다.
+      DIRECTION: 호출한 주체를 각각 적고 어느 쪽이 프록시를 통과하는지 표시해 보세요.
   - seedKey: DIAGNOSTIC.JAVA.L3.001
     purpose: DIAGNOSTIC
     skills: [JAVA.EXCEPTION, JAVA.COLLECTION]

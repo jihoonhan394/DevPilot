@@ -357,9 +357,14 @@ final class ChallengeChecks {
             String where,
             Map<String, Object> challenge,
             List<?> skills) {
+        // ADR-058: 진단은 주장한 수준을 재므로 1~3 사다리를 둔다. 자기평가 상한이 3이라 4·5는 쓰지 않는다.
         Object difficulty = challenge.get("difficulty");
-        if (!(RawYaml.isInt(difficulty) && RawYaml.longValue(difficulty) == 3)) {
-            context.error("CV-59", where, "DIAGNOSTIC difficulty must be 3");
+        boolean onLadder =
+                RawYaml.isInt(difficulty)
+                        && RawYaml.longValue(difficulty) >= 1
+                        && RawYaml.longValue(difficulty) <= 3;
+        if (!onLadder) {
+            context.error("CV-59", where, "DIAGNOSTIC difficulty must be 1, 2 or 3");
         }
         Object minutes = challenge.get("estimatedMinutes");
         if (RawYaml.isInt(minutes) && RawYaml.longValue(minutes) > 15) {
