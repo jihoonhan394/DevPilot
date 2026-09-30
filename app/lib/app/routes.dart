@@ -77,6 +77,9 @@ abstract final class AppRoutes {
 
   /// SCR-ACCOUNT-RESET: 계정은 두고 진도만 되돌린다 (docs/02 §3.14).
   static const settingsReset = '/settings/reset';
+
+  /// SCR-SELF-ASSESSMENT (docs/02 §3.20). 온보딩에서 적은 자기평가를 나중에 고친다.
+  static const settingsSelfAssessment = '/settings/self-assessment';
   static const more = '/more';
 
   /// Where `/` and a finished login go (docs/02 §2.3, U-1).

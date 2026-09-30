@@ -150,6 +150,17 @@ public class UserSkillState implements Persistable<UUID> {
         this.selfAssessmentActive = false;
     }
 
+    /**
+     * 자기평가 값만 고친다 (docs/05 §6.5). {@code self_assessment_active}는 건드리지 않는다 — 진단 실패로 꺼진 분야를 값만 다시 적어
+     * 되살리면 자기평가가 부정적 증거를 덮어쓰게 되고, 규칙은 그 반대다(docs/06 §7.5).
+     */
+    public void reviseSelfAssessment(int selfAssessedLevel) {
+        if (selfAssessedLevel < 0 || selfAssessedLevel > 5) {
+            throw new IllegalArgumentException("selfAssessedLevel must be 0..5");
+        }
+        this.selfAssessedLevel = (short) selfAssessedLevel;
+    }
+
     /** 규칙 실행마다 갱신하는 집계 (docs/06 §7.1). */
     public void refreshEvidence(@Nullable Instant lastPracticedAt, int evidenceCount) {
         if (lastPracticedAt != null

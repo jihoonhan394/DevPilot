@@ -17,6 +17,10 @@ abstract interface class SkillRepository {
   /// `GET /skills/me`.
   Future<UserSkillStatesResponse> fetchMyStates();
 
+  /// `PUT /skills/me/self-assessment` (docs/05 §6.5). Sends only the categories that changed —
+  /// the server leaves the rest alone, so a one-chip edit cannot overwrite the other thirteen.
+  Future<UserSkillStatesResponse> updateSelfAssessment(Map<SkillCategory, int> levels);
+
   /// `GET /skills/{skillId}/history?cursor=` — level changes, newest first.
   Future<CursorPage<SkillStateChangeView>> fetchHistory({required String skillId, String? cursor});
 
@@ -34,6 +38,22 @@ final class ApiSkillRepository implements SkillRepository {
     assert(role != TargetRole.unknown, 'unknown is never sent');
     return SkillTreeResponse.fromJson(
       await _apiClient.getJson('/skills/tree', queryParameters: {'role': role.wireName}),
+    );
+  }
+
+  @override
+  Future<UserSkillStatesResponse> updateSelfAssessment(Map<SkillCategory, int> levels) async {
+    assert(levels.isNotEmpty, 'nothing to send');
+    return UserSkillStatesResponse.fromJson(
+      await _apiClient.putJson(
+        '/skills/me/self-assessment',
+        body: {
+          'assessments': [
+            for (final entry in levels.entries)
+              {'category': entry.key.wireName, 'level': entry.value},
+          ],
+        },
+      ),
     );
   }
 

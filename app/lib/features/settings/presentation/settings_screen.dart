@@ -84,6 +84,15 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.sm),
             _DisplayNameField(form: form),
             if (form.me.onboardingCompleted) const _GoalTile(),
+            if (form.me.onboardingCompleted)
+              ListTile(
+                key: const Key('settings.selfAssessmentTile'),
+                contentPadding: EdgeInsets.zero,
+                title: Text(l10n.settingsSelfAssessment),
+                subtitle: Text(l10n.settingsSelfAssessmentDesc),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.go(AppRoutes.settingsSelfAssessment),
+              ),
             const SizedBox(height: AppSpacing.section),
             SectionTitle(l10n.settingsStudy),
             const SizedBox(height: AppSpacing.sm),

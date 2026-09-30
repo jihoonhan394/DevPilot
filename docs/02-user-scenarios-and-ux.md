@@ -138,6 +138,7 @@
 | `/radar/:requirementDocId` | SCR-REQUIREMENT-DETAIL | Y | Y | S7 |
 | `/settings` | SCR-SETTINGS | Y | N | S1 (AI 사용량 S3, 캘린더 S5, export·삭제 S6) |
 | `/settings/reset` | SCR-ACCOUNT-RESET | Y | N | S3 |
+| `/settings/self-assessment` | SCR-SELF-ASSESSMENT | Y | Y | S3 |
 | `/settings/delete-account` | SCR-ACCOUNT-DELETE | Y | N | S6 |
 | `/more` | SCR-MORE | Y | Y | S2 (폭 ≥ 600이면 `/today`로 redirect) |
 | 그 외 | SCR-NOT-FOUND | N | N | S0 |
@@ -2737,6 +2738,20 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 ### 3.14 Settings · 계정
 
+#### SCR-SELF-ASSESSMENT
+
+경로 `/settings/self-assessment`. **온보딩에서 한 번 적고 끝이던 자기평가를 나중에 고친다** (`05` §6.5). 그러지 못하면 "Spring을 2로 적었는데 사실 1이었다"를 깨달은 사람이 진도 전체를 초기화해야 한다(2026-09-30 실사용에서 확인). **진입**: SCR-SETTINGS "지금 수준 다시 고르기". **Sprint**: S3.
+
+- 레이아웃: 안내 한 줄(`selfAssessmentLead`) → 14개 카테고리 × 5칩(0~4, SCR-ONBOARDING 3단계와 **같은 위젯** `SelfAssessmentChips`) → "저장" → 안내 한 줄(`selfAssessmentNote`).
+- 시작값은 `GET /skills/me`의 category별 `selfAssessedLevel` 최댓값이다. 전파 규칙상 한 category의 skill은 같은 값이지만 진단으로 일부가 달라질 수 있어 최댓값을 쓴다(`06` §7.4).
+- **바꾼 칸만 보낸다.** `PUT /skills/me/self-assessment`의 `assessments`에 값이 달라진 category만 담는다 — 열네 칸을 다 보내면 손대지 않은 값을 실수로 덮어쓴다(`05` §6.5).
+- 아무것도 고치지 않았으면 "저장"이 꺼져 있다.
+- 저장 성공 → 토스트 `selfAssessmentSaved`, `GET /skills/me` 재조회.
+- `selfAssessmentNote`로 **기록이 주장을 이긴다**는 것을 알린다 — 진단에서 틀린 분야는 값을 다시 적어도 그 기록을 따른다(`06` §7.5, `05` §4.3).
+- 진입은 `context.go`다(SCR-SETTINGS의 "학습 목표"와 같은 방식). SCR-SETTINGS는 나갈 때 저장하지 않은 편집을 확인하는 `onExit`이 있어, `push`로 쌓으면 그 확인과 얽힌다.
+
+---
+
 #### SCR-SETTINGS
 
 - **목적**: 프로필·**학습 목표(학습 트랙·목표일)**·학습 시간·하루 경계를 고치고, AI 사용량을 확인하고, 캘린더 구독·앱 설치·데이터 내려받기·계정 삭제·로그아웃을 한다(FR-03, FR-20, FR-22, FR-23, FR-24). 목표일은 사용자가 여기("학습 목표" → SCR-LEARNING-GOAL)에서 직접 등록하고 바꾼다. **진입**: rail Settings, More > 설정. **Sprint**: S1(프로필·학습 목표·시간), S2(설치 안내), S3(AI 사용량), S5(캘린더), S6(데이터·삭제).
@@ -2749,6 +2764,8 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ 표시 이름 [mt                   ] │
 │ 학습 목표                       >  │
 │ 목표일 2027년 4월 1일              │  사용자가 등록한 값 (예시)
+│ 지금 수준 다시 고르기            >  │
+│ 온보딩에서 고른 분야별 수준을 고쳐요  │
 │ 학습 시간                          │
 │ 평일 [45분 ▾]    주말 [240분 ▾]    │
 │ 하루 시작 시각 [새벽 4시 ▾]         │

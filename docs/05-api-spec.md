@@ -1294,6 +1294,37 @@ public record LearningStageView(
 - 비활성 skill(`active = false`)도 조회된다. 지난 과제·복습 카드가 가리키는 skill을 계속 보여 주기 위해서다(§19.7 은퇴한 reading과 같은 기준).
 - `/skills/tree`(§6.1)와 `/skills/me`(§6.2)는 리터럴 경로이며 `/skills/{skillId}`보다 우선한다(§7의 `/plans/active`와 같은 방식).
 
+### 6.5 `PUT /api/v1/skills/me/self-assessment` — 자기평가 수정
+
+| 항목 | 값 |
+|---|---|
+| operationId | `skillUpdateSelfAssessment` |
+| 인증 / IK | Bearer / — |
+| 요청 | `SelfAssessmentUpdateRequest` |
+| 응답 | 200 `UserSkillStatesResponse` (§6.2와 같은 것) |
+| 오류 | 400 `VALIDATION_FAILED`(`DUPLICATE_VALUE`, `Max`, `Min`), 400 `UNKNOWN_ENUM_VALUE`, 409 `ONBOARDING_REQUIRED` |
+| Sprint · 요구사항 | S3 · FR-15, AC-11 |
+
+```java
+public record SelfAssessmentUpdateRequest(
+        @NotNull @Size(min = 1, max = 14) List<@NotNull @Valid CategoryLevel> assessments) {
+
+    public record CategoryLevel(
+            @NotNull SkillCategory category, @NotNull @Min(0) @Max(5) Integer level) {}
+}
+```
+
+- **적는 category만 바꾼다.** 목록에 없는 category는 그대로 둔다 — 전체 교체가 아니다. 한 칸을 고치려고 열네 칸을 다시 보내게 하면, 나머지를 실수로 덮어쓴다.
+- `level`은 0~4다(§4.1과 같은 범위). 같은 category가 두 번 오면 400 `VALIDATION_FAILED`(field `assessments[i].category`, code `DUPLICATE_VALUE`).
+- 온보딩 전에는 409 `ONBOARDING_REQUIRED`다. 처음 값은 온보딩이 받는다(§4.1).
+- `CategoryLevel`은 §4.1 `SelfAssessmentInput`과 같은 모양이지만 skill 모듈이 따로 갖는다 — presentation 클래스는 모듈 경계를 넘지 않는다(ARCH-02, `03` §2.2).
+- 전파는 온보딩과 같다 — category 값이 그 category의 모든 skill `self_assessed_level`에 들어간다.
+- **`self_assessment_active`는 건드리지 않는다.** 진단 실패로 꺼진 분야는 꺼진 채로 둔다(`06` §7.4). 값을 다시 적어 부정적 증거를 지울 수 있게 하면 자기평가가 증거를 덮어쓰게 된다 — 그 반대가 규칙이다(`06` §7.5).
+- 레벨(evidence)은 바꾸지 않는다. planning level은 다음 조회에서 `06` §7.5로 다시 계산된다.
+- 계획을 다시 만들지 않는다. `requiredMinutes`는 읽을 때 계산하므로(`06` §4.2) 다음 budget 조회부터 반영된다.
+
+---
+
 ---
 
 ## 7. Plan 모듈

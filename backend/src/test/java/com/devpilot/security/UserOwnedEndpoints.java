@@ -632,7 +632,13 @@ public final class UserOwnedEndpoints {
                         "E62",
                         HttpMethod.POST,
                         "/api/v1/review-items",
-                        fixture -> manualCardBody()));
+                        fixture -> manualCardBody()),
+                // 자기평가 수정은 category 이름만 받는다 — A의 id를 넣을 자리가 없다 (docs/05 §6.5)
+                account(
+                        "E63",
+                        HttpMethod.PUT,
+                        "/api/v1/skills/me/self-assessment",
+                        fixture -> selfAssessmentBody()));
     }
 
     /** 인증 없이 열리는 경로와 Bearer를 쓰지 않는 경로 (docs/07 §4.1, docs/09 §9.2 끝). */
@@ -693,6 +699,11 @@ public final class UserOwnedEndpoints {
     private static EndpointCase scoped(String id, HttpMethod method, String path) {
         return new EndpointCase(
                 id, method, path, Kind.SCOPED_COLLECTION, NO_VARIABLES, NO_BODY, null);
+    }
+
+    /** 자기평가 수정 body (docs/05 §6.5). 한 category만 적어도 되는 부분 수정이다. */
+    private static Map<String, Object> selfAssessmentBody() {
+        return Map.of("assessments", List.of(Map.of("category", "SPRING", "level", 1)));
     }
 
     private static EndpointCase account(

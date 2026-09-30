@@ -118,6 +118,7 @@ enum TargetAdjustment {
 }
 
 /// Declaration order is the display order (docs/02 §3.1, docs/05 §6.1).
+@JsonEnum(alwaysCreate: true)
 enum SkillCategory {
   @JsonValue('JAVA')
   java,
@@ -148,6 +149,9 @@ enum SkillCategory {
   @JsonValue('EXPLANATION')
   explanation,
   unknown;
+
+  /// Wire value for request bodies (`PUT /skills/me/self-assessment`, docs/05 §6.5).
+  String get wireName => _$SkillCategoryEnumMap[this]!;
 
   /// The 14 real categories, without [unknown].
   static List<SkillCategory> get known => [

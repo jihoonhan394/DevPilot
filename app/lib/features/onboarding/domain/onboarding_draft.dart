@@ -1,4 +1,5 @@
 import 'package:devpilot_app/core/api/api_enums.dart';
+import 'package:devpilot_app/core/widgets/self_assessment_chips.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'onboarding_draft.freezed.dart';
@@ -55,7 +56,8 @@ abstract final class OnboardingDefaults {
   static const weekendMinuteChoices = [0, 30, 60, 120, 180, 240];
   static const dayStartHours = [0, 1, 2, 3, 4, 5, 6];
 
-  /// Self-assessment chips go up to 4 (`PRACTICAL`) (docs/02 §3.2).
-  static const maxSelfAssessmentLevel = 4;
+  /// Self-assessment chips go up to 4 (`PRACTICAL`) (docs/02 §3.2). The chips themselves read
+  /// `SelfAssessmentChips.maxLevel`; this stays for the request validation.
+  static const maxSelfAssessmentLevel = SelfAssessmentChips.maxLevel;
   static const maxFocusSkills = 10;
 }

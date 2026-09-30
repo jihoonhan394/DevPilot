@@ -15,7 +15,12 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 온보딩 일괄 처리 (docs/05 §4.1, BL-GOL-06). 온보딩 전에 허용되는 POST다. */
+/**
+ * 온보딩 일괄 처리 (docs/05 §4.1, BL-GOL-06). 온보딩 전에 허용되는 POST다.
+ *
+ * <p>자기평가 수정(docs/05 §4.3)도 여기 있다. 온보딩이 자기평가를 처음 받으므로 같은 자원으로 두고, 온보딩 전에는 {@code
+ * OnboardingRequiredInterceptor}의 허용 목록에 없어 409가 된다.
+ */
 @RestController
 @RequestMapping("/api/v1/onboarding")
 @Tag(name = "onboarding")

@@ -34,6 +34,7 @@ import 'package:devpilot_app/features/settings/data/me_provider.dart';
 import 'package:devpilot_app/features/settings/presentation/progress_reset_screen.dart';
 import 'package:devpilot_app/features/settings/presentation/settings_controller.dart';
 import 'package:devpilot_app/features/settings/presentation/settings_screen.dart';
+import 'package:devpilot_app/features/skill/presentation/self_assessment_screen.dart';
 import 'package:devpilot_app/features/skill/presentation/skill_detail_screen.dart';
 import 'package:devpilot_app/features/skill/presentation/skill_tree_screen.dart';
 import 'package:devpilot_app/features/today/presentation/today_screen.dart';
@@ -207,6 +208,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.settingsReset,
             builder: (context, state) => const ProgressResetScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.settingsSelfAssessment,
+            builder: (context, state) => const SelfAssessmentScreen(),
           ),
           GoRoute(path: AppRoutes.recent, builder: (context, state) => const RecentScreen()),
           GoRoute(path: AppRoutes.more, builder: (context, state) => const MoreScreen()),

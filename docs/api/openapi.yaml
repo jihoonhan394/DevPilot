@@ -1799,6 +1799,30 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - skill
+  /api/v1/skills/me/self-assessment:
+    put:
+      operationId: skillUpdateSelfAssessment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SelfAssessmentUpdateRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSkillStatesResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - skill
   /api/v1/skills/tree:
     get:
       operationId: skillGetTree
@@ -2561,6 +2585,34 @@ components:
       - taskId
       - taskType
       - title
+    CategoryLevel:
+      type: object
+      properties:
+        category:
+          type: string
+          enum:
+          - JAVA
+          - SPRING
+          - DATABASE
+          - WEB_HTTP
+          - NETWORK
+          - CS
+          - ALGORITHM
+          - TESTING
+          - DEVOPS
+          - SECURITY
+          - INTEGRATION
+          - PRACTICAL_ENGINEERING
+          - SYSTEM_DESIGN
+          - EXPLANATION
+        level:
+          type: integer
+          format: int32
+          maximum: 5
+          minimum: 0
+      required:
+      - category
+      - level
     ChallengeSummaryView:
       type: object
       properties:
@@ -5570,6 +5622,17 @@ components:
       required:
       - category
       - level
+    SelfAssessmentUpdateRequest:
+      type: object
+      properties:
+        assessments:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryLevel"
+          maxItems: 14
+          minItems: 1
+      required:
+      - assessments
     SelfExplanationRequest:
       type: object
       properties:
