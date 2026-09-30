@@ -13,7 +13,6 @@ import com.devpilot.training.application.ChallengeQueryService.DiagnosticCandida
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li>대상 category — {@code SkillCategory} 선언 순서, 최대 {@code MAX_SUGGESTIONS}개. 진단 모드(자기평가가 하나도
  *       없음)는 활성 자기평가가 있는 category 전부, 자기평가 모드는 그 category의 자기평가 최댓값이 {@code
  *       SELF_ASSESSMENT_THRESHOLD} 이상인 것
- *   <li>그 category에 이미 {@code DIAGNOSTIC} attempt가 있으면 category 전체를 제외한다
+ *   <li><b>이미 푼 진단 문제만</b> 뺀다(ADR-059). category를 통째로 빼면 자기평가를 고쳐 수준이 올라가도 그 새 주장을 확인할 자리가 없다 — 추정이
+ *       반증 가능해야 한다. 같은 문제를 다시 내지도 않는다
  *   <li>후보: {@code VALIDATED} 공용 {@code DIAGNOSTIC} challenge 중 그 category의 활성 자기평가 skill을 가진 것
  *   <li>정렬: <b>난이도 거리</b>(ADR-058) → priority(MUST→SHOULD→LATER→없음) → practicalImportance DESC →
  *       {@code seed_key} ASC
@@ -98,17 +98,18 @@ public class DiagnosticSuggestionService {
         Set<UUID> diagnosed =
                 challengeQueryService.diagnosedChallengeIds(userId, challengeIds(candidates));
         Map<UUID, SkillTargetView> targets = planQueryService.activePlanTargets(userId);
-        Set<SkillCategory> excluded = excludedCategories(candidates, diagnosed, skills);
+        // ADR-059: 이미 푼 문제만 뺀다. category를 통째로 빼면 주장이 올라가도 그 새 수준을 확인할 자리가 없다.
+        List<DiagnosticCandidate> unseen =
+                candidates.stream()
+                        .filter(candidate -> !diagnosed.contains(candidate.id()))
+                        .toList();
         List<DiagnosticSuggestionView> suggestions = new ArrayList<>();
         for (Map.Entry<SkillCategory, Integer> entry : targetCategories.entrySet()) {
             SkillCategory category = entry.getKey();
-            if (excluded.contains(category)) {
-                continue;
-            }
             Optional<Selected> selected =
                     select(
                             category,
-                            candidates,
+                            unseen,
                             assessments,
                             skills,
                             targets,
@@ -164,26 +165,6 @@ public class DiagnosticSuggestionService {
                     }
                 });
         return filtered;
-    }
-
-    /** docs/05 §4.2 2단계: 이미 attempt한 진단 challenge가 있는 category는 통째로 뺀다. */
-    private static Set<SkillCategory> excludedCategories(
-            List<DiagnosticCandidate> candidates,
-            Set<UUID> diagnosed,
-            Map<UUID, SkillInfo> skills) {
-        Set<SkillCategory> excluded = new HashSet<>();
-        for (DiagnosticCandidate candidate : candidates) {
-            if (!diagnosed.contains(candidate.id())) {
-                continue;
-            }
-            for (UUID skillId : candidate.skillIds()) {
-                SkillInfo skill = skills.get(skillId);
-                if (skill != null) {
-                    excluded.add(skill.category());
-                }
-            }
-        }
-        return Set.copyOf(excluded);
     }
 
     private static Optional<Selected> select(

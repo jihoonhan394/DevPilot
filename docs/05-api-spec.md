@@ -1081,7 +1081,8 @@ public record DiagnosticSuggestionView(
 1. 대상 category — `SkillCategory` 선언 순서로 처리하고, 결과는 **최대 5개**로 자른다(category당 1문제, 설계 §8).
    - **진단 모드**(`user_skill_state` 중 `self_assessed_level`이 `null`이 아닌 행이 하나도 없음 = 온보딩에서 `runDiagnostic = true`): `self_assessment_active = true`인 행이 있는 category 전부.
    - **자기평가 모드**: `self_assessment_active = true`인 행의 `self_assessed_level` 최댓값이 **1 이상**인 category(ADR-058). 0은 확인할 주장이 없어 빼고, 그 분야는 개념 노트부터 간다(ADR-057).
-2. 그 category에서 **진단을 실제로 받은 경우** category 전체를 제외한다 — 그 category의 `purpose = DIAGNOSTIC` challenge에 `status ∈ {SUBMITTED, EVALUATED}`인 attempt가 있을 때다. 진단은 category당 1회 제안한다.
+2. 그 category에서 **지금 재려는 난이도를 이미 확인한 경우** 제외한다(ADR-059) — 그 category의 `purpose = DIAGNOSTIC` challenge 중 `status ∈ {SUBMITTED, EVALUATED}`인 attempt가 있고 그 challenge의 `difficulty`가 4단계의 **목표 난이도와 같을 때**다. 진단 모드에는 목표 난이도가 없으므로 한 번 받았으면 끝이다.
+   - **왜 난이도까지 보나**: category당 1회로 두면 자기평가를 고쳐 수준이 올라가도(§6.5) 그 새 주장을 확인할 자리가 없다. 도구가 자기 추정을 맞다고 전제하고 반증할 기회를 한 번만 주는 셈이다(2026-09-30 실사용 지적). 같은 수준을 반복해 묻지는 않는다 — 확인이 끝난 자리를 다시 두드리는 것은 방해다.
    - `STARTED`(시작만 함)는 **제외하지 않고 이어서 풀도록 그대로 제안**한다. 응답의 `activeAttemptId`가 그 attempt다.
    - `ABANDONED`(제출 없이 그만둠)도 **제외하지 않는다.** 진단을 받지 않았기 때문이다.
    - 왜 이렇게 바꿨나: 이전 규칙은 상태와 무관하게 제외해서, 진단을 열었다가 나오기만 해도 그 category를 **영영 진단받지 못했다.** 그러면 그 category의 모든 skill이 0에서 시작하고 계획에서 뒤로 밀린다(2026-09-21 실사용에서 확인).

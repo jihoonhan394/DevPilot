@@ -50,7 +50,7 @@ void main() {
     backend.diagnosticRepository.suggestions = [testDiagnostic(claimedLevel: 3)];
     await pumpApp(tester, backend: backend, at: AppRoutes.diagnostics);
 
-    expect(find.textContaining('통과하면 기초 과제를 건너뛰어요'), findsOneWidget);
+    expect(find.textContaining('맞으면 그 분야 기초 과제를 건너뛰고, 아니면 개념부터 다시 봅니다'), findsOneWidget);
     expect(find.text('내가 고른 수준: 혼자 기본 가능'), findsOneWidget);
   });
 
