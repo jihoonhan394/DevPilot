@@ -60,7 +60,8 @@ class TodayDiagnosticCard extends ConsumerWidget {
   }
 }
 
-/// "건너뛰기", "모두 보기" and "풀기" (an outlined button: "오늘 계획 만들기" is the primary).
+/// "건너뛰기", "모두 보기", "풀기". 셋 다 text 버튼이다 — 이 카드는 곁가지 구역 안에 있고, 그 안에서 테두리나
+/// 채운 버튼을 쓰면 오늘의 핵심과 같은 무게로 읽힌다 (docs/02 SCR-TODAY "천천히 봐도 되는 것").
 class _CardActions extends ConsumerWidget {
   const _CardActions({required this.challengeId, required this.starting});
 
@@ -84,7 +85,7 @@ class _CardActions extends ConsumerWidget {
           onPressed: () => context.go(AppRoutes.diagnostics),
           child: Text(l10n.todayDiagnosticAll),
         ),
-        OutlinedButton(
+        TextButton(
           key: const Key('today.diagnosticSolveButton'),
           onPressed: starting ? null : () => startDiagnostic(context, ref, challengeId),
           child: Text(l10n.todayDiagnosticSolve),

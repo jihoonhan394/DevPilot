@@ -1926,6 +1926,10 @@
 
   "todayDiagnosticTitle": "실력 확인 (선택)",
   "@todayDiagnosticTitle": {"description": "SCR-TODAY diagnostic card: title."},
+  "todayOptionalTitle": "천천히 봐도 되는 것",
+  "@todayOptionalTitle": {"description": "SCR-TODAY: heading above the optional blocks (diagnostics, tip)."},
+  "todayOptionalLead": "오늘 안 해도 괜찮아요.",
+  "@todayOptionalLead": {"description": "SCR-TODAY: one line saying the blocks below are not today's work."},
   "todayDiagnosticItem": "{category} 확인 문제",
   "@todayDiagnosticItem": {
     "description": "SCR-TODAY diagnostic card: the first suggestion.",
@@ -2410,6 +2414,11 @@
   "@lessonWhyTitle": {"description": "SCR-LESSON step 0 heading."},
   "lessonUnitsHeading": "이 주제의 단위",
   "@lessonUnitsHeading": {"description": "SCR-LESSON step 0: list of units."},
+  "lessonUnitProgress": "{done} / {total} 단위 마침",
+  "@lessonUnitProgress": {
+    "description": "SCR-LESSON: how many units of this note are done.",
+    "placeholders": {"done": {"type": "int"}, "total": {"type": "int"}}
+  },
   "lessonUnitMinutes": "{minutes}분",
   "@lessonUnitMinutes": {"description": "Estimated minutes of one unit.", "placeholders": {"minutes": {"type": "int"}}},
   "lessonUnitDone": "마침",

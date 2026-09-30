@@ -1,6 +1,7 @@
 import 'package:devpilot_app/app/explain_with_duck_button.dart';
 import 'package:devpilot_app/app/routes.dart';
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
+import 'package:devpilot_app/core/theme/devpilot_colors.dart';
 import 'package:devpilot_app/core/widgets/error_view.dart';
 import 'package:devpilot_app/core/widgets/markdown_text.dart';
 import 'package:devpilot_app/core/widgets/screen_body.dart';
@@ -100,6 +101,16 @@ class _UnitBar extends StatelessWidget {
           style: theme.textTheme.labelLarge,
         ),
         const SizedBox(height: AppSpacing.xs),
+        // 몇 번째 단위인지 글자로만 있으면 진도가 보이지 않는다 (docs/02 SCR-LESSON).
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          child: LinearProgressIndicator(
+            value: lesson.units.isEmpty ? 0 : index / lesson.units.length,
+            minHeight: 6,
+            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
         Semantics(
           header: true,
           child: Text(unit.title, style: theme.textTheme.titleLarge),
@@ -124,30 +135,113 @@ class LessonOverview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
+    final done = lesson.units.where((unit) => unit.progress != null).length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SectionTitle(l10n.lessonWhyTitle),
-        MarkdownText(lesson.whyItMatters, textKey: const Key('lesson.whyItMatters')),
-        const SizedBox(height: AppSpacing.sm),
-        MarkdownText(lesson.oneLine, style: theme.textTheme.titleSmall),
+        // 글만 이어지면 어디가 무엇인지 읽히지 않는다. 이 노트를 왜 읽는지를 색 있는 상자로 먼저 세운다.
+        _WhyBox(lesson: lesson),
         const SizedBox(height: AppSpacing.lg),
         SectionTitle(l10n.lessonUnitsHeading),
-        for (final unit in lesson.units)
-          ListTile(
-            key: Key('lesson.unit.${unit.unitKey}'),
-            contentPadding: EdgeInsets.zero,
-            title: Text(unit.title),
-            subtitle: Text(l10n.lessonUnitMinutes(unit.minutes)),
-            trailing: unit.progress == null ? null : Text(l10n.lessonUnitDone),
-            onTap: onOpenUnit == null ? null : () => onOpenUnit!(unit.unitKey),
+        const SizedBox(height: AppSpacing.xs),
+        _UnitProgress(done: done, total: lesson.units.length),
+        const SizedBox(height: AppSpacing.sm),
+        for (final unit in lesson.units) ...[
+          Card(
+            child: ListTile(
+              key: Key('lesson.unit.${unit.unitKey}'),
+              title: Text(unit.title),
+              subtitle: Text(l10n.lessonUnitMinutes(unit.minutes)),
+              trailing: unit.progress == null
+                  ? const Icon(Icons.chevron_right)
+                  : Icon(Icons.check_circle, color: DevPilotColors.of(context).success),
+              onTap: onOpenUnit == null ? null : () => onOpenUnit!(unit.unitKey),
+            ),
           ),
-        const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.xs),
+        ],
+        const SizedBox(height: AppSpacing.md),
         FilledButton(
           key: const Key('lesson.startButton'),
           onPressed: onStart,
           child: Text(l10n.lessonStart),
+        ),
+      ],
+    );
+  }
+}
+
+/// 이 노트를 왜 읽는지. 페이지 맨 위의 **시각적 기준점**이다 — 흰 바탕에 글만 이어지면 처음 여는 사람은 어디부터
+/// 읽을지 정하지 못한다. 색은 테마 토큰만 쓴다(docs/02 §10.2, A-2 대비 기준).
+class _WhyBox extends StatelessWidget {
+  const _WhyBox({required this.lesson});
+
+  final LessonView lesson;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.lessonWhyTitle,
+              style: theme.textTheme.labelLarge?.copyWith(color: scheme.onPrimaryContainer),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            MarkdownText(
+              lesson.whyItMatters,
+              textKey: const Key('lesson.whyItMatters'),
+              style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onPrimaryContainer),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            MarkdownText(
+              lesson.oneLine,
+              style: theme.textTheme.titleSmall?.copyWith(color: scheme.onPrimaryContainer),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 단위 몇 개를 마쳤는지. 숫자만 있으면 진도가 보이지 않는다.
+class _UnitProgress extends StatelessWidget {
+  const _UnitProgress({required this.done, required this.total});
+
+  final int done;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          l10n.lessonUnitProgress(done, total),
+          key: const Key('lesson.unitProgress'),
+          style: theme.textTheme.bodySmall,
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          child: LinearProgressIndicator(
+            value: total == 0 ? 0 : done / total,
+            minHeight: 6,
+            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+          ),
         ),
       ],
     );

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/widgets/empty_state.dart';
+import 'package:devpilot_app/features/today/presentation/optional_section.dart';
 import 'package:devpilot_app/features/today/presentation/today_actions.dart';
 import 'package:devpilot_app/features/today/presentation/today_controller.dart';
 import 'package:devpilot_app/features/today/presentation/today_diagnostic_card.dart';
@@ -65,8 +66,8 @@ class TodayGeneratePanel extends ConsumerWidget {
                 )
               : Text(l10n.todayGenerateButton),
         ),
-        const SizedBox(height: AppSpacing.xl),
-        const TodayDiagnosticCard(),
+        // 실력 확인은 곁가지다 — "오늘 계획 만들기"와 같은 무게로 보이면 안 된다
+        const OptionalSection(children: [TodayDiagnosticCard()]),
         if (footerWidget != null) ...[const SizedBox(height: AppSpacing.xl), footerWidget],
       ],
     );

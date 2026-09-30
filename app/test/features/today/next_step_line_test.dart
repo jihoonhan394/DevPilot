@@ -64,6 +64,16 @@ void main() {
     expect(find.byKey(const Key('today.nextStep')), findsNothing);
   });
 
+  /// 실력 확인·오늘의 팁은 오늘 할 일이 아니다. 같은 무게로 보이면 무엇부터 할지 알 수 없다.
+  testWidgets('shouldMarkTheOptionalBlocksAsNotTodaysWork', (tester) async {
+    backend.todayRepository.today = testTodayView(mainTask: testMainTask());
+    await pumpApp(tester, backend: backend);
+
+    expect(find.byKey(const Key('today.optionalTitle')), findsOneWidget);
+    expect(find.text('천천히 봐도 되는 것'), findsOneWidget);
+    expect(find.text('오늘 안 해도 괜찮아요.'), findsOneWidget);
+  });
+
   /// 계획을 만든 뒤에도 처음 안내가 남는다 — 계획이 이미 있는 채로 처음 여는 사람도 있다.
   testWidgets('shouldKeepTheFirstRunGuideAfterThePlanExists', (tester) async {
     backend.todayRepository.today = testTodayView(mainTask: testMainTask());

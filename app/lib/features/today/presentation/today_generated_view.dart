@@ -10,6 +10,7 @@ import 'package:devpilot_app/features/today/data/today_models.dart';
 import 'package:devpilot_app/features/today/presentation/active_rubber_duck_tile.dart';
 import 'package:devpilot_app/features/today/presentation/daily_tip_card.dart';
 import 'package:devpilot_app/features/today/presentation/main_task_card.dart';
+import 'package:devpilot_app/features/today/presentation/optional_section.dart';
 import 'package:devpilot_app/features/today/presentation/today_actions.dart';
 import 'package:devpilot_app/features/today/presentation/today_diagnostic_card.dart';
 import 'package:devpilot_app/features/today/presentation/today_first_run_card.dart';
@@ -55,13 +56,19 @@ class TodayGeneratedView extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           _ReviewTaskTile(task: review),
         ],
+        // 여기부터는 곁가지다. 오늘의 핵심과 같은 무게로 보이면 무엇부터 할지 알 수 없다
+        // (docs/02 SCR-TODAY "천천히 봐도 되는 것").
+        //
         // 남은 진단이 있으면 계획을 만든 뒤에도 보여 준다. 생성 전 패널에만 두면 한 번 계획을
         // 만든 사용자는 주소를 직접 치기 전에는 수준을 잴 방법이 없다. 남은 것이 없으면 스스로 숨는다.
-        const SizedBox(height: AppSpacing.md),
-        const TodayDiagnosticCard(),
-        // 팁과 실험은 계획 아래다 — 오늘 할 일을 밀어내지 않는다 (docs/06 §5.12 TIP-6)
-        const DailyTipCard(),
-        if (experiment != null) TipExperimentTile(experiment: experiment),
+        // 팁과 실험도 마찬가지로 오늘 할 일을 밀어내지 않는다 (docs/06 §5.12 TIP-6).
+        OptionalSection(
+          children: [
+            const TodayDiagnosticCard(),
+            const DailyTipCard(),
+            if (experiment != null) TipExperimentTile(experiment: experiment),
+          ],
+        ),
         if (footerWidget != null) ...[const SizedBox(height: AppSpacing.xl), footerWidget],
       ],
     );
