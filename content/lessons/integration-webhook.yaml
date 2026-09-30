@@ -1,0 +1,454 @@
+# DevPilot 개념 노트 — Webhook 수신·발신
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 멱등성 노트(LESSON.WEB_HTTP.IDEMPOTENCY.001)는 "우리가 남에게 보낼 때"를 다룬다.
+#   여기서는 "남이 우리에게 보낼 때"를 다룬다 — 겹치지 않게 쓴다
+# - 예제는 주문 시스템 상황으로 쓴다 (CV-134)
+lessons:
+  - key: LESSON.INTEGRATION.WEBHOOK.001
+    skillCode: INTEGRATION.WEBHOOK
+    title: 물어보지 않고 전달받기 (Webhook)
+    whyItMatters: |-
+      결제가 승인됐는지 알려고 카드사 API를 1분마다 부르면, 대부분의 호출은 "아직"이라는 답만 받는다.
+      상대가 바뀌는 순간 우리에게 알려 주는 쪽이 싸고 빠르다. 그것이 webhook이다.
+      문제는 그 요청이 **인터넷의 누구나 부를 수 있는 주소**라는 것과, **같은 알림이 두 번 온다**는 것이다.
+      서명을 확인하지 않으면 남이 보낸 "결제 완료"로 주문이 배송되고,
+      중복을 막지 않으면 한 결제로 두 번 출고된다.
+    oneLine: webhook은 상대 시스템이 사건이 생긴 순간 우리 주소로 HTTP 요청을 보내 알려 주는 방식이다.
+    units:
+      - key: LESSON.INTEGRATION.WEBHOOK.001.U1
+        title: 받고 나서 처리하기 — 두 일을 나누기
+        minutes: 10
+        core: true
+        explain: |-
+          webhook을 처음 만들면 이렇게 쓴다 — 요청을 받아 결제를 확인하고 재고를 줄이고
+          메일을 보내고 나서 200을 준다. 상대 입장에서 우리 응답이 8초 뒤에 온다.
+
+          보내는 쪽은 기다려 주지 않는다. 시간이 넘으면 실패로 보고 **다시 보낸다.**
+          우리는 이미 처리하고 있는데 같은 알림이 또 들어온다.
+
+          그래서 두 일을 나눈다.
+
+          | | 하는 일 | 걸려야 하는 시간 |
+          |---|---|---|
+          | **받기** | 서명 확인 → 저장 → 응답 | 수십 ms |
+          | **처리** | 재고·메일·정산 | 얼마가 걸려도 된다 |
+
+          받기에서 줄 응답은 `202 Accepted`가 정확하다. 규격의 정의가 그대로 우리 상황이다 —
+          "요청이 처리를 위해 **접수되었으나 처리가 끝나지는 않았다**."
+
+          처리가 실패하면? 그때는 **우리 문제**다. 상대에게 다시 보내 달라고 하는 것이 아니라
+          저장해 둔 것을 우리가 다시 처리한다. 저장이 곧 안전망이다.
+        example:
+          language: java
+          code: |-
+            @PostMapping("/webhooks/payment")
+            ResponseEntity<Void> receive(
+                    @RequestHeader("X-Signature") String signature,
+                    @RequestBody byte[] rawBody) {
+                // 1) 서명 확인 — 통과하지 못하면 아무것도 저장하지 않는다
+                verifier.verify(rawBody, signature);
+                // 2) 저장만 한다. 이미 있으면 조용히 넘어간다 (U3)
+                inbox.saveIfNew(rawBody);
+                // 3) 처리는 커밋 뒤에 별도로 돈다
+                return ResponseEntity.accepted().build();
+            }
+          output: |-
+            HTTP/1.1 202 Accepted
+            (응답까지 12ms — 재고·메일은 이 뒤에 따로 돈다)
+          note: |-
+            `@RequestBody byte[]`인 것이 중요하다. 서명은 **받은 바이트 그대로**에 대해 계산된 값이다.
+            객체로 역직렬화한 뒤 다시 JSON으로 만들면 공백·키 순서가 바뀌어 서명이 맞지 않는다.
+        predict:
+          question: 받기에서 재고까지 줄이고 8초 뒤에 200을 주면 상대는 어떻게 행동할까요?
+          choices:
+            - 응답이 늦으면 실패로 보고 같은 알림을 다시 보낸다
+            - 8초는 짧으므로 그대로 기다린다
+            - 200 을 받았으므로 다시 보내지 않는다
+          answer: 응답이 늦으면 실패로 보고 같은 알림을 다시 보낸다
+          explanation: |-
+            보내는 쪽에는 시간 제한이 있고, 넘으면 응답을 못 받은 것으로 본다.
+            응답을 못 받은 요청을 다시 보내는 것은 정상적인 행동이다 —
+            규격도 "응답을 받기 전에 실패가 생기면 클라이언트는 요청을 자동으로 반복할 수 있다"고 적는다.
+            그래서 받기는 짧아야 하고, 중복은 올 것으로 보고 막아야 한다.
+        complete:
+          question: 접수만 하고 처리는 뒤로 넘기는 응답의 빈칸을 채우세요.
+          code: |-
+            HTTP/1.1 ___ Accepted
+            Content-Length: 0
+          answers:
+            - ["202"]
+          explanation: |-
+            `202`의 정의가 "요청이 처리를 위해 접수되었으나 처리가 끝나지는 않았다"이므로,
+            저장만 하고 돌려주는 이 자리에 정확히 맞는다. `200`도 동작하지만
+            "다 끝냈다"는 뜻이라 우리가 한 일과 다르다.
+        problem:
+          prompt: |-
+            주문 시스템이 카드사에서 결제 결과 webhook을 받습니다.
+            지금은 컨트롤러 하나에서 서명 확인 → 결제 상태 갱신 → 재고 차감 →
+            고객 메일 발송을 모두 하고 200을 돌려줍니다. 평균 응답이 6초이고,
+            카드사 로그에는 같은 이벤트가 두세 번 들어온 기록이 있습니다.
+
+            이것을 받기와 처리로 나누세요. 코드는 컨트롤러와 저장 부분까지만 쓰고,
+            처리를 어떻게 떼어낼지는 한 문단으로 설명하면 됩니다.
+          deliverables:
+            - 받기만 하는 컨트롤러 (응답 코드 포함)
+            - 무엇을 저장하는지 (어떤 값들을 남겨야 다시 처리할 수 있는지)
+            - 처리를 떼어내는 방법과, 처리가 실패했을 때 누가 다시 하는지
+          hints:
+            - 받기에서 하는 일은 셋뿐입니다. 그 셋 말고는 다 뒤로 미루세요.
+            - 다시 처리하려면 받은 것을 그대로 남겨야 합니다. 무엇이 "그대로"인지 U1의 note 를 보세요.
+            - 상대에게 다시 보내 달라고 부탁할 수는 없습니다. 안전망은 우리 쪽에 있어야 합니다.
+          modelAnswer: |-
+            ```java
+            @PostMapping("/webhooks/payment")
+            ResponseEntity<Void> receive(
+                    @RequestHeader("X-Signature") String signature,
+                    @RequestHeader("X-Event-Id") String eventId,
+                    @RequestBody byte[] rawBody) {
+                verifier.verify(rawBody, signature);
+                inbox.saveIfNew(eventId, rawBody, clock.instant());
+                return ResponseEntity.accepted().build();
+            }
+            ```
+
+            **저장하는 것**
+
+            | 값 | 왜 |
+            |---|---|
+            | `eventId` | 중복 판단의 기준 |
+            | `rawBody` (바이트 그대로) | 다시 처리할 원본. 서명 재확인도 여기서 한다 |
+            | 받은 시각 | 늦게 처리된 것을 찾을 때 |
+            | 처리 상태 | `RECEIVED` → `PROCESSED` / `FAILED` |
+
+            **처리를 떼어내는 방법**
+
+            저장이 커밋된 뒤에 처리를 시작한다. 커밋 전에 시작하면 저장이 실패했는데
+            재고가 줄어 있을 수 있다. 처리는 짧은 작업이면 커밋 이후 이벤트로,
+            길거나 외부를 부르는 작업이면 별도 실행기로 돌린다.
+
+            처리가 실패하면 상태를 `FAILED`로 남기고, **주기 작업이 그것을 다시 집어 처리한다.**
+            카드사에 다시 보내 달라고 할 수는 없다. 우리가 저장한 원본이 유일한 안전망이므로,
+            저장까지 성공했다면 그 뒤의 실패는 언제든 우리 힘으로 복구할 수 있어야 한다.
+          selfChecks:
+            - 컨트롤러가 서명 확인·저장·응답 셋만 하는가
+            - 받은 바이트를 그대로 저장했는가 (객체로 바꿔 저장하지 않았는가)
+            - 처리를 저장 커밋 뒤로 옮겼는가
+            - 처리 실패를 우리 쪽에서 다시 시도하는 구조인가
+      - key: LESSON.INTEGRATION.WEBHOOK.001.U2
+        title: 보낸 사람이 맞는지 확인하기 (HMAC 서명)
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.INTEGRATION.WEBHOOK.001.U1
+        explain: |-
+          `/webhooks/payment`은 인터넷에서 누구나 부를 수 있다. 로그인이 없으므로
+          "결제 완료" 본문을 그냥 보내면 주문이 넘어간다. 그래서 보내는 쪽과 우리만 아는
+          비밀로 **본문에 대한 서명**을 붙이고, 우리가 같은 계산을 해서 맞는지 본다.
+
+          서명 방식은 HMAC이다. 규격은 계산을 이렇게 정의한다 —
+          `H(K XOR opad, H(K XOR ipad, text))`. 해시를 **두 번** 겹쳐 쓰는 구조다.
+          비밀과 본문을 그냥 이어 붙여 한 번 해시하는 방식은 쓰지 않는다.
+
+          키 길이에도 기준이 있다. 해시 출력 길이 L보다 짧은 키는
+          "함수의 보안 강도를 떨어뜨리므로 **강하게 권장되지 않는다**". SHA-256이면 L은 32바이트다.
+
+          확인할 때 함정이 하나 더 있다. 계산한 값과 받은 값을 `equals`로 비교하면
+          **앞에서 몇 바이트가 맞았는지가 시간으로 새어 나간다.** 한 바이트씩 맞춰 가며
+          서명을 만들 수 있다. Java는 이를 위한 비교를 표준으로 준다 —
+          `MessageDigest.isEqual`은 "계산 시간이 `digesta`의 길이에만 의존하고,
+          `digestb`의 길이나 두 배열의 내용에는 의존하지 않는다".
+        example:
+          language: java
+          code: |-
+            @Component
+            class WebhookVerifier {
+
+                private static final String ALGORITHM = "HmacSHA256";
+
+                private final byte[] secret;   // 환경변수에서 읽는다. 32바이트 이상
+
+                void verify(byte[] rawBody, String receivedHex) {
+                    Mac mac = Mac.getInstance(ALGORITHM);
+                    mac.init(new SecretKeySpec(secret, ALGORITHM));
+                    byte[] expected = mac.doFinal(rawBody);
+                    byte[] received = HexFormat.of().parseHex(receivedHex);
+                    // 시간이 내용에 의존하지 않는 비교. equals 나 Arrays.equals 를 쓰지 않는다
+                    if (!MessageDigest.isEqual(expected, received)) {
+                        throw new WebhookSignatureException("signature mismatch");
+                    }
+                }
+            }
+          output: |-
+            맞으면      → 조용히 통과
+            틀리면      → WebhookSignatureException → 401
+          note: |-
+            `secret`은 코드에 없다. 환경변수로 읽고 저장소에는 `.env.example`만 둔다.
+            `rawBody`는 U1에서 본 대로 받은 바이트 그대로여야 한다 —
+            역직렬화 후 재직렬화한 JSON은 같은 뜻이어도 다른 바이트이고, 서명은 바이트에 대한 것이다.
+        predict:
+          question: 계산한 서명과 받은 서명을 `Arrays.equals` 로 비교하면 무엇이 새어 나가나요?
+          choices:
+            - 앞에서 몇 바이트가 맞았는지가 비교에 걸린 시간으로 드러난다
+            - 비밀 키가 응답 본문에 포함된다
+            - 아무것도 새지 않는다. 결과는 true/false 뿐이다
+          answer: 앞에서 몇 바이트가 맞았는지가 비교에 걸린 시간으로 드러난다
+          explanation: |-
+            `Arrays.equals`는 다른 바이트를 만나면 바로 멈춘다. 그래서 앞쪽이 더 많이 맞으면 더 오래 걸린다.
+            그 차이를 수천 번 재면 한 바이트씩 맞춰 나갈 수 있다.
+            `MessageDigest.isEqual`은 시간이 내용에 의존하지 않으므로 이 정보가 새지 않는다.
+        complete:
+          question: HMAC 검증 코드의 빈칸을 채우세요.
+          code: |-
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(secret, "HmacSHA256"));
+            byte[] expected = mac.doFinal(rawBody);
+            if (!___.isEqual(expected, received)) {
+                throw new WebhookSignatureException("signature mismatch");
+            }
+          answers:
+            - [MessageDigest, java.security.MessageDigest]
+          explanation: |-
+            `MessageDigest.isEqual`이 시간이 내용에 의존하지 않는 비교를 해 준다.
+            이름이 digest 비교처럼 보이지만 바이트 배열 두 개를 안전하게 견주는 표준 자리다.
+            `Arrays.equals`나 `String.equals`는 여기에 쓰지 않는다.
+        problem:
+          prompt: |-
+            앞의 검증기에는 아직 구멍이 하나 있습니다. 공격자가 **진짜 요청을 그대로 복사해서**
+            다시 보내면 서명이 맞으므로 통과합니다. 어제 성공한 "결제 완료"를 오늘 다시 보내면
+            같은 주문이 또 처리됩니다.
+
+            보내는 쪽이 `X-Timestamp` 헤더(epoch seconds)를 함께 주고,
+            서명을 `timestamp + "." + body` 에 대해 계산한다고 합니다.
+            이 구멍을 막도록 검증기를 고치세요.
+          deliverables:
+            - 타임스탬프를 서명 계산에 포함하는 부분
+            - 오래된 요청을 거절하는 부분 (허용 범위를 정하고 왜 그 값인지)
+            - 이 방법으로도 막지 못하는 경우 1가지
+          starterCode: |-
+            void verify(byte[] rawBody, String receivedHex, String timestampHeader) {
+                // TODO: 타임스탬프 검사
+
+                Mac mac = Mac.getInstance(ALGORITHM);
+                mac.init(new SecretKeySpec(secret, ALGORITHM));
+                // TODO: timestamp + "." + body 에 대해 계산
+                byte[] expected = mac.doFinal(rawBody);
+                // ...
+            }
+          hints:
+            - 타임스탬프를 서명에 넣지 않으면 공격자가 헤더만 바꿔 새 요청처럼 보이게 할 수 있습니다.
+            - 허용 범위는 상대 서버와 우리 서버의 시계 차이와 정상적인 지연을 견딜 만큼이어야 합니다. 너무 넓으면 창이 열려 있습니다.
+            - 허용 범위 안에서 복사한 요청은 이 검사를 통과합니다. 그것을 막는 것은 다음 단위의 일입니다.
+          modelAnswer: |-
+            ```java
+            /** 상대와 우리의 시계 차이 + 정상 지연을 견딜 만큼만 열어 둔다. */
+            private static final Duration TOLERANCE = Duration.ofMinutes(5);
+
+            void verify(byte[] rawBody, String receivedHex, String timestampHeader) {
+                Instant sentAt = Instant.ofEpochSecond(Long.parseLong(timestampHeader));
+                Duration drift = Duration.between(sentAt, clock.instant()).abs();
+                if (drift.compareTo(TOLERANCE) > 0) {
+                    throw new WebhookSignatureException("timestamp outside tolerance");
+                }
+
+                Mac mac = Mac.getInstance(ALGORITHM);
+                mac.init(new SecretKeySpec(secret, ALGORITHM));
+                mac.update(timestampHeader.getBytes(StandardCharsets.UTF_8));
+                mac.update((byte) '.');
+                byte[] expected = mac.doFinal(rawBody);
+
+                byte[] received = HexFormat.of().parseHex(receivedHex);
+                if (!MessageDigest.isEqual(expected, received)) {
+                    throw new WebhookSignatureException("signature mismatch");
+                }
+            }
+            ```
+
+            **왜 이렇게 했나**
+
+            - 타임스탬프를 **서명 안에** 넣는다. 헤더에만 두고 서명에서 빼면 공격자가
+              헤더의 시각만 최신으로 고쳐 통과시킬 수 있다.
+            - 범위는 5분으로 두고 `abs()`를 쓴다. 우리 시계가 상대보다 빠를 수도 있으므로
+              양쪽으로 열어야 한다. 좁히면 시계가 조금 어긋난 날 정상 요청이 다 막히고,
+              넓히면 복사한 요청을 쓸 수 있는 창이 그만큼 길어진다.
+            - `Instant.now()`가 아니라 주입된 `Clock`을 쓴다. 그러지 않으면 이 검사를 테스트할 수 없다.
+
+            **막지 못하는 것**
+
+            **5분 안에 복사해서 다시 보내는 요청.** 서명도 맞고 시각도 범위 안이다.
+            이것은 서명으로 막을 수 없고, 같은 이벤트를 두 번 처리하지 않는 것으로 막는다 — 다음 단위의 주제다.
+          selfChecks:
+            - 타임스탬프를 서명 계산에 포함했는가
+            - 허용 범위를 양쪽(abs)으로 열고 그 값을 고른 이유를 적었는가
+            - 주입된 Clock 을 썼는가
+            - 범위 안의 복사 요청은 막히지 않는다는 것을 적었는가
+      - key: LESSON.INTEGRATION.WEBHOOK.001.U3
+        title: 같은 알림이 두 번 와도 한 번만 처리하기
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.INTEGRATION.WEBHOOK.001.U2
+        explain: |-
+          webhook은 **적어도 한 번** 온다. 정확히 한 번이 아니다.
+          응답이 늦어도, 우리가 500을 줘도, 네트워크가 끊겨도 상대는 다시 보낸다.
+          그것이 상대의 잘못이 아니라는 것이 규격에 적혀 있다 —
+          "응답을 받기 전에 실패가 생기면 클라이언트는 요청을 자동으로 반복할 수 있다."
+
+          그래서 **두 번 와도 결과가 한 번과 같아야 한다.** 이것이 멱등이다.
+          규격의 정의도 "의도한 효과가 한 번의 반복 가능한 연산을 수행하는 것"이다.
+
+          방법은 **이벤트 식별자에 유일 제약**을 걸고, 두 번째를 조용히 버리는 것이다.
+          `select` 로 먼저 확인하고 없으면 `insert` 하는 방식은 두 요청이 동시에 들어오면
+          둘 다 통과한다. 확인과 저장 사이에 틈이 있기 때문이다.
+          DB의 유일 제약은 그 틈이 없다.
+
+          두 번째 요청에 무엇을 줄까. `409 Conflict`는 "요청이 대상 자원의 현재 상태와 충돌한다"는 뜻인데,
+          중복 알림은 충돌이 아니라 **이미 처리된 것**이다. 조용히 `202`를 주는 편이 낫다.
+          409를 주면 상대는 실패로 보고 또 보낸다.
+        example:
+          language: java
+          code: |-
+            /** 이미 있으면 false. 유일 제약이 경쟁을 막는다. */
+            boolean saveIfNew(String eventId, byte[] rawBody, Instant receivedAt) {
+                try {
+                    jdbcClient
+                            .sql("""
+                                insert into devpilot.payment_webhook_inbox
+                                       (event_id, raw_body, received_at, status)
+                                values (:eventId, :rawBody, :receivedAt, 'RECEIVED')
+                                """)
+                            .param("eventId", eventId)
+                            .param("rawBody", rawBody)
+                            .param("receivedAt", receivedAt)
+                            .update();
+                    return true;
+                } catch (DuplicateKeyException alreadyReceived) {
+                    // 중복은 정상이다. 삼키되 세어 둔다
+                    duplicateCounter.increment();
+                    return false;
+                }
+            }
+          output: |-
+            첫 번째 → insert 성공 → true  → 처리 시작
+            두 번째 → 유일 제약 위반 → false → 아무것도 하지 않고 202
+          note: |-
+            `event_id`에 `unique` 제약이 있어야 이 코드가 동작한다. 제약이 없으면
+            `DuplicateKeyException`이 나지 않고 같은 이벤트가 두 줄 들어간다.
+            **경쟁을 막는 것은 코드가 아니라 제약이다.**
+        predict:
+          question: |-
+            `select` 로 event_id 가 있는지 확인하고 없으면 `insert` 합니다.
+            같은 알림이 **동시에** 두 번 들어오면 어떻게 되나요?
+          choices:
+            - 둘 다 select 에서 없다고 보고 둘 다 insert 해 두 번 처리된다
+            - 두 번째가 select 에서 걸려 한 번만 처리된다
+            - DB 가 자동으로 막아 준다
+          answer: 둘 다 select 에서 없다고 보고 둘 다 insert 해 두 번 처리된다
+          explanation: |-
+            확인과 저장 사이에 틈이 있고, 동시에 들어온 두 요청은 그 틈에서 서로를 보지 못한다.
+            이 틈을 없애는 방법은 DB에 유일 제약을 걸고 두 번째 insert 가 실패하게 두는 것이다.
+            애플리케이션 코드로는 없앨 수 없다.
+        complete:
+          question: 중복을 막는 제약을 만드는 migration 의 빈칸을 채우세요.
+          code: |-
+            create table devpilot.payment_webhook_inbox (
+                event_id    text primary key,
+                raw_body    bytea       not null,
+                received_at timestamptz not null,
+                status      text        not null
+            );
+            -- 같은 이벤트가 두 줄 들어가지 못하게 하는 것은 ___ 이다
+          answers:
+            - [primary key, unique, 유일 제약, unique 제약]
+          explanation: |-
+            `event_id text primary key` 자체가 유일 제약이다. 따로 `unique` 인덱스를 더 만들 필요가 없다.
+            중요한 것은 **DB가 막는다**는 점이다 — 애플리케이션이 확인하는 방식은 동시 요청에서 새어 나간다.
+        problem:
+          prompt: |-
+            주문 시스템의 결제 webhook 수신에 중복 방어를 넣으세요.
+
+            - 카드사는 재시도할 때 같은 `X-Event-Id` 를 보냅니다
+            - 두 번째 요청에도 상대가 실패로 보지 않을 응답을 줘야 합니다
+            - 중복이 얼마나 오는지 나중에 볼 수 있어야 합니다
+
+            migration 한 개와 수신 부분을 쓰세요. 처리 로직은 이미 있다고 보면 됩니다.
+          deliverables:
+            - migration (유일 제약이 어디에 있는지 분명하게)
+            - 중복을 판단하고 삼키는 코드
+            - 두 번째 요청에 주는 응답 코드와 그 이유
+            - 중복을 관측할 방법
+          hints:
+            - 확인하고 저장하는 순서로 쓰면 동시 요청에서 새어 나갑니다.
+            - 409 를 주면 상대는 실패로 보고 또 보냅니다. 우리가 말하고 싶은 것은 "이미 받았다" 입니다.
+            - 삼킨 것을 세지 않으면 재시도가 폭주해도 아무도 모릅니다.
+          modelAnswer: |-
+            ```sql
+            -- V15__payment_webhook_inbox.sql
+            create table devpilot.payment_webhook_inbox (
+                event_id     text        primary key,   -- 중복을 막는 자리
+                raw_body     bytea       not null,
+                received_at  timestamptz not null,
+                status       text        not null,
+                processed_at timestamptz
+            );
+            create index payment_webhook_inbox_status_idx
+                on devpilot.payment_webhook_inbox (status, received_at);
+            ```
+
+            ```java
+            @PostMapping("/webhooks/payment")
+            ResponseEntity<Void> receive(
+                    @RequestHeader("X-Signature") String signature,
+                    @RequestHeader("X-Timestamp") String timestamp,
+                    @RequestHeader("X-Event-Id") String eventId,
+                    @RequestBody byte[] rawBody) {
+                verifier.verify(rawBody, signature, timestamp);
+                if (inbox.saveIfNew(eventId, rawBody, clock.instant())) {
+                    processor.scheduleAfterCommit(eventId);
+                }
+                // 처음이든 중복이든 202. 상대가 다시 보낼 이유를 주지 않는다
+                return ResponseEntity.accepted().build();
+            }
+            ```
+
+            **왜 이렇게 했나**
+
+            - 유일 제약은 `primary key`에 있다. 확인 후 저장이 아니라 **저장해 보고 실패를 읽는** 순서라
+              동시 요청에서도 한 줄만 남는다.
+            - 두 번째에도 `202`를 준다. `409`는 "현재 상태와 충돌한다"는 뜻이지만
+              중복 알림은 충돌이 아니라 이미 끝난 일이고, 409를 받은 상대는 실패로 보고 또 보낸다.
+            - 상태 인덱스를 함께 만든다. 실패한 것을 다시 집어 오는 주기 작업이 이 인덱스를 쓴다.
+            - 중복은 카운터로 센다. 갑자기 늘면 우리 응답이 느려졌거나 상대가 재시도 정책을
+              바꾼 것이므로, 숫자 없이는 알 수 없다.
+
+            **서명·타임스탬프·중복의 관계**
+
+            서명은 남이 보낸 것을 막고, 타임스탬프는 오래된 복사를 막고,
+            유일 제약은 **범위 안에서 복사한 것과 정상 재시도**를 막는다. 셋이 각각 다른 구멍을 맡는다.
+          selfChecks:
+            - 유일 제약을 DB 에 뒀는가 (애플리케이션 확인에 의존하지 않았는가)
+            - 저장해 보고 실패를 읽는 순서로 썼는가
+            - 두 번째 요청에 상대가 재시도할 이유를 주지 않는 응답을 줬는가
+            - 중복 횟수를 관측할 수 있게 했는가
+    commonMistakes:
+      - 서명을 역직렬화한 객체를 다시 JSON 으로 만들어 검증한다. 같은 뜻이어도 공백·키 순서가 달라 바이트가 달라지고, 정상 요청이 전부 `signature mismatch` 로 막힌다.
+      - 서명 비교에 `Arrays.equals` 나 `String.equals` 를 쓴다. 동작은 하지만 앞에서 몇 바이트가 맞았는지가 시간으로 새어 나간다.
+      - 중복 알림에 `409 Conflict` 를 준다. 상대는 실패로 보고 다시 보내므로 재시도가 멈추지 않고, 로그가 409 로 가득 찬다.
+    inProject: |-
+      주문 시스템에서 webhook 을 받는 자리는 결제 승인과 배송 상태 변경 둘이다.
+      둘 다 같은 모양으로 만든다 — 서명 확인, `event_id` 유일 제약이 있는 수신함에 원본 저장, 202 응답,
+      처리는 커밋 뒤에. 수신함 테이블 하나와 검증기 하나를 두 연동이 함께 쓰고,
+      비밀은 연동마다 다른 환경변수로 읽는다.
+    sources:
+      - title: RFC 9110 — HTTP Semantics
+        url: https://www.rfc-editor.org/rfc/rfc9110
+        versionScope: HTTP/1.1
+      - title: "RFC 2104 — HMAC: Keyed-Hashing for Message Authentication"
+        url: https://www.rfc-editor.org/rfc/rfc2104
+        versionScope: HMAC
+      - title: Java SE 25 API — java.security.MessageDigest
+        url: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/security/MessageDigest.html
+        versionScope: Java 25
+    verifiedAt: 2026-09-30
