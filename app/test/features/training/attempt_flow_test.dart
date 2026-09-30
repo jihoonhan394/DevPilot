@@ -7,6 +7,7 @@ import 'package:devpilot_app/features/review/data/review_enums.dart';
 import 'package:devpilot_app/features/training/data/attempt_models.dart';
 import 'package:devpilot_app/features/training/data/training_enums.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fake_backend.dart';
@@ -175,6 +176,40 @@ void main() {
     await tapKey(tester, 'attempt.hintConfirmButton');
 
     expect(find.text('이 요청은 AI가 처리할 수 없어요. 내용을 바꿔 다시 시도해 주세요.'), findsOneWidget);
+  });
+
+  // docs/02 A-7: 여러 줄 입력은 Ctrl/Cmd+Enter 로 제출한다. 복습·러버덕에만 있고 정작 가장 길게 쓰는
+  // 두 입력란(코드, 설명)에는 없었다.
+  testWidgets('shouldSubmitWithControlEnterFromTheLongInputs', (tester) async {
+    backend.trainingRepository.attempts[attemptId] = testAttempt(selfExplanation: '설명');
+    await openAttempt(tester, taskId: 'e1000000-0000-4000-8000-000000000001');
+
+    await enterTextByKey(tester, 'attempt.answerField', '원인 예외를 보존했다.');
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    for (var frame = 0; frame < 5; frame++) {
+      await tester.pump();
+    }
+
+    expect(backend.trainingRepository.submissions, hasLength(1));
+    expect(
+      backend.trainingRepository.submissions.single.request.answerText,
+      '원인 예외를 보존했다.',
+    );
+  });
+
+  /// 보낼 수 없는 상태에서는 단축키도 아무것도 하지 않는다 — 버튼이 꺼져 있을 때와 같아야 한다.
+  testWidgets('shouldIgnoreControlEnterWhileTheFormCannotBeSent', (tester) async {
+    backend.trainingRepository.attempts[attemptId] = testAttempt(selfExplanation: '설명');
+    await openAttempt(tester, taskId: 'e1000000-0000-4000-8000-000000000001');
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pumpAndSettle();
+
+    expect(backend.trainingRepository.submissions, isEmpty);
   });
 
   testWidgets('shouldSubmitPollAndShowTheRubricResult', (tester) async {

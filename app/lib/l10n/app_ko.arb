@@ -1625,6 +1625,8 @@
   },
   "commonCodeFieldTabHint": "Esc 후 Tab으로 다음 항목으로 이동",
   "@commonCodeFieldTabHint": {"description": "Hint under a code field: Tab types spaces (A-9)."},
+  "commonSubmitShortcutHint": "Ctrl+Enter(맥은 Cmd+Enter)로 바로 제출할 수 있어요.",
+  "@commonSubmitShortcutHint": {"description": "Shown under a multi-line input that submits with Ctrl/Cmd+Enter (docs/02 A-7)."},
 
   "enumHintLevelSelfExplain": "스스로",
   "@enumHintLevelSelfExplain": {"description": "HintLevel SELF_EXPLAIN."},

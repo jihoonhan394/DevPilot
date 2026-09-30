@@ -20,6 +20,7 @@ import 'package:devpilot_app/features/training/presentation/attempt_input_guard.
 import 'package:devpilot_app/features/training/presentation/attempt_state.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// `SubmissionForm`: answer text, optional code with its language, and "제출" (docs/02 ③). The
@@ -128,6 +129,7 @@ class _SubmissionFormState extends ConsumerState<SubmissionForm> {
           controller: _answer,
           tooLong: problem == SubmissionProblem.answerTooLong,
           onChanged: _changed,
+          onSubmit: canSend ? _submit : null,
         ),
         const SizedBox(height: AppSpacing.md),
         LabeledDropdown<CodeLanguage>(
@@ -149,6 +151,7 @@ class _SubmissionFormState extends ConsumerState<SubmissionForm> {
           helperText: l10n.commonCodeFieldTabHint,
           errorText: problem == SubmissionProblem.codeTooLarge ? l10n.errorContentTooLarge : null,
           onChanged: (_) => _changed(),
+          onSubmit: canSend ? _submit : null,
         ),
         _ProblemLine(problem: problem),
         if (error != null) InlineError(message: messageFor(error, l10n)),
@@ -167,26 +170,46 @@ class _SubmissionFormState extends ConsumerState<SubmissionForm> {
 }
 
 class _AnswerField extends StatelessWidget {
-  const _AnswerField({required this.controller, required this.tooLong, required this.onChanged});
+  const _AnswerField({
+    required this.controller,
+    required this.tooLong,
+    required this.onChanged,
+    required this.onSubmit,
+  });
 
   final TextEditingController controller;
   final bool tooLong;
   final VoidCallback onChanged;
 
+  /// `Ctrl/Cmd+Enter` (A-7). Null while the form cannot be sent.
+  final VoidCallback? onSubmit;
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return TextField(
-      key: const Key('attempt.answerField'),
-      controller: controller,
-      // 설명은 문제당 여러 문단이 나온다. 코드 입력란(6~16줄)보다 작으면 쓰다가 스크롤이 생긴다.
-      minLines: 8,
-      maxLines: 24,
-      onChanged: (_) => onChanged(),
-      decoration: InputDecoration(
-        labelText: l10n.trainingSubmitAnswer,
-        alignLabelWithHint: true,
-        errorText: tooLong ? l10n.validationMaxLength(InputRules.submissionAnswerMaxLength) : null,
+    final send = onSubmit;
+    return CallbackShortcuts(
+      bindings: {
+        if (send != null) ...{
+          const SingleActivator(LogicalKeyboardKey.enter, control: true): send,
+          const SingleActivator(LogicalKeyboardKey.enter, meta: true): send,
+        },
+      },
+      child: TextField(
+        key: const Key('attempt.answerField'),
+        controller: controller,
+        // 설명은 문제당 여러 문단이 나온다. 코드 입력란(6~16줄)보다 작으면 쓰다가 스크롤이 생긴다.
+        minLines: 8,
+        maxLines: 24,
+        onChanged: (_) => onChanged(),
+        decoration: InputDecoration(
+          labelText: l10n.trainingSubmitAnswer,
+          alignLabelWithHint: true,
+          helperText: l10n.commonSubmitShortcutHint,
+          errorText: tooLong
+              ? l10n.validationMaxLength(InputRules.submissionAnswerMaxLength)
+              : null,
+        ),
       ),
     );
   }
