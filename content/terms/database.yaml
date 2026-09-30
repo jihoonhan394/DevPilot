@@ -93,7 +93,7 @@ terms:
     confusableWith: [TERM.DATABASE.PERSISTENCE_CONTEXT]
     skillCodes: [DATABASE.JPA.FETCH_STRATEGY, SPRING.DATA_JPA]
     level: PRACTICAL
-    sourceUrl: https://hibernate.org/orm/documentation/7.0/
+    sourceUrl: https://docs.hibernate.org/orm/7.0/userguide/html_single/Hibernate_User_Guide.html
     retired: false
 
   - key: TERM.DATABASE.PERSISTENCE_CONTEXT
@@ -106,5 +106,5 @@ terms:
     confusableWith: [TERM.DATABASE.N_PLUS_ONE]
     skillCodes: [DATABASE.JPA.PERSISTENCE_CONTEXT, DATABASE.JPA]
     level: PRACTICAL
-    sourceUrl: https://hibernate.org/orm/documentation/7.0/
+    sourceUrl: https://docs.hibernate.org/orm/7.0/userguide/html_single/Hibernate_User_Guide.html
     retired: false

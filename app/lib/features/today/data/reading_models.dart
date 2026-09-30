@@ -120,3 +120,35 @@ abstract class ReadingView with _$ReadingView {
 
   factory ReadingView.fromJson(Map<String, Object?> json) => _$ReadingViewFromJson(json);
 }
+
+/// `GET /readings` (docs/05 §19.8): the readings this reader has been handed, newest first.
+@freezed
+abstract class ReadingHistoryResponse with _$ReadingHistoryResponse {
+  const factory ReadingHistoryResponse({required List<ReadingHistoryView> readings}) =
+      _ReadingHistoryResponse;
+
+  factory ReadingHistoryResponse.fromJson(Map<String, Object?> json) =>
+      _$ReadingHistoryResponseFromJson(json);
+}
+
+/// One line of that list. No body: the server fetches neither code nor documents.
+@freezed
+abstract class ReadingHistoryView with _$ReadingHistoryView {
+  const factory ReadingHistoryView({
+    required String readingKey,
+    @JsonKey(unknownEnumValue: ReadingKind.unknown) required ReadingKind kind,
+
+    /// CODE: the question. CONCEPT: the document title. LESSON: the note title.
+    required String title,
+
+    /// CODE: `repo path`. CONCEPT: the publisher. LESSON: null.
+    String? source,
+    int? estimatedMinutes,
+    required String lastPlanDate,
+    required bool completed,
+    required bool retired,
+  }) = _ReadingHistoryView;
+
+  factory ReadingHistoryView.fromJson(Map<String, Object?> json) =>
+      _$ReadingHistoryViewFromJson(json);
+}

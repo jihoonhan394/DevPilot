@@ -9,10 +9,17 @@ import com.devpilot.today.domain.CuratedReading;
 import com.devpilot.today.domain.Lesson;
 import com.devpilot.today.domain.LessonUnit;
 import com.devpilot.today.domain.ReadingKind;
+import com.devpilot.today.infrastructure.LearningTaskRepository;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import org.jspecify.annotations.Nullable;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,16 +36,19 @@ public class ReadingQueryService {
     private final ConceptReadingRegistry conceptReadingRegistry;
     private final LessonRegistry lessonRegistry;
     private final SkillCatalogQueryService skillCatalogQueryService;
+    private final LearningTaskRepository learningTaskRepository;
 
     public ReadingQueryService(
             CuratedReadingRegistry curatedReadingRegistry,
             ConceptReadingRegistry conceptReadingRegistry,
             LessonRegistry lessonRegistry,
-            SkillCatalogQueryService skillCatalogQueryService) {
+            SkillCatalogQueryService skillCatalogQueryService,
+            LearningTaskRepository learningTaskRepository) {
         this.curatedReadingRegistry = curatedReadingRegistry;
         this.conceptReadingRegistry = conceptReadingRegistry;
         this.lessonRegistry = lessonRegistry;
         this.skillCatalogQueryService = skillCatalogQueryService;
+        this.learningTaskRepository = learningTaskRepository;
     }
 
     /** 세 registry 어디에도 없으면 404 {@code RESOURCE_NOT_FOUND}. */
@@ -106,5 +116,84 @@ public class ReadingQueryService {
     private List<SkillRef> resolve(List<String> skillCodes) {
         Map<String, SkillRef> skills = skillCatalogQueryService.findActiveByCodes(skillCodes);
         return skillCodes.stream().map(skills::get).filter(Objects::nonNull).toList();
+    }
+
+    /**
+     * {@code GET /readings} (docs/05 §19.14): 내가 받은 적이 있는 읽기를 최근 순으로.
+     *
+     * <p>완료한 reading은 다음 제안에서 빠진다(docs/06 §5.3). 목록이 없으면 <b>읽었던 코드로 돌아갈 길이 없다</b> — 커밋까지 고정해 둔 자료가
+     * 한 번 쓰고 사라진다.
+     *
+     * <p>registry에서 사라진 key는 건너뛴다. 콘텐츠가 빠졌다고 목록이 깨지지는 않는다.
+     */
+    public List<ReadingHistoryView> history(UUID userId, int limit) {
+        Set<String> completed =
+                new LinkedHashSet<>(learningTaskRepository.findCompletedReadingKeys(userId));
+        List<ReadingHistoryView> items = new ArrayList<>();
+        for (ReadingHistoryRow row :
+                learningTaskRepository.findReadingHistory(userId, Limit.of(limit))) {
+            summarize(row, completed.contains(row.readingKey())).ifPresent(items::add);
+        }
+        return List.copyOf(items);
+    }
+
+    private Optional<ReadingHistoryView> summarize(ReadingHistoryRow row, boolean completed) {
+        Optional<CuratedReading> code = curatedReadingRegistry.find(row.readingKey());
+        if (code.isPresent()) {
+            CuratedReading reading = code.get();
+            return Optional.of(
+                    item(
+                            row,
+                            ReadingKind.CODE,
+                            reading.question(),
+                            reading.repo().name() + " " + reading.path(),
+                            reading.estimatedMinutes(),
+                            completed,
+                            reading.retired()));
+        }
+        Optional<ConceptReading> concept = conceptReadingRegistry.find(row.readingKey());
+        if (concept.isPresent()) {
+            ConceptReading reading = concept.get();
+            return Optional.of(
+                    item(
+                            row,
+                            ReadingKind.CONCEPT,
+                            reading.title(),
+                            reading.publisher(),
+                            reading.estimatedMinutes(),
+                            completed,
+                            reading.retired()));
+        }
+        return lessonRegistry
+                .find(row.readingKey())
+                .map(
+                        lesson ->
+                                item(
+                                        row,
+                                        ReadingKind.LESSON,
+                                        lesson.title(),
+                                        null,
+                                        lesson.units().stream().mapToInt(LessonUnit::minutes).sum(),
+                                        completed,
+                                        lesson.retired()));
+    }
+
+    private static ReadingHistoryView item(
+            ReadingHistoryRow row,
+            ReadingKind kind,
+            String title,
+            @Nullable String source,
+            @Nullable Integer estimatedMinutes,
+            boolean completed,
+            boolean retired) {
+        return new ReadingHistoryView(
+                row.readingKey(),
+                kind,
+                title,
+                source,
+                estimatedMinutes,
+                row.lastPlanDate(),
+                completed,
+                retired);
     }
 }

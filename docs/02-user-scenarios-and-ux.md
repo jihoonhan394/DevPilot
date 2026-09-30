@@ -96,6 +96,7 @@
 | `/onboarding/plan` | SCR-ONBOARDING (5 계획 확인) | Y | 완료 직후 | S1 |
 | `/today` | SCR-TODAY | Y | Y | S2 |
 | `/today/diagnostics` | SCR-DIAGNOSTICS | Y | Y | S3 |
+| `/readings` | SCR-READING-LIST | Y | Y | S3 |
 | `/today/read/:readingKey` | SCR-READ-CODE | Y | Y | S3 |
 | `/lessons` | SCR-LESSON-LIST | Y | Y | S3 |
 | `/lessons/:lessonKey` | SCR-LESSON | Y | Y | S3 |
@@ -104,6 +105,7 @@
 | `/terms` | SCR-TERMS | Y | Y | S3 |
 | `/terms/:termKey` | SCR-TERM-DETAIL | Y | Y | S3 |
 | `/rubber-duck/new` | SCR-RUBBER-DUCK (시작 전) | Y | Y | S3 |
+| `/rubber-duck/history` | SCR-RUBBER-DUCK-LIST | Y | Y | S3 |
 | `/rubber-duck/:sessionId` | SCR-RUBBER-DUCK | Y | Y | S3 |
 | `/projects` | SCR-PROJECTS | Y | Y | S1 |
 | `/projects/:sideProjectId` | SCR-PROJECT-DETAIL | Y | Y | S3 |
@@ -2146,6 +2148,30 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `coach.detail.toEvidence` | 증거로 남기기 |
 
 ### 3.9 Plan · Goal
+
+#### SCR-RUBBER-DUCK-LIST
+
+경로 `/rubber-duck/history`. **끝난 설명으로 돌아가는 유일한 길이다** (`05` §9.11). 세션이 끝나면 대화가 화면에서 사라져 "내가 무엇을 설명하지 못했나"의 근거를 다시 볼 수 없었다(2026-09-29 전수조사 2번). 설명이 이 도구의 축인데 그 근거가 UI에 없었다. **진입**: SCR-MORE "내 기록". **Sprint**: S3.
+
+- 레이아웃: 안내 한 줄 → 세션 카드 목록(최근 순) → 다음 페이지가 있으면 "더 보기" 버튼.
+- 한 줄: 대상 문구(없으면 skill 이름) · 시작 날짜 · `{n}번 주고받음` · 정리가 있으면 `빈틈 {n}개`. 탭 → `/rubber-duck/{sessionId}`.
+- **목록에 설명 원문을 싣지 않는다.** 마스킹본이라도 늘어놓을 이유가 없다 — 원문은 상세에서만 읽는다.
+- 상태: Loading — skeleton. Empty — `duckHistoryEmpty`. Error·Offline — 공통.
+- 라우트는 `/rubber-duck/:sessionId`보다 **먼저** 선언한다. 뒤에 두면 리터럴 경로가 파라미터로 먹힌다.
+
+---
+
+#### SCR-READING-LIST
+
+경로 `/readings`. **읽었던 코드로 돌아가는 길이다** (`05` §19.14). 완료한 reading은 다음 제안에서 빠지므로(`06` §5.3), 목록이 없으면 커밋까지 고정해 둔 자료가 한 번 쓰고 사라졌다(2026-09-29 전수조사 3번). **진입**: SCR-MORE "내 기록". **Sprint**: S3.
+
+- 레이아웃: 안내 한 줄 → 읽기 카드 목록(마지막으로 받은 plan-day 순).
+- 한 줄: 제목 · `{날짜}에 받음` · 출처. 끝낸 것은 `끝냄` 배지, 은퇴한 자료는 `은퇴한 자료` 배지.
+- **끝낸 것도 목록에 남는다.** 다시 읽는 것이 이 화면의 목적이다.
+- 탭하면 `kind`에 따라 간다 — `LESSON`은 노트 화면(`/lessons/{key}`), 나머지는 읽기 화면(`/today/read/{key}`).
+- 상태: Loading — skeleton. Empty — `readingHistoryEmpty`. Error·Offline — 공통.
+
+---
 
 #### SCR-BUILDABLE
 

@@ -1,6 +1,7 @@
 import 'package:devpilot_app/core/api/api_enums.dart';
 import 'package:devpilot_app/core/api/api_exception.dart';
 import 'package:devpilot_app/core/api/common_models.dart';
+import 'package:devpilot_app/core/api/cursor_page.dart';
 import 'package:devpilot_app/core/api/idempotency_key.dart';
 import 'package:devpilot_app/features/rubber_duck/data/rubber_duck_enums.dart';
 import 'package:devpilot_app/features/rubber_duck/data/rubber_duck_models.dart';
@@ -75,6 +76,9 @@ final class FakeRubberDuckRepository implements RubberDuckRepository {
   final turns = <({String sessionId, String explanation, IdempotencyKey key})>[];
   final completes = <({String sessionId, IdempotencyKey key})>[];
   final abandons = <String>[];
+  var history = <RubberDuckSessionSummaryView>[];
+  String? historyNextCursor;
+  final historyCursors = <String?>[];
   final startFailures = <ApiException>[];
   final turnFailures = <ApiException>[];
   final completeFailures = <ApiException>[];
@@ -92,6 +96,12 @@ final class FakeRubberDuckRepository implements RubberDuckRepository {
       );
   String? abandonedOnStart;
   var _started = 0;
+
+  @override
+  Future<CursorPage<RubberDuckSessionSummaryView>> fetchSessions({String? cursor}) async {
+    historyCursors.add(cursor);
+    return CursorPage(items: history, nextCursor: cursor == null ? historyNextCursor : null);
+  }
 
   @override
   Future<RubberDuckStartResponse> start(
@@ -190,3 +200,22 @@ final class FakeRubberDuckRepository implements RubberDuckRepository {
   Future<RubberDuckSessionView> fetchSession(String sessionId) async =>
       sessions[sessionId] ?? (throw _problem(ApiErrorCode.resourceNotFound, 404));
 }
+
+RubberDuckSessionSummaryView testDuckSummary({
+  String id = 'd0000000-0000-4000-8000-000000000001',
+  String? targetTitle = '주문 취소 트랜잭션',
+  RubberDuckStatus status = RubberDuckStatus.completed,
+  int turnCount = 3,
+  int? gapCount = 2,
+  DateTime? startedAt,
+}) => RubberDuckSessionSummaryView(
+  id: id,
+  targetType: RubberDuckTargetType.concept,
+  targetTitle: targetTitle,
+  skill: null,
+  status: status,
+  turnCount: turnCount,
+  gapCount: gapCount,
+  startedAt: startedAt ?? DateTime.utc(2026, 9, 18, 3),
+  completedAt: DateTime.utc(2026, 9, 18, 4),
+);

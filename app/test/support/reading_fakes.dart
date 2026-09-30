@@ -108,6 +108,14 @@ final class FakeReadingRepository implements ReadingRepository {
     lessonReadingKey: testLessonReading(),
   };
   final fetched = <String>[];
+  var history = <ReadingHistoryView>[];
+  var historyFetchCount = 0;
+
+  @override
+  Future<ReadingHistoryResponse> fetchReadingHistory() async {
+    historyFetchCount++;
+    return ReadingHistoryResponse(readings: history);
+  }
 
   @override
   Future<ReadingView> fetchReading(String readingKey) async {
@@ -116,3 +124,22 @@ final class FakeReadingRepository implements ReadingRepository {
         (throw const ApiException(code: ApiErrorCode.resourceNotFound, status: 404));
   }
 }
+
+ReadingHistoryView testReadingHistoryItem({
+  String readingKey = petclinicReadingKey,
+  ReadingKind kind = ReadingKind.code,
+  String title = '주문 저장은 어디서 끝나는가',
+  String? source = 'petclinic src/main/java/.../OrderService.java',
+  String lastPlanDate = '2026-09-18',
+  bool completed = true,
+  bool retired = false,
+}) => ReadingHistoryView(
+  readingKey: readingKey,
+  kind: kind,
+  title: title,
+  source: source,
+  estimatedMinutes: 20,
+  lastPlanDate: lastPlanDate,
+  completed: completed,
+  retired: retired,
+);

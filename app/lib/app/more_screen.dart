@@ -75,9 +75,22 @@ class MoreScreen extends ConsumerWidget {
             path: AppRoutes.training,
           ),
           _GroupHeader(key: const Key('more.group.record'), label: l10n.moreGroupRecord),
-          // 서버에 "내가 한 일" 목록이 없어서 러버덕 대화와 코드 읽기는 끝나면 다시 못 연다.
-          // 이 브라우저가 기억한 방문 기록이 그 자리를 메운다
-          // (DevPilot-ops/reachability-audit-2026-09-29.md).
+          // 러버덕 대화와 읽기는 이제 서버 목록이 있다 (docs/05 §9.11·§19.8). 브라우저가 기억한
+          // 방문 기록(SCR-RECENT)은 그 둘이 닿지 않는 화면까지 메운다.
+          _MoreTile(
+            tileKey: const Key('more.duckHistory'),
+            icon: Icons.forum_outlined,
+            label: l10n.duckHistoryTitle,
+            description: l10n.duckHistoryLead,
+            path: AppRoutes.rubberDuckHistory,
+          ),
+          _MoreTile(
+            tileKey: const Key('more.readings'),
+            icon: Icons.menu_book_outlined,
+            label: l10n.readingHistoryTitle,
+            description: l10n.readingHistoryLead,
+            path: AppRoutes.readings,
+          ),
           _MoreTile(
             tileKey: const Key('more.recent'),
             icon: Icons.history,

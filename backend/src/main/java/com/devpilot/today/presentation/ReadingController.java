@@ -1,13 +1,17 @@
 package com.devpilot.today.presentation;
 
+import com.devpilot.common.security.CurrentUser;
 import com.devpilot.today.application.ReadingQueryService;
 import com.devpilot.today.application.ReadingView;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -24,6 +28,15 @@ public class ReadingController {
 
     public ReadingController(ReadingQueryService readingQueryService) {
         this.readingQueryService = readingQueryService;
+    }
+
+    /** 내가 받은 적이 있는 읽기 (docs/05 §19.14). 최근 순, 본문은 없다. */
+    @GetMapping
+    @Operation(operationId = "todayListReadings")
+    public ReadingHistoryResponse list(
+            CurrentUser currentUser,
+            @RequestParam(defaultValue = "50") @Min(1) @Max(200) int limit) {
+        return new ReadingHistoryResponse(readingQueryService.history(currentUser.userId(), limit));
     }
 
     @GetMapping("/{readingKey}")

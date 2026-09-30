@@ -7,6 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// fetch. Throws `ApiException`.
 abstract interface class ReadingRepository {
   Future<ReadingView> fetchReading(String readingKey);
+
+  /// `GET /readings` (docs/05 §19.8): the readings this reader has been handed, newest first.
+  Future<ReadingHistoryResponse> fetchReadingHistory();
 }
 
 final class ApiReadingRepository implements ReadingRepository {
@@ -18,6 +21,10 @@ final class ApiReadingRepository implements ReadingRepository {
   Future<ReadingView> fetchReading(String readingKey) async => ReadingView.fromJson(
     await _apiClient.getJson('/readings/${Uri.encodeComponent(readingKey)}'),
   );
+
+  @override
+  Future<ReadingHistoryResponse> fetchReadingHistory() async =>
+      ReadingHistoryResponse.fromJson(await _apiClient.getJson('/readings'));
 }
 
 final readingRepositoryProvider = Provider<ReadingRepository>(

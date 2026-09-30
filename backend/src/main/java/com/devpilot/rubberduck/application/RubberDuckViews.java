@@ -82,6 +82,23 @@ public final class RubberDuckViews {
         }
     }
 
+    /**
+     * 목록의 한 줄 (docs/05 §9.11). 본문(턴)은 담지 않는다 — 목록은 "무엇을 설명했나"만 보여 주고 원문은 상세에서 읽는다.
+     *
+     * @param targetTitle 대상을 알아볼 문구. 대상이 지워졌으면 null
+     * @param gapCount 정리에서 나온 빈틈 수. 정리가 없으면 null
+     */
+    public record RubberDuckSessionSummaryView(
+            UUID id,
+            RubberDuckTargetType targetType,
+            @Nullable String targetTitle,
+            @Nullable SkillRef skill,
+            RubberDuckStatus status,
+            int turnCount,
+            @Nullable Integer gapCount,
+            Instant startedAt,
+            @Nullable Instant completedAt) {}
+
     /** {@code POST /rubber-duck} 응답 (docs/05 §9.6). */
     public record RubberDuckStartResponse(
             RubberDuckSessionView session, @Nullable UUID abandonedSessionId) {}

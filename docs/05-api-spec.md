@@ -2351,8 +2351,38 @@ public record RubberDuckCompleteResponse(
 - `turns`는 `turn_no` ASC 전체다. 페이징하지 않는다(최대 `max-turns`개).
 - `userText`는 마스킹본이다. 원문은 저장하지 않으므로 복원할 수 없다.
 - AI가 불가한 상태에서도 조회는 된다(`17-ai-integration.md` §3.10).
-- 목록 endpoint는 두지 않는다. 진행 중 세션은 시작 응답(§9.6)과 클라이언트 로컬 상태로 추적하고, 지난 세션은 `GET /learning-sessions`(§9.4)와 복습 카드로 이어진다.
+- 목록은 §9.11이다. (예전에는 두지 않기로 했는데, 그러면 세션이 끝난 뒤 대화로 돌아갈 길이 없었다 — 2026-09-29 전수조사에서 확인.)
 - **`summarySkippedReason`은 이 응답에서 항상 `null`이다.** 실패 사유는 저장하지 않으므로(`04` §5.9 `summary_json`은 실패 시 null) §9.8 응답에만 있다. 조회에서는 `status = COMPLETED`인데 `summary`가 없으면 정리를 못 한 세션이다.
+
+### 9.11 `GET /rubber-duck` — 내 지난 설명
+
+| 항목 | 값 |
+|---|---|
+| operationId | `rubberDuckList` |
+| 인증 / IK | Bearer / — |
+| query | `limit`(1~100, 기본 20), `cursor` |
+| 정렬 | `startedAt` DESC, `id` DESC |
+| 응답 | 200 `CursorPage<RubberDuckSessionSummaryView>` |
+| 오류 | 400 `INVALID_CURSOR` |
+| Sprint · 요구사항 | S3 · FR-25, AC-26 |
+
+```java
+public record RubberDuckSessionSummaryView(
+        UUID id,
+        RubberDuckTargetType targetType,
+        String targetTitle,          // 대상이 지워졌으면 null
+        SkillRef skill,              // null 가능
+        RubberDuckStatus status,
+        int turnCount,
+        Integer gapCount,            // 정리가 없으면 null
+        Instant startedAt,
+        Instant completedAt) {}      // null 가능
+```
+
+- **턴 본문은 담지 않는다.** 설명 원문은 §9.10 상세에서만 읽는다 — 목록에 마스킹본을 늘어놓을 이유가 없다.
+- 타인 세션은 응답에 없다(격리 catalog `E84`).
+
+---
 
 ---
 
@@ -4227,6 +4257,39 @@ public record SideProjectNotePatchRequest(
 - 이유: 주문 목록을 날짜 범위로 조회하는 일이 가장 잦아서 …
 - 기술: DATABASE.INDEX
 ```
+
+### 19.14 `GET /readings` — 내가 받은 읽기
+
+| 항목 | 값 |
+|---|---|
+| operationId | `todayListReadings` |
+| 인증 / IK | Bearer / — |
+| query | `limit`(1~200, 기본 50) |
+| 정렬 | 마지막으로 오늘 할 일에 들어온 plan-day DESC, `readingKey` ASC |
+| 응답 | 200 `ReadingHistoryResponse` |
+| Sprint · 요구사항 | S3 · FR-07 |
+
+```java
+public record ReadingHistoryResponse(List<ReadingHistoryView> readings) {}
+
+public record ReadingHistoryView(
+        String readingKey,
+        ReadingKind kind,            // CODE · CONCEPT · LESSON
+        String title,                // CODE 는 물음, CONCEPT 은 문서 제목, LESSON 은 노트 제목
+        String source,               // CODE 는 "저장소 경로", CONCEPT 은 발행처. LESSON 은 null
+        Integer estimatedMinutes,    // null 가능
+        LocalDate lastPlanDate,
+        boolean completed,           // 한 번이라도 끝낸 적이 있는가
+        boolean retired) {}          // 은퇴한 단위여도 목록에는 남는다
+```
+
+- **완료한 reading은 다음 제안에서 빠진다**(`06` §5.3). 이 목록이 없으면 읽었던 코드로 돌아갈 길이 없다 — 커밋까지 고정해 둔 자료가 한 번 쓰고 사라진다(2026-09-29 전수조사).
+- registry에서 사라진 key는 조용히 건너뛴다. 콘텐츠가 빠졌다고 목록이 깨지지 않는다.
+- 본문은 없다. 코드도 문서도 서버가 가져오지 않는다(`07` §5.5).
+- 타인의 읽기 기록은 응답에 없다(격리 catalog `E85`).
+- cursor를 쓰지 않는다 — 한 사람이 받은 읽기는 많아야 수십 개다.
+
+---
 
 ---
 

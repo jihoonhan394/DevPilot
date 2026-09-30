@@ -38,6 +38,7 @@ import 'package:devpilot_app/features/settings/presentation/settings_screen.dart
 import 'package:devpilot_app/features/skill/presentation/self_assessment_screen.dart';
 import 'package:devpilot_app/features/skill/presentation/skill_detail_screen.dart';
 import 'package:devpilot_app/features/skill/presentation/skill_tree_screen.dart';
+import 'package:devpilot_app/features/today/presentation/reading_history_screen.dart';
 import 'package:devpilot_app/features/today/presentation/today_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -125,6 +126,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           tipDetailRoute(),
           termDetailRoute(),
           GoRoute(path: AppRoutes.dashboard, builder: (context, state) => const DashboardScreen()),
+          GoRoute(
+            path: AppRoutes.readings,
+            builder: (context, state) => const ReadingHistoryScreen(),
+          ),
           GoRoute(
             path: AppRoutes.review,
             builder: (context, state) => const ReviewHomeScreen(),

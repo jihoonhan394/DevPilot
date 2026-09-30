@@ -400,6 +400,9 @@ public final class UserOwnedEndpoints {
                 scoped("E15", HttpMethod.GET, "/api/v1/side-projects"),
                 scoped("E19", HttpMethod.GET, "/api/v1/plans/active/budget"),
                 scoped("E83", HttpMethod.GET, "/api/v1/plans/active/buildable"),
+                // 지난 기록으로 돌아가는 목록. 남의 세션·읽기는 응답에 없다 (docs/05 §9.11·§19.8)
+                scoped("E84", HttpMethod.GET, "/api/v1/rubber-duck"),
+                scoped("E85", HttpMethod.GET, "/api/v1/readings"),
                 scoped("E21", HttpMethod.GET, "/api/v1/today"),
                 scoped("E22", HttpMethod.GET, "/api/v1/learning-sessions"),
                 scoped("E23", HttpMethod.GET, "/api/v1/reviews/due"),

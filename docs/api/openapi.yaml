@@ -1107,6 +1107,34 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - plan
+  /api/v1/readings:
+    get:
+      operationId: todayListReadings
+      parameters:
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 50
+          maximum: 200
+          minimum: 1
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadingHistoryResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
   /api/v1/readings/{readingKey}:
     get:
       operationId: todayGetReading
@@ -1304,6 +1332,40 @@ paths:
       tags:
       - review
   /api/v1/rubber-duck:
+    get:
+      operationId: rubberDuckList
+      parameters:
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+          maxLength: 512
+          minLength: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CursorPageRubberDuckSessionSummaryView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - rubber-duck
     post:
       operationId: learningStartRubberDuck
       parameters:
@@ -3100,6 +3162,18 @@ components:
       required:
       - items
       - nextCursor
+    CursorPageRubberDuckSessionSummaryView:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RubberDuckSessionSummaryView"
+        nextCursor:
+          type: string
+      required:
+      - items
+      - nextCursor
     CursorPageSessionView:
       type: object
       properties:
@@ -4740,6 +4814,49 @@ components:
       - deletedRows
       - projectsDeleted
       - resetAt
+    ReadingHistoryResponse:
+      type: object
+      properties:
+        readings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReadingHistoryView"
+      required:
+      - readings
+    ReadingHistoryView:
+      type: object
+      properties:
+        completed:
+          type: boolean
+        estimatedMinutes:
+          type: integer
+          format: int32
+        kind:
+          type: string
+          enum:
+          - CODE
+          - CONCEPT
+          - LESSON
+        lastPlanDate:
+          type: string
+          format: date
+        readingKey:
+          type: string
+        retired:
+          type: boolean
+        source:
+          type: string
+        title:
+          type: string
+      required:
+      - completed
+      - estimatedMinutes
+      - kind
+      - lastPlanDate
+      - readingKey
+      - retired
+      - source
+      - title
     ReadingView:
       type: object
       properties:
@@ -5463,6 +5580,52 @@ components:
       - reviewQuestion
       - whatWasMissed
       - whyItMatters
+    RubberDuckSessionSummaryView:
+      type: object
+      properties:
+        completedAt:
+          type: string
+          format: date-time
+        gapCount:
+          type: integer
+          format: int32
+        id:
+          type: string
+          format: uuid
+        skill:
+          $ref: "#/components/schemas/SkillRef"
+        startedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+          - IN_PROGRESS
+          - COMPLETED
+          - ABANDONED
+        targetTitle:
+          type: string
+        targetType:
+          type: string
+          enum:
+          - CODE_READING
+          - CHALLENGE
+          - REVIEW_ITEM
+          - CONCEPT
+          - PROJECT_WORK
+        turnCount:
+          type: integer
+          format: int32
+      required:
+      - completedAt
+      - gapCount
+      - id
+      - skill
+      - startedAt
+      - status
+      - targetTitle
+      - targetType
+      - turnCount
     RubberDuckSessionView:
       type: object
       properties:

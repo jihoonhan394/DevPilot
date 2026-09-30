@@ -163,3 +163,28 @@ abstract class RubberDuckCompleteResponse with _$RubberDuckCompleteResponse {
   factory RubberDuckCompleteResponse.fromJson(Map<String, Object?> json) =>
       _$RubberDuckCompleteResponseFromJson(json);
 }
+
+/// One line of `GET /rubber-duck` (docs/05 §9.11). No turns: the explanation itself is only read
+/// on the detail screen.
+@freezed
+abstract class RubberDuckSessionSummaryView with _$RubberDuckSessionSummaryView {
+  const factory RubberDuckSessionSummaryView({
+    required String id,
+    @JsonKey(unknownEnumValue: RubberDuckTargetType.unknown)
+    required RubberDuckTargetType targetType,
+
+    /// Null when the target is gone.
+    String? targetTitle,
+    SkillRef? skill,
+    @JsonKey(unknownEnumValue: RubberDuckStatus.unknown) required RubberDuckStatus status,
+    required int turnCount,
+
+    /// Null when the session has no summary.
+    int? gapCount,
+    required DateTime startedAt,
+    DateTime? completedAt,
+  }) = _RubberDuckSessionSummaryView;
+
+  factory RubberDuckSessionSummaryView.fromJson(Map<String, Object?> json) =>
+      _$RubberDuckSessionSummaryViewFromJson(json);
+}

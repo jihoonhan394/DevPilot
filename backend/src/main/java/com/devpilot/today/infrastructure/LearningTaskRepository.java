@@ -1,5 +1,6 @@
 package com.devpilot.today.infrastructure;
 
+import com.devpilot.today.application.ReadingHistoryRow;
 import com.devpilot.today.domain.LearningTask;
 import com.devpilot.today.domain.TaskStatus;
 import java.time.Instant;
@@ -8,6 +9,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -61,6 +63,21 @@ public interface LearningTaskRepository extends JpaRepository<LearningTask, UUID
                and t.status = com.devpilot.today.domain.TaskStatus.COMPLETED
             """)
     List<String> findCompletedReadingKeys(@Param("userId") UUID userId);
+
+    /**
+     * {@code GET /readings} (docs/05 §19.14): 내가 받은 적이 있는 읽기와 가장 최근 plan-day. 완료한 reading은 다음 제안에서
+     * 빠지므로(docs/06 §5.3), 이 목록이 없으면 읽었던 코드로 돌아갈 길이 없다.
+     */
+    @Query(
+            """
+            select new com.devpilot.today.application.ReadingHistoryRow(
+                       t.readingKey, max(p.planDate))
+              from LearningTask t, DailyPlan p
+             where p.id = t.dailyPlanId and t.userId = :userId and t.readingKey is not null
+             group by t.readingKey
+             order by max(p.planDate) desc, t.readingKey asc
+            """)
+    List<ReadingHistoryRow> findReadingHistory(@Param("userId") UUID userId, Limit limit);
 
     /**
      * plan-day {@code [from, today]}에 제안된 reading key (docs/06 §5.3 "최근 14 plan-day 안에 제안된 적이 없는

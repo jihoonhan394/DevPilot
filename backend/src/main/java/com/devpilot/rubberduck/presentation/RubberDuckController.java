@@ -5,9 +5,12 @@ import com.devpilot.common.error.ErrorCode;
 import com.devpilot.common.error.PayloadTooLargeException;
 import com.devpilot.common.idempotency.IdempotencyService;
 import com.devpilot.common.security.CurrentUser;
+import com.devpilot.common.web.CursorPage;
+import com.devpilot.rubberduck.application.RubberDuckHistoryService;
 import com.devpilot.rubberduck.application.RubberDuckQueryService;
 import com.devpilot.rubberduck.application.RubberDuckService;
 import com.devpilot.rubberduck.application.RubberDuckViews.RubberDuckCompleteResponse;
+import com.devpilot.rubberduck.application.RubberDuckViews.RubberDuckSessionSummaryView;
 import com.devpilot.rubberduck.application.RubberDuckViews.RubberDuckSessionView;
 import com.devpilot.rubberduck.application.RubberDuckViews.RubberDuckStartResponse;
 import com.devpilot.rubberduck.application.RubberDuckViews.RubberDuckTurnResponse;
@@ -15,7 +18,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +31,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -38,16 +46,19 @@ public class RubberDuckController {
 
     private final RubberDuckService rubberDuckService;
     private final RubberDuckQueryService rubberDuckQueryService;
+    private final RubberDuckHistoryService rubberDuckHistoryService;
     private final IdempotencyService idempotencyService;
     private final int maxExplanationChars;
 
     public RubberDuckController(
             RubberDuckService rubberDuckService,
             RubberDuckQueryService rubberDuckQueryService,
+            RubberDuckHistoryService rubberDuckHistoryService,
             IdempotencyService idempotencyService,
             DevPilotProperties properties) {
         this.rubberDuckService = rubberDuckService;
         this.rubberDuckQueryService = rubberDuckQueryService;
+        this.rubberDuckHistoryService = rubberDuckHistoryService;
         this.idempotencyService = idempotencyService;
         this.maxExplanationChars = properties.rubberduck().maxExplanationChars();
     }
@@ -113,6 +124,16 @@ public class RubberDuckController {
     @Operation(operationId = "learningAbandonRubberDuck")
     public RubberDuckSessionView abandon(CurrentUser currentUser, @PathVariable UUID sessionId) {
         return rubberDuckService.abandon(currentUser, sessionId);
+    }
+
+    /** 내 지난 설명 (docs/05 §9.11). 목록에는 턴 본문이 없다. */
+    @GetMapping
+    @Operation(operationId = "rubberDuckList")
+    public CursorPage<RubberDuckSessionSummaryView> list(
+            CurrentUser currentUser,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
+            @RequestParam(required = false) @Nullable @Size(max = 512) String cursor) {
+        return rubberDuckHistoryService.list(currentUser.userId(), limit, cursor);
     }
 
     @GetMapping("/{sessionId}")

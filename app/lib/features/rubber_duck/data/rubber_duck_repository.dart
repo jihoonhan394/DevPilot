@@ -1,4 +1,5 @@
 import 'package:devpilot_app/core/api/api_client.dart';
+import 'package:devpilot_app/core/api/cursor_page.dart';
 import 'package:devpilot_app/core/api/idempotency_key.dart';
 import 'package:devpilot_app/features/rubber_duck/data/rubber_duck_enums.dart';
 import 'package:devpilot_app/features/rubber_duck/data/rubber_duck_models.dart';
@@ -6,6 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Rubber duck endpoints (docs/05 §9.6~§9.10). Methods throw `ApiException`.
 abstract interface class RubberDuckRepository {
+  /// `GET /rubber-duck`: my past explanations, newest first (docs/05 §9.11).
+  Future<CursorPage<RubberDuckSessionSummaryView>> fetchSessions({String? cursor});
+
   /// `POST /rubber-duck` → 201. No AI call.
   Future<RubberDuckStartResponse> start(
     RubberDuckStartRequest request, {
@@ -37,6 +41,15 @@ final class ApiRubberDuckRepository implements RubberDuckRepository {
   ApiRubberDuckRepository(this._apiClient);
 
   final ApiClient _apiClient;
+
+  @override
+  Future<CursorPage<RubberDuckSessionSummaryView>> fetchSessions({String? cursor}) async {
+    final json = await _apiClient.getJson('/rubber-duck', queryParameters: {'cursor': ?cursor});
+    return CursorPage.fromJson(
+      json,
+      (item) => RubberDuckSessionSummaryView.fromJson(item! as Map<String, Object?>),
+    );
+  }
 
   @override
   Future<RubberDuckStartResponse> start(

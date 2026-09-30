@@ -12,6 +12,7 @@ import 'package:devpilot_app/features/review/presentation/review_item_edit_scree
 import 'package:devpilot_app/features/review/presentation/review_item_reopen.dart';
 import 'package:devpilot_app/features/review/presentation/review_items_screen.dart';
 import 'package:devpilot_app/features/rubber_duck/data/rubber_duck_enums.dart';
+import 'package:devpilot_app/features/rubber_duck/presentation/duck_history_screen.dart';
 import 'package:devpilot_app/features/rubber_duck/presentation/rubber_duck_input_guard.dart';
 import 'package:devpilot_app/features/rubber_duck/presentation/rubber_duck_screen.dart';
 import 'package:devpilot_app/features/term/data/term_repository.dart';
@@ -32,8 +33,14 @@ import 'package:go_router/go_router.dart';
 // Routes of the S3 learning screens (docs/02 §2.3): the rubber duck focus screens, Training, the
 // Today sub-screens SCR-DIAGNOSTICS and SCR-READ-CODE, and the review card management.
 
-/// `/rubber-duck/new` and `/rubber-duck/:sessionId`, outside the navigation frame.
+/// `/rubber-duck/history`, `/rubber-duck/new` and `/rubber-duck/:sessionId`, outside the
+/// navigation frame.
 List<RouteBase> rubberDuckRoutes() => [
+  // `:sessionId` 보다 먼저 온다 — 뒤에 두면 리터럴 경로가 파라미터로 먹힌다.
+  GoRoute(
+    path: AppRoutes.rubberDuckHistory,
+    builder: (context, state) => const DuckHistoryScreen(),
+  ),
   GoRoute(
     path: AppRoutes.rubberDuckNew,
     onExit: (context, state) => confirmLeave(context, rubberDuckInputGuardProvider),

@@ -91,6 +91,8 @@ void main() {
     expect(find.byKey(const Key('more.group.learn')), findsOneWidget);
     expect(find.byKey(const Key('more.group.record')), findsOneWidget);
     expect(find.text('말이 헷갈릴 때 찾는 곳'), findsOneWidget);
+    // 목록이 길어 아래쪽 줄은 스크롤해야 만들어진다.
+    await expectKeyInList(tester, 'more.projects');
     expect(find.text('내가 만든 것과 그때 내린 결정'), findsOneWidget);
   });
 }

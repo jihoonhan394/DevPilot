@@ -1359,6 +1359,14 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 
 **점검 기록**
 
+2026-10-01 — 용어 `sourceUrl` 점검 (catalogVersion 67)
+
+| 항목 | 내용 |
+|---|---|
+| 대상 | `terms/*.yaml`의 `sourceUrl` 24건(서로 다른 URL 20개). 지금까지 호스트만 검사했고 실제로 열어 보지 않았다 |
+| 고친 것 | `TERM.DATABASE.N_PLUS_ONE`·`TERM.DATABASE.PERSISTENCE_CONTEXT`의 `https://hibernate.org/orm/documentation/7.0/` → **User Guide 본문**(`docs.hibernate.org/orm/7.0/userguide/…`). 앞의 것은 살아 있지만 링크 모음이고, 뜻이 적힌 자리가 아니었다(§7.6 2번). `docs.hibernate.org`를 신뢰 호스트에 더했다 |
+| 남은 것 | 나머지 18개 URL은 호스트와 경로 형태로만 확인했다. 다음 점검에서 하나씩 연다 |
+
 2026-09-19 — 첫 점검 (S3 구현 시작 전, catalogVersion 4 → 5)
 
 | 항목 | 내용 |
@@ -1502,42 +1510,38 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 
 ---
 
-## 12. 콘텐츠 인벤토리 (catalogVersion 5)
+## 12. 콘텐츠 인벤토리 (catalogVersion 67)
 
 ### 12.1 카테고리별 수량
 
-`--report` 출력(2026-09-19, catalogVersion 5). skills는 root 포함. challenge는 첫 번째 skill의 category로 센다. 아래 카테고리별 수량은 catalogVersion 2 이후 같다. catalogVersion 5(첫 소스 점검, §8.5 점검 기록)에서는 **curated source, curated repo/reading, plan template milestone 설명 문구**가 바뀌었다.
+`--report` 출력(2026-10-01, catalogVersion 67). skills는 root 포함. challenge는 첫 번째 skill의 category로 센다. **이 표는 `python content/tools/validate_content.py --report`의 출력을 그대로 옮긴 것이다** — 손으로 고치지 말고 다시 돌려 붙인다.
 
 | category | skills | MUST | SHOULD | LATER | cards | PRACTICE | DIAGNOSTIC |
 |---|---|---|---|---|---|---|---|
-| JAVA | 12 | 6 | 5 | 0 | 15 | 5 | 1 |
-| SPRING | 12 | 9 | 2 | 0 | 13 | 4 | 1 |
-| DATABASE | 11 | 8 | 2 | 0 | 16 | 4 | 1 |
-| WEB_HTTP | 6 | 3 | 2 | 0 | 8 | 0 | 1 |
-| NETWORK | 4 | 0 | 2 | 1 | 3 | 0 | 0 |
+| JAVA | 12 | 6 | 5 | 0 | 15 | 10 | 3 |
+| SPRING | 12 | 9 | 2 | 0 | 13 | 10 | 3 |
+| DATABASE | 11 | 8 | 2 | 0 | 16 | 7 | 3 |
+| WEB_HTTP | 6 | 3 | 2 | 0 | 8 | 3 | 3 |
+| NETWORK | 4 | 0 | 2 | 1 | 3 | 1 | 0 |
 | CS | 4 | 0 | 3 | 0 | 2 | 0 | 0 |
 | ALGORITHM | 5 | 0 | 4 | 0 | 0 | 0 | 0 |
-| TESTING | 6 | 4 | 1 | 0 | 7 | 2 | 1 |
-| DEVOPS | 7 | 3 | 3 | 0 | 4 | 0 | 0 |
-| SECURITY | 6 | 4 | 1 | 0 | 6 | 3 | 0 |
-| PRACTICAL_ENGINEERING | 6 | 2 | 3 | 0 | 4 | 0 | 0 |
+| TESTING | 7 | 4 | 2 | 0 | 7 | 6 | 3 |
+| DEVOPS | 13 | 3 | 6 | 3 | 12 | 9 | 3 |
+| SECURITY | 6 | 4 | 1 | 0 | 6 | 3 | 3 |
+| INTEGRATION | 10 | 0 | 4 | 5 | 18 | 11 | 3 |
+| PRACTICAL_ENGINEERING | 8 | 2 | 5 | 0 | 7 | 3 | 3 |
 | SYSTEM_DESIGN | 4 | 0 | 1 | 2 | 0 | 0 | 0 |
-| EXPLANATION | 5 | 4 | 0 | 0 | 4 | 0 | 0 |
-| **합계** | **88** | **43** | **29** | **3** | **82** | **18** | **5** |
+| EXPLANATION | 5 | 4 | 0 | 0 | 4 | 0 | 3 |
+| **합계** | **107** | **43** | **39** | **11** | **111** | **63** | **30** |
+
+**DIAGNOSTIC 0인 네 category**(NETWORK · CS · ALGORITHM · SYSTEM_DESIGN)는 콘텐츠가 빠진 것이 아니다. 어느 트랙에서도 MUST(importance ≥ 0.70)인 skill이 없어 **CV-59가 진단을 허용하지 않는다** — 재지 않기로 한 자리다. 나머지 10개 category는 L1·L2·L3 사다리가 모두 있다(ADR-058·059).
 
 | 항목 | 값 |
 |---|---|
-| skill | root 13, non-root 75 (3단계 skill 8개) |
-| review card 유형 | RECALL 41, EXPLAIN 22, BUG_SPOT 16, CHOICE 3 |
-| PRACTICE 난이도 | L1 2, L2 8, L3 6, L4 2 (isTransfer 2: `PRACTICE.SPRING.TRANSACTION.L4.001`, `PRACTICE.SECURITY.AUTHN_AUTHZ.L4.001`) |
-| plan template | `JAVA_BACKEND_DEFAULT`: milestone **9개** — PREPARATION 8 (weight 9200), CONSOLIDATION 1 (800). priority는 1~6 MUST / 7~9 SHOULD. 75개 non-root skill 전부가 정확히 한 milestone에 들어간다 (CV-35·CV-36) |
-| plan template (입문 트랙) | `JAVA_BACKEND_STARTER_DEFAULT`: milestone **6개** — PREPARATION 5 + CONSOLIDATION 1. 그 트랙의 MUST skill 전부를 담는다 (CV-36). `BL-CNT-17`에서 작성 |
-| role target (입문 트랙) | `JAVA_BACKEND_STARTER`: 같은 non-root skill 75개, MUST 14개 안팎, 축별 목표는 기본 트랙 이하 (§3.3, `BL-CNT-17`) |
-| curated source | 19 (Oracle 4, Spring 5, PostgreSQL 5, OWASP 2, IETF 1, MDN 1, OpenJDK 1) |
-| curated repo | **9** (`modulith`, `petclinic`, `restbucks`(은퇴 단위만), `modular-monolith`, `jdk25`, `spring-framework`, `hikaricp`, `security-samples`, `webgoat`) — 모두 `pinnedCommit` 있음 (§8.4) |
-| reading (코드 읽기) | **41** — 활성 36 (modulith 4, petclinic 8, modular-monolith 7, jdk25 5, spring-framework 3, hikaricp 3, security-samples 3, webgoat 3, 합계 547분), 은퇴 5 (restbucks). 활성 reading이 서로 다른 skill **43개**(MUST 34/43)를 덮는다 |
-| 개념 읽기 (§3.13) | **14** — 활성 14, 은퇴 0, 합계 **310분**. PostgreSQL 4, IETF RFC 3, OpenJDK JEP 4, Git(Pro Git) 2, Spring 1. skill **10개**를 덮는다(MUST 9 + `JAVA.CONCURRENCY.VIRTUAL_THREAD`). 코드 읽기와 합치면 **`JAVA_BACKEND` MUST 43개 전부**가 읽을 것을 갖는다 (§12.4) |
-| 온보딩 카드 분산 | 82장 ÷ 하루 5장 = 17 plan-day (`06` §6.3) |
+| skill | root 14, non-root 93 |
+| review card 유형 | RECALL 52, EXPLAIN 35, BUG_SPOT 19, CHOICE 5 |
+| PRACTICE 난이도 | L1 11, L2 32, L3 18, L4 2 |
+| curated source | 19 |
 
 plan template milestone (2026-09-18 재작성 — "과목 순서"에서 "주문 시스템을 만드는 순서"로):
 
@@ -1554,7 +1558,7 @@ plan template milestone (2026-09-18 재작성 — "과목 순서"에서 "주문 
 | 9 | 설명과 정리 | SHOULD | CONSOLIDATION | 800 | 15 | — |
 
 - 모든 MUST skill에 seed card가 1장 이상 있다(CV-48 WARN 0).
-- ALGORITHM, SYSTEM_DESIGN에는 seed card·challenge가 없다. 이 skill들의 task 제안은 READING/EXPLAIN으로 대체된다(`06` §5.3).
+- ALGORITHM, SYSTEM_DESIGN, CS에는 seed challenge가 없다. 이 skill들의 task 제안은 READING/EXPLAIN으로 대체된다(`06` §5.3). 세 category 모두 어느 트랙에서도 MUST가 아니다.
 - milestone priority(잘라내는 순서)와 skill priority(role target)는 **다른 축**이다. SHOULD milestone 8에도 MUST skill(`DEVOPS.DOCKER`, `DEVOPS.CI_GITHUB_ACTIONS`, `PRACTICAL_ENGINEERING.LOGGING`)이 들어 있다. risk 계산은 `plan_skill_target.priority`를 쓰므로(`06` §4.1) 모순이 아니다. 1~6을 MUST로 둔 것은 기한이 촉박할 때 7~9부터 잘라내기 위해서다.
 - 활성 코드 읽기가 덮는 skill은 43개(non-root 75개 중, MUST 34/43)다. 나머지 skill의 task 제안은 READ_CODE 후보가 비어 READING/PROJECT_TASK/EXPLAIN으로 내려간다(`06` §5.3). 조회 튜닝(인덱스·실행 계획), 오류 응답, REST API 설계, Git, EXPLANATION은 코드 읽기가 없는 영역이고(§3.8 "커버되지 않는 것") **2026-09-21부터 개념 읽기가 그 자리를 덮는다**(§12.4).
 
@@ -1564,9 +1568,9 @@ plan template milestone (2026-09-18 재작성 — "과목 순서"에서 "주문 
 
 | planning | required MUST | required SHOULD | 12주 (effective 5,922) | 26주 (12,831) | 39주 (19,246) |
 |---|---|---|---|---|---|
-| 0 | 33,483 | 19,119 | CRITICAL | CRITICAL | CRITICAL |
-| 1 | 22,997 | 11,296 | CRITICAL | CRITICAL | HIGH |
-| 2 | 12,501 | 4,959 | CRITICAL | MEDIUM (9742bp) | LOW |
+| 0 | 33,483 | 24,048 | CRITICAL | CRITICAL | CRITICAL |
+| 1 | 22,997 | 14,082 | CRITICAL | CRITICAL | HIGH |
+| 2 | 12,501 | 5,797 | CRITICAL | MEDIUM | LOW |
 | 3 | 3,277 | 0 | LOW | LOW | LOW |
 
 해석: 자기평가 2(도움받아 가능) 수준의 사용자가 6개월을 잡으면 MEDIUM, 3개월이면 CRITICAL이 나와 SHOULD defer와 MUST 축소 제안(`06` §4.4)이 동작한다. 4주 사용 후 실제 학습 기록으로 step 값을 조정한다.

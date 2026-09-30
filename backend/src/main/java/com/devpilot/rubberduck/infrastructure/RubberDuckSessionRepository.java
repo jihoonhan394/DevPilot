@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,6 +18,29 @@ public interface RubberDuckSessionRepository extends JpaRepository<RubberDuckSes
     Optional<RubberDuckSession> findByIdAndUserId(UUID id, UUID userId);
 
     Optional<RubberDuckSession> findByUserIdAndStatus(UUID userId, RubberDuckStatus status);
+
+    /** {@code GET /rubber-duck} 첫 페이지 (docs/05 §9.11). startedAt DESC, id DESC. */
+    @Query(
+            """
+            select s from RubberDuckSession s
+             where s.userId = :userId
+             order by s.startedAt desc, s.id desc
+            """)
+    List<RubberDuckSession> findPage(@Param("userId") UUID userId, Limit limit);
+
+    /** {@code GET /rubber-duck} 다음 페이지 (cursor 이후). */
+    @Query(
+            """
+            select s from RubberDuckSession s
+             where s.userId = :userId
+               and (s.startedAt < :startedAt or (s.startedAt = :startedAt and s.id < :id))
+             order by s.startedAt desc, s.id desc
+            """)
+    List<RubberDuckSession> findPageAfter(
+            @Param("userId") UUID userId,
+            @Param("startedAt") Instant startedAt,
+            @Param("id") UUID id,
+            Limit limit);
 
     /** RC-1 (docs/06 §9.5): 이 대상을 설명한 {@code COMPLETED} 세션이 있는가. */
     boolean existsByUserIdAndTargetTypeAndTargetIdAndStatus(

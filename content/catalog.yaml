@@ -2,7 +2,7 @@
 # Spec: docs/19-content-spec.md §3.1
 # - catalogVersion: seed 대상 파일(이 파일에 나열된 모든 파일)이 바뀌면 1 올린다 (§8)
 # - YamlContentReader는 여기 나열된 파일만 읽는다. 나열 순서대로 읽는다
-catalogVersion: 65
+catalogVersion: 67
 files:
   skillTrees:
     - skill-tree/java-backend.yaml
@@ -42,6 +42,8 @@ files:
     - challenges/auth-and-access.yaml
     - challenges/data-and-reliability.yaml
     - challenges/diagnostic.yaml
+    - challenges/diagnostic-l1.yaml
+    - challenges/diagnostic-ladder.yaml
   tips:
     - tips/practical.yaml
   # 용어 사전 (19 §3.10). 표기는 representative 하나이고 저장소의 다른 콘텐츠도 그 표기를 쓴다 (CV-104)

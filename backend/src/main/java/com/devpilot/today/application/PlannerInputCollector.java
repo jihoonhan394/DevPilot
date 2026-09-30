@@ -5,14 +5,11 @@ import com.devpilot.goal.application.LearningGoalQueryService;
 import com.devpilot.learning.application.LearningEventQueryService;
 import com.devpilot.learning.domain.LearningEventType;
 import com.devpilot.plan.application.MilestoneView;
-import com.devpilot.plan.application.PlanSkillTargetView;
 import com.devpilot.plan.application.PlanView;
 import com.devpilot.plan.domain.RiskLevel;
 import com.devpilot.project.application.SideProjectQueryService;
 import com.devpilot.review.application.ReviewQueryService;
 import com.devpilot.review.application.ReviewQueryService.DueSummary;
-import com.devpilot.skill.application.MeasurableAxes;
-import com.devpilot.skill.application.SkillCatalogQueryService;
 import com.devpilot.skill.application.SkillInfo;
 import com.devpilot.skill.application.SkillRef;
 import com.devpilot.today.domain.EnergyLevel;
@@ -60,38 +57,32 @@ class PlannerInputCollector {
     /** 묶음을 찾아 거슬러 올라가는 범위 (docs/06 §5.13 TH-1). */
     private static final int THREAD_LOOKBACK_DAYS = 7;
 
-    /** 학습 목표가 없을 때 쓰는 트랙 (docs/06 §5.1). */
-    private final SkillCatalogQueryService skillCatalogQueryService;
+    /** catalog·사용자 레벨·계획 목표를 한 묶음으로 준다 (docs/06 §7.6 clamping 포함). */
+    private final PlannerSkillInputs skillInputs;
 
-    private final SkillProfiles skillProfiles;
     private final LearningEventQueryService learningEventQueryService;
     private final ReviewQueryService reviewQueryService;
     private final LearningGoalQueryService learningGoalQueryService;
     private final SideProjectQueryService sideProjectQueryService;
     private final TodayQueryService todayQueryService;
-    private final MeasurableAxes measurableAxes;
 
     PlannerInputCollector(
-            SkillCatalogQueryService skillCatalogQueryService,
-            SkillProfiles skillProfiles,
+            PlannerSkillInputs skillInputs,
             LearningEventQueryService learningEventQueryService,
             ReviewQueryService reviewQueryService,
             LearningGoalQueryService learningGoalQueryService,
             SideProjectQueryService sideProjectQueryService,
-            TodayQueryService todayQueryService,
-            MeasurableAxes measurableAxes) {
-        this.skillCatalogQueryService = skillCatalogQueryService;
-        this.skillProfiles = skillProfiles;
+            TodayQueryService todayQueryService) {
+        this.skillInputs = skillInputs;
         this.learningEventQueryService = learningEventQueryService;
         this.reviewQueryService = reviewQueryService;
         this.learningGoalQueryService = learningGoalQueryService;
         this.sideProjectQueryService = sideProjectQueryService;
         this.todayQueryService = todayQueryService;
-        this.measurableAxes = measurableAxes;
     }
 
     Inputs collect(UUID userId, LocalDate today, PlanView plan, Context context, DueSummary due) {
-        Map<UUID, SkillInfo> skills = skillCatalogQueryService.activeSkillDetails();
+        Map<UUID, SkillInfo> skills = skillInputs.activeSkillDetails();
         Map<UUID, String> codes = new HashMap<>();
         for (SkillInfo skill : skills.values()) {
             codes.put(skill.id(), skill.code());
@@ -110,8 +101,8 @@ class PlannerInputCollector {
                 today,
                 context,
                 learningGoalQueryService.trackDefaults(userId),
-                skillProfiles.of(userId, skills, codes),
-                targets(plan),
+                skillInputs.profiles(userId, skills, codes),
+                skillInputs.targets(plan),
                 milestones(plan),
                 overdueByCode,
                 codesOf(
@@ -136,21 +127,6 @@ class PlannerInputCollector {
                         .orElse(null),
                 codes.entrySet().stream()
                         .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey)));
-    }
-
-    /** 진도 판정에 쓸 목표. 아직 잴 수 없는 축은 빼고 본다(docs/06 §7.6) — 남겨 두면 어떤 milestone도 끝나지 않아 후보가 첫 단계에 갇힌다. */
-    private Map<String, SkillTarget> targets(PlanView plan) {
-        Map<String, SkillTarget> targets = new HashMap<>();
-        for (PlanSkillTargetView target : plan.skillTargets()) {
-            targets.put(
-                    target.skill().code(),
-                    new SkillTarget(
-                            target.priority(),
-                            target.practicalImportanceBp(),
-                            measurableAxes.forProgress(target.targets()),
-                            target.deferred()));
-        }
-        return targets;
     }
 
     private Set<String> focusCodes(UUID userId) {

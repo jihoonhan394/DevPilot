@@ -44,6 +44,12 @@ abstract final class AppRoutes {
   static const trainingAttempts = '/training/attempts';
 
   static const rubberDuck = '/rubber-duck';
+
+  /// SCR-RUBBER-DUCK-LIST (docs/02 §3.22): 지난 설명 목록.
+  static const rubberDuckHistory = '/rubber-duck/history';
+
+  /// SCR-READING-LIST (docs/02 §3.23): 내가 받은 읽기 목록.
+  static const readings = '/readings';
   static const rubberDuckNew = '/rubber-duck/new';
 
   static const reviewItems = '/review/items';
@@ -242,6 +248,8 @@ enum RouteAccess {
     AppRoutes.diagnostics,
     AppRoutes.training,
     AppRoutes.reviewItems,
+    AppRoutes.rubberDuckHistory,
+    AppRoutes.readings,
     AppRoutes.lessonsPrefix,
     AppRoutes.tipsPrefix,
     AppRoutes.termsPrefix,
