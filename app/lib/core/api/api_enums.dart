@@ -71,6 +71,21 @@ enum RiskLevel {
   unknown,
 }
 
+/// `BuildableView.steps[].status` (docs/05 §7.10, docs/06 §11.4).
+enum BuildableStatus {
+  /// Every gate skill reached its target on evidence alone.
+  @JsonValue('BUILDABLE')
+  buildable,
+
+  /// The first step that has not: the one to build now. At most one per plan.
+  @JsonValue('NEXT')
+  next,
+
+  @JsonValue('NOT_YET')
+  notYet,
+  unknown,
+}
+
 enum Priority {
   @JsonValue('MUST')
   must,

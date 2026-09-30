@@ -124,6 +124,7 @@
 | `/plan` | SCR-PLAN | Y | Y | S1 |
 | `/plan/replan` | SCR-REPLAN | Y | Y | S1 (저장만) / S2 (미리보기·축소/확장 제안) |
 | `/plan/goal` | SCR-LEARNING-GOAL | Y | Y | S1 |
+| `/plan/buildable` | SCR-BUILDABLE | Y | Y | S3 |
 | `/plan/versions` | SCR-PLAN-HISTORY | Y | Y | S1 |
 | `/plan/versions/:planId` | SCR-PLAN-VERSION | Y | Y | S1 |
 | `/skills` | SCR-SKILL-TREE | Y | Y | S1 |
@@ -2145,6 +2146,21 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `coach.detail.toEvidence` | 증거로 남기기 |
 
 ### 3.9 Plan · Goal
+
+#### SCR-BUILDABLE
+
+경로 `/plan/buildable`. **"오늘까지 배운 것으로 사이드 프로젝트를 어디까지 만들 수 있나"에 답한다** (`05` §7.10, `06` §11.4, ADR-060). milestone은 과목 순서가 아니라 만드는 순서(`19` §3.4)인데, 지금까지 그 순서는 날짜 막대와 제목으로만 보였다. **진입**: SCR-TODAY 아래 한 줄, SCR-PLAN 헤더 "지금 만들 수 있는 것 보기". **Sprint**: S3.
+
+- **레이아웃**: 요약 한 줄(`buildableSummary`) → 세는 기준 한 줄(`buildableIntro`) → 단계 카드 목록(만드는 순서 = `sortOrder` ASC).
+- 단계 카드: `{n}단계` + 제목 + 상태 배지 → 이 단계에서 무엇을 만드는지(계획 템플릿의 milestone 설명) → `{met}/{total}개 준비됨` → 모자란 skill 목록 → **지금 만들 차례인 카드에만** "오늘 할 일 보기".
+- **지금 만들 차례인 카드만 색을 쓴다.** 다 칠하면 어디부터 볼지 알 수 없다.
+- 모자란 skill 한 줄: 이름 + **부족한 축만** `{축} {지금}/{목표}`. 탭하면 `/skills/{skillId}`. 채워진 축까지 늘어놓으면 무엇이 남았는지가 묻힌다. 목록은 최대 5개고, 더 있으면 `buildableGapMore`.
+- **세는 것은 근거 레벨뿐이다.** 자기평가로 올라간 계획 레벨은 빼고 본다 — 그래서 SCR-DASHBOARD 타임라인의 "지금 단계"와 어긋날 수 있고, `buildableIntro`가 그 차이를 먼저 말한다(ADR-060).
+- 상태: Loading — skeleton. Empty — 활성 plan이 없으면(`404 PLAN_NOT_FOUND`) `buildableEmpty`. Error·Offline — 공통.
+- SCR-TODAY의 진입은 **카드가 아니라 한 줄**이다. 오늘 할 일과 같은 무게로 보이면 무엇부터 할지 알 수 없다. 아직 안 왔거나 실패하면 그 줄은 스스로 사라진다.
+- 화면을 드나드는 이동은 모두 `context.go`다. `push`는 이 라우터에서 주소를 바꾸지 않는다(SCR-SELF-ASSESSMENT와 같다).
+
+---
 
 #### SCR-PLAN
 

@@ -2,6 +2,7 @@ import 'package:devpilot_app/core/api/api_client.dart';
 import 'package:devpilot_app/core/api/cursor_page.dart';
 import 'package:devpilot_app/core/api/idempotency_key.dart';
 import 'package:devpilot_app/features/plan/data/plan_budget_models.dart';
+import 'package:devpilot_app/features/plan/data/plan_buildable_models.dart';
 import 'package:devpilot_app/features/plan/data/plan_models.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -36,6 +37,10 @@ abstract interface class PlanRepository {
   /// `GET /plans/active/budget`: budget and risk computed now (nothing is stored).
   Future<BudgetView> fetchActiveBudget();
 
+  /// `GET /plans/active/buildable`: how far the build order can go on evidence alone
+  /// (docs/06 §11.4). `404 PLAN_NOT_FOUND` when there is no active plan.
+  Future<BuildableView> fetchActiveBuildable();
+
   /// `POST /plans/{planId}/replan/preview`: risk and suggestions of the edit. No
   /// `Idempotency-Key` (docs/05 §1.7); nothing is stored.
   Future<ReplanPreviewResponse> previewReplan(String planId, ReplanRequest request);
@@ -49,6 +54,10 @@ final class ApiPlanRepository implements PlanRepository {
   @override
   Future<PlanView> fetchActivePlan() async =>
       PlanView.fromJson(await _apiClient.getJson('/plans/active'));
+
+  @override
+  Future<BuildableView> fetchActiveBuildable() async =>
+      BuildableView.fromJson(await _apiClient.getJson('/plans/active/buildable'));
 
   @override
   Future<CursorPage<PlanSummaryView>> fetchPlans({String? cursor}) async {

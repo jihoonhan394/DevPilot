@@ -4,6 +4,8 @@ import com.devpilot.common.idempotency.IdempotencyService;
 import com.devpilot.common.security.CurrentUser;
 import com.devpilot.common.web.CursorPage;
 import com.devpilot.plan.application.BudgetView;
+import com.devpilot.plan.application.BuildableStepService;
+import com.devpilot.plan.application.BuildableView;
 import com.devpilot.plan.application.MilestoneView;
 import com.devpilot.plan.application.PlanCommandService;
 import com.devpilot.plan.application.PlanQueryService;
@@ -35,9 +37,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 학습 계획 (docs/05 §7.2~§7.9). {@code /plans/active}·{@code /plans/active/budget}은 리터럴 경로라 {@code
- * /plans/{planId}}보다 먼저 매칭된다. 타 사용자 plan은 404 {@code PLAN_NOT_FOUND}다. replan preview는 저장하지 않으므로
- * {@code Idempotency-Key}가 선택이다. {@code POST /plans}는 Later(BL-GOL-16)다.
+ * 학습 계획 (docs/05 §7.2~§7.9). {@code /plans/active}·{@code /plans/active/budget}·{@code
+ * /plans/active/buildable}은 리터럴 경로라 {@code /plans/{planId}}보다 먼저 매칭된다. 타 사용자 plan은 404 {@code
+ * PLAN_NOT_FOUND}다. replan preview는 저장하지 않으므로 {@code Idempotency-Key}가 선택이다. {@code POST /plans}는
+ * Later(BL-GOL-16)다.
  */
 @RestController
 @RequestMapping("/api/v1/plans")
@@ -48,6 +51,7 @@ public class PlanController {
     private final PlanCommandService planCommandService;
     private final ReplanService replanService;
     private final StudyBudgetService studyBudgetService;
+    private final BuildableStepService buildableStepService;
     private final IdempotencyService idempotencyService;
 
     public PlanController(
@@ -55,11 +59,13 @@ public class PlanController {
             PlanCommandService planCommandService,
             ReplanService replanService,
             StudyBudgetService studyBudgetService,
+            BuildableStepService buildableStepService,
             IdempotencyService idempotencyService) {
         this.planQueryService = planQueryService;
         this.planCommandService = planCommandService;
         this.replanService = replanService;
         this.studyBudgetService = studyBudgetService;
+        this.buildableStepService = buildableStepService;
         this.idempotencyService = idempotencyService;
     }
 
@@ -99,6 +105,12 @@ public class PlanController {
     @Operation(operationId = "planGetActiveBudget")
     public BudgetView getActiveBudget(CurrentUser currentUser) {
         return studyBudgetService.budget(currentUser);
+    }
+
+    @GetMapping("/active/buildable")
+    @Operation(operationId = "planGetActiveBuildable")
+    public BuildableView getActiveBuildable(CurrentUser currentUser) {
+        return buildableStepService.buildable(currentUser);
     }
 
     /**

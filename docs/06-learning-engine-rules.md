@@ -1371,6 +1371,38 @@ AI 출력 파싱 직후 finding마다 순서대로 적용한다.
 - milestone 날짜는 `19-content-spec.md`의 **계획 템플릿 배치 알고리즘**으로 계산한다. `useTemplate=false`이면 milestone 없이 plan만 만든다.
 - plan title: 템플릿의 `planTitle`(예: `Java 백엔드 성장 계획`). `useTemplate=false`이면 같은 targetRole 템플릿의 `planTitle`을 제목으로만 쓴다
 
+### 11.4 지금 만들 수 있는 것 (`BuildableStepEvaluator`)
+
+milestone은 과목 순서가 아니라 **사이드 프로젝트를 만드는 순서**다(`19-content-spec.md` §3.4). 그래서 "오늘까지 배운 것으로 어디까지 만들 수 있나"는 milestone을 `sort_order`로 훑으며 답한다.
+
+- **관문 skill** = 그 milestone의 `plan_skill_target` 중 `deferred = false`이고 `priority = MUST`인 것. MUST가 하나도 없으면 SHOULD로, 둘 다 없으면 관문이 없다(§11.4 BS-1). 대시보드 타임라인이 단계 완료를 보는 방식과 같다(ADR-044).
+- **닿음 판정은 근거 레벨(`user_skill_state`의 `*_level`)로만 한다.** 자기평가로 올라간 계획 레벨(§7.5)은 세지 않는다 — 이 화면은 "안다고 답한 것"이 아니라 "직접 해본 기록"에 답한다(ADR-060). 그래서 대시보드 타임라인의 "지금 단계"와 다를 수 있고, **그 차이가 이 화면이 하는 말이다.**
+- `shortfall(skill) = Σ_axis max(0, target_axis − evidence_axis)`. 근거가 없는 skill은 4축 0으로 본다.
+- 단계 상태:
+
+| 상태 | 조건 |
+|---|---|
+| `BUILDABLE` | 관문 skill이 모두 `shortfall = 0` |
+| `NEXT` | `BUILDABLE`이 아닌 단계 중 `sort_order`가 가장 앞선 하나. 한 계획에 최대 하나다 |
+| `NOT_YET` | 그 밖 |
+
+- 모자란 skill 목록은 `shortfall` DESC, 같으면 `skill_code` ASC, **최대 5개**다. 다 늘어놓으면 무엇부터 할지가 안 보인다.
+
+**Test vectors**
+
+| ID | 입력 | 기대 |
+|---|---|---|
+| BS-1 | 관문 skill 0개인 단계 | `BUILDABLE`, `gateCount = 0` |
+| BS-2 | MUST 2개, 둘 다 근거 = 목표 | `BUILDABLE`, `metCount = 2` |
+| BS-3 | MUST 2개 중 하나가 `debugging` 1칸 부족 | `NEXT`, `metCount = 1`, gap 1개 |
+| BS-4 | 1단계 미달, 2단계 충족 | 1단계 `NEXT`, 2단계 `BUILDABLE` |
+| BS-5 | 1·2단계 모두 미달 | 1단계 `NEXT`, 2단계 `NOT_YET` |
+| BS-6 | MUST 없음, SHOULD 1개 미달 | `NEXT`, `gateCount = 1` |
+| BS-7 | MUST 1개 `deferred = true`, SHOULD 1개 | 미룬 것이 관문에서 빠지고 SHOULD가 관문이 된다, `gateCount = 1` |
+| BS-8 | 근거 행이 없는 MUST 1개, 목표 4축 3 | `NEXT`, `shortfall = 12` |
+| BS-9 | 미달 6개 | gap은 5개까지, `shortfall` DESC·code ASC |
+| BS-10 | 근거 0, 자기평가 3으로 계획 레벨만 충족 | `NEXT` — 자기평가는 세지 않는다 |
+
 ---
 
 ## 12. 지표 (`MetricsCalculator`)

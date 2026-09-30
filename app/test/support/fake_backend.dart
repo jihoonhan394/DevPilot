@@ -7,6 +7,7 @@ import 'package:devpilot_app/features/onboarding/data/onboarding_repository.dart
 import 'package:devpilot_app/features/plan/data/learning_goal_models.dart';
 import 'package:devpilot_app/features/plan/data/learning_goal_repository.dart';
 import 'package:devpilot_app/features/plan/data/plan_budget_models.dart';
+import 'package:devpilot_app/features/plan/data/plan_buildable_models.dart';
 import 'package:devpilot_app/features/plan/data/plan_models.dart';
 import 'package:devpilot_app/features/plan/data/plan_repository.dart';
 import 'package:devpilot_app/features/project/data/side_project_models.dart';
@@ -273,6 +274,10 @@ class FakePlanRepository implements PlanRepository {
   final budgetFailures = <ApiException>[];
   var budgetFetchCount = 0;
 
+  BuildableView buildable = testBuildable();
+  final buildableFailures = <ApiException>[];
+  var buildableFetchCount = 0;
+
   /// Answers every preview; defaults to a HIGH-risk shrink preview.
   ReplanPreviewResponse Function(ReplanRequest request) previewResponder = (_) =>
       testShrinkPreview();
@@ -287,6 +292,16 @@ class FakePlanRepository implements PlanRepository {
       throw failure;
     }
     return budget;
+  }
+
+  @override
+  Future<BuildableView> fetchActiveBuildable() async {
+    buildableFetchCount++;
+    final failure = _next(buildableFailures);
+    if (failure != null) {
+      throw failure;
+    }
+    return buildable;
   }
 
   @override

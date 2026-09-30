@@ -955,6 +955,24 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - plan
+  /api/v1/plans/active/buildable:
+    get:
+      operationId: planGetActiveBuildable
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuildableView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - plan
   /api/v1/plans/{planId}:
     get:
       operationId: planGet
@@ -2556,6 +2574,98 @@ components:
       - requiredMustMinutes
       - requiredShouldMinutes
       - riskLevel
+      - today
+    BuildableGapView:
+      type: object
+      properties:
+        evidenceLevels:
+          $ref: "#/components/schemas/AxisLevels"
+        skill:
+          $ref: "#/components/schemas/SkillRef"
+        targets:
+          $ref: "#/components/schemas/AxisLevels"
+      required:
+      - evidenceLevels
+      - skill
+      - targets
+    BuildableStepView:
+      type: object
+      properties:
+        description:
+          type: string
+        endDate:
+          type: string
+          format: date
+        gaps:
+          type: array
+          items:
+            $ref: "#/components/schemas/BuildableGapView"
+        gateSkillCount:
+          type: integer
+          format: int32
+        metSkillCount:
+          type: integer
+          format: int32
+        milestoneId:
+          type: string
+          format: uuid
+        sortOrder:
+          type: integer
+          format: int32
+        startDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum:
+          - BUILDABLE
+          - NEXT
+          - NOT_YET
+        title:
+          type: string
+      required:
+      - description
+      - endDate
+      - gaps
+      - gateSkillCount
+      - metSkillCount
+      - milestoneId
+      - sortOrder
+      - startDate
+      - status
+      - title
+    BuildableView:
+      type: object
+      properties:
+        buildableStepCount:
+          type: integer
+          format: int32
+        nextStepId:
+          type: string
+          format: uuid
+        planId:
+          type: string
+          format: uuid
+        planVersion:
+          type: integer
+          format: int32
+        stepCount:
+          type: integer
+          format: int32
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/BuildableStepView"
+        today:
+          type: string
+          format: date
+      required:
+      - buildableStepCount
+      - nextStepId
+      - planId
+      - planVersion
+      - stepCount
+      - steps
       - today
     BuiltItemView:
       type: object

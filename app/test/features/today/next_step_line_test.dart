@@ -81,4 +81,14 @@ void main() {
 
     expect(find.byKey(const Key('today.firstRun')), findsOneWidget);
   });
+
+  /// "그래서 지금 뭘 만들 수 있나"는 한 줄이다 — 카드로 두면 오늘 할 일과 같은 무게가 된다 (SCR-BUILDABLE).
+  testWidgets('shouldOfferOneLineAboutWhatCanBeBuiltNow', (tester) async {
+    backend.todayRepository.today = testTodayView(mainTask: testMainTask());
+    await pumpApp(tester, backend: backend);
+
+    await tapKey(tester, 'today.buildableLine');
+
+    expect(locationOf(tester), '/plan/buildable');
+  });
 }

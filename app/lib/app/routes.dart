@@ -57,6 +57,9 @@ abstract final class AppRoutes {
   static const replan = '/plan/replan';
   static const learningGoal = '/plan/goal';
   static const planVersions = '/plan/versions';
+
+  /// SCR-BUILDABLE (docs/02 §3.21): 만드는 순서 중 어디까지 만들 수 있나.
+  static const buildable = '/plan/buildable';
   static const skills = '/skills';
   static const projects = '/projects';
 
@@ -232,6 +235,7 @@ enum RouteAccess {
     AppRoutes.replan,
     AppRoutes.learningGoal,
     AppRoutes.planVersions,
+    AppRoutes.buildable,
     AppRoutes.skills,
     AppRoutes.projects,
     AppRoutes.more,

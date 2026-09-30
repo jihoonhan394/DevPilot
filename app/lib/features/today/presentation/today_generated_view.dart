@@ -8,6 +8,7 @@ import 'package:devpilot_app/core/widgets/badges.dart';
 import 'package:devpilot_app/core/widgets/screen_body.dart';
 import 'package:devpilot_app/features/today/data/today_models.dart';
 import 'package:devpilot_app/features/today/presentation/active_rubber_duck_tile.dart';
+import 'package:devpilot_app/features/today/presentation/buildable_line.dart';
 import 'package:devpilot_app/features/today/presentation/daily_tip_card.dart';
 import 'package:devpilot_app/features/today/presentation/main_task_card.dart';
 import 'package:devpilot_app/features/today/presentation/optional_section.dart';
@@ -56,6 +57,8 @@ class TodayGeneratedView extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           _ReviewTaskTile(task: review),
         ],
+        // 오늘 할 일과 곁가지 사이. 오늘 무엇을 하는지 본 다음에 "그래서 어디까지 왔나"가 온다
+        const BuildableLine(),
         // 여기부터는 곁가지다. 오늘의 핵심과 같은 무게로 보이면 무엇부터 할지 알 수 없다
         // (docs/02 SCR-TODAY "천천히 봐도 되는 것").
         //

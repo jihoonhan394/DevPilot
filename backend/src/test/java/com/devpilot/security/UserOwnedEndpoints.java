@@ -399,6 +399,7 @@ public final class UserOwnedEndpoints {
                 scoped("E14", HttpMethod.GET, "/api/v1/plans"),
                 scoped("E15", HttpMethod.GET, "/api/v1/side-projects"),
                 scoped("E19", HttpMethod.GET, "/api/v1/plans/active/budget"),
+                scoped("E83", HttpMethod.GET, "/api/v1/plans/active/buildable"),
                 scoped("E21", HttpMethod.GET, "/api/v1/today"),
                 scoped("E22", HttpMethod.GET, "/api/v1/learning-sessions"),
                 scoped("E23", HttpMethod.GET, "/api/v1/reviews/due"),

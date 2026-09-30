@@ -33,6 +33,11 @@ class PlanScreen extends ConsumerWidget {
         title: Semantics(header: true, child: Text(l10n.planTitle)),
         actions: [
           TextButton(
+            key: const Key('plan.buildableButton'),
+            onPressed: () => context.go(AppRoutes.buildable),
+            child: Text(l10n.buildablePlanLink),
+          ),
+          TextButton(
             key: const Key('plan.versionsButton'),
             onPressed: () => context.go(AppRoutes.planVersions),
             child: Text(l10n.planVersions),

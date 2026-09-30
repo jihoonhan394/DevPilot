@@ -1731,6 +1731,44 @@ public record MilestoneIdMappingView(UUID previousId, UUID newId) {}
 
 - 요청 시점에 `06-learning-engine-rules.md` §3, §4.1~§4.3으로 계산한다. 저장하지 않는다(저장은 `ProgressSnapshotJob`, replan, 온보딩). 제안은 포함하지 않는다(preview 사용).
 
+### 7.10 `GET /plans/active/buildable` — 지금 만들 수 있는 것
+
+| 항목 | 값 |
+|---|---|
+| operationId | `planGetActiveBuildable` |
+| 인증 / IK | Bearer / — |
+| 응답 | 200 `BuildableView` |
+| 오류 | 404 `PLAN_NOT_FOUND`(활성 plan 없음) |
+| Sprint · 요구사항 | S3 · FR-04 |
+
+- 활성 plan의 milestone을 **만드는 순서**(`sortOrder` ASC)로 늘어놓고, 각 단계를 여는 skill이 **근거 레벨**로 목표에 닿았는지 본다. 규칙은 `06-learning-engine-rules.md` §11.4다.
+- 자기평가로 올라간 계획 레벨은 세지 않는다(ADR-060). 대시보드 타임라인의 `current`(§13.1)와 다를 수 있다.
+- 요청 시점에 계산하고 저장하지 않는다. AI를 부르지 않는다.
+
+```json
+{
+  "planId": "9e2b1c7a-0f0e-4d7b-8e59-0c3e1f6b2a01",
+  "planVersion": 2,
+  "today": "2026-09-30",
+  "buildableStepCount": 1,
+  "stepCount": 9,
+  "nextStepId": "a2…",
+  "steps": [
+    { "milestoneId": "a1…", "title": "코어 도메인", "description": "주문 한 건을 받아 저장하고 돌려주는 자리를 만든다…",
+      "sortOrder": 0, "startDate": "2026-09-30", "endDate": "2026-10-25",
+      "status": "BUILDABLE", "metSkillCount": 12, "gateSkillCount": 12, "gaps": [] },
+    { "milestoneId": "a2…", "title": "인증과 권한", "description": "사람이 쓰는 로그인과 시스템이 쓰는 연동 인증을 나눠서 만든다…",
+      "sortOrder": 1, "startDate": "2026-10-26", "endDate": "2026-12-06",
+      "status": "NEXT", "metSkillCount": 6, "gateSkillCount": 9,
+      "gaps": [
+        { "skill": { "id": "…", "code": "SPRING.SECURITY", "name": "Spring Security", "category": "SPRING" },
+          "evidenceLevels": { "knowledge": 1, "implementation": 0, "explanation": 0, "debugging": 0 },
+          "targets": { "knowledge": 4, "implementation": 4, "explanation": 3, "debugging": 3 } }
+      ] }
+  ]
+}
+```
+
 ---
 
 ## 8. Today 모듈

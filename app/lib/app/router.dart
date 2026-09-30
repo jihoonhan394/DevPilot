@@ -17,6 +17,7 @@ import 'package:devpilot_app/features/onboarding/presentation/onboarding_level_s
 import 'package:devpilot_app/features/onboarding/presentation/onboarding_plan_screen.dart';
 import 'package:devpilot_app/features/onboarding/presentation/onboarding_project_screen.dart';
 import 'package:devpilot_app/features/onboarding/presentation/onboarding_time_screen.dart';
+import 'package:devpilot_app/features/plan/presentation/buildable_screen.dart';
 import 'package:devpilot_app/features/plan/presentation/learning_goal_controller.dart';
 import 'package:devpilot_app/features/plan/presentation/learning_goal_screen.dart';
 import 'package:devpilot_app/features/plan/presentation/plan_history_screen.dart';
@@ -145,6 +146,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 onExit: (context, state) =>
                     confirmLeave(context, learningGoalHasUnsavedChangesProvider),
                 builder: (context, state) => const LearningGoalScreen(),
+              ),
+              GoRoute(
+                path: 'buildable',
+                builder: (context, state) => const BuildableScreen(),
               ),
               GoRoute(
                 path: 'versions',

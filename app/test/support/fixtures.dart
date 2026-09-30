@@ -1,6 +1,7 @@
 import 'package:devpilot_app/core/api/api_enums.dart';
 import 'package:devpilot_app/core/api/common_models.dart';
 import 'package:devpilot_app/features/plan/data/learning_goal_models.dart';
+import 'package:devpilot_app/features/plan/data/plan_buildable_models.dart';
 import 'package:devpilot_app/features/plan/data/plan_models.dart';
 import 'package:devpilot_app/features/project/data/side_project_models.dart';
 import 'package:devpilot_app/features/settings/data/me_response.dart';
@@ -16,6 +17,7 @@ const previousPlanId = '4b7d1c7a-0f0e-4d7b-8e59-0c3e1f6b2a00';
 const milestoneFoundationId = 'a1000000-0000-4000-8000-000000000001';
 const milestoneAuthId = 'a1000000-0000-4000-8000-000000000002';
 const milestoneOrderId = 'a1000000-0000-4000-8000-000000000003';
+const buildableGapSkillId = 'b1000000-0000-4000-8000-000000000001';
 
 MeResponse testMe({
   bool onboardingCompleted = true,
@@ -115,6 +117,93 @@ PlanView testPlan({
   createdAt: testInstant,
   supersededAt: null,
   version: version,
+);
+
+/// `GET /plans/active/buildable`: step 1 buildable, step 2 the one to build now.
+BuildableView testBuildable({
+  List<BuildableStepView>? steps,
+  String? nextStepId = milestoneAuthId,
+  int buildableStepCount = 1,
+}) => BuildableView(
+  planId: planId,
+  planVersion: 1,
+  today: '2026-10-05',
+  buildableStepCount: buildableStepCount,
+  stepCount: steps?.length ?? 3,
+  nextStepId: nextStepId,
+  steps:
+      steps ??
+      [
+        testBuildableStep(
+          milestoneId: milestoneFoundationId,
+          title: '기반 다지기',
+          sortOrder: 0,
+          status: BuildableStatus.buildable,
+          metSkillCount: 4,
+          gateSkillCount: 4,
+        ),
+        testBuildableStep(
+          milestoneId: milestoneAuthId,
+          title: '회원과 인증',
+          sortOrder: 1,
+          status: BuildableStatus.next,
+          metSkillCount: 1,
+          gateSkillCount: 3,
+          gaps: [
+            testBuildableGap('SPRING.SECURITY', 'Spring Security', SkillCategory.spring),
+            testBuildableGap('WEB_HTTP.CORS', 'CORS', SkillCategory.webHttp),
+          ],
+        ),
+        testBuildableStep(
+          milestoneId: milestoneOrderId,
+          title: '주문 생성',
+          sortOrder: 2,
+          status: BuildableStatus.notYet,
+          metSkillCount: 0,
+          gateSkillCount: 2,
+          gaps: [
+            testBuildableGap('SPRING.TRANSACTION', 'Spring Transaction', SkillCategory.spring),
+          ],
+        ),
+      ],
+);
+
+BuildableStepView testBuildableStep({
+  required String milestoneId,
+  required String title,
+  required int sortOrder,
+  required BuildableStatus status,
+  required int metSkillCount,
+  required int gateSkillCount,
+  String? description = '이 단계에서 무엇을 만드는지 적어 둔 안내.',
+  List<BuildableGapView> gaps = const [],
+}) => BuildableStepView(
+  milestoneId: milestoneId,
+  title: title,
+  description: description,
+  sortOrder: sortOrder,
+  startDate: '2026-09-01',
+  endDate: '2026-09-30',
+  status: status,
+  metSkillCount: metSkillCount,
+  gateSkillCount: gateSkillCount,
+  gaps: gaps,
+);
+
+BuildableGapView testBuildableGap(
+  String code,
+  String name,
+  SkillCategory category, {
+  String id = buildableGapSkillId,
+}) => BuildableGapView(
+  skill: SkillRef(id: id, code: code, name: name, category: category),
+  evidenceLevels: const AxisLevels(
+    knowledge: 1,
+    implementation: 0,
+    explanation: 0,
+    debugging: 0,
+  ),
+  targets: const AxisLevels(knowledge: 4, implementation: 4, explanation: 3, debugging: 3),
 );
 
 PlanSummaryView testPlanSummary({
