@@ -1359,13 +1359,16 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 
 **점검 기록**
 
-2026-10-01 — 용어 `sourceUrl` 점검 (catalogVersion 67)
+2026-10-01 — 링크·버전 점검 (catalogVersion 67 → 68)
 
 | 항목 | 내용 |
 |---|---|
-| 대상 | `terms/*.yaml`의 `sourceUrl` 24건(서로 다른 URL 20개). 지금까지 호스트만 검사했고 실제로 열어 보지 않았다 |
-| 고친 것 | `TERM.DATABASE.N_PLUS_ONE`·`TERM.DATABASE.PERSISTENCE_CONTEXT`의 `https://hibernate.org/orm/documentation/7.0/` → **User Guide 본문**(`docs.hibernate.org/orm/7.0/userguide/…`). 앞의 것은 살아 있지만 링크 모음이고, 뜻이 적힌 자리가 아니었다(§7.6 2번). `docs.hibernate.org`를 신뢰 호스트에 더했다 |
-| 남은 것 | 나머지 18개 URL은 호스트와 경로 형태로만 확인했다. 다음 점검에서 하나씩 연다 |
+| 대상 | `terms/*.yaml`의 `sourceUrl` 24건과, 그 과정에서 드러난 **콘텐츠 전체의 버전 표기** |
+| 용어 링크 | `TERM.DATABASE.N_PLUS_ONE`·`TERM.DATABASE.PERSISTENCE_CONTEXT` → Hibernate **User Guide 본문**(`docs.hibernate.org/orm/7.0/userguide/…`). 앞의 것은 살아 있지만 링크 모음이라 뜻이 적힌 자리가 아니었다(§7.6 2번). `TERM.TESTING.ASSERTION` → `junit.org/junit5/…`가 **301**로 `docs.junit.org/current/…`에 넘긴다. 새 주소로 바꿨다 |
+| **Java 21 → 25** | 콘텐츠의 Oracle 문서 링크 **17건이 `javase/21`을 가리키고 있었다.** 프로젝트는 Java 25다(AGENTS.md §0). `javase/25`에 같은 페이지가 있는 것을 확인하고 전부 옮겼다 |
+| **JUnit 5 → 6** | `testRuntimeClasspath`가 실제로 푸는 것은 **JUnit Jupiter 6.0.3**이다. "JUnit 5"라고 적힌 문제 조건 3건을 고치고, skill 표시 이름 `JUnit 5·AssertJ` → `JUnit·AssertJ`로 바꿔 버전을 이름에서 뺐다 |
+| 확인한 방법 | 링크를 실제로 열어 내용을 봤다. 신뢰 호스트 판정은 접미사 비교라(`validate_content.py:216`) `docs.junit.org`·`docs.hibernate.org`는 이미 허용 범위 안이다 — allowlist를 건드릴 필요가 없었다 |
+| 남은 것 | PostgreSQL 16·Spring·RFC 9110·OWASP·Docker·git-scm 링크는 호스트와 경로 형태로만 확인했다. 다음 점검에서 연다 |
 
 2026-09-19 — 첫 점검 (S3 구현 시작 전, catalogVersion 4 → 5)
 
@@ -1510,11 +1513,11 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 
 ---
 
-## 12. 콘텐츠 인벤토리 (catalogVersion 67)
+## 12. 콘텐츠 인벤토리 (catalogVersion 68)
 
 ### 12.1 카테고리별 수량
 
-`--report` 출력(2026-10-01, catalogVersion 67). skills는 root 포함. challenge는 첫 번째 skill의 category로 센다. **이 표는 `python content/tools/validate_content.py --report`의 출력을 그대로 옮긴 것이다** — 손으로 고치지 말고 다시 돌려 붙인다.
+`--report` 출력(2026-10-01, catalogVersion 68). skills는 root 포함. challenge는 첫 번째 skill의 category로 센다. **이 표는 `python content/tools/validate_content.py --report`의 출력을 그대로 옮긴 것이다** — 손으로 고치지 말고 다시 돌려 붙인다.
 
 | category | skills | MUST | SHOULD | LATER | cards | PRACTICE | DIAGNOSTIC |
 |---|---|---|---|---|---|---|---|

@@ -170,7 +170,7 @@ challenges:
 
     힌트 없이 10분 안에 답하세요. 진단 결과는 학습 계획의 시작 수준을 정하는 데만 쓰입니다.'
   constraints:
-  - JUnit 5 · Mockito 기준으로 답한다
+  - JUnit 6 · Mockito 기준으로 답한다
   expectedConcepts:
   - 호출 확인과 결과 확인
   - 상태 기반 검증

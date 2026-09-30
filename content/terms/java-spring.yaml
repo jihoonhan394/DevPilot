@@ -92,5 +92,5 @@ terms:
     confusableWith: []
     skillCodes: [TESTING.JUNIT, TESTING.UNIT_TEST_DESIGN]
     level: BASIC
-    sourceUrl: https://junit.org/junit5/docs/current/user-guide/
+    sourceUrl: https://docs.junit.org/current/user-guide/
     retired: false

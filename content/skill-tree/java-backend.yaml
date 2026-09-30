@@ -409,7 +409,7 @@ skills:
     category: TESTING
     description: 변경을 안전하게 만드는 자동화 테스트 작성과 설계.
   - code: TESTING.JUNIT
-    name: JUnit 5·AssertJ
+    name: JUnit·AssertJ
     category: TESTING
     parent: TESTING
     description: JUnit Jupiter와 AssertJ로 읽기 쉬운 단위 테스트와 파라미터화 테스트를 작성한다.

@@ -881,13 +881,13 @@ lessons:
       골든을 갱신할 때는 diff를 줄마다 읽고 커밋 본문에 왜 달라졌는지 적는다 —
       그 diff가 그 변경의 영향 범위를 가장 정확히 보여 주는 문서다.
     sources:
-      - title: JUnit 5 User Guide — Writing Tests
+      - title: JUnit User Guide — Writing Tests
         url: https://docs.junit.org/current/user-guide/
-        versionScope: JUnit 5/6
+        versionScope: JUnit 6 (현재 문서). 5.x 와 내용이 이어진다
       - title: PostgreSQL 16 — SELECT (ORDER BY)
         url: https://www.postgresql.org/docs/16/sql-select.html
         versionScope: PostgreSQL 16
       - title: Java SE API — java.nio.file.Files
-        url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/file/Files.html
-        versionScope: Java SE 21+
+        url: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/nio/file/Files.html
+        versionScope: Java SE 25+
     verifiedAt: 2026-09-25

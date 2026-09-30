@@ -480,12 +480,12 @@ lessons:
       테스트를 쓴 뒤에는 구현을 한 칸 망가뜨려 빨강이 되는지 확인한다.
       빨강이 안 되면 그 테스트는 아직 아무것도 지키지 않는다.
     sources:
-      - title: JUnit 5 User Guide — Writing Tests
+      - title: JUnit User Guide — Writing Tests
         url: https://docs.junit.org/current/user-guide/
-        versionScope: JUnit 5/6
+        versionScope: JUnit 6 (현재 문서). 5.x 와 내용이 이어진다
       - title: Java SE API — java.time.Clock
-        url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/time/Clock.html
-        versionScope: Java SE 21+
+        url: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/time/Clock.html
+        versionScope: Java SE 25+
       - title: Spring Boot — Testing
         url: https://docs.spring.io/spring-boot/reference/testing/index.html
         versionScope: Spring Boot 3.x+
@@ -934,9 +934,9 @@ lessons:
       진짜의 제약(없는 id는 빈 값, 중복 키는 예외)을 넣어 둔다.
       테스트당 `verify`는 0~1개를 넘지 않게 하고, 넘으면 결과로 바꿀 수 있는지 먼저 본다.
     sources:
-      - title: JUnit 5 User Guide — Writing Tests
+      - title: JUnit User Guide — Writing Tests
         url: https://docs.junit.org/current/user-guide/
-        versionScope: JUnit 5/6
+        versionScope: JUnit 6 (현재 문서). 5.x 와 내용이 이어진다
       - title: Spring Boot — Testing
         url: https://docs.spring.io/spring-boot/reference/testing/index.html
         versionScope: Spring Boot 3.x+

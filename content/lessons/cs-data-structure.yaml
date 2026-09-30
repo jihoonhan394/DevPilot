@@ -459,12 +459,12 @@ lessons:
         url: https://docs.oracle.com/javase/tutorial/collections/implementations/index.html
         versionScope: Java SE
       - title: Java SE API — java.util.HashMap
-        url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/HashMap.html
-        versionScope: Java SE 21+
+        url: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/HashMap.html
+        versionScope: Java SE 25+
       - title: Java SE API — java.util.TreeMap
-        url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/TreeMap.html
-        versionScope: Java SE 21+
+        url: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/TreeMap.html
+        versionScope: Java SE 25+
       - title: Java SE API — java.util.PriorityQueue
-        url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/PriorityQueue.html
-        versionScope: Java SE 21+
+        url: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/PriorityQueue.html
+        versionScope: Java SE 25+
     verifiedAt: 2026-09-25

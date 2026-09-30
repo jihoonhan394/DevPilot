@@ -254,7 +254,7 @@ devpilot:
       RUBBER_DUCK:             { mode: SYNC,  thinking: false, max-tokens: 1500,  timeout: 20s,  max-retries: 0, input-token-budget: 6000 }
       RUBBER_DUCK_SUMMARY:     { mode: SYNC,  thinking: true,  reasoning-effort: low, max-tokens: 4000, timeout: 30s, max-retries: 0, input-token-budget: 8000 }
       LESSON_REEXPLAIN:        { mode: SYNC,  thinking: false, max-tokens: 2000,  timeout: 20s,  max-retries: 0, input-token-budget: 3000 }   # ADR-047
-    trusted-source-hosts: [docs.spring.io, spring.io, docs.oracle.com, openjdk.org, www.postgresql.org, owasp.org, cheatsheetseries.owasp.org, www.kisa.or.kr, supabase.com, dart.dev, docs.flutter.dev, api.flutter.dev, pmd.github.io, spotbugs.readthedocs.io, checkstyle.org, junit.org, hibernate.org, docs.hibernate.org, docs.jboss.org, developer.mozilla.org, www.rfc-editor.org, git-scm.com, spec.openapis.org, docs.gradle.org, man7.org, docs.docker.com, docs.github.com, kubernetes.io, docs.aws.amazon.com]
+    trusted-source-hosts: [docs.spring.io, spring.io, docs.oracle.com, openjdk.org, www.postgresql.org, owasp.org, cheatsheetseries.owasp.org, www.kisa.or.kr, supabase.com, dart.dev, docs.flutter.dev, api.flutter.dev, pmd.github.io, spotbugs.readthedocs.io, checkstyle.org, junit.org, hibernate.org, docs.jboss.org, developer.mozilla.org, www.rfc-editor.org, git-scm.com, spec.openapis.org, docs.gradle.org, man7.org, docs.docker.com, docs.github.com, kubernetes.io, docs.aws.amazon.com]
     curated-sources-location: classpath:content/curated-sources.yaml
     pricing:                    # USD / 1M tokens, 2026-09-18 확인
       peak-multiplier: 2        # 결정 F: 시각과 무관하게 항상 곱한다

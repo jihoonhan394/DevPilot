@@ -424,9 +424,9 @@ lessons:
         url: https://docs.oracle.com/javase/tutorial/collections/streams/index.html
         versionScope: Java SE
       - title: Java SE API — java.util.stream
-        url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/stream/package-summary.html
-        versionScope: Java SE 21+
+        url: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/stream/package-summary.html
+        versionScope: Java SE 25+
       - title: Java SE API — java.util.stream.Collectors
-        url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/stream/Collectors.html
-        versionScope: Java SE 21+
+        url: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/stream/Collectors.html
+        versionScope: Java SE 25+
     verifiedAt: 2026-09-24
