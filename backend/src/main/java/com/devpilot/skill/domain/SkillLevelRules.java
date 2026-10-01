@@ -37,6 +37,16 @@ public final class SkillLevelRules {
 
     private static final int MAX_EVIDENCE_EVENT_IDS = 10;
     private static final int RECALL_FAIL_WINDOW_DAYS = 14;
+
+    /** §7.5 {@code selfCap} 상한. */
+    private static final int MAX_CLAIM_CAP = 3;
+
+    /** 주장한 수준 아래에서 몇 번 막히면 주장을 거두나 (§7.3 {@code I_DOWN_CLAIM_UNSUPPORTED}). */
+    private static final int CLAIM_FAIL_COUNT = 2;
+
+    /** 진단 challenge의 {@code purpose}. 진단은 §7.4가 따로 본다. */
+    private static final String DIAGNOSTIC_PURPOSE = "DIAGNOSTIC";
+
     private static final int E2_COVERAGE_BP = 4_000;
     private static final int E3_COVERAGE_BP = 7_000;
     private static final int E4_COVERAGE_BP = 8_000;
@@ -56,7 +66,7 @@ public final class SkillLevelRules {
             return diagnosticOutcome(input, diagnostic);
         }
         List<LevelChange> changes = new ArrayList<>();
-        boolean deactivate = false;
+        boolean deactivate = claimUnsupported(input);
         for (SkillAxis axis : SkillAxis.values()) {
             LevelChange down = decline(input, axis);
             if (down != null) {
@@ -112,6 +122,41 @@ public final class SkillLevelRules {
     }
 
     // ---------------------------------------------------------------- 하락 (§7.3)
+
+    /**
+     * {@code I_DOWN_CLAIM_UNSUPPORTED} (§7.3, ADR-063): 주장한 수준 <b>아래</b>에서 연달아 막히면 레벨을 내리는 대신
+     * <b>안다는 주장을 거둔다</b> — 증거가 아니라 주장이 틀린 것이기 때문이다(§7.4 {@code DIAGNOSTIC_FAILED}와 같은 이유).
+     *
+     * <p>다른 하락 규칙은 근거 레벨이 3 이상일 때만 발동한다. 그래서 자기평가만 높고 근거가 0인 사람에게는 <b>어떤 하락 규칙도 걸리지 않았고</b>, 확인 문제를
+     * 건너뛰면 예산이 영원히 낙관적으로 남았다. 이 규칙이 그 문을 하나 더 만든다.
+     *
+     * <p>난이도는 {@code planning + 1}로 <b>일부러</b> 한 단계 위를 낸다(§5.3). 그 문제를 틀리는 것은 설계가 작동하는 중이므로 세지 않는다.
+     * {@code difficulty <= claimCap}, 즉 <b>주장한 수준에서</b> 막힌 것만 센다.
+     *
+     * <p>진단은 세지 않는다 — {@code DIAGNOSTIC_FAILED}가 이미 같은 일을 한다(§7.4).
+     */
+    private boolean claimUnsupported(RuleInput input) {
+        int claimCap = input.selfAssessment().claimCap();
+        if (claimCap < 1) {
+            return false;
+        }
+        List<RuleEvent> attempts =
+                take(
+                        input.events(),
+                        event -> isClaimLevelAttempt(event, claimCap),
+                        CLAIM_FAIL_COUNT);
+        // 가장 최근 둘이 모두 실패여야 한다 — 사이에 성공이 있으면 둘 중 하나가 성공이므로 발동하지 않는다
+        return attempts.size() == CLAIM_FAIL_COUNT
+                && attempts.stream().allMatch(event -> "FAILED".equals(event.text("outcome")));
+    }
+
+    private static boolean isClaimLevelAttempt(RuleEvent event, int claimCap) {
+        Integer difficulty = event.number("difficulty");
+        return event.eventType() == LearningEventType.CHALLENGE_EVALUATED
+                && !DIAGNOSTIC_PURPOSE.equals(event.text("purpose"))
+                && difficulty != null
+                && difficulty <= claimCap;
+    }
 
     private @Nullable LevelChange decline(RuleInput input, SkillAxis axis) {
         return switch (axis) {
@@ -773,11 +818,44 @@ public final class SkillLevelRules {
             @Nullable UUID triggerEventId,
             Map<SkillAxis, Instant> changedAt,
             LocalDate today,
-            Instant now) {
+            Instant now,
+            SelfAssessment selfAssessment) {
 
         public RuleInput {
             events = List.copyOf(events);
             changedAt = Map.copyOf(changedAt);
+        }
+
+        /** 자기평가를 보지 않는 입력. §7.3 {@code I_DOWN_CLAIM_UNSUPPORTED}만 이 값을 쓴다. */
+        public RuleInput(
+                AxisLevels current,
+                List<RuleEvent> events,
+                @Nullable UUID triggerEventId,
+                Map<SkillAxis, Instant> changedAt,
+                LocalDate today,
+                Instant now) {
+            this(current, events, triggerEventId, changedAt, today, now, SelfAssessment.none());
+        }
+    }
+
+    /**
+     * 사용자가 스스로 말한 수준 (docs/06 §7.5).
+     *
+     * @param level {@code self_assessed_level}. 자기평가하지 않은 skill이면 null
+     * @param active {@code self_assessment_active}. 이미 꺼졌으면 거둘 주장이 없다
+     */
+    public record SelfAssessment(@Nullable Integer level, boolean active) {
+
+        public static SelfAssessment none() {
+            return new SelfAssessment(null, false);
+        }
+
+        /** 주장한 수준의 상한 (§7.5 {@code selfCap}). 주장이 없거나 꺼졌거나 0이면 비어 있다 — 0을 주장한 사람에게는 거둘 주장이 없다. */
+        int claimCap() {
+            if (!active || level == null) {
+                return 0;
+            }
+            return Math.min(level, MAX_CLAIM_CAP);
         }
     }
 

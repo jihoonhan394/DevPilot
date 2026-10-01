@@ -1049,8 +1049,34 @@ RV-INTERLEAVE(list)                      # list = 1~2단계 결과, 0-based, 무
 | `K_DOWN_RECALL_FAIL` | KNOWLEDGE ≥ 3 이고, 해당 skill의 가장 최근 `REVIEW_ANSWERED` 2개가 모두 finalRating = AGAIN이며 둘 다 최근 14 plan-day 안 | KNOWLEDGE −1 (하한 2) |
 | `I_DOWN_TRANSFER_FAIL` | IMPLEMENTATION ≥ 3 이고, 방금 기록된 이벤트가 `CHALLENGE_EVALUATED` isTransfer = true, outcome = FAILED | IMPLEMENTATION −1 (하한 2) |
 | `D_DOWN_REPEATED_MISS` | DEBUGGING ≥ 2 이고, 같은 axis의 가장 최근 `COACH_FINDING_CLOSED` 3개가 모두 discoveredBy = MISSED | DEBUGGING −1 (하한 1) |
+| `I_DOWN_CLAIM_UNSUPPORTED` | `self_assessment_active` 이고 `claimCap = min(self_assessed_level, 3) ≥ 1`. 그 skill의 `CHALLENGE_EVALUATED` 중 **purpose ≠ DIAGNOSTIC 이고 difficulty ≤ claimCap**인 가장 최근 2개가 **모두 outcome = FAILED** | 레벨 변경 없음, `self_assessment_active = false` |
 
 하락 규칙이 적용되면 `self_assessment_active = false`로 바꾼다.
+
+**`I_DOWN_CLAIM_UNSUPPORTED` (ADR-063)**
+
+위의 세 규칙은 **근거 레벨이 3 이상**(D는 2)일 때만 발동한다. 그래서 자기평가만 높고 근거가 0인 사람에게는 **어떤 하락 규칙도 걸리지 않았고**, §7.4 진단은 선택이라 건너뛰면 §7.5의 `selfCap`이 영원히 남았다. 그 결과 난이도는 주장한 수준에서 나오는데(§5.3 `d = planning I + 1`) 예산(§3·§4)과 도달 가능 날짜(§3.4)는 낙관적으로 고정됐다 — **어려운 문제 + 거짓 안심**이다.
+
+- **레벨을 내리지 않고 주장만 거둔다.** 근거는 이미 0이라 내릴 것이 없다. `self_assessment_active`가 꺼지면 §7.5가 planning을 근거로 떨어뜨리고, 난이도가 내려가고 예산이 정직해진다. `DIAGNOSTIC_FAILED`와 같은 이유다(§7.4) — 증거가 아니라 **주장**이 틀린 것이다.
+- **주장한 수준에서 막힌 것만 센다.** §5.3이 난이도를 일부러 한 단계 위로 내므로, `difficulty = claimCap + 1`을 틀리는 것은 설계가 작동하는 중이다. 그것까지 세면 모든 사용자의 자기평가가 첫날 꺼진다.
+- **가장 최근 2개**를 본다(`K_DOWN_RECALL_FAIL`과 같은 방식). 사이에 성공이 있으면 둘 중 하나가 성공이므로 발동하지 않는다 — 주장을 되살리는 별도 규칙이 필요 없다.
+- 1회가 아닌 이유: 한 번은 컨디션이거나 문제가 이상했을 수 있다. 주장한 수준 아래에서 연달아 두 번이면 컨디션이 아니다.
+- 윈도는 §7.1 `rule-window-days`를 그대로 쓴다(별도 윈도 없음).
+
+**Test vectors** (`claimCap`은 `min(self_assessed_level, 3)`)
+
+| ID | self (active) | 최근 `CHALLENGE_EVALUATED` (최신순) | 기대 |
+|---|---|---|---|
+| CU-1 | 2 (true) | d2 FAILED, d2 FAILED | 꺼진다 |
+| CU-2 | 2 (true) | d2 FAILED, d1 FAILED | 꺼진다 (둘 다 주장 수준 이하) |
+| CU-3 | 2 (true) | d3 FAILED, d3 FAILED | 그대로 (주장 수준 위 = 적정 난이도) |
+| CU-4 | 2 (true) | d2 FAILED, d2 SOLVED_INDEPENDENTLY | 그대로 (사이에 성공) |
+| CU-5 | 2 (true) | d2 FAILED | 그대로 (1회) |
+| CU-6 | 2 (**false**) | d2 FAILED, d2 FAILED | 그대로 (이미 꺼졌다) |
+| CU-7 | null (true) | d1 FAILED, d1 FAILED | 그대로 (거둘 주장이 없다) |
+| CU-8 | 0 (true) | d1 FAILED, d1 FAILED | 그대로 (`claimCap = 0`) |
+| CU-9 | 2 (true) | d2 FAILED(purpose=DIAGNOSTIC), d2 FAILED | 그대로 (진단은 §7.4가 본다 → 1회뿐) |
+| CU-10 | 5 (true) | d3 FAILED, d3 FAILED | 꺼진다 (`claimCap = 3`) |
 
 ### 7.4 진단 (예외 규칙)
 

@@ -26,6 +26,9 @@ import org.junit.jupiter.params.provider.MethodSource;
  * docs/06 §7.2 상승 규칙표·§7.3 하락 규칙표·§7.4 진단의 rule_code마다 조건을 만족하는 경우와 만족하지 않는 경우 (BL-SKL-04). §7.6
  * vector 표는 {@code SkillLevelRulesTest}가 따로 돌린다 — 여기서는 그 표가 다루지 않는 rule_code를 채운다.
  *
+ * <p>§7.3 {@code I_DOWN_CLAIM_UNSUPPORTED}는 자기평가를 입력으로 받으므로 {@code ClaimUnsupportedRuleTest}가 따로
+ * 돌린다 (CU-1~CU-10).
+ *
  * <p>규칙 입력은 payload뿐이므로(§7.1) 다른 축이 움직이지 않도록 현재 레벨과 payload를 골라 둔다. 변경 목록은 {@code SkillAxis} 선언
  * 순서(K, I, E, D)다.
  */

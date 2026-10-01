@@ -848,7 +848,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
   - `guide.pullsDateIn`은 격려가 아니라 계산이다. 완료율은 최근 28일의 실제/가능 비율이고(`06` §3.3), 그게 오르면 역산 날짜가 실제로 앞으로 온다.
   - `requiredMustLaterMinutes > 0`이면 `guide.laterHours`를 덧붙인다 — 아직 쌓을 방법이 없는 축의 몫이고(ADR-061), 위험도에는 들어가지 않는다.
   - **경고색을 쓰지 않는다.** `completionRateEstimated = true`면 완료율 자체가 추정값이다. 한 번도 해 보지 않은 사람에게 색으로 "늦었다"고 말할 근거가 없다.
-  - 그리고 `completionRateEstimated = true`면 `guide.fromSelfAssessment`를 덧붙인다 — **날짜가 자기평가 위에 서 있다고 말한다.** 예산은 계획 레벨(= 자기평가)로 계산하는데(`06` §7.5) 근거 레벨은 0일 수 있다. 그 사실을 숨기고 "목표일 안에 들어와요"라고만 하면 빨간 배지의 반대 방향 거짓말이 된다 — 그 말을 믿고 아무것도 안 하게 된다.
+  - 그리고 `completionRateEstimated = true`면 `guide.fromSelfAssessment`를 덧붙인다 — **날짜가 예상값이라고 말한다.** 예산은 계획 레벨(= 자기평가)로 계산하는데(`06` §7.5) 근거 레벨은 0일 수 있다. 그 사실을 숨기고 "목표일 안에 들어와요"라고만 하면 빨간 배지의 반대 방향 거짓말이 된다 — 그 말을 믿고 아무것도 안 하게 된다. **문구가 "자기평가"를 지목하지 않는 이유**: `completionRateEstimated`는 "기록이 2주를 넘지 않았다"는 뜻이고(`06` §3.3) ADR-063이 주장을 이미 거둔 뒤에도 참이다. 주장에 기대는지를 정확히 아는 값은 아직 응답에 없다. 그 줄 아래에 `guide.checkLevel` 버튼을 둔다 — 주장을 기록으로 바꾸는 문이 확인 문제고(ADR-063), 화면에 "(선택)"으로만 두면 안 누른다. 누르면 SCR-DIAGNOSTICS로 간다.
   - 예산을 못 읽으면 카드 전체를 숨긴다. 계획이 없는 사람에게 오류를 보여 줄 자리가 아니다(오류는 SCR-PLAN budget 카드가 맡는다).
 - **`whyItMatters` 줄** (S3): main 카드의 예상 시간 아래 한 줄이다. `MainTaskView.whyItMatters`(`05` §8.1)를 그대로 쓴다 — 서버가 응답을 만들 때 기술 트리 콘텐츠에서 읽은 값이므로 클라이언트가 조합하거나 다듬지 않는다. 라벨은 `today.whyItMatters`이고 최대 2줄까지 보인 뒤 말줄임한다. `null`(값이 없는 skill, skill 없는 과제)이면 줄 전체를 숨긴다. **"왜 오늘?"과 다르다** — "왜 오늘?"은 오늘 이 과제를 고른 이유(`reasons`)이고, 이 줄은 **그 기술을 왜 하는지**다. 두 영역을 나란히 두고 각각 제목을 붙인다(A-3).
 - **확인 목록 (S3)**: `MainTaskView.checklist`(`05` §8.1, 콘텐츠 `19` §3.11)가 있을 때만 보인다.
@@ -1123,7 +1123,8 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `guide.feasibleOnTime` | 지금 속도면 목표일 안에 들어와요. |
 | `guide.noDate` | 이 범위는 날짜를 늘려서 되는 게 아니에요. 필수 위주로 줄이면 길이 생겨요. |
 | `guide.pullsDateIn` | 하루씩 쌓으면 이 날짜가 당겨져요. 완료한 날이 늘면 계산에 들어가는 속도가 올라가요. |
-| `guide.fromSelfAssessment` | 아직 해 본 기록이 없어서 이 날짜는 자기평가 기준이에요. 한 번 풀어 보면 실제 기록으로 바뀌어요. |
+| `guide.fromSelfAssessment` | 기록이 아직 적어서 이 날짜는 예상이에요. 확인 문제를 풀면 지금 수준으로 다시 계산해요. |
+| `guide.checkLevel` | 확인 문제 풀어 보기 |
 | `guide.laterHours` | 코드 읽고 고치는 연습은 약 {hours}시간 몫이 더 있어요. 기록할 방법이 생기면 이 자리에 들어와요. |
 | `guide.shrink` | 줄이는 안 보기 |
 | `guide.changeDate` | 목표일 바꾸기 |

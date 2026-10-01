@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../support/fake_backend.dart';
 import '../../support/learning_fixtures.dart';
 import '../../support/test_app.dart';
+import '../../support/widget_actions.dart';
 
 /// SCR-TODAY 목표 가이드 (docs/02 SCR-TODAY, ADR-062).
 ///
@@ -69,13 +70,20 @@ void main() {
     expect(find.byKey(const Key('today.guideShrink')), findsOneWidget);
   });
 
-  /// 날짜가 자기평가 위에 서 있으면 그렇다고 말한다. 반대 방향 거짓말도 거짓말이다.
-  testWidgets('shouldAdmitTheDateRestsOnTheSelfAssessmentUntilThereIsHistory', (tester) async {
+  /// 기록이 적으면 날짜가 예상값이라고 말한다. 반대 방향 거짓말도 거짓말이다 — 안심시켜서 아무것도 안
+  /// 하게 만들면 빨간 배지와 결과가 같다. `completionRateEstimated`는 "기록이 모자라다"는 뜻이므로
+  /// 자기평가가 이미 거둬진 뒤에도 참이다(ADR-063) — 그래서 문구가 자기평가를 지목하지 않는다.
+  testWidgets('shouldAdmitTheDateIsAGuessWhileThereIsTooLittleHistory', (tester) async {
     backend.planRepository.budget = testBudget().copyWith(completionRateEstimated: true);
     await pumpApp(tester, backend: backend);
 
     expect(find.byKey(const Key('today.guideEstimated')), findsOneWidget);
-    expect(find.textContaining('자기평가 기준이에요'), findsOneWidget);
+    expect(find.textContaining('기록이 아직 적어서'), findsOneWidget);
+
+    // 주장을 기록으로 바꾸는 문이 한 번에 열려야 한다 (ADR-063)
+    await tapKey(tester, 'today.guideCheckLevel');
+
+    expect(locationOf(tester), '/today/diagnostics');
   });
 
   /// 기록이 쌓이면 그 말은 사라진다.

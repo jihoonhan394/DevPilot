@@ -112,6 +112,15 @@ class _GuideBody extends StatelessWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
+              // 주장을 기록으로 바꾸는 문이 확인 문제다 (ADR-063). 화면에 "(선택)"으로만 두면 안 누른다.
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  key: const Key('today.guideCheckLevel'),
+                  onPressed: () => context.go(AppRoutes.diagnostics),
+                  child: Text(l10n.guideCheckLevel),
+                ),
+              ),
             ],
             if (budget.requiredMustLaterMinutes > 0) ...[
               const SizedBox(height: AppSpacing.xs),

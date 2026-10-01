@@ -12,6 +12,7 @@ import com.devpilot.skill.domain.SkillLevelRules;
 import com.devpilot.skill.domain.SkillLevelRules.LevelChange;
 import com.devpilot.skill.domain.SkillLevelRules.Outcome;
 import com.devpilot.skill.domain.SkillLevelRules.RuleInput;
+import com.devpilot.skill.domain.SkillLevelRules.SelfAssessment;
 import com.devpilot.skill.domain.SkillStateChange;
 import com.devpilot.skill.domain.SkillStateChange.LevelTransition;
 import com.devpilot.skill.domain.UserSkillState;
@@ -112,7 +113,10 @@ public class SkillStateUpdater {
                                 triggerEventId,
                                 state.changedAtByAxis(),
                                 today,
-                                now));
+                                now,
+                                new SelfAssessment(
+                                        state.getSelfAssessedLevel(),
+                                        state.isSelfAssessmentActive())));
         for (LevelChange change : outcome.changes()) {
             state.applyLevelChange(change.axis(), change.toLevel(), now);
             skillStateChangeRepository.save(
