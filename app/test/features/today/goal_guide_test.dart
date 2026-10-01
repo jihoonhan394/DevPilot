@@ -69,6 +69,16 @@ void main() {
     expect(find.byKey(const Key('today.guideShrink')), findsOneWidget);
   });
 
+  /// 버튼을 누를지 정하는 자리가 "아무것도 안 하는 것보다"가 걸리는 순간이다 (ADR-062).
+  testWidgets('shouldGuideBeforeTheDayIsEvenGenerated', (tester) async {
+    backend.todayRepository.today = null;
+    await pumpApp(tester, backend: backend);
+
+    expect(find.byKey(const Key('today.generateButton')), findsOneWidget);
+    expect(find.byKey(const Key('today.goalGuide')), findsOneWidget);
+    expect(find.textContaining('방향은 맞아요'), findsOneWidget);
+  });
+
   /// 예산을 못 읽으면 아무것도 그리지 않는다 — 계획 없는 사람에게 오류를 보여 줄 자리가 아니다.
   testWidgets('shouldStayHiddenWhenTheBudgetCannotBeRead', (tester) async {
     backend.planRepository.budgetFailures.add(

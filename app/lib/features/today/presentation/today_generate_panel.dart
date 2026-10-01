@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/widgets/empty_state.dart';
+import 'package:devpilot_app/features/today/presentation/goal_guide.dart';
 import 'package:devpilot_app/features/today/presentation/optional_section.dart';
 import 'package:devpilot_app/features/today/presentation/today_actions.dart';
 import 'package:devpilot_app/features/today/presentation/today_controller.dart';
@@ -66,6 +67,10 @@ class TodayGeneratePanel extends ConsumerWidget {
                 )
               : Text(l10n.todayGenerateButton),
         ),
+        // 버튼을 누를지 말지 정하는 자리다 (ADR-062). "아무것도 안 하는 것보다 꾸준히 하는 게 낫다"가
+        // 걸리는 순간이 여기라서, 만든 뒤 화면과 같은 가이드를 여기에도 둔다.
+        const SizedBox(height: AppSpacing.lg),
+        const GoalGuide(),
         // 실력 확인은 곁가지다 — "오늘 계획 만들기"와 같은 무게로 보이면 안 된다
         const OptionalSection(children: [TodayDiagnosticCard()]),
         if (footerWidget != null) ...[const SizedBox(height: AppSpacing.xl), footerWidget],

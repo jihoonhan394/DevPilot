@@ -841,7 +841,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 └────────────────────────────────┘
 ```
 
-- **목표 가이드 카드 (S4, ADR-062)**: 복습 줄 아래, "지금 만들 수 있는 것" 줄 위에 둔다. `GET /plans/active/budget`(`05` §7.9)과 `GET /plans/active/buildable`(`05` §7.10)을 읽는다. **첫 화면에는 더 이상 마감 위험 배지가 없다** — 목표일을 못 지킨다는 판정만 떼어 놓고 보여 주면 사용자가 바꿀 수 있는 게 없고, 첫날 빨간색은 시작할 마음만 가져간다(`01` §4). 위험 배지는 SCR-PLAN의 budget 카드에 그대로 남는다.
+- **목표 가이드 카드 (S4, ADR-062)**: 복습 줄 아래, "지금 만들 수 있는 것" 줄 위에 둔다. **생성 전 패널에도 같은 카드를 둔다** — 버튼을 누를지 정하는 자리가 "아무것도 안 하는 것보다 꾸준히 하는 게 낫다"가 걸리는 순간이다(`01` §4). `GET /plans/active/budget`(`05` §7.9)과 `GET /plans/active/buildable`(`05` §7.10)을 읽는다. **첫 화면에는 더 이상 마감 위험 배지가 없다** — 목표일을 못 지킨다는 판정만 떼어 놓고 보여 주면 사용자가 바꿀 수 있는 게 없고, 첫날 빨간색은 시작할 마음만 가져간다(`01` §4). 위험 배지는 SCR-PLAN의 budget 카드에 그대로 남는다.
   - 세 줄 순서: **방향은 맞다**(`guide.directionOk`, 항상) → **지금 실력으로 어디까지**(`guide.nowReach`, `buildable`의 BUILDABLE 단계 중 가장 먼 것의 제목. 없으면 줄을 뺀다) → **전부 하려면 언제쯤**(`feasibleCompletionDate`).
   - 날짜 줄: `feasibleCompletionDate`가 `horizonDate` 이내면 `guide.feasibleOnTime`, 넘으면 `guide.feasibleDate`, `null`이면 `guide.noDate`(날짜로 답할 문제가 아니라 범위를 줄여야 하는 상태, `06` §3.4).
   - 넘거나 `null`일 때만 `guide.pullsDateIn` 한 줄과 **줄이는 안 보기**(→ `/plan/replan?from=goal`) · **목표일 바꾸기**(→ `/plan/goal`) 두 버튼을 붙인다. 목표일 안에 들어오는 사람에게는 고를 것을 주지 않는다 — 할 말이 없을 때 말하지 않는 것도 가이드다.
