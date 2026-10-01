@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 
 /// Horizontal timeline above the milestone list from 600 px (docs/02 SCR-PLAN "타임라인"):
 /// month ticks, one bar per milestone with its priority as text, a vertical line for today and
-/// marks for the goal dates.
+/// a mark for the target date.
 ///
 /// The list below carries the same facts in text, so the chart is hidden from screen readers
 /// behind one summary label (docs/02 A-3).
@@ -33,7 +33,6 @@ class PlanTimelineBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final completion = LocalDate.tryParse(goal?.targetCompletionDate);
-    final checkpoint = LocalDate.tryParse(goal?.checkpointDate);
     final dates = [
       for (final milestone in milestones) ...[
         LocalDate.parse(milestone.startDate),
@@ -41,7 +40,6 @@ class PlanTimelineBar extends StatelessWidget {
       ],
       today,
       ?completion,
-      ?checkpoint,
     ]..sort();
     final scale = _TimeScale(
       first: LocalDate(dates.first.year, dates.first.month, 1),
@@ -76,8 +74,6 @@ class PlanTimelineBar extends StatelessWidget {
                       _DateMarker(left: x(today), label: l10n.planTimelineToday),
                       if (completion != null)
                         _DateMarker(left: x(completion), label: l10n.planTimelineCompletion),
-                      if (checkpoint != null)
-                        _DateMarker(left: x(checkpoint), label: l10n.planTimelineCheckpoint),
                     ],
                   ),
                 );

@@ -5,6 +5,7 @@ import com.devpilot.common.error.ErrorCode;
 import java.nio.charset.StandardCharsets;
 import java.time.DateTimeException;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -41,6 +42,48 @@ public class CursorCodec {
         return encodeRaw(Long.toString(sortKey), id);
     }
 
+    /**
+     * 콘텐츠 목록 cursor (docs/05 §1.5 마지막 행). 팁·용어는 DB 행이 아니라 UUID id가 없다 — {@code id}를 빈 문자열로 두고 유일한
+     * 콘텐츠 key 하나만으로 비교한다.
+     */
+    public String encodeContent(String key) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("v", VERSION);
+        payload.put("k", key);
+        payload.put("id", "");
+        return Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(jsonMapper.writeValueAsBytes(payload));
+    }
+
+    /**
+     * 콘텐츠 cursor → 그 key. cursor가 없으면 {@code null}이다.
+     *
+     * @throws BusinessValidationException 400 {@code INVALID_CURSOR}
+     */
+    public @Nullable String decodeContent(@Nullable String cursor) {
+        if (cursor == null || cursor.isEmpty()) {
+            return null;
+        }
+        if (cursor.length() > MAX_LENGTH) {
+            throw invalid();
+        }
+        try {
+            byte[] json = Base64.getUrlDecoder().decode(cursor.getBytes(StandardCharsets.US_ASCII));
+            JsonNode node = jsonMapper.readTree(json);
+            if (!node.isObject()
+                    || !node.path("v").isInt()
+                    || node.path("v").intValue() != VERSION
+                    || !node.path("k").isString()) {
+                throw invalid();
+            }
+            return node.path("k").stringValue();
+        } catch (IllegalArgumentException | JacksonException exception) {
+            throw new BusinessValidationException(
+                    ErrorCode.INVALID_CURSOR, "invalid cursor", exception);
+        }
+    }
+
     /** cursor가 없으면 {@code null}. */
     public @Nullable Position<Instant> decodeInstant(@Nullable String cursor) {
         return decode(cursor, Instant::parse);
@@ -49,6 +92,16 @@ public class CursorCodec {
     /** cursor가 없으면 {@code null}. */
     public @Nullable Position<Long> decodeLong(@Nullable String cursor) {
         return decode(cursor, Long::valueOf);
+    }
+
+    /** 날짜 정렬 목록 (docs/05 §19.10). {@code k}는 {@code LocalDate}의 ISO-8601이다. */
+    public String encode(LocalDate sortKey, UUID id) {
+        return encodeRaw(sortKey.toString(), id);
+    }
+
+    /** cursor가 없으면 {@code null}. */
+    public @Nullable Position<LocalDate> decodeLocalDate(@Nullable String cursor) {
+        return decode(cursor, LocalDate::parse);
     }
 
     private String encodeRaw(String key, UUID id) {

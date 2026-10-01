@@ -309,3 +309,130 @@ challenges:
       QUESTION_ONLY: 두 스레드가 같은 키로 거의 동시에 이 메서드를 실행하면, 값을 읽는 순간과 쓰는 순간 사이에 무슨 일이 일어날 수 있을까요?
       CONCEPT_HINT: 확인 후 실행(check-then-act) 경쟁 조건과, 동시성 컬렉션이 제공하는 키 단위 원자적 갱신 연산을 살펴보세요.
       DIRECTION: 읽기와 쓰기를 따로 호출하지 말고 키 하나의 값을 한 번의 원자적 연산으로 갱신하는 방법을 찾고, 스냅샷을 만드는 동안의 동시 수정에도 안전한 자료구조를 고르세요.
+
+  - seedKey: PRACTICE.JAVA.OOP.L1.001
+    purpose: PRACTICE
+    skills:
+      - JAVA.OOP
+    difficulty: 1
+    estimatedMinutes: 15
+    isTransfer: false
+    title: 아무 값이나 들어가는 주문 클래스 닫기
+    scenario: |-
+      주문을 담는 클래스입니다. 최근에 금액이 음수인 주문과 상태가 빈 문자열인 주문이 저장돼 통계가
+      어긋났습니다.
+      ```java
+      public class Order {
+          public String status;      // "NEW", "PAID", "CANCELED" 중 하나여야 한다
+          public long totalAmount;   // 0보다 커야 한다
+      }
+
+      // 호출부 여기저기에서
+      Order order = new Order();
+      order.status = "PAID";
+      order.totalAmount = -1000;
+      ```
+    prompt: |-
+      1. 잘못된 값을 가진 주문이 아예 만들어질 수 없도록 이 클래스를 고쳐 작성하세요.
+      2. 상태 문자열을 더 안전하게 다루는 방법을 적용하세요.
+      3. 필드를 밖에서 직접 바꿀 수 있을 때 무엇이 어려워지는지 설명하세요. 값이 언제 잘못됐는지 찾는
+         과정을 들어 설명합니다.
+    constraints:
+      - 새 라이브러리를 쓰지 않는다
+      - 검증을 호출부마다 반복해 넣는 방식은 쓰지 않는다
+    expectedConcepts:
+      - 내부 상태를 밖에서 직접 바꾸지 못하게 막기
+      - 객체를 만들 때 값 검증
+      - 정해진 값 집합을 타입으로 표현
+      - 잘못된 상태를 만들 수 없는 설계
+    rubric:
+      - id: R1
+        criterion: 필드를 밖에서 직접 바꾸지 못하게 하고 값 검증을 객체 안으로 옮긴다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 상태를 문자열 대신 정해진 값 집합을 가진 타입으로 바꾼다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 값이 잘못된 시점을 찾기 어려워지는 이유를 들어 직접 접근의 문제를 설명한다
+        weightBp: 4000
+        axis: EXPLANATION
+    commonMistakes:
+      - 필드만 감추고 setter로 그대로 열어 두어 검증이 빠짐
+      - 검증을 호출부마다 복사해 넣어 빠뜨리는 자리가 생김
+      - 상태를 계속 문자열로 두고 비교 위치마다 오타 위험을 남김
+    transferTargets:
+      - PRACTICAL_ENGINEERING.NULL_BOUNDARY
+    hints:
+      QUESTION_ONLY: 지금 구조에서 금액이 음수인 주문이 만들어졌다면, 그 값을 넣은 자리를 어떻게 찾아낼 수 있을까요?
+      CONCEPT_HINT: 값을 지키는 책임이 객체 안에 있는지 밖에 흩어져 있는지, 그리고 정해진 몇 가지 값만 허용하는 타입을 떠올려 보세요.
+      DIRECTION: 값이 들어오는 길을 생성자 한 곳으로 모으고, 그 길에서만 검사하도록 바꾼 뒤 호출부가 어떻게 달라지는지 적어 보세요.
+
+  - seedKey: PRACTICE.JAVA.OOP.L2.001
+    purpose: PRACTICE
+    skills:
+      - JAVA.OOP
+    difficulty: 2
+    estimatedMinutes: 25
+    isTransfer: false
+    title: 결제 수단이 늘 때마다 세 군데를 고쳐야 하는 코드 정리하기
+    scenario: |-
+      결제 수단에 따라 수수료와 표시 이름이 갈립니다. 같은 분기가 영수증 출력에도 한 번 더 있습니다.
+      ```java
+      public class PaymentService {
+          public long fee(String method, long amount) {
+              if (method.equals("CARD")) return amount * 3 / 100;
+              if (method.equals("BANK")) return 300;
+              return 0;
+          }
+
+          public String label(String method) {
+              if (method.equals("CARD")) return "카드";
+              if (method.equals("BANK")) return "계좌이체";
+              return "기타";
+          }
+          // 영수증 출력 클래스에도 같은 모양의 분기가 하나 더 있다
+      }
+      ```
+      다음 주에 간편결제가 추가되고, 그다음 달에는 포인트 결제가 들어올 예정입니다.
+    prompt: |-
+      1. 지금 구조에서 간편결제를 추가하려면 어디를 고쳐야 하는지 모두 적으세요. 빠뜨리면 무슨 일이
+         생기는지도 적습니다.
+      2. 새 수단을 추가할 때 기존 분기를 건드리지 않아도 되도록 고친 코드의 핵심 부분을 작성하세요.
+      3. 고치기 전과 후에 "새 수단 추가" 절차가 어떻게 달라지는지 설명하세요.
+    constraints:
+      - 기존 호출부의 메서드 시그니처는 유지한다
+      - 새 라이브러리나 프레임워크 기능을 쓰지 않는다
+    expectedConcepts:
+      - 같은 기준의 분기가 여러 곳에 흩어지는 문제
+      - 동작을 값이 아니라 타입에 붙이기
+      - 새 구현 추가 시 기존 코드 수정 여부
+      - 변경 지점을 한 곳으로 모으기
+    rubric:
+      - id: R1
+        criterion: 수단별 동작을 한 자리에 모아 분기가 흩어지지 않는 구조로 바꾼다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 새 수단을 추가할 때 기존 분기를 고치지 않아도 되도록 확장 지점을 만든다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 분기가 흩어져 있을 때 빠뜨린 자리에서 어떤 증상이 나오는지 설명한다
+        weightBp: 2500
+        axis: EXPLANATION
+      - id: R4
+        criterion: 고친 뒤 새 수단 추가 절차가 어떻게 줄어드는지 설명한다
+        weightBp: 1500
+        axis: EXPLANATION
+    commonMistakes:
+      - 분기를 한 메서드로 묶기만 하고 여전히 수단이 늘 때마다 그 메서드를 고침
+      - 문자열 비교를 그대로 두어 오타가 기본값으로 조용히 빠짐
+      - 모든 수단을 한 클래스에 몰아넣어 역할이 다시 뭉침
+    transferTargets:
+      - SPRING.DI_IOC
+    hints:
+      QUESTION_ONLY: 간편결제를 넣는다고 할 때 손대야 하는 파일과 줄을 지금 정확히 셀 수 있나요?
+      CONCEPT_HINT: 같은 조건으로 갈라지는 코드가 여러 곳에 있다는 점과, 수단마다 자기 동작을 들고 있게 만드는 방식을 떠올려 보세요.
+      DIRECTION: 수단별로 무엇이 달라지는지 표로 적어 각 열을 한 자리에 모으고, 새 열을 더할 때 기존 열을 건드리는지 확인해 보세요.

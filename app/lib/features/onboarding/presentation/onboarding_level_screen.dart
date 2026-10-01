@@ -1,9 +1,9 @@
 import 'package:devpilot_app/app/routes.dart';
 import 'package:devpilot_app/core/api/api_enums.dart';
-import 'package:devpilot_app/core/l10n/enum_labels.dart';
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/theme/devpilot_colors.dart';
 import 'package:devpilot_app/core/widgets/inline_error.dart';
+import 'package:devpilot_app/core/widgets/self_assessment_chips.dart';
 import 'package:devpilot_app/core/widgets/status_badge.dart';
 import 'package:devpilot_app/features/onboarding/domain/onboarding_draft.dart';
 import 'package:devpilot_app/features/onboarding/domain/onboarding_rules.dart';
@@ -91,19 +91,22 @@ class _LevelModeCards extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // 자기평가가 먼저이고 권장이다 — seed 진단이 전부 난이도 3이라 통과/실패 둘뿐이고,
+          // 다섯 단계짜리 자기평가보다 거칠다. 진단에 난이도 사다리가 생기면 되돌린다.
+          _ModeCard(
+            tileKey: const Key('onboarding.level.self'),
+            value: false,
+            title: l10n.onboardingLevelSelf,
+            description: l10n.onboardingLevelSelfDesc,
+            badge: l10n.onboardingLevelSelfBadge,
+          ),
+          const SizedBox(height: AppSpacing.md),
           _ModeCard(
             tileKey: const Key('onboarding.level.diagnostic'),
             value: true,
             title: l10n.onboardingLevelDiagnostic,
             description: l10n.onboardingLevelDiagnosticDesc,
             badge: l10n.onboardingLevelDiagnosticBadge,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _ModeCard(
-            tileKey: const Key('onboarding.level.self'),
-            value: false,
-            title: l10n.onboardingLevelSelf,
-            description: l10n.onboardingLevelSelfDesc,
           ),
         ],
       ),
@@ -128,8 +131,22 @@ class _SelfAssessment extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
         Text(l10n.onboardingLevelHelp, style: textTheme.bodySmall),
         const SizedBox(height: AppSpacing.sm),
-        _SelfAssessmentChips(levels: draft.selfAssessmentLevels, onChanged: onChanged),
-        if (OnboardingRules.hasHighSelfAssessment(draft)) ...[
+        SelfAssessmentChips(
+          keyPrefix: 'onboarding.level',
+          levels: draft.selfAssessmentLevels,
+          onChanged: onChanged,
+        ),
+        // 손대지 않은 분야는 조용히 0으로 나간다. 그 상태로 넘기면 계획이 "아무것도 모른다"에서
+        // 시작하고 첫날부터 위험도가 CRITICAL이 된다. 몇 개 남았는지 말해 준다.
+        if (OnboardingRules.unsetCategoryCount(draft) > 0) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            l10n.onboardingLevelUnset(OnboardingRules.unsetCategoryCount(draft)),
+            key: const Key('onboarding.level.unsetNote'),
+            style: textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.error),
+          ),
+        ],
+        if (OnboardingRules.hasCheckableSelfAssessment(draft)) ...[
           const SizedBox(height: AppSpacing.sm),
           Text(
             l10n.onboardingLevelDiagnosticNote,
@@ -174,42 +191,6 @@ class _ModeCard extends StatelessWidget {
         ),
         subtitle: Text(description),
       ),
-    );
-  }
-}
-
-/// 13 categories × 5 chips (0~4), in `SkillCategory` order (docs/02 step 3).
-class _SelfAssessmentChips extends StatelessWidget {
-  const _SelfAssessmentChips({required this.levels, required this.onChanged});
-
-  final Map<SkillCategory, int> levels;
-  final void Function(SkillCategory category, int level) onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final category in SkillCategory.known) ...[
-          const SizedBox(height: AppSpacing.md),
-          Text(category.label(l10n), style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: AppSpacing.xs),
-          Wrap(
-            spacing: AppSpacing.xs,
-            runSpacing: AppSpacing.xs,
-            children: [
-              for (var level = 0; level <= OnboardingDefaults.maxSelfAssessmentLevel; level++)
-                ChoiceChip(
-                  key: Key('onboarding.level.${category.name}.$level'),
-                  label: Text(skillLevelLabel(level, l10n)),
-                  selected: (levels[category] ?? 0) == level,
-                  onSelected: (_) => onChanged(category, level),
-                ),
-            ],
-          ),
-        ],
-      ],
     );
   }
 }

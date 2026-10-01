@@ -47,7 +47,7 @@
 | [16-definition-of-ready-done.md](docs/16-definition-of-ready-done.md) | DoR / DoD / PR 체크리스트 | 작업 시작·종료 |
 | [17-ai-integration.md](docs/17-ai-integration.md) | AI operation 카탈로그, **출력 스키마**, 파이프라인, 가드, masking, 예산, prompt, evals | AI 작업 |
 | [18-project-setup-and-local-dev.md](docs/18-project-setup-and-local-dev.md) | 저장소 구조, Windows 개발환경, backend·Flutter bootstrap, 로컬 실행 | S0, 환경 문제 |
-| [19-content-spec.md](docs/19-content-spec.md) | seed 콘텐츠 형식(큐레이션 저장소·reading 포함), 검증 규칙, 작성 가이드 | 콘텐츠 작업 |
+| [19-content-spec.md](docs/19-content-spec.md) | seed 콘텐츠 형식(큐레이션 저장소·reading 포함), 검증 규칙, 계획 템플릿 배치, 작성 가이드, 소스 점검 | 콘텐츠 작업 |
 | [20-decisions-and-risks.md](docs/20-decisions-and-risks.md) | 적용된 결정 DEC-01~26, 재확인 항목, 리스크 | 결정 변경, 리스크 점검 |
 | [database/schema.sql](database/schema.sql) | 전체 스키마 스냅샷 (PostgreSQL에서 실행 검증) | DB 작업 |
 
@@ -93,7 +93,7 @@
 
 ## 5. 핵심 원칙
 
-1. **Deadline first** — 중간 점검일(없으면 학습 완료 목표일)까지 MUST 역량을 우선한다.
+1. **Deadline first** — 사용자가 정한 목표일까지 MUST 역량을 우선한다. 학습 목표는 무엇을(학습 트랙)·언제까지(목표일) 두 가지다.
 2. **One important thing today** — 하루에 진행 중인 main task는 하나다.
 3. **Do not replace thinking** — AI는 답보다 질문과 단계적 hint를 준다. 러버덕에서 AI는 질문만 한다. 첫 코드 리뷰 응답에는 수정 코드가 없다.
 4. **Evidence over self-rating** — 레벨은 학습 이벤트 규칙으로만 바뀐다.

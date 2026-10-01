@@ -3,6 +3,7 @@ package com.devpilot.content.application;
 import com.devpilot.skill.domain.Priority;
 import com.devpilot.skill.domain.TargetRole;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,6 +19,16 @@ final class RoleTargetChecks {
             Arrays.stream(Priority.values()).map(Enum::name).collect(Collectors.toSet());
     static final List<String> AXES =
             List.of("knowledge", "implementation", "explanation", "debugging");
+
+    /**
+     * 콘텐츠가 덮어야 하는 학습 트랙. 지금은 {@link TargetRole} 전부다. 기준 검증기({@code
+     * content/tools/validate_content.py}의 {@code TARGET_ROLES})와 같은 집합을 쓴다. 트랙 콘텐츠를 추가하면 여기에 더한다.
+     */
+    static final Set<String> CONTENT_TRACKS =
+            Set.of(
+                    TargetRole.JAVA_BACKEND.name(),
+                    TargetRole.JAVA_BACKEND_STARTER.name(),
+                    TargetRole.INTEGRATION_ENGINEER.name());
 
     private static final Set<String> TARGET_KEYS =
             Set.of("skill", "priority", "importance", "target");
@@ -55,7 +66,7 @@ final class RoleTargetChecks {
                 checkTarget(context, file, index, entries.get(index), targets);
             }
         }
-        for (String role : new TreeSet<>(ROLE_NAMES)) {
+        for (String role : new TreeSet<>(CONTENT_TRACKS)) {
             Map<String, Map<String, Object>> targets = byRole.getOrDefault(role, Map.of());
             for (String code : new TreeSet<>(context.nonRootCodes)) {
                 if (!targets.containsKey(code)) {
@@ -67,7 +78,45 @@ final class RoleTargetChecks {
             }
         }
         context.targets.putAll(byRole.getOrDefault(TargetRole.JAVA_BACKEND.name(), Map.of()));
+        collectTargetsBySkill(context, byRole);
         checkPrerequisiteReadiness(context);
+        checkWhyItMattersCoverage(context);
+    }
+
+    /**
+     * CV-89: 어느 트랙에서든 {@code MUST}인 non-root skill에는 {@code whyItMatters}가 있어야 한다 (docs/19
+     * §3.2·§7.5).
+     *
+     * <p>그 문장이 과제 카드 맨 위에 그대로 붙는다(docs/05 §8.1) — MUST인데 비어 있으면 가장 자주 나오는 과제가 이유 없이 나온다.
+     */
+    private static void checkWhyItMattersCoverage(ValidationContext context) {
+        Set<String> mustAnywhere = new TreeSet<>();
+        context.targetsBySkill.forEach(
+                (code, targets) -> {
+                    for (Map<String, Object> target : targets) {
+                        if ("MUST".equals(target.get("priority"))) {
+                            mustAnywhere.add(code);
+                        }
+                    }
+                });
+        for (String code : mustAnywhere) {
+            if (!context.skillsWithWhyItMatters.contains(code)) {
+                context.error("CV-89", "skillTrees", "MUST skill needs whyItMatters: " + code);
+            }
+        }
+    }
+
+    /** skill code → 트랙별 role target. 진단 준비(CV-59)는 어느 트랙에서든 MUST면 된다. */
+    private static void collectTargetsBySkill(
+            ValidationContext context, Map<String, Map<String, Map<String, Object>>> byRole) {
+        context.targetsByRole.putAll(byRole);
+        for (Map<String, Map<String, Object>> trackTargets : byRole.values()) {
+            trackTargets.forEach(
+                    (code, target) ->
+                            context.targetsBySkill
+                                    .computeIfAbsent(code, key -> new ArrayList<>())
+                                    .add(target));
+        }
     }
 
     private static void checkTarget(

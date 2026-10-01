@@ -1,6 +1,6 @@
 # 17. AI Integration
 
-> Status: Accepted (v2) · Last updated: 2026-09-18 · Related: DEC-05, DEC-06, DEC-16, ADR-032(ADR-011 대체), ADR-035(ADR-029 보완), ADR-012, ADR-013, `03-system-architecture.md` §3.3 · §5.3 · §9, `04-domain-model-and-db.md` §3 · §5, `06-learning-engine-rules.md` §8 · §9 · §10
+> Status: Accepted (v2) · Last updated: 2026-09-19 · Related: DEC-05, DEC-06, DEC-16, ADR-032(ADR-011 대체), ADR-035(ADR-029 보완), ADR-012, ADR-013, `03-system-architecture.md` §3.3 · §5.3 · §9, `04-domain-model-and-db.md` §3 · §5, `06-learning-engine-rules.md` §8 · §9 · §10
 >
 > 이 문서는 AI 호출의 **입력 변수, 출력 스키마(규범), 호출 파이프라인, 출력 가드, secret masking, 예산·잔액, 프롬프트 관리, 비용, 테스트·eval**을 정의한다. operation 목록·mode·timeout·thinking·reasoning-effort 값은 `03` §9 설정이 기준이고, 이 문서는 그 값을 바꾸지 않는다.
 >
@@ -12,7 +12,7 @@
 
 | 구분 | 내용 |
 |---|---|
-| AI가 하는 일 | 코드 학습 포인트 후보 제안(`COACH_REVIEW`), 응답에 대한 짧은 피드백, hint 문장 생성, challenge 초안 생성, rubric 항목별 충족 판정, 복습 변형 문항 생성, 복습 답변 rubric 판정, evidence STAR 초안, 요구사항 목록 추출 |
+| AI가 하는 일 | 코드 학습 포인트 후보 제안(`COACH_REVIEW`), 응답에 대한 짧은 피드백, hint 문장 생성, challenge 초안 생성, rubric 항목별 충족 판정, 복습 변형 문항 생성, 복습 답변 rubric 판정, evidence STAR 초안, 로드맵·기술 목록의 항목 추출 |
 | AI가 하지 않는 일 | skill 레벨, 점수·coverage·outcome, 복습 간격·due, plan·risk·budget, Today 선택, `discovered_by` 확정, `VERIFIED` 부여, requirement fit 분류. 모두 `06-learning-engine-rules.md`의 결정적 규칙이 계산한다 |
 | Source of truth | AI 출력은 **제안**이다. 서버가 스키마 검증·가드를 통과시킨 값만 저장하고, 저장된 값도 규칙 계산의 입력(예: rubric `met`)으로만 쓴다 |
 | 대화 | 모든 호출은 단발(single-turn)이다. 대화 이력을 저장하거나 다음 호출에 넘기지 않는다 (`03` §11) |
@@ -110,7 +110,7 @@ operation별로 다른 모델을 쓰는 설정은 MVP에 없다. 필요하면 `0
 | 종류 | 설명 | 렌더링 |
 |---|---|---|
 | variable | 서버가 만든 값(enum, 카탈로그, 계산값, AI가 과거에 만든 저장값) | 문자열로 치환. 태그 escape(§9.3)만 적용 |
-| user content | 사용자가 입력한 원문(코드, 답변, 설명, 요구사항 목록). 저장 전에 `SecretMasker`를 이미 거친 값 | `<user_content>` 블록으로 감싼다(§9.3). kind가 `CODE`, `DIFF`, `LOG`이면 줄 번호를 붙인다 |
+| user content | 사용자가 입력한 원문(코드, 답변, 설명, 로드맵·기술 목록). 저장 전에 `SecretMasker`를 이미 거친 값 | `<user_content>` 블록으로 감싼다(§9.3). kind가 `CODE`, `DIFF`, `LOG`이면 줄 번호를 붙인다 |
 
 줄 번호 형식: `String.format("%4d| %s", lineNo, line)`. `firstLineNumber`를 지정하면 그 번호부터 센다(발췌 코드).
 
@@ -375,25 +375,28 @@ while est > op.input-token-budget:
 | 항목 | 값 |
 |---|---|
 | mode / timeout / retries | ASYNC / 120s / 1 |
-| trigger | `POST /evidence/drafts` (202). `sourceLearningEventId`의 `event_type` ∈ {`CHALLENGE_EVALUATED`, `COACH_FINDING_CLOSED`, `COACH_REVIEW_COMPLETED`, `SESSION_COMPLETED`}, 무효화되지 않은 본인 이벤트. 아니면 400 `VALIDATION_FAILED` |
-| 실행 | `EvidenceService`(candidate INSERT `generation_status=PENDING`, `skill_id`=event skill) → `EvidenceDraftTask` |
+| trigger | `POST /evidence/drafts` (202). 원천은 둘 중 하나다(`05` §14.5). **`sourceLearningEventId`**: `event_type` ∈ {`CHALLENGE_EVALUATED`, `COACH_FINDING_CLOSED`, `COACH_REVIEW_COMPLETED`, `SESSION_COMPLETED`, `REDO_COMPLETED`}, 무효화되지 않은 본인 이벤트. **`sourceProjectNoteId`**(S6): 본인 `side_project_note`(유형 제한 없음). 아니면 400 `VALIDATION_FAILED` |
+| 실행 | `EvidenceService`(candidate INSERT `generation_status=PENDING`, `skill_id` = 이벤트 또는 기록의 skill) → `EvidenceDraftTask` |
 | prompt id | `evidence.draft` |
 | input-token-budget | 6000 |
 | output | `EvidenceDraftOutput` (§4.8) |
 
 | 변수 | 타입 | 출처 | user | 절삭 |
 |---|---|---|---|---|
-| `eventType` | `LearningEventType` | `learning_event.event_type` | | — |
+| `sourceKind` | `LEARNING_EVENT` \| `PROJECT_NOTE` | 요청이 고른 원천 | | — |
+| `eventType` | `LearningEventType` 또는 `(없음)` | `learning_event.event_type` (기록 경로면 `(없음)`) | | — |
 | `skillCode`, `skillName` | string 또는 `(없음)` | `learning_event.skill_id` → `skill` | | — |
-| `eventFacts` | 줄 목록 `key: value` | `learning_event.payload` (`04` §6)에서 id 필드를 뺀 값, `plan_date` | | — |
-| `sourceDetail` | text | `CHALLENGE_EVALUATED`: challenge title·scenario, rubric criterion별 met, misconceptions, followUpQuestion / `COACH_FINDING_CLOSED`: finding summary·learningQuestion·ai_feedback·discovered_by·max_hint_level / `COACH_REVIEW_COMPLETED`: finding 요약 목록 / `SESSION_COMPLETED`: task title·description·actual_minutes | | 2, `TAIL_CHARS`, 500자 |
-| `learnerNotes` | TEXT | 라벨을 붙여 연결: attempt `self_explanation`, finding `user_response`, session `self_reflection` (있는 것만) | ✔ | 1, `TAIL_CHARS`, 300자 |
+| `eventFacts` | 줄 목록 `key: value` | `learning_event.payload` (`04` §6)에서 id 필드를 뺀 값, `plan_date`. 기록 경로면 `noteType`·`occurredOn` | | — |
+| `sourceDetail` | text | `CHALLENGE_EVALUATED`: challenge title·scenario, rubric criterion별 met, misconceptions, followUpQuestion / `COACH_FINDING_CLOSED`: finding summary·learningQuestion·ai_feedback·discovered_by·max_hint_level / `COACH_REVIEW_COMPLETED`: finding 요약 목록 / `SESSION_COMPLETED`: task title·description·actual_minutes / `REDO_COMPLETED`: 원본 과제 title·description, `withoutAi`, `difficulty`, 원본과의 간격(일) | | 2, `TAIL_CHARS`, 500자 |
+| `learnerNotes` | TEXT | 라벨을 붙여 연결: attempt `self_explanation`, finding `user_response`, session `self_reflection` (있는 것만). **기록 경로**면 그 기록의 `title`과 유형별 본문 항목 전부(라벨 = `02` SCR-PROJECT-NOTE-EDIT 문구). 모두 **마스킹본**이다 | ✔ | 1, `TAIL_CHARS`, 300자 |
 
-**후처리** (`EvidenceDraftTask` tx): `ai_draft_json` = 출력 + `promptVersion`, 편집 필드 `title/problem/analysis/action/result` 초기값 복사, `explanation_topics` 복사, `ai_call_id`, `generation_status=COMPLETED`, `status_updated_at`. 사용자가 편집해도 `ai_draft_json`은 바꾸지 않는다 (`04` §5.8).
+**후처리** (`EvidenceDraftTask` tx): `ai_draft_json` = 출력 + `promptVersion` + (기록 경로면) `sourceProjectNoteId`, 편집 필드 `title/problem/analysis/action/result` 초기값 복사, `explanation_topics` 복사, `ai_call_id`, `generation_status=COMPLETED`, `status_updated_at`. 사용자가 편집해도 `ai_draft_json`은 바꾸지 않는다 (`04` §5.8).
 
 **가드**: Language.
 
 ### 3.9 `REQUIREMENT_EXTRACT`
+
+로드맵 비교(FR-19)에서 사용자가 붙여넣은 공개 학습 로드맵이나 기술 목록의 항목을 뽑는다. 항목마다 원문 인용(`rawText`), 필수/권장(`requirementType`), catalog skill 후보(`suggestedSkillCode`)만 낸다 — 준비 상태 분류는 서버의 `RequirementFitClassifier`가 한다.
 
 | 항목 | 값 |
 |---|---|
@@ -410,9 +413,9 @@ while est > op.input-token-budget:
 | `skillCatalog` | 줄 목록 `code · name · category` | active `skill`. `role_skill_target(JAVA_BACKEND)` skill 먼저(priority MUST→SHOULD→LATER, code), 나머지 code 순 | | 1, `ITEMS_FROM_END`, 60개 |
 | `sourceText` | TEXT | `requirement_doc.source_text` (마스킹 후) | ✔ | 2, `TAIL_CHARS`, 2000자 |
 
-**후처리** (`RequirementAnalysisTask` tx): `requirement_item` INSERT(`sort_order` = 출력 순서, `skill_id` = 가드 후 `suggestedSkillCode`), `RequirementFitClassifier` → `fit_category`(skill이 연결되지 않은 요구사항은 null), `matched_evidence_ids`. `analysis_status=COMPLETED`, `analyzed_at`, `ai_call_id`. 확률·점수는 만들지 않는다 (FR-19).
+**후처리** (`RequirementAnalysisTask` tx): `requirement_item` INSERT(`sort_order` = 출력 순서, `skill_id` = 가드 후 `suggestedSkillCode`), `RequirementFitClassifier` → `fit_category`(skill이 연결되지 않은 항목은 null), `matched_evidence_ids`. `analysis_status=COMPLETED`, `analyzed_at`, `ai_call_id`. 확률·점수는 만들지 않는다 (FR-19).
 
-**가드**: Enum, SkillCode(`suggestedSkillCode`), Language(`rawText` 제외 — 요구사항 원문 인용이므로).
+**가드**: Enum, SkillCode(`suggestedSkillCode`), Language(`rawText` 제외 — 로드맵 원문 인용이므로).
 
 ### 3.11 `RUBBER_DUCK`
 
@@ -456,11 +459,36 @@ while est > op.input-token-budget:
 | `availableSkillCodes` | 쉼표 목록 | 세션 skill + 그 prerequisite의 `skill.code` | | — |
 | `conversation` | 줄 목록 | 이 세션의 **전체** 턴 | ✔ | 1, `ITEMS_FROM_START`, 3턴 |
 
-**후처리** (tx2): `summary_json` 저장, `status=COMPLETED`, `completed_at`. `gaps[]`마다 `review_item`을 만든다(`source_type=RUBBER_DUCK`, `concept_key`=gap의 `conceptKey`, `prompt`=`reviewQuestion`, `review_type=EXPLAIN`, 첫 due는 `06` §6.3 "challenge 실패 / coach finding / 수동 생성" 행과 같다). 같은 `concept_key`가 이미 있으면 새로 만들지 않고 due를 당긴다(같은 절). 카드 필드(skill 유도, `expected_answer`, `rubric_json`)와 카드를 만들지 않는 경우는 `05` §9.8이다. `summary_json.rawGapCount`(가드 전 gap 수)를 저장하고, 세션 `skill_id`가 있을 때만 `RUBBER_DUCK_COMPLETED` 이벤트를 남긴다(RD-5·RD-7). 대상이 `CODE_READING`이면 그 `READ_CODE` 과제를 `COMPLETED`로 바꾼다(RC-1).
+**후처리** (tx2): `summary_json` 저장, `status=COMPLETED`, `completed_at`. `gaps[]`마다 `review_item`을 만든다(`source_type=RUBBER_DUCK`, `concept_key`=gap의 `conceptKey`, `prompt`=`reviewQuestion`, `review_type=EXPLAIN`, 첫 due는 `06` §6.3 "challenge 실패 / coach finding / 수동 생성" 행과 같다). 같은 `concept_key`가 이미 있으면 새로 만들지 않고 due를 당긴다(같은 절). 카드 필드(skill 유도, `expected_answer`, `rubric_json`)와 카드를 만들지 않는 경우는 `05` §9.8이다. `summary_json.rawGapCount`(가드 전 gap 수)를 저장하고, 세션 `skill_id`가 있을 때만 `RUBBER_DUCK_COMPLETED` 이벤트를 남긴다(RD-5·RD-7). 대상이 `CODE_READING`이면 이 세션이 `COMPLETED`가 된 것만으로 그 `READ_CODE` 과제의 완료 조건(RC-1)이 충족된다 — **과제 상태는 바꾸지 않는다**(`05` §9.8 7, §8.4).
 
 **실패**: `status=COMPLETED`로 바꾸되 `summary_json`은 null, 복습 카드·이벤트 없음, 응답에 `summarySkippedReason`. **대화 자체는 이미 학습이므로 세션을 실패로 만들지 않는다.**
 
 **가드**: CodeLeak(`whatWasMissed`·`whyItMatters`·`reviewQuestion` 전부), SkillCode(`conceptKey`의 접두사), Language, `NoAnswerGuard`(§6.8).
+
+### 3.12 `LESSON_REEXPLAIN`
+
+| 항목 | 값 |
+|---|---|
+| mode / timeout / retries | SYNC / 20s / 0 |
+| trigger | `POST /lessons/{lessonKey}/units/{unitKey}/reexplain` (`05` §21.10). 학습자가 "다시 설명해 주세요"를 누를 때만. 자동 호출 없음 |
+| 실행 | `LessonReexplainService`: registry에서 단위를 찾아 `AiGateway` 호출. **저장하지 않는다** — 트랜잭션 없음 |
+| prompt id | `lesson.reexplain` |
+| input-token-budget | 3000 |
+| output | `LessonReexplainOutput` (§4.12) |
+
+| 변수 | 타입 | 출처 | user | 절삭 |
+|---|---|---|---|---|
+| `skillName` | text | 노트의 skill 이름 | | — |
+| `lessonOneLine` | text | `lesson.oneLine` | | — |
+| `unitTitle` | text | `unit.title` | | — |
+| `explain` | text | `unit.explain` (마크다운 그대로) | | 1, `TAIL_CHARS`, 1200자 |
+| `reason` | `ConfusionReason` | 요청 (`UNFAMILIAR_TERMS` \| `WHY_NOT_CLEAR` \| `EXAMPLE_UNCLEAR`) | | — |
+
+**보내지 않는 것** — `problem`(백지 문제), `modelAnswer`, `selfChecks`, `predict.answer`, `complete.answers`. 보내지 않으므로 흘릴 수 없다(ADR-047).
+
+**가드** — `CodeLeakGuard`(`explanation` 필드). 코드 블록이나 3줄 이상 코드면 위반이다. 설명은 개념에 머문다.
+
+**후처리** — 없다. 응답으로만 보여 주고 아무것도 저장하지 않는다. `ai_call_log`에는 다른 operation과 같게 남는다.
 
 ### 3.10 AI 불가 시 동작 (AC-12)
 
@@ -476,7 +504,7 @@ while est > op.input-token-budget:
 | 복습 답변 평가 | `NOT_EVALUATED` + `evaluationSkippedReason` | 같음 | 자기평가 기반 스케줄 전체 |
 | 복습 variant (Later) | `variant_status=FAILED` → 원문항 | `NONE` 유지 → 원문항 | due·스케줄 (MVP는 항상 원문항) |
 | Evidence 초안 | 503 / `FAILED` | 429 | `POST /evidence` 수동 작성, accept, export |
-| 요구 역량 비교 | 503 / `FAILED` | 429 | 기존 분석 조회·삭제 |
+| 로드맵 비교 | 503 / `FAILED` | 429 | 기존 분석 조회·삭제 |
 | 러버덕 턴 | 503, 턴 저장 안 함(클라이언트가 설명 유지) | 429, 저장 안 함 | 기존 세션·턴 조회 |
 | 러버덕 정리 | `status=COMPLETED` + `summarySkippedReason`, 복습 카드·이벤트 없음 | 같음 | **대화 기록은 남는다** |
 | 코드 읽기 | planner가 `READ_CODE`를 **제안하지 않는다**(완료 조건이 러버덕이므로, `06` §5.3) | 같음 | 이미 만들어진 `READ_CODE` task는 읽기 안내까지 동작 |
@@ -915,6 +943,29 @@ public record RequirementItemOutput(
         @NotBlank String requirementType,
         @Size(max = 100) String suggestedSkillCode) {}
 ```
+
+### 4.12 `LESSON_REEXPLAIN` → `LessonReexplainOutput`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "devpilot/ai/LESSON_REEXPLAIN.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["explanation", "analogy"],
+  "properties": {
+    "explanation": { "type": "string", "minLength": 1, "maxLength": 1200 },
+    "analogy": { "anyOf": [{ "type": "string", "minLength": 1, "maxLength": 400 }, { "type": "null" }] }
+  }
+}
+```
+
+```java
+public record LessonReexplainOutput(
+        @NotBlank @Size(max = 1200) String explanation, @Nullable @Size(max = 400) String analogy) {}
+```
+
+`analogy`는 비유 한 문단이고 없을 수 있다. 억지 비유를 만들게 하지 않는다.
 
 ### 4.10 `RUBBER_DUCK` → `RubberDuckTurnOutput`
 
@@ -1398,7 +1449,7 @@ trusted(ref):
 | `REVIEW_VARIANT` | `prompt`, `expectedAnswer`, `rubric[].criterion` |
 | `REVIEW_EVALUATE` | `feedback` |
 | `EVIDENCE_DRAFT` | `title`, `problem`, `analysis`, `action`, `result` |
-| `REQUIREMENT_EXTRACT` | 없음 (`rawText`는 요구사항 원문 인용) |
+| `REQUIREMENT_EXTRACT` | 없음 (`rawText`는 로드맵 원문 인용) |
 
 **알고리즘**
 

@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 // Fields of ProjectEditSheet (docs/02 SCR-PROJECTS).
 
 const _statuses = [SideProjectStatus.active, SideProjectStatus.paused, SideProjectStatus.done];
+const _kinds = [SideProjectKind.side, SideProjectKind.pastWork];
 
 /// Server field error: `URL` and `NOT_BLANK_IF_PRESENT` have their own copy (docs/02
 /// SCR-PROJECTS "Error (저장)"); others show the server message.
@@ -84,6 +85,42 @@ class ProjectOptionalFields extends StatelessWidget {
           enabled: enabled,
           errorText: projectServerFieldError(error, 'stack', l10n),
           onChanged: (text) => onEdit((values) => values.copyWith(stack: text)),
+        ),
+      ],
+    );
+  }
+}
+
+/// 프로젝트 종류 세그먼트 (등록·수정 맨 위): 지금 만드는 것 / 지난 경험.
+///
+/// 맨 위에 두는 이유는 이 선택이 나머지 입력의 뜻을 바꾸기 때문이다 — 지난 경험이면 Today 과제로 나오지 않는다(I-23).
+class ProjectKindSegment extends StatelessWidget {
+  const ProjectKindSegment({
+    super.key,
+    required this.kind,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final SideProjectKind kind;
+  final bool enabled;
+  final ValueChanged<SideProjectKind> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l10n.projectsFieldKind, style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: AppSpacing.xs),
+        SegmentedButton<SideProjectKind>(
+          key: const Key('projects.kindSegmented'),
+          segments: [
+            for (final value in _kinds) ButtonSegment(value: value, label: Text(value.label(l10n))),
+          ],
+          selected: {kind == SideProjectKind.unknown ? SideProjectKind.side : kind},
+          onSelectionChanged: enabled ? (selected) => onChanged(selected.first) : null,
         ),
       ],
     );

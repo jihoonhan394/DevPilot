@@ -1,0 +1,461 @@
+# DevPilot 개념 노트 — 스키마 마이그레이션
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 기준 버전: Spring Boot 4.1 / PostgreSQL 16 (AGENTS.md §0)
+# - 2단계(DB와 트랜잭션)에서 쓴다. DATABASE.MODELING 노트를 먼저 본 것으로 전제한다
+lessons:
+  - key: LESSON.DATABASE.MIGRATION.001
+    skillCode: DATABASE.MIGRATION
+    title: 표 구조도 코드처럼 관리하기 (마이그레이션)
+    whyItMatters: |-
+      내 PC의 DB와 서버의 DB가 다르면 "제 컴퓨터에서는 되는데요"가 시작된다.
+      누가 언제 어떤 칸을 추가했는지 아무도 모르고, 되돌릴 방법도 없다.
+      스키마 변경을 파일로 남겨 순서대로 적용하면, DB 구조가 **코드와 같은 이력**을 갖는다.
+      새 사람이 저장소를 받아 한 번 실행하면 같은 구조가 만들어진다.
+    oneLine: 스키마 변경을 번호가 붙은 파일로 남기고, 적용된 것은 절대 고치지 않으며, 새 변경은 새 파일로 더한다.
+    units:
+      - key: LESSON.DATABASE.MIGRATION.001.U1
+        title: 손으로 고치지 않고 파일로 남기기
+        minutes: 10
+        core: true
+        explain: |-
+          스키마를 다루는 방법은 셋이고, 쓸 만한 것은 하나다.
+
+          | 방법 | 문제 |
+          |---|---|
+          | DB 도구로 직접 고친다 | 이력이 없고 다른 환경에 반영이 안 된다 |
+          | ORM이 자동으로 맞춘다 (`ddl-auto: update`) | **무엇을 할지 예측할 수 없다.** 칸을 지울 수도 있다 |
+          | **번호 붙은 SQL 파일로 남긴다** | 이것이 정석 |
+
+          두 번째가 특히 위험하다. 운영에서 자동 변경을 켜 두면
+          엔티티에서 필드 하나를 지웠을 때 **그 칸과 데이터가 함께 사라질 수 있다.**
+          그래서 운영 설정은 `ddl-auto: validate` 로 둔다 —
+          **맞는지 확인만 하고 고치지는 않는다**는 뜻이다.
+
+          Flyway는 파일 이름으로 순서를 읽는다.
+
+          ```text
+          V1__create_orders.sql
+          V2__add_status_to_orders.sql
+          V3__create_order_lines.sql
+          ```
+
+          `V` + 버전 + `__`(밑줄 두 개) + 설명이다.
+          적용한 파일은 `flyway_schema_history` 표에 기록되므로 **두 번 돌지 않는다.**
+        example:
+          language: sql
+          code: |-
+            -- V1__create_orders.sql
+            CREATE TABLE orders (
+                id            BIGSERIAL PRIMARY KEY,
+                member_id     BIGINT      NOT NULL,
+                total_amount  INTEGER     NOT NULL,
+                created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
+
+            -- V2__add_status_to_orders.sql
+            ALTER TABLE orders ADD COLUMN status VARCHAR(20);
+            UPDATE orders SET status = 'PLACED' WHERE status IS NULL;
+            ALTER TABLE orders ALTER COLUMN status SET NOT NULL;
+
+            -- 적용 기록 확인
+            SELECT version, description, success FROM flyway_schema_history ORDER BY installed_rank;
+          output: |-
+            기동 로그
+            Flyway: Migrating schema "public" to version "1 - create orders"
+            Flyway: Migrating schema "public" to version "2 - add status to orders"
+            Flyway: Successfully applied 2 migrations
+
+            조회 결과
+            version | description            | success
+            --------+------------------------+---------
+            1       | create orders          | t
+            2       | add status to orders   | t
+          note: |-
+            - 파일 이름의 `V2`가 순서를 정한다. 내용이 아니라 **이름**이다
+            - `V2`는 세 문장으로 나눴다 — 칸을 만들고, 값을 채우고, 필수로 바꾼다
+            - 곧바로 `NOT NULL`로 만들면 **기존 줄 때문에 실패한다**
+            - 기록이 남아 두 번째 기동에서는 아무것도 안 돈다
+        predict:
+          question: 이미 적용된 `V2__add_status_to_orders.sql` 의 내용을 고치고 다시 기동하면?
+          choices:
+            - 체크섬이 달라져 기동에 실패한다
+            - 고친 내용이 다시 적용된다
+            - 조용히 무시된다
+            - V3로 자동 변경된다
+          answer: 체크섬이 달라져 기동에 실패한다
+          explanation: |-
+            Flyway는 적용할 때 파일의 체크섬을 함께 기록한다.
+            나중에 내용이 달라지면 **"이미 적용한 것과 다르다"** 며 기동을 막는다.
+            이것은 버그가 아니라 안전장치다 — 내 PC에는 옛 버전이, 서버에는 새 버전이
+            적용된 상태가 되는 것을 막는다. **적용된 파일은 고치지 않고 새 파일을 더한다.**
+        complete:
+          question: 상품 표에 설명 칸을 더하는 마이그레이션을 만드세요.
+          code: |-
+            -- 파일 이름: ___4__add_description_to_products.sql
+
+            ALTER TABLE products ___ COLUMN description VARCHAR(500);
+          answers:
+            - ["V"]
+            - [ADD]
+          explanation: |-
+            `V` + 번호 + 밑줄 두 개 + 설명이 파일 이름 규칙이다.
+            칸을 더할 때는 `ADD COLUMN`이고, 기존 줄이 있으므로
+            처음부터 `NOT NULL`을 붙이려면 기본값을 함께 주거나 단계를 나눠야 한다.
+        problem:
+          prompt: |-
+            주문 시스템에 쿠폰 기능을 붙이려 한다. 마이그레이션을 설계하세요.
+
+            - `coupons` 표를 새로 만든다 (코드, 할인율, 최소 주문 금액, 사용 여부)
+            - `orders`에 `coupon_code` 칸을 더한다. 기존 주문은 쿠폰이 없다
+            - 쿠폰 코드로 조회하는 일이 잦다
+
+            - 파일을 **몇 개로 나눌지** 정하고 이유를 적으세요
+            - 각 파일의 이름과 내용을 쓰세요
+            - 기존 주문 500만 건이 있을 때 **주의할 점**을 하나 적으세요
+          deliverables:
+            - 파일 수와 나눈 이유
+            - 각 파일의 이름과 SQL
+            - 기존 데이터가 많을 때의 주의점
+          hints:
+            - 되돌릴 일이 생겼을 때 어느 단위로 되돌리고 싶은지 생각해 보세요.
+            - 자주 조회하는 칸에는 무엇이 필요한가요?
+            - 500만 줄짜리 표에 칸을 더할 때 무슨 일이 생길까요?
+          modelAnswer: |-
+            파일은 **둘로 나눈다.** 표를 만드는 것과 기존 표를 고치는 것은
+            성격이 달라, 하나가 실패했을 때 다른 하나는 남겨 두는 편이 낫다.
+
+            ```sql
+            -- V4__create_coupons.sql
+            CREATE TABLE coupons (
+                code            VARCHAR(50) PRIMARY KEY,
+                discount_rate   INTEGER     NOT NULL,
+                minimum_amount  INTEGER     NOT NULL DEFAULT 0,
+                used            BOOLEAN     NOT NULL DEFAULT false
+            );
+            ```
+
+            ```sql
+            -- V5__add_coupon_code_to_orders.sql
+            ALTER TABLE orders ADD COLUMN coupon_code VARCHAR(50);
+            ALTER TABLE orders ADD CONSTRAINT fk_orders_coupon
+                FOREIGN KEY (coupon_code) REFERENCES coupons (code);
+            ```
+
+            `code`가 기본 키라 인덱스가 딸려 오므로 따로 만들 필요가 없다.
+            `coupon_code`는 기존 주문에 값이 없으므로 `NOT NULL`을 붙이지 않는다.
+
+            주의점은 **500만 줄짜리 표에 `NOT NULL` 칸을 기본값 없이 더하면
+            표 전체를 다시 쓰면서 오래 잠긴다**는 것이다.
+            그래서 새 칸은 먼저 `NULL` 허용으로 더하고,
+            값을 나눠서 채운 뒤, 마지막에 제약을 거는 식으로 단계를 나눈다.
+          selfChecks:
+            - 파일을 나눈 이유를 되돌리기 관점에서 설명했는가
+            - 파일 이름 규칙을 지켰는가
+            - 기존 줄이 있는 칸에 NOT NULL을 바로 붙이지 않았는가
+            - 큰 표에서 잠금이 길어지는 것을 고려했는가
+      - key: LESSON.DATABASE.MIGRATION.001.U2
+        title: 앞으로만 간다 (되돌리기가 없는 이유)
+        minutes: 12
+        core: true
+        explain: |-
+          "잘못 적용하면 되돌리면 되지 않나" 싶지만, 실무의 정석은 **되돌리지 않는 것**이다.
+
+          이유는 **데이터**다. 칸을 지우는 마이그레이션을 되돌리면 칸은 돌아와도
+          **그 안에 있던 값은 돌아오지 않는다.** 구조는 되돌릴 수 있어도
+          데이터는 못 되돌린다.
+
+          그래서 앞으로만 간다. 잘못됐으면 **되돌리는 새 마이그레이션을 더한다.**
+
+          ```text
+          V5__drop_legacy_column.sql      ← 잘못 적용했다
+          V6__restore_legacy_column.sql   ← 되돌리는 것이 아니라 새로 더한다
+          ```
+
+          이 방식이 강제하는 좋은 습관이 있다 — **지우기 전에 한 번 더 생각하게 된다.**
+
+          위험한 변경은 단계를 나눈다. 칸 이름을 바꾸려면
+          한 번에 `RENAME`하지 말고 **새 칸을 더하고 → 양쪽에 쓰고 → 읽는 곳을 옮기고 →
+          옛 칸을 지운다.** 배포 중에도 옛 코드와 새 코드가 함께 도는 순간이 있기 때문이다.
+        example:
+          language: sql
+          code: |-
+            -- 위험: 한 번에 이름을 바꾼다
+            -- V7__rename_amount.sql
+            ALTER TABLE orders RENAME COLUMN total_amount TO amount;
+            -- 옛 코드가 아직 돌고 있으면 그 순간 전부 실패한다
+
+            -- 안전: 네 단계로 나눈다
+            -- V7__add_amount.sql
+            ALTER TABLE orders ADD COLUMN amount INTEGER;
+            UPDATE orders SET amount = total_amount WHERE amount IS NULL;
+
+            -- (코드 배포: 쓸 때는 두 칸 모두, 읽을 때는 새 칸)
+
+            -- V8__drop_total_amount.sql   ← 모든 인스턴스가 새 코드로 바뀐 뒤에
+            ALTER TABLE orders DROP COLUMN total_amount;
+          output: |-
+            [한 번에 바꾼 경우]
+            ERROR: column "total_amount" does not exist
+            (옛 버전 인스턴스의 모든 주문 조회가 실패)
+
+            [나눈 경우]
+            V7 적용 → 두 칸이 공존, 옛 코드도 새 코드도 동작
+            코드 배포 완료
+            V8 적용 → 옛 칸 제거, 아무도 안 쓴다
+          note: |-
+            - 배포 중에는 **옛 코드와 새 코드가 동시에** 돈다. 그 순간을 견뎌야 한다
+            - `V7`과 `V8` 사이에 코드 배포가 들어간다 — 마이그레이션만으로 안 끝난다
+            - 두 칸이 공존하는 기간이 있다. 잠깐 지저분한 것이 장애보다 낫다
+            - `V8`을 다음 배포로 미뤄도 된다. 급할 이유가 없다
+        predict:
+          question: '`V8__drop_total_amount.sql` 을 코드 배포 **전에** 적용하면?'
+          choices:
+            - 아직 옛 칸을 읽는 인스턴스에서 오류가 난다
+            - 아무 문제 없다
+            - 자동으로 새 칸을 읽는다
+            - Flyway가 막아 준다
+          answer: 아직 옛 칸을 읽는 인스턴스에서 오류가 난다
+          explanation: |-
+            **마이그레이션과 코드 배포는 별개**다. Flyway는 코드가 무엇을 읽는지 모른다.
+            순서는 우리가 지켜야 한다 — 더하는 변경은 배포 전에,
+            **지우는 변경은 배포가 끝난 뒤에.**
+        complete:
+          question: 잘못 적용한 마이그레이션을 바로잡으세요.
+          code: |-
+            -- V5__drop_memo.sql 을 잘못 적용했다
+            -- 파일을 고치지 말고 ___ 파일을 더한다
+
+            -- V6__restore_memo.sql
+            ALTER TABLE orders ___ COLUMN memo VARCHAR(500);
+          answers:
+            - [새, 새로운]
+            - [ADD]
+          explanation: |-
+            적용된 파일은 체크섬이 기록돼 있어 고치면 기동이 막힌다.
+            **앞으로만 간다** — 바로잡는 것도 새 번호의 파일이다.
+            다만 지워진 데이터는 돌아오지 않으므로 백업에서 복구해야 한다.
+        problem:
+          prompt: |-
+            운영 중인 주문 시스템에서 `orders.status`를 문자열에서
+            별도 표(`order_statuses`)의 외래 키로 바꾸려 한다. 주문은 500만 건이다.
+
+            - 한 번에 바꾸면 무엇이 깨지는지 적으세요
+            - **단계를 나눈 계획**을 세우세요. 각 단계에 마이그레이션 번호와
+              코드 배포가 어디에 들어가는지 표시하세요
+            - 중간에 문제가 생겼을 때 **어느 단계에서 멈출 수 있는지** 적으세요
+          deliverables:
+            - 한 번에 바꿀 때 깨지는 것
+            - 단계별 계획 (마이그레이션과 배포 순서)
+            - 멈출 수 있는 지점
+          hints:
+            - 배포 중에는 옛 코드와 새 코드가 함께 돕니다.
+            - 두 칸이 공존하는 기간을 만들면 무엇이 편해질까요?
+            - 500만 줄을 한 문장으로 갱신하면 어떻게 될까요?
+          modelAnswer: |-
+            한 번에 바꾸면 **옛 코드가 `status` 문자열을 읽다가 전부 실패한다.**
+            게다가 500만 줄을 한 번에 갱신하면 표가 오래 잠겨 서비스가 멈춘다.
+
+            | 단계 | 무엇 |
+            |---|---|
+            | V10 | `order_statuses` 표 생성 + 기준 데이터 삽입 |
+            | V11 | `orders.status_id` 칸 추가 (`NULL` 허용) |
+            | — | **배포 ①**: 쓸 때 두 칸 모두 채우고, 읽을 때는 아직 `status` |
+            | V12 | 기존 500만 줄의 `status_id`를 **나눠서** 채운다 |
+            | — | **배포 ②**: 읽을 때 `status_id` 사용 |
+            | V13 | `status_id`에 `NOT NULL`과 외래 키 제약 |
+            | V14 | `status` 칸 제거 |
+
+            V12는 한 문장이 아니라 범위를 나눠 돌린다 —
+            `UPDATE orders SET status_id = ... WHERE id BETWEEN ? AND ? AND status_id IS NULL`
+            을 반복해 잠금 구간을 짧게 유지한다.
+
+            멈출 수 있는 지점은 **V11 이후 어디서든**이다.
+            두 칸이 공존하는 동안에는 옛 경로가 그대로 살아 있으므로
+            배포 ②에서 문제가 생기면 코드만 되돌리면 된다.
+            돌아갈 수 없게 되는 것은 **V14**부터다.
+          selfChecks:
+            - 배포 중 옛 코드와 새 코드가 공존하는 것을 고려했는가
+            - 마이그레이션과 배포를 번갈아 배치했는가
+            - 대량 갱신을 나눠 돌리기로 했는가
+            - 되돌릴 수 없게 되는 지점을 짚었는가
+      - key: LESSON.DATABASE.MIGRATION.001.U3
+        title: 스키마가 코드와 맞는지 확인하기
+        minutes: 10
+        core: true
+        explain: |-
+          마이그레이션을 썼다고 끝이 아니다. **엔티티와 실제 표가 어긋날 수 있다.**
+          필드를 추가하고 마이그레이션을 빠뜨리면, 기동은 되는데
+          그 칸을 쓰는 순간 실패한다.
+
+          그래서 설정 하나를 켠다.
+
+          ```yaml
+          spring:
+            jpa:
+              hibernate:
+                ddl-auto: validate      # 확인만 한다. 고치지 않는다
+          ```
+
+          `validate`는 엔티티가 요구하는 표와 칸이 **실제로 있는지 기동 때 확인**하고
+          없으면 기동을 멈춘다. 운영에 나가기 전에 잡히는 것이다.
+
+          | 값 | 하는 일 | 쓰는 곳 |
+          |---|---|---|
+          | `validate` | 확인만 | **운영·개발 모두** |
+          | `update` | 알아서 고친다 | 쓰지 않는다 |
+          | `create-drop` | 지우고 다시 만든다 | 일부 테스트에서만 |
+
+          그리고 테스트에서 **마이그레이션 전체를 처음부터 적용해 본다.**
+          실제 PostgreSQL을 컨테이너로 띄워 `V1`부터 끝까지 돌리면,
+          중간에 깨진 파일이나 순서 문제가 그 자리에서 드러난다.
+        example:
+          language: yaml
+          code: |-
+            spring:
+              jpa:
+                hibernate:
+                  ddl-auto: validate
+              flyway:
+                enabled: true
+                locations: classpath:db/migration
+                baseline-on-migrate: false
+
+            # 엔티티에 필드를 더하고 마이그레이션을 빠뜨리면 기동이 멈춘다
+          output: |-
+            [마이그레이션을 빠뜨린 경우]
+            org.hibernate.tool.schema.spi.SchemaManagementException:
+              Schema-validation: missing column [memo] in table [orders]
+            APPLICATION FAILED TO START
+
+            [정상]
+            Flyway: Successfully validated 13 migrations
+            Flyway: Schema "public" is up to date. No migration necessary
+            Started Application in 3.412 seconds
+          note: |-
+            - 오류 메시지가 **어느 표의 어느 칸**이 없는지 정확히 알려 준다
+            - 기동 자체가 멈춘다 — 반쯤 동작하는 상태로 나가지 않는다
+            - `Successfully validated 13 migrations`는 체크섬까지 확인했다는 뜻이다
+            - 운영에서도 `validate`다. 자동 변경은 어디에서도 켜지 않는다
+        predict:
+          question: '`ddl-auto`를 `update`로 바꾸고 엔티티에서 필드를 지우면?'
+          choices:
+            - 구현에 따라 칸과 데이터가 사라질 수 있다
+            - 아무 일도 안 일어난다
+            - 기동이 멈춘다
+            - 마이그레이션 파일이 자동으로 생성된다
+          answer: 구현에 따라 칸과 데이터가 사라질 수 있다
+          explanation: |-
+            자동 변경은 **무엇을 할지 우리가 통제하지 못한다.**
+            개발 장비에서 편하다는 이유로 켜 두면 습관이 되고,
+            그 설정이 운영 프로파일에 섞여 들어가는 순간 사고가 난다.
+            그래서 **어디에서도 켜지 않는 것**이 정석이다.
+        complete:
+          question: 마이그레이션 전체를 실제 DB에 적용해 보는 테스트를 만드세요.
+          code: |-
+            @SpringBootTest
+            @Testcontainers
+            class MigrationTest {
+
+                @Container
+                static PostgreSQLContainer<?> postgres =
+                        new PostgreSQLContainer<>("postgres:___");
+
+                @Test
+                void shouldApplyAllMigrations() {
+                    // 기동에 성공하면 V1부터 끝까지 적용되고 ___ 까지 통과한 것이다
+                }
+            }
+          answers:
+            - ["16"]
+            - [validate, 검증]
+          explanation: |-
+            운영과 **같은 메이저 버전**의 PostgreSQL을 띄워야 의미가 있다.
+            빈 DB에서 시작하므로 `V1`부터 전부 돌고,
+            그 뒤 `ddl-auto: validate`가 엔티티와 맞는지 확인한다.
+            이 테스트 하나가 "내 PC에서는 되는데요"를 없앤다.
+        problem:
+          prompt: |-
+            팀에서 스키마 관련 사고가 세 번 났다.
+
+            1. 개발자가 로컬 DB 도구로 칸을 추가하고 마이그레이션을 안 썼다
+            2. 이미 적용된 마이그레이션 파일을 고쳐서 다른 사람의 기동이 막혔다
+            3. 운영에 배포했더니 엔티티에 있는 칸이 표에 없어 API가 실패했다
+
+            - 세 사고를 각각 **어떤 장치로** 막을 수 있는지 적으세요
+            - 그 장치들을 설정과 테스트로 구현하세요
+            - 장치를 다 갖춰도 **막을 수 없는 것** 하나를 적으세요
+          deliverables:
+            - 사고별 방지 장치
+            - 설정과 테스트 코드
+            - 여전히 막을 수 없는 것 하나
+          hints:
+            - 3번은 기동 때 확인할 수 있습니다.
+            - 2번은 도구가 이미 막아 주는데, 왜 뒤늦게 발견됐을까요?
+            - 1번은 도구보다 약속의 문제일 수 있습니다.
+          modelAnswer: |-
+            | 사고 | 장치 |
+            |---|---|
+            | 1. 손으로 고치고 파일 안 씀 | CI에서 **빈 DB에 전체 마이그레이션 + validate** — 로컬에만 있는 칸은 여기서 드러난다 |
+            | 2. 적용된 파일 수정 | Flyway 체크섬 검증. **CI에서 먼저 돌려** 사람이 겪기 전에 잡는다 |
+            | 3. 엔티티와 표 불일치 | `ddl-auto: validate` + 같은 CI 테스트 |
+
+            ```yaml
+            spring:
+              jpa:
+                hibernate:
+                  ddl-auto: validate
+            ```
+
+            ```java
+            @SpringBootTest
+            @Testcontainers
+            class MigrationTest {
+
+                @Container
+                static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16");
+
+                @Test
+                void shouldApplyAllMigrationsAndMatchEntities() {
+                    // 기동 성공 자체가 단언이다 —
+                    // V1부터 전부 적용되고 validate까지 통과했다는 뜻
+                }
+            }
+            ```
+
+            세 사고가 **같은 테스트 하나로** 전부 잡힌다는 점이 요점이다.
+
+            막을 수 없는 것은 **데이터를 망가뜨리는 마이그레이션**이다.
+            `UPDATE`의 `WHERE`를 빠뜨려 전체 줄을 덮어써도
+            구조는 멀쩡하므로 `validate`도 CI도 통과한다.
+            그것은 리뷰와 백업으로 막는 수밖에 없다.
+          selfChecks:
+            - 세 사고를 각각 장치에 연결했는가
+            - 테스트가 빈 DB에서 전체를 적용하는가
+            - 운영과 같은 DB 메이저 버전을 썼는가
+            - 자동화로 못 막는 것을 하나 짚었는가
+    commonMistakes:
+      - '`ddl-auto`를 `update`로 두고 개발한다. 운영 프로파일에 섞이면 칸이 사라질 수 있다 (U3)'
+      - 이미 적용된 마이그레이션 파일을 고친다. 체크섬이 달라져 다른 사람의 기동이 막힌다 (U1)
+      - 칸을 지우는 마이그레이션을 코드 배포 전에 적용한다. 옛 코드가 그 순간 전부 실패한다 (U2)
+    inProject: |-
+      주문 시스템의 모든 스키마 변경은 `V번호__설명.sql` 파일로만 한다.
+      적용된 파일은 고치지 않고 새 번호로 더하며, 칸을 지우는 변경은 코드 배포가 끝난 뒤에 돌린다.
+      `ddl-auto`는 모든 환경에서 `validate`이고,
+      빈 PostgreSQL 16 컨테이너에 전체 마이그레이션을 적용하는 테스트를 CI에 둔다.
+    sources:
+      - title: Spring Boot — Database Initialization
+        url: https://docs.spring.io/spring-boot/how-to/data-initialization.html
+        versionScope: Spring Boot 3.x+
+      - title: Spring Boot — SQL Databases
+        url: https://docs.spring.io/spring-boot/reference/data/sql.html
+        versionScope: Spring Boot 3.x+
+      - title: PostgreSQL 16 — Modifying Tables
+        url: https://www.postgresql.org/docs/16/ddl-alter.html
+        versionScope: PostgreSQL 16
+      - title: PostgreSQL 16 — ALTER TABLE
+        url: https://www.postgresql.org/docs/16/sql-altertable.html
+        versionScope: PostgreSQL 16
+    verifiedAt: 2026-09-25

@@ -1,0 +1,529 @@
+# DevPilot 개념 노트 — AOP와 프록시
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 기준 버전: Spring Boot 4.1 / Spring Framework 7 (AGENTS.md §0)
+# - 2단계(DB와 트랜잭션)에서 쓴다. SPRING.TRANSACTION의 선행 개념이다
+lessons:
+  - key: LESSON.SPRING.AOP_PROXY.001
+    skillCode: SPRING.AOP_PROXY
+    title: 어노테이션이 실제로 일하는 방식 (AOP와 프록시)
+    whyItMatters: |-
+      `@Transactional`도 `@Cacheable`도 `@Async`도 전부 같은 장치 위에서 돈다.
+      그 장치를 모르면 "붙였는데 안 걸린다"는 상황에서 원인을 찾을 수 없다.
+      반대로 알고 나면 세 어노테이션의 한계가 **같은 한 가지 이유**로 설명되고,
+      직접 만드는 공통 처리(실행 시간 측정, 감사 로그)도 같은 방식으로 붙일 수 있다.
+    oneLine: 스프링은 빈을 대신 받는 껍데기를 만들어 두고, 그 껍데기가 어노테이션이 뜻하는 일을 앞뒤로 끼워 넣는다.
+    units:
+      - key: LESSON.SPRING.AOP_PROXY.001.U1
+        title: 흩어지는 관심사를 한곳에
+        minutes: 10
+        core: true
+        explain: |-
+          실행 시간 측정, 권한 확인, 트랜잭션, 로그 — 이런 것들은
+          **업무 로직이 아닌데 모든 업무 로직에 들어간다.** 이것을 흩어지는 관심사라 한다.
+
+          손으로 넣으면 이렇게 된다.
+
+          ```java
+          public void place(...) {
+              long start = System.nanoTime();     // 측정 시작
+              try {
+                  // 진짜 업무는 이 한 줄
+              } finally {
+                  log.info("{}ms", ...);           // 측정 끝
+              }
+          }
+          ```
+
+          메서드가 100개면 같은 코드가 100번 들어가고, 고칠 때도 100곳을 고친다.
+
+          AOP는 이것을 **한 곳에 쓰고 어디에 붙일지 따로 정하는** 방식이다.
+          용어는 셋만 알면 된다.
+
+          | 말 | 뜻 |
+          |---|---|
+          | **Aspect** | 흩어지는 관심사를 담은 클래스 |
+          | **Pointcut** | 어디에 붙일지 고르는 식 |
+          | **Advice** | 붙어서 실제로 하는 일 (앞·뒤·감싸기) |
+        example:
+          language: java
+          code: |-
+            @Aspect
+            @Component
+            public class TimingAspect {
+
+                private static final Logger log = LoggerFactory.getLogger(TimingAspect.class);
+
+                @Around("execution(* com.example.order..*Service.*(..))")   // Pointcut
+                public Object measure(ProceedingJoinPoint joinPoint) throws Throwable {
+                    long startedAt = System.nanoTime();
+                    try {
+                        return joinPoint.proceed();                          // 진짜 메서드 호출
+                    } finally {
+                        long millis = (System.nanoTime() - startedAt) / 1_000_000;
+                        log.info("{} {}ms", joinPoint.getSignature().getName(), millis);
+                    }
+                }
+            }
+          output: |-
+            POST /orders
+            INFO  place 43ms
+            INFO  decrease 12ms
+
+            (OrderService·StockService의 모든 메서드에 자동으로 붙었다.
+             업무 코드에는 측정 코드가 한 줄도 없다)
+          note: |-
+            - `@Around`는 **감싸는** advice다. `proceed()` 앞뒤가 내 차지다
+            - `execution(...)`이 Pointcut이다 — 어느 메서드에 붙일지 고른다
+            - `finally`에 뒀으므로 **예외로 끝나도** 시간이 남는다
+            - 업무 메서드는 하나도 안 고쳤다. 이것이 AOP가 파는 값어치다
+        predict:
+          question: '`joinPoint.proceed()` 를 부르지 않으면 어떻게 되나?'
+          choices:
+            - 원래 메서드가 실행되지 않는다
+            - 원래 메서드가 두 번 실행된다
+            - 컴파일 오류가 난다
+            - 아무 차이 없다
+          answer: 원래 메서드가 실행되지 않는다
+          explanation: |-
+            `@Around`는 호출을 **가로채서 대신 받는다.** `proceed()`가 진짜 메서드를 부르는 자리다.
+            안 부르면 껍데기가 자기 마음대로 끝낸 것이라 업무 로직이 통째로 건너뛰어진다.
+            캐시가 이 성질을 쓴다 — 캐시에 있으면 `proceed()`를 안 부른다.
+        complete:
+          question: 서비스 계층 전체를 감싸는 advice를 만드세요.
+          code: |-
+            @___
+            @Component
+            public class TimingAspect {
+
+                @___("execution(* com.example..*Service.*(..))")
+                public Object measure(ProceedingJoinPoint joinPoint) throws Throwable {
+                    return joinPoint.proceed();
+                }
+            }
+          answers:
+            - [Aspect]
+            - [Around]
+          explanation: |-
+            `@Aspect`가 "이 클래스는 흩어지는 관심사를 담았다"를 뜻하고,
+            `@Around`가 "감싸서 앞뒤를 맡는다"를 뜻한다.
+            `@Component`도 함께 필요하다 — 스프링이 빈으로 알아야 하기 때문이다.
+        problem:
+          prompt: |-
+            주문 시스템에 **감사 로그**를 AOP로 붙이세요.
+
+            - 대상: `@Audited` 어노테이션이 붙은 메서드
+            - 남길 것: 메서드 이름, 걸린 시간, 성공 여부
+            - 예외로 끝나도 남아야 한다
+            - 응답이나 인자에 비밀이 있을 수 있으니 **인자 값은 남기지 않는다**
+
+            - Aspect 코드를 쓰세요
+            - 이것을 AOP로 하지 않고 손으로 넣는다면 무엇이 나빠지는지 두 가지 적으세요
+            - AOP로 했을 때 **나빠지는 점**도 하나 적으세요
+          deliverables:
+            - 어노테이션과 Aspect 코드
+            - 손으로 넣을 때 나빠지는 점 두 가지
+            - AOP로 했을 때 나빠지는 점 하나
+          hints:
+            - 어노테이션을 기준으로 고르는 Pointcut 표현이 따로 있습니다.
+            - 예외로 끝나도 남으려면 어디에 두어야 할까요?
+            - 코드를 읽는 사람 입장에서 AOP의 단점은 무엇일까요?
+          modelAnswer: |-
+            ```java
+            @Target(ElementType.METHOD)
+            @Retention(RetentionPolicy.RUNTIME)
+            public @interface Audited {}
+
+            @Aspect
+            @Component
+            public class AuditAspect {
+
+                private static final Logger log = LoggerFactory.getLogger(AuditAspect.class);
+
+                @Around("@annotation(com.example.order.Audited)")
+                public Object audit(ProceedingJoinPoint joinPoint) throws Throwable {
+                    long startedAt = System.nanoTime();
+                    boolean succeeded = false;
+                    try {
+                        Object result = joinPoint.proceed();
+                        succeeded = true;
+                        return result;
+                    } finally {
+                        log.info("audit method={} succeeded={} elapsedMs={}",
+                                joinPoint.getSignature().getName(),
+                                succeeded,
+                                (System.nanoTime() - startedAt) / 1_000_000);
+                    }
+                }
+            }
+            ```
+
+            인자를 남기지 않으려고 `joinPoint.getArgs()`를 쓰지 않았다.
+            메서드 이름만으로도 무엇이 일어났는지 알 수 있다.
+
+            손으로 넣으면 **① 같은 코드가 메서드마다 반복되고
+            ② 새 메서드를 만들 때 빠뜨린다.** 두 번째가 더 나쁘다 — 아무도 모른다.
+
+            AOP의 단점은 **코드를 읽어도 안 보인다는 것**이다.
+            `place()` 메서드만 봐서는 시간 측정과 감사 로그가 붙는지 알 수 없다.
+            그래서 붙이는 범위를 좁게 잡고, 어노테이션처럼 **눈에 보이는 표시**를 쓰는 편이 낫다.
+          selfChecks:
+            - 어노테이션 기준 Pointcut을 썼는가
+            - 예외로 끝나도 로그가 남는가
+            - 인자 값을 로그에 남기지 않았는가
+            - AOP의 단점을 읽는 사람 관점에서 적었는가
+      - key: LESSON.SPRING.AOP_PROXY.001.U2
+        title: 껍데기를 만들어 끼우는 방식
+        minutes: 12
+        core: true
+        explain: |-
+          스프링이 이것을 구현하는 방법은 **프록시**다.
+          빈을 만들 때 진짜 객체를 그대로 두지 않고, **같은 타입의 껍데기**를 만들어
+          그것을 다른 빈에게 주입한다.
+
+          ```text
+          부르는 쪽 → [프록시] → 진짜 객체
+                       advice
+          ```
+
+          껍데기를 만드는 방식은 둘이다.
+
+          | 방식 | 조건 | 어떻게 |
+          |---|---|---|
+          | **JDK 동적 프록시** | 인터페이스가 있다 | 그 인터페이스를 구현한 껍데기 |
+          | **CGLIB** | 인터페이스가 없다 | 그 클래스를 **상속한** 껍데기 |
+
+          스프링 부트의 기본은 **CGLIB**다(`proxyTargetClass=true`).
+          인터페이스가 있든 없든 클래스를 상속해 만든다.
+
+          여기서 제약이 나온다. 상속으로 만드니 **`final` 클래스는 껍데기를 못 만들고,
+          `final`·`private`·`static` 메서드는 가로챌 수 없다.**
+          재정의할 수 없는 것은 끼어들 자리도 없기 때문이다.
+        example:
+          language: java
+          code: |-
+            @Service
+            public class OrderService {
+
+                @Transactional
+                public void place() {
+                    System.out.println(getClass().getName());
+                }
+            }
+
+            @Component
+            public class Runner implements ApplicationRunner {
+
+                private final OrderService orderService;
+
+                @Override public void run(ApplicationArguments args) {
+                    System.out.println("주입받은 타입: " + orderService.getClass().getName());
+                    orderService.place();
+                }
+            }
+          output: |-
+            주입받은 타입: com.example.order.OrderService$$SpringCGLIB$$0
+            com.example.order.OrderService
+
+            (주입받은 것은 CGLIB 껍데기이고,
+             그 안에서 실행되는 것은 진짜 OrderService다)
+          note: |-
+            - 주입받은 타입 이름에 `SpringCGLIB`가 붙어 있다 — **껍데기다**
+            - 메서드 안에서 찍은 것은 진짜 클래스다. 껍데기가 넘겨줬기 때문이다
+            - 이 이름을 찍어 보는 것이 프록시가 걸렸는지 확인하는 가장 빠른 방법이다
+            - `@Transactional`이 없으면 껍데기가 안 만들어지고 이름도 깔끔하다
+        predict:
+          question: '`OrderService`를 `final class`로 바꾸면 어떻게 되나?'
+          choices:
+            - 상속할 수 없어 프록시를 만들지 못하고 기동에 실패한다
+            - 그대로 잘 동작한다
+            - JDK 동적 프록시로 자동 전환된다
+            - 트랜잭션만 빠지고 나머지는 정상이다
+          answer: 상속할 수 없어 프록시를 만들지 못하고 기동에 실패한다
+          explanation: |-
+            CGLIB는 **상속으로** 껍데기를 만든다. `final` 클래스는 상속이 막혀 있으니
+            만들 방법이 없다. 그래서 프록시가 붙는 빈에는 `final`을 쓰지 않는다.
+            코틀린에서 클래스가 기본 `final`이라 별도 설정이 필요한 것도 같은 이유다.
+        complete:
+          question: 주입받은 빈이 프록시인지 확인하세요.
+          code: |-
+            System.out.println(orderService.___().getName());
+            // com.example.order.OrderService$$Spring___$$0 이면 프록시다
+          answers:
+            - [getClass]
+            - [CGLIB]
+          explanation: |-
+            `getClass().getName()`에 `SpringCGLIB`가 들어 있으면 껍데기가 씌워진 것이다.
+            이름이 그냥 클래스 이름이면 **프록시가 없다** —
+            어노테이션이 안 걸리고 있다는 뜻일 수 있다.
+        problem:
+          prompt: |-
+            아래 세 빈 중 **프록시가 만들어지지 않거나 advice가 안 걸리는 것**을 고르세요.
+
+            ```java
+            // A
+            @Service
+            public final class ReportService {
+                @Transactional public void generate() { }
+            }
+
+            // B
+            @Service
+            public class StockService {
+                @Transactional public final void decrease() { }
+            }
+
+            // C
+            @Service
+            public class CouponService {
+                @Transactional private void issueInternal() { }
+                public void issue() { issueInternal(); }
+            }
+            ```
+
+            - 셋의 결과를 각각 적고 **왜** 그런지 설명하세요
+            - 셋을 모두 고치세요
+            - 이 세 가지가 **같은 한 가지 이유**로 설명되는데 그것이 무엇인지 한 줄로 적으세요
+          deliverables:
+            - 셋의 결과와 이유
+            - 고친 코드
+            - 세 가지를 관통하는 한 가지 이유
+          hints:
+            - 껍데기를 만드는 방식이 무엇이었는지 떠올리세요.
+            - 재정의할 수 없는 것은 가로챌 수도 없습니다.
+            - C는 앞 노트에서 이미 본 문제입니다.
+          modelAnswer: |-
+            | | 결과 | 이유 |
+            |---|---|---|
+            | A | **기동 실패** | `final` 클래스라 상속으로 껍데기를 못 만든다 |
+            | B | 프록시는 생기지만 **advice가 안 걸린다** | `final` 메서드는 재정의할 수 없다 |
+            | C | **advice가 안 걸린다** | `private`이고, 게다가 자기 호출이라 껍데기를 건너뛴다 |
+
+            ```java
+            // A: final을 뗀다
+            @Service
+            public class ReportService {
+                @Transactional public void generate() { }
+            }
+
+            // B: 메서드의 final을 뗀다
+            @Service
+            public class StockService {
+                @Transactional public void decrease() { }
+            }
+
+            // C: 공개 메서드에 직접 붙인다
+            @Service
+            public class CouponService {
+                @Transactional public void issue() { ... }
+            }
+            ```
+
+            셋을 관통하는 이유는 하나다 —
+            **스프링은 상속한 껍데기가 메서드를 재정의해서 끼어드는데,
+            재정의할 수 없는 것에는 끼어들 자리가 없다.**
+
+            A와 B는 기동 때나 로그로 드러나지만 **C는 아무 표시도 없다.**
+            그래서 가장 위험하다.
+          selfChecks:
+            - 셋의 결과를 정확히 갈랐는가
+            - 재정의 가능성이라는 공통 이유를 짚었는가
+            - C가 아무 표시 없이 조용히 실패한다는 것을 알았는가
+            - 고친 뒤 프록시가 실제로 걸리는지 확인할 방법을 아는가
+      - key: LESSON.SPRING.AOP_PROXY.001.U3
+        title: 자기 호출이 껍데기를 건너뛴다
+        minutes: 12
+        core: true
+        explain: |-
+          가장 자주 당하는 한계이고, 원인은 한 줄로 끝난다 —
+          **껍데기는 밖에서 들어오는 호출만 받는다.**
+
+          ```text
+          밖 → [프록시] → 진짜객체.a()
+                              ↓ this.b()   ← 껍데기를 안 지난다
+                            진짜객체.b()
+          ```
+
+          `a()` 안에서 `b()`를 부르면 그것은 `this.b()`다.
+          진짜 객체가 자기 메서드를 부르는 것이라 껍데기가 낄 자리가 없다.
+          `b()`에 `@Transactional`이나 `@Cacheable`이 붙어 있어도 **아무 효과가 없다.**
+
+          해결 방법은 셋이고, 위에서부터 권한다.
+
+          1. **다른 빈으로 옮긴다** — 그 호출이 껍데기를 지나게 된다
+          2. **경계를 합친다** — 나눌 이유가 없으면 바깥 메서드에 붙인다
+          3. 자기 자신을 주입받아 부른다 — 되지만 **설계가 잘못됐다는 신호**다
+
+          1번이 대개 맞다. 자기 호출 문제가 생겼다는 것은
+          **한 클래스가 서로 다른 두 책임을 갖고 있다**는 뜻인 경우가 많다.
+        example:
+          language: java
+          code: |-
+            @Service
+            public class ReportService {
+
+                public void generateAll(List<Long> ids) {
+                    for (Long id : ids) {
+                        generateOne(id);          // this 호출 → 껍데기를 건너뛴다
+                    }
+                }
+
+                @Cacheable("reports")
+                public Report generateOne(Long id) {
+                    System.out.println("실제 생성 " + id);
+                    return new Report(id);
+                }
+            }
+
+            reportService.generateAll(List.of(1L, 1L, 1L));   // 캐시가 안 걸린다
+            System.out.println("---");
+            reportService.generateOne(1L);                     // 밖에서 직접 → 걸린다
+            reportService.generateOne(1L);
+          output: |-
+            실제 생성 1
+            실제 생성 1
+            실제 생성 1
+            ---
+            실제 생성 1
+
+            (generateAll을 거치면 세 번 다 만들어지고,
+             밖에서 직접 부르면 두 번째는 캐시에서 나온다)
+          note: |-
+            - 같은 메서드인데 **부르는 경로에 따라** 캐시가 걸리고 안 걸린다
+            - `generateAll`을 통과한 호출은 껍데기를 한 번만 지났다 — 바깥 메서드에서
+            - `@Cacheable`은 그대로 붙어 있다. 코드만 봐서는 문제가 안 보인다
+            - `@Transactional`·`@Async`도 정확히 같은 방식으로 새어 나간다
+        predict:
+          question: '`generateOne`을 다른 빈(`ReportGenerator`)으로 옮기고 주입받아 부르면?'
+          choices:
+            - 캐시가 걸린다 — 다른 빈 호출은 껍데기를 지난다
+            - 여전히 안 걸린다
+            - 순환 참조로 기동에 실패한다
+            - 캐시가 두 번 걸린다
+          answer: 캐시가 걸린다 — 다른 빈 호출은 껍데기를 지난다
+          explanation: |-
+            다른 빈을 주입받으면 그 참조는 **그 빈의 껍데기**다.
+            `generator.generateOne(id)` 는 껍데기를 지나므로 advice가 걸린다.
+            `this.generateOne(id)` 와의 차이는 이것 하나뿐인데 결과가 완전히 다르다.
+        complete:
+          question: 자기 호출을 다른 빈으로 옮겨 해결하세요.
+          code: |-
+            @Service
+            public class ReportBatchService {
+
+                private final ReportGenerator generator;     // 다른 빈
+
+                public void generateAll(List<Long> ids) {
+                    for (Long id : ids) {
+                        ___.generateOne(id);                  // this 가 아니다
+                    }
+                }
+            }
+          answers:
+            - [generator]
+          explanation: |-
+            `this.generateOne(...)`이 아니라 **주입받은 다른 빈**을 통해 부른다.
+            그 참조가 껍데기이므로 advice가 걸린다.
+            메서드를 옮기는 것만으로 해결되지 않는다는 점이 요점이다 — 호출 경로가 바뀌어야 한다.
+        problem:
+          prompt: |-
+            주문 일괄 처리에서 세 어노테이션이 모두 안 걸리고 있다.
+
+            ```java
+            @Service
+            public class OrderBatchService {
+
+                public void processAll(List<OrderRequest> requests) {
+                    for (OrderRequest request : requests) {
+                        processOne(request);
+                    }
+                    sendSummary();
+                }
+
+                @Transactional
+                public void processOne(OrderRequest request) { ... }
+
+                @Async
+                public void sendSummary() { ... }
+            }
+            ```
+
+            - 두 어노테이션이 안 걸리는 이유를 적고, **각각 어떤 증상**으로 드러나는지 쓰세요
+            - 구조를 다시 잡아 고치세요
+            - 고친 뒤 **정말 걸리는지 확인하는 방법**을 두 가지 적으세요
+            - `processAll` 전체에 `@Transactional`을 붙여 해결하려 하면 무엇이 문제인지 적으세요
+          deliverables:
+            - 두 어노테이션의 증상
+            - 다시 잡은 구조의 코드
+            - 걸렸는지 확인하는 방법 두 가지
+            - processAll에 붙이는 방식의 문제
+          hints:
+            - 두 호출 모두 같은 클래스 안에서 일어납니다.
+            - 트랜잭션이 안 걸리면 무엇이 어긋나고, 비동기가 안 걸리면 무엇이 달라지나요?
+            - 일괄 처리를 한 트랜잭션으로 묶으면 건수가 많을 때 어떻게 되나요?
+          modelAnswer: |-
+            둘 다 **자기 호출**이라 껍데기를 건너뛴다.
+
+            | 어노테이션 | 증상 |
+            |---|---|
+            | `@Transactional` | 건마다 커밋되지 않고 경계 자체가 없다. 중간 실패 시 앞부분이 어긋난 채 남는다 |
+            | `@Async` | 별도 스레드가 아니라 **그 자리에서 동기로** 실행된다. 느린 줄 모르고 넘어간다 |
+
+            ```java
+            @Service
+            public class OrderBatchService {
+
+                private final OrderProcessor processor;      // 다른 빈
+                private final SummarySender sender;          // 다른 빈
+
+                public void processAll(List<OrderRequest> requests) {
+                    for (OrderRequest request : requests) {
+                        processor.processOne(request);       // 건마다 트랜잭션
+                    }
+                    sender.sendSummary();                    // 비동기
+                }
+            }
+            ```
+
+            확인 방법 두 가지 —
+            `logging.level.org.springframework.transaction.interceptor: TRACE` 로
+            건마다 `Getting transaction for [...]` 가 찍히는지 보거나,
+            테스트에서 `TransactionSynchronizationManager.isActualTransactionActive()` 와
+            `Thread.currentThread().getName()` 을 단언한다.
+            비동기가 걸렸다면 스레드 이름이 `task-1` 처럼 달라진다.
+
+            `processAll` 전체에 `@Transactional`을 붙이면 **걸리기는 한다.**
+            하지만 건수가 많을 때 **하나가 실패하면 전부 되돌아가고**,
+            그동안 연결과 잠금을 계속 쥐고 있게 된다.
+            "건마다 따로 커밋"이 의도였다면 이것은 틀린 해결이다.
+          selfChecks:
+            - 두 어노테이션의 증상을 각각 구체적으로 적었는가
+            - 호출 경로가 바뀌도록 구조를 고쳤는가
+            - 확인 방법을 로그와 테스트 두 가지로 적었는가
+            - processAll에 붙이는 방식이 왜 틀린 해결인지 설명했는가
+    commonMistakes:
+      - 같은 클래스 안에서 어노테이션 붙은 메서드를 부른다. 껍데기를 건너뛰어 아무 효과가 없다 (U3)
+      - 프록시가 붙는 빈을 `final` 클래스나 `final` 메서드로 만든다. 재정의할 수 없어 못 끼운다 (U2)
+      - AOP를 넓은 범위에 붙인다. 코드를 읽어도 무엇이 붙는지 보이지 않는다 (U1)
+    inProject: |-
+      주문 시스템에서 이 노트는 `@Transactional`이 왜 안 걸리는지를 설명하는 바탕이다.
+      서비스 클래스와 그 메서드에 `final`을 쓰지 않고, 경계가 필요한 메서드를
+      같은 클래스 안에서 부르지 않는다. 일괄 처리는 처리 한 건을 다른 빈으로 빼서
+      건마다 경계를 지나게 한다. 공통 처리를 직접 붙일 때는 어노테이션으로 표시해
+      코드에 흔적이 남게 한다.
+    sources:
+      - title: Spring Framework — Aspect Oriented Programming with Spring
+        url: https://docs.spring.io/spring-framework/reference/core/aop.html
+        versionScope: Spring Framework 6.x+
+      - title: Spring Framework — AOP Proxies
+        url: https://docs.spring.io/spring-framework/reference/core/aop/proxying.html
+        versionScope: Spring Framework 6.x+
+      - title: Spring Framework — Declaring Advice
+        url: https://docs.spring.io/spring-framework/reference/core/aop/ataspectj/advice.html
+        versionScope: Spring Framework 6.x+
+      - title: Spring Framework — Using @Transactional
+        url: https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html
+        versionScope: Spring Framework 6.x+
+    verifiedAt: 2026-09-24

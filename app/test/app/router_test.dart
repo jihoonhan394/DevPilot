@@ -18,6 +18,8 @@ void main() {
       expect(redirect(signedOut, '/plan'), '/login?from=%2Fplan');
       expect(redirect(signedOut, '/settings'), '/login?from=%2Fsettings');
       expect(redirect(signedOut, '/onboarding/goal'), '/login?from=%2Fonboarding%2Fgoal');
+      expect(redirect(signedOut, '/today?complete=t1'), '/login?from=%2Ftoday%3Fcomplete%3Dt1');
+      expect(redirect(signedOut, '/review/session'), '/login?from=%2Freview%2Fsession');
     });
 
     test('shouldAddReasonWhenSessionExpiredOrAccountWasDeleted', () {
@@ -40,15 +42,15 @@ void main() {
 
   group('rule 2: session on /login', () {
     test('shouldLeaveLoginForStartPageWhenSignedIn', () {
-      expect(redirect(signedIn, '/login'), '/plan');
-      expect(redirect(signedIn, '/login?reason=expired'), '/plan');
+      expect(redirect(signedIn, '/login'), '/today');
+      expect(redirect(signedIn, '/login?reason=expired'), '/today');
     });
 
     test('shouldReturnToInAppFromPathOnly', () {
       expect(redirect(signedIn, '/login?from=%2Fprojects%3Ftab%3D1'), '/projects?tab=1');
-      expect(redirect(signedIn, '/login?from=%2F%2Fevil.example'), '/plan');
-      expect(redirect(signedIn, '/login?from=https%3A%2F%2Fevil.example'), '/plan');
-      expect(redirect(signedIn, '/login?from=%2Flogin'), '/plan');
+      expect(redirect(signedIn, '/login?from=%2F%2Fevil.example'), '/today');
+      expect(redirect(signedIn, '/login?from=https%3A%2F%2Fevil.example'), '/today');
+      expect(redirect(signedIn, '/login?from=%2Flogin'), '/today');
     });
   });
 
@@ -73,6 +75,9 @@ void main() {
       expect(redirect(signedIn, '/plan', profile: notOnboarded), '/onboarding/goal');
       expect(redirect(signedIn, '/projects', profile: notOnboarded), '/onboarding/goal');
       expect(redirect(signedIn, '/onboarding/plan', profile: notOnboarded), '/onboarding/goal');
+      for (final path in ['/today', '/review', '/review/session', '/dashboard']) {
+        expect(redirect(signedIn, path, profile: notOnboarded), '/onboarding/goal', reason: path);
+      }
     });
 
     test('shouldLetNotOnboardedUserStayOnInputStepsAndSettings', () {
@@ -82,15 +87,15 @@ void main() {
     });
 
     test('shouldSendOnboardedUserFromInputStepsToStartPage', () {
-      expect(redirect(signedIn, '/onboarding/goal'), '/plan');
-      expect(redirect(signedIn, '/onboarding/level'), '/plan');
+      expect(redirect(signedIn, '/onboarding/goal'), '/today');
+      expect(redirect(signedIn, '/onboarding/level'), '/today');
       expect(redirect(signedIn, '/onboarding/plan'), isNull);
     });
 
     test('shouldSendRootToStartPageAndKeepOtherRoutes', () {
-      expect(redirect(signedIn, '/'), '/plan');
+      expect(redirect(signedIn, '/'), '/today');
       expect(redirect(signedIn, '/plan/versions/9e2b1c7a-0f0e-4d7b-8e59-0c3e1f6b2a01'), isNull);
-      expect(redirect(signedIn, '/not-allowed'), '/plan');
+      expect(redirect(signedIn, '/not-allowed'), '/today');
     });
   });
 }

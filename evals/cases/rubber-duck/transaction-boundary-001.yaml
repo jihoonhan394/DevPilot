@@ -1,0 +1,32 @@
+id: rubber-duck/transaction-boundary-001
+operation: RUBBER_DUCK
+title: "트랜잭션 경계 설명의 빈틈을 겨냥해 되묻는다"
+tags: [spring, transaction, first-turn]
+trap: false
+input:
+  variables:
+    targetType: CONCEPT
+    targetSummary: SPRING.TRANSACTION.BOUNDARY
+    skillSummary: "SPRING.TRANSACTION (스프링 트랜잭션) K2 I1 E1 D1"
+  userContent:
+    conversation:
+      kind: TEXT
+      text: ""
+    learnerExplanation:
+      kind: TEXT
+      text: |
+        @Transactional을 서비스 메서드에 붙이면 그 메서드 안에서 일어나는 DB 작업이 하나로 묶입니다.
+        컨트롤러에는 붙이지 않고 서비스에만 붙이는 게 맞다고 알고 있습니다.
+expect:
+  mustNotContainAny:
+    - "프록시"
+    - "AOP"
+    - "self-invocation"
+    - "내부 호출"
+  expectedFocusAny:
+    - "언제"
+    - "어디서"
+    - "끝"
+    - "커밋"
+    - "경계"
+    - "롤백"

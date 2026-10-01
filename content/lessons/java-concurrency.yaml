@@ -1,0 +1,518 @@
+# DevPilot 개념 노트 — 동시성 기초
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 기준 버전: Java 25 (AGENTS.md §0)
+# - 2단계(DB와 트랜잭션)에서 쓴다. JAVA.COLLECTION 노트를 먼저 본 것으로 전제한다
+lessons:
+  - key: LESSON.JAVA.CONCURRENCY.001
+    skillCode: JAVA.CONCURRENCY
+    title: 동시에 돌 때 깨지는 것들 (동시성)
+    whyItMatters: |-
+      웹 서버는 요청마다 다른 스레드로 돈다. 그러니까 **우리가 쓰는 모든 서비스 코드가
+      이미 동시에 실행되고 있다.** 그 사실을 모르고 빈에 필드를 하나 두면
+      요청끼리 값이 섞이고, 그 버그는 사용자가 몰릴 때만 나타난다.
+      재현이 안 되고 로그도 안 남아서, 원인을 모른 채 며칠을 보내게 된다.
+    oneLine: 여러 스레드가 같은 값을 동시에 고치면 깨지고, 공유하지 않거나 원자적으로 다루면 막을 수 있다.
+    units:
+      - key: LESSON.JAVA.CONCURRENCY.001.U1
+        title: 한 줄이 한 동작이 아니다
+        minutes: 12
+        core: true
+        explain: |-
+          `count++` 는 한 줄이지만 실제로는 **세 단계**다.
+
+          ```text
+          1. count 를 읽는다
+          2. 1을 더한다
+          3. 다시 쓴다
+          ```
+
+          두 스레드가 이 셋을 겹쳐 실행하면 **한쪽의 증가가 사라진다.**
+          앞 노트의 갱신 손실과 정확히 같은 구조다 — 자리만 DB에서 메모리로 옮겼다.
+
+          ```text
+          A: 읽는다(5) ───────── 6을 쓴다
+          B:     읽는다(5) ─ 6을 쓴다
+          ```
+
+          둘 다 더했는데 6이다. 이것을 경쟁 조건(race condition)이라 한다.
+
+          더 까다로운 것이 하나 있다. **한 스레드가 쓴 값을 다른 스레드가
+          못 볼 수도 있다.** 값이 코어의 캐시에 머무를 수 있기 때문이다.
+          그래서 "둘이 동시에 안 하면 되겠지"만으로는 부족하고,
+          **보이게 만드는 장치**도 필요하다.
+        example:
+          language: java
+          code: |-
+            static int unsafe = 0;
+            static final AtomicInteger safe = new AtomicInteger();
+
+            public static void main(String[] args) throws Exception {
+                Thread[] threads = new Thread[8];
+                for (int i = 0; i < threads.length; i++) {
+                    threads[i] = new Thread(() -> {
+                        for (int j = 0; j < 100_000; j++) {
+                            unsafe++;                 // 세 단계라 깨진다
+                            safe.incrementAndGet();   // 원자적이다
+                        }
+                    });
+                    threads[i].start();
+                }
+                for (Thread thread : threads) {
+                    thread.join();
+                }
+                System.out.println("기대값 " + (8 * 100_000));
+                System.out.println("unsafe " + unsafe);
+                System.out.println("safe   " + safe.get());
+            }
+          output: |-
+            기대값 800000
+            unsafe 617432     (실행할 때마다 다르다)
+            safe   800000
+          note: |-
+            - `unsafe`는 **실행할 때마다 값이 다르다.** 이것이 가장 나쁜 성질이다
+            - 18만 번의 증가가 사라졌다 — 겹쳐 실행된 횟수다
+            - `AtomicInteger.incrementAndGet()`은 읽기·더하기·쓰기를 **한 동작으로** 한다
+            - 스레드 수나 장비가 달라지면 깨지는 양도 달라진다. 재현이 어렵다
+        predict:
+          question: 스레드를 1개로 줄이면 `unsafe`는 어떻게 되나?
+          choices:
+            - 100000 — 겹칠 상대가 없어 정확하다
+            - 여전히 값이 틀린다
+            - 0이 된다
+            - 예외가 난다
+          answer: 100000 — 겹칠 상대가 없어 정확하다
+          explanation: |-
+            경쟁 조건은 **둘 이상이 동시에 건드릴 때만** 생긴다.
+            개발 장비에서 혼자 테스트하면 절대 안 보이고,
+            운영에서 사용자가 몰릴 때만 나타나는 이유가 이것이다.
+            "내 컴퓨터에서는 잘 되는데"의 대표적인 원인이다.
+        complete:
+          question: 여러 스레드가 함께 세는 값을 안전하게 만드세요.
+          code: |-
+            private final ___<Integer> counter = new AtomicInteger();
+
+            public void increase() {
+                counter.___();       // 읽기·더하기·쓰기를 한 동작으로
+            }
+          answers:
+            - [AtomicReference, AtomicInteger]
+            - [incrementAndGet, getAndIncrement]
+          explanation: |-
+            `AtomicInteger`는 증가를 **쪼개지지 않는 한 동작**으로 해 준다.
+            `incrementAndGet`은 더한 뒤 값을, `getAndIncrement`는 더하기 전 값을 준다.
+            둘 다 안전하고, 어느 값이 필요한지로 고른다.
+        problem:
+          prompt: |-
+            아래 스프링 빈은 운영에서 값이 섞인다.
+
+            ```java
+            @Service
+            public class OrderNumberGenerator {
+
+                private int sequence = 0;
+                private String lastPrefix;
+
+                public String next(String prefix) {
+                    lastPrefix = prefix;
+                    sequence++;
+                    return lastPrefix + "-" + sequence;
+                }
+            }
+            ```
+
+            - 이 빈이 왜 위험한지 **스프링 빈의 성질**과 함께 설명하세요
+            - 두 요청이 동시에 들어왔을 때 **잘못된 번호가 나오는 순서**를 단계로 적으세요
+            - 두 가지 방법으로 고치세요 (하나는 상태를 없애는 것, 하나는 원자적으로 만드는 것)
+          deliverables:
+            - 위험한 이유와 스프링 빈의 성질
+            - 잘못된 번호가 나오는 단계 표
+            - 고친 코드 두 가지
+          hints:
+            - 스프링 빈은 기본적으로 몇 개 만들어지나요?
+            - 필드가 두 개입니다. 둘 다 문제인지 생각해 보세요.
+            - 상태를 아예 갖지 않으면 섞일 것도 없습니다.
+          modelAnswer: |-
+            스프링 빈은 기본이 **싱글턴**이다. 인스턴스 하나를 모든 요청이 공유하므로,
+            빈의 필드는 **모든 스레드가 함께 쓰는 값**이 된다.
+
+            | 시각 | 요청 A (prefix=ORD) | 요청 B (prefix=CPN) | 결과 |
+            |---|---|---|---|
+            | 1 | `lastPrefix = "ORD"` | | ORD |
+            | 2 | | `lastPrefix = "CPN"` | CPN |
+            | 3 | `sequence++` → 1 | | 1 |
+            | 4 | `return "CPN-1"` | | **잘못된 접두사** |
+            | 5 | | `sequence++` → 2 | 2 |
+
+            A가 요청한 것은 `ORD-1`인데 `CPN-1`을 받았다.
+            `sequence`뿐 아니라 **`lastPrefix`도 공유되기 때문**이다.
+
+            ```java
+            // 방법 1: 상태를 없앤다 (가장 좋다)
+            @Service
+            public class OrderNumberGenerator {
+
+                private final AtomicInteger sequence = new AtomicInteger();
+
+                public String next(String prefix) {
+                    return prefix + "-" + sequence.incrementAndGet();   // 지역 변수만 쓴다
+                }
+            }
+
+            // 방법 2: 아예 상태를 안 갖는다
+            @Service
+            public class OrderNumberGenerator {
+
+                public String next(String prefix, long sequenceFromDb) {
+                    return prefix + "-" + sequenceFromDb;               // 번호는 DB 시퀀스에서
+                }
+            }
+            ```
+
+            `lastPrefix` 필드는 **없앴다.** 인자로 받은 값을 그대로 쓰면 되는데
+            굳이 필드에 담을 이유가 없었다. **공유 상태를 만들지 않는 것**이 첫 번째 답이다.
+          selfChecks:
+            - 스프링 빈이 싱글턴이라는 것을 근거로 들었는가
+            - 두 필드가 모두 문제라는 것을 짚었는가
+            - 필드를 없애는 방법을 먼저 고려했는가
+            - 지역 변수만 쓰는 코드가 됐는가
+      - key: LESSON.JAVA.CONCURRENCY.001.U2
+        title: 공유하지 않거나, 안전하게 공유하거나
+        minutes: 12
+        core: true
+        explain: |-
+          막는 방법은 순서가 있다. **위에서부터 시도한다.**
+
+          | 방법 | 어떻게 | 비용 |
+          |---|---|---|
+          | **1. 공유하지 않는다** | 지역 변수·인자만 쓴다 | 없다 |
+          | **2. 바꾸지 않는다** | 불변 객체(`record`, `final`) | 없다 |
+          | **3. 원자 타입** | `AtomicInteger`, `AtomicReference` | 작다 |
+          | **4. 동시성 컬렉션** | `ConcurrentHashMap` | 작다 |
+          | **5. 잠금** | `synchronized`, `ReentrantLock` | 크다 |
+
+          1번과 2번에 비용이 없다는 것이 중요하다.
+          **애초에 공유할 것을 만들지 않으면** 동시성 문제도 없다.
+          불변 객체는 아무리 여러 스레드가 봐도 값이 안 바뀌니 안전하다.
+
+          5번은 마지막이다. 잠금을 쓰면 **기다리는 스레드가 생기고**,
+          범위를 잘못 잡으면 교착까지 간다 — DB 잠금과 같은 문제다.
+
+          그리고 `HashMap`을 여러 스레드가 고치면 값이 틀리는 정도가 아니라
+          **내부 구조가 깨져 무한 반복에 빠질 수 있다.** 공유한다면 `ConcurrentHashMap`이다.
+        example:
+          language: java
+          code: |-
+            // 1·2번: 공유하지 않고 바꾸지 않는다
+            record OrderSummary(long orderId, int amount) {}     // 불변
+
+            public OrderSummary summarize(Order order) {
+                int amount = order.lines().stream()               // 지역 변수
+                        .mapToInt(OrderLine::amount).sum();
+                return new OrderSummary(order.id(), amount);
+            }
+
+            // 4번: 공유해야 한다면 동시성 컬렉션
+            private final Map<String, AtomicInteger> hitCount = new ConcurrentHashMap<>();
+
+            public void hit(String path) {
+                hitCount.computeIfAbsent(path, key -> new AtomicInteger()).incrementAndGet();
+            }
+
+            // 5번: 정말 필요할 때만
+            private final Object lock = new Object();
+
+            public void transferBoth() {
+                synchronized (lock) {
+                    // 두 값을 함께 바꿔야 할 때
+                }
+            }
+          output: |-
+            [HashMap을 8스레드가 공유한 경우]
+            크기 617432 (기대 800000)  — 값이 틀리거나
+            (경우에 따라 무한 반복으로 CPU 100%)
+
+            [ConcurrentHashMap + AtomicInteger]
+            크기 800000  — 언제나 정확하다
+          note: |-
+            - `summarize`는 필드를 하나도 안 쓴다 — **동시성 문제가 생길 자리가 없다**
+            - `record`는 만들고 나면 안 바뀌어 몇 스레드가 봐도 안전하다
+            - `computeIfAbsent`는 "없으면 만들어 넣기"를 **한 동작으로** 한다
+            - `synchronized`는 두 값을 **함께** 바꿔야 할 때만 남겨 둔다
+        predict:
+          question: '`hitCount.computeIfAbsent(...)` 대신 `if (!map.containsKey(k)) map.put(k, ...)` 로 쓰면?'
+          choices:
+            - 두 스레드가 동시에 통과해 하나가 덮어써질 수 있다
+            - 똑같이 안전하다
+            - 컴파일 오류가 난다
+            - ConcurrentHashMap이 알아서 막아 준다
+          answer: 두 스레드가 동시에 통과해 하나가 덮어써질 수 있다
+          explanation: |-
+            `ConcurrentHashMap`은 **한 연산**을 안전하게 해 줄 뿐이다.
+            `containsKey` 와 `put` 은 **두 연산**이라 그 사이에 끼어들 틈이 있다.
+            "확인하고 행동하기"는 반드시 한 메서드로 묶어야 한다 —
+            `computeIfAbsent`, `putIfAbsent`가 그것을 위해 있다.
+        complete:
+          question: 공유하는 지도를 안전하게 만드세요.
+          code: |-
+            private final Map<String, Integer> cache = new ___<>();
+
+            public int countOf(String key) {
+                return cache.___(key, 0);      // 없으면 0
+            }
+          answers:
+            - [ConcurrentHashMap]
+            - [getOrDefault]
+          explanation: |-
+            여러 스레드가 함께 쓰는 지도는 `ConcurrentHashMap`이다.
+            `HashMap`을 쓰면 값이 틀리는 것을 넘어 **내부 구조가 깨질 수 있다.**
+        problem:
+          prompt: |-
+            아래 캐시 구현을 안전하게 고치세요.
+
+            ```java
+            @Service
+            public class ProductCache {
+
+                private final Map<String, Product> cache = new HashMap<>();
+                private int hitCount = 0;
+                private int missCount = 0;
+
+                public Product get(String code) {
+                    if (cache.containsKey(code)) {
+                        hitCount++;
+                        return cache.get(code);
+                    }
+                    missCount++;
+                    Product product = repository.findByCode(code).orElseThrow();
+                    cache.put(code, product);
+                    return product;
+                }
+            }
+            ```
+
+            - 동시성 문제가 있는 자리를 **세 군데** 찾으세요
+            - 앞의 다섯 가지 방법 중 각각에 **어느 것을 쓸지** 정하고 고치세요
+            - `synchronized` 로 메서드 전체를 감싸는 방법의 문제를 적으세요
+          deliverables:
+            - 문제가 있는 세 자리
+            - 방법을 고른 근거와 고친 코드
+            - synchronized로 감쌀 때의 문제
+          hints:
+            - 지도 자체, 카운터 둘 — 성격이 다릅니다.
+            - 확인하고 행동하는 구조가 또 있습니다.
+            - 메서드 전체를 잠그면 DB 조회 시간까지 잠금 안에 들어갑니다.
+          modelAnswer: |-
+            세 자리는 **① `HashMap` 공유 ② `hitCount++` ③ `missCount++`** 이고,
+            거기에 `containsKey` → `get` → `put` 이 **한 동작이 아닌 것**도 문제다.
+
+            ```java
+            @Service
+            public class ProductCache {
+
+                private final Map<String, Product> cache = new ConcurrentHashMap<>();
+                private final AtomicInteger hitCount = new AtomicInteger();
+                private final AtomicInteger missCount = new AtomicInteger();
+
+                public Product get(String code) {
+                    Product cached = cache.get(code);
+                    if (cached != null) {
+                        hitCount.incrementAndGet();
+                        return cached;
+                    }
+                    missCount.incrementAndGet();
+                    return cache.computeIfAbsent(code,
+                            key -> repository.findByCode(key).orElseThrow());
+                }
+            }
+            ```
+
+            지도는 **4번(동시성 컬렉션)**, 카운터 둘은 **3번(원자 타입)** 이다.
+            `computeIfAbsent`로 "없으면 넣기"를 한 동작으로 묶어 중복 조회도 줄였다.
+
+            `synchronized` 로 메서드 전체를 감싸면 **DB 조회 시간까지 잠금 안에 들어간다.**
+            캐시에 있는 요청(대부분)까지 그 뒤에서 줄을 서게 되어,
+            캐시를 둔 목적이 사라진다. 잠금 범위는 언제나 최소로 잡는다.
+          selfChecks:
+            - 세 자리를 모두 찾았는가
+            - 확인하고 행동하는 구조를 한 동작으로 묶었는가
+            - 지도와 카운터에 다른 방법을 썼는가
+            - 잠금 범위가 커질 때의 문제를 설명했는가
+      - key: LESSON.JAVA.CONCURRENCY.001.U3
+        title: 스레드를 직접 만들지 않는다
+        minutes: 10
+        core: false
+        explain: |-
+          `new Thread(...)` 를 업무 코드에서 쓰는 일은 거의 없다. 이유가 셋이다.
+
+          - 스레드를 만드는 것은 **싸지 않다**
+          - 몇 개까지 만들지 **아무도 제한하지 않는다** — 요청이 몰리면 수천 개가 된다
+          - 끝났는지, 실패했는지 **알 방법이 없다**
+
+          그래서 **스레드 풀**을 쓴다. 미리 정해 둔 수만큼만 만들어 두고 일감을 맡긴다.
+          자바에서는 `ExecutorService`가 그 창구다.
+
+          ```java
+          executor.submit(() -> 할일());          // Future 를 돌려준다
+          ```
+
+          돌려받는 `Future`로 **끝났는지 묻고 결과나 예외를 받을 수 있다.**
+          `submit`한 일에서 난 예외는 **조용히 사라지지 않고** `Future`에 담긴다 —
+          다만 우리가 꺼내 보지 않으면 결국 묻힌다.
+
+          스프링에서는 이것을 직접 만들 일도 드물다.
+          `@Async`를 붙이면 설정해 둔 풀에서 돌고, 그 풀의 크기를 설정으로 정한다.
+          **어느 풀에서 도는지 아는 것**이 중요하다 — 풀이 하나뿐이면
+          느린 작업 하나가 나머지 전부를 막는다.
+        example:
+          language: java
+          code: |-
+            ExecutorService executor = Executors.newFixedThreadPool(4);
+
+            List<Future<Integer>> futures = new ArrayList<>();
+            for (int i = 1; i <= 6; i++) {
+                int orderId = i;
+                futures.add(executor.submit(() -> {
+                    if (orderId == 3) {
+                        throw new IllegalStateException("주문 3 처리 실패");
+                    }
+                    return orderId * 100;
+                }));
+            }
+
+            for (Future<Integer> future : futures) {
+                try {
+                    System.out.println(future.get());
+                } catch (ExecutionException failure) {
+                    System.out.println("실패: " + failure.getCause().getMessage());
+                }
+            }
+            executor.shutdown();
+          output: |-
+            100
+            200
+            실패: 주문 3 처리 실패
+            400
+            500
+            600
+          note: |-
+            - 스레드는 4개뿐이고 일감이 6개다 — 먼저 끝난 스레드가 다음 것을 집는다
+            - 예외가 사라지지 않고 `ExecutionException`에 **원인으로 감싸여** 왔다
+            - `getCause()`로 진짜 예외를 꺼낸다. 앞 노트의 원인 사슬이다
+            - `future.get()`을 부르지 않았다면 그 실패를 **아무도 몰랐을 것**이다
+        predict:
+          question: '`executor.shutdown()` 을 부르지 않으면 어떻게 되나?'
+          choices:
+            - 풀의 스레드가 살아 있어 프로그램이 안 끝날 수 있다
+            - 자동으로 정리된다
+            - 예외가 난다
+            - 결과가 안 나온다
+          answer: 풀의 스레드가 살아 있어 프로그램이 안 끝날 수 있다
+          explanation: |-
+            풀의 스레드는 **다음 일감을 기다리며 계속 살아 있다.**
+            `shutdown()`으로 "더 받지 않겠다"고 알려 줘야 정리된다.
+            스프링이 관리하는 풀은 종료 때 알아서 정리하지만,
+            직접 만들었다면 **직접 닫아야** 한다 — 자원 관리 노트의 그 규칙이다.
+        complete:
+          question: 크기가 정해진 스레드 풀에 일감을 맡기세요.
+          code: |-
+            ExecutorService executor = Executors.___(4);
+
+            Future<Integer> future = executor.___(() -> compute());
+            int result = future.get();
+          answers:
+            - [newFixedThreadPool]
+            - [submit]
+          explanation: |-
+            `newFixedThreadPool(4)`는 **딱 4개만** 만들어 재사용한다.
+            `submit`은 `Future`를 돌려주어 결과와 예외를 받을 수 있게 해 준다.
+            `execute`는 `Future`가 없어 실패를 알 수 없으므로 `submit`을 쓴다.
+        problem:
+          prompt: |-
+            주문 알림을 여러 채널로 동시에 보내는 기능을 만드세요.
+
+            - 채널은 셋이다 (이메일, 앱 푸시, 문자). 각각 1~3초 걸린다
+            - 셋을 순서대로 보내면 최대 9초다. 동시에 보내 3초로 줄이려 한다
+            - 하나가 실패해도 나머지는 가야 한다
+            - 전체가 5초를 넘으면 포기한다
+
+            - 스레드 풀의 크기를 어떻게 정할지 적으세요
+            - 코드를 쓰세요. 실패와 시간 초과를 모두 다뤄야 합니다
+            - 이 작업을 **웹 요청 스레드에서 직접** 하면 무엇이 문제인지 적으세요
+          deliverables:
+            - 풀 크기를 정한 근거
+            - 실패와 시간 초과를 다룬 코드
+            - 요청 스레드에서 직접 할 때의 문제
+          hints:
+            - 동시에 보낼 것이 몇 개인지 세어 보세요.
+            - Future에는 시간을 정해 기다리는 방법이 있습니다.
+            - 하나가 실패했을 때 나머지 결과를 어떻게 받을까요?
+          modelAnswer: |-
+            풀 크기는 **채널 수(3)에 맞춘다.** 이 작업은 대부분 상대를 기다리는 시간이라
+            CPU 수와 무관하고, 동시에 보낼 개수가 곧 필요한 수다.
+            알림 전용 풀을 따로 두어 다른 작업과 섞이지 않게 한다.
+
+            ```java
+            private final ExecutorService notificationExecutor =
+                    Executors.newFixedThreadPool(3);
+
+            public void notifyAll(long orderId) {
+                List<Future<?>> futures = List.of(
+                        notificationExecutor.submit(() -> emailClient.send(orderId)),
+                        notificationExecutor.submit(() -> pushClient.send(orderId)),
+                        notificationExecutor.submit(() -> smsClient.send(orderId)));
+
+                for (Future<?> future : futures) {
+                    try {
+                        future.get(5, TimeUnit.SECONDS);
+                    } catch (TimeoutException timeout) {
+                        future.cancel(true);
+                        log.warn("알림 시간 초과 orderId={}", orderId);
+                    } catch (ExecutionException failure) {
+                        log.warn("알림 실패 orderId={} 원인={}",
+                                orderId, failure.getCause().getMessage());
+                    } catch (InterruptedException interrupted) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+            ```
+
+            **각 `Future`를 따로 기다리므로 하나가 실패해도 나머지를 확인한다.**
+            `InterruptedException`을 잡았을 때 인터럽트 상태를 되살리는 것도 규칙이다.
+
+            요청 스레드에서 직접 하면 **응답이 최대 9초 걸린다.**
+            그동안 그 스레드는 다른 요청을 받지 못하고,
+            알림 서버가 느려지면 요청 스레드가 전부 거기 묶여 **서비스 전체가 멈춘다.**
+            앞 노트의 "경계 안에 외부 호출을 두지 않는다"와 같은 이유다.
+          selfChecks:
+            - 풀 크기의 근거를 작업 성격으로 설명했는가
+            - 하나가 실패해도 나머지를 확인하는가
+            - 시간 초과와 실패를 따로 다뤘는가
+            - 요청 스레드가 막히는 것의 영향을 설명했는가
+    commonMistakes:
+      - 스프링 빈에 바뀌는 필드를 둔다. 싱글턴이라 모든 요청이 그 값을 공유한다 (U1)
+      - '`ConcurrentHashMap`에 `containsKey` 뒤 `put`을 쓴다. 두 연산 사이에 틈이 있다 (U2)'
+      - '`new Thread(...)`로 직접 만든다. 개수 제한이 없고 실패를 알 수 없다 (U3)'
+    inProject: |-
+      주문 시스템의 서비스 빈에는 **바뀌는 필드를 두지 않는다.** 필요한 값은 인자로 받고
+      결과는 돌려준다 — 그러면 동시성 문제가 생길 자리가 없다.
+      상태를 꼭 들어야 하면 불변 객체나 원자 타입을 쓰고, 공유 지도는 `ConcurrentHashMap`이다.
+      알림처럼 동시에 보낼 일은 전용 스레드 풀에 맡기고 요청 스레드를 막지 않는다.
+    sources:
+      - title: The Java Tutorials — Concurrency
+        url: https://docs.oracle.com/javase/tutorial/essential/concurrency/index.html
+        versionScope: Java SE
+      - title: The Java Tutorials — Executors
+        url: https://docs.oracle.com/javase/tutorial/essential/concurrency/executors.html
+        versionScope: Java SE
+      - title: Java SE API — java.util.concurrent
+        url: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/concurrent/package-summary.html
+        versionScope: Java SE 25+
+      - title: Java SE API — ConcurrentHashMap
+        url: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/concurrent/ConcurrentHashMap.html
+        versionScope: Java SE 25+
+    verifiedAt: 2026-09-25

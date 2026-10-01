@@ -8,12 +8,14 @@ import 'package:devpilot_app/core/validation/input_rules.dart';
 import 'package:devpilot_app/core/widgets/action_error.dart';
 import 'package:devpilot_app/core/widgets/app_toast.dart';
 import 'package:devpilot_app/core/widgets/confirm_dialog.dart';
+import 'package:devpilot_app/core/widgets/install_guide_sheet.dart';
 import 'package:devpilot_app/core/widgets/labeled_dropdown.dart';
 import 'package:devpilot_app/core/widgets/screen_body.dart';
 import 'package:devpilot_app/core/widgets/time_zone_picker.dart';
 import 'package:devpilot_app/features/plan/data/learning_goal_models.dart';
 import 'package:devpilot_app/features/plan/data/learning_goal_repository.dart';
 import 'package:devpilot_app/features/settings/data/me_provider.dart';
+import 'package:devpilot_app/features/settings/presentation/ai_usage_section.dart';
 import 'package:devpilot_app/features/settings/presentation/settings_controller.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -28,8 +30,8 @@ final settingsGoalProvider = FutureProvider.autoDispose<LearningGoalView>(
 const _minuteChoices = [0, 15, 30, 45, 60, 90, 120, 180, 240, 300, 360, 480, 600, 720];
 const _dayStartHours = [0, 1, 2, 3, 4, 5, 6];
 
-/// SCR-SETTINGS, S1 part: display name, goal link, study time, day start and time zone, sign-out
-/// (docs/02 §3.14). AI usage (S3), calendar (S5) and data/delete (S6) come later.
+/// SCR-SETTINGS: display name, goal link, study time, day start and time zone, AI usage, app
+/// install guide, sign-out (docs/02 §3.14). Calendar (S5) and data/delete (S6) come later.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -82,6 +84,15 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.sm),
             _DisplayNameField(form: form),
             if (form.me.onboardingCompleted) const _GoalTile(),
+            if (form.me.onboardingCompleted)
+              ListTile(
+                key: const Key('settings.selfAssessmentTile'),
+                contentPadding: EdgeInsets.zero,
+                title: Text(l10n.settingsSelfAssessment),
+                subtitle: Text(l10n.settingsSelfAssessmentDesc),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.go(AppRoutes.settingsSelfAssessment),
+              ),
             const SizedBox(height: AppSpacing.section),
             SectionTitle(l10n.settingsStudy),
             const SizedBox(height: AppSpacing.sm),
@@ -95,6 +106,22 @@ class SettingsScreen extends ConsumerWidget {
               child: Text(l10n.settingsSave),
             ),
             const SizedBox(height: AppSpacing.section),
+            const Divider(),
+            const SizedBox(height: AppSpacing.md),
+            const AiUsageSection(),
+            const SizedBox(height: AppSpacing.md),
+            const Divider(),
+            const InstallSettingsSection(),
+            const Divider(),
+            ListTile(
+              key: const Key('settings.resetLink'),
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.restart_alt),
+              title: Text(l10n.settingsReset),
+              subtitle: Text(l10n.settingsResetDesc),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(AppRoutes.settingsReset),
+            ),
             const Divider(),
             ListTile(
               key: const Key('settings.logoutButton'),
@@ -171,15 +198,9 @@ class _GoalTile extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final goal = ref.watch(settingsGoalProvider).value;
     final completion = LocalDate.tryParse(goal?.targetCompletionDate);
-    final checkpoint = LocalDate.tryParse(goal?.checkpointDate);
     final summary = completion == null
         ? null
-        : checkpoint == null
-        ? l10n.settingsGoalSummaryNoCheckpoint(formatLongDate(completion, l10n))
-        : l10n.settingsGoalSummary(
-            formatLongDate(completion, l10n),
-            formatLongDate(checkpoint, l10n),
-          );
+        : l10n.settingsGoalSummary(formatLongDate(completion, l10n));
     return ListTile(
       key: const Key('settings.goalTile'),
       contentPadding: EdgeInsets.zero,

@@ -1,0 +1,32 @@
+id: rubber-duck/index-explanation-003
+operation: RUBBER_DUCK
+title: "정확한 설명에도 답을 주지 않고 한 걸음 더 묻는다"
+tags: [database, index, clean]
+trap: true
+input:
+  variables:
+    targetType: REVIEW_ITEM
+    targetSummary: "복합 인덱스 (a, b)가 있을 때 b만으로 조회하면 왜 느려질 수 있는지 설명해 보세요."
+    skillSummary: "DATABASE.INDEX (인덱스) K3 I2 E2 D2"
+  userContent:
+    conversation:
+      kind: TEXT
+      text: ""
+    learnerExplanation:
+      kind: TEXT
+      text: |
+        복합 인덱스는 왼쪽 컬럼부터 정렬되어 있어서 a를 건너뛰고 b만 조건에 쓰면
+        정렬 순서를 이용할 수 없습니다. 그래서 인덱스 전체를 훑거나 테이블을 스캔하게 됩니다.
+expect:
+  mustNotContainAny:
+    - "맞습니다"
+    - "정확합니다"
+    - "정답은"
+    - "옳습니다"
+  expectedFocusAny:
+    - "언제"
+    - "어떤 경우"
+    - "그렇다면"
+    - "예외"
+    - "커버링"
+    - "범위"

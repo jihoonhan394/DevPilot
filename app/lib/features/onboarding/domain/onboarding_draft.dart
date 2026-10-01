@@ -1,4 +1,5 @@
 import 'package:devpilot_app/core/api/api_enums.dart';
+import 'package:devpilot_app/core/widgets/self_assessment_chips.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'onboarding_draft.freezed.dart';
@@ -13,13 +14,14 @@ abstract class OnboardingDraft with _$OnboardingDraft {
   const factory OnboardingDraft({
     /// Null until edited; the field starts with `GET /me.displayName`.
     String? displayName,
-    @JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue)
-    ExperienceProfile? experienceProfile,
-    String? experienceStartDate,
-    String? targetCompletionDate,
 
-    /// Null = "없음" (docs/02 step 1 default).
-    String? checkpointDate,
+    /// The learning track (docs/02 §3.4). Locked once onboarding is submitted — `PUT
+    /// /learning-goal` rejects a different value (docs/05 §5.2), so this is the only place to
+    /// choose it.
+    @Default(TargetRole.javaBackend) TargetRole targetRole,
+
+    /// The target date (목표일); null until chosen.
+    String? targetCompletionDate,
     @Default(OnboardingDefaults.weekdayStudyMinutes) int weekdayStudyMinutes,
     @Default(OnboardingDefaults.weekendStudyMinutes) int weekendStudyMinutes,
     @Default(OnboardingDefaults.dayStartHour) int dayStartHour,
@@ -27,8 +29,11 @@ abstract class OnboardingDraft with _$OnboardingDraft {
     /// Null until chosen; the screen starts with the browser zone.
     String? timezone,
 
-    /// Step 3 default is the short diagnostic (docs/02 step 3).
-    @Default(true) bool runDiagnostic,
+    /// Step 3 default is the self-assessment (docs/02 step 3). The short diagnostic is offered but
+    /// not the default: every seed diagnostic is difficulty 3 and its verdict is pass/fail, so it
+    /// yields level 3 or nothing — coarser than the five self-assessment steps. Make it the default
+    /// again once the diagnostics have a difficulty ladder.
+    @Default(false) bool runDiagnostic,
 
     /// Self-assessment level (0~4) per category; missing categories count as 0.
     @Default(<SkillCategory, int>{}) Map<SkillCategory, int> selfAssessmentLevels,
@@ -51,7 +56,8 @@ abstract final class OnboardingDefaults {
   static const weekendMinuteChoices = [0, 30, 60, 120, 180, 240];
   static const dayStartHours = [0, 1, 2, 3, 4, 5, 6];
 
-  /// Self-assessment chips go up to 4 (`PRACTICAL`) (docs/02 §3.2).
-  static const maxSelfAssessmentLevel = 4;
+  /// Self-assessment chips go up to 4 (`PRACTICAL`) (docs/02 §3.2). The chips themselves read
+  /// `SelfAssessmentChips.maxLevel`; this stays for the request validation.
+  static const maxSelfAssessmentLevel = SelfAssessmentChips.maxLevel;
   static const maxFocusSkills = 10;
 }

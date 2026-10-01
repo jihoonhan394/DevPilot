@@ -1,4 +1,4 @@
-# 테스트 review card: MUST skill마다 1장 (CV-48 WARN 없음). 합성 문장이다
+# 테스트 review card 10장: MUST skill마다 1장(CV-48 WARN 없음) + SHOULD 2장 + LATER 1장. 합성 문장이다
 cards:
   - conceptKey: JAVA.EXCEPTION.CAUSE_CHAIN
     skill: JAVA.EXCEPTION
@@ -87,3 +87,33 @@ cards:
         criterion: 선택지 비교와 근거
       - id: R3
         criterion: 결과와 회고
+  - conceptKey: ALGORITHM.SORT_SEARCH.BINARY_SEARCH_PRECONDITION
+    skill: ALGORITHM.SORT_SEARCH
+    reviewType: RECALL
+    prompt: 이분 탐색을 쓰기 전에 입력 배열이 만족해야 하는 조건을 떠올려 보세요.
+    expectedAnswer: 배열이 탐색 기준으로 정렬되어 있어야 한다. 정렬되지 않았으면 먼저 정렬하거나 다른 방법을 쓴다.
+    rubric:
+      - id: R1
+        criterion: 정렬된 입력
+      - id: R2
+        criterion: 정렬 기준과 탐색 기준이 같다
+  - conceptKey: DEVOPS.DOCKER.LAYER_CACHE
+    skill: DEVOPS.DOCKER
+    reviewType: EXPLAIN
+    prompt: Dockerfile에서 의존성 설치 단계를 소스 복사보다 먼저 두는 이유를 설명하세요.
+    expectedAnswer: 레이어 캐시는 앞 단계가 바뀌지 않으면 재사용된다. 자주 바뀌는 소스를 뒤에 두면 의존성 레이어를 다시 만들지 않는다.
+    rubric:
+      - id: R1
+        criterion: 레이어 캐시 재사용
+      - id: R2
+        criterion: 자주 바뀌는 단계를 뒤에 둔다
+  - conceptKey: SYSTEM_DESIGN.CACHING.INVALIDATION
+    skill: SYSTEM_DESIGN.CACHING
+    reviewType: RECALL
+    prompt: 원본 데이터가 바뀌었을 때 캐시와 원본이 어긋나지 않게 하는 방법을 두 가지 떠올려 보세요.
+    expectedAnswer: 쓰기 시 캐시를 지우거나 갱신하고, 만료 시간을 짧게 두어 오래된 값이 오래 남지 않게 한다.
+    rubric:
+      - id: R1
+        criterion: 캐시 무효화
+      - id: R2
+        criterion: 만료 시간으로 오래된 값 제한

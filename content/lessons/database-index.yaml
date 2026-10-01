@@ -1,0 +1,429 @@
+# DevPilot 개념 노트 — 인덱스
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 기준 버전: PostgreSQL 16 (AGENTS.md §0). PG 17 전용 문법은 쓰지 않는다
+# - 2단계(DB와 트랜잭션)에서 쓴다. DATABASE.SQL_BASICS 노트를 먼저 본 것으로 전제한다
+lessons:
+  - key: LESSON.DATABASE.INDEX.001
+    skillCode: DATABASE.INDEX
+    title: 찾는 길을 미리 내 두기 (인덱스)
+    whyItMatters: |-
+      줄이 1만 개일 때는 인덱스가 없어도 빠르다. 50만 개가 되는 날 같은 화면이 멈춘다.
+      그런데 인덱스를 아무 데나 붙이면 쓰기가 느려지고 저장 공간이 늘며,
+      정작 느린 질의는 그 인덱스를 쓰지도 않는다.
+      주문 시스템의 마이페이지·상품 목록·관리자 검색이 전부 이 선택에 달려 있다.
+    oneLine: 인덱스는 찾는 길을 미리 정렬해 둔 별도의 자료 구조이고, 읽기를 빠르게 하는 대신 쓰기에 비용을 물린다.
+    units:
+      - key: LESSON.DATABASE.INDEX.001.U1
+        title: 인덱스가 하는 일과 물리는 값
+        minutes: 10
+        core: true
+        explain: |-
+          PostgreSQL 문서는 인덱스를 **"질의 성능을 높이는 흔한 방법"** 으로 소개하면서
+          곧바로 대가를 함께 말한다 — **"인덱스를 더하면 데이터를 바꿀 때마다
+          인덱스도 갱신해야 하므로 쓰기가 느려진다."**
+
+          없으면 DB는 테이블을 **처음부터 끝까지 훑는다**(순차 스캔).
+          있으면 정렬된 구조를 타고 내려가 그 자리로 바로 간다.
+          기본 종류는 **B-tree**이고, `=`, `<`, `>`, `BETWEEN`, 정렬에 쓰인다.
+
+          | | 없을 때 | 있을 때 |
+          |---|---|---|
+          | 찾기 | 전부 훑는다 | 바로 간다 |
+          | 넣기·고치기 | 표만 바꾼다 | **인덱스도 바꾼다** |
+          | 공간 | 표만 | 인덱스만큼 더 |
+
+          그래서 기준은 하나다 — **자주 찾는 조건에만** 붙인다.
+          줄 수가 적은 표, 거의 모든 줄이 걸리는 조건에는 도움이 안 된다.
+        example:
+          language: sql
+          code: |-
+            -- 500만 줄, 인덱스 없음
+            EXPLAIN ANALYZE
+            SELECT id, total_amount FROM orders WHERE member_id = 42;
+
+            CREATE INDEX idx_orders_member_id ON orders (member_id);
+
+            EXPLAIN ANALYZE
+            SELECT id, total_amount FROM orders WHERE member_id = 42;
+          output: |-
+            -- 인덱스 없음
+            Seq Scan on orders  (cost=0.00..92450.00 rows=18 width=12)
+              Filter: (member_id = 42)
+              Rows Removed by Filter: 4999982
+              Execution Time: 412.338 ms
+
+            -- 인덱스 있음
+            Index Scan using idx_orders_member_id on orders
+              (cost=0.43..8.51 rows=18 width=12)
+              Index Cond: (member_id = 42)
+              Execution Time: 0.081 ms
+          note: |-
+            - `Seq Scan`은 전부 훑었다는 뜻이다 — 499만 줄을 버리느라 412ms가 걸렸다
+            - `Index Scan`으로 바뀌고 `Rows Removed by Filter`가 사라졌다
+            - `Index Cond`가 인덱스로 거른 조건이다. `Filter`와 구분해서 읽는다
+            - 같은 결과를 5000배 빠르게 얻었다. 대신 `orders`에 넣고 고칠 때 비용이 붙는다
+        predict:
+          question: '`WHERE status = ''PAID''` 에 인덱스를 붙였는데 전체의 95%가 PAID라면?'
+          choices:
+            - 인덱스를 쓰지 않고 순차 스캔을 고를 가능성이 높다
+            - 언제나 인덱스를 쓴다
+            - 오류가 난다
+            - 95%가 더 빨라진다
+          answer: 인덱스를 쓰지 않고 순차 스캔을 고를 가능성이 높다
+          explanation: |-
+            거의 모든 줄이 걸리면 **인덱스를 타고 표를 오가는 것이 더 비싸다.**
+            플래너는 그것을 계산해 순차 스캔을 고른다.
+            인덱스는 **걸러 내는 비율이 높을 때** 값어치가 있다.
+            값의 종류가 서너 개뿐인 컬럼에 단독 인덱스를 붙이는 것이 흔한 헛수고다.
+        complete:
+          question: 자주 찾는 조건에 인덱스를 만들고 실행 계획을 확인하세요.
+          code: |-
+            ___ INDEX idx_orders_member_id ON orders (member_id);
+
+            ___ ANALYZE
+            SELECT id FROM orders WHERE member_id = 42;
+            -- Index Scan 으로 바뀌었는지 본다
+          answers:
+            - ["CREATE"]
+            - ["EXPLAIN"]
+          explanation: |-
+            `CREATE INDEX 이름 ON 표 (컬럼)` 으로 만들고,
+            `EXPLAIN ANALYZE`로 **실제로 인덱스를 쓰는지** 확인한다.
+            만들었다고 쓰이는 것이 아니므로 확인이 반드시 따라와야 한다.
+        problem:
+          prompt: |-
+            주문 시스템의 표 네 개에 인덱스를 설계하세요.
+
+            - `orders` (500만 줄): 회원별 조회, 상태별 집계, 주문 번호 단건 조회
+            - `order_lines` (2000만 줄): 주문별 조회
+            - `products` (3000줄): 상품 코드 조회, 이름 부분 검색
+            - `coupons` (500줄): 코드 조회
+
+            - 각 표에 인덱스를 **붙일 것과 붙이지 않을 것**을 정하고 이유를 적으세요
+            - 붙이지 않기로 한 것이 최소 두 개는 있어야 합니다
+            - 이미 있는 것(기본 키, 고유 제약)을 중복해 만들지 않도록 주의하세요
+          deliverables:
+            - 표별 인덱스 목록과 각각의 이유
+            - 붙이지 않기로 한 것 두 개 이상과 그 이유
+            - 이미 있어서 만들 필요 없는 것
+          hints:
+            - 기본 키에는 이미 인덱스가 있습니다. 고유 제약도 마찬가지입니다.
+            - 줄 수가 적은 표는 전부 훑어도 빠릅니다.
+            - 값의 종류가 서너 개뿐인 컬럼에 단독으로 붙이면 어떻게 될까요?
+          modelAnswer: |-
+            ```sql
+            CREATE INDEX idx_orders_member_id ON orders (member_id);
+            CREATE INDEX idx_order_lines_order_id ON order_lines (order_id);
+            ```
+
+            | 대상 | 결정 | 이유 |
+            |---|---|---|
+            | `orders.member_id` | 만든다 | 500만 줄에서 회원당 수십 줄 — 잘 걸러 낸다 |
+            | `orders.id` | **안 만든다** | 기본 키에 이미 인덱스가 있다 |
+            | `orders.status` | **안 만든다** | 값이 서너 개뿐이라 거의 못 거른다 |
+            | `order_lines.order_id` | 만든다 | 2000만 줄에서 주문당 몇 줄 |
+            | `products.code` | **안 만든다** | 고유 제약에 인덱스가 딸려 있다 |
+            | `products.name` 부분 검색 | **안 만든다** | B-tree는 앞이 열린 `LIKE '%키워드%'`를 못 탄다 |
+            | `coupons.code` | **안 만든다** | 500줄이면 전부 훑어도 빠르다 |
+
+            상태별 집계가 정말 느리다면 `status` 단독이 아니라
+            `(status, created_at)` 복합으로 만들거나, 자주 보는 상태만 골라
+            부분 인덱스로 만드는 것을 고려한다 — 다음 단위에서 순서를 다룬다.
+          selfChecks:
+            - 기본 키와 고유 제약에 중복 인덱스를 만들지 않았는가
+            - 줄 수가 적은 표를 걸러 냈는가
+            - 값의 종류가 적은 컬럼에 단독 인덱스를 붙이지 않았는가
+            - 붙이지 않기로 한 이유를 각각 댈 수 있는가
+      - key: LESSON.DATABASE.INDEX.001.U2
+        title: 복합 인덱스의 컬럼 순서
+        minutes: 12
+        core: true
+        explain: |-
+          조건이 둘 이상이면 컬럼 여러 개로 인덱스를 만든다. 이때 **순서가 성능을 정한다.**
+
+          PostgreSQL 문서는 복합 B-tree 인덱스가 **앞쪽 컬럼부터 이어지는 조건**에
+          가장 잘 쓰인다고 설명한다. 뒤쪽 컬럼만 조건에 있으면 효율이 크게 떨어진다.
+
+          그래서 순서를 정하는 규칙이 있다.
+
+          1. **등호(`=`)로 걸리는 컬럼을 앞에**
+          2. **범위(`<`, `>`, `BETWEEN`)는 그다음에**
+          3. **정렬에 쓰는 컬럼은 범위 뒤에**
+
+          이유는 간단하다. 범위 조건이 걸리는 순간 그 뒤 컬럼은 **정렬이 흐트러진다.**
+          등호로 한 점을 찍고 나서 범위로 구간을 자르는 순서라야
+          그 구간 안이 뒤 컬럼으로 정렬된 상태가 된다.
+        example:
+          language: sql
+          code: |-
+            -- 질의: 회원의 결제 완료 주문을 최신순 20건
+            SELECT id, total_amount, created_at
+              FROM orders
+             WHERE member_id = 42 AND status = 'PAID'
+             ORDER BY created_at DESC
+             LIMIT 20;
+
+            -- 순서를 잘못 잡은 인덱스
+            CREATE INDEX idx_bad ON orders (created_at, member_id, status);
+
+            -- 규칙대로 잡은 인덱스
+            CREATE INDEX idx_good ON orders (member_id, status, created_at DESC);
+          output: |-
+            -- idx_bad
+            Index Scan using idx_bad on orders  (cost=0.43..84210.55 rows=18)
+              Filter: ((member_id = 42) AND (status = 'PAID'::text))
+              Rows Removed by Filter: 4999982
+              Execution Time: 389.114 ms
+
+            -- idx_good
+            Index Scan using idx_good on orders  (cost=0.43..9.12 rows=18)
+              Index Cond: ((member_id = 42) AND (status = 'PAID'::text))
+              Execution Time: 0.094 ms
+          note: |-
+            - `idx_bad`는 인덱스를 쓰긴 하는데 `Filter`로 499만 줄을 버렸다
+            - `idx_good`은 같은 조건이 `Index Cond`에 들어갔다 — 인덱스가 걸러 낸 것이다
+            - `Filter`에 있으면 표를 읽고 나서 버린 것, `Index Cond`면 읽기 전에 거른 것이다
+            - 정렬 컬럼을 마지막에 두어 `ORDER BY ... LIMIT 20`이 **정렬 없이** 끝난다
+        predict:
+          question: '`(member_id, status, created_at)` 인덱스에서 `WHERE status = ''PAID''` 만으로 조회하면?'
+          choices:
+            - 앞 컬럼이 조건에 없어 인덱스 효율이 크게 떨어진다
+            - 그대로 잘 쓰인다
+            - 오류가 난다
+            - 인덱스가 자동으로 재정렬된다
+          answer: 앞 컬럼이 조건에 없어 인덱스 효율이 크게 떨어진다
+          explanation: |-
+            복합 인덱스는 **앞 컬럼부터 순서대로** 좁혀 간다.
+            `member_id`가 빠지면 전체 구간을 훑어야 해서 이점이 거의 사라진다.
+            전화번호부를 성 없이 이름만으로 찾는 것과 같다.
+        complete:
+          question: 상품 목록 질의에 맞는 복합 인덱스를 만드세요. 카테고리로 고르고 가격순 정렬입니다.
+          code: |-
+            -- SELECT ... FROM products
+            --  WHERE category_id = 3 AND price >= 10000
+            --  ORDER BY price;
+
+            CREATE INDEX idx_products_list
+                ON products (___, ___);
+            -- 등호가 앞, 범위 겸 정렬이 뒤
+          answers:
+            - [category_id]
+            - [price]
+          explanation: |-
+            `category_id`는 등호라 앞에, `price`는 범위이면서 정렬 대상이라 뒤에 둔다.
+            이 순서면 카테고리로 한 구간을 찍고, 그 구간이 이미 가격순이라
+            **범위 자르기와 정렬이 한 번에** 끝난다.
+        problem:
+          prompt: |-
+            주문 시스템의 관리자 검색 질의 세 개에 맞는 인덱스를 설계하세요.
+
+            ```sql
+            -- Q1
+            SELECT * FROM orders WHERE member_id = ? AND created_at >= ? ORDER BY created_at DESC;
+            -- Q2
+            SELECT * FROM orders WHERE status = ? AND created_at BETWEEN ? AND ? ORDER BY created_at;
+            -- Q3
+            SELECT * FROM orders WHERE member_id = ? AND status = ? ORDER BY total_amount DESC;
+            ```
+
+            - 각 질의에 맞는 인덱스를 제안하고 **컬럼 순서의 이유**를 적으세요
+            - 세 개를 다 만들 필요가 있는지, **하나로 합칠 수 있는 것**이 있는지 판단하세요
+            - 인덱스를 늘리면 무엇이 나빠지는지 한 줄로 적으세요
+          deliverables:
+            - 질의별 인덱스와 컬럼 순서의 이유
+            - 합칠 수 있는 것이 있는지에 대한 판단과 근거
+            - 인덱스를 늘릴 때의 비용
+          hints:
+            - 각 질의에서 등호인 컬럼과 범위인 컬럼을 먼저 표시해 보세요.
+            - 정렬 컬럼이 어디에 와야 정렬을 건너뛸 수 있을까요?
+            - 어떤 인덱스의 앞부분이 다른 인덱스와 같다면 하나로 쓸 수 있습니다.
+          modelAnswer: |-
+            ```sql
+            CREATE INDEX idx_orders_member_created ON orders (member_id, created_at DESC);
+            CREATE INDEX idx_orders_status_created ON orders (status, created_at);
+            CREATE INDEX idx_orders_member_status_amount ON orders (member_id, status, total_amount DESC);
+            ```
+
+            | 질의 | 순서의 이유 |
+            |---|---|
+            | Q1 | `member_id` 등호가 앞, `created_at`이 범위이자 정렬이라 뒤 |
+            | Q2 | `status` 등호가 앞, `created_at` 범위가 뒤 |
+            | Q3 | 등호 둘이 앞, 정렬 컬럼 `total_amount`가 맨 뒤 |
+
+            Q1과 Q3은 **앞부분이 `member_id`로 같지만 합칠 수 없다.**
+            Q1은 `created_at` 정렬, Q3은 `total_amount` 정렬이라
+            어느 쪽 인덱스를 써도 다른 한쪽은 따로 정렬해야 한다.
+            반면 `(member_id, status, ...)` 인덱스는 `member_id`만으로 거르는 질의에도
+            앞부분으로 쓸 수 있으므로, Q1이 자주 쓰이지 않는다면 Q3용 하나로 버틸 수 있다.
+
+            인덱스를 늘리면 **넣고 고칠 때마다 모두 갱신**되어 쓰기가 느려지고
+            저장 공간이 늘어난다. 세 개가 정말 다 필요한지는
+            실제 호출 빈도를 보고 정한다.
+          selfChecks:
+            - 각 질의에서 등호와 범위를 구분해 표시했는가
+            - 정렬 컬럼을 맨 뒤에 두었는가
+            - 합칠 수 있는지 여부를 정렬 기준까지 보고 판단했는가
+            - 인덱스를 늘릴 때의 비용을 적었는가
+      - key: LESSON.DATABASE.INDEX.001.U3
+        title: 인덱스를 못 쓰는 조건과 확인하는 법
+        minutes: 12
+        core: true
+        explain: |-
+          인덱스를 만들어 두고도 안 쓰이는 경우가 있다. 거의 늘 같은 이유다 —
+          **조건이 컬럼을 그대로 두지 않고 손을 댔기 때문**이다.
+
+          | 못 쓰는 조건 | 왜 |
+          |---|---|
+          | `WHERE lower(code) = 'kb-01'` | 인덱스는 `code`의 값으로 정렬돼 있지 `lower(code)`가 아니다 |
+          | `WHERE created_at::date = '2026-09-24'` | 위와 같다. 컬럼에 함수를 씌웠다 |
+          | `WHERE name LIKE '%키보드%'` | 앞이 열려 있어 시작 지점을 못 찾는다 |
+          | `WHERE member_id::text = '42'` | 형 변환도 함수다 |
+
+          고치는 방법은 둘이다. **조건을 컬럼 쪽이 아니라 값 쪽으로 옮기거나**
+          (`created_at >= '2026-09-24' AND created_at < '2026-09-25'`),
+          그 표현식 자체로 인덱스를 만드는 것이다(`CREATE INDEX ... ON t (lower(code))`).
+
+          그리고 확인 없이 믿지 않는다. **`EXPLAIN ANALYZE`가 유일한 증거**다.
+          `Seq Scan`인지 `Index Scan`인지, 조건이 `Index Cond`인지 `Filter`인지를 본다.
+        example:
+          language: sql
+          code: |-
+            CREATE INDEX idx_orders_created_at ON orders (created_at);
+
+            -- 못 쓴다: 컬럼에 형 변환을 씌웠다
+            EXPLAIN ANALYZE
+            SELECT count(*) FROM orders WHERE created_at::date = DATE '2026-09-24';
+
+            -- 쓴다: 조건을 범위로 바꿔 컬럼을 그대로 두었다
+            EXPLAIN ANALYZE
+            SELECT count(*) FROM orders
+             WHERE created_at >= TIMESTAMP '2026-09-24 00:00:00'
+               AND created_at <  TIMESTAMP '2026-09-25 00:00:00';
+          output: |-
+            -- 형 변환을 씌운 쪽
+            Seq Scan on orders  (cost=0.00..104950.00 rows=25000)
+              Filter: ((created_at)::date = '2026-09-24'::date)
+              Rows Removed by Filter: 4996800
+              Execution Time: 455.202 ms
+
+            -- 범위로 바꾼 쪽
+            Index Only Scan using idx_orders_created_at on orders
+              (cost=0.43..142.88 rows=3200)
+              Index Cond: ((created_at >= ...) AND (created_at < ...))
+              Execution Time: 1.334 ms
+          note: |-
+            - 두 질의의 **결과는 같다.** 다른 것은 조건을 적은 방식뿐이다
+            - 위쪽은 `Filter`에 조건이 있다 — 읽고 나서 버렸다는 뜻이다
+            - 아래쪽은 `Index Cond`다 — 읽기 전에 인덱스가 걸렀다
+            - `Index Only Scan`은 표를 안 읽고 인덱스만으로 끝났다는 뜻이다
+        predict:
+          question: '`WHERE name LIKE ''키보드%''` (뒤만 열림)는 B-tree 인덱스를 쓸 수 있나?'
+          choices:
+            - 쓸 수 있다 — 시작 지점을 찾을 수 있다
+            - 못 쓴다 — LIKE는 언제나 순차 스캔이다
+            - 오류가 난다
+            - 결과가 달라진다
+          answer: 쓸 수 있다 — 시작 지점을 찾을 수 있다
+          explanation: |-
+            앞이 고정돼 있으면 정렬된 구조에서 **시작 지점을 찾아 그 구간만** 읽으면 된다.
+            못 쓰는 것은 `'%키보드%'`처럼 **앞이 열린** 경우다.
+            부분 검색이 꼭 필요하면 전문 검색 색인 같은 다른 방법을 쓴다.
+        complete:
+          question: 인덱스를 타도록 날짜 조건을 고치세요.
+          code: |-
+            -- 고치기 전: WHERE created_at::date = DATE '2026-09-24'
+
+            WHERE created_at ___ TIMESTAMP '2026-09-24 00:00:00'
+              AND created_at ___ TIMESTAMP '2026-09-25 00:00:00'
+          answers:
+            - [">="]
+            - ["<"]
+          explanation: |-
+            하루의 시작은 포함(`>=`), 다음 날의 시작은 제외(`<`)로 잡는다.
+            `<=` 로 `2026-09-24 23:59:59`를 쓰면 그 뒤의 소수점 시각을 놓친다 —
+            앞 노트의 경계값 문제가 여기서도 나온다.
+        problem:
+          prompt: |-
+            아래 질의 네 개는 인덱스가 있는데도 순차 스캔을 한다.
+
+            ```sql
+            -- 인덱스: (code), (created_at), (member_id), (email)
+            Q1: WHERE lower(code) = 'kb-01'
+            Q2: WHERE created_at::date = DATE '2026-09-24'
+            Q3: WHERE member_id::text LIKE '4%'
+            Q4: WHERE email LIKE '%@example.com'
+            ```
+
+            - 각각 **왜** 못 쓰는지 한 줄씩 적으세요
+            - 넷 중 셋은 질의를 고쳐 인덱스를 타게 만들 수 있습니다. 고친 질의를 쓰세요
+            - 나머지 하나는 질의로는 못 고칩니다. 그것이 무엇이고 어떤 선택지가 있는지 적으세요
+            - 고친 뒤 `EXPLAIN ANALYZE`에서 무엇을 확인해야 하는지 적으세요
+          deliverables:
+            - 질의별 못 쓰는 이유
+            - 고친 질의 세 개
+            - 질의로 못 고치는 하나와 그 선택지
+            - EXPLAIN에서 확인할 항목
+          hints:
+            - 공통점이 있습니다. 컬럼에 무언가를 씌운 것과 아닌 것으로 나눠 보세요.
+            - 숫자 컬럼을 문자열처럼 다루면 숫자로서의 순서를 못 씁니다.
+            - 앞이 열린 검색은 정렬된 구조로 시작점을 찾을 수 없습니다.
+          modelAnswer: |-
+            | 질의 | 못 쓰는 이유 |
+            |---|---|
+            | Q1 | 컬럼에 `lower()`를 씌워 인덱스의 정렬 기준과 달라졌다 |
+            | Q2 | 컬럼에 형 변환을 씌웠다 |
+            | Q3 | 숫자 컬럼을 문자열로 바꿔 숫자 순서를 못 쓴다 |
+            | Q4 | 앞이 열린 `LIKE`라 시작 지점을 못 찾는다 |
+
+            ```sql
+            -- Q1: 표현식 인덱스를 만들거나, 저장할 때부터 소문자로 맞춘다
+            CREATE INDEX idx_products_code_lower ON products (lower(code));
+
+            -- Q2: 범위로 바꾼다
+            WHERE created_at >= TIMESTAMP '2026-09-24 00:00:00'
+              AND created_at <  TIMESTAMP '2026-09-25 00:00:00'
+
+            -- Q3: 숫자를 숫자로 다룬다
+            WHERE member_id >= 40 AND member_id < 50
+            ```
+
+            질의로 못 고치는 것은 **Q4**다. 앞이 열린 검색은 B-tree의 구조로는 방법이 없다.
+            선택지는 세 가지다 — 도메인만 따로 컬럼으로 빼서 등호로 찾거나,
+            거꾸로 뒤집은 값에 인덱스를 만들거나, 전문 검색 색인을 쓰는 것이다.
+            어느 쪽이든 **질의가 아니라 설계를 바꾸는 일**이다.
+
+            고친 뒤 확인할 것은 `Seq Scan`이 `Index Scan`으로 바뀌었는지,
+            조건이 `Filter`가 아니라 `Index Cond`에 들어갔는지,
+            그리고 `Rows Removed by Filter`가 줄었는지다.
+          selfChecks:
+            - 네 질의의 원인을 각각 한 줄로 댈 수 있는가
+            - 고친 질의가 원래와 같은 결과를 주는지 확인했는가
+            - 질의로 못 고치는 것을 골라냈는가
+            - EXPLAIN에서 Index Cond와 Filter를 구분해 보았는가
+    commonMistakes:
+      - 컬럼에 함수나 형 변환을 씌운다. 인덱스의 정렬 기준과 달라져 순차 스캔이 된다 (U3)
+      - 복합 인덱스의 앞 컬럼을 조건에서 빼고 쓴다. 이점이 거의 사라진다 (U2)
+      - 값의 종류가 서너 개뿐인 컬럼에 단독 인덱스를 붙인다. 거의 못 거르고 쓰기만 느려진다 (U1)
+    inProject: |-
+      주문 시스템에서 먼저 볼 것은 `orders(member_id, created_at DESC)`와
+      `order_lines(order_id)` 둘이다. 마이페이지와 주문 상세가 그 위에서 돈다.
+      관리자 검색은 조건이 자주 바뀌므로 인덱스를 먼저 만들지 말고,
+      느린 질의가 나왔을 때 `EXPLAIN ANALYZE`로 확인한 뒤 붙인다.
+      날짜 조건은 언제나 범위로 적어 컬럼을 그대로 둔다.
+    sources:
+      - title: PostgreSQL 16 — Introduction to Indexes
+        url: https://www.postgresql.org/docs/16/indexes-intro.html
+        versionScope: PostgreSQL 16
+      - title: PostgreSQL 16 — Multicolumn Indexes
+        url: https://www.postgresql.org/docs/16/indexes-multicolumn.html
+        versionScope: PostgreSQL 16
+      - title: PostgreSQL 16 — Indexes and ORDER BY
+        url: https://www.postgresql.org/docs/16/indexes-ordering.html
+        versionScope: PostgreSQL 16
+      - title: PostgreSQL 16 — Using EXPLAIN
+        url: https://www.postgresql.org/docs/16/using-explain.html
+        versionScope: PostgreSQL 16
+    verifiedAt: 2026-09-24

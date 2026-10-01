@@ -46,6 +46,23 @@ class PriorityBadge extends StatelessWidget {
   }
 }
 
+/// `AiBadge`: marks content an AI made (U-4). Neutral tone, `smart_toy` icon.
+class AiBadge extends StatelessWidget {
+  const AiBadge({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Semantics(
+      container: true,
+      label: l10n.aiBadgeSemantics,
+      child: ExcludeSemantics(
+        child: StatusBadge(label: l10n.aiBadge, tone: AppTone.neutral, icon: Icons.smart_toy),
+      ),
+    );
+  }
+}
+
 class SideProjectStatusBadge extends StatelessWidget {
   const SideProjectStatusBadge({super.key, required this.status});
 

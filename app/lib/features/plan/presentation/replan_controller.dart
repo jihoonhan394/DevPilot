@@ -4,6 +4,7 @@ import 'package:devpilot_app/core/time/local_date.dart';
 import 'package:devpilot_app/features/plan/data/plan_repository.dart';
 import 'package:devpilot_app/features/plan/domain/milestone_ordering.dart';
 import 'package:devpilot_app/features/plan/domain/replan_draft.dart';
+import 'package:devpilot_app/features/plan/domain/replan_suggestion_selection.dart';
 import 'package:devpilot_app/features/plan/presentation/plan_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -68,7 +69,8 @@ final class ReplanSaveFailed extends ReplanSaveOutcome {
   final Object error;
 }
 
-/// SCR-REPLAN (S1: edit → save): `GET /plans/active` then `POST /plans/{planId}/replan`.
+/// SCR-REPLAN edit step and saving: `GET /plans/active` then `POST /plans/{planId}/replan`. The
+/// preview step lives in [ReplanPreviewController] (replan_preview_controller.dart).
 final class ReplanController extends AsyncNotifier<ReplanState> {
   final _keys = IdempotencyKeyCache();
   var _newMilestoneCount = 0;
@@ -165,14 +167,25 @@ final class ReplanController extends AsyncNotifier<ReplanState> {
   /// Discards the edit and starts again from the latest active plan (conflict dialog).
   void reloadLatest() => ref.invalidateSelf();
 
-  Future<ReplanSaveOutcome> save() async {
+  /// Shows the field errors of a failed preview under the edit fields.
+  void showFieldErrors(ApiException error) {
+    final current = state.value;
+    if (current != null) {
+      state = AsyncData(current.copyWith(saveError: () => error));
+    }
+  }
+
+  /// "새 버전으로 저장" with the checked suggestions (docs/05 §7.8).
+  Future<ReplanSaveOutcome> save({
+    ReplanSuggestionSelection selection = ReplanSuggestionSelection.empty,
+  }) async {
     final current = state.value;
     if (current == null || current.isSaving) {
       return const ReplanConflict();
     }
     state = AsyncData(current.copyWith(isSaving: true, saveError: () => null));
     final draft = current.draft;
-    final request = draft.toRequest();
+    final request = selection.applyTo(draft.toRequest());
     final idempotencyKey = _keys.keyFor(request.toJson());
     try {
       final response = await ref

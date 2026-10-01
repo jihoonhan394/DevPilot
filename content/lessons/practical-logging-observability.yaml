@@ -1,0 +1,937 @@
+# DevPilot 개념 노트 — 로깅 전략과 관측
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 4단계(배포와 로그)에서 쓴다. LOGGING이 OBSERVABILITY의 선행이라 순서대로 둔다
+# - 보안 규칙(비밀을 로그에 남기지 않는다)은 SECURITY.SENSITIVE_DATA_LOGGING 노트와 짝이다
+lessons:
+  - key: LESSON.PRACTICAL_ENGINEERING.LOGGING.001
+    skillCode: PRACTICAL_ENGINEERING.LOGGING
+    title: 나중에 읽을 사람을 위해 남기기 (로깅)
+    whyItMatters: |-
+      로그는 **장애가 난 뒤에 읽으려고** 남기는 것이다. 그때는 재현할 수 없고
+      코드를 붙잡고 있을 시간도 없다. 남아 있는 것이 전부다.
+      그런데 대부분의 로그는 너무 많거나(다 찍는다) 너무 적거나(실패만 한 줄),
+      정작 필요한 값(어느 주문, 어느 사용자)이 빠져 있다.
+    oneLine: 로그는 수준으로 양을 정하고, 한 요청을 추적할 수 있게 식별자를 붙이며, 예외는 한 번만 남긴다.
+    units:
+      - key: LESSON.PRACTICAL_ENGINEERING.LOGGING.001.U1
+        title: 수준은 누가 읽는가로 정한다
+        minutes: 12
+        core: true
+        explain: |-
+          로그 수준을 "중요한 정도"로 정하면 기준이 사람마다 달라진다.
+          **누가 언제 읽는가**로 정하면 흔들리지 않는다.
+
+          | 수준 | 누가 읽나 | 기준 |
+          |---|---|---|
+          | `ERROR` | **알림을 받고 즉시** | 우리가 고쳐야 하는 실패 |
+          | `WARN` | 하루에 한 번 훑는다 | 지금은 넘어가지만 쌓이면 문제 |
+          | `INFO` | 장애 때 흐름을 따라간다 | 업무 사건 (주문 생성, 결제 완료) |
+          | `DEBUG` | 개발 중에만 | 값 확인 |
+
+          가장 중요한 경계가 **`ERROR`와 `WARN` 사이**다.
+
+          **사용자가 고칠 수 있는 실패는 `ERROR`가 아니다.**
+          잘못된 요청(400), 없는 자원(404), 재고 부족(409)은 정상 동작이고,
+          이것을 `ERROR`로 찍으면 진짜 장애가 그 속에 묻힌다.
+
+          판단하는 질문 하나 — **"이 줄을 보면 내가 지금 일어나서 고쳐야 하나?"**
+          아니면 `WARN` 아래다.
+        example:
+          language: java
+          code: |-
+            @ExceptionHandler(IllegalArgumentException.class)
+            ProblemDetail handleBadRequest(IllegalArgumentException exception) {
+                log.warn("잘못된 요청 {}", exception.getMessage());          // 사용자 잘못
+                return problem(HttpStatus.BAD_REQUEST, exception.getMessage());
+            }
+
+            @ExceptionHandler(OutOfStockException.class)
+            ProblemDetail handleOutOfStock(OutOfStockException exception) {
+                log.info("재고 부족 {}", exception.getMessage());            // 정상 동작이다
+                return problem(HttpStatus.CONFLICT, exception.getMessage());
+            }
+
+            @ExceptionHandler(Exception.class)
+            ProblemDetail handleUnexpected(Exception exception) {
+                log.error("처리하지 못한 오류", exception);                   // 우리가 고쳐야 한다
+                return problem(HttpStatus.INTERNAL_SERVER_ERROR, "요청을 처리하지 못했습니다");
+            }
+          output: |-
+            하루치 로그에서 수준별 건수
+
+            ERROR     3건    ← 전부 봐야 한다
+            WARN    412건    ← 훑는다. 특정 패턴이 늘면 본다
+            INFO  18,240건    ← 장애 때만 본다
+
+            [전부 ERROR로 찍었을 때]
+            ERROR 18,655건   ← 진짜 3건을 찾을 수 없다
+          note: |-
+            - 재고 부족이 `INFO`다 — **아무도 고칠 것이 없는 정상 동작**이다
+            - 잘못된 요청은 `WARN`이다. 늘어나면 클라이언트 버그일 수 있어 훑는다
+            - 마지막만 `ERROR`다. 예외 객체를 함께 넘겨 스택이 찍힌다
+            - 세 줄의 차이가 **알림이 울릴지**를 정한다
+        predict:
+          question: 404를 `ERROR`로 찍으면 무슨 일이 생기나?
+          choices:
+            - ERROR가 하루 수천 건이 되어 진짜 장애가 묻힌다
+            - 더 꼼꼼해서 좋다
+            - 로그가 커질 뿐 문제없다
+            - 404가 줄어든다
+          answer: ERROR가 하루 수천 건이 되어 진짜 장애가 묻힌다
+          explanation: |-
+            그리고 더 나쁜 일이 따라온다 — **사람들이 ERROR 알림을 끈다.**
+            한 번 꺼진 알림은 다시 안 켜지고, 그때부터는 진짜 장애도 모르게 된다.
+            **수준은 알림을 지키기 위한 장치**다.
+        complete:
+          question: 실패마다 알맞은 수준을 고르세요.
+          code: |-
+            log.___("재고 부족 {}", message);        // 정상 동작. 아무도 안 고친다
+            log.___("잘못된 요청 {}", message);       // 사용자 잘못. 쌓이면 본다
+            log.error("처리하지 못한 오류", exception); // 우리가 고쳐야 한다
+          answers:
+            - [info]
+            - [warn]
+          explanation: |-
+            **지금 일어나 고쳐야 하면 `ERROR`**, 그 아래는 읽는 시점으로 나눈다.
+            이 기준 하나면 사람마다 다르게 정하는 일이 없어진다.
+        problem:
+          prompt: |-
+            주문 시스템의 로그 수준 기준을 정하세요.
+
+            아래 아홉 가지 사건에 수준을 매기고 **이유**를 적으세요.
+            ```text
+            ① 주문 생성 성공        ② 잘못된 수량(400)      ③ 남의 주문 조회(404)
+            ④ 재고 부족(409)        ⑤ 결제사 시간 초과      ⑥ DB 커넥션 획득 실패
+            ⑦ 쿠폰 만료(409)        ⑧ 예상 못 한 NPE        ⑨ 배치 시작·종료
+            ```
+
+            - 아홉 개에 수준을 매기고 각각 한 줄로 이유를 적으세요
+            - `ERROR`로 매긴 것이 **하루 몇 건쯤** 될지 어림하고, 많으면 다시 보세요
+            - ⑤는 판단이 갈립니다. **어떤 조건에서 `ERROR`이고 어떤 조건에서 `WARN`인지** 적으세요
+            - 수준을 환경마다 다르게 둘지 정하세요 (로컬 / 운영)
+          deliverables:
+            - 아홉 사건의 수준과 이유
+            - ERROR 예상 건수와 재검토
+            - ⑤의 조건별 판단
+            - 환경별 수준 설정
+          hints:
+            - '"지금 일어나 고쳐야 하나"를 아홉 번 물어보세요.'
+            - 외부 장애는 우리가 못 고치지만 대응은 필요할 수 있습니다.
+            - 로컬에서는 DEBUG가 도움이 되지만 운영에서는 양이 감당이 안 됩니다.
+          modelAnswer: |-
+            | 사건 | 수준 | 이유 |
+            |---|---|---|
+            | ① 주문 생성 성공 | `INFO` | 업무 사건. 장애 때 흐름을 따라가는 데 쓴다 |
+            | ② 잘못된 수량 | `WARN` | 사용자 잘못이지만 급증하면 클라이언트 버그다 |
+            | ③ 남의 주문 조회 | `WARN` | 급증하면 공격 시도일 수 있다 |
+            | ④ 재고 부족 | `INFO` | 정상 동작. 고칠 것이 없다 |
+            | ⑤ 결제사 시간 초과 | **조건부** | 아래 참조 |
+            | ⑥ DB 커넥션 획득 실패 | `ERROR` | 우리 자원 문제. 즉시 봐야 한다 |
+            | ⑦ 쿠폰 만료 | `INFO` | 정상 동작 |
+            | ⑧ 예상 못 한 NPE | `ERROR` | 우리 버그다 |
+            | ⑨ 배치 시작·종료 | `INFO` | 흐름 추적용 |
+
+            **ERROR 예상 건수** — ⑥⑧은 평소 0~5건이다. 적절하다.
+            ①④⑦을 `ERROR`로 올렸다면 하루 수천 건이 되어 다시 봐야 했을 것이다.
+
+            **⑤ 결제사 시간 초과**
+            `WARN` — 한두 건이면 일시적 지연이다. 우리가 할 일이 없다.
+            `ERROR` — **짧은 시간에 여러 건이면** 결제사 장애이고,
+            우리 스레드가 묶이므로 대응해야 한다.
+            한 줄씩 판단할 수 없으므로 **로그는 `WARN`으로 두고
+            "5분에 10건 이상"을 알림 조건으로 따로 잡는다.**
+            수준으로 해결하려 하면 한쪽이 틀린다.
+
+            **환경별**
+            ```yaml
+            # application-local.yml
+            logging.level:
+              com.example.order: debug
+              org.hibernate.SQL: debug
+            # application-prod.yml
+            logging.level:
+              com.example.order: info
+              org.hibernate.SQL: warn
+            ```
+            운영에서 `DEBUG`를 켜면 양도 문제지만 **질의에 값이 찍혀** 비밀이 샐 수 있다.
+          selfChecks:
+            - 아홉 개에 이유를 각각 적었는가
+            - ERROR 건수를 어림해 보고 조정했는가
+            - 한 줄로 판단 못 하는 것을 알림 조건으로 옮겼는가
+            - 운영에서 DEBUG를 끄기로 했는가
+      - key: LESSON.PRACTICAL_ENGINEERING.LOGGING.001.U2
+        title: 한 요청을 끝까지 따라가게
+        minutes: 12
+        core: true
+        explain: |-
+          장애 때 필요한 것은 **그 요청 하나의 전체 흐름**이다.
+          그런데 동시에 수십 개가 돌고 있어 로그가 섞인다.
+
+          ```text
+          10:05:12 주문 조회 시작
+          10:05:12 결제 호출 시작        ← 어느 요청의 것인지 알 수 없다
+          10:05:12 주문 조회 완료
+          10:05:13 결제 실패
+          ```
+
+          섞인 것을 가르는 방법이 **추적 식별자**다.
+          요청이 들어올 때 하나 만들어 그 요청의 모든 줄에 붙인다.
+
+          매번 인자로 넘기지 않아도 된다. **MDC**(Mapped Diagnostic Context)에
+          넣어 두면 그 스레드의 모든 로그에 자동으로 붙는다.
+
+          ```java
+          MDC.put("traceId", traceId);
+          // ... 이 요청의 모든 로그에 붙는다
+          MDC.clear();     // 반드시 지운다
+          ```
+
+          `clear()`가 중요하다. 스레드는 **재사용**되므로 안 지우면
+          다음 요청에 남의 식별자가 붙는다.
+
+          그리고 값을 **문장에 섞지 말고 자리표시자로** 넘긴다.
+          `log.info("주문 {} 생성", orderId)` 가 `"주문 " + orderId + " 생성"` 보다 낫다 —
+          그 수준이 꺼져 있으면 문자열을 아예 안 만든다.
+        example:
+          language: java
+          code: |-
+            @Component
+            public class TraceIdFilter extends OncePerRequestFilter {
+
+                @Override
+                protected void doFilterInternal(HttpServletRequest request,
+                        HttpServletResponse response, FilterChain chain)
+                        throws ServletException, IOException {
+                    String traceId = UUID.randomUUID().toString().substring(0, 8);
+                    MDC.put("traceId", traceId);
+                    response.setHeader("X-Trace-Id", traceId);      // 응답에도 준다
+                    try {
+                        chain.doFilter(request, response);
+                    } finally {
+                        MDC.clear();                                 // 반드시 지운다
+                    }
+                }
+            }
+          output: |-
+            application.yml
+              logging.pattern.level: "%5p [%X{traceId:-}]"
+
+            로그
+            10:05:12.451 INFO  [6f1c2e5a] 주문 생성 시작 memberId=42
+            10:05:12.460 INFO  [a91b33c0] 주문 조회 memberId=17
+            10:05:12.688 INFO  [6f1c2e5a] 결제 호출 시작 orderId=1001
+            10:05:14.902 WARN  [6f1c2e5a] 결제 시간 초과 orderId=1001
+
+            $ grep "6f1c2e5a" app.log        ← 그 요청만 3줄
+          note: |-
+            - 두 요청이 섞여 있지만 **식별자로 가르면 각각이 보인다**
+            - `finally`에서 `MDC.clear()` — 예외가 나도 지워진다
+            - 응답 헤더에도 넣어 **사용자가 알려 준 값으로 찾을 수 있다**
+            - `%X{traceId:-}` 가 패턴에서 MDC 값을 꺼내는 자리다
+        predict:
+          question: '`MDC.clear()`를 빠뜨리면 무슨 일이 생기나?'
+          choices:
+            - 스레드가 재사용되어 다음 요청에 남의 식별자가 붙는다
+            - 아무 일도 없다
+            - 메모리가 샌다
+            - 로그가 안 찍힌다
+          answer: 스레드가 재사용되어 다음 요청에 남의 식별자가 붙는다
+          explanation: |-
+            **잘못된 추적은 없는 것보다 나쁘다.** 다른 요청의 줄이 섞여 들어와
+            장애 분석이 엉뚱한 방향으로 간다.
+            그래서 `finally`에 두어 예외가 나도 반드시 지워지게 한다.
+        complete:
+          question: 요청마다 추적 식별자를 붙이세요.
+          code: |-
+            ___.put("traceId", traceId);
+            try {
+                chain.doFilter(request, response);
+            } ___ {
+                MDC.clear();          // 스레드가 재사용되므로 반드시
+            }
+          answers:
+            - [MDC]
+            - [finally]
+          explanation: |-
+            `MDC`에 넣으면 그 스레드의 모든 로그에 자동으로 붙는다.
+            `finally`에서 지워야 예외가 나도 다음 요청이 오염되지 않는다.
+        problem:
+          prompt: |-
+            주문 시스템에 추적 식별자를 붙이고 **끝까지 이어지는지** 확인하세요.
+
+            - 필터에서 식별자를 만들어 MDC에 넣고 응답 헤더로도 주세요
+            - 로그 패턴에 그것이 나오게 설정하세요
+            - **비동기 작업**(`@Async`, 커밋 뒤 이벤트)에서는 MDC가 이어지지 않습니다.
+              왜 그런지 설명하고 대응을 하나 적으세요
+            - 사용자가 "10시 5분쯤 주문이 안 됐어요"라고 했을 때,
+              **식별자 없이** 찾는 방법과 **있을 때** 찾는 방법을 각각 적으세요
+          deliverables:
+            - 필터와 로그 패턴 설정
+            - 비동기에서 끊기는 이유와 대응
+            - 식별자 없이 / 있을 때 찾는 방법 비교
+          hints:
+            - MDC는 스레드에 붙습니다. 다른 스레드로 넘어가면 어떻게 될까요?
+            - 넘길 값을 이벤트에 담아 가는 방법이 있습니다.
+            - 사용자가 알려 줄 수 있는 것이 무엇인지 생각해 보세요.
+          modelAnswer: |-
+            필터와 패턴은 예제와 같다. 추가로 —
+
+            **비동기에서 끊기는 이유** — MDC는 **스레드 로컬**이다.
+            `@Async`나 커밋 뒤 이벤트는 다른 스레드에서 돌므로 값이 없다.
+
+            대응은 **넘겨 주는 것**이다.
+            ```java
+            String traceId = MDC.get("traceId");
+            eventPublisher.publishEvent(new OrderPlaced(orderId, memberId, traceId));
+
+            @TransactionalEventListener(phase = AFTER_COMMIT)
+            public void onPlaced(OrderPlaced event) {
+                MDC.put("traceId", event.traceId());
+                try { notificationClient.send(...); } finally { MDC.clear(); }
+            }
+            ```
+            이벤트에 담아 넘기고 받는 쪽에서 다시 넣는다.
+            (스레드 풀에 데코레이터를 씌워 자동으로 넘기는 방법도 있다.)
+
+            **식별자 없이 찾기**
+            시간으로 자르고(10:00~10:10), 그 회원의 주문 관련 줄을 `memberId`로 찾고,
+            비슷한 시각의 오류를 눈으로 맞춰 본다. **수십 분이 걸리고 확신이 없다.**
+
+            **식별자가 있을 때**
+            사용자에게 응답 헤더나 화면에 표시된 값을 묻는다.
+            ```bash
+            grep "6f1c2e5a" app.log
+            ```
+            **한 번에 그 요청의 전 과정**이 나온다.
+            그래서 오류 응답에 `traceId`를 함께 내려주는 것이 중요하다 —
+            사용자가 그것만 알려 주면 된다.
+          selfChecks:
+            - finally에서 MDC를 지웠는가
+            - 응답에도 식별자를 내려주는가
+            - 비동기에서 끊기는 이유를 설명할 수 있는가
+            - 식별자가 있을 때와 없을 때를 비교해 봤는가
+      - key: LESSON.PRACTICAL_ENGINEERING.LOGGING.001.U3
+        title: 예외는 한 번만, 비밀은 한 번도
+        minutes: 12
+        core: true
+        explain: |-
+          같은 예외가 **여러 층에서 반복해 찍히는 것**이 흔하다.
+
+          ```text
+          ERROR 결제 실패  (저장소에서)
+          ERROR 결제 실패  (서비스에서)
+          ERROR 결제 실패  (컨트롤러에서)
+          ```
+
+          한 건인데 세 줄이고, 스택도 세 번 찍혀 로그가 세 배가 된다.
+          그리고 **몇 건인지 셀 수 없게** 된다.
+
+          규칙은 하나다 — **처리하는 곳에서 한 번만 남긴다.**
+          중간 층은 잡지 말고 올리거나, 바꿔 던지되 **로그는 남기지 않는다.**
+          원인은 `cause`로 이어지므로 마지막에 한 번 찍으면 전부 나온다.
+
+          그리고 **비밀은 한 번도 남기지 않는다.**
+
+          | 남기면 안 되는 것 | 흔히 새는 자리 |
+          |---|---|
+          | 비밀번호·토큰·API 키 | 요청 본문을 통째로 찍을 때 |
+          | 주민번호·카드번호 | 예외 메시지에 값이 들어갈 때 |
+          | `Authorization` 헤더 | 헤더 전체를 찍을 때 |
+
+          한 번 남은 로그는 **백업과 수집기에 복사되어** 지우기 어렵다.
+          그래서 "나중에 지우자"가 아니라 **처음부터 안 남긴다.**
+        example:
+          language: java
+          code: |-
+            // 나쁜 예 — 층마다 찍는다
+            try {
+                paymentClient.charge(orderId, amount);
+            } catch (IOException cause) {
+                log.error("결제 실패", cause);                    // 1번
+                throw new PaymentFailedException(orderId, cause);
+            }
+            // 서비스에서 또 잡아서 log.error, 컨트롤러에서 또...
+
+            // 좋은 예 — 바꿔 던지기만 하고 로그는 안 남긴다
+            try {
+                paymentClient.charge(orderId, amount);
+            } catch (IOException cause) {
+                throw new PaymentFailedException(orderId, cause);   // 로그 없음
+            }
+
+            // 처리하는 한 곳에서만
+            @ExceptionHandler(PaymentFailedException.class)
+            ProblemDetail handle(PaymentFailedException exception) {
+                log.error("결제 실패 orderId={}", exception.orderId(), exception);
+                return problem(HttpStatus.BAD_GATEWAY, "결제를 처리하지 못했습니다");
+            }
+          output: |-
+            [나쁜 예] 한 건에 대해
+            ERROR 결제 실패  + 스택 40줄
+            ERROR 결제 실패  + 스택 40줄
+            ERROR 결제 실패  + 스택 40줄
+            → 123줄, ERROR 3건으로 집계됨
+
+            [좋은 예]
+            ERROR 결제 실패 orderId=1001  + 스택 40줄 (Caused by 포함)
+            → 41줄, ERROR 1건
+          note: |-
+            - 중간 층은 **바꿔 던지기만** 한다. 원인은 `cause`로 이어진다
+            - 마지막 한 줄에 `Caused by`까지 전부 나오므로 잃는 정보가 없다
+            - `orderId=1001` 이 있다 — **어느 건인지**가 있어야 추적된다
+            - 예외 객체를 마지막 인자로 넘기면 스택이 함께 찍힌다
+        predict:
+          question: 중간 층에서 `log.error`를 지우면 정보를 잃나?
+          choices:
+            - 잃지 않는다 — 원인 사슬로 이어져 마지막 한 줄에 전부 나온다
+            - 스택 트레이스를 잃는다
+            - 원인을 잃는다
+            - 건수를 잃는다
+          answer: 잃지 않는다 — 원인 사슬로 이어져 마지막 한 줄에 전부 나온다
+          explanation: |-
+            앞 노트(예외)에서 원인을 함께 넘겼다면 `Caused by`로 전부 따라온다.
+            오히려 **건수를 제대로 셀 수 있게** 되어 알림이 정확해진다.
+            중간 층의 로그는 정보가 아니라 중복이다.
+        complete:
+          question: 중복 로그를 없애고 한 곳에서만 남기세요.
+          code: |-
+            catch (IOException cause) {
+                // log.error 를 ___ 다
+                throw new PaymentFailedException(orderId, cause);
+            }
+
+            @ExceptionHandler(PaymentFailedException.class)
+            ProblemDetail handle(PaymentFailedException exception) {
+                log.error("결제 실패 orderId={}", exception.orderId(), ___);
+                return problem(HttpStatus.BAD_GATEWAY, "결제를 처리하지 못했습니다");
+            }
+          answers:
+            - [지운, 남기지 않는, 뺀]
+            - [exception]
+          explanation: |-
+            **처리하는 곳에서 한 번만** 남긴다.
+            예외 객체를 마지막 인자로 넘기면 원인 사슬까지 함께 찍힌다.
+        problem:
+          prompt: |-
+            아래 로깅을 고치세요. 문제가 **네 가지** 있습니다.
+
+            ```java
+            @PostMapping("/orders")
+            OrderResponse place(@RequestBody OrderRequest request) {
+                log.info("요청 수신 {}", request);                  // request 에 카드번호가 있다
+                try {
+                    return service.place(request);
+                } catch (Exception e) {
+                    log.error("주문 실패 " + e.getMessage());
+                    throw e;
+                }
+            }
+            ```
+
+            - 네 가지 문제를 지적하고 각각 **무엇이 나빠지는지** 적으세요
+            - 고친 코드를 쓰세요
+            - 요청 본문에서 **남겨도 되는 값과 안 되는 값**을 가르는 기준을 정하세요
+            - 이미 로그에 비밀이 남았다면 어떻게 해야 하는지 적으세요
+          deliverables:
+            - 문제 네 가지와 영향
+            - 고친 코드
+            - 남겨도 되는 값의 기준
+            - 이미 남았을 때의 대응
+          hints:
+            - request 를 통째로 찍으면 toString 이 전부 내보냅니다.
+            - 문자열을 + 로 이으면 수준이 꺼져 있어도 만들어지고, 잡아서 찍고 다시 던지면 위에서 또 찍힙니다.
+            - 로그는 백업과 수집기로 복사됩니다. 지운다고 회수되지 않습니다.
+          modelAnswer: |-
+            | 문제 | 나빠지는 것 |
+            |---|---|
+            | ① `request` 를 통째로 찍음 | 카드번호 등 비밀이 로그에 남는다 |
+            | ② 문자열을 `+` 로 이음 | 수준이 꺼져 있어도 문자열을 만든다 |
+            | ③ 잡아서 찍고 다시 던짐 | 위에서 또 찍혀 중복이 된다 |
+            | ④ 예외 객체를 안 넘김 | 스택 트레이스와 원인 사슬이 사라진다 |
+
+            ```java
+            @PostMapping("/orders")
+            OrderResponse place(@RequestBody OrderRequest request) {
+                log.info("주문 요청 productCode={} quantity={}",
+                        request.productCode(), request.quantity());   // 필요한 것만
+                return service.place(request);                        // 잡지 않는다
+            }
+            ```
+            예외는 `@RestControllerAdvice` 한 곳에서 `log.error("...", exception)` 로 남긴다.
+
+            **남겨도 되는 값의 기준** — **새어도 그 자체로 피해가 없고,
+            추적에 필요한 것**만 남긴다. 식별자(주문 번호, 상품 코드), 수량, 상태.
+            **안 되는 것**: 비밀번호, 토큰, 카드번호, 주민번호, 주소·전화번호,
+            그리고 **본문·헤더 통째로**. 통째로 찍는 순간 기준이 사라진다.
+
+            **이미 남았다면** — 지우는 것으로 끝나지 않는다.
+            그 비밀이 **이미 유출된 것으로 보고 무효화**해야 한다 —
+            토큰은 폐기, 비밀번호는 변경, 키는 재발급.
+            로그는 백업·수집기·화면 캡처로 복사되므로 원본만 지워서는 회수되지 않는다.
+            그래서 처음부터 안 남기는 것이 유일한 대책이다.
+          selfChecks:
+            - 본문을 통째로 찍지 않는가
+            - 자리표시자로 값을 넘기는가
+            - 예외를 한 곳에서만 남기는가
+            - 이미 샌 비밀을 무효화하기로 했는가
+    commonMistakes:
+      - 사용자가 고칠 수 있는 실패를 `ERROR`로 찍는다. 진짜 장애가 묻히고 알림이 꺼진다 (U1)
+      - '`MDC.clear()`를 빠뜨린다. 스레드 재사용으로 남의 식별자가 붙는다 (U2)'
+      - 층마다 같은 예외를 찍는다. 한 건이 여러 건으로 집계되고 로그가 몇 배가 된다 (U3)
+    inProject: |-
+      주문 시스템에서 할 일은 셋이다 — 수준 기준을 아홉 사건으로 정해 두고,
+      필터에서 `traceId`를 만들어 MDC와 응답에 함께 내려주고,
+      예외는 `@RestControllerAdvice` 한 곳에서만 남긴다.
+      요청 본문은 절대 통째로 찍지 않고 식별자와 수량만 남긴다.
+    sources:
+      - title: Spring Boot — Logging
+        url: https://docs.spring.io/spring-boot/reference/features/logging.html
+        versionScope: Spring Boot 3.x+
+      - title: OWASP Cheat Sheet Series — Logging
+        url: https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html
+        versionScope: OWASP Cheat Sheet Series
+      - title: OWASP Cheat Sheet Series — Logging Vocabulary
+        url: https://cheatsheetseries.owasp.org/cheatsheets/Logging_Vocabulary_Cheat_Sheet.html
+        versionScope: OWASP Cheat Sheet Series
+    verifiedAt: 2026-09-25
+
+  - key: LESSON.DEVOPS.OBSERVABILITY.001
+    skillCode: DEVOPS.OBSERVABILITY
+    title: 터지기 전에 알아채기 (관측)
+    whyItMatters: |-
+      **서비스가 멈춘 것을 사용자 연락으로 처음 아는 것**이 가장 나쁘다.
+      그때는 이미 몇십 분이 지났고, 무슨 일이 있었는지 볼 것도 없다.
+      헬스체크·지표·로그 셋을 미리 남겨 두면 터지기 전에 징후가 보이고,
+      터진 뒤에도 **무엇을 먼저 볼지**가 정해져 있다.
+    oneLine: 관측은 로그·지표·헬스체크 셋으로 이뤄지고, 각각 답하는 질문이 다르다.
+    units:
+      - key: LESSON.DEVOPS.OBSERVABILITY.001.U1
+        title: 셋이 각각 다른 질문에 답한다
+        minutes: 12
+        core: true
+        explain: |-
+          셋을 뭉뚱그리면 "모니터링 붙였다"로 끝나고 정작 장애 때 볼 것이 없다.
+          각각 **답하는 질문이 다르다.**
+
+          | | 답하는 질문 | 언제 본다 |
+          |---|---|---|
+          | **헬스체크** | 지금 받을 수 있나? | 배포 직후, 로드밸런서가 계속 |
+          | **지표** | 추세가 어떤가? | 평소에 보고, 알림을 건다 |
+          | **로그** | 그 요청에 무슨 일이 있었나? | 장애가 난 뒤 |
+
+          순서도 이 순서다. 헬스체크로 **살았는지** 보고,
+          지표로 **어디가 이상한지** 좁히고, 로그로 **무엇이 있었는지** 읽는다.
+
+          로그부터 보면 양에 파묻힌다 — 앞 노트에서 18422줄을 본 그 문제다.
+
+          스프링 부트에는 이 셋을 위한 끝점이 딸려 온다(`actuator`).
+          다만 **밖으로 다 열면 안 된다.** 환경 변수와 빈 목록까지 나가므로
+          꼭 필요한 것만 연다.
+        example:
+          language: yaml
+          code: |-
+            management:
+              endpoints:
+                web:
+                  exposure:
+                    include: health,info,metrics,prometheus   # 꼭 필요한 것만
+              endpoint:
+                health:
+                  show-details: when-authorized               # 상세는 인증된 경우만
+              server:
+                port: 18081                                   # 서비스 포트와 분리
+          output: |-
+            $ curl -s localhost:18081/actuator/health
+            {"status":"UP","components":{"db":{"status":"UP"},"diskSpace":{"status":"UP"}}}
+
+            $ curl -s localhost:18081/actuator/metrics/hikaricp.connections.active
+            {"name":"hikaricp.connections.active","measurements":[{"statistic":"VALUE","value":3.0}]}
+
+            $ curl -s localhost:18081/actuator/metrics/http.server.requests \
+                | jq '.availableTags[] | select(.tag=="status")'
+            {"tag":"status","values":["200","400","409","500"]}
+          note: |-
+            - `health`에 **db가 들어 있다** — DB가 죽으면 이 끝점이 DOWN이 된다
+            - 관리 포트를 18081로 **분리**했다. 밖에서 못 닿게 막기 쉬워진다
+            - `hikaricp.connections.active` 가 앞 노트의 커넥션 지표다
+            - `include`에 나열한 것만 열린다. `*`로 열면 `env`까지 나간다
+        predict:
+          question: '`management.endpoints.web.exposure.include: "*"` 로 두면?'
+          choices:
+            - env·configprops 같은 끝점이 열려 설정과 환경 변수가 노출될 수 있다
+            - 더 편해서 좋다
+            - 성능이 나빠질 뿐이다
+            - 인증이 자동으로 걸린다
+          answer: env·configprops 같은 끝점이 열려 설정과 환경 변수가 노출될 수 있다
+          explanation: |-
+            `/actuator/env` 는 **환경 변수와 설정 값**을 보여 준다.
+            값이 가려지더라도 키 이름만으로 구조가 드러나고,
+            가려지지 않는 항목도 있다.
+            **필요한 것만 나열해 여는 것**이 규칙이고, 관리 포트도 분리한다.
+        complete:
+          question: 관측 끝점을 안전하게 여세요.
+          code: |-
+            management:
+              endpoints:
+                web:
+                  exposure:
+                    ___: health,info,metrics       # 꼭 필요한 것만
+              server:
+                ___: 18081                          # 서비스 포트와 분리
+          answers:
+            - [include]
+            - [port]
+          explanation: |-
+            `include`에 나열한 것만 열린다. 관리 포트를 분리하면
+            방화벽에서 **서비스 포트만 열고 관리 포트는 막기** 쉬워진다.
+        problem:
+          prompt: |-
+            주문 시스템의 관측을 설계하세요.
+
+            - 헬스체크·지표·로그가 각각 **답할 질문**을 하나씩 정하세요
+            - 헬스체크에 **무엇을 포함할지** 정하세요 (DB는? 결제사는?)
+              외부 의존을 넣을 때의 위험도 적으세요
+            - 볼 지표를 **다섯 가지** 고르고 각각 어떤 장애를 미리 알려 주는지 적으세요
+            - 관리 끝점을 **누가 볼 수 있게** 할지 정하세요
+          deliverables:
+            - 셋이 답할 질문
+            - 헬스체크 구성과 외부 의존의 위험
+            - 지표 다섯 가지와 알려 주는 장애
+            - 관리 끝점 접근 정책
+          hints:
+            - 헬스체크에 외부 API를 넣으면 그쪽이 느릴 때 우리도 DOWN이 됩니다.
+            - 앞 노트에서 본 자원 지표들이 후보입니다.
+            - 관리 포트를 tailnet이나 사내망에서만 닿게 할 수 있습니다.
+          modelAnswer: |-
+            | | 답할 질문 |
+            |---|---|
+            | 헬스체크 | 지금 이 인스턴스에 트래픽을 보내도 되나? |
+            | 지표 | 어제와 비교해 무엇이 달라졌나? |
+            | 로그 | traceId 6f1c 요청에서 무슨 일이 있었나? |
+
+            **헬스체크 구성** — DB는 **넣는다**. DB가 죽으면 이 인스턴스는
+            요청을 받아도 못 하므로 트래픽을 안 받는 것이 맞다.
+            결제사는 **넣지 않는다.** 결제사가 느려졌다고 우리 인스턴스가 DOWN이 되면
+            **조회까지 못 받게** 되어 피해가 커진다.
+            외부 의존을 헬스체크에 넣으면 **남의 장애가 우리 장애가 된다.**
+
+            | 지표 | 미리 알려 주는 장애 |
+            |---|---|
+            | `hikaricp.connections.active` | 커넥션 고갈 (풀에 붙으면 위험) |
+            | `hikaricp.connections.pending` | 〃 (0이 아니면 이미 대기 중) |
+            | `http.server.requests` P99 | 전반적 지연 |
+            | `http.server.requests` status=5xx 비율 | 우리 쪽 실패 증가 |
+            | JVM heap 사용률 | 메모리 부족·누수 |
+
+            **접근 정책** — 관리 포트 18081은 **tailnet이나 사내망에서만** 닿게 하고
+            공개 포트로는 열지 않는다. `health`만 예외로 로드밸런서가 쓰도록 하되
+            `show-details`는 인증된 경우만으로 둔다 —
+            상세에 DB 주소 같은 것이 들어갈 수 있다.
+          selfChecks:
+            - 셋이 답할 질문을 서로 다르게 적었는가
+            - 외부 의존을 헬스체크에서 뺀 이유를 설명했는가
+            - 지표마다 어떤 장애를 알려 주는지 적었는가
+            - 관리 끝점을 공개하지 않기로 했는가
+      - key: LESSON.DEVOPS.OBSERVABILITY.001.U2
+        title: 알림은 적을수록 지켜진다
+        minutes: 12
+        core: true
+        explain: |-
+          알림을 많이 걸면 안전해 보이지만 반대가 된다.
+          **자주 울리는 알림은 꺼진다.** 한 번 꺼지면 다시 안 켜진다.
+
+          그래서 기준을 좁게 잡는다.
+
+          | 조건 | 왜 |
+          |---|---|
+          | **사람이 할 일이 있을 때만** | 할 일이 없으면 알림이 아니라 지표다 |
+          | **지속 시간을 붙인다** | 순간적인 튐으로 울리지 않게 |
+          | **비율로 잡는다** | 트래픽이 늘면 절대 건수는 늘 수밖에 없다 |
+
+          예를 보면 차이가 분명하다.
+
+          ```text
+          나쁨  5xx가 1건 발생          → 하루에도 몇 번 울린다
+          좋음  5xx 비율이 5분간 1% 초과 → 실제로 뭔가 일어난 것이다
+          ```
+
+          그리고 알림마다 **무엇을 해야 하는지**를 함께 적어 둔다.
+          받고서 "그래서 뭘 하지?" 하면 그 알림은 무의미하다.
+
+          ```text
+          [알림] 커넥션 대기 5분간 100ms 초과
+          확인: /actuator/metrics/hikaricp.connections.pending
+          먼저 볼 것: 최근 배포, 외부 호출 P99
+          ```
+        example:
+          language: yaml
+          code: |-
+            # 알림 정의 (도구는 무엇이든)
+            - name: 커넥션 고갈 임박
+              expr: hikaricp_connections_pending > 0
+              for: 5m                       # 5분간 이어질 때만
+              runbook: 최근 배포 확인 → 외부 호출 P99 → 경계 안 외부 호출 여부
+
+            - name: 서버 오류 비율
+              expr: rate(http_server_requests_seconds_count{status=~"5.."}[5m])
+                    / rate(http_server_requests_seconds_count[5m]) > 0.01
+              for: 5m
+              runbook: traceId로 최근 ERROR 확인 → 공통 원인 찾기
+
+            - name: 헬스체크 DOWN
+              expr: up == 0
+              for: 1m                       # 배포 중 짧은 다운은 넘긴다
+              runbook: 프로세스·포트 확인 → 기동 로그
+          output: |-
+            한 달간 알림 건수
+
+            [좁게 잡은 뒤]
+            커넥션 고갈 임박    2건  (둘 다 진짜였다)
+            서버 오류 비율      1건  (진짜)
+            헬스체크 DOWN       3건  (배포 2건은 for:1m 로 걸러짐)
+
+            [예전: 5xx 1건마다 알림]
+            412건  → 셋째 주에 알림 채널을 음소거함
+          note: |-
+            - `for: 5m` 이 **순간적인 튐을 거른다.** 이 한 줄이 대부분을 걸러 낸다
+            - 오류를 **비율**로 잡았다. 트래픽이 두 배가 돼도 기준이 그대로다
+            - `runbook`에 **먼저 볼 것**이 적혀 있다. 새벽에 받아도 손이 움직인다
+            - 한 달에 6건이다. 이 정도여야 사람들이 계속 본다
+        predict:
+          question: '`for: 5m` 을 빼고 `hikaricp_connections_pending > 0` 만 두면?'
+          choices:
+            - 순간적으로 1건만 대기해도 울려 알림이 잦아진다
+            - 더 빨리 알 수 있어 좋다
+            - 차이가 없다
+            - 알림이 줄어든다
+          answer: 순간적으로 1건만 대기해도 울려 알림이 잦아진다
+          explanation: |-
+            대기는 **정상 운영 중에도 순간적으로 생긴다.** 배포 직후나 트래픽이 튈 때다.
+            그때마다 울리면 사람들이 무시하기 시작하고,
+            **진짜로 5분간 이어지는 상황**이 왔을 때도 무시한다.
+            지속 시간은 민감도를 낮추는 것이 아니라 **정확도를 높이는 것**이다.
+        complete:
+          question: 알림을 정확하게 만드세요.
+          code: |-
+            - name: 서버 오류 비율
+              expr: rate(...{status=~"5.."}[5m]) / rate(...[5m]) > 0.01   # ___로 잡는다
+              ___: 5m                                                      # 지속 시간
+              runbook: traceId로 최근 ERROR 확인 → 공통 원인 찾기
+          answers:
+            - [비율]
+            - [for]
+          explanation: |-
+            비율로 잡으면 **트래픽이 늘어도 기준이 그대로**다.
+            `for`로 지속 시간을 붙이면 순간적인 튐이 걸러진다.
+            둘이 함께 있어야 알림이 살아남는다.
+        problem:
+          prompt: |-
+            주문 시스템의 알림을 **세 개만** 만드세요. 딱 세 개입니다.
+
+            - 무엇에 걸지 정하고, 각각 **임계값과 지속 시간**을 적으세요
+            - 각 알림에 **받은 사람이 먼저 볼 것 세 가지**를 적으세요
+            - 걸고 싶었지만 **뺀 것 두 가지**와 왜 뺐는지 적으세요
+            - 알림이 울렸는데 **아무것도 할 일이 없었다면** 그 알림을 어떻게 할지 정하세요
+          deliverables:
+            - 알림 세 개 (조건·임계값·지속 시간)
+            - 각각의 먼저 볼 것 세 가지
+            - 뺀 것 두 가지와 이유
+            - 헛울림에 대한 처리 규칙
+          hints:
+            - 사람이 할 일이 없으면 알림이 아니라 지표입니다.
+            - 셋으로 줄이려면 무엇이 가장 큰 피해를 막는지 물어보세요.
+            - 헛울림을 방치하면 다른 알림까지 무시하게 됩니다.
+          modelAnswer: |-
+            | 알림 | 조건 | 먼저 볼 것 |
+            |---|---|---|
+            | **서비스 응답 없음** | `up == 0`, 1분 | ① 프로세스·포트 ② 기동 로그 ③ 최근 배포 |
+            | **커넥션 고갈 임박** | `pending > 0`, 5분 | ① 외부 호출 P99 ② 최근 배포 ③ 경계 안 외부 호출 |
+            | **서버 오류 비율** | 5xx 비율 > 1%, 5분 | ① 최근 ERROR의 traceId ② 공통 예외 타입 ③ 최근 배포 |
+
+            셋 다 **"최근 배포"가 들어 있다.** 실제로 원인의 상당수가 거기다.
+
+            **뺀 것**
+            **① CPU 사용률 80%** — 높다고 해서 할 일이 없다.
+            응답이 느려지면 오류 비율이나 P99로 이미 잡힌다. 이건 지표로만 둔다.
+            **② 디스크 70%** — 임계를 낮게 잡으면 몇 달에 한 번 울리고 그때마다
+            "아직 괜찮다"로 끝난다. **90%로 올려 두거나 주간 점검**으로 돌린다.
+
+            **헛울림 처리 규칙** — 울렸는데 할 일이 없었으면
+            **그 자리에서 알림을 고친다.** 임계값을 올리든, 지속 시간을 늘리든,
+            아예 지우든 셋 중 하나를 그날 안에 한다.
+            "다음에 보자"로 두면 그 알림이 계속 울리고,
+            **결국 채널 전체를 음소거하게 된다.** 알림 하나가 나머지 전부를 죽인다.
+          selfChecks:
+            - 세 개로 줄였는가
+            - 각 알림에 지속 시간이 있는가
+            - 먼저 볼 것을 적어 두었는가
+            - 헛울림을 그날 고치기로 정했는가
+      - key: LESSON.DEVOPS.OBSERVABILITY.001.U3
+        title: 장애 때 볼 순서를 미리 적어 두기
+        minutes: 10
+        core: false
+        explain: |-
+          장애는 **가장 판단력이 떨어지는 순간**에 일어난다. 새벽이거나, 바쁜 중이거나.
+          그때 "무엇부터 보지"를 생각하면 늦는다.
+
+          그래서 **미리 적어 둔다.** 거창할 필요 없이 한 장이면 된다.
+
+          ```text
+          [주문 시스템 장애 점검표]
+          1. 헬스체크      curl localhost:18081/actuator/health
+          2. 프로세스·포트  ps aux | grep '[j]ava'  /  ss -ltnp | grep 8080
+          3. 최근 배포     마지막 배포 시각과 버전
+          4. 지표 3개      커넥션 대기 / 5xx 비율 / 외부 호출 P99
+          5. 로그          시간 → ERROR → traceId 순으로 좁힌다
+          ```
+
+          순서에 뜻이 있다 — **싸고 범위를 크게 줄이는 것부터**.
+          그리고 **3번(최근 배포)이 위에 있는 것**이 중요하다.
+          원인의 상당수가 최근 변경이고, 되돌리는 것이 가장 빠른 완화다.
+
+          점검표는 **장애를 한 번 겪을 때마다 고친다.**
+          이번에 봤어야 했는데 목록에 없던 것을 더하고,
+          한 번도 안 본 항목은 뺀다.
+        example:
+          language: text
+          code: |-
+            [실제로 써 본 흐름 — 10:05 알림 수신]
+
+            1. 헬스체크      → {"status":"DOWN","db":{"status":"DOWN"}}
+                              DB가 문제다. 2·3 건너뛴다
+            2. (건너뜀)
+            3. 최근 배포     → 09:50 배포됨. 40분 전
+            4. 지표          → 커넥션 active 10/10, pending 24
+            5. 로그          → 10:05:12 첫 ERROR, traceId=6f1c
+                              grep 6f1c → 결제 호출 뒤 커넥션 대기 3초 초과
+
+            결론 09:50 배포에서 결제 호출이 트랜잭션 경계 안으로 들어감
+            완화 이전 버전으로 되돌림 (10:19)
+            소요 14분
+          output: |-
+            점검표가 있을 때와 없을 때
+
+            있을 때   14분 — 순서대로 치고 3번에서 후보가 좁아졌다
+            없을 때   로그부터 열어 18000줄을 훑다가
+                     "배포했었나?"를 떠올리기까지 40분
+          note: |-
+            - 1번 결과로 **2번을 건너뛰었다** — DB가 원인이면 프로세스는 볼 필요 없다
+            - 3번에서 "40분 전 배포"가 나오자 **후보가 거의 정해졌다**
+            - 완화(되돌리기)를 **원인 확정 전에** 했다. 순서가 맞다
+            - 14분 걸렸다. 이 숫자가 다음 점검표를 고칠 근거다
+        predict:
+          question: 원인을 완전히 파악한 뒤에 되돌리는 것과 먼저 되돌리는 것 중?
+          choices:
+            - 먼저 되돌린다 — 피해를 멈추는 것이 원인 파악보다 급하다
+            - 원인을 알고 나서 되돌린다
+            - 둘 다 같다
+            - 되돌리지 않는다
+          answer: 먼저 되돌린다 — 피해를 멈추는 것이 원인 파악보다 급하다
+          explanation: |-
+            원인 파악은 되돌린 뒤에도 할 수 있지만, **장애 시간은 되돌릴 수 없다.**
+            다만 되돌리기 전에 **지금 상태의 증거**(로그, 지표 스냅숏)를 남긴다.
+            되돌리면 증거도 함께 사라지는 경우가 있다.
+        complete:
+          question: 장애 점검표의 순서를 채우세요.
+          code: |-
+            1. 헬스체크       — 살아 있나
+            2. 프로세스·포트   — 떠 있나
+            3. ___            — 최근에 무엇을 바꿨나
+            4. 지표 3개       — 어디가 이상한가
+            5. ___            — 그 요청에 무슨 일이 있었나
+          answers:
+            - [최근 배포, 배포]
+            - [로그]
+          explanation: |-
+            **최근 배포가 로그보다 위**에 있다. 원인의 상당수가 최근 변경이고,
+            확인이 몇 초면 되며, 맞으면 되돌리는 것으로 즉시 완화된다.
+            로그는 범위가 좁혀진 뒤에 본다.
+        problem:
+          prompt: |-
+            주문 시스템의 **장애 점검표 한 장**을 만드세요.
+
+            - 항목을 **5~7개**로 하고 각각 **실행할 명령이나 볼 화면**을 적으세요
+            - 순서를 정한 **근거**를 적으세요 (왜 그것이 위에 있나)
+            - 각 항목에 **결과에 따라 어디로 가는지**를 표시하세요 (이러면 X번으로)
+            - 이 점검표를 **언제 고칠지** 규칙을 정하세요
+            - 실제로 한 번 돌려 보고 **걸린 시간**을 적으세요 (장애가 없어도 됩니다)
+          deliverables:
+            - 점검표 5~7개 항목과 명령
+            - 순서의 근거
+            - 분기 표시
+            - 갱신 규칙과 실측 시간
+          hints:
+            - 싸고 범위를 크게 줄이는 것부터 올립니다.
+            - 최근 배포는 확인이 몇 초인데 후보를 크게 줄입니다.
+            - 평소에 한 번 돌려 봐야 장애 때 손이 움직입니다.
+          modelAnswer: |-
+            ```text
+            [주문 시스템 장애 점검표]  최종 수정 2026-09-25
+
+            1. 헬스체크    curl -s localhost:18081/actuator/health | jq
+               DOWN + db  → 4번으로 (DB 쪽)
+               응답 없음   → 2번으로
+               UP         → 4번으로
+
+            2. 프로세스·포트  ps aux | grep '[j]ava'  /  ss -ltnp | grep 8080
+               없음  → 기동 로그 (6번)
+               있음  → 3번
+
+            3. 최근 배포   마지막 배포 시각·버전 확인
+               30분 이내  → 되돌리기 검토 (증거 먼저 남기고)
+               아니면     → 4번
+
+            4. 지표 3개    커넥션 pending / 5xx 비율 / 외부 호출 P99
+               pending>0  → 자원 고갈. 경계 안 외부 호출 의심
+               P99 급증   → 외부 장애. 타임아웃 확인
+
+            5. 로그        시간 → ERROR → traceId 로 좁힌다
+
+            6. 기동 로그   journalctl -u order-service -n 200
+
+            7. 증거 남기기  지표 스냅숏·로그 구간을 파일로 저장
+            ```
+
+            **순서 근거** — 1·2는 몇 초에 끝나고 범위를 절반으로 가른다.
+            3은 확인이 가장 싸면서 **되돌리기라는 즉시 완화**로 이어진다.
+            4는 어디가 이상한지 좁히고, 5는 그 뒤에야 읽을 수 있는 양이 된다.
+            7을 마지막이 아니라 **되돌리기 전에** 해야 하는 경우가 많아 따로 뒀다.
+
+            **갱신 규칙** — 장애를 한 번 겪을 때마다 그날 고친다.
+            이번에 **봤어야 했는데 목록에 없던 것**을 더하고,
+            **세 번 연속 안 본 항목**은 뺀다. 길어지면 안 쓰게 된다.
+
+            평소에 한 번 돌려 봤다 — **4분 20초**.
+            3번(최근 배포 확인)이 어디를 봐야 하는지 몰라 오래 걸려서,
+            배포 기록 위치를 점검표에 적어 넣었다.
+          selfChecks:
+            - 싸고 범위를 크게 줄이는 것을 위에 두었는가
+            - 최근 배포가 로그보다 위에 있는가
+            - 결과에 따른 분기를 표시했는가
+            - 평소에 한 번 돌려 보고 고쳤는가
+    commonMistakes:
+      - 관리 끝점을 `*`로 전부 연다. 환경 변수와 설정 구조가 밖으로 나간다 (U1)
+      - 알림을 많이 건다. 자주 울리면 꺼지고, 꺼진 알림은 다시 안 켜진다 (U2)
+      - 장애 때 로그부터 연다. 범위가 안 좁혀진 상태라 양에 파묻힌다 (U3)
+    inProject: |-
+      주문 시스템에는 관리 포트를 따로 열고 `health`·`metrics`만 노출한다.
+      헬스체크에 DB는 넣고 결제사는 넣지 않는다 — 남의 장애를 우리 장애로 만들지 않는다.
+      알림은 셋(응답 없음·커넥션 고갈·5xx 비율)만 걸고 각각 지속 시간을 붙인다.
+      장애 점검표 한 장을 저장소에 두고 장애를 겪을 때마다 그날 고친다.
+    sources:
+      - title: Spring Boot — Production-ready Features (Actuator)
+        url: https://docs.spring.io/spring-boot/reference/actuator/index.html
+        versionScope: Spring Boot 3.x+
+      - title: Spring Boot — Actuator Endpoints
+        url: https://docs.spring.io/spring-boot/reference/actuator/endpoints.html
+        versionScope: Spring Boot 3.x+
+      - title: Spring Boot — Metrics
+        url: https://docs.spring.io/spring-boot/reference/actuator/metrics.html
+        versionScope: Spring Boot 3.x+
+      - title: OWASP Cheat Sheet Series — Logging
+        url: https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html
+        versionScope: OWASP Cheat Sheet Series
+    verifiedAt: 2026-09-25

@@ -16,6 +16,9 @@ import org.jspecify.annotations.Nullable;
  */
 final class ValidationContext {
 
+    /** {@code files.conceptReadings}를 생략했을 때의 경로 (docs/19 §3.1). */
+    static final String DEFAULT_CONCEPT_READINGS = "concept-readings.yaml";
+
     private final RawContent content;
     private final List<ContentValidationReport.Issue> errors = new ArrayList<>();
     private final List<ContentValidationReport.Issue> warnings = new ArrayList<>();
@@ -27,7 +30,16 @@ final class ValidationContext {
     Set<String> retiredConceptKeys = Set.of();
     Set<String> retiredSourceIds = Set.of();
     Set<String> retiredReadingKeys = Set.of();
+    Set<String> retiredLessonKeys = Set.of();
+    Set<String> retiredTipKeys = Set.of();
+    Set<String> retiredTermKeys = Set.of();
     List<?> diagnosticCategories = List.of();
+
+    /** 코드 읽기·개념 읽기가 같이 쓰는 key namespace (docs/19 §3.13, CV-120). */
+    final Set<String> readingKeys = new HashSet<>();
+
+    /** 은퇴하지 않은 코드 읽기·개념 읽기가 덮는 skill code (CV-125). */
+    final Set<String> readableSkillCodes = new HashSet<>();
 
     /** 유효한 skill code → skill 원본(파일 순서 유지). */
     final Map<String, Map<String, Object>> skillsByCode = new LinkedHashMap<>();
@@ -37,8 +49,22 @@ final class ValidationContext {
 
     final Set<String> nonRootCodes = new HashSet<>();
 
-    /** JAVA_BACKEND role target: skill code → 원본. */
+    /** {@code whyItMatters}가 있는 non-root skill (CV-89, docs/19 §3.2). */
+    final Set<String> skillsWithWhyItMatters = new HashSet<>();
+
+    /** JAVA_BACKEND role target: skill code → 원본. 기본 트랙 기준 검사(CV-18 등)가 쓴다. */
     final Map<String, Map<String, Object>> targets = new LinkedHashMap<>();
+
+    /** 트랙 전체의 role target: skill code → 트랙별 원본 목록. 진단 준비(CV-59)는 어느 트랙이든 보면 된다. */
+    final Map<String, List<Map<String, Object>>> targetsBySkill = new LinkedHashMap<>();
+
+    /**
+     * role → skill code → 그 트랙의 role target.
+     *
+     * <p>{@link #targetsBySkill}은 트랙을 잃어버린다. 우선순위가 <b>트랙마다 다른</b> skill이 있으므로(같은 skill이 어느 트랙에서는
+     * MUST, 다른 트랙에서는 SHOULD), 트랙을 지정해 보는 검사(CV-136)는 이쪽을 쓴다.
+     */
+    final Map<String, Map<String, Map<String, Object>>> targetsByRole = new LinkedHashMap<>();
 
     /** 구조 검사를 통과한 plan template(CV-61 대상). */
     final List<Map<String, Object>> validTemplates = new ArrayList<>();
@@ -101,5 +127,17 @@ final class ValidationContext {
 
     @Nullable String singleFile(String key) {
         return files.get(key) instanceof String path ? path : null;
+    }
+
+    /** {@code files.conceptReadings}. 생략하면 기본 경로 (docs/19 §3.1·§3.13). */
+    String conceptReadingsFile() {
+        String listed = singleFile("conceptReadings");
+        return listed == null ? DEFAULT_CONCEPT_READINGS : listed;
+    }
+
+    /** {@code catalog.yaml}에 나열되지 않았고 파일도 없으면 {@code true} — 선택 파일이라 건너뛴다. */
+    boolean conceptReadingsAbsent() {
+        return singleFile("conceptReadings") == null
+                && !content.document(DEFAULT_CONCEPT_READINGS).found();
     }
 }

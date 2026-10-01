@@ -56,7 +56,8 @@ services:
       - devpilot
 
   caddy:
-    image: caddy:2.11.4-alpine # TODO(S2 P1): pin @sha256 digest (docs/07 §11.5)
+    # 멀티아치 index digest 고정 (docs/07 §11.5). Dependabot docker-compose가 갱신한다
+    image: caddy:2.11.4-alpine@sha256:de23def33b17fb5d1290b0f6c2add1d70780e52341896c00a4c8a2a2fe9d355e
     restart: unless-stopped
     ports:
       # 호스트 loopback에만 publish한다. Docker publish는 firewalld를 우회하므로 127.0.0.1: 접두사가 필수다 (docs/10 §3.2)

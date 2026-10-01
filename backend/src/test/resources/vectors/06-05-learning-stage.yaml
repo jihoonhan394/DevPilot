@@ -1,0 +1,104 @@
+# source: 06 §5.11 "학습 단계" ST-V1~ST-V12, rows: 12
+# events[]: 판정이 보는 이벤트만 적는다. at 은 vector 안에서만 쓰는 상대 시각(1 = 하루째).
+#   type: TASK_COMPLETED | RUBBER_DUCK_COMPLETED | REVIEW_ANSWERED | REDO_COMPLETED
+#   taskType: TASK_COMPLETED 일 때만. explainedToPerson: EXPLAIN 과제일 때만. withoutAi: REDO_COMPLETED 일 때만.
+# stageGapBonus 는 devpilot.planner.weights.stage-gap = 0.005 (= 5_000 micro) 기준이다.
+vectors:
+  - id: ST-V1
+    case: 기록이 하나도 없다
+    events: []
+    completed: []
+    stageGap: 1000000
+    stageGapBonus: 5000
+  - id: ST-V2
+    case: CHALLENGE 과제를 끝냈다 — 만들기
+    events:
+      - { type: TASK_COMPLETED, at: 1, taskType: CHALLENGE }
+    completed: [BUILD]
+    stageGap: 833333
+    stageGapBonus: 4166
+  - id: ST-V3
+    case: 개념 읽기까지 두 칸
+    events:
+      - { type: TASK_COMPLETED, at: 1, taskType: CHALLENGE }
+      - { type: TASK_COMPLETED, at: 2, taskType: READING }
+    completed: [BUILD, READ_CONCEPT]
+    stageGap: 666666
+    stageGapBonus: 3333
+  - id: ST-V4
+    case: 코드 읽기와 러버덕까지 네 칸
+    events:
+      - { type: TASK_COMPLETED, at: 1, taskType: CHALLENGE }
+      - { type: TASK_COMPLETED, at: 2, taskType: READING }
+      - { type: TASK_COMPLETED, at: 3, taskType: READ_CODE }
+      - { type: RUBBER_DUCK_COMPLETED, at: 4 }
+    completed: [BUILD, READ_CONCEPT, READ_CODE, EXPLAIN]
+    stageGap: 333333
+    stageGapBonus: 1666
+  - id: ST-V5
+    case: 복습 답변까지 다섯 칸
+    events:
+      - { type: TASK_COMPLETED, at: 1, taskType: CHALLENGE }
+      - { type: TASK_COMPLETED, at: 2, taskType: READING }
+      - { type: TASK_COMPLETED, at: 3, taskType: READ_CODE }
+      - { type: RUBBER_DUCK_COMPLETED, at: 4 }
+      - { type: REVIEW_ANSWERED, at: 5 }
+    completed: [BUILD, READ_CONCEPT, READ_CODE, EXPLAIN, REVIEW]
+    stageGap: 166666
+    stageGapBonus: 833
+  - id: ST-V6
+    case: AI 없이 다시 만들어 한 바퀴를 돌았다
+    events:
+      - { type: TASK_COMPLETED, at: 1, taskType: CHALLENGE }
+      - { type: TASK_COMPLETED, at: 2, taskType: READING }
+      - { type: TASK_COMPLETED, at: 3, taskType: READ_CODE }
+      - { type: RUBBER_DUCK_COMPLETED, at: 4 }
+      - { type: REVIEW_ANSWERED, at: 5 }
+      - { type: REDO_COMPLETED, at: 6, withoutAi: true }
+    completed: [BUILD, READ_CONCEPT, READ_CODE, EXPLAIN, REVIEW, REDO]
+    stageGap: 0
+    stageGapBonus: 0
+  - id: ST-V7
+    case: PROJECT_TASK 도 만들기다
+    events:
+      - { type: TASK_COMPLETED, at: 1, taskType: PROJECT_TASK }
+    completed: [BUILD]
+    stageGap: 833333
+    stageGapBonus: 4166
+  - id: ST-V8
+    case: 사람에게 설명한 EXPLAIN 과제 — 순서를 건너뛰어도 그 칸은 채워진다 (ST-2)
+    events:
+      - { type: TASK_COMPLETED, at: 1, taskType: EXPLAIN, explainedToPerson: true }
+    completed: [EXPLAIN]
+    stageGap: 833333
+    stageGapBonus: 4166
+  - id: ST-V9
+    case: 혼잣말로 끝낸 EXPLAIN 과제는 설명이 아니다
+    events:
+      - { type: TASK_COMPLETED, at: 1, taskType: EXPLAIN, explainedToPerson: false }
+    completed: []
+    stageGap: 1000000
+    stageGapBonus: 5000
+  - id: ST-V10
+    case: AI를 보고 다시 만든 REDO 는 혼자 만든 증거가 아니다 (RE-8)
+    events:
+      - { type: TASK_COMPLETED, at: 1, taskType: CHALLENGE }
+      - { type: REDO_COMPLETED, at: 2, withoutAi: false }
+    completed: [BUILD]
+    stageGap: 833333
+    stageGapBonus: 4166
+  - id: ST-V11
+    case: 시작만 하고 끝내지 않은 과제는 아무 칸도 채우지 않는다
+    events: []
+    completed: []
+    stageGap: 1000000
+    stageGapBonus: 5000
+  - id: ST-V12
+    case: baseScore 가 같으면 빈 칸이 많은 쪽이 앞선다 — A(0칸) 505000 > B(3칸) 502500
+    events:
+      - { type: TASK_COMPLETED, at: 1, taskType: CHALLENGE }
+      - { type: TASK_COMPLETED, at: 2, taskType: READING }
+      - { type: TASK_COMPLETED, at: 3, taskType: READ_CODE }
+    completed: [BUILD, READ_CONCEPT, READ_CODE]
+    stageGap: 500000
+    stageGapBonus: 2500

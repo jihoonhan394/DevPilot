@@ -1,11 +1,13 @@
 # DevPilot curated repositories & code readings — READ_CODE 과제 콘텐츠
-# Spec: docs/19-content-spec.md §3.8 (schema), §4.1 CV-80~CV-86 (검증), §8.4 (줄 번호 관리)
+# Spec: docs/19-content-spec.md §3.8 (schema), §4.1 CV-80~CV-87 (검증), §8.2 (은퇴), §8.4 (줄 번호 관리), §8.5 (소스 점검)
 # Rules: docs/06-learning-engine-rules.md §5.3 (READ_CODE 제안), §9.5 RC-1~RC-4
 #
-# - 서버는 이 저장소를 fetch하지 않는다. 사용자가 cloneHint로 직접 clone해서 IDE로 읽는다
+# - 서버는 이 저장소를 fetch하지 않는다. 사용자가 cloneHint로 직접 clone하거나 IDE의 소스 보기로 읽는다
 # - lines는 pinnedCommit 기준이다. 저장소가 바뀌면 틀어지므로 pinnedCommit을 올릴 때
 #   readings의 path·lines를 전부 다시 확인한다 (19 §8.4)
 # - question은 답을 유도하지 않는 열린 질문이다. 러버덕 세션의 시작점이 된다 (06 §9.5 RD-2)
+# - 은퇴한 reading은 지우지 않고 retired: true로 남긴다. key는 catalog.yaml retired.readingKeys에도 있다 (19 §8.2)
+# - 코드 본문은 이 파일에 옮겨 적지 않는다. 좌표(path·lines)와 질문만 적는다
 repos:
   - key: modulith
     name: Spring Modulith Example (full)
@@ -25,6 +27,8 @@ repos:
     stack: "Spring Boot 4.1, Java 17, Spring Data JPA"
     why: "Spring 공식 샘플. 계층 구조와 테스트 작성법의 정석이고, 테스트 코드가 main보다 많다(main 1,878줄 / test 2,336줄)."
     cloneHint: "git clone https://github.com/spring-projects/spring-petclinic.git && cd spring-petclinic && git checkout 818c4136ea971c21674525f9053de0d9c7ad8cfe"
+  # 은퇴한 저장소: reading 5개가 모두 retired다(2026-09-19 소스 점검, 라이선스 명시 없음 → modular-monolith로 교체).
+  # 지난 READ_CODE 과제와 러버덕 세션이 가리키는 단위를 계속 조회할 수 있게 항목을 남긴다 (19 §8.2, CV-84)
   - key: restbucks
     name: Spring RESTBucks (server)
     url: https://github.com/odrotbohm/spring-restbucks
@@ -35,6 +39,70 @@ repos:
     why: "주문·결제 도메인을 상태 전이로 다룬다. 우리가 만드는 주문 시스템과 문제가 같다."
     licenseNote: "저장소에 라이선스 명시가 없다. 읽기만 한다. 코드를 복사해 오거나 이 파일에 인용하지 않는다."
     cloneHint: "git clone https://github.com/odrotbohm/spring-restbucks.git && cd spring-restbucks && git checkout ad97ad03c367a69ff1de70c660be2731cbe7bc3d && cd server"
+  # LICENSE 파일: Apache-2.0 (2026-09-19 확인). main HEAD 고정
+  - key: modular-monolith
+    name: Spring Modular Monolith (BookStore)
+    url: https://github.com/sivaprasadreddy/spring-modular-monolith
+    subPath: ""
+    pinnedCommit: 2933f5f14481615e214ee7c35166b957cac4c6cc
+    license: Apache-2.0
+    stack: "Spring Boot 4.1, Spring Modulith 2.1, Java 25, PostgreSQL, RabbitMQ"
+    why: "catalog·orders·inventory·users·notifications 모듈로 나눈 온라인 서점. 장바구니 → 주문 → 이벤트 → 재고 차감이 한 저장소에 있고 모듈 경계, 보안 설정, 구조 테스트, Testcontainers, compose, CI까지 갖췄다. 우리가 만드는 주문 시스템과 문제가 같다."
+    cloneHint: "git clone https://github.com/sivaprasadreddy/spring-modular-monolith.git && cd spring-modular-monolith && git checkout 2933f5f14481615e214ee7c35166b957cac4c6cc"
+  # 큰 저장소의 부분 읽기 (19 §8.5). 태그 jdk-25.0.4.1+1 = Temurin 25.0.4.1+1 설치본의 lib/src.zip과 같은 내용(2026-09-19 대조).
+  # 아래 reading 파일은 jdk-25.0.4+1 태그에서도 줄 단위로 같다
+  - key: jdk25
+    name: OpenJDK 25 (java.base)
+    url: https://github.com/openjdk/jdk25u
+    subPath: src/java.base/share/classes
+    pinnedCommit: 7b65d74bcbd7c3a0b4c1f5c5bd85e64aa2e51b4a
+    license: GPL-2.0-only WITH Classpath-exception-2.0
+    licenseNote: "GPL-2.0에 Classpath Exception이 붙은 라이선스다. 읽기만 하고 코드를 이 파일이나 문서에 옮겨 적지 않는다."
+    stack: "Java SE 25 (java.base), 태그 jdk-25.0.4.1+1"
+    why: "매일 쓰는 컬렉션, 스트림, 자원 해제가 실제로 어떻게 구현되어 있는지 본다. 저장소 전체가 아니라 클래스 하나의 메서드 몇 개만 읽는다."
+    cloneHint: "IDE에서 JDK 25 소스(src.zip)로 java.util.HashMap을 연다. Temurin 25.0.4.1+1의 lib/src.zip이 이 태그와 같고 파일은 java.base/ 아래에 있다. JDK 버전이 달라 줄이 어긋나면 이 커밋을 받는다: git clone --depth 1 --branch jdk-25.0.4.1+1 https://github.com/openjdk/jdk25u.git && cd jdk25u && git checkout 7b65d74bcbd7c3a0b4c1f5c5bd85e64aa2e51b4a && cd src/java.base/share/classes"
+  # 태그 v7.0.9 = backend/gradle.lockfile의 spring-tx·spring-aop 7.0.9. Maven Central sources jar와 줄 단위로 같다(2026-09-19 대조)
+  - key: spring-framework
+    name: Spring Framework
+    url: https://github.com/spring-projects/spring-framework
+    subPath: ""
+    pinnedCommit: 82a6b40b9366ec181ededdad282b307ee5381a52
+    license: Apache-2.0
+    stack: "Spring Framework 7.0.9 (DevPilot backend와 같은 버전)"
+    why: "@Transactional과 AOP 프록시가 실제로 무엇을 하는지 프레임워크 코드에서 본다. DevPilot backend와 같은 버전이라 IDE에서 의존성 소스를 열면 같은 줄이 보인다."
+    cloneHint: "IDE에서 의존성 소스를 연다: TransactionAspectSupport 같은 클래스를 열고 소스 내려받기를 고르면 spring-tx·spring-aop 7.0.9 sources jar가 열리며 이 태그와 줄이 같다. 저장소로 보려면: git clone --depth 1 --branch v7.0.9 https://github.com/spring-projects/spring-framework.git && cd spring-framework && git checkout 82a6b40b9366ec181ededdad282b307ee5381a52"
+  # 태그 HikariCP-7.0.2 = backend/gradle.lockfile의 HikariCP 7.0.2. Maven Central sources jar와 줄 단위로 같다(2026-09-19 대조)
+  - key: hikaricp
+    name: HikariCP
+    url: https://github.com/brettwooldridge/HikariCP
+    subPath: src/main/java/com/zaxxer/hikari
+    pinnedCommit: 80c46aee46a000af61d700a2bd144c9a3ff777af
+    license: Apache-2.0
+    stack: "HikariCP 7.0.2 (Spring Boot 4.1 기본 커넥션 풀, DevPilot backend와 같은 버전)"
+    why: "Spring Boot의 기본 커넥션 풀. 커넥션을 빌리고 돌려주는 코드가 짧아서 타임아웃과 자원 반납이 실제로 어떻게 동작하는지 직접 확인할 수 있다."
+    cloneHint: "IDE에서 의존성 소스를 연다: HikariPool 클래스를 열고 소스 내려받기를 고르면 HikariCP-7.0.2 sources jar가 열리며 이 태그와 줄이 같다. 저장소로 보려면: git clone --depth 1 --branch HikariCP-7.0.2 https://github.com/brettwooldridge/HikariCP.git && cd HikariCP && git checkout 80c46aee46a000af61d700a2bd144c9a3ff777af && cd src/main/java/com/zaxxer/hikari"
+  # 저장소 루트에 LICENSE 파일이 없다. 각 소스 파일 머리의 Apache License 2.0 헤더로 라이선스를 밝힌다(2026-09-19 확인)
+  - key: security-samples
+    name: Spring Security Samples
+    url: https://github.com/spring-projects/spring-security-samples
+    subPath: servlet/spring-boot/java
+    pinnedCommit: 2e3f349b9a33b1b4e3d212398ef14d6383c447db
+    license: Apache-2.0
+    licenseNote: "저장소 루트에 LICENSE 파일이 없고, 각 소스 파일 머리의 Apache-2.0 헤더로 라이선스를 밝힌다."
+    stack: "Spring Boot 4.1.1, Spring Security 7.1.1"
+    why: "Spring Security 팀이 관리하는 공식 예제. 샘플 하나가 기능 하나(JWT 로그인, 메서드 보안, 세션 관리)만 보여줘서 설정 파일 하나로 개념을 확인할 수 있다."
+    cloneHint: "git clone --filter=blob:none https://github.com/spring-projects/spring-security-samples.git && cd spring-security-samples && git checkout 2e3f349b9a33b1b4e3d212398ef14d6383c447db && cd servlet/spring-boot/java"
+  # LICENSE.txt: SPDX GPL-2.0-or-later (2026-09-19 확인). 저장소가 커서 커밋 하나만 얕게 받고 lessons 폴더만 꺼낸다
+  - key: webgoat
+    name: OWASP WebGoat
+    url: https://github.com/WebGoat/WebGoat
+    subPath: src/main/java/org/owasp/webgoat/lessons
+    pinnedCommit: 872d6149d4ef29e4929c2f4eda279f7fbedc52e8
+    license: GPL-2.0-or-later
+    licenseNote: "GPL 계열이다. 읽기만 하고 코드를 옮겨 적지 않는다. 일부러 취약하게 만든 교육용 앱이라 실행한다면 로컬에서만 띄우고 외부 네트워크에 열지 않는다."
+    stack: "Spring Boot 4.1.1, Java 25, OWASP 교육용 취약 앱"
+    why: "OWASP가 만든 일부러 취약한 앱. 취약한 코드와 고친 코드를 같은 수업 안에서 나란히 볼 수 있어 인젝션, XSS, 접근 제어 실패를 코드 수준에서 구분하는 연습에 맞다."
+    cloneHint: "git clone --depth 1 --filter=blob:none --no-checkout https://github.com/WebGoat/WebGoat.git && cd WebGoat && git fetch --depth 1 origin 872d6149d4ef29e4929c2f4eda279f7fbedc52e8 && git sparse-checkout set src/main/java/org/owasp/webgoat/lessons && git checkout 872d6149d4ef29e4929c2f4eda279f7fbedc52e8 && cd src/main/java/org/owasp/webgoat/lessons"
 
 readings:
   # ---------------------------------------------------------------- modulith
@@ -127,7 +195,51 @@ readings:
       - 영속성 컨텍스트와 flush 시점
       - 롤백되는 테스트가 감추는 문제
       - 테스트 사이의 데이터 격리 방법
-  # --------------------------------------------------------------- restbucks
+  - key: READ.PETCLINIC.FIND_FORM_TESTS.001
+    repo: petclinic
+    path: src/test/java/org/springframework/samples/petclinic/owner/OwnerControllerTests.java
+    lines: [144, 196]
+    skillCodes: [TESTING.UNIT_TEST_DESIGN, TESTING.JUNIT, TESTING.TEST_DOUBLE]
+    estimatedMinutes: 15
+    question: "성으로 주인을 찾는 기능 하나에 테스트가 다섯 개 있습니다. 각 테스트가 어떤 입력과 결과의 경계를 겨냥하는지 나눠 보고, 여기에 없지만 있어야 한다고 생각하는 경우가 있다면 무엇인지 근거와 함께 말해 보세요."
+    lookFor:
+      - 결과가 0건, 1건, 여러 건일 때 응답이 어떻게 갈리는가
+      - 앞뒤 공백 같은 입력 정리를 테스트로 고정하는 방식
+      - stub(when)과 호출 검증(verify)을 각각 언제 썼는가
+  - key: READ.PETCLINIC.CONSTRAINT_TESTS.001
+    repo: petclinic
+    path: src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java
+    lines: [253, 313]
+    skillCodes: [TESTING.UNIT_TEST_DESIGN, TESTING.JUNIT, DATABASE.MODELING, SPRING.DATA_JPA]
+    estimatedMinutes: 15
+    question: "두 테스트는 같은 주인에게는 이름이 겹치는 반려동물을 막고, 다른 주인에게는 허용하는지 확인합니다. 이 규칙이 엔티티 코드, 리포지터리, DB 제약 중 어디에 있어야 테스트가 이렇게 쓰일 수 있는지 추리해 보고, 저장 호출 방식을 바꾸면 결과가 어떻게 달라질지 말해 보세요."
+    lookFor:
+      - 실패해야 하는 경우와 성공해야 하는 경우를 짝으로 두는 이유
+      - 예외가 저장을 부를 때 나는지, flush할 때 나는지
+      - 대소문자만 다른 이름을 같은 이름으로 보는 규칙이 정해진 곳
+  - key: READ.PETCLINIC.CI_BUILD.001
+    repo: petclinic
+    path: .github/workflows/maven-build.yml
+    lines: [1, 29]
+    skillCodes: [DEVOPS.CI_GITHUB_ACTIONS, DEVOPS.DOCKER]
+    estimatedMinutes: 12
+    question: "이 워크플로에는 데이터베이스를 띄우는 단계가 없는데, 저장소에는 PostgreSQL과 MySQL 통합 테스트가 있습니다. CI에서 그 테스트들이 실제로 도는지, 돈다면 무엇이 컨테이너를 띄우는지 docker-compose.yml과 테스트 클래스를 따라가 설명해 보세요."
+    lookFor:
+      - 푸시와 PR 중 무엇이 워크플로를 실행하는가
+      - JDK 버전을 matrix로 둔 이유와 배포판 선택
+      - Docker가 없을 때 테스트가 스스로 건너뛰는 방식
+  - key: READ.PETCLINIC.BOOT_CONFIG.001
+    repo: petclinic
+    path: src/main/resources/application.properties
+    lines: [1, 29]
+    skillCodes: [SPRING.BOOT_CONFIG, PRACTICAL_ENGINEERING.LOGGING, DATABASE.JPA.FETCH_STRATEGY]
+    estimatedMinutes: 12
+    question: "기본 설정은 H2를 쓰고, postgres나 mysql 프로필을 켜면 같은 폴더의 프로필 파일이 일부 값만 덮어씁니다. 이 파일의 설정을 개발 편의를 위한 것과 운영에서도 그대로 둘 것으로 나눠 보고, 프로필을 켰을 때 최종 값이 어디서 오는지 설명해 보세요."
+    lookFor:
+      - 프로필 파일에서 환경변수가 없을 때 쓰는 기본값 문법
+      - open-in-view와 batch fetch 크기가 조회 쿼리에 주는 영향
+      - 액추에이터 전체 공개와 로그 레벨 설정
+  # --------------------------------------------------------------- restbucks (은퇴, 2026-09-19)
   - key: READ.RESTBUCKS.AGGREGATE.001
     repo: restbucks
     path: src/main/java/de/odrotbohm/restbucks/order/Order.java
@@ -139,6 +251,7 @@ readings:
       - 낙관적 잠금이 충돌을 언제 알아채는가
       - 비관적 잠금과의 차이
       - 충돌이 났을 때 사용자에게 무엇을 보여줄지
+    retired: true
   - key: READ.RESTBUCKS.STATE_TRANSITION.001
     repo: restbucks
     path: src/main/java/de/odrotbohm/restbucks/order/Order.java
@@ -150,6 +263,7 @@ readings:
       - 상태 규칙을 엔티티가 지키는 것의 의미
       - 상태 예외가 API 응답까지 가는 경로
       - 전이 표를 어디에 적어 둘지
+    retired: true
   - key: READ.RESTBUCKS.REPOSITORY_TX.001
     repo: restbucks
     path: src/main/java/de/odrotbohm/restbucks/order/Orders.java
@@ -161,6 +275,7 @@ readings:
       - 리포지터리의 책임 범위
       - 이벤트 리스너가 도는 트랜잭션
       - 서비스 계층으로 옮겼을 때의 장단점
+    retired: true
   - key: READ.RESTBUCKS.PAYMENT_TX.001
     repo: restbucks
     path: src/main/java/de/odrotbohm/restbucks/payment/PaymentServiceImpl.java
@@ -172,6 +287,7 @@ readings:
       - 트랜잭션 안에서 외부 호출을 할 때의 위험
       - 읽기 전용 트랜잭션을 따로 둔 이유
       - 실패를 예외로 알릴 때와 반환값으로 알릴 때
+    retired: true
   - key: READ.RESTBUCKS.PAYMENT_API.001
     repo: restbucks
     path: src/main/java/de/odrotbohm/restbucks/payment/web/PaymentController.java
@@ -183,3 +299,274 @@ readings:
       - 같은 요청이 두 번 왔을 때의 기대 동작
       - 상태 충돌에 쓰는 상태 코드
       - 예외를 응답으로 바꾸는 지점
+    retired: true
+  # -------------------------------------------------------- modular-monolith
+  - key: READ.MODULAR_MONOLITH.ORDER_FLOW.001
+    repo: modular-monolith
+    path: src/main/java/com/sivalabs/bookstore/orders/web/OrderWebController.java
+    lines: [36, 61]
+    skillCodes: [SPRING.VALIDATION, WEB_HTTP.HTTP_BASICS, JAVA.EXCEPTION]
+    estimatedMinutes: 15
+    question: "주문 요청이 오면 이 메서드는 세션의 장바구니로 주문 명령을 만들고, 가격을 다시 확인하고, 주문을 만든 뒤 장바구니를 비우고 다른 주소로 보냅니다. 이 중 한 단계가 실패하면 사용자는 무엇을 보게 되고 장바구니와 주문은 각각 어떤 상태로 남는지 설명해 보세요."
+    lookFor:
+      - 주문 생성 안에서 OrderCreatedEvent가 발행되는 시점 (OrderService.createOrder)
+      - POST를 처리한 뒤 redirect로 응답하는 이유
+      - 장바구니가 비었을 때 던지는 예외가 응답으로 바뀌는 곳
+  - key: READ.MODULAR_MONOLITH.STOCK_UPDATE.001
+    repo: modular-monolith
+    path: src/main/java/com/sivalabs/bookstore/inventory/domain/InventoryService.java
+    lines: [12, 35]
+    skillCodes: [DATABASE.TRANSACTION.LOCKING, PRACTICAL_ENGINEERING.NULL_BOUNDARY, PRACTICAL_ENGINEERING.LOGGING]
+    estimatedMinutes: 15
+    question: "주문이 만들어지면 재고 모듈의 이벤트 핸들러가 이 메서드를 부릅니다. 같은 상품의 주문 두 건이 거의 동시에 처리될 때와 재고 테이블에 없는 상품 코드가 들어올 때, 재고 숫자와 로그에 각각 무엇이 남는지 따라가 보고 어디를 고칠지 말해 보세요."
+    lookFor:
+      - 이 메서드를 부르는 핸들러(inventory.eventhandlers)의 애너테이션이 정하는 호출 시점과 트랜잭션
+      - 읽고, 계산하고, 저장하는 사이에 다른 트랜잭션이 끼어들 틈
+      - 값이 없을 때 null로 받아 경고 로그만 남기는 선택
+  - key: READ.MODULAR_MONOLITH.MODULE_API.001
+    repo: modular-monolith
+    path: src/main/java/com/sivalabs/bookstore/orders/OrdersApi.java
+    lines: [1, 31]
+    skillCodes: [JAVA.OOP, SPRING.DI_IOC, PRACTICAL_ENGINEERING.CODE_REVIEW]
+    estimatedMinutes: 10
+    question: "OrdersApi는 OrderService에 그대로 위임하는 얇은 공개 클래스이고, 같은 패키지의 package-info.java에는 이 모듈이 기댈 수 있는 모듈 목록이 적혀 있습니다. 이 층을 없애고 다른 모듈이 OrderService를 직접 쓰게 하면 무엇을 잃는지, 반대로 이 층을 두는 비용은 무엇인지 말해 보세요."
+    lookFor:
+      - package-info.java의 ApplicationModule 애너테이션과 allowedDependencies
+      - orders 모듈이 catalog 모듈을 부를 때 쓰는 ProductApi와 ProductServiceClient
+      - 공개(public)로 둔 타입과 패키지 안에 숨긴 타입의 차이
+  - key: READ.MODULAR_MONOLITH.SECURITY_CONFIG.001
+    repo: modular-monolith
+    path: src/main/java/com/sivalabs/bookstore/config/WebSecurityConfig.java
+    lines: [11, 54]
+    skillCodes: [SPRING.SECURITY, SECURITY.AUTHN_AUTHZ, WEB_HTTP.AUTH_SESSION_TOKEN]
+    estimatedMinutes: 15
+    question: "이 필터 체인은 공개 경로, 관리자 경로, 로그인한 사용자 경로를 차례로 나눕니다. 새 화면을 추가하면서 규칙 추가를 잊었을 때 그 요청이 어떻게 처리되는지 설명하고, 주문 상세처럼 '내 것만 보기'가 필요한 요청을 이 설정만으로 막을 수 있는지 말해 보세요."
+    lookFor:
+      - 규칙의 순서와 맨 끝의 anyRequest 규칙
+      - 폼 로그인 뒤 인증 상태가 세션 쿠키로 유지되는 방식
+      - users 모듈의 SecurityUserDetailsService와 UserContextUtils가 맡는 일
+  - key: READ.MODULAR_MONOLITH.ARCH_RULES.001
+    repo: modular-monolith
+    path: src/test/java/com/sivalabs/bookstore/ArchitectureTests.java
+    lines: [17, 76]
+    skillCodes: [TESTING.UNIT_TEST_DESIGN, PRACTICAL_ENGINEERING.CODE_REVIEW, JAVA.OOP]
+    estimatedMinutes: 15
+    question: "이 테스트는 기능이 아니라 코드 구조를 검사합니다. 규칙 다섯 개가 각각 어떤 실수를 막으려는 것인지 말해 보고, 같은 폴더의 ModularityTests가 하는 검사와 겹치는 규칙과 겹치지 않는 규칙을 나눠 보세요."
+    lookFor:
+      - 패키지 이름과 클래스 이름 규칙에 기대는 검사의 약점
+      - 리뷰에서 매번 지적하던 것을 테스트로 옮기는 기준
+      - 내 프로젝트에 먼저 넣을 규칙 하나
+  - key: READ.MODULAR_MONOLITH.TESTCONTAINERS.001
+    repo: modular-monolith
+    path: src/test/java/com/sivalabs/bookstore/TestcontainersConfiguration.java
+    lines: [14, 41]
+    skillCodes: [TESTING.TESTCONTAINERS, TESTING.SPRING_TEST, DEVOPS.DOCKER]
+    estimatedMinutes: 12
+    question: "통합 테스트는 이 설정을 가져와 실제 PostgreSQL과 RabbitMQ 컨테이너로 돕니다. PostgreSQL은 빈 메서드에서 만들고 RabbitMQ는 static 필드로 두는데, 두 방식에서 컨테이너가 언제 시작되고 끝나는지, 테스트 클래스가 여러 개일 때 무엇이 공유되는지 설명해 보세요."
+    lookFor:
+      - ServiceConnection이 접속 정보를 대신 채우는 방식
+      - 이 설정을 가져다 쓰는 테스트(inventory 모듈의 통합 테스트)
+      - 테스트 DB 이미지 버전과 운영 DB 버전을 맞추는 문제
+  - key: READ.MODULAR_MONOLITH.COMPOSE_CI.001
+    repo: modular-monolith
+    path: compose.yml
+    lines: [1, 51]
+    skillCodes: [DEVOPS.DOCKER, SPRING.BOOT_CONFIG, SECURITY.SECRET_MANAGEMENT, DEVOPS.CI_GITHUB_ACTIONS]
+    estimatedMinutes: 15
+    question: "이 파일은 로컬에서 쓸 DB, 메시지 브로커, 관측 도구와 앱 컨테이너를 정의하고, 앱 컨테이너는 환경변수로 Spring 설정을 덮어씁니다. CI 워크플로(.github/workflows/maven.yml)는 이 파일 없이 빌드와 테스트를 돌립니다. 두 곳에서 DB가 각각 어떻게 준비되는지, 비밀번호를 이렇게 적어 둬도 되는 범위가 어디까지인지 설명해 보세요."
+    lookFor:
+      - 앱 서비스에만 붙은 profiles 설정의 의미
+      - SPRING_DATASOURCE_URL 같은 환경변수가 application.properties 값을 이기는 규칙
+      - 로컬 개발, 테스트, 운영에서 비밀값을 두는 곳의 차이
+  # ------------------------------------------------------------------- jdk25
+  - key: READ.JDK25.HASHMAP_PUT.001
+    repo: jdk25
+    path: java/util/HashMap.java
+    lines: [618, 673]
+    skillCodes: [JAVA.COLLECTION, CS.DATA_STRUCTURE]
+    estimatedMinutes: 20
+    question: "put은 putVal로 이어집니다. 같은 키를 다시 넣을 때, 해시값이 같은 다른 키를 넣을 때, 한 칸에 원소가 계속 쌓일 때 이 코드가 각각 어느 분기로 가는지 따라가 보고, 키 객체의 equals와 hashCode가 어디서 쓰이는지 설명해 보세요."
+    lookFor:
+      - 칸 번호를 정하는 식과 hash 메서드(336행)
+      - 같은 키인지 판단하는 조건의 순서
+      - 원소 수가 임계값을 넘은 뒤 일어나는 일
+  - key: READ.JDK25.HASHMAP_RESIZE.001
+    repo: jdk25
+    path: java/util/HashMap.java
+    lines: [675, 781]
+    skillCodes: [JAVA.COLLECTION, CS.DATA_STRUCTURE]
+    estimatedMinutes: 20
+    question: "표를 두 배로 늘릴 때 한 칸의 원소들은 두 목록으로 나뉘어 옮겨집니다. 원소가 나뉘는 기준이 무엇인지, 그리고 한 칸이 길어졌을 때 트리로 바꾸기 전에 표를 먼저 키우기도 하는 이유를 조회 성능과 메모리 관점에서 설명해 보세요."
+    lookFor:
+      - 새 칸 번호를 해시를 다시 계산하지 않고 정하는 방법
+      - TREEIFY_THRESHOLD와 MIN_TREEIFY_CAPACITY 상수(260~275행)
+      - 초기 용량을 알 때 생성자에 넘기면 달라지는 것
+  - key: READ.JDK25.ARRAYLIST_GROW.001
+    repo: jdk25
+    path: java/util/ArrayList.java
+    lines: [195, 246]
+    skillCodes: [JAVA.COLLECTION, ALGORITHM.COMPLEXITY]
+    estimatedMinutes: 12
+    question: "배열이 가득 차면 이 코드는 더 큰 배열을 만들어 원소를 옮깁니다. 원소를 하나씩 백만 번 add할 때 복사가 대략 몇 번 일어나고 모두 몇 개의 원소를 옮기는지 어림해 보고, 필요한 크기를 미리 알 때 무엇을 다르게 할 수 있는지 말해 보세요."
+    lookFor:
+      - 늘어나는 크기를 정하는 식(ArraysSupport.newLength에 넘기는 값)
+      - 기본 생성자로 만든 빈 목록이 처음 늘어날 때의 크기
+      - 이 메서드를 부르는 add(E)(482~499행)
+  - key: READ.JDK25.GROUPING_BY.001
+    repo: jdk25
+    path: java/util/stream/Collectors.java
+    lines: [1051, 1133]
+    skillCodes: [JAVA.LAMBDA_STREAM, JAVA.GENERICS]
+    estimatedMinutes: 20
+    question: "groupingBy는 Map이 아니라 Collector를 돌려줍니다. 스트림의 원소 하나가 들어와서 최종 Map이 나올 때까지 이 코드의 어떤 함수가 어떤 순서로 불리는지 설명하고, 분류 함수가 null을 돌려주거나 하위 Collector에 마무리 단계가 있을 때 무엇이 달라지는지 짚어 보세요."
+    lookFor:
+      - supplier, accumulator, combiner, finisher가 각각 맡는 일
+      - computeIfAbsent로 그룹마다 컨테이너를 만드는 방식
+      - 인자가 두 개인 groupingBy가 기본으로 쓰는 Map 구현
+  - key: READ.JDK25.FILES_LINES.001
+    repo: jdk25
+    path: java/nio/file/Files.java
+    lines: [3733, 3795]
+    skillCodes: [JAVA.EXCEPTION.TRY_WITH_RESOURCES, JAVA.EXCEPTION]
+    estimatedMinutes: 15
+    question: "이 메서드는 파일을 연 채로 Stream을 돌려주고, 닫는 일은 onClose에 등록해 둡니다. 호출하는 쪽이 try-with-resources 없이 이 Stream을 끝까지 소비하면 파일은 언제 닫히는지, Stream을 만드는 도중 예외가 나면 이미 연 파일은 어떻게 되는지 설명해 보세요."
+    lookFor:
+      - close 중에 난 예외를 addSuppressed로 붙이는 이유
+      - 닫기 작업을 UncheckedIOException으로 감싸는 asUncheckedRunnable(110행)
+      - 메서드 설명(Javadoc)의 apiNote가 요구하는 사용법
+  # -------------------------------------------------------- spring-framework
+  - key: READ.SPRING_FRAMEWORK.TX_INTERCEPTOR.001
+    repo: spring-framework
+    path: spring-tx/src/main/java/org/springframework/transaction/interceptor/TransactionAspectSupport.java
+    lines: [322, 410]
+    skillCodes: [SPRING.TRANSACTION, DATABASE.TRANSACTION]
+    estimatedMinutes: 20
+    question: "@Transactional이 붙은 메서드를 부르면 결국 이 메서드가 실행됩니다. 트랜잭션이 시작되는 곳, 대상 메서드가 불리는 곳, 커밋과 롤백이 갈리는 곳을 찾아 표시하고, 대상 메서드가 안에서 예외를 잡아 삼키면 결과가 어떻게 달라지는지 설명해 보세요."
+    lookFor:
+      - 롤백 여부를 정하는 completeTransactionAfterThrowing(697행)
+      - finally에서 정리하는 TransactionInfo
+      - 리액티브 분기(341~358행)는 건너뛰고 읽어도 된다
+  - key: READ.SPRING_FRAMEWORK.JDK_PROXY.001
+    repo: spring-framework
+    path: spring-aop/src/main/java/org/springframework/aop/framework/JdkDynamicAopProxy.java
+    lines: [160, 255]
+    skillCodes: [SPRING.AOP_PROXY]
+    estimatedMinutes: 20
+    question: "인터페이스 기반 프록시의 메서드를 부르면 이 invoke가 먼저 실행됩니다. 어떤 호출은 대상 객체로 바로 가고 어떤 호출은 인터셉터 사슬을 거치는지 나눠 보고, 대상 객체 안에서 this로 부른 다른 메서드는 이 코드를 지나가는지 설명해 보세요."
+    lookFor:
+      - equals와 hashCode를 따로 처리하는 이유
+      - 인터셉터 사슬이 비었을 때와 아닐 때의 차이
+      - 대상 객체가 this를 돌려줄 때 프록시로 바꿔 주는 부분
+  - key: READ.SPRING_FRAMEWORK.CGLIB_PROXY.001
+    repo: spring-framework
+    path: spring-aop/src/main/java/org/springframework/aop/framework/CglibAopProxy.java
+    lines: [678, 748]
+    skillCodes: [SPRING.AOP_PROXY, SPRING.TRANSACTION]
+    estimatedMinutes: 15
+    question: "Spring Boot는 기본으로 클래스를 상속한 프록시(CGLIB)를 만들고, 호출은 이 인터셉터로 들어옵니다. JDK 동적 프록시의 invoke와 무엇이 같고 무엇이 다른지 비교하고, 이 구조에서 private이나 final 메서드에 붙인 @Transactional은 어떻게 되는지 설명해 보세요."
+    lookFor:
+      - 프록시 객체와 대상(target) 객체가 따로 있다는 점
+      - exposeProxy 설정과 AopContext
+      - 하위 클래스가 덮어쓸 수 없는 메서드가 호출될 때의 경로
+  # ---------------------------------------------------------------- hikaricp
+  - key: READ.HIKARICP.GET_CONNECTION.001
+    repo: hikaricp
+    path: pool/HikariPool.java
+    lines: [134, 193]
+    skillCodes: [PRACTICAL_ENGINEERING.RESOURCE_TIMEOUT, PRACTICAL_ENGINEERING.INCIDENT_ANALYSIS]
+    estimatedMinutes: 15
+    question: "커넥션을 빌리려는 스레드가 정해진 시간 안에 못 빌리면 이 메서드는 예외를 던집니다. 이 예외가 운영 중에 자주 보인다면 원인 후보를 어떻게 좁혀 갈지, 빌린 커넥션을 돌려주지 않는 코드가 이 흐름에 어떤 영향을 주는지 설명해 보세요."
+    lookFor:
+      - 남은 대기 시간을 루프 안에서 다시 계산하는 방식
+      - 죽었거나 퇴출된 커넥션을 만났을 때의 처리
+      - 타임아웃 예외 메시지에 담기는 풀 상태(createTimeoutException, 700행)
+  - key: READ.HIKARICP.PROXY_CLOSE.001
+    repo: hikaricp
+    path: pool/ProxyConnection.java
+    lines: [238, 271]
+    skillCodes: [JAVA.EXCEPTION.TRY_WITH_RESOURCES, DATABASE.TRANSACTION]
+    estimatedMinutes: 12
+    question: "애플리케이션이 커넥션의 close를 불러도 실제 DB 연결은 끊기지 않고 풀로 돌아갑니다. 커밋도 롤백도 하지 않은 채 close하면 이 코드가 무엇을 하는지 따라가 보고, 커넥션을 try-with-resources로 쓰는 것이 이 흐름에서 왜 중요한지 설명해 보세요."
+    lookFor:
+      - 닫지 않은 Statement를 먼저 정리하는 순서
+      - 바뀐 연결 상태(dirtyBits)를 되돌리는 부분
+      - finally에서 풀로 돌려보내는 호출(poolEntry.recycle)
+  - key: READ.HIKARICP.BAG_HANDOFF.001
+    repo: hikaricp
+    path: util/ConcurrentBag.java
+    lines: [123, 207]
+    skillCodes: [JAVA.CONCURRENCY, PRACTICAL_ENGINEERING.RESOURCE_TIMEOUT]
+    estimatedMinutes: 20
+    question: "커넥션을 빌릴 때 이 코드는 스레드 로컬 목록, 공유 목록, 대기 큐를 차례로 확인하고, 돌려줄 때는 기다리는 스레드에 직접 넘기려고 합니다. 락 없이 이 과정이 안전하려면 무엇이 보장되어야 하는지, 기다리는 시간은 어디서 줄어드는지 설명해 보세요."
+    lookFor:
+      - 상태를 compareAndSet으로 바꾸는 이유
+      - 기다리는 스레드 수(waiters)를 세는 이유
+      - 돌려줄 때 기다리는 스레드가 없으면 어디에 두는가
+  # -------------------------------------------------------- security-samples
+  - key: READ.SECURITY_SAMPLES.JWT_LOGIN.001
+    repo: security-samples
+    path: jwt/login/src/main/java/example/RestConfig.java
+    lines: [51, 103]
+    skillCodes: [SPRING.SECURITY, SPRING.SECURITY.JWT_RESOURCE_SERVER, WEB_HTTP.AUTH_SESSION_TOKEN, SECURITY.SECRET_MANAGEMENT]
+    estimatedMinutes: 20
+    question: "이 설정 하나로 /token에서는 아이디와 비밀번호로 인증해 토큰을 발급하고, 나머지 요청은 Bearer 토큰으로 인증합니다. 서명에 쓰는 키와 검증에 쓰는 키가 어디서 오는지 따라가 보고, 세션을 만들지 않기로 한 선택이 로그아웃과 토큰 탈취 상황에서 무엇을 바꾸는지 설명해 보세요."
+    lookFor:
+      - 토큰을 만드는 TokenController(web 패키지)의 만료 시간과 scope
+      - CSRF 보호를 /token에서만 끈 이유
+      - 개인 키 파일을 저장소에 두는 것이 예제에서만 허용되는 이유
+  - key: READ.SECURITY_SAMPLES.METHOD_SECURITY.001
+    repo: security-samples
+    path: data/src/test/java/example/DataApplicationTests.java
+    lines: [32, 84]
+    skillCodes: [SPRING.SECURITY, SECURITY.AUTHN_AUTHZ, TESTING.SPRING_TEST]
+    estimatedMinutes: 15
+    question: "같은 사용자가 같은 메시지 목록을 조회하는데, 가진 권한에 따라 어떤 필드는 값이 나오고 어떤 필드는 null이 됩니다. 이 테스트 네 개를 근거로 권한 검사가 어디에 걸려 있는지 추리해 보고, URL 단위 검사와 비교해 이 방식이 필요한 경우를 말해 보세요."
+    lookFor:
+      - 같은 샘플의 Message와 AuthorizeRead에 붙은 애너테이션
+      - MessageRepository 쿼리가 현재 사용자의 메시지만 고르는 방식
+      - 권한이 없을 때 예외 대신 null을 돌려주게 한 선택의 장단점
+  - key: READ.SECURITY_SAMPLES.SESSION_LIMIT.001
+    repo: security-samples
+    path: session-management/maximum-sessions/src/main/java/com/example/maximumsessions/SecurityConfig.java
+    lines: [31, 53]
+    skillCodes: [WEB_HTTP.AUTH_SESSION_TOKEN, SPRING.SECURITY]
+    estimatedMinutes: 10
+    question: "이 설정은 폼 로그인으로 세션을 만들고, 한 사용자가 동시에 가질 수 있는 세션을 하나로 제한합니다. 같은 계정으로 다른 브라우저에서 다시 로그인하면 두 브라우저에서 각각 무슨 일이 생길지 예상해 보고, 세션을 만들지 않는 토큰 방식이라면 같은 요구를 어떻게 풀어야 할지 말해 보세요."
+    lookFor:
+      - 세션 쿠키가 요청마다 대신하는 것
+      - 옆 샘플 maximum-sessions-prevent-login과의 차이
+      - 통합 테스트(src/integTest)가 확인하는 동작
+  # ----------------------------------------------------------------- webgoat
+  - key: READ.WEBGOAT.SQL_INJECTION.001
+    repo: webgoat
+    path: sqlinjection/advanced/SqlInjectionChallenge.java
+    lines: [39, 96]
+    skillCodes: [SECURITY.INPUT_VALIDATION, SECURITY.OWASP_TOP10]
+    estimatedMinutes: 15
+    question: "회원 가입을 처리하는 이 메서드 안에는 문자열을 이어 붙인 조회와 파라미터를 바인딩한 저장이 함께 있습니다. 둘 중 어느 쪽이 공격 입력에 열려 있는지, 입력 길이를 검사하는 부분이 그 공격을 막아 주는지 근거를 들어 설명해 보세요."
+    lookFor:
+      - 같은 연결에서 Statement와 PreparedStatement를 섞어 쓴 부분
+      - 길이 제한이 공격 입력에 남겨 두는 여지
+      - 공격이 성공하면 드러나는 정보와 할 수 있는 일
+  - key: READ.WEBGOAT.XSS_REFLECTED.001
+    repo: webgoat
+    path: xss/CrossSiteScriptingLesson5a.java
+    lines: [29, 91]
+    skillCodes: [SECURITY.INPUT_VALIDATION, SECURITY.OWASP_TOP10]
+    estimatedMinutes: 15
+    question: "이 메서드는 사용자가 보낸 카드 번호 값을 HTML 문자열에 그대로 이어 붙여 응답에 담습니다. 그 값이 브라우저에서 어떻게 해석될 수 있는지 설명하고, 입력을 검증하는 방법과 출력할 때 인코딩하는 방법이 각각 무엇을 막고 무엇을 못 막는지 비교해 보세요."
+    lookFor:
+      - 정규식 XSS_PATTERN은 방어가 아니라 수업의 성공 판정에 쓰인다는 점
+      - 응답이 HTML로 해석되는 경로
+      - 템플릿 엔진의 기본 이스케이프가 막아 주는 것
+  - key: READ.WEBGOAT.ACCESS_CONTROL.001
+    repo: webgoat
+    path: missingac/MissingFunctionACUsers.java
+    lines: [26, 94]
+    skillCodes: [SECURITY.AUTHN_AUTHZ, SECURITY.OWASP_TOP10]
+    estimatedMinutes: 15
+    question: "같은 사용자 목록을 돌려주는 메서드 세 개 중 하나만 요청한 사람이 관리자인지 확인합니다. 확인이 없는 나머지 요청과 사용자 추가 요청으로 공격자가 무엇을 할 수 있는지 말해 보고, 이런 검사를 메서드마다 넣는 방식과 한 곳에 모으는 방식을 비교해 보세요."
+    lookFor:
+      - 화면에서 메뉴를 숨기는 것과 서버에서 막는 것의 차이
+      - 고친 엔드포인트(users-admin-fix)가 돌려주는 상태 코드
+      - 요청 본문의 역할 필드를 그대로 저장하는 사용자 추가

@@ -7,7 +7,4 @@ String? goalDateMessage(GoalDateViolation? violation, AppLocalizations l10n) => 
   null || GoalDateViolation.required => null,
   GoalDateViolation.notFuture => l10n.validationDateFuture,
   GoalDateViolation.tooFar => l10n.validationDateTooFar,
-  GoalDateViolation.tooEarly => l10n.validationDateTooEarly,
-  GoalDateViolation.afterCompletion => l10n.validationCheckpointAfterCompletion,
-  GoalDateViolation.notPast => l10n.validationDatePast,
 };

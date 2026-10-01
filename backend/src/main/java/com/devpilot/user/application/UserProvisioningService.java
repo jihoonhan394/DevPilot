@@ -106,7 +106,11 @@ public class UserProvisioningService
                                 () ->
                                         new NotFoundException(
                                                 ErrorCode.RESOURCE_NOT_FOUND, "user not found"));
-        return new UserTimeSettings(user.getZoneId(), user.getDayStartHour());
+        return new UserTimeSettings(
+                user.getZoneId(),
+                user.getDayStartHour(),
+                user.getWeekdayStudyMinutes(),
+                user.getWeekendStudyMinutes());
     }
 
     private void requireAllowed(

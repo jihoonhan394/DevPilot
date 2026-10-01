@@ -65,7 +65,8 @@ class SideProjectServiceIntegrationTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.errors[0].code").value("URL"));
         assertThat(
                         count(
-                                "select count(*) from devpilot.side_project where user_id = ?",
+                                "select count(*) from devpilot.side_project where user_id = ? and"
+                                        + " name <> '주문 시스템'", // ADR-050 기본 프로젝트는 제외
                                 userId(user)))
                 .isZero();
     }
@@ -157,6 +158,9 @@ class SideProjectServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldListByStatusNewestFirstAndPageWithCursor() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-050: 온보딩이 기본 프로젝트를 하나 만들어 둔다. 가장 오래된 항목이라 목록 끝에 온다.
+        String seeded = id(api.body(api.get(user, PROJECTS)).path("items").get(0));
+        clock.advance(Duration.ofMinutes(1)); // 기본 프로젝트가 확실히 더 오래되게 한다
         JsonNode first = create(user, "첫 번째");
         clock.advance(Duration.ofMinutes(1));
         JsonNode second = create(user, "두 번째");
@@ -166,7 +170,7 @@ class SideProjectServiceIntegrationTest extends ApiTestSupport {
                 .andExpect(status().isOk());
 
         JsonNode active = api.body(api.get(user, PROJECTS + "?status=ACTIVE"));
-        assertThat(ids(active.path("items"))).containsExactly(id(second), id(first));
+        assertThat(ids(active.path("items"))).containsExactly(id(second), id(first), seeded);
 
         JsonNode page = api.body(api.get(user, PROJECTS + "?limit=2"));
         assertThat(ids(page.path("items"))).containsExactly(id(paused), id(second));
@@ -176,7 +180,7 @@ class SideProjectServiceIntegrationTest extends ApiTestSupport {
                                 user,
                                 PROJECTS + "?limit=2&cursor={cursor}",
                                 page.path("nextCursor").asString()));
-        assertThat(ids(next.path("items"))).containsExactly(id(first));
+        assertThat(ids(next.path("items"))).containsExactly(id(first), seeded);
         assertThat(next.path("nextCursor").isNull()).isTrue();
 
         api.get(user, PROJECTS + "?status=ARCHIVED")

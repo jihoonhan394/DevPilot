@@ -523,7 +523,7 @@ PowerShell에서는 `./gradlew`가 `gradlew.bat`을 실행한다.
           │ POST /api/v1/dev/token {email}  →  {accessToken, expiresAt}   (이메일 1칸 로그인 화면)
           │ Authorization: Bearer <JWT>  (이후 모든 /api/v1/* 요청)
           ▼
-[Spring Boot :8080, profile=local, DEVPILOT_AUTH_MODE=devtoken]  ── 앱이 가진 EC P-256 공개키로 JWT 검증 (JWKS 조회 없음)
+[Spring Boot :8081, profile=local, DEVPILOT_AUTH_MODE=devtoken]  ── 앱이 가진 EC P-256 공개키로 JWT 검증 (JWKS 조회 없음)
           │ JDBC jdbc:postgresql://<server>:5432/devpilot  (Tailscale, TLS 없음)
           ▼
 [서버 공용 PostgreSQL 16 컨테이너 (DB devpilot, role devpilot)]        ← prod의 api 컨테이너도 같은 DB (S2 전까지)
@@ -564,14 +564,14 @@ APP_BASE_URL=http://localhost:5173
 
    `.env`는 `.properties` 형식으로 읽힌다. 값에 따옴표를 쓰지 않는다.
 3. 서버 Docker 터널을 켜고(§3.1 터미널 A) `DOCKER_HOST`·`TESTCONTAINERS_HOST_OVERRIDE`를 사용자 환경변수로 등록한 뒤 새 터미널에서 `cd backend; ./gradlew check`가 통과하는지 본다(Testcontainers가 서버 Docker에 `postgres:16`을 띄운다).
-4. `cd backend; ./gradlew bootRun` → `curl.exe -s http://localhost:8080/actuator/health` → `{"status":"UP"}`. 첫 기동에서 Flyway가 서버 DB `devpilot`에 migration을 적용한다(이미 적용돼 있으면 검증만).
+4. `cd backend; ./gradlew bootRun` → `curl.exe -s http://localhost:8081/actuator/health` → `{"status":"UP"}`. 첫 기동에서 Flyway가 서버 DB `devpilot`에 migration을 적용한다(이미 적용돼 있으면 검증만).
 5. 토큰 발급 확인:
    ```powershell
-   curl.exe -s -X POST http://localhost:8080/api/v1/dev/token -H "Content-Type: application/json" -d "{\"email\":\"<your-email>\"}"
+   curl.exe -s -X POST http://localhost:8081/api/v1/dev/token -H "Content-Type: application/json" -d "{\"email\":\"<your-email>\"}"
    # → {"accessToken":"eyJ...","expiresAt":"..."}   (allowlist 밖 이메일이면 403 USER_NOT_ALLOWED)
-   curl.exe -s http://localhost:8080/api/v1/me -H "Authorization: Bearer <accessToken>"
+   curl.exe -s http://localhost:8081/api/v1/me -H "Authorization: Bearer <accessToken>"
    ```
-6. `app/config/local.example.json`을 `app/config/local.json`으로 복사한다(`AUTH_MODE=dev`, `API_BASE_URL=http://localhost:8080`, §6.3). `local.json`은 `.gitignore` 대상이다. Supabase URL·key는 없다.
+6. `app/config/local.example.json`을 `app/config/local.json`으로 복사한다(`AUTH_MODE=dev`, `API_BASE_URL=http://localhost:8081`, §6.3). `local.json`은 `.gitignore` 대상이다. Supabase URL·key는 없다.
 
 ### 5.3 매일 실행
 
@@ -585,7 +585,7 @@ tailscale status | Select-String "<server>"
 # 2) Backend (새 터미널)
 cd backend
 ./gradlew bootRun                                   # profile=local, ../.env import, 서버 PostgreSQL 16
-curl.exe -s http://localhost:8080/actuator/health   # {"status":"UP"}
+curl.exe -s http://localhost:8081/actuator/health   # {"status":"UP"}
 
 # 3) Flutter web (새 터미널)
 cd app
@@ -593,7 +593,7 @@ fvm flutter run -d chrome --web-port 5173 --dart-define-from-file=config/local.j
 ```
 
 4. 브라우저 로그인 화면에 allowlist 이메일을 입력 → 앱이 `POST /api/v1/dev/token`으로 토큰을 받아 메모리와 `sessionStorage`에 두고 `GET /api/v1/me` 결과를 표시하면 정상이다. backend를 재시작했는데 `DEVPILOT_DEV_JWT_KEY`가 비어 있으면 401이 나므로 다시 로그인한다(§4.4).
-5. API 문서(local만): `http://localhost:8080/swagger-ui/index.html`
+5. API 문서(local만): `http://localhost:8081/swagger-ui/index.html`
 6. 실제 AI 호출이 필요할 때만 `.env`에 `DEVPILOT_AI_PROVIDER=deepseek`, `DEEPSEEK_API_KEY=sk-…`를 넣고 backend를 재시작한다(Spring property로 읽으므로 `.env`로 충분). 키는 prod·eval과 같은 DeepSeek 계정의 선불 잔액을 쓴다(결정 E) — 로컬 호출도 `DEVPILOT_AI_MONTHLY_BUDGET_USD=3` 가드 안에서 한다. 잔액이 없으면 402 → `aiStatus=BALANCE_EXHAUSTED`(§8).
 
 DB 초기화(개발 DB): 서버 DB `devpilot`의 `devpilot` 스키마를 지우고 backend를 재기동하면 Flyway가 전체 migration을 다시 적용한다. DB 클라이언트 또는 `ssh <user>@<server> docker exec -i <pg-container> psql -U devpilot -d devpilot -c "drop schema devpilot cascade;"` (`DevPilot-ops/02-database.md`). **실사용 시작(M1 완료) 전까지 local과 prod가 같은 DB를 쓰므로(§4.4) 운영 데이터가 생긴 뒤에는 `devpilot_dev`에서만 한다.**
@@ -668,7 +668,7 @@ app/lib/
 | 키 | local (`config/local.json`, 커밋 안 함) | prod (**파일 없음** — `release.yml`이 inline `--dart-define`으로 준다, `10` §7.2) |
 |---|---|---|
 | `AUTH_MODE` | `dev` | `dev` (결정 A). `supabase`는 Later |
-| `API_BASE_URL` | `http://localhost:8080` | **빈 문자열** = same-origin (`/api/v1`). tailnet 호스트명을 저장소에 넣지 않는다 (`10` §4.1) |
+| `API_BASE_URL` | `http://localhost:8081` | **빈 문자열** = same-origin (`/api/v1`). tailnet 호스트명을 저장소에 넣지 않는다 (`10` §4.1) |
 | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` | (없음) | (없음) — `AUTH_MODE=supabase`일 때만 필요(Later) |
 
 클라이언트는 `API_BASE_URL` 뒤에 `/api/v1/...`을 붙이고, 비어 있으면 현재 origin을 쓴다. `AUTH_MODE`가 `dev`·`supabase` 외의 값이면 앱 시작 시 오류 화면을 표시한다. `AUTH_MODE=dev`의 로그인 화면은 이메일 입력 1칸 + 로그인 버튼이며 `POST /api/v1/dev/token {email}` → 403 `USER_NOT_ALLOWED`면 "허용된 사용자가 아닙니다"를 표시한다. 토큰은 `Authorization: Bearer`로 붙이고, 401이면 토큰을 지우고 로그인 화면으로 보낸다.

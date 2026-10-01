@@ -1,0 +1,24 @@
+# 테스트 전용 과제 체크리스트 (docs/19 §3.11). 겹치는 (taskType, skill) 조합을 두지 않는다 (CV-113).
+checklists:
+  - key: CHK.TEST.EXCEPTION
+    taskTypes: [CHALLENGE, PROJECT_TASK]
+    skillCodes: [JAVA.EXCEPTION, JAVA.COLLECTION]
+    before:
+      - 이 실패가 요청 잘못인지 서버 잘못인지 갈랐나
+      - 어디서 잡고 어디로 올릴지 정했나
+      - 없을 수 있는 값을 어떤 타입으로 돌려줄지 정했나
+    after:
+      - 응답에 내부 구조가 담기지 않았는지 확인했나
+      - 로그에는 원인을 남기고 응답에는 남기지 않았나
+      - 비어 있을 때의 동작을 확인했나
+  - key: CHK.TEST.HTTP
+    taskTypes: [REDO]
+    skillCodes: [WEB_HTTP.HTTP_BASICS]
+    before:
+      - 요청이 어디서 출발해 어디로 가는지 그려 봤나
+      - 성공과 실패에 각각 어떤 상태 코드를 줄지 정했나
+      - 브라우저가 붙이는 헤더와 코드가 붙이는 헤더를 갈랐나
+    after:
+      - 개발자도구에서 실제로 나간 요청 헤더를 확인했나
+      - 서버 로그와 브라우저 콘솔을 둘 다 봤나
+      - 브라우저가 아닌 것으로도 같은 요청을 보내 봤나

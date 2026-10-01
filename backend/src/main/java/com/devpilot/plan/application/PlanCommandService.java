@@ -44,16 +44,19 @@ public class PlanCommandService {
     private final PlanTemplateRegistry planTemplateRegistry;
     private final SkillCatalogQueryService skillCatalogQueryService;
     private final PlanQueryService planQueryService;
+    private final ReplanInputs inputs;
 
     public PlanCommandService(
             LearningPlanRepository learningPlanRepository,
             PlanTemplateRegistry planTemplateRegistry,
             SkillCatalogQueryService skillCatalogQueryService,
-            PlanQueryService planQueryService) {
+            PlanQueryService planQueryService,
+            ReplanInputs inputs) {
         this.learningPlanRepository = learningPlanRepository;
         this.planTemplateRegistry = planTemplateRegistry;
         this.skillCatalogQueryService = skillCatalogQueryService;
         this.planQueryService = planQueryService;
+        this.inputs = inputs;
     }
 
     /**
@@ -97,13 +100,14 @@ public class PlanCommandService {
     }
 
     /**
-     * milestone in-place 수정 (docs/05 §7.6). plan 조회(404 {@code PLAN_NOT_FOUND}) → ACTIVE(409 {@code
-     * PLAN_NOT_ACTIVE}) → milestone 조회(404 {@code RESOURCE_NOT_FOUND}) → version(409). plan의
-     * version·planVersion은 바뀌지 않는다.
+     * milestone in-place 수정 (docs/05 §7.6). {@code description} 마스킹(422, docs/05 §1.11) → plan
+     * 조회(404 {@code PLAN_NOT_FOUND}) → ACTIVE(409 {@code PLAN_NOT_ACTIVE}) → milestone 조회(404
+     * {@code RESOURCE_NOT_FOUND}) → version(409). plan의 version·planVersion은 바뀌지 않는다.
      */
     @Transactional
     public MilestoneView updateMilestone(
             UUID userId, UUID planId, UUID milestoneId, MilestonePatchCommand command) {
+        String description = inputs.maskedDescription(userId, command.description());
         LearningPlan plan =
                 learningPlanRepository
                         .findByIdAndUserId(planId, userId)
@@ -122,7 +126,7 @@ public class PlanCommandService {
             throw new ConflictException(
                     ErrorCode.CONCURRENT_MODIFICATION, "milestone version does not match");
         }
-        if (milestone.patch(command.status(), command.description(), command.sortOrder())) {
+        if (milestone.patch(command.status(), description, command.sortOrder())) {
             learningPlanRepository.flush();
         }
         return PlanQueryService.toMilestoneView(
@@ -141,10 +145,7 @@ public class PlanCommandService {
             LearningPlan plan, PlanTemplate template, NewPlanCommand command) {
         List<DateSpan> spans =
                 planTemplateRegistry.placeMilestones(
-                        template,
-                        command.today(),
-                        command.checkpointDate(),
-                        command.targetCompletionDate());
+                        template, command.today(), command.targetCompletionDate());
         Set<String> codes = new HashSet<>();
         template.milestones().forEach(milestone -> codes.addAll(milestone.skillCodes()));
         Map<String, SkillRef> skills = skillCatalogQueryService.findActiveByCodes(codes);
@@ -189,7 +190,6 @@ public class PlanCommandService {
     public record NewPlanCommand(
             @Nullable UUID learningGoalId,
             TargetRole targetRole,
-            @Nullable LocalDate checkpointDate,
             LocalDate targetCompletionDate,
             LocalDate today,
             boolean useTemplate) {}

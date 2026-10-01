@@ -42,6 +42,10 @@ abstract final class AppBreakpoints {
   static const tabletContentWidth = 720.0;
   static const desktopContentWidth = 960.0;
 
+  /// Desktop width for screens where the reader **writes** long answers with code, not just reads
+  /// (docs/02 §2.1 exception). 960 is a reading measure; an answer box inside it is cramped.
+  static const wideContentWidth = 1200.0;
+
   /// Width of centered cards such as onboarding steps on wide screens.
   static const formCardWidth = 560.0;
 

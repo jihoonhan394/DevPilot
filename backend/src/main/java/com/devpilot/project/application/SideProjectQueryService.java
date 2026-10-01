@@ -5,6 +5,7 @@ import com.devpilot.common.error.NotFoundException;
 import com.devpilot.common.web.CursorCodec;
 import com.devpilot.common.web.CursorPage;
 import com.devpilot.project.domain.SideProject;
+import com.devpilot.project.domain.SideProjectKind;
 import com.devpilot.project.domain.SideProjectStatus;
 import com.devpilot.project.infrastructure.SideProjectRepository;
 import java.time.Instant;
@@ -39,6 +40,13 @@ public class SideProjectQueryService {
         return toView(load(sideProjectRepository, userId, sideProjectId));
     }
 
+    /** 러버덕 {@code PROJECT_WORK} 대상 확인 (docs/05 §9.5 표). 타 사용자·없는 프로젝트는 빈 값. */
+    public Optional<SideProjectView> find(UUID userId, UUID sideProjectId) {
+        return sideProjectRepository
+                .findByIdAndUserId(sideProjectId, userId)
+                .map(SideProjectQueryService::toView);
+    }
+
     /** {@code updatedAt} DESC, {@code id} DESC. 잘못된 cursor는 400 {@code INVALID_CURSOR}. */
     public CursorPage<SideProjectView> list(
             UUID userId, @Nullable SideProjectStatus status, int limit, @Nullable String cursor) {
@@ -65,8 +73,8 @@ public class SideProjectQueryService {
     /** planner 대상 (docs/06 SP-3): {@code updated_at}이 가장 최근인 {@code ACTIVE} 하나. 없으면 empty. */
     public Optional<SideProjectView> findLatestActive(UUID userId) {
         return sideProjectRepository
-                .findFirstByUserIdAndStatusOrderByUpdatedAtDescIdDesc(
-                        userId, SideProjectStatus.ACTIVE)
+                .findFirstByUserIdAndStatusAndKindOrderByUpdatedAtDescIdDesc(
+                        userId, SideProjectStatus.ACTIVE, SideProjectKind.SIDE)
                 .map(SideProjectQueryService::toView);
     }
 
@@ -87,6 +95,7 @@ public class SideProjectQueryService {
                 project.getRepoUrl(),
                 project.getStack(),
                 project.getStatus(),
+                project.getKind(),
                 Objects.requireNonNull(project.getCreatedAt(), "createdAt"),
                 Objects.requireNonNull(project.getUpdatedAt(), "updatedAt"),
                 project.getVersion());

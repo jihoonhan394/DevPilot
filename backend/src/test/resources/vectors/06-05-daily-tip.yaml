@@ -1,0 +1,63 @@
+# source: 06 §5.12 "오늘의 팁" TIP-1·TIP-2와 묶음 1~4, rows: 7
+# 공통 팁 목록 (key ASC):
+#   TIP.DATABASE.INDEX.001        PRACTICAL  [DATABASE.INDEX]
+#   TIP.LOGGING.LEVELS.001        PRACTICAL  [PRACTICAL_ENGINEERING.LOGGING]
+#   TIP.LOGGING.LEVELS.002        BASIC      [PRACTICAL_ENGINEERING.LOGGING]
+#   TIP.OPERATIONS.HEALTHCHECK.001 BASIC     [DEVOPS.DOCKER]
+#   TIP.CONVENTION.COMMIT.001     BASIC      [DEVOPS.GIT]  (retired)
+# basicTipsFirst 를 적지 않으면 false (JAVA_BACKEND).
+vectors:
+  - id: TIP-V1
+    case: 오늘 main task의 skill과 겹치는 팁 — 묶음 1
+    shown: []
+    todayMain: [DATABASE.INDEX]
+    recent: [PRACTICAL_ENGINEERING.LOGGING]
+    plan: [DEVOPS.DOCKER]
+    expected: TIP.DATABASE.INDEX.001
+  - id: TIP-V2
+    case: main task 없음 — 묶음 2로 내려가고 key ASC
+    shown: []
+    todayMain: []
+    recent: [PRACTICAL_ENGINEERING.LOGGING]
+    plan: [DEVOPS.DOCKER]
+    expected: TIP.LOGGING.LEVELS.001
+  - id: TIP-V3
+    case: 입문 트랙은 BASIC이 먼저다
+    shown: []
+    todayMain: []
+    recent: [PRACTICAL_ENGINEERING.LOGGING]
+    plan: [DEVOPS.DOCKER]
+    basicTipsFirst: true
+    expected: TIP.LOGGING.LEVELS.002
+  - id: TIP-V4
+    case: 묶음 1·2가 비고 활성 plan의 skill만 남았다 — 묶음 3
+    shown: []
+    todayMain: []
+    recent: []
+    plan: [DEVOPS.DOCKER]
+    expected: TIP.OPERATIONS.HEALTHCHECK.001
+  - id: TIP-V5
+    case: 어느 skill과도 겹치지 않는다 — 묶음 4, 남은 팁 중 key ASC
+    shown: []
+    todayMain: [SYSTEM_DESIGN.CACHING]
+    recent: [SYSTEM_DESIGN.CACHING]
+    plan: [SYSTEM_DESIGN.CACHING]
+    expected: TIP.DATABASE.INDEX.001
+  - id: TIP-V6
+    case: 묶음 1 후보를 이미 받았다 — TIP-2로 빠지고 묶음 2로 내려간다
+    shown: [TIP.DATABASE.INDEX.001]
+    todayMain: [DATABASE.INDEX]
+    recent: [PRACTICAL_ENGINEERING.LOGGING]
+    plan: [DEVOPS.DOCKER]
+    expected: TIP.LOGGING.LEVELS.001
+  - id: TIP-V7
+    case: 남은 팁이 은퇴한 것뿐이다 — 오늘의 팁은 없다 (TIP-1)
+    shown:
+      - TIP.DATABASE.INDEX.001
+      - TIP.LOGGING.LEVELS.001
+      - TIP.LOGGING.LEVELS.002
+      - TIP.OPERATIONS.HEALTHCHECK.001
+    todayMain: []
+    recent: []
+    plan: []
+    expected: null

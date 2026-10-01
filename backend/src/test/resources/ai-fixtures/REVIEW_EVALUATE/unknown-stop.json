@@ -1,0 +1,14 @@
+{
+  "description": "알 수 없는 종료 사유",
+  "attempts": [
+    {
+      "finishReason": "length_exceeded_weird",
+      "usage": {
+        "inputTokens": 2400,
+        "cachedTokens": 0,
+        "outputTokens": 180,
+        "reasoningTokens": 0
+      }
+    }
+  ]
+}

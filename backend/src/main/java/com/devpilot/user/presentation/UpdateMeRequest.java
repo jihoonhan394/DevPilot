@@ -8,8 +8,8 @@ import jakarta.validation.constraints.Size;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@code PATCH /me} 요청 (docs/05 §3.2). {@code null}(또는 생략) 필드는 변경하지 않는다. {@code experienceProfile},
- * {@code experienceStartDate}를 보내면 알 수 없는 속성으로 400 {@code MALFORMED_REQUEST}다.
+ * {@code PATCH /me} 요청 (docs/05 §3.2). {@code null}(또는 생략) 필드는 변경하지 않는다. 여기 없는 속성을 보내면 400 {@code
+ * MALFORMED_REQUEST}다.
  */
 public record UpdateMeRequest(
         @Nullable @Size(min = 1, max = 100) String displayName,

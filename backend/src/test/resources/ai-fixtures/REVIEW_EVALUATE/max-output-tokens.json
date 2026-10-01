@@ -1,0 +1,14 @@
+{
+  "description": "출력 상한으로 잘림",
+  "attempts": [
+    {
+      "finishReason": "max_output_tokens",
+      "usage": {
+        "inputTokens": 2400,
+        "cachedTokens": 0,
+        "outputTokens": 180,
+        "reasoningTokens": 0
+      }
+    }
+  ]
+}

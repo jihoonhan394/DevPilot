@@ -40,6 +40,16 @@ public class SideProject extends BaseTimeEntity {
     @Column(nullable = false)
     private SideProjectStatus status;
 
+    /**
+     * 분류 (docs/04 §3, I-23). 상태가 아니라 분류라 전이표가 없다.
+     *
+     * <p>{@code PAST_WORK}는 planner의 {@code PROJECT_TASK} 대상에서 빠진다(docs/06 SP-3) — 이미 끝난 일에 오늘 할
+     * 과제를 붙일 수는 없다. 바꿔도 이미 만든 과제와 기록은 그대로 남는다.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private SideProjectKind kind;
+
     @Version private @Nullable Long version;
 
     protected SideProject() {
@@ -54,6 +64,7 @@ public class SideProject extends BaseTimeEntity {
         this.repoUrl = values.repoUrl();
         this.stack = values.stack();
         this.status = SideProjectStatus.ACTIVE;
+        this.kind = values.kind();
     }
 
     /** 등록 (docs/05 §19.2): {@code status = ACTIVE}. 빈 문자열 정규화·URL 검사는 호출자가 끝냈다. */
@@ -70,7 +81,8 @@ public class SideProject extends BaseTimeEntity {
             Change newDescription,
             Change newRepoUrl,
             Change newStack,
-            @Nullable SideProjectStatus newStatus) {
+            @Nullable SideProjectStatus newStatus,
+            @Nullable SideProjectKind newKind) {
         boolean changed = false;
         if (newName != null && !newName.equals(name)) {
             name = newName;
@@ -90,6 +102,10 @@ public class SideProject extends BaseTimeEntity {
         }
         if (newStatus != null && newStatus != status) {
             status = newStatus;
+            changed = true;
+        }
+        if (newKind != null && newKind != kind) {
+            kind = newKind;
             changed = true;
         }
         return changed;
@@ -124,6 +140,10 @@ public class SideProject extends BaseTimeEntity {
         return status;
     }
 
+    public SideProjectKind getKind() {
+        return kind;
+    }
+
     public long getVersion() {
         return version == null ? 0L : version;
     }
@@ -143,7 +163,8 @@ public class SideProject extends BaseTimeEntity {
             String name,
             @Nullable String description,
             @Nullable String repoUrl,
-            @Nullable String stack) {}
+            @Nullable String stack,
+            SideProjectKind kind) {}
 
     /**
      * nullable 필드의 PATCH 의도: 변경 안 함({@link #keep()}), 지움({@link #clear()}), 새 값({@link

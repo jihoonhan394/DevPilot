@@ -4,8 +4,7 @@ import java.util.Set;
 
 /**
  * 감사 이벤트 카탈로그 (docs/07 §6.3, docs/05 §1.4.5). 각 값은 허용 필드 이름 집합을 가진다 — {@link AuditLogger}가 호출 시 필드
- * 이름이 정확히 같은지 확인한다. 필드를 바꾸려면 docs/07 §6.3을 먼저 고친다. {@code AI_BALANCE_LOW}·{@code
- * AI_BALANCE_RESTORED}(docs/03 §6)는 필드가 정해지는 S3(BL-AIP-17)에 추가한다.
+ * 이름이 정확히 같은지 확인한다. 필드를 바꾸려면 docs/07 §6.3을 먼저 고친다. 잔액 회복은 감사 이벤트가 아니라 INFO 로그다(docs/17 §8.7 M4).
  */
 public enum AuditEvent {
     AUTH_DEVTOKEN_ISSUED(Set.of("emailRef")),
@@ -13,10 +12,12 @@ public enum AuditEvent {
     AUTH_USER_PROVISIONED(Set.of("userRef", "matchedBy")),
     AUTH_USER_REJECTED(Set.of("subjectRef", "existingUser", "reason")),
     ACCOUNT_DELETION_REQUESTED(Set.of("userRef", "requestedAt")),
+    ACCOUNT_PROGRESS_RESET(Set.of("userRef", "resetAt", "deletedRows", "projectsDeleted")),
     ACCOUNT_DELETION_COMPLETED(
             Set.of("userRef", "externalAuthId", "requestedAt", "completedAt", "allowlistRemoval")),
     DATA_EXPORTED(Set.of("userRef", "format", "bytes")),
     AI_BUDGET_WARNING(Set.of("month", "spentMicroUsd", "budgetMicroUsd", "ratioBp")),
+    AI_BALANCE_LOW(Set.of("reason", "balanceUsd", "minBalanceUsd")),
     AI_BUDGET_BLOCKED(
             Set.of("userRef", "operation", "reason", "month", "spentMicroUsd", "budgetMicroUsd")),
     SECRET_BLOCKED(Set.of("userRef", "source", "type")),

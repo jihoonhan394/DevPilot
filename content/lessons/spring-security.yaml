@@ -1,0 +1,396 @@
+# DevPilot 개념 노트 — 요청이 컨트롤러에 닿기 전에 (Spring Security)
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 인증·인가 노트가 "무엇을 확인해야 하는가"를 다룬다. 여기서는 "Spring이 그것을 어디서 하는가"를 다룬다
+# - 실제 키·계정 값은 쓰지 않는다. 자리표시자만 쓴다
+lessons:
+  - key: LESSON.SPRING.SECURITY.001
+    skillCode: SPRING.SECURITY
+    title: 요청이 컨트롤러에 닿기 전에 (Spring Security)
+    whyItMatters: |-
+      Spring Security를 붙이면 **갑자기 모든 요청이 막히고 로그인 화면이 뜬다.**
+      컨트롤러에는 중단점이 걸리지도 않는다.
+      요청이 컨트롤러에 닿기 **전에** 필터 줄에서 처리되기 때문인데,
+      그 줄을 모르면 "설정을 이것저것 바꿔 보다가 되면 그대로 두는" 상태가 된다.
+      막히는 자리와 고치는 자리를 정확히 짚으려면 이 순서를 알아야 한다.
+    oneLine: Spring Security는 컨트롤러 앞의 **필터 줄**에서 인증과 인가를 처리하고, 설정은 그 줄을 어떻게 세울지 정하는 일이다.
+    units:
+      - key: LESSON.SPRING.SECURITY.001.U1
+        title: 필터 줄이 먼저다
+        minutes: 12
+        core: true
+        explain: |-
+          Spring Security는 **서블릿 필터**로 동작한다. 요청은 이런 순서로 지나간다.
+
+          ```text
+          요청 → [보안 필터 줄] → DispatcherServlet → 컨트롤러
+          ```
+
+          그래서 **보안 필터에서 막히면 컨트롤러 코드는 아예 실행되지 않는다.**
+          컨트롤러에 로그를 찍어 두고 "안 찍히는데요"가 되는 이유가 이것이다.
+
+          필터 줄은 경로마다 다르게 세울 수 있고, 각 줄 안에서 필터들이 정해진 순서로 돈다.
+          중요한 것 둘만 기억하면 된다.
+
+          - **인증 필터** — 요청에서 표시(쿠키·토큰)를 꺼내 누구인지 정한다.
+            성공하면 그 결과를 보안 컨텍스트에 담는다
+          - **인가 필터** — 그 사람이 이 경로에 접근해도 되는지 본다
+
+          인증 결과가 비어 있으면 **익명 사용자**로 다룬다. "인증되지 않음"도 하나의 상태다.
+
+          기본 설정만 붙이면 **모든 요청에 인증을 요구**한다. 그래서 다 막힌다 —
+          고장이 아니라 기본값이다. 어디를 열지 명시해야 한다.
+        example:
+          language: java
+          code: |-
+            @Configuration
+            @EnableWebSecurity
+            class SecurityConfig {
+
+                @Bean
+                SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+                    return http.authorizeHttpRequests(auth -> auth
+                                    .requestMatchers("/api/v1/login", "/actuator/health").permitAll()
+                                    .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                                    .anyRequest().authenticated())
+                            .build();
+                }
+            }
+          output: |-
+            GET /actuator/health        → 200  (permitAll)
+            GET /api/v1/orders          → 401  (표시 없음 → 인증 필터에서 멈춤)
+            GET /api/v1/admin/orders    → 403  (로그인했지만 ADMIN 아님)
+
+            어느 경우든 컨트롤러 메서드는 실행되지 않는다
+          note: |-
+            - 규칙은 **위에서부터** 맞는 것 하나가 적용된다. `anyRequest()`는 맨 아래다
+            - 기본값이 "전부 인증 요구"다. 열 곳을 명시해야 한다
+            - 여기서 막히면 컨트롤러에 중단점을 걸어도 잡히지 않는다
+        predict:
+          question: 보안 필터에서 401로 막힌 요청에 대해 컨트롤러의 로그는?
+          choices:
+            - 찍히지 않는다. 컨트롤러에 닿기 전에 끝났다
+            - 찍힌다. 필터는 로그만 남기고 통과시킨다
+            - 예외 로그만 찍힌다
+            - 컨트롤러가 먼저 돌고 나서 필터가 막는다
+          answer: 찍히지 않는다. 컨트롤러에 닿기 전에 끝났다
+          explanation: |-
+            필터는 `DispatcherServlet`보다 **앞**에 있다.
+            거기서 응답이 정해지면 요청은 더 가지 않는다.
+            그래서 "컨트롤러에 로그를 찍었는데 안 나온다"는 **보안 설정에서 막혔다는 신호**다.
+            디버깅 자리를 컨트롤러가 아니라 보안 설정으로 옮겨야 한다.
+        complete:
+          question: 로그인 경로를 열고 나머지는 인증을 요구하도록 빈칸을 채우세요.
+          code: |-
+            http.authorizeHttpRequests(auth -> auth
+                    .requestMatchers("/api/v1/login").___()
+                    .anyRequest().___());
+          answers:
+            - [permitAll]
+            - [authenticated]
+          explanation: |-
+            `permitAll()`은 인증 없이 통과, `authenticated()`는 인증을 요구한다.
+            로그인 경로를 열지 않으면 **로그인하러 가는 요청도 막혀** 들어갈 방법이 없어진다.
+        problem:
+          prompt: |-
+            Spring Security를 처음 붙였더니 이렇게 됐습니다.
+
+            ```text
+            - 모든 API 가 401 을 돌려준다
+            - 로그인 API 도 401 이다
+            - 컨트롤러에 건 중단점이 걸리지 않는다
+            ```
+
+            1. 왜 이렇게 되는지 (고장인지 아닌지)
+            2. 중단점이 안 걸리는 이유
+            3. 최소한 무엇을 열어야 로그인이라도 되는지
+          deliverables:
+            - 세 물음에 대한 답
+            - 3번은 구체적인 경로와 함께
+          hints:
+            - 아무 설정도 하지 않았을 때의 기본값이 무엇일지 생각해 보세요.
+            - 요청이 컨트롤러에 닿기까지 무엇을 지나가나요?
+            - 로그인하려면 로그인 요청부터 통과해야 합니다.
+          modelAnswer: |-
+            **1. 고장이 아니라 기본값이다**
+
+            아무것도 지정하지 않으면 Spring Security는 **모든 요청에 인증을 요구**한다.
+            안전한 쪽을 기본으로 두는 설계다. 열 곳을 명시하지 않았으니 전부 막힌 것이다.
+
+            **2. 중단점이 안 걸리는 이유**
+
+            보안 필터는 `DispatcherServlet`보다 앞에 있다.
+            필터에서 401로 응답이 정해지면 요청은 컨트롤러까지 **가지 않는다.**
+            그래서 컨트롤러 중단점은 영영 안 걸린다 —
+            이때는 **보안 설정과 필터 쪽으로 디버깅 자리를 옮겨야** 한다.
+
+            **3. 최소한 열어야 하는 것**
+
+            - **로그인 경로** (`/api/v1/login`) — 이걸 막으면 들어갈 문 자체가 없다
+            - 상태 점검 경로 (`/actuator/health`) — 배포·감시가 쓴다
+
+            ```java
+            .requestMatchers("/api/v1/login", "/actuator/health").permitAll()
+            .anyRequest().authenticated()
+            ```
+
+            열 곳을 **최소로** 두고 나머지는 `authenticated()`로 남기는 것이 순서다.
+            반대로(전부 열고 막을 곳만 지정) 하면 새 API를 추가할 때마다 구멍이 생긴다.
+          selfChecks:
+            - 고장이 아니라 기본값이라고 말했는가
+            - 중단점 문제를 필터 위치로 설명했는가
+            - 열 곳을 최소로 두는 방향을 말했는가 (전부 열고 막는 방식이 아니라)
+
+      - key: LESSON.SPRING.SECURITY.001.U2
+        title: 열 것과 막을 것을 정하는 순서
+        minutes: 12
+        core: true
+        explain: |-
+          규칙은 **적은 순서대로 평가되고 처음 맞는 것 하나가 적용된다.**
+          그래서 순서가 결과를 바꾼다.
+
+          ```java
+          // 잘못된 순서 — admin 규칙에 닿지 않는다
+          .requestMatchers("/api/v1/**").authenticated()
+          .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")   // 영원히 안 걸린다
+          ```
+
+          `/api/v1/admin/orders`는 위의 `/api/v1/**`에 먼저 걸려서 **로그인만 했으면 통과**한다.
+          아래 줄은 죽은 규칙이다. **좁은 규칙을 위에, 넓은 규칙을 아래에** 둔다.
+
+          그리고 기본 자세는 **닫아 두고 필요한 것만 여는 것**이다.
+
+          - `anyRequest().authenticated()`를 **맨 마지막**에 둔다.
+            새 API를 추가해도 자동으로 보호된다
+          - 반대로 `anyRequest().permitAll()`로 두고 막을 곳만 적으면,
+            API를 추가할 때마다 사람이 기억해야 한다. 언젠가 빠진다
+
+          역할 이름도 주의한다. `hasRole("ADMIN")`은 내부적으로 `ROLE_ADMIN`을 찾는다.
+          권한을 저장할 때 접두사를 함께 넣었는지 확인해야 한다 —
+          안 맞으면 로그인은 되는데 **계속 403**이 난다.
+        example:
+          language: java
+          code: |-
+            return http.authorizeHttpRequests(auth -> auth
+                            // 1) 좁은 규칙부터
+                            .requestMatchers("/api/v1/login", "/actuator/health").permitAll()
+                            .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
+                            .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                            // 2) 넓은 규칙은 마지막
+                            .anyRequest().authenticated())
+                    .build();
+          output: |-
+            GET  /api/v1/products/7     → 200  (둘째 규칙, 인증 없이 열림)
+            POST /api/v1/products       → 401  (GET 만 열었다 → anyRequest 로 내려감)
+            GET  /api/v1/admin/orders   → 403  (ADMIN 아님)
+            GET  /api/v1/orders         → 401  (표시 없음)
+
+            admin 규칙을 /api/v1/** 아래로 내리면
+            GET  /api/v1/admin/orders   → 200  ← 규칙이 죽어 구멍이 된다
+          note: |-
+            - **좁은 규칙이 위, 넓은 규칙이 아래.** 순서가 곧 의미다
+            - `anyRequest().authenticated()`를 마지막에 두면 새 API가 자동으로 보호된다
+            - 메서드까지 지정하면(`HttpMethod.GET`) 조회만 열고 변경은 막을 수 있다
+        predict:
+          question: '`.requestMatchers("/api/v1/**").authenticated()` 아래에 `.requestMatchers("/api/v1/admin/**").hasRole("ADMIN")`을 두면?'
+          choices:
+            - 아래 규칙은 적용되지 않는다. 로그인만 하면 admin 경로가 열린다
+            - 둘 다 적용되어 더 엄격해진다
+            - 아래 규칙이 위를 덮어쓴다
+            - 설정 오류로 기동에 실패한다
+          answer: 아래 규칙은 적용되지 않는다. 로그인만 하면 admin 경로가 열린다
+          explanation: |-
+            규칙은 **위에서부터 처음 맞는 것 하나**가 적용된다.
+            `/api/v1/admin/orders`는 `/api/v1/**`에 먼저 걸리므로 거기서 판정이 끝난다.
+            아래 줄은 영영 평가되지 않는 **죽은 규칙**이고, 기동은 정상이라 눈치채기 어렵다.
+            그래서 좁은 규칙을 위에 둔다.
+        complete:
+          question: 새 API가 자동으로 보호되도록 마지막 규칙을 채우세요.
+          code: |-
+            .requestMatchers("/api/v1/login").permitAll()
+            .___().authenticated()
+          answers:
+            - [anyRequest]
+          explanation: |-
+            `anyRequest().authenticated()`를 맨 아래에 두면 규칙에 없는 경로는 전부 인증을 요구한다.
+            **새 API를 추가할 때 아무것도 안 해도 보호된다** — 사람의 기억에 기대지 않는 설계다.
+        problem:
+          prompt: |-
+            팀의 보안 설정이 이렇습니다.
+
+            ```java
+            .requestMatchers("/api/v1/**").authenticated()
+            .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+            .anyRequest().permitAll()
+            ```
+
+            1. 이 설정의 구멍 **두 가지**
+            2. 올바른 순서로 다시 쓰기
+            3. 이런 실수를 **기동이나 테스트에서 잡는** 방법
+          deliverables:
+            - 세 물음에 대한 답
+            - 2번은 코드로
+          hints:
+            - 규칙이 평가되는 순서를 먼저 따라가 보세요.
+            - 맨 마지막 줄이 무엇을 뜻하는지 보세요.
+            - 사람이 순서를 기억하는 대신 무엇이 기억하게 할 수 있을까요?
+          modelAnswer: |-
+            **1. 구멍 두 가지**
+
+            - **admin 규칙이 죽어 있다.** `/api/v1/admin/**`은 위의 `/api/v1/**`에 먼저 걸린다.
+              **로그인만 하면 관리자 API가 열린다**
+            - **`anyRequest().permitAll()`** — `/api/v1`로 시작하지 않는 모든 경로가 무방비다.
+              나중에 다른 접두사로 API를 추가하면 인증 없이 열린다
+
+            **2. 올바른 순서**
+
+            ```java
+            .requestMatchers("/api/v1/login", "/actuator/health").permitAll()
+            .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+            .anyRequest().authenticated()
+            ```
+
+            좁은 규칙(로그인·admin)을 위에 두고, **맨 아래를 `authenticated()`로** 닫는다.
+
+            **3. 기동이나 테스트에서 잡기**
+
+            - **경로별 접근 테스트를 둔다.** 관리자 경로에 일반 사용자 토큰으로 요청하면 403,
+              표시 없이 요청하면 401이 나오는지 확인한다. 순서를 잘못 바꾸면 이 테스트가 깨진다
+            - **새 API가 추가되면 기본이 보호**이도록 `anyRequest().authenticated()`를 유지한다.
+              테스트가 없더라도 구멍이 자동으로 생기지는 않게 된다
+
+            죽은 규칙은 기동에서 오류가 나지 않으므로 **테스트가 유일한 안전망**이다.
+          selfChecks:
+            - 죽은 규칙과 `permitAll()` 두 구멍을 모두 짚었는가
+            - 고친 순서에서 좁은 규칙이 위에 오고 마지막이 `authenticated()`인가
+            - 잡는 방법으로 경로별 접근 테스트를 제시했는가
+
+      - key: LESSON.SPRING.SECURITY.001.U3
+        title: 로그인한 사람을 코드에서 꺼내기
+        minutes: 10
+        core: true
+        explain: |-
+          필터가 인증을 마치면 그 결과를 **보안 컨텍스트**에 담아 둔다.
+          컨트롤러와 서비스는 거기서 "지금 누구인가"를 꺼내 쓴다.
+
+          꺼내는 방법은 여럿이지만, 실무에서 중요한 것은 **어디서 꺼내느냐**다.
+
+          - **컨트롤러에서 꺼내 서비스에 넘긴다** — 서비스는 보안에 의존하지 않는다.
+            테스트할 때 사용자 id만 넘기면 되므로 단순하다
+          - **서비스 안에서 직접 꺼낸다** — 편하지만 서비스가 웹 요청에 묶인다.
+            배치나 다른 진입점에서 같은 서비스를 부르면 꺼낼 것이 없어 터진다
+
+          앞쪽을 기본으로 둔다. **보안은 바깥 계층의 일**이고 서비스는 "누구의 것인지"를
+          인자로 받는 편이 옮기기도 테스트하기도 쉽다.
+
+          그리고 꺼낸 값을 **믿을 수 있는 유일한 출처**로 삼는다.
+          요청 본문이나 쿼리에 실려 온 `userId`는 사용자가 마음대로 바꿀 수 있다.
+          **소유권 검사에 쓸 id는 반드시 인증 결과에서 가져온다.**
+        example:
+          language: java
+          code: |-
+            // 컨트롤러 — 인증 결과에서 꺼내 서비스에 넘긴다
+            @GetMapping("/api/v1/orders/{orderId}")
+            OrderView get(CurrentUser currentUser, @PathVariable UUID orderId) {
+                return orderQueryService.get(currentUser.userId(), orderId);
+            }
+
+            // 위험한 예 — 요청이 준 userId 를 그대로 믿는다
+            @GetMapping("/api/v1/orders/{orderId}")
+            OrderView get(@RequestParam UUID userId, @PathVariable UUID orderId) {
+                return orderQueryService.get(userId, orderId);   // 남의 id 를 넣으면 그대로 통한다
+            }
+          output: |-
+            인증 결과에서 꺼낸 경우
+              GET /api/v1/orders/1024                  → 내 주문만 보인다
+
+            요청 파라미터를 믿은 경우
+              GET /api/v1/orders/1024?userId=<남의-id>  → 남의 주문이 보인다
+              로그인은 정상이고 보안 설정도 정상인데 뚫린다
+          note: |-
+            - 신뢰할 수 있는 id는 **인증 결과**에서만 나온다
+            - 요청이 실어 보낸 `userId`는 사용자가 바꿀 수 있는 값이다
+            - 서비스는 id를 인자로 받는다. 보안 컨텍스트에 직접 손대지 않는다
+        predict:
+          question: 컨트롤러가 `@RequestParam UUID userId`를 그대로 서비스에 넘기면?
+          choices:
+            - 남의 id를 넣은 요청이 그대로 통한다
+            - Spring Security가 자동으로 대조해 준다
+            - 로그인한 사용자와 다르면 400이 난다
+            - 인증 필터가 파라미터를 검사한다
+          answer: 남의 id를 넣은 요청이 그대로 통한다
+          explanation: |-
+            보안 필터는 **누구인지**까지만 정해 준다.
+            요청 파라미터가 그 사람과 같은지는 **아무도 대조하지 않는다.**
+            로그인도 정상이고 설정도 정상인데 뚫리는 전형적인 경로다 —
+            소유권에 쓰는 id는 반드시 인증 결과에서 꺼낸다.
+        complete:
+          question: 인증 결과에서 꺼낸 사용자로 조회하도록 빈칸을 채우세요.
+          code: |-
+            OrderView get(CurrentUser currentUser, @PathVariable UUID orderId) {
+                return orderQueryService.get(___.userId(), orderId);
+            }
+          answers:
+            - [currentUser]
+          explanation: |-
+            `currentUser`는 인증 필터가 정한 값이라 사용자가 바꿀 수 없다.
+            요청 파라미터로 받은 id를 쓰면 같은 코드가 그대로 구멍이 된다.
+        problem:
+          prompt: |-
+            동료가 이렇게 제안합니다.
+            **"서비스 안에서 바로 로그인 사용자를 꺼내 쓰면 컨트롤러가 깔끔해지지 않나요?"**
+
+            1. 그렇게 했을 때 **나중에 곤란해지는 상황** 하나
+            2. 테스트 관점에서 무엇이 달라지는지
+            3. 어느 쪽을 기본으로 삼을지와 그 이유
+          deliverables:
+            - 세 물음에 대한 답
+            - 1번은 구체적인 상황으로
+          hints:
+            - 그 서비스를 웹 요청이 아닌 곳에서 부르면 어떻게 될까요?
+            - 테스트에서 보안 컨텍스트를 만들어야 한다면 무엇이 늘어날까요?
+            - 보안이 어느 계층의 일인지 생각해 보세요.
+          modelAnswer: |-
+            **1. 나중에 곤란해지는 상황**
+
+            같은 서비스를 **배치 작업이나 이벤트 처리기에서** 부르는 때다.
+            거기에는 웹 요청이 없으므로 보안 컨텍스트가 비어 있고, 꺼내려다 터진다.
+            결국 "웹에서 부를 때와 아닐 때"를 분기하게 되고, 서비스가 두 가지 일을 하게 된다.
+
+            **2. 테스트 관점**
+
+            컨트롤러에서 꺼내 넘기면 서비스 테스트는 **사용자 id만 인자로 주면** 된다.
+            서비스가 직접 꺼내면 테스트마다 **보안 컨텍스트를 만들어 넣어야** 하고,
+            그 준비 코드가 모든 테스트에 퍼진다.
+
+            **3. 기본으로 삼을 쪽**
+
+            **컨트롤러에서 꺼내 인자로 넘긴다.**
+            보안은 바깥 계층의 일이고, 서비스는 "누구의 것인지"를 **받아서** 처리하면 된다.
+            그래야 서비스가 웹에 묶이지 않고, 진입점이 늘어도 그대로 쓸 수 있다.
+          selfChecks:
+            - 웹이 아닌 진입점에서 문제가 된다고 구체적으로 말했는가
+            - 테스트 준비 비용의 차이를 짚었는가
+            - 보안을 바깥 계층의 일로 두는 이유를 말했는가
+
+    commonMistakes:
+      - 넓은 규칙을 위에 두어 아래 규칙이 죽는다. 기동 오류가 없어 눈치채기 어렵다 (U2)
+      - '`anyRequest().permitAll()`로 닫아 새 API가 무방비로 추가된다 (U2)'
+      - 컨트롤러에 중단점을 걸고 원인을 찾는다. 필터에서 막혔으면 거기까지 오지 않는다 (U1)
+    inProject: |-
+      주문 시스템에 로그인을 붙이는 단계에서 이 설정을 처음 쓴다.
+      전부 막힌 상태에서 시작해 **로그인과 상태 점검만** 열고(U1),
+      좁은 규칙을 위에, `anyRequest().authenticated()`를 맨 아래에 둔다(U2).
+      401이 나면 표시가 붙어 나갔는지부터, 403이 나면 역할 이름과 규칙 순서를 본다.
+      경로별 접근 테스트(표시 없음 → 401, 권한 없음 → 403)를 함께 두면
+      나중에 규칙을 옮기다 생기는 구멍을 테스트가 잡아 준다.
+    sources:
+      - title: Spring Security — Architecture
+        url: https://docs.spring.io/spring-security/reference/servlet/architecture.html
+        versionScope: Spring Security 6.x
+      - title: Spring Security — Authorize HttpServletRequests
+        url: https://docs.spring.io/spring-security/reference/servlet/authorization/authorize-http-requests.html
+        versionScope: Spring Security 6.x
+    verifiedAt: 2026-09-23

@@ -34,16 +34,61 @@ final class ApiClient {
         () => _dio.get<Object?>(path, queryParameters: queryParameters),
       );
 
+  /// Receive timeout of synchronous AI calls (`…/hints`, rubber duck turns, docs/02 §6.6).
+  static const syncAiReceiveTimeout = Duration(seconds: 30);
+
+  /// Receive timeout of `POST /rubber-duck/{id}/complete` (the server waits up to 30 s).
+  static const summaryReceiveTimeout = Duration(seconds: 45);
+
   /// Authenticated POST that creates a resource: [idempotencyKey] is required (docs/05 §1.7).
+  /// [receiveTimeout] replaces the 15 s default for synchronous AI calls.
   Future<Map<String, Object?>> postJson(
     String path, {
     required Map<String, Object?> body,
     required IdempotencyKey idempotencyKey,
+    Duration? receiveTimeout,
   }) => _sendJson(
     () => _dio.post<Object?>(
       path,
       data: body,
-      options: Options(extra: {IdempotencyKeyInterceptor.extraKey: idempotencyKey.value}),
+      options: Options(
+        extra: {IdempotencyKeyInterceptor.extraKey: idempotencyKey.value},
+        receiveTimeout: receiveTimeout,
+      ),
+    ),
+  );
+
+  /// [postJson] for endpoints whose success status carries meaning (`POST /review-items`: 201
+  /// created, 200 an existing card of the same concept).
+  Future<({int status, Map<String, Object?> body})> postJsonWithStatus(
+    String path, {
+    required Map<String, Object?> body,
+    required IdempotencyKey idempotencyKey,
+  }) async {
+    final response = await _send(
+      () => _dio.post<Object?>(
+        path,
+        data: body,
+        options: Options(extra: {IdempotencyKeyInterceptor.extraKey: idempotencyKey.value}),
+      ),
+    );
+    final data = response.data;
+    if (data is Map<String, Object?>) {
+      return (status: response.statusCode ?? 200, body: data);
+    }
+    throw ApiException(code: ApiErrorCode.internalError, status: response.statusCode);
+  }
+
+  /// Authenticated POST outside docs/05 §1.7: `…/replan/preview` (nothing is stored) and
+  /// `…/abandon` (an idempotent state transition). No `Idempotency-Key` header is sent.
+  Future<Map<String, Object?>> postWithoutIdempotencyKey(
+    String path, {
+    Map<String, Object?>? body,
+  }) => _sendJson(
+    () => _dio.post<Object?>(
+      path,
+      data: body,
+      options: Options(extra: {IdempotencyKeyInterceptor.exemptKey: true}),
     ),
   );
 
@@ -64,6 +109,19 @@ final class ApiClient {
 
   Future<Map<String, Object?>> putJson(String path, {required Map<String, Object?> body}) =>
       _sendJson(() => _dio.put<Object?>(path, data: body));
+
+  /// GET [path] as a downloadable text file (docs/05 §19.13).
+  ///
+  /// 파일 이름은 `Content-Disposition`이 정한다 — 클라이언트가 지어내면 서버가 정한 날짜와 어긋난다.
+  Future<({String fileName, String markdown})> getFile(String path) async {
+    final response = await _send(
+      isGet: true,
+      () => _dio.get<String>(path, options: Options(responseType: ResponseType.plain)),
+    );
+    final disposition = response.headers.value('content-disposition') ?? '';
+    final match = RegExp('filename="([^"]+)"').firstMatch(disposition);
+    return (fileName: match?.group(1) ?? 'download.md', markdown: response.data?.toString() ?? '');
+  }
 
   /// DELETE [path]. The 204 body is ignored.
   Future<void> delete(String path) async {

@@ -13,9 +13,6 @@ create table app_user (
     day_start_hour          smallint not null default 4 check (day_start_hour between 0 and 6),
     weekday_study_minutes   integer not null default 45 check (weekday_study_minutes between 0 and 720),
     weekend_study_minutes   integer not null default 240 check (weekend_study_minutes between 0 and 720),
-    experience_profile      varchar(40) check (experience_profile in
-                            ('WORKING_DEVELOPER','DEVELOPER_STARTER','OTHER')),
-    experience_start_date   date,
     onboarding_completed_at timestamptz,
     calendar_token_hash     char(64) unique,
     deletion_requested_at   timestamptz,
@@ -28,12 +25,10 @@ create table learning_goal (
     id                     uuid primary key default gen_random_uuid(),
     user_id                uuid not null unique references app_user(id) on delete cascade,
     target_role            varchar(40) not null check (target_role in ('JAVA_BACKEND')),
-    checkpoint_date        date,
     target_completion_date date not null,
     created_at             timestamptz not null default now(),
     updated_at             timestamptz not null default now(),
-    version                bigint not null default 0,
-    check (checkpoint_date is null or checkpoint_date <= target_completion_date)
+    version                bigint not null default 0
 );
 
 create table skill (

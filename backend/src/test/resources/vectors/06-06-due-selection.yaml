@@ -1,0 +1,47 @@
+# source: 06 §6.5 1~2단계, rows: 4
+# today = 2026-10-05 (Asia/Seoul, dayStartHour 4). planDayStart(today) = 2026-10-04T19:00:00Z,
+# planDayStart(today + 1) = 2026-10-05T19:00:00Z. 카드 필드: id, skill, dueAt, dueDate(planDate(dueAt)), priority(null = 목표 없음), failures.
+today: "2026-10-05"
+nextPlanDayStart: "2026-10-05T19:00:00Z"
+vectors:
+  - id: V01
+    case: 경계 — due_at = planDayStart(today + 1)은 제외, 1초 전은 포함
+    cap: 20
+    cards:
+      - { id: 1, skill: A, dueAt: "2026-10-05T19:00:00Z", dueDate: "2026-10-06", priority: MUST, failures: 0 }
+      - { id: 2, skill: A, dueAt: "2026-10-05T18:59:59Z", dueDate: "2026-10-05", priority: MUST, failures: 0 }
+    expectedTotal: 1
+    expected: [2]
+  - id: V02
+    case: 정렬 — overdueDays DESC → priority(MUST, SHOULD, LATER, 없음) → failures DESC → due_at ASC → id ASC
+    cap: 20
+    cards:
+      - { id: 1, skill: A, dueAt: "2026-10-04T19:00:00Z", dueDate: "2026-10-05", priority: null, failures: 0 }
+      - { id: 2, skill: B, dueAt: "2026-10-04T19:00:00Z", dueDate: "2026-10-05", priority: LATER, failures: 0 }
+      - { id: 3, skill: C, dueAt: "2026-10-04T19:00:00Z", dueDate: "2026-10-05", priority: MUST, failures: 0 }
+      - { id: 4, skill: D, dueAt: "2026-10-04T19:00:00Z", dueDate: "2026-10-05", priority: SHOULD, failures: 0 }
+      - { id: 5, skill: E, dueAt: "2026-10-02T19:00:00Z", dueDate: "2026-10-03", priority: null, failures: 0 }
+      - { id: 6, skill: F, dueAt: "2026-10-04T20:00:00Z", dueDate: "2026-10-05", priority: MUST, failures: 2 }
+      - { id: 7, skill: G, dueAt: "2026-10-04T20:00:00Z", dueDate: "2026-10-05", priority: MUST, failures: 0 }
+      - { id: 8, skill: H, dueAt: "2026-10-04T19:00:00Z", dueDate: "2026-10-05", priority: MUST, failures: 0 }
+    expectedTotal: 8
+    expected: [5, 6, 3, 8, 7, 4, 2, 1]
+  - id: V03
+    case: 상한 — 앞에서부터 cap장, totalDue는 상한 적용 전 수
+    cap: 2
+    cards:
+      - { id: 1, skill: A, dueAt: "2026-10-01T19:00:00Z", dueDate: "2026-10-02", priority: MUST, failures: 0 }
+      - { id: 2, skill: B, dueAt: "2026-10-02T19:00:00Z", dueDate: "2026-10-03", priority: MUST, failures: 0 }
+      - { id: 3, skill: C, dueAt: "2026-10-03T19:00:00Z", dueDate: "2026-10-04", priority: MUST, failures: 0 }
+    expectedTotal: 3
+    expected: [1, 2]
+  - id: V04
+    case: 상한을 먼저 적용하고 재배치한다 (RV-INTERLEAVE-C) — 상한 안에 A만 남아 순서가 그대로다
+    cap: 3
+    cards:
+      - { id: 1, skill: A, dueAt: "2026-10-01T19:00:00Z", dueDate: "2026-10-02", priority: MUST, failures: 0 }
+      - { id: 2, skill: A, dueAt: "2026-10-01T19:00:01Z", dueDate: "2026-10-02", priority: MUST, failures: 0 }
+      - { id: 3, skill: A, dueAt: "2026-10-01T19:00:02Z", dueDate: "2026-10-02", priority: MUST, failures: 0 }
+      - { id: 4, skill: B, dueAt: "2026-10-01T19:00:03Z", dueDate: "2026-10-02", priority: MUST, failures: 0 }
+    expectedTotal: 4
+    expected: [1, 2, 3]

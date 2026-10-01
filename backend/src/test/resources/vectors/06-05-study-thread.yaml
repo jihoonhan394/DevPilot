@@ -1,0 +1,60 @@
+# source: 06 §5.13 "학습 묶음" TH-1~TH-4, rows: 9
+# max-consecutive-days = 7.
+# recentMains 는 최근 plan-day 의 main skill (최근이 앞). main 이 없던 날은 목록에 없다.
+# candidates 는 오늘의 후보 skill, withLesson 은 노트에 안 푼 단위가 남은 skill.
+# expected 는 이어갈 skill (없으면 null).
+vectors:
+  - id: TH-V1
+    case: 어제 하던 skill에 노트가 남아 있다 — 이어 간다
+    recentMains: [A]
+    candidates: [A, B]
+    withLesson: [A]
+    expected: A
+  - id: TH-V2
+    case: 어제 하던 skill의 노트를 다 뗐다 — 묶음이 닫히고 점수로 고른다
+    recentMains: [A]
+    candidates: [A, B]
+    withLesson: [B]
+    expected: null
+  - id: TH-V3
+    case: 어제 하던 skill이 오늘 후보가 아니다 (목표 달성·deferred 등)
+    recentMains: [A]
+    candidates: [B, C]
+    withLesson: [A, B]
+    expected: null
+  - id: TH-V4
+    case: main 기록이 없다 — 첫날
+    recentMains: []
+    candidates: [A, B]
+    withLesson: [A]
+    expected: null
+  - id: TH-V5
+    case: 주말을 쉬어도 끊기지 않는다 — 쉰 날은 목록에 없다
+    recentMains: [A, A]
+    candidates: [A, B]
+    withLesson: [A]
+    expected: A
+  - id: TH-V6
+    case: 6일 연속 — 상한 전이라 이어 간다
+    recentMains: [A, A, A, A, A, A]
+    candidates: [A, B]
+    withLesson: [A]
+    expected: A
+  - id: TH-V7
+    case: 7일 연속 — 상한에 닿아 묶음을 닫는다 (TH-4, 막혀서 못 나가는 것을 막는다)
+    recentMains: [A, A, A, A, A, A, A]
+    candidates: [A, B]
+    withLesson: [A]
+    expected: null
+  - id: TH-V8
+    case: 중간에 다른 skill이 끼면 연속이 끊겨 다시 센다
+    recentMains: [A, B, A, A, A, A, A]
+    candidates: [A, B]
+    withLesson: [A]
+    expected: A
+  - id: TH-V9
+    case: 가장 최근 main만 본다 — 그 앞에 노트가 남은 skill이 있어도 이어가지 않는다
+    recentMains: [B, A, A]
+    candidates: [A, B]
+    withLesson: [A]
+    expected: null

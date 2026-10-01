@@ -1,6 +1,6 @@
 # 14. Architecture Decision Records
 
-> Status: Accepted (v3) · Last updated: 2026-09-18 · Related: `20-decisions-and-risks.md`, `03-system-architecture.md`, `11-development-roadmap.md` §4
+> Status: Accepted (v3) · Last updated: 2026-09-20 · Related: `20-decisions-and-risks.md`, `03-system-architecture.md`, `11-development-roadmap.md` §4
 >
 > 되돌리기 비용이 큰 결정과 그 이유를 기록한다. 결정을 바꿀 때는 기존 ADR을 고치지 않고 `Superseded by ADR-xxx`로 표시한 뒤 새 ADR을 추가한다. 적용된 기본값(DEC)은 `20-decisions-and-risks.md` §1, 확인할 외부 사실은 같은 문서 §3이 기준이다.
 
@@ -10,7 +10,7 @@
 
 | 항목 | 규칙 |
 |---|---|
-| 새 ADR | 다음 번호(ADR-039~)로 추가. 필드: Status, Date, Context, Decision, Alternatives considered, Consequences, Related DEC |
+| 새 ADR | 다음 번호(ADR-041~)로 추가. 필드: Status, Date, Context, Decision, Alternatives considered, Consequences, Related DEC |
 | Status 값 | `Proposed`(에이전트 초안, 사용자 승인 전) · `Accepted` · `Superseded by ADR-xxx` |
 | 에이전트 | 문서 모순·미정 결정을 발견하면 구현을 멈추고 `Proposed` ADR 초안을 PR로 올린다(`11-development-roadmap.md` §7). `Accepted`로 바꾸는 것은 사용자만 한다 |
 | Spike 결과 | SP-1~SP-5 결과는 해당 ADR의 Consequences에 "SP-n 결과 (날짜)" 줄로 추가한다 |
@@ -58,6 +58,11 @@
 | ADR-036 | 학습 루프: 읽는다 → 만든다 → 러버덕으로 설명한다 → 반복한다 | Accepted | DEC-24, DEC-26 |
 | ADR-037 | 날짜 없는 단계(M1/M2) | Accepted | DEC-25 |
 | ADR-038 | 첫 릴리스 전 migration 확정, 이후 불변 | Accepted | — |
+| ADR-039 | 학습 목표 = 학습 트랙 + 목표일 하나 | Accepted | DEC-27 |
+| ADR-040 | 실력을 증명하는 세 가지: AI 없는 재현 · 학습자별 트랙 · 프로젝트 기록 | Accepted | DEC-29, DEC-30, DEC-31 |
+| ADR-041 | 오늘의 팁·용어·과제 체크리스트는 DB가 아니라 콘텐츠로 둔다 | Accepted | DEC-32 |
+| ADR-042 | 학습 단계(반복 고리)는 저장하지 않고 파생 계산한다 | Accepted | DEC-33 |
+| ADR-043 | 하루를 추가 과제로 채우고, 같은 과제 유형이 이어지면 누른다 | Accepted | DEC-35 |
 
 ---
 
@@ -605,7 +610,7 @@
 
 - **Status**: Accepted · **Date**: 2026-09-18 · **Related DEC**: DEC-25
 
-**Context** — v2 로드맵은 2주 스프린트 8개를 날짜로 고정했고(S0 2026-09-17 ~ S7 2027-01-25), "2026-10-26 실사용 시작", "2027-01-05 중간 점검", "2026-11-09 stop-loss" 같은 날짜를 문서 곳곳에 썼다. 이 날짜들은 사용자가 정한 적이 없다. 사용자는 "최대한 빠르게 만들고 공부할 때 쓴다"고 했고, 학습 목표일은 사용자가 설정창에 등록하는 값이다. 구현은 전부 에이전트가 하므로 "사람이 저녁에 짬 내서 만드는" 전제의 날짜 고정 스프린트가 맞지 않는다. 한편 S0~S7 ID는 문서 전체에 1,200곳 넘게 참조되어 있다.
+**Context** — v2 로드맵은 2주 스프린트 8개를 날짜로 고정했고(S0 2026-09-17 ~ S7 2027-01-25), "2026-10-26 실사용 시작", "2026-11-09 stop-loss" 같은 날짜를 문서 곳곳에 썼다. 이 날짜들은 사용자가 정한 적이 없다. 사용자는 "최대한 빠르게 만들고 공부할 때 쓴다"고 했고, 목표일은 사용자가 설정창에 등록하는 값이다. 구현은 전부 에이전트가 하므로 "사람이 저녁에 짬 내서 만드는" 전제의 날짜 고정 스프린트가 맞지 않는다. 한편 S0~S7 ID는 문서 전체에 1,200곳 넘게 참조되어 있다.
 
 **Decision** — (1) **S0~S7 ID는 유지하되 의미를 "구현 순서 단계"로 바꾼다.** 기간·날짜가 없고 exit criteria를 통과하면 끝난다. (2) **M1 = S0~S3**(쓸 수 있는 최소, S3 완료 = 실사용 시작), **M2 = S4~S7**(M1을 쓰면서 필요한 순서로, 잠정). (3) budget·risk·replan 제안은 S5 → **S2**(기한 역산은 MUST이고 planner 입력이다), ICS 캘린더·AI 문제 생성은 S3 → S5, CSP 강제는 S3 → S4, evals v1은 S4 → S3. (4) stop-loss는 날짜 대신 "실사용 시작 + 14 plan-day"로 판정한다(`11` §6). (5) 문서의 지어낸 날짜를 지운다. 알고리즘 예시 입력 날짜(`19` §5.4, `05` JSON 예시 등)는 예시임이 분명하면 둔다. 기존 ADR 본문의 날짜 표현(ADR-024·031·033)은 결정 내용을 바꾸지 않고 단계 표현으로만 고쳤다.
 
@@ -624,3 +629,874 @@
 **Alternatives considered** — 지금부터 보정 migration을 쌓기(운영 데이터가 없는데 이력만 길어진다).
 
 **Consequences** — 개발 DB는 확정된 V1~V9로 다시 만든다. 첫 릴리스 이후에는 `AGENTS.md`의 "적용된 Flyway migration 수정 금지"가 예외 없이 적용된다.
+
+## ADR-039 학습 목표 = 학습 트랙 + 목표일 하나
+
+- **Status**: Accepted · **Date**: 2026-09-19 · **Related DEC**: DEC-27
+
+**Context** — 계획과 기한 역산에 필요한 사용자 입력은 **무엇을**(학습 트랙)과 **언제까지**(목표일)다. 날짜가 하나면 budget horizon(`06` §3.1)과 계획 템플릿 배치 창(`19` §5)의 끝이 같은 날이 되어 규칙이 한 갈래로 정해지고, 온보딩 첫 단계가 짧아진다. 현재 실력은 자기 신고가 아니라 짧은 진단(FR-02)과 증거 레벨(FR-06)로 잰다.
+
+**Decision** —
+1. 학습 목표(`learning_goal`)는 학습 트랙(`target_role`, 화면 "학습 트랙")과 **목표일**(`target_completion_date`, 화면 "목표일") 두 값이다. 목표일은 내일(plan-day + 1)부터 오늘 + 3년까지다.
+2. budget·risk horizon은 항상 목표일이다: `horizonDate = targetCompletionDate`(`06` §3.1).
+3. 계획 템플릿 배치는 창 하나 `[today, targetCompletionDate]`에 모든 milestone을 템플릿 순서대로 `weightBp`에 따라 배분한다. `PREPARATION` milestone이 앞에, `CONSOLIDATION`("설명과 정리")이 목표일 바로 앞에 온다(CV-33). test vector는 `19` §5.4 V1~V8이다.
+4. 사용자 프로필(`app_user`)은 계획·날짜 계산에 쓰는 값(표시 이름, timezone, 하루 시작 시각, 평일·주말 학습 시간)만 받는다. 개발 경험 같은 자기 신고 값은 받지 않는다.
+5. 온보딩 1단계 제목은 "무엇을, 언제까지 공부할지 정해요"이고, 입력은 표시 이름·학습 트랙·목표일(빠른 선택 "3개월 후"·"6개월 후"·"1년 후"·"직접 선택")이다(`02` SCR-ONBOARDING).
+
+**Alternatives considered** — 필수(MUST) 항목용 날짜를 따로 받아 배치 창과 horizon을 둘로 나누기(규칙이 두 갈래가 되고 사용자가 정할 값이 는다. "설명과 정리"의 위치는 템플릿 순서만으로 정해진다) · 개발 경험 프로필로 시작 수준이나 AI 맥락을 조정하기(자기 신고라 부정확하다. 진단과 증거 레벨이 같은 일을 더 정확하게 한다).
+
+**Consequences** — API: `LearningGoalView`·`LearningGoalUpdateRequest`·`LearningGoalInput`의 날짜 필드는 `targetCompletionDate` 하나이고, `OnboardingRequest`·`MeResponse`·`UpdateMeRequest`는 프로필 필드로 표시 이름·timezone·하루 시작 시각·학습 시간만 갖는다(`05` §3·§4·§5). DB: `learning_goal`의 날짜 컬럼은 `target_completion_date` 하나다(V2, ADR-038에 따라 첫 릴리스 전 확정). 목표일을 바꾸면 horizon과 배치 창이 함께 바뀌므로 활성 plan에 `replan_recommended = true`를 둔다(`06` §11.1). 화면에는 날짜 표시가 목표일 하나다(계획 헤더·설정 요약 "목표일 {date}", 타임라인의 목표일 표시).
+
+## ADR-040 실력을 증명하는 세 가지: AI 없는 재현 · 학습자별 트랙 · 프로젝트 기록
+
+- **Status**: Accepted · **Date**: 2026-09-20 · **Related DEC**: DEC-29, DEC-30, DEC-31
+
+**Context** — DevPilot이 재는 것은 "얼마나 공부했나"가 아니라 **무엇을 할 수 있게 됐나**다(`01` §5). 지금까지의 증거 경로에는 세 가지 빈틈이 있다.
+
+1. **도움을 받은 상태에서만 잰다.** challenge는 Hint Ladder와 함께 풀고, 코드 읽기는 러버덕으로 설명하며 끝난다. `06` §7.2의 "독립"은 그 한 번의 세션 안에서 힌트를 봤는지만 본다. AI가 옆에 있을 때 풀린 것은 이해한 것처럼 느껴지지만, 며칠 뒤 혼자 같은 것을 만들 수 있는지는 확인된 적이 없다.
+2. **학습자 하나를 전제한다.** `TargetRole`이 `JAVA_BACKEND` 하나여서 role target·계획 템플릿·과제 난이도가 모두 한 수준이다. 같은 사이드 프로젝트 주제를 **개발을 막 시작한 사람**이 함께 공부하면 필수 항목이 너무 많고 과제가 너무 어렵다.
+3. **프로젝트의 과정이 남지 않는다.** 사이드 프로젝트(`side_project`)는 이름·설명·저장소 주소만 있고, 그 안에서 **무엇을 왜 골랐는지**와 **무엇이 어떻게 깨졌는지**는 어디에도 기록되지 않는다. 며칠만 지나도 흐려지고, 나중에 설명(FR-25)이나 학습 기록(FR-18)을 만들 때 재료가 없다.
+
+셋은 따로 보면 별개 기능이지만 같은 질문의 세 면이다 — **누가, 무엇을, 정말로 할 수 있는가.**
+
+**Decision** —
+
+1. **재현 과제(`TaskType.REDO`, FR-28)를 둔다.** `CHALLENGE`·`PROJECT_TASK`를 마치고 **3~7일**(`devpilot.planner.redo.*`, 양 끝 포함) 뒤의 plan-day에 Today가 같은 것을 **AI 없이 처음부터 다시 만드는** 과제를 제안한다. 규칙은 `06` §5.10 RE-1~RE-8이다.
+   - **열려 있는 동안 그 대상의 AI 지원을 잠근다**(RE-5, HL-9): 그 challenge의 hint와 그 대상의 러버덕 시작이 409 `AI_ASSIST_LOCKED_FOR_REDO`다. 다른 대상과 복습·계획·기록은 그대로다. 잠금 판정은 `learning.application.RedoLockProvider` port(구현 `today`)로 한다.
+   - 완료할 때 **질문 하나**에 답한다(RE-6): "AI 도움 없이 끝냈나요?" 답은 `learning_task.redo_without_ai`와 `REDO_COMPLETED` payload에 남는다.
+   - **성공한 재현만 독립 구현 증거**다(RE-8). `06` §7.2의 `I3_SOLVED_INDEPENDENT`는 "독립 해결한 challenge 평가 **또는** 성공한 재현"을 `evidenceKey`로 구분해 센다. 실패는 벌이 아니라 복습 카드가 되고(RE-7), 창이 다시 열려 최대 2회까지 시도한다.
+   - 재현 과제는 **AI를 부르지 않으므로** `aiStatus`와 무관하게 동작한다.
+2. **학습 트랙을 둘로 한다(FR-03).** `TargetRole`에 `JAVA_BACKEND_STARTER`("Java 백엔드 입문")를 더한다. 트랙이 바꾸는 것은 네 가지뿐이다 — role target 파일(필수 skill 수와 목표 레벨), 계획 템플릿, planner 기본값(`devpilot.tracks.<트랙>`의 `max-task-difficulty`·`read-code-min-knowledge`), 진단 제안 범위. **점수·복습 간격·레벨 갱신·기한 역산 규칙은 두 트랙에서 같다.** skill 카탈로그도 공유한다(같은 Java 백엔드 스택이다). 트랙은 온보딩 1단계에서 고르고 **이후 바꾸지 않는다**. 두 사용자는 allowlist로 초대된 **독립 계정**이고 데이터 공유도 상호 조회도 없다(DEC-01, `07` §4.3).
+3. **사이드 프로젝트에 기록을 둔다(FR-29).** `side_project_note` 한 테이블에 **결정 기록**(무엇을 골랐나·선택지·왜)과 **장애 기록**(증상·발견·수정·예방)을 남긴다. 텍스트와 날짜, 선택 skill 하나뿐이고 파일 업로드는 없다. 유형은 생성 시 고정이고(PN-2) 본문 컬럼 조합은 DB CHECK로 강제한다(I-22). 기록은 **학습 이벤트를 만들지 않고 레벨을 바꾸지 않는다**(PN-3) — 자기 신고 텍스트이기 때문이다. 대신 주간 리뷰 지표(`projectNoteCount`)와 학습 기록 초안(`POST /evidence/drafts`의 `sourceProjectNoteId`)의 입력이 된다.
+
+세 기능이 함께 쓰는 스키마 변경은 `V10__track_notes_redo.sql` 하나로 묶는다(`04` §10.1). `V1`~`V9`는 고치지 않는다(ADR-038).
+
+**Alternatives considered** —
+
+- **재현 대신 기존 증거를 더 엄격하게** (예: 힌트를 본 풀이를 아예 증거에서 빼기) — 힌트는 막혔을 때 쓰라고 둔 것이고(FR-10), 쓰면 손해라는 신호를 주면 좌절한 채로 버티게 된다. 시간을 두고 다시 재는 쪽이 원리(간격 효과·인출 연습, `06` §6.0)와도 맞는다.
+- **재현 결과를 서버가 판정** (제출물 비교·유사도·AI 채점) — DevPilot은 사용자의 구현물을 받지 않는다(코드 읽기·프로젝트 과제 모두 로컬에서 한다). AI에게 "혼자 했는지"를 묻는 것은 `AGENTS.md`가 금지하는 "AI가 증거를 결정"하는 경로다. 질문 하나를 믿는다.
+- **잠금 없이 권고만** — 잠기지 않으면 막혔을 때 힌트를 보게 되고, 그러면 재현의 의미가 사라진다. 대신 잠금을 **그 대상·열려 있는 동안**으로 좁히고 화면이 이유를 먼저 보여 준다.
+- **트랙을 난이도 슬라이더 하나로** (같은 role target에 배율) — 입문자에게 필요한 것은 "같은 목록을 쉽게"가 아니라 **더 짧은 필수 목록**이다. 배율로는 MUST 수를 줄일 수 없다.
+- **입문 트랙에 별도 skill 카탈로그** — 같은 스택을 배우는데 카탈로그가 둘이면 증거·복습 카드·문제를 공유하지 못하고 콘텐츠가 두 배가 된다.
+- **트랙 변경 허용** — role target·계획 템플릿·`user_skill_state` 대상 집합이 통째로 달라져 계획과 증거를 이을 수 없다. 필요하면 별도 ADR로 마이그레이션 규칙을 정한다.
+- **기록을 러버덕 대화에서 자동 추출** — 러버덕은 대상이 있어야 시작하고 AI가 필요하다. 결정·장애는 AI 없이 즉시 남길 수 있어야 한다.
+- **기록을 skill 레벨 입력으로** — 자기 신고 텍스트라 흔들린다. `06` §7의 입력은 관찰된 행동(평가·복습·힌트)으로만 유지한다.
+
+**Consequences** —
+
+- **DB**: `V10` 하나로 `learning_task`에 `redo_source_task_id`·`redo_without_ai`(+ CHECK 3종, I-20·I-21), `side_project_note`(+ CHECK, I-22), 그리고 enum CHECK 재생성(`TargetRole`, `TaskType`, `LearningEventType`, `EventSourceType`, `ReviewItemSourceType`)이 들어간다. 인덱스 둘(`idx_learning_task_redo_candidate`, `idx_side_project_note_project`).
+- **API**: 새 오류 코드 `AI_ASSIST_LOCKED_FOR_REDO`(409)와 field error `VALUE_REQUIRED`. `PATCH /today/tasks/{taskId}`에 `redoWithoutAi`, `MainTaskView`에 `redoSourceTaskId`·`redoSourceTaskType`·`redoWithoutAi`, 프로젝트 기록 endpoint 5개, `POST /evidence/drafts`의 `sourceProjectNoteId`, `PUT /learning-goal`의 트랙 변경 차단.
+- **모듈**: `learning.application.RedoLockProvider` port가 하나 늘고(`today`가 구현) `project → skill`, `evidence → project` 의존이 추가된다. 새 규칙 클래스는 `today.domain.RedoTaskPolicy` 하나다.
+- **단계**: 학습 트랙과 프로젝트 기록은 **S3**(실사용 시작 시점에 둘 다 있어야 한다), 재현 과제는 **S4**(창 특성상 첫 재현은 실사용 시작 뒤에 생기고, 잠금이 S3의 hint·러버덕 위에 붙는다). `V10`은 S3다.
+- **콘텐츠**: 입문 트랙의 role target 75개와 계획 템플릿 1개를 새로 쓴다(`19` §10.4, `BL-CNT-17`). skill tree·복습 카드·challenge·curated repo는 그대로 쓴다.
+- **레벨 도달 속도**: `I3`에 도달하는 경로가 하나 늘지만 조건은 더 엄격해진 셈이다 — 힌트를 보고 푼 challenge는 여전히 증거가 아니고, 재현은 며칠을 기다려야 한다. `11` §1 R-8의 "M1은 K·I·E ≤ 3" 상한은 그대로다(재현 과제는 S4).
+- **AI 비용**: 0이 늘어난다. 재현 과제와 프로젝트 기록은 AI를 부르지 않고, 잠금은 오히려 hint·러버덕 호출을 줄인다.
+
+---
+
+## ADR-041 오늘의 팁·용어·과제 체크리스트는 DB가 아니라 콘텐츠로 둔다
+
+- **Status**: Accepted · **Date**: 2026-09-20 · **Related DEC**: DEC-32
+
+**Context** — 매일 배우는 것 옆에 붙일 짧은 재료 세 가지가 필요해졌다(`02` SCR-TIP-*, SCR-TERM-*).
+
+1. **오늘의 팁** — 실무에서 실제로 터지는 것(자원을 닫지 않으면 무엇이 로그에 남는가, 로그 레벨을 언제 무엇으로 쓰는가)을 하루 1개, 2~3분 분량으로.
+2. **용어 사전** — 같은 것을 "컬럼/열/칼럼"으로 다르게 부르면 설명이 흐려진다. 대표 표기 하나와 "이렇게도 부른다"를 함께.
+3. **과제 체크리스트** — 이름 짓기·커밋·API 설계처럼 아무도 따로 알려 주지 않는 관례를, 필요한 순간(과제 시작 전·끝내기 전)에.
+
+셋 다 **기존 challenge·seed 카드처럼 테이블에 넣을 수도 있고, 코드 읽기(`reading_key`)처럼 콘텐츠 파일로 둘 수도 있다.**
+
+**Decision** — **콘텐츠 파일 + 메모리 레지스트리**로 둔다. 사용자별 상태만 DB에 남긴다.
+
+- `content/tips/*.yaml` → `DailyTipRegistry`(today), `content/terms/*.yaml` → `TermRegistry`(review), `content/checklists/*.yaml` → `TaskChecklistRegistry`(today). 등록은 기동 시 `content` 모듈이 한다(`CuratedReadingRegistry` 선례, `03` §2.2).
+- DB에 만드는 것은 **`user_daily_tip` 한 테이블뿐**이다(누가 어떤 팁을 언제 봤고 무엇을 골랐나). 용어 복습 카드는 기존 `review_item`에 `source_type = TERM`으로 들어간다. 체크리스트는 사용자별 상태가 없어 테이블이 없다.
+- 팁·용어를 가리키는 값은 FK가 아니라 **key 문자열**이다(`learning_task.reading_key` 선례). 콘텐츠에서 사라진 key는 조회만 되고 새로 제안되지 않는다(`19` §8.2 은퇴).
+
+**Alternatives considered**
+
+| 대안 | 버린 이유 |
+|---|---|
+| challenge처럼 테이블 5개(`daily_tip`, `daily_tip_skill`, `term`, `term_skill`, `task_checklist`)에 seed upsert | 사용자 데이터가 붙지 않는 순수 읽기 콘텐츠에 테이블·FK·migration·seed 서비스가 다섯 벌 생긴다. 문구 하나 고치는 데 배포가 필요하고, 은퇴·교체는 `19` §8.2가 이미 콘텐츠 쪽에서 푼 문제다 |
+| 앱에 하드코딩 | 콘텐츠 검증기(`19` §4)를 못 쓴다. 출처 확인·표기 통일·금지 표현 검사가 전부 사라진다 |
+| 팁만 테이블, 용어·체크리스트는 콘텐츠 | 셋의 성격이 같은데 다루는 방식만 갈라진다. 일관성이 없으면 다음 콘텐츠를 어디에 둘지 매번 다시 정해야 한다 |
+
+**Consequences**
+
+- **좋은 점**: 팁·용어를 고치는 데 migration이 필요 없다. 검증기가 출처(`sourceUrl`)와 표기 통일(CV-104)을 강제한다. `V10`에 테이블 하나만 는다.
+- **비용**: 팁·용어로 **조인·집계 쿼리를 쓸 수 없다**(예: "가장 많이 LEARNED로 표시된 팁"). 지금은 필요 없고, 필요해지면 `user_daily_tip`의 key로 콘텐츠를 메모리에서 붙이면 된다.
+- **제약**: 레지스트리는 메모리라 인스턴스마다 같은 콘텐츠를 읽어야 한다. 단일 인스턴스 배포(`10` §2)라 문제되지 않는다.
+- **AI 비용**: 0이다. 팁 선택·용어 검색·체크리스트 모두 AI를 부르지 않는다(`06` §5.12는 결정적 규칙이다).
+
+---
+
+## ADR-042 학습 단계(반복 고리)는 저장하지 않고 파생 계산한다
+
+- **Status**: Accepted · **Date**: 2026-09-20 · **Related DEC**: DEC-32
+
+**Context** — 한 번 보고 넘어간 개념은 남지 않는다. 그래서 필수 skill마다 **만들기 → 읽기 → 남의 코드 읽기 → 설명 → 복습 → AI 없이 다시 하기**의 여섯 단계를 한 바퀴 돌게 하고, 기술 상세 화면에 어디까지 왔는지 보여 주기로 했다(`06` §5.11, `02` SCR-SKILL-DETAIL).
+
+문제는 **이 진행 상태를 어디에 두느냐**다. `user_skill_stage` 같은 테이블을 만들어 단계를 마칠 때마다 갱신하는 것이 흔한 방식이다.
+
+**Decision** — **저장하지 않는다.** 조회 시점에 그 사용자·그 skill의 **학습 이벤트**(`04` §6)로 여섯 단계를 판정한다(`06` §5.11 ST-1).
+
+- 판정 입력은 `learning_event`뿐이다. `skill` 모듈은 `learning`에만 의존하므로 `today`·`review`·`rubberduck`의 entity를 직접 읽지 않아도 된다(`03` §2.2).
+- 단계 상태를 담는 컬럼·테이블·이벤트를 만들지 않는다. `LearningStageEvaluator`는 `skill.domain`의 순수 클래스다.
+
+**Alternatives considered**
+
+| 대안 | 버린 이유 |
+|---|---|
+| `user_skill_stage` 테이블에 단계별 완료 시각 저장 | **같은 사실이 두 곳에 생긴다.** 이벤트는 이미 다 있는데 파생 상태를 따로 쓰면 어긋날 수 있고(이벤트는 기록됐는데 갱신이 실패한 경우), 규칙을 고칠 때 과거 데이터를 backfill해야 한다 |
+| 단계 완료를 `learning_event`의 새 이벤트(`STAGE_COMPLETED`)로 | 이벤트가 다른 이벤트에서 파생되는 구조가 된다. 순서가 꼬이면 복구가 어렵고, `06` §7.1 레벨 규칙이 이 이벤트를 또 세지 않도록 매번 제외해야 한다 |
+| 화면에서만 계산(서버는 모름) | 앱 3곳(기술 상세·Today·대시보드)에 같은 규칙이 중복된다. planner의 `stageGap`(§5.4)도 서버에서 필요하다 |
+
+**Consequences**
+
+- **좋은 점**: 상태 동기화 문제가 없다. 규칙(§5.11 표)을 고치면 **과거 기록에 즉시 반영**된다 — backfill이 없다. `V10`에 테이블이 늘지 않는다.
+- **비용**: 기술 상세를 열 때마다 이벤트를 읽는다. `idx_learning_event_user_skill_time`(`04` §11)이 이미 있고, 한 skill의 이벤트는 많아야 수백 건이라 감당된다. 느려지면 캐시를 앞에 두면 되고, 그때도 **저장소는 이벤트 하나**다.
+- **주의**: `TIP_VIEWED`·`TERM_CARD_CREATED`는 단계 판정과 레벨 규칙 **양쪽에서 제외**한다(`06` §7.1) — 팁을 읽은 것만으로 단계가 차면 안 된다.
+
+---
+
+## ADR-043 하루를 추가 과제로 채우고, 같은 과제 유형이 이어지면 누른다
+
+- **Status**: Accepted · **Date**: 2026-09-21 · **Related DEC**: DEC-35
+
+**Context** — 12주 학습 시뮬레이션(`StudyJourneySimulationTest`, `09` §14)을 실제로 돌려 두 가지가 드러났다. 하루치 응답만 보면 둘 다 보이지 않는다.
+
+1. **하루의 절반 이상이 빈다.** `06` §5.6은 하루에 main 1개와 REVIEW 1개만 만든다. 평일 60분이면 main 25~40 + 복습 8 = 33~48분(55~80%)이지만, **주말 270분이면 48분(18%)**이다. 그 결과 `06` §3.3의 `completionRateBp = Σactual / Σavail`가 **매일 빠짐없이 완주해도 24%**로 나와 하한 3_000에 붙고, 기한 위험도가 `CRITICAL`에서 내려오지 않는다. 기한 역산은 이 제품의 핵심 기능인데(`01` FR-05) 신호 역할을 못 한다.
+2. **12주에 문제를 2번 풀고 설명하기를 50일 한다.** 성실한 연동 트랙 학습자의 84일 분포가 `{EXPLAIN 50, PROJECT_TASK 18, READING 9, READ_CODE 5, CHALLENGE 2}`였고 **20 plan-day 연속 `EXPLAIN`** 구간이 있었다. `06` §5.5의 `FATIGUE_*`는 **같은 skill**만 억제하고 **같은 과제 유형**은 보지 않는다. 그래서 §5.3의 마지막 분기(`EXPLAIN`)로 떨어지는 skill이 여럿이면 skill은 매일 바뀌어도 하는 일은 몇 주씩 같다.
+
+둘 다 **규칙에 가드가 아예 없어서** 생긴 일이고, 콘텐츠를 채워도 규칙이 그대로면 다시 생긴다.
+
+**Decision** — `06` §5.5에 **과제 유형 단조로움 modifier**를, §5.6에 **추가 과제**를 넣는다. 둘 다 결정적 규칙이고 AI를 부르지 않는다.
+
+- **추가 과제** — main을 정한 뒤 `remaining = mainBudget − main.estimated`가 `extra-task-min-minutes`(기본 **15**) 이상이면 **순위 2위 후보부터** 같은 조정 규칙으로 과제를 더 만든다. 상한은 `max-extra-tasks`(기본 **3**)다. 같은 skill과 같은 재료(challenge·reading)는 하루에 한 번만 쓴다. `RECALL`로는 내려가지 않는다 — `RECALL`은 main을 대신하는 예비 과제이지 덧붙이는 과제가 아니다.
+- **저장**: 추가 과제는 `learning_task.is_main = false`, `sort_order = main + 1, +2, …`다. daily plan당 활성 main은 1개여야 하므로(I-04, `uq_learning_task_one_active_main`) main으로 저장할 수 없다. **migration이 필요 없다** — 기존 컬럼만 쓴다.
+- **응답**: 새 필드를 만들지 않는다. `TodayView.earlierMainTasks`(`05` §8.1)의 뜻을 "`mainTask`를 뺀 같은 날의 다른 학습 과제"로 넓혀 추가 과제를 함께 싣는다. `REVIEW`만 `reviewTask`로 따로 나간다.
+- **단조로움 modifier** — 최근 5 plan-day의 main 과제 유형을 보고(main이 없는 날에서 끊는다) 오늘 제안과 같은 유형이 **3일 연속이면 ×0.70**, **5일 연속이면 ×0.40**이다. 적용 순서는 `FATIGUE_*` 다음(4번), `COMEBACK_HARD_TASK` 앞이다.
+
+**Alternatives considered**
+
+| 대안 | 버린 이유 |
+|---|---|
+| 남는 시간을 **무제한으로** 채운다(하루를 100% 채운다) | 주말 270분이면 과제가 6~8개가 된다. 다 못 하면 실패로 보이는 목록이라 **U-3(죄책감을 주는 UI 금지, `02` §1)**을 정면으로 어긴다. 끝까지 채운 하루보다 **끝낼 수 있는 하루**가 먼저다. 채우지 못한 시간은 `06` §3.3이 정직하게 드러낸다 |
+| 추가 과제를 만들지 않고 **`completionRateBp`의 분모를 "계획한 시간"으로 바꾼다** | 숫자만 좋아지고 사용자의 하루는 그대로 빈다. 목표일 역산이 "선언한 시간을 다 쓰면 언제 끝나는가"를 답해야 하는데, 분모를 계획으로 바꾸면 그 질문에 답할 수 없다 |
+| 추가 과제를 **`is_main = true`로 저장**하고 화면에서 순서대로 보여 준다 | `uq_learning_task_one_active_main`(I-04)을 지울 수밖에 없다. 그 index는 "오늘 지금 할 것은 하나"를 DB가 보장하는 장치이고, 세션·재생성·이어하기 규칙이 전부 그 위에 서 있다. 채우기 기능 하나를 위해 걷어낼 것이 아니다 |
+| **새 응답 필드**(`extraTasks`)를 추가한다 | 같은 모양(`MainTaskView`)의 목록이 둘이 된다. 앱은 두 목록을 같은 카드로 그리고 상태 변경도 같은 엔드포인트로 한다 — 나눌 이유가 없다. `earlierMainTasks`는 이미 "main을 뺀 그날의 다른 과제"였고, 뜻을 넓히는 것으로 충분하다 |
+| 단조로움을 **`06` §5.3 분기에서** 막는다(같은 유형이 N일 이어지면 그 분기를 건너뛴다) | 제안 분기는 "이 skill에 지금 줄 수 있는 최선"을 고르는 자리다. 거기서 유형을 막으면 재료가 있는데도 못 주는 날이 생긴다. 유형 다양성은 **후보 사이의 우선순위** 문제이므로 §5.5 modifier가 맞는 자리다 |
+| `FATIGUE_*`의 문턱을 유형까지 포함해 **1·2일로** 당긴다 | 이틀에 걸친 코드 읽기, 이어서 푸는 문제처럼 **정상적인 이틀 연속**을 깨뜨린다. 같은 유형은 같은 skill보다 덜 해롭다 — 유형이 같아도 다루는 기술이 다르면 새 내용을 배운다 |
+| 하루 안에서도 **같은 유형을 2개까지**로 제한한다(추가 과제에) | 규칙이 후보 목록을 두 번 훑어야 하고 vector가 배로 는다. 하루 안의 유형 반복은 날짜 축 modifier가 이미 줄이고, 하루에 진짜 문제가 되는 것은 **같은 skill을 네 번 하는 것**이다. 그쪽만 막는다 |
+
+**Consequences**
+
+- **좋은 점**: 선언한 시간이 실제 과제로 이어져 `06` §3.3의 완주율이 의미 있는 값이 되고, 기한 위험도가 움직인다. 유형이 한쪽으로 쏠리면 다른 유형 후보가 뒤집을 수 있게 되어 §12의 학습 루프(읽는다 → 만든다 → 설명한다)가 유지된다. **migration이 없다**.
+- **비용**: 추가 과제도 reading을 소비하므로 `06` §5.3의 "최근 14 plan-day 안에 제안된 것 제외"에 걸리는 재료가 하루 최대 4배 빨리 는다. 재료가 얇은 skill은 `EXPLAIN`으로 더 빨리 떨어진다 — 콘텐츠 보강(`19` §4.1 CV-125 WARN)과 함께 가야 한다.
+- **한계**: 단조로움 modifier는 후보 **사이**의 순서만 바꾼다. 모든 후보의 제안이 같은 유형이면 아무것도 바뀌지 않는다. 규칙으로 풀 수 있는 부분은 여기까지다.
+- **남는 시간**: 상한 3개 때문에 주말 270분은 여전히 다 차지 않는다. **의도한 것이다** — 더 채우면 U-3를 어긴다. 상한을 올리려면 이 ADR을 대체한다.
+- **AI 비용**: 0이다. 두 규칙 모두 결정적이다.
+- **화면**: 추가 과제는 `02` SCR-TODAY의 `today.earlier` 접힘 목록에 들어간다. **개수 배지·진행률·퍼센트를 붙이지 않는다**(U-3).
+
+---
+
+## ADR-044 학습 순서는 프로젝트를 만드는 순서다
+
+- **Status**: Accepted · **Date**: 2026-09-23 · **Related**: `06` §5.2, `19` §3.4, ADR-043
+
+**Context** — 사용자 통합 테스트에서 드러났다. 활성 계획의 milestone은 이미 **프로젝트를 만드는 순서**다.
+
+```
+기반 다지기 → 회원과 인증 → 상품과 CRUD → 주문 생성 → 취소와 환불
+          → 조회 성능 → 구조 정리 → 배포와 운영 → 설명과 정리
+```
+
+계획 템플릿에도 그렇게 적혀 있다 — *"milestone은 과목 순서가 아니라 하나를 고쳐서 배포하고 확인하기까지의 순서다."*
+
+그런데 첫날 Today가 배정한 과제는 **`DATABASE.SQL_BASICS`**(3번째 단계 "상품과 CRUD")였고, 사유는 `DEADLINE_RISK_MUST` · `HIGH_PRACTICAL_IMPORTANCE` · `LARGE_SKILL_GAP`이었다. `milestoneId`는 `null`이다. Git·Gradle·`application.yml`·첫 API(1번째 단계)를 하나도 하지 않은 상태다.
+
+원인은 버그가 아니라 `06` §5.2 후보 규칙 **4번**이다.
+
+> 4. `plan_skill_target`에서 priority MUST/SHOULD인 skill
+
+1·2번이 현재·다음 milestone으로 후보를 좁혀 놓는데, 4번이 **계획 전체의 MUST/SHOULD를 첫날부터 다시 열어 준다.** 그 뒤 §5.4 점수는 중요도·격차로 정렬하므로 결과가 **중요도 순**이 된다.
+
+**중요도 순의 문제** — 어디에 쓰는지 모르는 채로 배우면 남지 않는다. Spring 프로젝트를 띄우지도 못하는 상태에서 HTTP 클라이언트를 배울 수는 없다. 만들면서 필요해진 순간에 배워야 개념이 자리를 잡는다.
+
+또 하나. milestone은 **날짜**로만 넘어간다. 2주를 쉬면 1번 단계를 하나도 못 했어도 달력이 2번 단계로 옮겨 간다. 순서를 지켜도 이 구멍으로 다시 무너진다.
+
+**Decision** — 두 가지를 바꾼다.
+
+1. **§5.2 후보 규칙 4번을 삭제하고, 3번을 좁힌다.** 후보는 현재 milestone ∪ 다음 milestone ∪ **이미 손대 본** due review skill ∪ 재현 후보 skill이다. 중요도는 **그 단계 안에서** 순서를 정하는 데만 쓴다(§5.4 그대로).
+   - 다음 milestone을 남겨 두는 이유: 현재 단계를 다 끝냈을 때 할 일이 없어지지 않게 하는 완충이다.
+   - 3번을 좁히는 이유: 씨앗 카드가 9개 단계 전체에 미리 배정되어 있어, 손대 본 적 없는 뒷 단계 skill이 due라는 이유로 main task가 된다. 실제로 그렇게 나왔다(1단계를 시작도 안 한 상태에서 8단계 `EXPLANATION.PROJECT_STORY`가 오늘의 과제). 거른 skill의 **복습은 그대로 나온다** — REVIEW 과제는 별개다.
+   - prerequisite 대체 규칙(§5.2 마지막 제외 항목)은 그대로 둔다 — 단계 안에서도 선행이 안 된 skill을 먼저 집어 준다.
+
+2. **현재 milestone을 날짜가 아니라 진행으로 정한다.** `currentMilestones`를 "오늘이 기간에 포함된 milestone"에서 **"아직 완료되지 않은 가장 앞선 milestone"**으로 바꾼다.
+   - **완료 기준**: 그 milestone의 MUST skill이 전부 `planningLevel ≥ target`. MUST가 없으면 SHOULD로 본다.
+   - 날짜는 **위험도 계산과 표시에만** 쓴다(`06` §4). 늦어도 단계를 건너뛰지 않는다 — 늦었다는 사실은 위험도로 알린다.
+
+**Consequences**
+
+- 첫날 후보가 "기반 다지기" 12개로 좁혀진다. Git·Gradle·Spring 부팅·첫 API가 먼저 나온다.
+- 한 단계를 끝내야 다음이 열린다. 쉬어도 순서가 보존된다.
+- 기한이 촉박해도 순서를 건너뛰지 않는다. 대신 `06` §4 위험도가 올라간다. **속도를 포기하고 순서를 지킨다**는 선택이다.
+- 진행이 느리면 뒷 단계 skill을 영영 못 볼 수 있다. 그건 실제로 그 상태이며, 위험도가 알릴 일이다.
+- 영향: `PlannerScoring.selectCandidates`·`currentMilestones`, `06` §5.2, test vector, `StudyJourneySimulationTest`.
+
+**Alternatives**
+
+- *4번을 남기고 점수에 milestone 보너스만 추가* — 가중합이라 중요도가 큰 뒷 단계 skill이 계속 이긴다. 같은 문제가 남는다.
+- *날짜 기반 유지* — 쉬는 기간이 순서를 깨뜨리는 구멍이 그대로다.
+
+---
+
+## ADR-045 개념을 한 번도 안 본 skill에는 문제를 내지 않는다
+
+- **Status**: Accepted · **Date**: 2026-09-23 · **Related**: `06` §5.3, ADR-044
+
+**Context** — `06` §5.3의 제안 분기는 이렇다.
+
+```text
+1. CHALLENGE    조건: AI 사용 가능 + 풀 만한 challenge 있음          ← 지식 수준 검사 없음
+2. READ_CODE    조건: AI 사용 가능 + KNOWLEDGE ≥ readCodeMinKnowledge ← 문턱 있음
+3. READING      조건: KNOWLEDGE < 2
+```
+
+**코드를 읽는 데는 문턱이 있는데 문제를 푸는 데는 없다.** 그래서 그 skill을 한 줄도 읽어 본 적 없는(planning KNOWLEDGE 0) 학습자도 난이도 1 challenge가 있으면 그것부터 받는다. 사용자 통합 테스트에서 실제로 그렇게 나왔고, 1단계 "기반 다지기"의 12개 skill 중 8개에 challenge가 있어 ADR-044 뒤에도 그대로 재현된다.
+
+ADR-044가 "만들면서 필요해진 순간에 배운다"를 순서로 세웠다면, 이 분기는 그 순서 **안에서** 같은 문제를 다시 만든다 — 개념 없이 문제부터 풀면 어디에 쓰는지 모른 채 답만 맞히게 된다.
+
+**Decision** — 1번 분기에 **`planning KNOWLEDGE ≥ trackDefaults.challengeMinKnowledge`** 조건을 더한다. 기본값 **1**이다.
+
+- KNOWLEDGE 0이면 3번 READING으로 떨어진다. 개념 노트나 개념 읽기를 한 번 마치면 KNOWLEDGE가 1이 되고(§7) 그때 challenge가 열린다.
+- **읽기 → 문제 → 복습**이 한 skill 안에서 순서를 갖는다. 계획 템플릿이 적어 둔 milestone 안의 순환(읽기 → 개념 → 구현 → 러버덕 → 복습)과 같은 모양이다.
+- `readCodeMinKnowledge`와 같은 자리(`devpilot.tracks.<트랙>`)에 둔다. 트랙마다 다르게 정할 수 있다.
+- **진단(`DIAGNOSTIC`) challenge는 이 문턱을 받지 않는다** — 진단은 지금 수준을 재는 것이지 가르치는 과제가 아니다(§7.4).
+
+**Consequences**
+
+- 새 skill의 첫 과제는 항상 읽기다. 초급자가 첫날 백지 문제를 마주하지 않는다.
+- 개념 읽기도 노트도 없는 skill은 estimated 25분짜리 READING으로 떨어진다(§5.3 3번) — 재료가 없다는 사실이 드러난다. 그건 콘텐츠로 메울 일이다.
+- 이미 KNOWLEDGE ≥ 1인 skill은 아무것도 바뀌지 않는다.
+
+**Alternatives**
+
+- *문턱 2* — 개념 읽기 하나로는 열리지 않는다. 너무 느리다.
+- *challenge 난이도로만 거르기* — 난이도 1이어도 개념을 모르면 풀 수 없다. 난이도는 문제의 성질이고 문턱은 학습자의 상태다.
+
+---
+
+## ADR-046 위험도가 여러 날 높으면 replan을 권한다
+
+- **Status**: Accepted · **Date**: 2026-09-23 · **Related**: `06` §4, §11.1, ADR-044
+
+**Context** — `replan_recommended`는 지금 **학습 목표일을 바꿀 때만** 켜진다(`06` §11.1). 위험도가 몇 주 내내 `CRITICAL`이어도 앱은 아무것도 권하지 않는다. 사용자 통합 테스트에서 첫날부터 `deadlineRisk = CRITICAL`이면서 `replanRecommended = false`였다 — **"심각"이라고만 하고 무엇을 하라는 말이 없다.**
+
+ADR-044 전에는 밀려도 달력이 단계를 넘겨 줘서 겉보기 진도는 나갔다. 이제는 **순서를 지키고 늦어진다**를 택했으므로, 밀린 사람은 1단계에 계속 머무르고 위험도만 올라간다. 그 상태를 알리고 계획을 줄이도록 이끄는 신호가 없으면, 남는 것은 영영 따라잡을 수 없는 계획과 매일 뜨는 빨간 표시뿐이다.
+
+**Decision** — 진행 스냅샷을 만들 때(`StudyBudgetService.upsertSnapshot`, `06` §4) **최근 스냅샷이 연속으로 `riskLevel ≥ HIGH`인 날이 `devpilot.plan.replan-recommend-after-days`(기본 **7**)에 닿으면** 활성 plan의 `replan_recommended`를 켠다.
+
+- 세는 단위는 **스냅샷이 있는 날**이다(`snapshot_date` DESC 연속). 앱을 안 연 날은 스냅샷이 없어 건너뛴다 — 쉰 날을 세어 재촉하지 않는다.
+- 오늘 스냅샷을 포함해 센다. `MEDIUM` 이하가 하나라도 끼면 연속이 끊긴다.
+- **켜기만 한다.** 끄는 것은 replan이 새 plan version을 만들 때다(그 plan은 `replan_recommended = false`로 시작한다).
+- 이미 켜져 있으면 아무 일도 하지 않는다(멱등).
+
+**Consequences**
+
+- 일주일 내리 위험한 사람에게 "계획을 줄이자"가 뜬다. 지금은 아무 말도 없다.
+- 하루 이틀 나쁜 날에는 뜨지 않는다 — 7일이라는 값이 그 완충이다.
+- ADR-044의 대가(늦어도 순서를 지킨다)에 대응하는 출구가 생긴다. 순서를 건너뛰는 대신 **계획을 줄여서** 맞춘다.
+- 스냅샷은 하루 한 번(`ProgressSnapshotJob`) 또는 Today 생성 시 만들어지므로 추가 비용이 없다. AI를 부르지 않는다.
+
+**Alternatives**
+
+- *`CRITICAL` 하루만으로 권고* — 첫날부터 뜬다. 계획이 원래 빡빡하면 늘 켜져 있어 신호가 죽는다.
+- *달력 날짜로 세기* — 앱을 안 연 날까지 세어, 오래 쉬고 돌아온 사람에게 첫날부터 권고가 뜬다. 돌아온 날 할 말은 그게 아니다.
+
+---
+
+## ADR-047 설명이 안 통할 때 다른 방식으로 한 번 더 설명한다
+
+- **Status**: Accepted · **Date**: 2026-09-23 · **Related**: `05` §21, `17` §3, ADR-045
+
+**Context** — 사용자 통합 테스트에서 학습 흐름을 끝까지 돌려 보니, 막히는 자리가 한 군데 뚜렷했다. **노트의 `explain`이 안 통하면 거기서 끝난다.**
+
+지금 있는 출구는 이렇다.
+
+- **힌트** — 백지 문제를 푸는 중일 때만 쓸 수 있다. 설명 단계에서는 열리지 않는다
+- **러버덕** — 질문만 하고 답을 주지 않는다(RD-1). "모르겠다"가 2턴이면 힌트 사다리로 넘어가는데, 그 사다리도 문제 풀이용이다
+- **개념 읽기·코드 읽기** — 다른 자료로 옮겨 가는 것이지, 그 설명을 다시 말해 주지 않는다
+
+즉 **"이 문단이 이해가 안 된다"에 답하는 자리가 없다.** 현재 AI operation 11개 중에도 없다. 학습자는 같은 문단을 다시 읽거나, 덮는다.
+
+콘텐츠로 메우는 방법(설명을 두 벌 쓰기)은 글 양이 두 배가 되고, **어디서 막혔는지에 맞춰 주지도 못한다.**
+
+**Decision** — AI operation **`LESSON_REEXPLAIN`**(`lesson.reexplain`)을 더한다. 학습 단위의 설명을 **다른 각도로 한 번 더** 풀어 준다.
+
+- **입력은 콘텐츠와 막힌 이유뿐**이다. 단위 제목·`explain`·`oneLine`·skill 이름, 그리고 학습자가 고른 **`ConfusionReason`**(`UNFAMILIAR_TERMS` | `WHY_NOT_CLEAR` | `EXAMPLE_UNCLEAR`) 하나.
+- **자유 입력을 받지 않는다.** 고정 선택지 하나면 방향을 잡기에 충분하고, 마스킹·개인정보·프롬프트 주입을 고민할 일이 없어진다.
+- **백지 문제와 모범 답안을 보내지 않는다.** 보내지 않으면 흘릴 수 없다. 여기에 `CodeLeakGuard`를 걸어 **코드 블록과 3줄 이상 코드**를 막는다 — 설명은 개념에 머문다(ADR-045와 같은 결: 개념이 먼저다).
+- **저장하지 않는다.** 응답으로만 보여 준다. 같은 요청을 다시 하면 다시 부른다. 학습 기록(`learning_event`)도 남기지 않는다 — 이건 배움의 증거가 아니라 읽기를 돕는 일이다.
+- 호출은 **학습자가 누를 때만** 한다. 자동으로 부르지 않는다(비용, `17` §8).
+
+**Consequences**
+
+- 막히는 자리에 출구가 생긴다. 노트를 덮는 대신 한 번 더 시도한다.
+- 콘텐츠를 두 벌 쓰지 않아도 된다. 작성 비용이 늘지 않는다.
+- 저장하지 않으므로 migration이 없다. `ai_call_log`에는 다른 operation과 같게 남는다(비용 집계).
+- 매번 다른 문장이 나온다 — **노트 본문과 달리 재현되지 않는다.** 그래서 본문을 대체하지 않고 보조로만 둔다.
+- AI가 꺼져 있으면 버튼을 숨긴다(`02` §6.2 `aiAvailable`).
+
+**Alternatives**
+
+- *설명을 두 벌 쓰기* — 글 양이 두 배이고, 두 번째도 안 통하면 같은 자리에 선다. 어디서 막혔는지에 맞출 수 없다.
+- *자유 입력을 받기* — 더 잘 맞출 수 있지만 마스킹·주입·저장 정책이 따라붙는다. 고정 선택지로 시작하고, 부족하면 그때 넓힌다.
+- *러버덕으로 보내기* — 러버덕은 **답을 주지 않는 것**이 정체성이다(RD-1). 여기서 필요한 것은 답 쪽이다.
+
+---
+
+## ADR-048 만들기 과제는 무엇을 만들고 언제 끝인지 말해 준다
+
+- **Status**: Accepted · **Date**: 2026-09-24 · **Related**: `05` §8.1, `06` §5.3·§5.8, `19` §3.11·§3.14
+
+**Context** — `PROJECT_TASK`가 만드는 것은 제목 한 줄과 **모든 skill에 똑같은 한 문장**이다.
+
+```java
+// TaskProposalPolicy.projectTask
+title       = "{프로젝트 이름}에 {skill.name} 적용하기"
+description = "{프로젝트}에서 이 개념을 적용할 지점을 찾아 구현하고 이유를 적어 보세요."
+```
+
+다른 과제와 견주면 차이가 크다.
+
+| 과제 | 주어지는 것 |
+|---|---|
+| 개념 노트 | 4단위 × (설명·예제·예측·빈칸·백지 문제·힌트·모범 답안·확인 목록) |
+| challenge | 시나리오·문제·제약·채점 루브릭·힌트·흔한 실수 |
+| **PROJECT_TASK** | **제목 한 줄, 30분** |
+
+**만들어 본 것과 겪은 것이 남아야 하는 자리인데 가장 비어 있다.** 무엇을 만들어야 하는지도, 다 만들었는지도 알 수 없다.
+
+재료는 이미 있다. **노트의 `inProject`**(필수 필드, `19` §3.14)가 바로 *"주문 시스템의 어디에 쓰는지"* 이고 25개 노트가 전부 갖고 있다. 그리고 **과제 체크리스트**(`19` §3.11)는 스키마·붙이는 규칙·작성 규칙까지 명세돼 있고 `05` §8.1의 `MainTaskView.checklist`로 응답에 넣기로 돼 있는데, **콘텐츠 파일도 배선도 없다.** catalog의 `files.checklists`는 필수(1개 이상)인데 목록에 없다.
+
+**Decision** — 둘을 잇는다. 새 개념을 만들지 않는다.
+
+1. **`PROJECT_TASK`의 설명은 그 skill 노트의 `inProject`다.** 노트가 없으면 지금의 일반 문장을 그대로 쓴다.
+   - 노트가 "이 개념을 프로젝트 어디에 쓰는가"를 이미 쓰고 있으므로 따로 쓸 콘텐츠가 없다.
+   - **읽기 → 만들기**가 같은 글로 이어진다. 노트를 읽은 사람은 그 문장을 다시 만난다.
+2. **과제 카드에 체크리스트를 붙인다** (`19` §3.11 그대로). `content/checklists/*.yaml`을 만들고 catalog에 등록하며, `ContentSeeder`가 registry에 올리고 `MainTaskView.checklist`로 내려준다.
+   - `after`가 **"언제 끝인가"** 에 답한다. 확인 질문이라 스스로 대조할 수 있다.
+   - **저장하지 않는다.** 응답을 만들 때 콘텐츠 최신본을 읽는다(`05` §8.1).
+   - 붙이는 규칙은 명세 그대로 — `taskType` ∈ `taskTypes` 이고 skill ∈ `skillCodes`, 여럿이면 `key` ASC 하나.
+
+**Consequences**
+
+- 만들기 과제가 "무엇을"과 "언제 끝"을 둘 다 말한다. 지금은 둘 다 말하지 않는다.
+- 노트를 쓰면 만들기 과제도 같이 좋아진다 — 한 곳을 고치면 두 자리가 나아진다.
+- 체크리스트는 `CHALLENGE`에도 붙는다(`taskTypes`). 관례만 담으므로 특정 문제의 답을 흘리지 않는다(`19` §3.11 작성 규칙).
+- `whyItMatters`(같은 문장에 명세된 나머지 하나)는 이번에 다루지 않는다. skill 트리 registry가 따로 필요하고, "왜 하는가"는 "무엇을·언제"보다 급하지 않다.
+- **남는 문제**: `PROJECT_TASK`의 추정 시간이 30분 고정이다. "로그인 붙이기"에 30분은 맞지 않는다. 시간까지 콘텐츠가 정하게 하는 것은 별도 결정으로 둔다.
+
+**Alternatives**
+
+- *만들기 과제용 콘텐츠를 새로 만든다* — 노트의 `inProject`와 내용이 겹친다. 두 곳에 같은 말을 쓰면 갈라진다.
+- *milestone description을 쓴다* — 단계 단위라 skill 단위 과제에 맞지 않고, 같은 단계의 모든 과제가 같은 설명을 갖게 된다.
+
+## ADR-049 주장은 증거가 아니다 — 단계를 넘기는 것은 증거다
+
+- **Status**: Accepted · **Date**: 2026-09-25 · **Related**: `06` §5.2·§7.5, ADR-044, ADR-045
+
+**Context** — 유지보수만 해 온 경력자를 가정하고 연차별로 첫 과제를 추적했더니, **4년차 이상이 첫날 빈 화면을 본다.**
+
+입문 트랙(`JAVA_BACKEND_STARTER`)의 role target은 92개 skill 전부가 목표 3 이하다(목표 4 이상 0개). 그런데 자기평가도 3에서 잘린다.
+
+```text
+selfCap = min(self_assessed_level, 3)          # 06 §7.5
+planningLevel = max(evidenceLevel, selfCap)
+```
+
+그래서 온보딩에서 모든 category에 3을 주면 **92개 skill이 전부 목표 달성으로 계산된다.** 결과는 이렇다.
+
+| 단계 | 결과 |
+|---|---|
+| `isComplete` | 6개 milestone 전부 완료 |
+| `currentMilestone` | 없음 |
+| `selectCandidates` | 1·2번 비어 있고, `excluded`가 나머지를 전부 거른다 |
+| 화면 | **"목표를 모두 달성했어요. 계획을 조정해 새 목표를 잡아 보세요."** |
+
+**가장 도움이 필요한 사람이 가장 먼저 튕겨 나간다.** "중간쯤은 한다"고 정직하게 답한 대가다.
+
+**Decision** — `planningLevel ≥ target` 하나로 판단하던 두 자리에 **증거 조건을 더한다.**
+
+```java
+private static boolean targetReached(SkillProfile profile, AxisLevels targets) {
+    return profile.lastPracticedAt() != null && allMet(profile.planning(), targets);
+}
+```
+
+1. `isComplete` — 손대 본 적 없는 skill이 있으면 그 milestone은 완료가 아니다
+2. `excluded` — 손대 본 적 없는 skill은 "목표 달성"으로 걸러 내지 않는다
+
+`lastPracticedAt`은 그 skill의 마지막 학습 이벤트 시각이다(`06` §7.1). **진단 통과(`DIAGNOSTIC_PASSED`)도 이벤트이므로 증거로 센다** — 진단을 풀면 그 자리는 그대로 넘어간다.
+
+**Consequences**
+
+- 자기평가만으로는 단계를 넘지 않는다. 넘기려면 **풀어 보이거나 진단을 통과해야** 한다.
+- **자기평가가 버려지는 것은 아니다.** 그 skill은 후보로 남고, `planningLevel`이 높으므로 §5.3이 **자기평가한 수준의 난이도**로 제안한다. 3을 주면 난이도 3 문제가 나온다 — 과소평가당하는 느낌 없이 확인받는다.
+- 그래서 온보딩에서 수준을 잘못 답해도 **첫 과제에서 스스로 교정된다.** "어느 수준으로 시작해야 할지 모르겠다"는 사람이 아무거나 답해도 되는 상태가 된다.
+- 이미 증거가 쌓인 사용자에게는 아무 변화가 없다.
+- **남는 문제**: 진단은 category당 1문제·최대 5개라, 92개 skill 대부분은 여전히 증거가 없다. 실력 있는 사람이 빠르게 넘어가려면 진단을 더 촘촘히 주거나 "이미 안다" 표시를 따로 둬야 한다. 지금은 문제를 풀어 넘어가는 경로 하나뿐이다.
+
+---
+
+## ADR-050 만들 것을 정하지 않은 사람에게는 기본 프로젝트를 준다
+
+- **Status**: Accepted · **Date**: 2026-09-25 · **Related**: `05` §4.1·§19, `06` §5.3, `19` §3.14, ADR-048
+
+**Context** — `PROJECT_TASK`는 두 조건이 모두 참일 때만 제안된다.
+
+```java
+if (skill.projectNeed() && input.energy() != EnergyLevel.LOW && project != null)
+```
+
+그런데 온보딩에서 사이드 프로젝트는 **건너뛸 수 있다**(SP-1, `sideProject: null`). 건너뛰면 `project == null`이라 **만들기 과제가 한 번도 나오지 않는다.** 읽기와 문제만 돈다.
+
+처음부터 만들어 본 적 없는 사람일수록 "무엇을 만들지"를 못 정해 여기서 건너뛰기 쉬운데, **그 사람에게 가장 필요한 것이 만들기다.** ADR-048로 만들기 과제의 내용을 채웠는데 그 과제에 도달하지 못한다.
+
+앱은 이미 기본값("주문 시스템")을 채워 보내지만, 그것은 클라이언트의 배려일 뿐 서버 계약이 아니다.
+
+**Decision** — 온보딩에서 사이드 프로젝트가 없으면 **서버가 기본 프로젝트를 만든다.**
+
+```yaml
+devpilot:
+  side-project:
+    default-name: 주문 시스템
+    default-description: 상품을 고르고 주문하고 결제하는 가장 작은 흐름을 직접 만든다. …
+    default-stack: Java 25, Spring Boot 4.1, PostgreSQL 16
+```
+
+기본값을 주문 시스템으로 두는 이유는 **개념 노트 47개의 `inProject`가 전부 그 기준으로 쓰여 있기** 때문이다(`19` §3.14). 노트를 읽고 만들기 과제로 넘어갈 때 같은 프로젝트를 말하게 된다.
+
+**Consequences**
+
+- 온보딩을 마치면 사이드 프로젝트가 **언제나 있다.** `OnboardingResponse.sideProject`는 더 이상 null이 아니다.
+- 이름·설명·스택은 언제든 고칠 수 있다(`05` §19.5). 원하지 않으면 지우면 된다.
+- 콘텐츠가 아니라 설정에 둔 이유는 값이 세 줄뿐이고 운영 환경마다 바꿀 수 있어야 해서다. 늘어나면 콘텐츠로 옮긴다.
+- **남는 문제**: 프로젝트가 생겨도 `projectNeed`가 **온보딩에서 고른 집중 skill 10개**로 제한되고, 제안 순서에서 `PROJECT_TASK`가 CHALLENGE·READ_CODE·READING 다음 네 번째다. 그래서 여전히 드물게 나온다. 만들기를 더 자주 내보낼지는 별도 결정으로 둔다.
+
+## ADR-051 혼자 푼 것도 한 번은 돌아온다
+
+- **Status**: Accepted · **Date**: 2026-09-25 · **Related**: `06` §6.0·§6.2·§6.3, `05` §21.7
+
+**Context** — 노트 63개·학습 단위 210개를 채웠는데, **그중 절반이 한 번 풀고 끝난다.**
+
+`LessonQueryService.finish`가 이랬다.
+
+```java
+if (helpLevel != HelpLevel.NONE && skillId != null) {
+    registerReview(userId, skillId, unit);     // 막힌 것만 돌아온다
+}
+```
+
+문서에도 임시라고 적혀 있었다.
+
+> **도움 없이 푼 단위는 카드를 만들지 않는다** — "도움 없이 풀어도 7일 뒤 한 번"(재설계안 D-10)은 §6.2 간격 사다리와 함께 온다
+
+**그 자리에서 풀렸다는 것이 2주 뒤에도 떠오른다는 뜻은 아니다.** §6.0이 인용한 간격 효과가 바로 그 이야기인데, 정작 노트 단위에는 적용되지 않고 있었다.
+
+그리고 첫 due를 7일 뒤로 미루기만 하면 **사다리가 거꾸로 간다.** `fromGap`이 `interval_days = 1`로 시작하므로, 7일 뒤 처음 만나 `GOOD`으로 답하면 §6.2가 `max(2, 1 × 2) = 2`를 준다 — 7일 간격이 2일로 줄어든다.
+
+**Decision** — 둘을 함께 고친다.
+
+1. **푼 단위는 모두 카드가 된다.** 첫 due만 도움 여부로 가른다.
+
+   | 어떻게 풀었나 | 첫 due | 설정 |
+   |---|---|---|
+   | 막혀서 도움을 받음 | 다음 날 | `lesson-helped-first-due-days: 1` |
+   | 혼자 풀었음 | **7일 뒤** | `lesson-solved-alone-first-due-days: 7` |
+
+2. **`interval_days`를 첫 due까지의 날수와 같게 시작한다.** `ReviewItem.fromGap`에 첫 간격을 넘긴다.
+
+그래서 사다리가 이렇게 된다(`GOOD` 기준).
+
+```text
+혼자 푼 단위    7 → 14 → 28 → 56        (1주 → 2주 → 1달 → 2달)
+막혔던 단위     1 → 2 → 4 → 8 → 16 → 32
+```
+
+**§6.2의 배수(×2·×3)는 바꾸지 않는다.** 1·7·30을 고정 사다리로 박는 방안도 검토했으나, 지금의 배수 방식이 이미 간격 효과를 구현하고 있고 **성적에 따라 조정된다**는 이점이 있다 — `AGAIN`이면 1로 돌아가고 `HARD`면 ×1.2로 천천히 는다. 고정 사다리는 그 적응을 버린다. 연구가 지지하는 것은 **방향**이지 특정 수치가 아니라는 §6.0의 단서를 그대로 따른다.
+
+**Consequences**
+
+- 210개 단위가 전부 복습에 올라온다. 읽고 한 번 푼 뒤 잊는 구조가 없어진다.
+- 복습 카드 수가 늘어난다. 하루 상한(`review.max-per-day` 20)이 그것을 받아 내고, 넘치면 오래 미뤄진 것부터 나온다(§6.5).
+- 혼자 푼 것이 7일 뒤에 나오므로 **첫 주에는 부담이 없다.** 노트를 많이 읽은 주의 다음 주가 무거워진다.
+- 두 값 모두 설정이다. 4주 써 보고 조정한다(§6.0의 단서와 같다).
+- `REDO`(며칠 뒤 AI 없이 혼자 다시 만들기, §5.10)는 이 ADR 직후 따로 구현했다. 카드 한 장이 아니라 만든 것 전체를 다시 만드는 가장 강한 인출이라 과제 생성·원본 연결·AI 잠금·증거 판정이 모두 필요했고, 그래서 한 작업으로 묶지 않았다.
+
+---
+
+## ADR-052 가르치는 것의 공식 문서는 allowlist에 있어야 한다
+
+- **Status**: Accepted · **Date**: 2026-09-25 · **Related**: `06` §11.2, `03` §9, `19` §4.1 CV-71·CV-121·CV-131
+
+**Context** — 4단계(배포와 로그 확인)의 노트를 쓰다가 막혔다. `DEVOPS.CI_GITHUB_ACTIONS` 노트의 `sources`에 **GitHub Actions 문서를 적을 수 없었다.** `docs.github.com`이 `devpilot.ai.trusted-source-hosts`에 없기 때문이다. `DEVOPS.KUBERNETES_BASICS`와 `DEVOPS.AWS_BASICS`도 같다.
+
+가르치는 대상의 **공식 문서를 인용하지 못하는 노트**는 두 가지로 나쁘다. 읽는 사람이 원문을 확인할 길이 없고, "공식 문서를 읽고 직접 쓴다"는 콘텐츠 규칙(`19` §3.14)이 형식만 남는다.
+
+allowlist를 그때그때 늘리는 것도 답이 아니다. 이 목록은 **AI가 지어낸 출처를 거르는 가드**이고(`06` §11.2), 늘어날수록 가드가 약해진다.
+
+**Decision** — allowlist에 **넣는 기준**을 정하고, 그 기준으로 세 호스트를 더한다.
+
+넣을 수 있는 호스트는 셋을 모두 만족한다.
+
+1. **그 기술을 만든 곳이 직접 내는 문서**다 (블로그·튜토리얼·정리 글이 아니다)
+2. **skill tree에 있는 skill**을 가르는 데 쓴다 (앞으로 쓸지 모른다는 이유로는 넣지 않는다)
+3. 호스트가 문서 전용이다 (`docs.github.com`은 되고 `github.com`은 안 된다 — 뒤는 아무나 올리는 저장소다)
+
+이번에 더하는 셋:
+
+| 호스트 | 무엇을 가르치는 데 | 기준 3 |
+|---|---|---|
+| `docs.github.com` | `DEVOPS.CI_GITHUB_ACTIONS` | `github.com`이 아니라 문서 하위 도메인이다 |
+| `kubernetes.io` | `DEVOPS.KUBERNETES_BASICS` | 프로젝트 공식 사이트이고 `/docs` 아래가 문서다 |
+| `docs.aws.amazon.com` | `DEVOPS.AWS_BASICS` | 문서 전용 호스트다 |
+
+**Consequences** — allowlist는 네 곳에 적혀 있다(`application.yml`, `03` §9, `06` §11.2, `content/tools/validate_content.py`). 넷을 같이 고쳐야 하고, 어긋나면 `ContentValidator` 쪽과 Python 쪽이 다르게 판단한다.
+
+가드는 그대로다 — **서버는 여전히 URL을 열어 보지 않고 호스트 문자열만 본다.** 늘어난 것은 "이 호스트는 믿는다"의 목록이지 검사 방식이 아니다.
+
+기준 2 때문에 이 목록은 커리큘럼보다 먼저 자라지 않는다. skill이 생기고, 그 skill의 노트를 쓸 때 그 자리에서 한 줄 는다.
+
+**대안** — 노트에서 공식 문서를 빼고 allowlist 안의 문서로만 쓰기. 실제로 이번에 그렇게 써 보았는데, GitHub Actions를 Gradle 문서로만 설명하게 되어 **정작 배우는 대상이 빠졌다.** 가드를 지키려다 가르치는 것을 버리는 교환이라 택하지 않았다.
+
+---
+
+## ADR-053 배울 때는 이어서, 꺼낼 때는 섞어서
+
+- **Status**: Accepted · **Date**: 2026-09-25 · **Related**: `06` §5.3·§5.5·§5.13, `05` §19.7, `03` §9
+
+**Context** — 개념 노트를 70장 썼는데 **Today가 그것을 모른다.** `TaskProposalPolicy`가 만드는 유형에 노트가 없고(`CHALLENGE`·`READ_CODE`·`READING`·`PROJECT_TASK`·`EXPLAIN`·`RECALL`·`REDO`), 노트로 가는 길은 화면의 버튼 두 개뿐이었다. 매일 열리는 화면이 가르치는 자료를 지나쳐 문제부터 내고 있었다 — **"가르치고 나서 시험한다"가 우연에 맡겨져 있었다.**
+
+노트를 계획에 넣으려 하자 곧바로 두 번째 문제가 드러났다. `FATIGUE_ONE_DAY`(×8,000)·`FATIGUE_TWO_DAYS`(×6,000)는 **같은 skill을 이어 하면 점수를 깎는다.** 노트 하나는 단위 3~6개이고 하루에 한두 단위씩 떼므로 여러 날에 걸친다. 어제 절반 뗀 노트가 오늘 감점을 받아 밀리고, 다음 날 또 밀린다. **무엇 하나 끝나지 않는 구조**다.
+
+두 규칙이 같은 가정 위에 있었다 — "같은 주제를 이어 하는 것은 지루하고 비효율적이다". 이것은 **복습에는 맞고 처음 배우는 구간에는 틀리다.** 섞어 내기(interleaving)의 근거는 인출 연습에 관한 것이지, 개념을 처음 익히는 구간에 관한 것이 아니다(§6.0).
+
+**Decision** — 셋을 함께 바꾼다.
+
+1. **개념 익히기를 제안 분기 1번에 넣는다**(§5.3). KNOWLEDGE < 2이고 그 skill의 노트에 안 푼 단위가 남아 있으면 `CHALLENGE`·`READ_CODE`보다 앞선다. 새 `TaskType`을 만들지 않고 `READING`을 재사용하고(D-1), `reading_key`가 노트 key를 가리킨다. 화면은 `kind = LESSON`으로 구분한다(`05` §19.7) — 접두사로 추측하지 않는다.
+
+2. **묶음을 만든다**(§5.13 `StudyThreadPolicy`). 최근 main의 skill에 노트가 남아 있으면 오늘도 그 skill이 main이다. 점수 경쟁을 하지 않는다. 저장하지 않고 `UNIT_SOLVED`에서 계산한다.
+
+3. **`FATIGUE_*`를 폐지한다.** 이어 하는 구간이 너무 길어지는 것은 감점이 아니라 **연속 7 plan-day 상한**(TH-4)이 막는다. 감점은 "오늘 하지 마라"이고 상한은 "이만큼 했으면 넘어가라"다 — 뒤가 원하는 것이다.
+
+**하루 몫을 자르는 법** — 노트 전체가 아니라 **다음 미완료 단위부터 오늘 시간이 되는 만큼**이다. 예산을 넘어도 **한 단위는 반드시 낸다.** 안 그러면 10분 남은 날에 12분짜리 단위가 남은 노트는 시간이 넉넉한 날이 올 때까지 영영 안 나온다.
+
+**Consequences**
+- 노트가 있는 skill은 노트를 다 뗀 뒤에야 문제가 나온다. 첫 며칠이 전부 개념 익히기가 될 수 있다 — 의도한 것이다.
+- 같은 skill이 최대 7일 연속 main이 된다. `MONOTONY_*`(같은 **유형** 3·5일 연속)는 그대로라 유형이 계속 `READING`이면 그쪽이 누른다. 묶음 안에서도 적용되므로 노트가 6단위를 넘으면 후반에 점수가 눌린다 — **묶음은 순위를 앞으로 올리는 것이라 눌려도 유지된다.**
+- 노트가 없는 skill은 동작이 그대로다.
+- `score_breakdown.modifiers`에서 `FATIGUE_*`가 사라진다. **지난 과제의 기록에는 남아 있다** — enum 값을 지우지 않고 읽기만 멈춘다면 좋겠지만, 이 값은 `learning_task.score_breakdown` JSON이라 CHECK도 migration도 없다. 과거 JSON에 든 문자열은 그대로 두고 앱은 모르는 code를 무시한다.
+- **남는 문제**: 묶음이 ①까지만이라 노트를 다 뗀 뒤 ② 종합 문제로 이어지는 것은 점수에 맡긴다. 같은 milestone 안이라 대개 이어지지만 보장은 아니다. ②·③까지 묶으려면 challenge 해결 상태를 묶음 판정에 넣어야 해서 따로 둔다.
+
+**대안** — `FATIGUE_*`를 두고 묶음일 때만 면제하기. 규칙이 둘로 갈려 "언제 깎이는지"를 설명할 수 없게 된다. 감점의 원래 목적(한 주제에 매몰되는 것 방지)은 연속 일수 상한이 더 직접적으로 달성한다.
+
+---
+
+## ADR-054 지금 단계가 비어야 다음을 본다
+
+- **Status**: Accepted · **Date**: 2026-09-25 · **Related**: `06` §5.2, ADR-044, ADR-053
+
+**Context** — ADR-053으로 개념 노트를 계획에 넣은 뒤 **닷새를 실제로 돌려 봤다**(`FiveDayStudyThreadSimulationTest`). 결과가 이랬다.
+
+```text
+day | skill              | type      | 마친 단위
+  1 | SPRING.TRANSACTION | CHALLENGE | 0
+  2 | SPRING.TRANSACTION | CHALLENGE | 0
+  3 | SPRING.TRANSACTION | CHALLENGE | 0
+  4 | SPRING.TRANSACTION | REDO      | 0
+  5 | SPRING.TRANSACTION | REDO      | 0
+```
+
+노트가 한 번도 안 나왔다. 그런데 `SPRING.TRANSACTION`은 **첫 단계 skill이 아니다.** 첫 단계의 넷(`WEB_HTTP.HTTP_BASICS`·`JAVA.EXCEPTION`·`JAVA.COLLECTION`·`TESTING.JUNIT`)은 전부 K0이고 전부 노트가 있는데, 닷새 내내 한 번도 main이 되지 못했다.
+
+원인은 §5.2가 후보를 **합집합**으로 만들기 때문이다. 온보딩이 배정한 씨앗 카드(111장)가 뒷 단계 skill에도 due를 만들고, 그 skill은 진단으로 `lastPracticedAt`이 있어 3번 경로를 통과한다. 후보에 들어오면 `reviewUrgency`가 첫 단계의 `skillGap`·`milestoneUrgency`를 이긴다.
+
+ADR-044는 "후보는 지금 단계로 제한한다"고 적어 두었는데, **2·3번 경로가 그 제한을 매일 우회하고 있었다.** 문서와 동작이 갈라진 자리다.
+
+**Decision** — 합집합을 그만두고 **차례로** 본다.
+
+1. 현재 milestone
+2. 1번에 제외 규칙까지 적용해 **후보가 0개면** 다음 milestone
+3. 2번까지 0개면 due review가 있고 이미 손대 본 skill
+4. 재현 후보(§5.10)는 순서와 무관하게 언제나 후보 — 창이 며칠뿐이라 미룰 수 없다
+
+같은 시뮬레이션이 이렇게 바뀌었다.
+
+```text
+day | skill                | type      | 자료                         | 마친 단위
+  1 | TESTING.JUNIT        | READING   | LESSON.TESTTESTING.JUNIT.001 | 1
+  2 | TESTING.JUNIT        | READING   | LESSON.TESTTESTING.JUNIT.001 | 2
+  3 | TESTING.JUNIT        | READING   | LESSON.TESTTESTING.JUNIT.001 | 3
+  4 | TESTING.JUNIT        | READ_CODE | READ.TESTREPO.ORDER_TEST.001 | 3
+  5 | WEB_HTTP.HTTP_BASICS | READING   | LESSON.TESTSPRING.MVC.001    | 4
+```
+
+노트를 사흘에 걸쳐 떼고(1→2→3단위), 다 뗀 날 같은 skill의 코드 읽기로 넘어가고, 그다음 skill로 옮겨 간다.
+
+**Consequences**
+- **복습은 그대로 나온다.** 3번에서 걸러지는 것은 "그 skill을 오늘의 main 주제로 삼을지"뿐이고, REVIEW 과제는 main 선정과 별개다(§5.6).
+- 뒷 단계 skill은 지금 단계를 마칠 때까지 main이 되지 않는다. 늦었다는 사실은 위험도와 replan 권고로 알린다(§4) — 단계를 건너뛰지 않는다는 ADR-044의 원칙 그대로다.
+- 지금 단계 skill이 전부 제외되면(목표 달성·deferred·선행 미준비) 자동으로 다음 단계로 내려간다. 할 일이 없어지지 않는다.
+- 테스트 fixture에 첫 단계 skill용 PRACTICE challenge를 하나 더했다. 지금 단계에 문제가 하나도 없으면 §5.3 2번 분기를 실제와 다르게 보게 된다.
+
+**대안** — 씨앗 카드 일괄 배포를 그만두기(재설계안 R-3). 근본 원인에 더 가깝지만 온보딩·복습 전반을 건드린다. 이번에는 planner 쪽에서 막고, 일괄 배포는 따로 다룬다.
+
+---
+
+## ADR-055 복습은 배운 것만 돌아온다
+
+- **Status**: Accepted · **Date**: 2026-09-25 · **Related**: `06` §6.3·§5.2, `05` §4.1, `04` §9, 재설계안 R-3
+
+**Context** — 온보딩 8단계가 seed 카드 **111장을 전부** 복사했다. 첫 due는 하루 5장씩 나누므로 **가입 첫날부터 23일치** 복습이 깔린다.
+
+그 23일치가 전부 **배운 적 없는 개념**이다. 0단계를 시작한 사람에게 `SYSTEM_DESIGN.CACHING`, `ALGORITHM.SORT_SEARCH` 카드가 둘째 날부터 나온다. 복습은 **인출 연습**인데(§6.0), 넣은 적 없는 것을 꺼낼 수는 없다 — 그냥 모르는 문제다.
+
+문제는 그 카드가 안 풀린다는 것으로 끝나지 않는다. 매일 복습 칸이 모르는 것으로 차 있으면 **그 칸 자체를 안 보게 되고**, 정작 어제 배운 것의 복습까지 같이 묻힌다. 하루 상한이 20장(§6.5)이라 밀린 것부터 나오므로, 안 푸는 카드가 쌓일수록 배운 카드가 뒤로 밀린다.
+
+ADR-054에서 planner 쪽 증상은 막았다(due skill이 지금 단계를 밀어내지 못하게). 그러나 **복습 목록 자체는 그대로**였다.
+
+**Decision** — seed 카드를 **그 skill을 처음 배울 때** 배정한다.
+
+- 온보딩은 카드를 하나도 깔지 않는다. `assignedSeedCardCount`는 항상 0이고 필드는 호환을 위해 남긴다.
+- 방아쇠는 **그 skill을 실제로 공부한 학습 이벤트**다(`SeedCardOnFirstStudy`): `UNIT_SOLVED`, `CHALLENGE_SUBMITTED`, `CHALLENGE_EVALUATED`, `SELF_EXPLANATION_SUBMITTED`, `RUBBER_DUCK_COMPLETED`, `COACH_REVIEW_COMPLETED`, `REDO_COMPLETED`.
+- **진단·팁·계획 변경은 방아쇠가 아니다.** 온보딩 진단은 지금 수준을 *재는* 것이지 배우는 것이 아니다. 여기를 넓게 잡으면 온보딩 한 번에 카드가 다시 깔려 이 변경이 무의미해진다.
+- 첫 due는 **그 사용자의 마지막 seed due 다음 plan-day**부터 하루 5장씩. 여러 skill을 잇따라 시작해도 한 날짜에 겹쳐 쌓이지 않는다.
+- 기동 backfill은 **이미 카드가 있거나 학습 이벤트가 있는 skill**에만 새 콘텐츠를 더한다.
+
+**Consequences**
+- 첫날 복습 칸이 **비어 있다.** 그것이 맞다 — 아직 배운 것이 없다. 첫 노트 단위를 풀면 그 단위의 카드(ADR-051)와 그 skill의 seed 카드가 같이 들어온다.
+- 복습에 나오는 것은 전부 **한 번은 본 것**이 된다. "모르겠는데 왜 나오지"가 사라진다.
+- 배우는 속도만큼 복습이 늘어난다 — 총량이 아니라 **진행에 비례**한다.
+- `assignedSeedCardCount`를 보고 있던 화면·테스트는 0을 받는다.
+- 기존 사용자(이미 111장을 받은)는 그대로다. 이 변경은 **새로 배정하는 시점**만 바꾼다.
+
+**대안** — 지금 단계 milestone의 skill 카드만 온보딩에서 깔기. 23일이 3~4일로 줄 뿐 성격은 같다(아직 안 배운 것이 복습에 있다). 그리고 단계를 넘어갈 때마다 같은 일이 반복된다.
+
+## ADR-056 진도는 스스로 되돌릴 수 있고, 내가 쓴 글은 남는다
+
+- **Status**: Proposed · **Date**: 2026-09-26 · **Related**: `05` §3.4·§3.7, `02` SCR-SETTINGS·SCR-ACCOUNT-RESET, `04` §8, `07` §4.4, BL-SEC-19·BL-CLI-50
+
+**Context** — 처음부터 다시 해 보려면 방법이 하나도 없었다. 있는 것은 `DELETE /me`뿐인데 그것은 **계정 삭제 요청**이다: `status = DELETION_REQUESTED`가 되어 `GET /me`·`DELETE /me` 외에는 전부 403이 되고, 실제 행 삭제 job(`AccountDeletionJob`)은 아직 Later다. 누르면 데이터는 그대로 남은 채 계정만 잠긴다 — 다시 시작하기의 반대다.
+
+그래서 2026-09-26에 개발 DB에서 진도를 되돌릴 때 `psql`로 `app_user` 행을 직접 지워야 했다. 도구를 쓰는 사람이 스스로 할 수 없고, 운영자가 서버에 들어가야만 하는 일이 하나 생긴 것이다.
+
+ADMIN 화면을 만드는 선택지도 있었다. 그러나 `07` §4.4는 **MVP에 ADMIN 전용 endpoint를 두지 않는다**고 정해 두었고, 쓰는 사람이 서너 명인 도구에서 인증 모델·화면·격리 테스트를 새로 얹는 비용은 지금 낼 이유가 없다.
+
+**Decision** — `POST /me/reset`으로 **자기 진도만** 되돌린다. 계정은 그대로 두고 온보딩 이전 상태로 돌아간다.
+
+- 지운다: 학습 목표·계획·milestone, 오늘 계획·과제·세션, 기술 레벨과 변경 이력, 복습 카드와 답변, 학습 이벤트, 문제 시도·제출·힌트 기록, 러버덕, 코치 리뷰, 오늘의 팁 기록, 주간 리뷰·증거 후보·요구사항 문서, 그 사용자가 만든 문제(`challenge.owner_user_id`).
+- 남긴다: **계정**(`app_user` — `onboarding_completed_at`과 `calendar_token_hash`만 null로), **내가 쓴 글**(`side_project`와 `side_project_note`), **AI 호출 기록**(`ai_call_log` — 비용·감사)과 `idempotency_record`(요청 중복 처리용, 자체 TTL), **솔루션 콘텐츠**(skill·role target·seed 문제).
+- 사이드 프로젝트와 그 기록은 `includeProjects: true`일 때만 함께 지운다. **기본은 남기기다** — 진도가 아니라 사용자가 직접 쓴 글이고, "진도 초기화"를 눌렀다가 몇 주치 기록이 사라지면 사고다.
+- 확인은 계정 삭제와 같은 방식이다(`02` §3.2): `초기화합니다`를 정확히 입력해야 버튼이 켜진다. 되돌릴 수 없는 일에 "예/아니오"를 쓰지 않는다.
+- 최근 로그인 재인증(`RECENT_LOGIN_REQUIRED`)은 **요구하지 않는다.** 계정 삭제와 달리 이 동작은 계정을 잃게 하지 않고, 남의 진도를 지우려면 이미 그 사람 토큰을 가지고 있어야 한다.
+
+**Consequences**
+
+- 사용자가 서버에 들어가지 않고 스스로 다시 시작할 수 있다. 운영자가 `psql`을 여는 일이 없어진다.
+- 지우는 테이블 목록이 코드에 박힌다 — 새 사용자 테이블이 생기면 빠뜨릴 수 있다. `information_schema`에서 `user_id`를 가진 테이블을 읽어 목록과 대조하는 테스트로 막는다.
+- `side_project`가 남은 채 온보딩을 다시 하면 프로젝트가 하나 더 생길 수 있다. 온보딩 4단계가 기존 프로젝트를 보여 주도록 하는 것은 별도 작업이다(BL-CLI-50 Known limitation).
+- `AccountDeletionJob`(BL-SEC-17, Later)이 생겨도 이 endpoint와 겹치지 않는다. 하나는 계정을 지우고 하나는 진도만 지운다.
+
+**대안** — ADMIN 페이지에서 운영자가 개별 계정을 초기화. 쓰는 사람이 늘면 다시 볼 수 있지만, 지금은 자기 것을 자기가 되돌리는 것으로 충분하고 새 인증 표면이 생기지 않는다.
+
+---
+
+## ADR-057 개념 노트를 건너뛰는 근거는 자기평가가 아니라 기록이다
+
+- **Status**: Accepted · **Date**: 2026-09-29 · **Related**: `06` §5.3·§5.13 TH-5, `03` §9, ADR-045, `19` §3.14
+
+**Context** — `06` §5.3 1번 분기는 `planning KNOWLEDGE < 2`일 때만 개념 노트를 낸다. 그런데 planning level은 `max(evidenceLevel, min(selfAssessed, 3))`이다(§7.5). **기록이 하나도 없어도 자기평가만으로 KNOWLEDGE가 3까지 올라간다.**
+
+2026-09-29 실사용에서 드러났다. 6년 경력자가 온보딩 자가평가에서 14개 분야에 0~3을 고르자 **10개 분야가 KNOWLEDGE ≥ 2가 되어 개념 노트를 통째로 건너뛰고 바로 문제로 갔다.** 그중에는 본인이 "막 시작, 사실상 없음"이라고 말한 Spring Boot도 있었다 — 2(도움받아 가능)로 답했기 때문이다. 자기평가의 다섯 칸은 "얼마나 익숙한가"를 묻는데, 이 분기는 그 답을 "개념을 이미 배웠는가"로 읽는다. 둘은 같은 질문이 아니다.
+
+ADR-045는 같은 문제를 반대쪽에서 고쳤다 — 개념을 한 번도 안 본 skill에 문제를 내지 않도록 CHALLENGE에 문턱을 세웠다. 그 문턱도 planning level을 보므로 자기평가로 그냥 열린다.
+
+**Decision** — 1번 분기의 상수 2를 **`trackDefaults.lessonMaxKnowledge`**로 바꾸고, 기본값을 트랙마다 둔다.
+
+| 트랙 | `lessonMaxKnowledge` | 뜻 |
+|---|---|---|
+| `JAVA_BACKEND` | 2 | 지금과 같다 |
+| `JAVA_BACKEND_STARTER` | 4 | 입문 트랙은 노트를 다 뗀다 |
+| `INTEGRATION_ENGINEER` | 4 | 기본기를 넓게 덮는 구성이라 노트가 출발점이다 |
+
+- 조건이 `KNOWLEDGE < 문턱`이므로 **4는 "KNOWLEDGE 3까지 노트를 낸다"**는 뜻이다. 자기평가 상한이 3이므로(`devpilot.skill.self-assessment-cap`), 문턱 4에서는 **자기평가만으로는 노트를 건너뛸 수 없다.** 실제로 과제를 풀어 evidence가 4에 닿은 분야만 건너뛴다. 3으로 두면 자기평가 3이 그대로 통과해 이 ADR이 고치려는 상황이 그대로 남는다.
+- "이미 아는 사람에게 개념부터 시키지 않는다"는 원래 의도는 그대로다. 바뀌는 것은 그 판단의 근거뿐이다 — **자기 말에서 실제 기록으로.**
+- 짝이 되는 변경으로 단위마다 **"이건 알아요"**를 둔다(`02` §3.18). 누르면 `POST /lessons/{k}/units/{u}/finish`를 `helpLevel = NONE`으로 부르고 다음 단위로 간다. 아는 단위를 10초에 지나갈 수 있어야 문턱을 올려도 지루해지지 않는다.
+- `readCodeMinKnowledge`·`challengeMinKnowledge`와 같은 자리(`devpilot.tracks.<트랙>`, `03` §9)에 둔다.
+
+**Consequences**
+
+- 연동·입문 트랙에서 새 skill의 첫 과제는 거의 항상 개념 노트다. 노트가 없는 skill은 지금처럼 3번·4번 분기로 떨어진다.
+- 노트를 다 떼기 전에는 CHALLENGE·READ_CODE가 안 나온다. 노트 단위 수만큼 문제 시작이 늦어지는데, "이건 알아요"가 그 비용을 실제로 아는 만큼만 남긴다.
+- `JAVA_BACKEND`는 아무것도 바뀌지 않는다(기본값 2 = 지금 값).
+- **"이건 알아요"는 자기 보고다.** `helpLevel`은 복습 일정에만 쓰고 레벨에는 쓰지 않으므로(`01` 원칙 4) 이 값으로 실력을 올려 주지 않는다. 거짓으로 눌러도 손해는 본인 것이고, 레벨은 그대로 evidence로만 오른다.
+
+**Alternatives**
+
+- *자기평가를 낮게 적게 한다* — 도구에 사실과 다른 값을 넣는 일이다. 필요 시간이 부풀고 위험도가 첫날부터 CRITICAL로 돌아간다.
+- *분기 조건을 `evidenceLevel < 2`로 바꾼다* — 자기평가를 아예 무시하게 된다. 진단으로 4에 닿은 사람도 노트를 다시 보게 되어 반대쪽으로 치우친다. 설정값 하나면 트랙마다 고를 수 있다.
+- *노트를 건너뛴 skill에 안내만 띄운다* — 무엇을 하라는 말 없이 경고만 늘어난다. ADR-046에서 같은 실수를 이미 고쳤다.
+
+---
+
+## ADR-058 진단은 주장한 수준을 재고, 주장이 있는 모든 분야에 준다
+
+- **Status**: Accepted · **Date**: 2026-09-30 · **Related**: `05` §4.2, `06` §7.4, `02` §4.6, `19` §3.6, ADR-057
+
+**Context** — 진단(`purpose = DIAGNOSTIC`)은 자기평가를 실제 기록으로 바꾸는 가장 싼 수단이다. 통과하면 `06` §7.4가 그 skill의 K·I를 `max(현재, min(claimedLevel, 3))`으로 올리고, 실패하면 `self_assessment_active`를 끈다.
+
+그런데 지금 규칙은 두 곳에서 막혀 있다.
+
+1. **자기평가 3 이상인 category만 제안한다**(`05` §4.2 1단계, `SELF_ASSESSMENT_THRESHOLD = 3`). 2026-09-30 실사용 계정을 보면 14개 category 중 5개만 제안되고, 1~2로 답한 8개(Spring, 데이터베이스·JPA, CS 기초, 알고리즘, DevOps, 시스템 설계, 기술 설명, 테스트)는 **영원히 측정되지 않는다.** 그 분야들은 자기평가 값만 들고 증거 없이 계획에 들어간다.
+2. **콘텐츠에 난이도가 하나뿐이다.** `content/challenges/diagnostic.yaml`의 10문제가 전부 difficulty 3이고, 파일 머리글이 그것을 규칙으로 적어 두었다. 1이나 2로 주장한 사람의 주장을 확인할 문제가 없다.
+
+여기에 함정이 하나 더 있다. 후보 정렬의 마지막 키가 `seed_key ASC`이므로(4단계), 난이도 사다리를 **콘텐츠만** 추가하면 `DIAGNOSTIC.JAVA.L1.001`이 `...L3.001`보다 앞서 정렬된다. 3을 주장한 사람에게 난이도 1 문제가 나가고, 통과해도 얻는 것이 없다. 콘텐츠와 규칙을 함께 바꿔야 한다.
+
+**Decision** — 진단 제안을 둘 다 고친다.
+
+1. **문턱을 3에서 1로 내린다.** 자기평가 모드에서 그 category의 자기평가 최댓값이 **1 이상**이면 제안한다. 0은 제외한다 — 확인할 주장이 없고, 그 분야는 개념 노트부터 가는 것이 맞다(ADR-057).
+2. **난이도를 주장한 수준에 맞춘다.** 후보 정렬에 **첫 번째 키**로 난이도 거리를 넣는다.
+   - 자기평가 모드: `목표 난이도 = min(claimedLevel, 3)`. `difficulty`가 목표와 같은 것이 가장 앞이고, 없으면 **목표보다 낮은 쪽**으로 가까운 것, 그다음 높은 쪽이다.
+   - 진단 모드(자기평가가 하나도 없음): **가장 높은 난이도**를 고른다. 이 모드에서는 `claimedLevel`이 null이라 `difficulty`가 그대로 레벨이 되므로(`06` §7.4), 현행 동작(d3 통과 → 3)을 유지한다.
+   - 나머지 키(priority → practicalImportance DESC → `seed_key` ASC)는 그대로 뒤에 붙는다.
+
+**왜 목표보다 낮은 쪽을 먼저 보나** — 주장보다 어려운 문제를 내면 정직하게 답한 사람이 떨어지고 `self_assessment_active`가 꺼져 레벨이 0으로 내려간다. 측정하려다 없는 벌을 주는 셈이다. 낮은 쪽은 반대로 "확인은 됐지만 덜 어려웠다"로 끝나고, 부족한 확인은 실제 과제가 이어서 한다.
+
+**Consequences**
+
+- 1~2로 답한 분야도 측정된다. 통과하면 자기평가가 **증거로 바뀌고**(K·I가 evidence로 기록된다), 실패하면 그 분야의 자기평가를 더 쓰지 않는다. 계획이 주장이 아니라 기록 위에 선다.
+- 제안 대상이 늘어난다. `MAX_SUGGESTIONS = 5`는 그대로 두므로 한 번에 5개까지만 보이고, 진단을 받은 category는 빠지므로(2단계) 남은 것이 다음에 올라온다. 온보딩 직후 화면이 길어지지 않는다.
+- 난이도 1·2 진단 콘텐츠가 필요해진다. 없는 category는 목표와 가장 가까운 난이도로 떨어지므로 **동작은 깨지지 않는다** — 다만 확인이 느슨해진다.
+- `19` §3.6의 "진단은 difficulty 3" 규칙을 "1~3"으로 고친다.
+
+**Alternatives**
+
+- *적응형 사다리* — d2를 내고 통과하면 d3, 틀리면 d1을 낸다. 측정이 가장 정확하지만 "category당 1회" 제외 규칙(`05` §4.2 2단계)을 바꿔야 하고, 어느 rung까지 갔는지 저장해야 한다. 이번에 하지 않는다. 지금 고치는 것은 "측정 자체가 없는 8개 분야"이고, 그것이 훨씬 크다.
+- *문턱만 내리고 난이도는 그대로* — 2를 주장한 사람에게 difficulty 3을 낸다. 떨어뜨리고 레벨을 0으로 내리는 결과가 되어, 측정이 아니라 벌이 된다.
+- *난이도 콘텐츠만 추가* — 위 Context의 `seed_key ASC` 함정 때문에 지금보다 나빠진다.
+
+---
+
+## ADR-059 안다고 본 것은 다시 물어볼 수 있어야 한다
+
+- **Status**: Accepted · **Date**: 2026-09-30 · **Related**: `05` §4.2, `06` §7.4·§7.5, ADR-057, ADR-058
+
+**Context** — 도구는 자기평가를 받아 "이 분야는 이만큼 안다"로 계획을 세운다. 그 추정이 틀렸을 때 빠져나오는 길이 좁다.
+
+레벨이 내려가는 규칙은 셋뿐이고(§7.3) 모두 누적 증거가 필요하며 하한이 있다. 문제를 틀리는 것으로는 내려가지 않는다 — `I_DOWN_TRANSFER_FAIL`은 전이 문제에만 걸린다. 보통 문제 한 번 틀린 것으로 레벨을 내리지 않는 판단 자체는 맞다.
+
+남은 길은 진단인데, `05` §4.2 2단계가 **category당 1회**로 못박는다. 한 번 풀고 나면 그 분야는 다시 묻지 않는다. 그래서 자기평가를 고쳐 수준이 올라가도(ADR-058로 이제 고칠 수 있다) 그 새 주장을 확인할 자리가 없다.
+
+즉 **도구가 자기 추정을 맞다고 전제하고, 반증할 기회를 한 번만 준다.** 2026-09-30 실사용에서 나온 지적이다 — "저 수준 평가가 완벽하게 정확히 사용자 수준을 안다고 평가하는건 자만 아닌가?"
+
+**Decision** — 제외 단위를 category에서 **이미 푼 문제**로 내린다.
+
+- `05` §4.2 2단계의 제외 조건을 바꾼다: `SUBMITTED`·`EVALUATED` attempt가 있는 **그 DIAGNOSTIC challenge만** 후보에서 뺀다. category는 빼지 않는다.
+- 남은 후보 중에서 고르는 규칙은 그대로다 — 목표 난이도에 가까운 것 우선(ADR-058: `min(claimedLevel, 3)`, 진단 모드는 가장 높은 것).
+- 그래서 **주장이 올라가면 그 새 수준에 맞는 다른 문제로 한 번 더 묻는다.** 같은 문제를 다시 내지는 않고, 안 푼 문제가 없으면 그 category는 조용히 빠진다.
+- (category, 난이도) 단위로 빼는 것도 검토했다. 지금은 category당 난이도가 겹치지 않아 결과가 같지만, 같은 난이도의 문제를 나중에 더 넣으면 두 번째 문제를 못 쓰게 된다. 제외는 **실제로 푼 것**에만 걸리는 쪽이 콘텐츠가 늘어도 버틴다.
+
+**틀렸을 때의 연쇄는 이미 있다.** `DIAGNOSTIC_FAILED`가 `self_assessment_active = false`로 바꾸고(§7.4), planning이 evidence로 떨어지고(§7.5), 문턱 아래가 되어 **다음 과제가 그 skill의 개념 노트가 된다**(ADR-057). 이 ADR은 그 문을 다시 열 뿐이고, 화면이 그 일이 일어났다고 말하게 한다.
+
+**화면 문구**도 함께 고친다. 지금은 통과·미통과를 결과로만 알린다.
+
+- 제안: "이건 쉬우실 거예요. 맞으면 넘어가고, 아니면 여기부터 다시 봐요."
+- 미통과: "여기는 생각보다 덜 익었네요. 이 분야는 개념부터 다시 봅니다." — 무슨 일이 일어났는지와 다음이 무엇인지를 같이 말한다.
+
+**Consequences**
+
+- 추정이 매번 반증 가능해진다. 자기평가를 고치면(ADR-058) 그 수준으로 확인 문제가 다시 온다.
+- 새 이벤트도 migration도 없다. 기존 `DIAGNOSTIC` 판정과 ADR-057 경로를 그대로 쓴다.
+- 확인 문제는 여전히 **선택**이다. 건너뛰면 아무것도 바뀌지 않는다 — 넘어갈 자유가 이 설계의 전제다.
+- 난이도 사다리가 없는 category는 목표 난이도가 늘 같으므로 사실상 1회로 남는다. 사다리를 채우는 만큼 이 규칙이 살아난다(ADR-058 콘텐츠 후속).
+
+**Alternatives**
+
+- *"모르겠어요" 자기 보고 버튼* — 누르기 민망해 안 누르고, 틀린 것보다 증거가 약하다. 버린다.
+- *보통 문제 실패로 레벨 내리기* — 한 번 틀린 것은 신호가 아니다. 확인 문제는 "내밀었다"는 맥락이 있어 다르다.
+- *skill 단위 확인 문제* — 더 정확하지만 진단 콘텐츠가 category 단위다(CV-59). 콘텐츠를 다시 만드는 일이라 따로 둔다.
+
+---
+
+## ADR-060 만들 수 있는지는 기록으로만 센다
+
+- **Status**: Accepted · **Date**: 2026-09-30 · **Related**: `05` §7.10, `06` §11.4, `19` §3.4, ADR-044, ADR-057, ADR-059
+
+**Context** — 계획의 milestone은 과목 목록이 아니라 **사이드 프로젝트를 만드는 순서**다(`19` §3.4). 그런데 그 순서가 화면에서는 날짜 막대와 제목으로만 보인다. 무엇을 배웠는지는 skill 화면에, 오늘 할 일은 Today에 있는데, **"그래서 지금 프로젝트를 어디까지 만들 수 있나"에 답하는 자리가 없었다.** 2026-09-30 실사용에서 나온 요구다 — "오늘까지 배운 내용을 토대로 어디까지 진행하실 수 있습니다, 어디까지 진행해보세요를 제안해주는 기능은 없나?"
+
+답을 계산할 재료는 이미 다 있다. milestone마다 그 단계를 여는 skill(`plan_skill_target`)과 목표 레벨이 있고, 사용자의 레벨도 있다. 문제는 **어느 레벨을 쓰느냐**다.
+
+- **계획 레벨**(§7.5)은 자기평가를 섞는다 — `active`면 `max(evidence, min(selfAssessed, 3))`.
+- **근거 레벨**은 실제로 푼 문제·복습·러버덕으로만 오른다.
+
+대시보드 타임라인의 "지금 단계"는 계획 레벨을 쓴다(ADR-044). 그래야 Today가 고르는 단계와 같아진다.
+
+**Decision** — 이 화면은 **근거 레벨로만** 판정한다.
+
+- 단계를 여는 skill이 모두 근거로 목표에 닿으면 `BUILDABLE`, 아니면 그중 가장 앞선 하나가 `NEXT`, 나머지는 `NOT_YET`이다(`06` §11.4).
+- 자기평가는 세지 않는다. **"안다고 답한 것"과 "직접 해본 것"은 다른 질문이고, 만들 수 있느냐는 뒤쪽 질문이다.**
+- 그래서 대시보드의 `current`와 이 화면의 `NEXT`가 어긋날 수 있다. 어긋남을 숨기지 않는다 — 계획은 주장을 믿고 앞서 가지만 손은 기록만큼만 움직인다는 뜻이고, 화면이 그렇게 말한다.
+- 저장하지 않고 요청 시점에 계산한다. AI를 부르지 않는다.
+
+**Alternatives**
+
+- *계획 레벨로 판정* — 대시보드와 한 줄로 맞지만, 자기평가 3만 적어도 앞 단계가 전부 "만들 수 있음"이 된다. 확인 문제(ADR-059)를 만든 이유와 정면으로 어긋난다.
+- *두 레벨을 나란히* — 정확하지만 한 화면에 레벨 체계가 둘이 되고, "그래서 지금 뭘 만들 수 있냐"는 한 줄짜리 질문에 표로 답하게 된다.
+- *AI에게 단계 제안을 맡김* — 이미 있는 milestone 설명(계획 템플릿이 적어 둔 것)보다 나을 근거가 없고, 매번 비용이 든다.
+
+**Consequences**
+
+- 새 테이블도 migration도 이벤트도 없다. 읽기 계산 하나와 화면 하나다.
+- 근거가 아직 0인 초기에는 1단계가 `NEXT`로 뜬다 — 그것이 맞는 답이다. 첫 단계가 지금 만들 단계다.
+- milestone 설명이 곧 "무엇을 만들라"는 안내가 된다. 설명이 부실한 템플릿은 이 화면에서 바로 드러난다.
+
+---
+
+## ADR-061 잴 수 없는 축은 진도를 막지 않는다
+
+- **Status**: Accepted · **Date**: 2026-10-01 · **Related**: `03` §9, `05` §7.10·§13.1, `06` §5.2·§7.2·§7.6·§11.4, ADR-044, ADR-049, ADR-060
+
+**Context** — 레벨 상승 규칙(`06` §7.2)에서 **DEBUGGING은 `COACH_*` 이벤트로만 오른다.** coach(코드 리뷰) 모듈은 S4라 아직 코드가 없다. 즉 그 축의 근거는 지금 **구조적으로 쌓일 수 없다.**
+
+그런데 연동 트랙의 MUST skill 29개 중 **22개가 디버깅 목표 ≥ 1**이다. 진도 판정은 "모든 축에서 목표 이상"을 요구하므로, 그 22개는 무엇을 해도 **영원히 목표에 닿지 않는다.** 결과가 세 곳에서 같은 모양으로 나온다.
+
+| 곳 | 증상 |
+|---|---|
+| `06` §5.2 현재 milestone · 후보 제외 | 1단계가 끝나지 않아 **Today가 1단계 skill만 계속 돌린다** |
+| `05` §13.1 타임라인 `current` | 대시보드가 1단계를 영원히 가리킨다 |
+| `06` §11.4 만들 수 있는 단계 | 9단계 중 7단계가 절대 열리지 않는다 |
+
+ADR-060(만들 수 있는지는 기록으로만 센다)을 만들면서 드러났다. 화면은 맞게 계산하는데 **입력이 도달 불가능**이었다. `06` §7.2에 이미 "도달 가능 상한(Sprint별, 규칙이 아니라 사실)"이라는 각주가 있었지만, 사실로만 적혀 있고 규칙이 읽지 않았다.
+
+**Decision** — 그 각주를 설정으로 올린다. `devpilot.skill.measurable-axes`가 **지금 근거를 쌓을 수 있는 축**을 적고, 진도 판정에 들어가는 목표에서 **나머지 축을 0으로 내린다**(`06` §7.6).
+
+- 지금 값은 `[KNOWLEDGE, IMPLEMENTATION, EXPLANATION]`이다. coach가 들어오면 `DEBUGGING`을 더하는 것으로 끝난다.
+- **저장된 `plan_skill_target`은 바꾸지 않는다.** 판정에서 빼는 것이지 목표를 낮추는 것이 아니다 — 목표는 그대로 두고, 잴 방법이 생기면 그때 다시 센다.
+- **예산과 위험도(`06` §3·§4)는 건드리지 않는다.** 나중에 들일 시간은 지금도 계획에 있어야 한다. 빼면 남은 일이 실제보다 적어 보이고 목표일 판단이 헐거워진다.
+- **상승 규칙(§7.2)도 그대로다.** 축이 오를 길이 생기면 그때 오른다.
+- 설정 값이 `SkillAxis`에 없거나 비어 있으면 **기동 실패**다. common은 도메인 enum을 모르므로(`03` §2.2) 검사는 skill 모듈이 한다.
+- **화면이 말한다.** `GET /plans/active/buildable`이 `countedAxes`·`uncountedAxes`를 함께 주고, SCR-BUILDABLE이 "지금 세는 축"과 빠진 축을 보인다. 조용히 빼면 "왜 9/10에서 안 움직이나"를 알 수 없다.
+
+**Alternatives**
+
+- *디버깅 목표를 role target에서 0으로 낮춘다* — 콘텐츠를 도구의 사정에 맞춰 고치는 것이다. coach가 생기면 다시 올려야 하고, 그때 올렸다는 사실을 아무도 기억하지 못한다.
+- *coach 모듈을 앞당긴다* — 옳지만 S4 한 스프린트짜리다. 그때까지 Today가 멈춰 있을 수는 없다.
+- *"모든 축" 대신 "과반 축"* — 임의 기준이고, 잴 수 있는 축 하나를 빼먹어도 넘어가 버린다.
+- *판정에서만 조용히 뺀다* — 계산은 맞지만 사용자가 9/10에서 멈춘 이유를 알 수 없다. 빼는 것은 되돌릴 결정이므로 화면에 남긴다.
+
+**Consequences**
+
+- Today가 1단계를 마치면 2단계로 넘어간다. 대시보드·SCR-BUILDABLE도 같은 단계를 가리킨다.
+- 지금 세 축만으로 목표에 닿은 skill은 coach가 들어오면 **다시 미달이 될 수 있다.** 그때 진도가 뒤로 가는 것처럼 보이므로, coach를 들일 때 이 전이를 함께 설계한다.
+- 새 테이블도 migration도 없다. 설정 한 줄과 판정 입력을 거치는 자리 셋이다.

@@ -1,4 +1,18 @@
-/// Route paths of docs/02 §2.3 available in S1.
+import 'package:devpilot_app/features/project/data/project_note_models.dart';
+import 'package:flutter/foundation.dart';
+
+/// What an entry screen already knows about a rubber duck target, passed as go_router `extra` to
+/// `/rubber-duck/new` (docs/02 SCR-RUBBER-DUCK ① "대상 카드"). A reload loses it; the session's
+/// `targetTitle` takes over after the first send.
+@immutable
+final class RubberDuckTargetPreview {
+  const RubberDuckTargetPreview({this.title, this.summary});
+
+  final String? title;
+  final String? summary;
+}
+
+/// Route paths of docs/02 §2.3 available up to S3.
 abstract final class AppRoutes {
   static const root = '/';
   static const login = '/login';
@@ -10,30 +24,172 @@ abstract final class AppRoutes {
   static const onboardingProject = '/onboarding/project';
   static const onboardingPlan = '/onboarding/plan';
 
-  /// SCR-DIAGNOSTICS ships in S3; step 5 only links here when suggestions exist (S3+).
+  /// SCR-DIAGNOSTICS: step 5 "진단 시작" and the Today diagnostic card lead here.
   static const diagnostics = '/today/diagnostics';
 
+  /// SCR-LESSON prefix: `/lessons/:lessonKey`.
+  static const lessonsPrefix = '/lessons';
+
+  /// SCR-TIPS: `/tips`, SCR-TIP-DETAIL: `/tips/:tipKey`.
+  static const tipsPrefix = '/tips';
+
+  /// SCR-TERMS: `/terms?q=&skillId=`, SCR-TERM-DETAIL: `/terms/:termKey`.
+  static const termsPrefix = '/terms';
+
+  /// SCR-READ-CODE prefix: `/today/read/:readingKey?taskId=`.
+  static const readCodePrefix = '/today/read';
+
+  static const training = '/training';
+  static const trainingChallenges = '/training/challenges';
+  static const trainingAttempts = '/training/attempts';
+
+  static const rubberDuck = '/rubber-duck';
+
+  /// SCR-RUBBER-DUCK-LIST (docs/02 §3.22): 지난 설명 목록.
+  static const rubberDuckHistory = '/rubber-duck/history';
+
+  /// SCR-READING-LIST (docs/02 §3.23): 내가 받은 읽기 목록.
+  static const readings = '/readings';
+  static const rubberDuckNew = '/rubber-duck/new';
+
+  static const reviewItems = '/review/items';
+  static const reviewItemsNew = '/review/items/new';
+
+  static const today = '/today';
+  static const dashboard = '/dashboard';
+  static const review = '/review';
+  static const reviewSession = '/review/session';
   static const plan = '/plan';
   static const replan = '/plan/replan';
   static const learningGoal = '/plan/goal';
   static const planVersions = '/plan/versions';
+
+  /// SCR-BUILDABLE (docs/02 §3.21): 만드는 순서 중 어디까지 만들 수 있나.
+  static const buildable = '/plan/buildable';
   static const skills = '/skills';
   static const projects = '/projects';
+
+  /// SCR-PROJECT-DETAIL: `/projects/:sideProjectId`.
+  static String projectDetail(String sideProjectId) => '$projects/$sideProjectId';
+
+  /// SCR-PROJECT-NOTE-EDIT (생성): `/projects/:id/notes/new?noteType=`.
+  static String projectNoteNew(String sideProjectId, SideProjectNoteType noteType) =>
+      '$projects/$sideProjectId/notes/new?noteType=${noteType == SideProjectNoteType.incident ? 'INCIDENT' : 'DECISION'}';
+
+  /// SCR-PROJECT-NOTE-EDIT (수정): `/projects/:id/notes/:noteId`.
+  static String projectNote(String sideProjectId, String noteId) =>
+      '$projects/$sideProjectId/notes/$noteId';
+
+  /// SCR-RECENT: 이 브라우저에서 최근 연 화면 (docs/02 §3.19).
+  static const recent = '/recent';
   static const settings = '/settings';
+
+  /// SCR-ACCOUNT-RESET: 계정은 두고 진도만 되돌린다 (docs/02 §3.14).
+  static const settingsReset = '/settings/reset';
+
+  /// SCR-SELF-ASSESSMENT (docs/02 §3.20). 온보딩에서 적은 자기평가를 나중에 고친다.
+  static const settingsSelfAssessment = '/settings/self-assessment';
   static const more = '/more';
 
-  /// Where `/` and a finished login go. `/plan` until Today ships in S2 (docs/02 §2.3).
-  static const start = plan;
+  /// Where `/` and a finished login go (docs/02 §2.3, U-1).
+  static const start = today;
 
   /// `from=goal` query value of [replan] (docs/02 §2.3 query parameters).
   static const replanFromGoal = 'goal';
+
+  /// Query parameter names of docs/02 §2.3.
+  static const completeParameter = 'complete';
+  static const taskIdParameter = 'taskId';
+  static const skillIdParameter = 'skillId';
+  static const statusParameter = 'status';
+  static const targetTypeParameter = 'targetType';
+  static const targetIdParameter = 'targetId';
+  static const conceptKeyParameter = 'conceptKey';
+  static const skillCodeParameter = 'skillCode';
+  static const queryParameter = 'q';
+
+  /// Fragment of SCR-TRAINING-ATTEMPT that scrolls to the Hint Ladder (docs/02 RD-3 hand-off).
+  static const hintsFragment = 'hints';
 
   static String planVersion(String planId) => '$planVersions/$planId';
 
   static String skillDetail(String skillId) => '$skills/$skillId';
 
+  /// SCR-TRAINING-LIST, filtered by [skillId] when given.
+  static String trainingFor(String? skillId) => _withQuery(training, {skillIdParameter: skillId});
+
+  /// SCR-CHALLENGE-DETAIL; [taskId] when opened from the Today CHALLENGE task.
+  static String challengeDetail(String challengeId, {String? taskId}) =>
+      _withQuery('$trainingChallenges/$challengeId', {taskIdParameter: taskId});
+
+  /// SCR-TRAINING-ATTEMPT; [focusHints] adds `#hints` (back from the rubber duck, RD-3).
+  static String attempt(String attemptId, {String? taskId, bool focusHints = false}) => Uri(
+    path: '$trainingAttempts/$attemptId',
+    queryParameters: taskId == null ? null : {taskIdParameter: taskId},
+    fragment: focusHints ? hintsFragment : null,
+  ).toString();
+
+  /// SCR-LESSON of [lessonKey].
+  static String lesson(String lessonKey) => '$lessonsPrefix/$lessonKey';
+
+  /// SCR-TIP-DETAIL of [tipKey].
+  static String tip(String tipKey) => '$tipsPrefix/$tipKey';
+
+  /// SCR-TERM-DETAIL of [termKey].
+  static String term(String termKey) => '$termsPrefix/$termKey';
+
+  /// SCR-TERMS with the search kept in the route (docs/02 §3.17).
+  static String termsFor({String? query, String? skillId}) =>
+      _withQuery(termsPrefix, {queryParameter: query, skillIdParameter: skillId});
+
+  /// SCR-READ-CODE of [readingKey] for the Today READ_CODE task [taskId].
+  static String readCode(String readingKey, {String? taskId}) =>
+      _withQuery('$readCodePrefix/$readingKey', {taskIdParameter: taskId});
+
+  /// SCR-RUBBER-DUCK before a session exists (docs/02 §2.3 `/rubber-duck/new` parameters).
+  static String rubberDuckStart({
+    required String targetType,
+    String? targetId,
+    String? conceptKey,
+    String? skillCode,
+    String? taskId,
+  }) => _withQuery(rubberDuckNew, {
+    targetTypeParameter: targetType,
+    targetIdParameter: targetId,
+    conceptKeyParameter: conceptKey,
+    skillCodeParameter: skillCode,
+    taskIdParameter: taskId,
+  });
+
+  /// SCR-RUBBER-DUCK of an existing session.
+  static String rubberDuckSession(String sessionId, {String? taskId}) =>
+      _withQuery('$rubberDuck/$sessionId', {taskIdParameter: taskId});
+
+  /// SCR-REVIEW-ITEMS with its initial filters.
+  static String reviewItemsFor({String? skillId, String? status}) =>
+      _withQuery(reviewItems, {skillIdParameter: skillId, statusParameter: status});
+
+  /// SCR-REVIEW-ITEM-EDIT of one card (the item travels as `extra`).
+  static String reviewItem(String reviewItemId) => '$reviewItems/$reviewItemId';
+
+  static String _withQuery(String path, Map<String, String?> parameters) {
+    final present = {
+      for (final entry in parameters.entries)
+        if (entry.value != null) entry.key: entry.value!,
+    };
+    return Uri(path: path, queryParameters: present.isEmpty ? null : present).toString();
+  }
+
   static String replanFrom(String source) =>
       Uri(path: replan, queryParameters: {'from': source}).toString();
+
+  /// SCR-REVIEW-SESSION started from the Today REVIEW task.
+  static String reviewSessionFor(String taskId) =>
+      Uri(path: reviewSession, queryParameters: {taskIdParameter: taskId}).toString();
+
+  /// SCR-TODAY with the completion sheet of [taskId] open.
+  static String todayComplete(String taskId) =>
+      Uri(path: today, queryParameters: {completeParameter: taskId}).toString();
 
   static const onboardingInputSteps = [
     onboardingGoal,
@@ -63,18 +219,41 @@ enum RouteAccess {
   static final _detailPatterns = [
     RegExp(r'^/plan/versions/[^/]+$'),
     RegExp(r'^/skills/[^/]+$'),
+    RegExp(r'^/today/read/[^/]+$'),
+    RegExp(r'^/training/(challenges|attempts)/[^/]+$'),
+    RegExp(r'^/rubber-duck/[^/]+$'),
+    RegExp(r'^/review/items/[^/]+$'),
+    RegExp(r'^/lessons/[^/]+$'),
+    RegExp(r'^/tips/[^/]+$'),
+    RegExp(r'^/terms/[^/]+$'),
+    RegExp(r'^/projects/[^/]+$'),
+    RegExp(r'^/projects/[^/]+/notes/[^/]+$'),
   ];
 
   static const _onboardedPaths = {
     AppRoutes.root,
     AppRoutes.onboardingPlan,
+    AppRoutes.today,
+    AppRoutes.dashboard,
+    AppRoutes.review,
+    AppRoutes.reviewSession,
     AppRoutes.plan,
     AppRoutes.replan,
     AppRoutes.learningGoal,
     AppRoutes.planVersions,
+    AppRoutes.buildable,
     AppRoutes.skills,
     AppRoutes.projects,
     AppRoutes.more,
+    AppRoutes.diagnostics,
+    AppRoutes.training,
+    AppRoutes.reviewItems,
+    AppRoutes.rubberDuckHistory,
+    AppRoutes.readings,
+    AppRoutes.lessonsPrefix,
+    AppRoutes.tipsPrefix,
+    AppRoutes.termsPrefix,
+    AppRoutes.recent,
   };
 
   static RouteAccess of(String path) {

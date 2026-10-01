@@ -46,36 +46,6 @@ void main() {
         GoalDateViolation.tooFar,
       );
     });
-
-    test('shouldKeepCheckpointBetweenLastYearAndCompletion', () {
-      final completion = today.addMonths(6);
-      expect(GoalDateRules.checkpointViolation(null, completion, today), isNull);
-      expect(
-        GoalDateRules.checkpointViolation(today.addYears(-1), completion, today),
-        isNull,
-      );
-      expect(
-        GoalDateRules.checkpointViolation(today.addYears(-1).addDays(-1), completion, today),
-        GoalDateViolation.tooEarly,
-      );
-      expect(GoalDateRules.checkpointViolation(completion, completion, today), isNull);
-      expect(
-        GoalDateRules.checkpointViolation(completion.addDays(1), completion, today),
-        GoalDateViolation.afterCompletion,
-      );
-    });
-
-    test('shouldKeepExperienceStartBetween1970AndToday', () {
-      expect(GoalDateRules.experienceStartViolation(today, today), isNull);
-      expect(
-        GoalDateRules.experienceStartViolation(today.addDays(1), today),
-        GoalDateViolation.notPast,
-      );
-      expect(
-        GoalDateRules.experienceStartViolation(const LocalDate(1969, 12, 31), today),
-        GoalDateViolation.tooEarly,
-      );
-    });
   });
 
   group('InputRules', () {
@@ -94,22 +64,15 @@ void main() {
     });
 
     test('shouldDetectPrivateKeyBlocks', () {
-      // Built at runtime so secret scanners don't flag the test (docs/07 §11.3).
-      expect(
-        InputRules.containsPrivateKey(
-          '-----BEGIN RSA '
-          'PRIVATE KEY-----',
-        ),
-        isTrue,
-      );
-      expect(
-        InputRules.containsPrivateKey(
-          '-----BEGIN '
-          'PRIVATE KEY-----',
-        ),
-        isTrue,
-      );
-      expect(InputRules.containsPrivateKey('-----BEGIN PUBLIC KEY-----'), isFalse);
+      // Headers are assembled at runtime so the repository holds no literal key header.
+      String header(String kind) =>
+          '-----'
+          'BEGIN $kind'
+          ' KEY-----';
+
+      expect(InputRules.containsPrivateKey(header('RSA PRIVATE')), isTrue);
+      expect(InputRules.containsPrivateKey(header('PRIVATE')), isTrue);
+      expect(InputRules.containsPrivateKey(header('PUBLIC')), isFalse);
     });
   });
 
@@ -123,10 +86,13 @@ void main() {
   });
 
   test('shouldReadSubjectFromJwtPayloadOnly', () {
-    // Header and signature are irrelevant. Assembled at runtime so secret scanners don't flag the
-    // test (docs/07 §11.3).
-    String segment(String json) => base64Url.encode(utf8.encode(json)).replaceAll('=', '');
-    final token = '${segment('{"alg":"ES256"}')}.${segment('{"sub":"5f1c3b1e","email":"x"}')}.c2ln';
+    // Built at runtime: header and signature are irrelevant, only the payload is read.
+    String segment(Object json) => base64Url.encode(utf8.encode(jsonEncode(json)));
+    final token = [
+      segment({'alg': 'ES256'}),
+      segment({'sub': '5f1c3b1e', 'email': 'x'}),
+      'c2ln',
+    ].join('.');
 
     expect(jwtSubject(token), '5f1c3b1e');
     expect(jwtSubject('not-a-jwt'), isNull);

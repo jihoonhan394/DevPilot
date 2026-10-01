@@ -1,0 +1,38 @@
+# 테스트 plan template (연동 트랙): milestone 3개 (PREPARATION 2, CONSOLIDATION 1)
+# 그 트랙의 MUST skill이 모두 milestone에 들어 있다 (CV-36)
+templateKey: TEST_INTEGRATION_DEFAULT
+targetRole: INTEGRATION_ENGINEER
+planTitle: 테스트 연동·구축 계획
+placement:
+  minMilestoneDays: 7
+milestones:
+  - key: INTERFACE_BASICS
+    title: 인터페이스 기초
+    description: HTTP와 예외 처리를 다지고 연동 지점을 테스트로 고정한다.
+    priority: MUST
+    weightBp: 4500
+    phase: PREPARATION
+    skillCodes:
+      - WEB_HTTP.HTTP_BASICS
+      - JAVA.EXCEPTION
+      - TESTING.JUNIT
+  - key: DATA_AND_DEPLOY
+    title: 데이터와 배포
+    priority: MUST
+    weightBp: 3500
+    phase: PREPARATION
+    skillCodes:
+      - SPRING.TRANSACTION
+      - DATABASE.INDEX
+      - DEVOPS.DOCKER
+  - key: EXPLAIN_AND_CONSOLIDATE
+    title: 설명과 정리
+    description: 연동 결정을 설명하고 남은 주제를 정리한다.
+    priority: SHOULD
+    weightBp: 2000
+    phase: CONSOLIDATION
+    skillCodes:
+      - EXPLANATION.PROJECT_STORY
+      - JAVA.COLLECTION
+      - ALGORITHM.SORT_SEARCH
+      - SYSTEM_DESIGN.CACHING
