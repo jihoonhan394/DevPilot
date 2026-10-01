@@ -2462,6 +2462,7 @@ public record AttemptView(
         Integer explanationCoverageBp,
         List<SubmissionView> submissions,          // submissionNo ASC
         List<ScheduledReviewView> reviewScheduled, // 06 §8.3으로 생성·갱신된 review item. 없으면 []
+        List<SkillRef> claimWithdrawnSkills, // 자기평가가 거둬진 skill (06 §7.3). 없으면 []
         UUID evidenceSourceEventId,                // 최신 CHALLENGE_EVALUATED learning_event id (skill이 여러 개면 첫 skill 행). POST /evidence/drafts의 sourceLearningEventId로 사용. 없으면 null
         Instant startedAt,
         Instant completedAt,
@@ -2500,6 +2501,8 @@ public record ScheduledReviewView(UUID reviewItemId, String skillCode, LocalDate
 **시간 제한**: `timeLimitMinutes`는 콘텐츠(seed challenge)의 값이고 서버는 이 시간을 강제하지 않는다 — 클라이언트가 경과 시간을 보여 주고(`02` 문제 풀이 화면), 사용자가 제출할 때 `elapsedSeconds`를 함께 보낸다(§10.9). 시간 초과라는 상태는 없고 outcome 계산(`06` §8.2)에도 쓰지 않는다.
 
 **정답 정보 공개**: `answerRevealed = true` ⇔ 요청 사용자가 이 challenge에 대해 `evaluated_outcome IS NOT NULL`인 attempt를 하나 이상 가짐(한 번이라도 평가 완료). 이후 재제출·포기와 무관하게 계속 공개한다.
+
+`claimWithdrawnSkills` 계산: attempt `outcome`이 null이 아닐 때만 채운다(푸는 중에는 `[]`). challenge skill 중 `self_assessed_level`이 있고 `self_assessment_active = false`인 것을 `code` ASC로 넣는다. **주장이 거둬지면 `06` §7.5가 planning을 근거로 떨어뜨려 다음 과제의 난이도가 내려가고 예산이 늘어난다** — 그 사실을 말하지 않으면 사용자는 왜 갑자기 쉬워졌는지도, 왜 목표일이 멀어졌는지도 모른다(ADR-064). 거둬진 시점은 저장하지 않으므로 **"방금 바뀌었다"가 아니라 "지금 이렇다"**를 말한다.
 
 `reviewScheduled` 계산: attempt `outcome`이 `06-learning-engine-rules.md` §8.3 생성 조건을 만족하면 challenge skill마다 같은 절의 `concept_key`로 `review_item`을 찾아 `{reviewItemId, skillCode, dueDate = planDate(due_at)}`를 넣는다.
 
@@ -2614,6 +2617,7 @@ public record ChallengeGenerateRequest(
       "aiMeta": { "model": "deepseek-flash", "promptVersion": "challenge.evaluate@v1", "guardActions": [] } }
   ],
   "reviewScheduled": [ { "reviewItemId": "r9…", "skillCode": "JAVA.EXCEPTION", "dueDate": "2026-11-03" } ],
+  "claimWithdrawnSkills": [ { "id": "sk…", "code": "JAVA.EXCEPTION", "name": "예외 처리", "category": "JAVA" } ],
   "evidenceSourceEventId": "4c1e…",
   "startedAt": "2026-11-02T12:01:00Z",
   "completedAt": "2026-11-02T12:10:31Z",

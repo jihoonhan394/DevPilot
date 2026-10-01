@@ -1729,6 +1729,9 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ 더 생각해 볼 질문                   │
 │ 이 예외를 호출자가 복구할 수 없다면 │
 │ 어떤 타입이 더 적절할까요?          │
+│ ↓ 이 수준에서 막혔으니 예외 처리는  │  claimWithdrawnSkills가 있을 때
+│   기록 기준으로 다시 잡아요. 다음   │  (ADR-064)
+│   과제는 더 쉬운 단계부터…         │
 │ ⓘ 이 문제는 내일 복습 카드로 나와요 │
 │ ┌────────────────────────────┐ │
 │ │   수정해서 다시 제출 (2/5)     │ │
@@ -1740,6 +1743,10 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 └────────────────────────────────┘
 ```
 
+- **"난이도를 낮췄어요" 줄 (ADR-064)**: `AttemptView.claimWithdrawnSkills`(`05` §10.6)가 비어 있지 않으면 복습 줄 위에 한 줄 둔다(`trainingEvalDifficultyLowered`). 자기평가가 거둬지면 `06` §7.5가 planning을 근거로 떨어뜨려 **다음 과제의 난이도가 내려가고 목표일 계산이 지금 실력으로 바뀐다** — 그 두 변화를 말하지 않으면 "왜 갑자기 쉬워졌지", "왜 날짜가 멀어졌지"가 남는다.
+  - **모달도 토스트도 아니다.** 문제를 막 틀린 사람에게 모달로 판정을 들이미는 것은 ADR-062가 걷어낸 빨간 배지와 같은 자리다. 토스트는 4초 뒤 사라지는데(§6.7) 이 줄은 "왜 쉬워졌나"의 답이라 나중에 다시 봐도 있어야 한다.
+  - 문구는 **"수준이 내려갔다"가 아니다.** ADR-063은 레벨을 내리지 않고 주장만 거둔다 — 사용자가 겪는 변화는 난이도와 날짜다.
+  - 평가 전 attempt에는 `[]`라 보이지 않는다. 푸는 중인 화면에 끼면 지금 할 일을 밀어낸다.
 - **컴포넌트**: `ChallengeHeader`, `CollapsibleProblem`, `SelfExplanationForm`, `HintLadder`(§6.2), `HintConfirmDialog`, `SubmissionForm`(`CodeField`: monospace, 탭 입력 = 공백 4칸, 줄 번호 없음), `AsyncStatusIndicator`, `EvaluationResultCard`(`OutcomeBadge`, `RubricList`), `SubmissionHistory`, `AttemptMenu`(그만두기).
 - **데이터**
 

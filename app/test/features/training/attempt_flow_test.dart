@@ -245,6 +245,40 @@ void main() {
     expect(locationOf(tester), AppRoutes.todayComplete('e1000000-0000-4000-8000-000000000001'));
   });
 
+  /// 난이도가 왜 내려갔는지 결과 화면이 말한다 (ADR-064). 모달이 아니라 한 줄이다 — 막 틀린 사람에게
+  /// 판정을 들이밀지 않고, 나중에 다시 봐도 남아 있어야 하기 때문이다.
+  testWidgets('shouldSayWhyTheDifficultyDroppedWhenTheClaimWasWithdrawn', (tester) async {
+    backend.trainingRepository.attempts[attemptId] = testAttempt(selfExplanation: '설명');
+    await openAttempt(tester, taskId: 'e1000000-0000-4000-8000-000000000001');
+    await enterTextByKey(tester, 'attempt.answerField', '원인 예외를 잃었다.');
+    await tapKeyWithoutSettling(tester, 'attempt.submitButton');
+
+    backend.trainingRepository.completeEvaluation(
+      attemptId,
+      claimWithdrawnSkills: const [javaExceptionSkill],
+    );
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('attempt.difficultyLowered')), findsOneWidget);
+    expect(find.textContaining('기록 기준으로 다시 잡아요'), findsOneWidget);
+    expect(find.textContaining('더 쉬운 단계부터'), findsOneWidget);
+  });
+
+  /// 거둬진 것이 없으면 그 줄은 없다.
+  testWidgets('shouldNotMentionDifficultyWhenNothingWasWithdrawn', (tester) async {
+    backend.trainingRepository.attempts[attemptId] = testAttempt(selfExplanation: '설명');
+    await openAttempt(tester, taskId: 'e1000000-0000-4000-8000-000000000001');
+    await enterTextByKey(tester, 'attempt.answerField', '원인 예외를 보존했다.');
+    await tapKeyWithoutSettling(tester, 'attempt.submitButton');
+
+    backend.trainingRepository.completeEvaluation(attemptId);
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('attempt.difficultyLowered')), findsNothing);
+  });
+
   testWidgets('shouldRetryAFailedEvaluation', (tester) async {
     backend.trainingRepository.attempts[attemptId] = testAttempt(
       selfExplanation: '설명',

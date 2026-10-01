@@ -1,6 +1,7 @@
 package com.devpilot.skill.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.devpilot.learning.application.LearningEventRecorder;
 import com.devpilot.learning.application.LearningEventRecorder.NewLearningEvent;
@@ -89,6 +90,29 @@ class ClaimUnsupportedIntegrationTest extends ApiTestSupport {
         assertThat(planningKnowledge(user)).isEqualTo(1);
     }
 
+    /** 난이도가 내려간 이유를 attempt 결과가 들고 있다 (docs/05 §10.6, ADR-064). 설명 없이 바뀌면 "왜 갑자기 쉬워졌지"가 남는다. */
+    @Test
+    void shouldReportTheWithdrawnClaimOnTheAttemptResult() throws Exception {
+        TestUser user = onboardedOwner();
+        AskedSkill asked = askedSkill(user);
+        jdbc.update(
+                "update devpilot.user_skill_state set self_assessment_active = false where user_id"
+                        + " = ? and skill_id = ?::uuid",
+                userId(user),
+                asked.skillId());
+
+        assertThat(claimWithdrawnCodes(user, asked.challengeId())).contains(asked.skillCode());
+    }
+
+    /** 주장이 살아 있으면 그 줄은 비어 있다. */
+    @Test
+    void shouldReportNothingWhileTheClaimStands() throws Exception {
+        TestUser user = onboardedOwner();
+        AskedSkill asked = askedSkill(user);
+
+        assertThat(claimWithdrawnCodes(user, asked.challengeId())).isEmpty();
+    }
+
     private void recordFailure(UUID userId, UUID skillId, int difficulty, LocalDate planDate) {
         learningEventRecorder.record(
                 new NewLearningEvent(
@@ -114,6 +138,49 @@ class ClaimUnsupportedIntegrationTest extends ApiTestSupport {
                                 false),
                         null,
                         Instant.parse("2026-10-05T01:00:00Z")));
+    }
+
+    /** 자기평가가 있는 skill을 묻는 비진단 challenge 하나. 테스트 catalog가 무엇을 묻는지에 기대지 않는다. */
+    private AskedSkill askedSkill(TestUser user) {
+        Map<String, Object> row =
+                jdbc.queryForMap(
+                        "select c.id::text as challenge_id, k.id::text as skill_id, k.code as code"
+                                + " from devpilot.challenge c join devpilot.challenge_skill cs on"
+                                + " cs.challenge_id = c.id join devpilot.skill k on k.id ="
+                                + " cs.skill_id join devpilot.user_skill_state s on s.skill_id ="
+                                + " k.id and s.user_id = ? where c.purpose <> 'DIAGNOSTIC' and"
+                                + " s.self_assessed_level is not null order by c.seed_key limit 1",
+                        userId(user));
+        return new AskedSkill(
+                (String) row.get("challenge_id"),
+                (String) row.get("skill_id"),
+                (String) row.get("code"));
+    }
+
+    private record AskedSkill(String challengeId, String skillId, String skillCode) {}
+
+    /** attempt를 하나 만들고 평가가 끝난 상태로 바꾼 뒤 결과의 {@code claimWithdrawnSkills} code를 읽는다. */
+    private List<String> claimWithdrawnCodes(TestUser user, String challengeId) throws Exception {
+        String attemptId =
+                api.body(
+                                api.post(
+                                                user,
+                                                "/api/v1/challenges/{challengeId}/attempts",
+                                                null,
+                                                challengeId)
+                                        .andExpect(status().isCreated()))
+                        .path("id")
+                        .asString();
+        jdbc.update(
+                "update devpilot.challenge_attempt set status = 'EVALUATED', outcome ="
+                        + " 'SOLVED_WITH_HINTS' where id = ?::uuid",
+                attemptId);
+
+        return api.body(api.get(user, "/api/v1/challenge-attempts/{attemptId}", attemptId))
+                .path("claimWithdrawnSkills")
+                .valueStream()
+                .map(skill -> skill.path("code").asString())
+                .toList();
     }
 
     private int planningKnowledge(TestUser user) throws Exception {

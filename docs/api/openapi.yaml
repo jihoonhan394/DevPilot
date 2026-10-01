@@ -2463,6 +2463,10 @@ components:
           format: uuid
         challengeTitle:
           type: string
+        claimWithdrawnSkills:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillRef"
         completedAt:
           type: string
           format: date-time
@@ -2549,6 +2553,7 @@ components:
       required:
       - challengeId
       - challengeTitle
+      - claimWithdrawnSkills
       - completedAt
       - difficulty
       - evaluatedOutcome

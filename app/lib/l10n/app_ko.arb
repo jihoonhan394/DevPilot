@@ -2955,5 +2955,7 @@
   "guideFromSelfAssessment": "기록이 아직 적어서 이 날짜는 예상이에요. 확인 문제를 풀면 지금 수준으로 다시 계산해요.",
   "@guideFromSelfAssessment": {"description": "SCR-TODAY guide: the date is a guess while there is too little history (completionRateEstimated, ADR-062/063)."},
   "guideCheckLevel": "확인 문제 풀어 보기",
-  "@guideCheckLevel": {"description": "SCR-TODAY guide: one tap to the diagnostic, the door that replaces a claim with a record (ADR-063)."}
+  "@guideCheckLevel": {"description": "SCR-TODAY guide: one tap to the diagnostic, the door that replaces a claim with a record (ADR-063)."},
+  "trainingEvalDifficultyLowered": "이 수준에서 막혔으니 {skill}은 기록 기준으로 다시 잡아요. 다음 과제는 더 쉬운 단계부터 나오고, 목표일 계산도 지금 실력으로 바뀌어요.",
+  "@trainingEvalDifficultyLowered": {"description": "SCR-TRAINING-ATTEMPT result: why the difficulty dropped (ADR-064). Not a verdict — it says what changes next.", "placeholders": {"skill": {"type": "String"}}}
 }

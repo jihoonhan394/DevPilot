@@ -178,7 +178,8 @@ class _TextList extends StatelessWidget {
   }
 }
 
-/// The diagnostic result line (docs/02 §4.6) and the review card date (docs/06 §8.3).
+/// The diagnostic result line (docs/02 §4.6), why the difficulty dropped (ADR-064) and the review
+/// card date (docs/06 §8.3).
 class _ResultNotes extends StatelessWidget {
   const _ResultNotes({required this.attempt});
 
@@ -199,6 +200,26 @@ class _ResultNotes extends StatelessWidget {
                   ? l10n.diagnosticsResultPassed
                   : l10n.diagnosticsResultFailed,
               key: const Key('attempt.diagnosticResult'),
+            ),
+          ),
+        // 난이도가 왜 내려갔는지 (ADR-064). 모달이 아니라 한 줄이다 — 막 틀린 사람에게 판정을 들이밀지
+        // 않는다. 설명 없이 바뀌면 "왜 갑자기 쉬워졌지"가 남는다.
+        if (attempt.claimWithdrawnSkills.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.md),
+            child: Row(
+              children: [
+                const Icon(Icons.trending_down, size: 16),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    l10n.trainingEvalDifficultyLowered(
+                      attempt.claimWithdrawnSkills.map((skill) => skill.name).join(', '),
+                    ),
+                    key: const Key('attempt.difficultyLowered'),
+                  ),
+                ),
+              ],
             ),
           ),
         if (due != null)

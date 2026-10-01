@@ -11,7 +11,6 @@ import com.devpilot.learning.domain.HintTargetType;
 import com.devpilot.learning.domain.LearningEventType;
 import com.devpilot.review.application.ReviewQueryService;
 import com.devpilot.review.application.ReviewQueryService.ScheduledCardRef;
-import com.devpilot.skill.application.SkillCatalogQueryService;
 import com.devpilot.skill.application.SkillRef;
 import com.devpilot.training.application.TrainingViews.AttemptView;
 import com.devpilot.training.application.TrainingViews.DisclosedHintView;
@@ -48,7 +47,7 @@ class AttemptViewAssembler {
     private final HintService hintService;
     private final ReviewQueryService reviewQueryService;
     private final LearningEventQueryService learningEventQueryService;
-    private final SkillCatalogQueryService skillCatalogQueryService;
+    private final AttemptSkillNotes skillNotes;
     private final AiCallMetaReader aiCallMetaReader;
     private final int maxSubmissions;
 
@@ -57,14 +56,14 @@ class AttemptViewAssembler {
             HintService hintService,
             ReviewQueryService reviewQueryService,
             LearningEventQueryService learningEventQueryService,
-            SkillCatalogQueryService skillCatalogQueryService,
+            AttemptSkillNotes skillNotes,
             AiCallMetaReader aiCallMetaReader,
             DevPilotProperties properties) {
         this.submissionRepository = submissionRepository;
         this.hintService = hintService;
         this.reviewQueryService = reviewQueryService;
         this.learningEventQueryService = learningEventQueryService;
-        this.skillCatalogQueryService = skillCatalogQueryService;
+        this.skillNotes = skillNotes;
         this.aiCallMetaReader = aiCallMetaReader;
         this.maxSubmissions = properties.training().maxSubmissionsPerAttempt();
     }
@@ -95,6 +94,7 @@ class AttemptViewAssembler {
                 attempt.getExplanationCoverageBp(),
                 submissionViews(attempt, challenge, submissions, latest),
                 scheduledReviews(attempt, challenge, zone, dayStartHour),
+                claimWithdrawnSkills(attempt, challenge),
                 latest == null
                         ? null
                         : learningEventQueryService
@@ -182,12 +182,20 @@ class AttemptViewAssembler {
                 evaluation.followUpQuestion());
     }
 
+    private List<SkillRef> claimWithdrawnSkills(ChallengeAttempt attempt, Challenge challenge) {
+        // 푸는 중인 화면에 끼면 지금 할 일을 밀어낸다 (ADR-064)
+        if (attempt.getOutcome() == null) {
+            return List.of();
+        }
+        return skillNotes.claimWithdrawn(attempt.getUserId(), challenge.getSkillIds());
+    }
+
     private List<ScheduledReviewView> scheduledReviews(
             ChallengeAttempt attempt, Challenge challenge, ZoneId zone, int dayStartHour) {
         if (!ReviewScheduleRule.shouldSchedule(attempt.getOutcome(), attempt.getMaxHintLevel())) {
             return List.of();
         }
-        Map<UUID, SkillRef> refs = skillCatalogQueryService.findRefs(challenge.getSkillIds());
+        Map<UUID, SkillRef> refs = skillNotes.refs(challenge.getSkillIds());
         Map<String, String> keyToCode = new LinkedHashMap<>();
         int skillCount = challenge.getSkillIds().size();
         refs.values().stream()

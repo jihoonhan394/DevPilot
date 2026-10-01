@@ -37,6 +37,10 @@ abstract class AttemptView with _$AttemptView {
     /// submissionNo ASC.
     @Default(<SubmissionView>[]) List<SubmissionView> submissions,
     @Default(<ScheduledReviewView>[]) List<ScheduledReviewView> reviewScheduled,
+
+    /// Skills whose self-assessment was withdrawn, so difficulty now follows the record
+    /// (docs/05 §10.6, ADR-063/064). Empty while the attempt is not evaluated yet.
+    @Default(<SkillRef>[]) List<SkillRef> claimWithdrawnSkills,
     String? evidenceSourceEventId,
     required DateTime startedAt,
     DateTime? completedAt,

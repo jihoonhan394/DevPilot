@@ -89,7 +89,12 @@ public final class TrainingViews {
     /** rubric 항목 (docs/05 §10.1). */
     public record RubricItemView(String id, String criterion, int weightBp, RubricAxis axis) {}
 
-    /** attempt 상세 (docs/05 §10.6). */
+    /**
+     * attempt 상세 (docs/05 §10.6).
+     *
+     * @param claimWithdrawnSkills 자기평가가 거둬져서 이제 기록 기준으로 난이도를 잡는 skill (ADR-063·064). 평가가 끝난
+     *     attempt에만 채운다
+     */
     public record AttemptView(
             UUID id,
             UUID challengeId,
@@ -109,6 +114,7 @@ public final class TrainingViews {
             @Nullable Integer explanationCoverageBp,
             List<SubmissionView> submissions,
             List<ScheduledReviewView> reviewScheduled,
+            List<SkillRef> claimWithdrawnSkills,
             @Nullable UUID evidenceSourceEventId,
             Instant startedAt,
             @Nullable Instant completedAt,
@@ -118,6 +124,7 @@ public final class TrainingViews {
             hints = List.copyOf(hints);
             submissions = List.copyOf(submissions);
             reviewScheduled = List.copyOf(reviewScheduled);
+            claimWithdrawnSkills = List.copyOf(claimWithdrawnSkills);
         }
     }
 

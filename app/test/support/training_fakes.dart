@@ -191,6 +191,7 @@ final class FakeTrainingRepository implements TrainingRepository {
     EvaluatedOutcome outcome = EvaluatedOutcome.partial,
     AttemptOutcome attemptOutcome = AttemptOutcome.partial,
     List<ScheduledReviewView> reviewScheduled = const [],
+    List<SkillRef> claimWithdrawnSkills = const [],
   }) {
     _replaceLatest(
       attemptId,
@@ -206,6 +207,7 @@ final class FakeTrainingRepository implements TrainingRepository {
       evaluatedOutcome: outcome,
       outcome: attemptOutcome,
       reviewScheduled: reviewScheduled,
+      claimWithdrawnSkills: claimWithdrawnSkills,
     );
     final challenge = challengeViews[attempt.challengeId]!;
     challengeViews[attempt.challengeId] = challenge.copyWith(answerRevealed: true);

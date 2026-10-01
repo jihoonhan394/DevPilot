@@ -79,6 +79,7 @@ AttemptView testAttempt({
   EvaluatedOutcome? evaluatedOutcome,
   AttemptOutcome? outcome,
   List<ScheduledReviewView> reviewScheduled = const [],
+  List<SkillRef> claimWithdrawnSkills = const [],
 }) => AttemptView(
   id: id,
   challengeId: challenge,
@@ -96,6 +97,7 @@ AttemptView testAttempt({
   outcome: outcome,
   submissions: submissions,
   reviewScheduled: reviewScheduled,
+  claimWithdrawnSkills: claimWithdrawnSkills,
   startedAt: testNow,
   version: 0,
 );
