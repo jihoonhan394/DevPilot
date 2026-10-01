@@ -101,6 +101,18 @@ class _GuideBody extends StatelessWidget {
                 style: theme.textTheme.bodySmall,
               ),
             ],
+            // 날짜가 자기평가 위에 서 있으면 그렇다고 말한다. 빨간 배지의 반대 방향 거짓말도 거짓말이다 —
+            // 한 번도 해 보지 않은 사람에게 "안에 들어와요"라고만 하면 그 말을 믿고 아무것도 안 하게 된다.
+            if (budget.completionRateEstimated) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                l10n.guideFromSelfAssessment,
+                key: const Key('today.guideEstimated'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
             if (budget.requiredMustLaterMinutes > 0) ...[
               const SizedBox(height: AppSpacing.xs),
               Text(

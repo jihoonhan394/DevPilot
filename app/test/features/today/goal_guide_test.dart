@@ -69,6 +69,22 @@ void main() {
     expect(find.byKey(const Key('today.guideShrink')), findsOneWidget);
   });
 
+  /// 날짜가 자기평가 위에 서 있으면 그렇다고 말한다. 반대 방향 거짓말도 거짓말이다.
+  testWidgets('shouldAdmitTheDateRestsOnTheSelfAssessmentUntilThereIsHistory', (tester) async {
+    backend.planRepository.budget = testBudget().copyWith(completionRateEstimated: true);
+    await pumpApp(tester, backend: backend);
+
+    expect(find.byKey(const Key('today.guideEstimated')), findsOneWidget);
+    expect(find.textContaining('자기평가 기준이에요'), findsOneWidget);
+  });
+
+  /// 기록이 쌓이면 그 말은 사라진다.
+  testWidgets('shouldDropTheCaveatOnceThereIsRealHistory', (tester) async {
+    await pumpApp(tester, backend: backend);
+
+    expect(find.byKey(const Key('today.guideEstimated')), findsNothing);
+  });
+
   /// 버튼을 누를지 정하는 자리가 "아무것도 안 하는 것보다"가 걸리는 순간이다 (ADR-062).
   testWidgets('shouldGuideBeforeTheDayIsEvenGenerated', (tester) async {
     backend.todayRepository.today = null;

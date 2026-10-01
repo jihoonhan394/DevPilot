@@ -2951,5 +2951,7 @@
   "buildableStartAnywayBody": "모자란 축이 있어도 이 단계는 지금 시작할 수 있어요. 만든 만큼 기록으로 남기면 그게 나중에 설명 자료가 돼요. 다 채운 뒤에 시작하면 남는 게 없어요.",
   "@buildableStartAnywayBody": {"description": "SCR-BUILDABLE: body of the same block."},
   "buildableStartAnywayAction": "기록 남기기",
-  "@buildableStartAnywayAction": {"description": "SCR-BUILDABLE: button to the side project list, where the record lives."}
+  "@buildableStartAnywayAction": {"description": "SCR-BUILDABLE: button to the side project list, where the record lives."},
+  "guideFromSelfAssessment": "아직 해 본 기록이 없어서 이 날짜는 자기평가 기준이에요. 한 번 풀어 보면 실제 기록으로 바뀌어요.",
+  "@guideFromSelfAssessment": {"description": "SCR-TODAY guide: the date rests on the self-assessment until there is history (completionRateEstimated, ADR-062)."}
 }
