@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "devpilot/ai/COACH_RESPONSE_FEEDBACK.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "userIdentifiedIssue",
+    "feedback",
+    "followUpQuestion"
+  ],
+  "properties": {
+    "userIdentifiedIssue": {
+      "type": "boolean"
+    },
+    "feedback": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 600
+    },
+    "followUpQuestion": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

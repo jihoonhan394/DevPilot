@@ -269,3 +269,124 @@ challenges:
       QUESTION_ONLY: 재고가 1개 남았을 때 두 주문 트랜잭션이 거의 동시에 재고를 읽으면, 각자 확인하는 값과 마지막에 저장되는 값은 무엇일까요?
       CONCEPT_HINT: 읽고 판단한 뒤 쓰는 구조의 갱신 손실과, 이를 막는 DB 수준의 조건부 갱신, 행 잠금, 버전 기반 충돌 감지를 비교해 보세요.
       DIRECTION: 재고 확인과 차감을 DB가 한 번에 판정하게 만들 수 있는지 먼저 검토하고, 어렵다면 잠금과 버전 충돌 중 무엇을 쓸지 경합 빈도를 기준으로 정하세요.
+
+  - seedKey: PRACTICE.DATABASE.SQL_BASICS.L1.001
+    purpose: PRACTICE
+    skills:
+      - DATABASE.SQL_BASICS
+    difficulty: 1
+    estimatedMinutes: 15
+    isTransfer: false
+    title: 건수가 맞지 않는 주문 집계 쿼리 바로잡기
+    scenario: |-
+      orders 테이블에는 행이 1000개 있습니다. canceled_at 컬럼은 취소된 주문에만 값이 있고 나머지는
+      비어 있습니다. 취소되지 않은 주문 수를 세려고 쓴 쿼리와 결과입니다.
+      ```sql
+      -- (A) 결과: 1000
+      select count(*) from orders;
+
+      -- (B) 결과: 120
+      select count(canceled_at) from orders;
+
+      -- (C) 결과: 0  (취소되지 않은 880건이 나올 줄 알았다)
+      select count(*) from orders where canceled_at <> '2026-01-01';
+      ```
+    prompt: |-
+      1. (B)가 1000이 아닌 이유를 설명하세요.
+      2. (C)가 0인 이유를 설명하고, 취소되지 않은 주문 수를 세는 쿼리로 고치세요.
+      3. 값이 비어 있을 수 있는 컬럼을 조건에 쓸 때 지켜야 할 규칙을 한 줄로 정리하세요.
+    constraints:
+      - PostgreSQL 16 기준으로 답한다
+      - 테이블 구조는 바꾸지 않는다
+    expectedConcepts:
+      - 값이 없음을 뜻하는 표시
+      - 집계 함수가 비어 있는 값을 세는 방식
+      - 비어 있는 값과의 비교 결과
+      - 비어 있는지 확인하는 전용 조건
+    rubric:
+      - id: R1
+        criterion: 집계 함수가 값이 있는 행만 센다는 점으로 (B)의 결과를 설명한다
+        weightBp: 3000
+        axis: EXPLANATION
+      - id: R2
+        criterion: 비교 결과가 참이 되지 않아 (C)가 0이 되는 이유를 짚고 조건을 고친 쿼리를 작성한다
+        weightBp: 4000
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 값이 비어 있을 수 있는 컬럼을 조건에 쓸 때의 규칙을 한 줄로 정리한다
+        weightBp: 3000
+        axis: EXPLANATION
+    commonMistakes:
+      - 같지 않음 조건이면 비어 있는 행도 포함된다고 생각함
+      - 빈 문자열과 값이 없음을 같은 것으로 다룸
+      - 조건을 고치지 않고 애플리케이션에서 다시 거름
+    transferTargets:
+      - DATABASE.MODELING
+    hints:
+      QUESTION_ONLY: 값이 아예 들어 있지 않은 칸을 어떤 값과 비교하면 그 비교는 참이 될까요?
+      CONCEPT_HINT: 알 수 없음을 뜻하는 표시가 비교와 집계에서 어떻게 다뤄지는지, 그리고 그 표시를 확인하는 전용 조건을 떠올려 보세요.
+      DIRECTION: 세 쿼리가 각각 어떤 행을 세고 있는지 표로 적어 보고, 비어 있는 칸이 있는 행이 각 쿼리에서 포함되는지 하나씩 표시해 보세요.
+
+  - seedKey: PRACTICE.DATABASE.SQL_BASICS.L2.001
+    purpose: PRACTICE
+    skills:
+      - DATABASE.SQL_BASICS
+    difficulty: 2
+    estimatedMinutes: 25
+    isTransfer: false
+    title: 조인했더니 금액이 두 배가 된 집계 쿼리 고치기
+    scenario: |-
+      주문별 결제 금액을 뽑는 쿼리입니다. 쿠폰을 두 장 쓴 주문의 합계가 정확히 두 배로 나오고, 항목이
+      아직 없는 주문은 목록에서 아예 빠집니다.
+      ```sql
+      select o.id,
+             o.user_id,
+             sum(i.price * i.quantity) as total
+      from orders o
+      join order_items i on i.order_id = o.id
+      join coupons c on c.order_id = o.id
+      group by o.id, o.user_id;
+      ```
+      한 주문에는 항목이 여러 개 있을 수 있고, 쿠폰도 0장에서 2장까지 붙을 수 있습니다.
+    prompt: |-
+      1. 쿠폰이 두 장인 주문의 합계가 두 배가 되는 이유를 설명하세요. 집계 전에 행이 어떤 모습인지
+         함께 적습니다.
+      2. 합계가 정확히 나오도록 쿼리를 고치세요.
+      3. 항목이 아직 없는 주문도 목록에 포함되게 고치고, 그 주문의 합계가 어떻게 나와야 하는지 적으세요.
+      4. 고친 쿼리가 맞는지 확인하는 방법을 한 가지 적으세요.
+    constraints:
+      - PostgreSQL 16 기준으로 답한다
+      - 테이블 구조와 인덱스는 바꾸지 않는다
+    expectedConcepts:
+      - 조인으로 행이 곱해지는 현상
+      - 집계 전 중간 결과 확인
+      - 집계를 따로 계산해 붙이기
+      - 한쪽에 짝이 없을 때의 조인
+    rubric:
+      - id: R1
+        criterion: 조인으로 항목 행이 쿠폰 수만큼 곱해진다는 점으로 합계가 커진 이유를 설명한다
+        weightBp: 3000
+        axis: EXPLANATION
+      - id: R2
+        criterion: 집계 대상이 곱해지지 않도록 쿼리를 고쳐 합계를 정확히 계산한다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 짝이 없는 주문도 목록에 남도록 조인 방식을 고치고 합계 값을 정한다
+        weightBp: 2000
+        axis: IMPLEMENTATION
+      - id: R4
+        criterion: 고친 결과가 맞는지 확인하는 방법을 제시한다
+        weightBp: 1500
+        axis: DEBUGGING
+    commonMistakes:
+      - 중복을 없애는 표시만 붙여 서로 다른 항목까지 하나로 합침
+      - 쿠폰 조인을 그대로 두고 합계를 나누기로 보정함
+      - 짝이 없는 주문이 사라진 것을 결과가 적어진 것으로만 보고 넘어감
+      - 합계를 애플리케이션에서 다시 계산해 쿼리 문제를 덮음
+    transferTargets:
+      - DATABASE.INDEX
+    hints:
+      QUESTION_ONLY: 집계하기 전 중간 결과를 그대로 펼쳐 보면 한 주문의 항목 줄이 몇 번씩 보일까요?
+      CONCEPT_HINT: 두 관계를 한 번에 붙이면 행 수가 서로 곱해진다는 점과, 짝이 없는 행을 남기는 조인 방식을 떠올려 보세요.
+      DIRECTION: 집계를 빼고 원본 행을 먼저 뽑아 한 주문의 줄 수를 세어 보고, 항목 합계와 쿠폰을 각각 따로 구한 뒤 주문에 붙이는 순서로 다시 짜 보세요.

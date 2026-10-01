@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "devpilot/ai/RUBBER_DUCK_SUMMARY.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "gaps",
+    "confirmed",
+    "overallNote"
+  ],
+  "properties": {
+    "gaps": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "conceptKey",
+          "whatWasMissed",
+          "whyItMatters",
+          "reviewQuestion"
+        ],
+        "properties": {
+          "conceptKey": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)+$",
+            "maxLength": 120
+          },
+          "whatWasMissed": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 300
+          },
+          "whyItMatters": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 300
+          },
+          "reviewQuestion": {
+            "type": "string",
+            "minLength": 15,
+            "maxLength": 500
+          }
+        }
+      }
+    },
+    "confirmed": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "string",
+        "minLength": 5,
+        "maxLength": 200
+      }
+    },
+    "overallNote": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 600
+    }
+  }
+}

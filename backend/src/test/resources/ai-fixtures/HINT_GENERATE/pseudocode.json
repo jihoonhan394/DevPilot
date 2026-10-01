@@ -1,0 +1,19 @@
+{
+  "description": "PSEUDOCODE 단계 힌트 (docs/06 §9.1 HL-6: 4단계 이상은 AI 생성)",
+  "attempts": [
+    {
+      "finishReason": "completed",
+      "output": {
+        "level": "PSEUDOCODE",
+        "content": "먼저 주문 저장과 재고 감소를 함께 부르는 바깥 메서드를 하나 두는 모습을 떠올려 보세요. 그 바깥 메서드에 트랜잭션 경계를 선언하고, 기존 두 메서드는 그 안에서 차례로 불리게 두면 어떤 차이가 생길지 정리해 보세요.",
+        "containsCode": false
+      },
+      "usage": {
+        "inputTokens": 2400,
+        "cachedTokens": 0,
+        "outputTokens": 180,
+        "reasoningTokens": 0
+      }
+    }
+  ]
+}

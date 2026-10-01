@@ -1,6 +1,7 @@
 import 'package:devpilot_app/core/api/api_enums.dart';
 import 'package:devpilot_app/core/api/common_models.dart';
 import 'package:devpilot_app/features/plan/data/learning_goal_models.dart';
+import 'package:devpilot_app/features/plan/data/plan_buildable_models.dart';
 import 'package:devpilot_app/features/plan/data/plan_models.dart';
 import 'package:devpilot_app/features/project/data/side_project_models.dart';
 import 'package:devpilot_app/features/settings/data/me_response.dart';
@@ -16,6 +17,7 @@ const previousPlanId = '4b7d1c7a-0f0e-4d7b-8e59-0c3e1f6b2a00';
 const milestoneFoundationId = 'a1000000-0000-4000-8000-000000000001';
 const milestoneAuthId = 'a1000000-0000-4000-8000-000000000002';
 const milestoneOrderId = 'a1000000-0000-4000-8000-000000000003';
+const buildableGapSkillId = 'b1000000-0000-4000-8000-000000000001';
 
 MeResponse testMe({
   bool onboardingCompleted = true,
@@ -24,6 +26,13 @@ MeResponse testMe({
   String timezone = 'Asia/Seoul',
   int dayStartHour = 4,
   int version = 3,
+  AiStatus aiStatus = AiStatus.disabled,
+  AiUsageView aiUsage = const AiUsageView(
+    todayCalls: 0,
+    dailyCallLimit: 60,
+    monthCostUsd: '0.00',
+    monthlyBudgetUsd: '25.00',
+  ),
 }) => MeResponse(
   id: '5a1d7c1e-3f4b-4f39-9a0b-6e9f4c2b8d10',
   displayName: displayName,
@@ -33,20 +42,13 @@ MeResponse testMe({
   dayStartHour: dayStartHour,
   weekdayStudyMinutes: 45,
   weekendStudyMinutes: 240,
-  experienceProfile: onboardingCompleted ? ExperienceProfile.workingDeveloper : null,
-  experienceStartDate: null,
   onboardingCompleted: onboardingCompleted,
   onboardingCompletedAt: onboardingCompleted ? testInstant : null,
   today: testToday,
   calendarSubscribed: false,
   deletionRequestedAt: null,
-  aiStatus: AiStatus.disabled,
-  aiUsage: const AiUsageView(
-    todayCalls: 0,
-    dailyCallLimit: 60,
-    monthCostUsd: '0.00',
-    monthlyBudgetUsd: '25.00',
-  ),
+  aiStatus: aiStatus,
+  aiUsage: aiUsage,
   createdAt: testInstant,
   version: version,
 );
@@ -117,6 +119,96 @@ PlanView testPlan({
   version: version,
 );
 
+/// `GET /plans/active/buildable`: step 1 buildable, step 2 the one to build now.
+BuildableView testBuildable({
+  List<BuildableStepView>? steps,
+  String? nextStepId = milestoneAuthId,
+  int buildableStepCount = 1,
+  List<SkillAxis> uncountedAxes = const [SkillAxis.debugging],
+}) => BuildableView(
+  planId: planId,
+  planVersion: 1,
+  today: '2026-10-05',
+  buildableStepCount: buildableStepCount,
+  stepCount: steps?.length ?? 3,
+  nextStepId: nextStepId,
+  countedAxes: const [SkillAxis.knowledge, SkillAxis.implementation, SkillAxis.explanation],
+  uncountedAxes: uncountedAxes,
+  steps:
+      steps ??
+      [
+        testBuildableStep(
+          milestoneId: milestoneFoundationId,
+          title: '기반 다지기',
+          sortOrder: 0,
+          status: BuildableStatus.buildable,
+          metSkillCount: 4,
+          gateSkillCount: 4,
+        ),
+        testBuildableStep(
+          milestoneId: milestoneAuthId,
+          title: '회원과 인증',
+          sortOrder: 1,
+          status: BuildableStatus.next,
+          metSkillCount: 1,
+          gateSkillCount: 3,
+          gaps: [
+            testBuildableGap('SPRING.SECURITY', 'Spring Security', SkillCategory.spring),
+            testBuildableGap('WEB_HTTP.CORS', 'CORS', SkillCategory.webHttp),
+          ],
+        ),
+        testBuildableStep(
+          milestoneId: milestoneOrderId,
+          title: '주문 생성',
+          sortOrder: 2,
+          status: BuildableStatus.notYet,
+          metSkillCount: 0,
+          gateSkillCount: 2,
+          gaps: [
+            testBuildableGap('SPRING.TRANSACTION', 'Spring Transaction', SkillCategory.spring),
+          ],
+        ),
+      ],
+);
+
+BuildableStepView testBuildableStep({
+  required String milestoneId,
+  required String title,
+  required int sortOrder,
+  required BuildableStatus status,
+  required int metSkillCount,
+  required int gateSkillCount,
+  String? description = '이 단계에서 무엇을 만드는지 적어 둔 안내.',
+  List<BuildableGapView> gaps = const [],
+}) => BuildableStepView(
+  milestoneId: milestoneId,
+  title: title,
+  description: description,
+  sortOrder: sortOrder,
+  startDate: '2026-09-01',
+  endDate: '2026-09-30',
+  status: status,
+  metSkillCount: metSkillCount,
+  gateSkillCount: gateSkillCount,
+  gaps: gaps,
+);
+
+BuildableGapView testBuildableGap(
+  String code,
+  String name,
+  SkillCategory category, {
+  String id = buildableGapSkillId,
+}) => BuildableGapView(
+  skill: SkillRef(id: id, code: code, name: name, category: category),
+  evidenceLevels: const AxisLevels(
+    knowledge: 1,
+    implementation: 0,
+    explanation: 0,
+    debugging: 0,
+  ),
+  targets: const AxisLevels(knowledge: 4, implementation: 4, explanation: 3, debugging: 3),
+);
+
 PlanSummaryView testPlanSummary({
   String id = planId,
   int planVersion = 1,
@@ -137,12 +229,10 @@ PlanSummaryView testPlanSummary({
 
 LearningGoalView testGoal({
   String completion = '2027-04-01',
-  String? checkpoint = '2027-01-05',
   int version = 0,
 }) => LearningGoalView(
   id: 'c0a10000-0000-4000-8000-000000000001',
   targetRole: TargetRole.javaBackend,
-  checkpointDate: checkpoint,
   targetCompletionDate: completion,
   focusSkills: const [],
   replanRecommended: false,
@@ -242,4 +332,35 @@ SideProjectView testProject({
   createdAt: testInstant,
   updatedAt: testInstant,
   version: version,
+);
+
+/// 학습 단계 6칸. 선언 순서를 그대로 쓴다 — 화면이 정렬하지 않는지 보려면 응답이 그 순서여야 한다.
+List<LearningStageView> testLearningStages({Set<LearningStage> completed = const {}}) => [
+  for (final stage in LearningStage.values)
+    if (stage != LearningStage.unknown)
+      LearningStageView(
+        stage: stage,
+        completed: completed.contains(stage),
+        completedAt: completed.contains(stage) ? DateTime.utc(2026, 9, 20, 3) : null,
+      ),
+];
+
+SkillDetailView testSkillDetail({
+  String skillId = _javaCollectionId,
+  String? whyItMatters = '컬렉션 선택이 틀리면 데이터가 많아졌을 때 느려지는 자리가 여기다.',
+  Set<LearningStage> completed = const {},
+}) => SkillDetailView(
+  skill: SkillRef(
+    id: skillId,
+    code: 'JAVA.COLLECTION',
+    name: 'Collection',
+    category: SkillCategory.java,
+  ),
+  parentCode: 'JAVA',
+  description: '자료구조와 컬렉션',
+  whyItMatters: whyItMatters,
+  minutesPerLevelStep: 120,
+  evidenceLevels: const AxisLevels(knowledge: 1, implementation: 1, explanation: 0, debugging: 0),
+  planningLevels: const AxisLevels(knowledge: 1, implementation: 1, explanation: 0, debugging: 0),
+  learningStages: testLearningStages(completed: completed),
 );

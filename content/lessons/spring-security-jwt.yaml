@@ -1,0 +1,368 @@
+# 개념 노트 — SPRING.SECURITY.JWT_RESOURCE_SERVER (docs/19 §3.14)
+# 기준: Spring Boot 4.1 / Spring Security. sources 는 2026-10-01 에 실제로 열어 확인했다.
+lessons:
+- key: LESSON.SPRING.SECURITY.JWT_RESOURCE_SERVER.001
+  skillCode: SPRING.SECURITY.JWT_RESOURCE_SERVER
+  title: 토큰으로 지키기 — 검증은 내가 짜지 않는다
+  whyItMatters: 토큰 검증을 직접 짜면 서명·만료·발급자 중 하나를 빠뜨리기 쉽고, 빠뜨린 것은 뚫리기 전까지 드러나지 않는다. 주문 시스템에 상대 시스템이 붙는 순간 필요한
+    자리이고, 여기서 정한 방식이 뒤의 소유권 검사 전체를 좌우한다.
+  oneLine: 리소스 서버(resource server)는 남이 발급한 JWT를 검증해 주고, 내 코드는 그 결과만 받아 쓴다.
+  units:
+  - key: LESSON.SPRING.SECURITY.JWT_RESOURCE_SERVER.001.U1
+    title: 검증을 설정 한 줄에 맡긴다
+    minutes: 12
+    core: true
+    explain: 'JWT를 받는 쪽을 **리소스 서버**(resource server)라고 부른다. 하는 일은 셋이다.
+
+
+      - 요청의 `Authorization: Bearer ...` 헤더에서 토큰을 꺼낸다
+
+      - 서명이 발급자의 키로 만들어진 것인지 확인한다
+
+      - 만료(`exp`)와 발급자(`iss`)를 확인한다
+
+
+      셋 중 하나만 빠져도 구멍이다. 그런데 **빠뜨린 것은 뚫리기 전까지 아무 증상이 없다** — 토큰을 직접 파싱하는 코드를 쓰지 않는 이유가 이것이다.
+
+
+      Spring Security는 발급자 주소 하나만 주면 나머지를 스스로 한다. 그 주소로 설정 문서를 읽어 공개 키 목록의 위치를 찾고, 그 키로 서명을 검증하고, `iss`가
+      그 발급자인지 본다.
+
+
+      토큰이 없거나 검증에 실패하면 **401**이고, 검증은 됐는데 권한이 모자라면 **403**이다. 이 둘은 보안 필터가 돌려주므로 **컨트롤러는 실행되지 않는다.**'
+    example:
+      language: yaml
+      code: "# application.yml — 이 한 줄이 검증 전체를 켠다\nspring:\n  security:\n    oauth2:\n      resourceserver:\n\
+        \        jwt:\n          issuer-uri: ${DEVPILOT_ISSUER_URI}\n"
+      output: 'GET /api/v1/orders                        → 401  (헤더 없음)
+
+        GET /api/v1/orders  Bearer <만료된 토큰>      → 401  WWW-Authenticate: Bearer error_code="invalid_token"
+
+        GET /api/v1/orders  Bearer <다른 발급자>      → 401  (iss 불일치)
+
+        GET /api/v1/orders  Bearer <정상 토큰>        → 컨트롤러까지 간다'
+      note: '- `issuer-uri`만 주면 공개 키 위치는 스스로 찾는다. 키를 직접 주려면 `jwk-set-uri`를 쓴다
+
+        - 발급자 주소는 환경마다 다르므로 **설정으로 주입**한다. 저장소에 적지 않는다
+
+        - 401 응답의 `WWW-Authenticate` 헤더에 실패 이유가 담긴다 — 원인 찾기의 시작점이다'
+    predict:
+      question: '`issuer-uri`를 적지 않고 서명 검증만 켰다. 다른 발급자가 만든, 서명이 올바르고 만료되지 않은 토큰을 보내면?'
+      choices:
+      - 통과한다. 서명만 보고 누가 발급했는지는 보지 않았다
+      - 401이다. 발급자 검사는 항상 기본으로 켜져 있다
+      - 403이다. 권한이 없는 것으로 본다
+      - 기동 자체가 실패한다
+      answer: 통과한다. 서명만 보고 누가 발급했는지는 보지 않았다
+      explanation: '검사하지 않은 것은 통과한다. 서명이 올바르다는 말은 "누군가의 키로 만들어졌다"일 뿐이고, **그 누군가가 내가 믿는 발급자인지는 다른 질문**이다.
+
+        `iss`를 보지 않으면 다른 곳에서 발급한 토큰으로 내 API에 들어올 수 있다. 그리고 이 구멍은 로그에도 남지 않는다 — 검증이 성공했기 때문이다.'
+    complete:
+      question: 주문 API는 인증을 요구하고 상태 점검만 열도록 빈칸을 채우세요.
+      code: "http.authorizeHttpRequests(auth -> auth\n        .requestMatchers(\"/actuator/health\").___()\n\
+        \        .anyRequest().authenticated())\n    .___(oauth2 -> oauth2.jwt(Customizer.withDefaults()));"
+      answers:
+      - - permitAll
+      - - oauth2ResourceServer
+      explanation: '`oauth2ResourceServer(...)`가 토큰을 꺼내 검증하는 필터를 줄에 넣는다. 이것을 빠뜨리면 토큰을 보내도 아무도 읽지 않아 전부
+        401이 된다.
+
+        상태 점검 경로는 배포와 감시가 토큰 없이 부르므로 열어 둔다.'
+    problem:
+      prompt: '주문 API에 리소스 서버를 붙였습니다. 그런데 이렇게 됩니다.
+
+
+        ```text
+
+        - 정상 토큰인데도 모든 요청이 401
+
+        - 응답 헤더: WWW-Authenticate: Bearer error_code="invalid_token"
+
+        - 발급자 쪽에서는 토큰을 정상 발급했다고 한다
+
+        ```
+
+
+        1. 이 상태에서 확인할 것을 순서대로
+
+        2. 그 순서로 정한 이유
+
+        3. 다시 나지 않게 하려면 무엇을 남겨야 하는지'
+      deliverables:
+      - 확인 순서 3단계 이상
+      - 각 단계에서 무엇을 보고 무엇을 배제하는지
+      - 재발을 막기 위해 남길 것
+      hints:
+      - 401 응답의 헤더에 실패 이유가 들어 있습니다. 먼저 그것부터 읽으세요.
+      - '"토큰이 정상"과 "내 서버가 그 토큰을 받아들이도록 설정됐다"는 다른 말입니다.'
+      - 토큰의 페이로드는 서명 없이도 읽을 수 있습니다. 내 설정값과 나란히 놓고 비교해 보세요.
+      modelAnswer: '**1. 확인 순서**
+
+
+        1. 401 응답의 `WWW-Authenticate` 헤더의 `error_description`을 읽는다 — 서명·만료·발급자 중 어느 것인지 대개 여기 적힌다
+
+        2. 토큰의 페이로드를 열어 `iss`·`aud`·`exp`를 본다 (서명 없이 읽을 수 있다)
+
+        3. 그 `iss`와 내 `issuer-uri` 설정값을 **문자 그대로** 비교한다 — 끝의 `/` 하나로도 어긋난다
+
+        4. 그래도 남으면 공개 키 목록을 서버가 실제로 가져오는지 본다 (방화벽·프록시)
+
+
+        **2. 이 순서인 이유**
+
+
+        **공짜인 것부터, 그리고 배제 범위가 큰 것부터** 본다.
+
+        헤더는 이미 손에 있고 한 번에 원인을 셋 중 하나로 좁힌다. 페이로드도 요청 없이 읽을 수 있다. 네트워크 확인은 가장 비싸므로 마지막이다.
+
+
+        **3. 남길 것**
+
+
+        - 기동 시점에 `issuer-uri`가 비어 있으면 **뜨지 않도록** 검증을 건다
+
+        - 401이 났을 때 `error_description`을 운영 로그에 남긴다 — **토큰 자체는 남기지 않는다**
+
+        - 환경별 발급자 주소를 한곳에 적어 둔다'
+      selfChecks:
+      - 응답 헤더를 가장 먼저 읽었는가
+      - '"토큰이 정상"과 "내 설정이 그것을 받아들인다"를 구분했는가'
+      - 순서를 정한 근거를 비용이나 배제 범위로 설명했는가
+      - 로그에 토큰 값을 남기지 않는다고 했는가
+  - key: LESSON.SPRING.SECURITY.JWT_RESOURCE_SERVER.001.U2
+    title: 토큰 안의 주체를 꺼내 쓴다
+    minutes: 10
+    core: true
+    explain: '검증이 끝나면 Spring Security는 결과를 보안 컨텍스트에 담는다. 이때 **주체(principal)는 디코드된 JWT 객체**(`org.springframework.security.oauth2.jwt.Jwt`)다.
+
+
+      여기서 `sub` 클레임을 꺼내면 "누구의 요청인가"가 나온다. 두 가지 길이 있다.
+
+
+      - `authentication.getName()` — `sub`가 그대로 온다. 짧다
+
+      - `jwt.getSubject()` — `Jwt`로 받아 직접 꺼낸다. 다른 클레임도 함께 쓸 때 쓴다
+
+
+      중요한 것은 **이 값을 요청 본문이나 경로에서 받지 않는다**는 점이다. 요청에 담긴 사용자 id는 보낸 쪽이 마음대로 적을 수 있고, 토큰의 `sub`는 발급자가 서명한
+      값이다.
+
+
+      컨트롤러에서는 `@AuthenticationPrincipal`로 받는다. 이 값을 **서비스로 넘겨** 조회 조건에 쓴다 — 컨트롤러가 직접 소유권을 판단하지는 않는다.'
+    example:
+      language: java
+      code: "@GetMapping(\"/api/v1/orders/{orderId}\")\npublic OrderView get(@AuthenticationPrincipal\
+        \ Jwt jwt, @PathVariable UUID orderId) {\n    return orderQueryService.get(jwt.getSubject(), orderId);\n\
+        }\n\n// 짧게 쓰고 싶으면 이름만 받아도 된다 — 값은 같다\n@GetMapping(\"/api/v1/orders\")\npublic List<OrderView>\
+        \ list(Authentication authentication) {\n    return orderQueryService.listOf(authentication.getName());\n\
+        }"
+      output: 'Bearer <sub=user-a 토큰>  GET /api/v1/orders  → user-a 의 주문만
+
+        Bearer <sub=user-b 토큰>  GET /api/v1/orders  → user-b 의 주문만
+
+
+        요청 본문에 userId 를 넣어 보내도 결과는 바뀌지 않는다'
+      note: '- `authentication.getName()`은 `sub` 클레임이다. `jwt.getSubject()`와 같은 값이다
+
+        - 주체를 **서비스 인자로 넘긴다**. 컨트롤러에 판단을 두지 않는다
+
+        - 경로나 본문의 사용자 id는 믿지 않는다 — 보낸 쪽이 쓴 값이다'
+    predict:
+      question: '`GET /api/v1/orders?userId=user-b`로 요청했는데 토큰의 `sub`는 `user-a`다. 위 예제의 `list`는?'
+      choices:
+      - user-a의 주문을 돌려준다. 쿼리 파라미터는 쓰이지 않는다
+      - user-b의 주문을 돌려준다. 파라미터가 더 구체적이다
+      - 400을 돌려준다. 두 값이 다르다
+      - 403을 돌려준다
+      answer: user-a의 주문을 돌려준다. 쿼리 파라미터는 쓰이지 않는다
+      explanation: '예제는 `authentication.getName()`만 쓴다. 쿼리 파라미터는 읽지도 않으므로 결과에 영향이 없다.
+
+        **이것이 노리는 바다.** 사용자 id를 요청에서 받는 순간, 그 값을 바꿔 보내는 것만으로 남의 데이터가 나온다. 받지 않으면 그 공격 자체가 성립하지 않는다.'
+    complete:
+      question: 토큰의 주체를 받아 서비스로 넘기도록 빈칸을 채우세요.
+      code: "@GetMapping(\"/api/v1/orders/{orderId}\")\npublic OrderView get(@___ Jwt jwt, @PathVariable\
+        \ UUID orderId) {\n    return orderQueryService.get(jwt.___(), orderId);\n}"
+      answers:
+      - - AuthenticationPrincipal
+      - - getSubject
+      explanation: '`@AuthenticationPrincipal`은 보안 컨텍스트의 주체를 그대로 꺼내 준다. 리소스 서버에서는 그 주체가 디코드된 `Jwt`다.
+
+        `getSubject()`는 `sub` 클레임이고, 발급자가 서명한 값이라 요청자가 바꿀 수 없다.'
+    problem:
+      prompt: "주문 취소 API가 이렇게 돼 있습니다.\n\n```java\n@PostMapping(\"/api/v1/orders/{orderId}/cancel\")\n\
+        public void cancel(@RequestBody CancelRequest request, @PathVariable UUID orderId) {\n    orderService.cancel(request.userId(),\
+        \ orderId);\n}\n```\n\n경로는 `authenticated()`로 막혀 있어 토큰 없이는 못 부릅니다.\n\n1. 그런데도 남은 문제가 무엇인지\n2.\
+        \ 고친 코드\n3. 이런 자리를 코드 리뷰에서 찾는 방법"
+      deliverables:
+      - 남은 문제를 공격 시나리오 한 줄로
+      - 고친 컨트롤러 코드
+      - 같은 실수를 찾는 방법
+      hints:
+      - 토큰이 있다는 것과 이 주문이 그 사람 것이라는 것은 다른 말입니다.
+      - '`request.userId()`는 누가 적어서 보낸 값인가요?'
+      - 사용자를 가리키는 값이 요청에서 들어오는 자리를 세어 보세요.
+      modelAnswer: "**1. 남은 문제**\n\n로그인한 아무나 `userId`에 남의 값을 적어 보내면 **남의 주문이 취소된다.**\n경로 인증은 \"누구든 토큰이\
+        \ 있으면 들어온다\"까지만 막았고, \"이 주문이 이 사람 것인가\"는 아무도 보지 않았다.\n\n**2. 고친 코드**\n\n```java\n@PostMapping(\"\
+        /api/v1/orders/{orderId}/cancel\")\npublic void cancel(@AuthenticationPrincipal Jwt jwt, @PathVariable\
+        \ UUID orderId) {\n    orderService.cancel(jwt.getSubject(), orderId);\n}\n```\n\n`CancelRequest`에서\
+        \ `userId`를 **지운다.** 남겨 두면 언젠가 다시 쓰인다.\n\n**3. 찾는 방법**\n\n- 요청 DTO에 `userId`·`memberId` 같은 필드가\
+        \ 있는 자리를 전부 찾는다. 대개 그 자리가 같은 문제다\n- 서비스 메서드의 첫 인자가 **토큰에서 온 값인지** 본다\n- 테스트로 못 박는다 — **다른 사용자의\
+        \ 토큰으로 부르면 실패해야 한다**"
+      selfChecks:
+      - 공격 시나리오를 한 줄로 구체적으로 적었는가
+      - 요청 DTO에서 사용자 식별자를 지웠는가
+      - 찾는 방법에 테스트를 포함했는가
+  - key: LESSON.SPRING.SECURITY.JWT_RESOURCE_SERVER.001.U3
+    title: 남의 것은 없는 것처럼 돌려준다
+    minutes: 12
+    core: true
+    explain: '소유권 검사에는 두 가지 쓰는 법이 있다.
+
+
+      ```java
+
+      // (가) 찾고 나서 주인을 본다
+
+      Order order = repository.findById(orderId).orElseThrow(NotFound::new);
+
+      if (!order.ownerId().equals(subject)) throw new Forbidden();
+
+
+      // (나) 주인 조건을 조회에 함께 건다
+
+      Order order = repository.findByIdAndOwnerId(orderId, subject).orElseThrow(NotFound::new);
+
+      ```
+
+
+      (가)는 남의 주문에 **403**을 돌려준다. 받은 쪽은 "그 주문이 있긴 하구나"를 알게 된다. id를 바꿔 가며 돌리면 **어떤 id가 실제로 있는지 목록을 만들 수
+      있다.**
+
+
+      (나)는 **404**다. 없는 id와 남의 id가 구분되지 않는다. 분기도 하나 줄어든다.
+
+
+      403이 맞는 자리도 있다. **자기 자원인데 권한이 모자란** 경우 — 예를 들어 읽기는 되지만 취소는 관리자만 할 수 있을 때다. 그때는 존재를 감출 이유가 없다.
+
+
+      정리하면 **"있다는 사실을 알려도 되는가"**로 나눈다. 남의 자원이면 감추고(404), 내 자원인데 권한이 모자라면 알린다(403).'
+    example:
+      language: java
+      code: "public interface OrderRepository extends JpaRepository<Order, UUID> {\n    Optional<Order>\
+        \ findByIdAndOwnerId(UUID id, String ownerId);\n}\n\n@Transactional(readOnly = true)\npublic OrderView\
+        \ get(String subject, UUID orderId) {\n    return orderRepository\n            .findByIdAndOwnerId(orderId,\
+        \ subject)\n            .map(OrderView::from)\n            .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));\n\
+        }"
+      output: '내 주문 id       → 200
+
+        남의 주문 id     → 404 ORDER_NOT_FOUND
+
+        없는 id          → 404 ORDER_NOT_FOUND
+
+
+        두 404 는 응답만으로 구분되지 않는다'
+      note: '- 소유자 조건이 **조회에 들어간다**. 찾은 뒤 비교하지 않는다
+
+        - 남의 것과 없는 것이 같은 오류 코드다 — 구분되면 감춘 의미가 없다
+
+        - 이 판단은 서비스에 있다. 컨트롤러는 주체를 넘기기만 한다'
+    predict:
+      question: (가) 방식에서 남의 주문 id로 100번 요청하면 공격자가 얻는 것은?
+      choices:
+      - 어떤 id가 실제로 있는지 — 403과 404가 갈리기 때문
+      - 아무것도 없다. 둘 다 막혔으니 같다
+      - 주문 내용 일부
+      - 다른 사용자의 토큰
+      answer: 어떤 id가 실제로 있는지 — 403과 404가 갈리기 때문
+      explanation: '본문을 못 봐도 **응답 코드의 차이가 정보다.** 403이면 있는 것, 404면 없는 것이다.
+
+        순차적인 id라면 전체 규모까지 짐작할 수 있다. 그래서 남의 자원은 **없는 것과 같은 응답**으로 돌려준다.'
+    complete:
+      question: 소유자 조건을 조회에 함께 걸도록 빈칸을 채우세요.
+      code: "Optional<Order> ___(UUID id, String ownerId);\n\nreturn orderRepository.findByIdAndOwnerId(orderId,\
+        \ subject)\n        .map(OrderView::from)\n        .orElseThrow(() -> new ___(ErrorCode.ORDER_NOT_FOUND));"
+      answers:
+      - - findByIdAndOwnerId
+      - - NotFoundException
+      explanation: '조회 조건에 소유자를 넣으면 남의 것은 애초에 결과에 없다. 그래서 뒤에 남는 분기는 "있다/없다" 하나뿐이고, 없으면 404다.
+
+        찾은 뒤 비교하는 방식은 비교를 빠뜨린 자리가 생길 수 있지만, 조회 조건은 빠뜨리면 컴파일되지 않는다.'
+    problem:
+      prompt: '주문 상세·취소·목록 세 API에 소유권 검사를 넣으려 합니다. 팀에서 "공통 처리로 한 번에 넣자"는 의견과 "각 조회에 조건을 걸자"는 의견이 나뉩니다.
+
+
+        1. 두 방식의 차이를 적으세요
+
+        2. 어느 쪽을 고를지와 근거
+
+        3. 고른 방식이 틀렸을 때 그것을 드러낼 테스트'
+      deliverables:
+      - 두 방식의 차이
+      - 선택과 근거
+      - 테스트 이름과 그 테스트가 무엇을 확인하는지
+      hints:
+      - 빠뜨렸을 때 어느 쪽이 더 조용히 지나가는지 생각해 보세요.
+      - 새 API를 하나 더 만드는 사람은 무엇을 기억해야 하나요?
+      - 테스트는 "다른 사용자의 토큰"으로 부르는 것부터 시작합니다.
+      modelAnswer: '**1. 차이**
+
+
+        | | 공통 처리 | 조회 조건 |
+
+        |---|---|---|
+
+        | 빠뜨리면 | 조용히 통과한다 | 조건이 없으니 **결과가 눈에 띄게 다르다** |
+
+        | 새 API | 규칙을 기억해야 한다 | 조회를 쓰려면 소유자를 넘겨야 한다 |
+
+        | 읽는 사람 | 어디서 막히는지 찾아야 한다 | 조회 자리에 보인다 |
+
+
+        **2. 선택**
+
+
+        **조회 조건 쪽**을 고른다. 소유권은 "이 데이터가 누구 것인가"라서 **데이터를 가져오는 자리에 붙는 것이 자연스럽다.**
+
+        공통 처리는 규칙을 기억하는 사람에게 기대는데, 새 API를 만드는 사람이 그 규칙을 모를 수 있다. 조용히 뚫리는 쪽보다 **시끄럽게 실패하는 쪽**이 낫다.
+
+
+        (경로 단위 권한은 여전히 공통으로 둔다. 둘은 다른 층이다.)
+
+
+        **3. 테스트**
+
+
+        ```text
+
+        shouldReturn404WhenTheOrderBelongsToSomeoneElse
+
+        ```
+
+
+        사용자 둘을 만들고 A의 주문을 만든 뒤, **B의 토큰으로** 상세·취소·목록을 부른다.
+
+        - 상세·취소: 404이고 오류 코드가 없는 id를 부를 때와 **같아야** 한다
+
+        - 목록: B의 결과에 A의 주문이 **없어야** 한다
+
+
+        403이 나오면 실패다 — 존재를 알려 준 것이기 때문이다.'
+      selfChecks:
+      - 빠뜨렸을 때 어느 쪽이 조용한지로 비교했는가
+      - 경로 권한과 소유권을 다른 층으로 구분했는가
+      - 테스트가 403을 실패로 본다고 적었는가
+      - 목록 API도 확인 대상에 넣었는가
+  commonMistakes:
+  - '`issuer-uri`를 적지 않고 서명만 확인해, 다른 곳에서 발급한 토큰도 통과한다. 증상이 없다가 사고로 드러난다'
+  - 토큰 검증 코드를 직접 짜서 만료(`exp`)나 발급자(`iss`) 검사를 빠뜨린다. 401이 나와야 할 요청이 200으로 지나간다
+  - 소유권을 확인하지 않고 경로 권한만 막아, 로그인한 사람이 남의 주문을 그대로 읽는다
+  inProject: 주문 API 앞에 붙는다. 사람이 쓰는 화면과 밤마다 실적을 끌어가는 상대 시스템이 같은 API를 쓰므로, 토큰 검증을 한 자리에 모아 두고 각 조회에서는 토큰의
+    주체로 소유권만 확인한다.
+  sources:
+  - title: Spring Security Reference — OAuth 2.0 Resource Server JWT
+    url: https://docs.spring.io/spring-security/reference/servlet/oauth2/resource-server/jwt.html
+    versionScope: Spring Security 6.x 이상 (Spring Boot 4.1 동봉본 기준)
+  - title: Spring Security Reference — Bearer Tokens
+    url: https://docs.spring.io/spring-security/reference/servlet/oauth2/resource-server/bearer-tokens.html
+    versionScope: Spring Security 6.x 이상
+  verifiedAt: '2026-10-01'

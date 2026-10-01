@@ -1,0 +1,26 @@
+id: rubber-duck-summary/clean-explanation-003
+operation: RUBBER_DUCK_SUMMARY
+title: "빈틈 없는 대화에서는 gap을 만들지 않는다 (RD-5 증거 경로)"
+tags: [database, index, clean]
+trap: true
+input:
+  variables:
+    targetType: REVIEW_ITEM
+    targetSummary: "복합 인덱스 (a, b)가 있을 때 b만으로 조회하면 왜 느려질 수 있는지 설명해 보세요."
+    skillSummary: "DATABASE.INDEX (인덱스) K3 I3 E3 D2"
+    availableSkillCodes: "DATABASE.INDEX, DATABASE.QUERY_PLAN"
+  userContent:
+    conversation:
+      kind: TEXT
+      text: |
+        나: 복합 인덱스는 왼쪽 컬럼부터 정렬되어 있어서 a를 건너뛰고 b만 조건에 쓰면 정렬 순서를 쓸 수 없습니다.
+        질문: 그렇다면 b만 쓰는데도 인덱스가 도움이 되는 경우가 있을까요?
+        나: 조회 컬럼이 인덱스에 다 들어 있으면 테이블을 안 읽고 인덱스만 훑을 수 있습니다. 그래도 범위를 좁히지는 못해서 전체를 훑습니다.
+        질문: 그 판단은 실행 계획의 어떤 항목으로 확인하나요?
+        나: Index Only Scan인지, rows 추정치가 전체와 비슷한지를 봅니다.
+expect:
+  expectedGapPrefixes: []
+  cleanExplanation: true
+  mustNotContainAny:
+    - "정답은"
+    - "맞습니다"

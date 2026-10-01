@@ -13,6 +13,7 @@ import com.devpilot.skill.infrastructure.SkillRepository;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,14 +34,17 @@ public class SkillCatalogSeedService {
     private final SkillRepository skillRepository;
     private final SkillPrerequisiteRepository prerequisiteRepository;
     private final RoleSkillTargetRepository roleSkillTargetRepository;
+    private final WhyItMattersRegistry whyItMattersRegistry;
 
     public SkillCatalogSeedService(
             SkillRepository skillRepository,
             SkillPrerequisiteRepository prerequisiteRepository,
-            RoleSkillTargetRepository roleSkillTargetRepository) {
+            RoleSkillTargetRepository roleSkillTargetRepository,
+            WhyItMattersRegistry whyItMattersRegistry) {
         this.skillRepository = skillRepository;
         this.prerequisiteRepository = prerequisiteRepository;
         this.roleSkillTargetRepository = roleSkillTargetRepository;
+        this.whyItMattersRegistry = whyItMattersRegistry;
     }
 
     /** DB catalog 버전 = {@code max(skill.catalog_version)}, 행이 없으면 0 (docs/04 §9, docs/19 O-7). */
@@ -61,7 +65,12 @@ public class SkillCatalogSeedService {
                         .collect(Collectors.toMap(Skill::getCode, Function.identity()));
         int created = 0;
         List<Skill> toSave = new ArrayList<>();
+        // 저장하지 않는 값이라 upsert와 같은 자리에서 메모리에 올린다 (docs/19 §3.2, BL-CNT-21)
+        Map<String, String> sentences = new LinkedHashMap<>();
         for (SkillSeed seed : command.skills()) {
+            if (seed.whyItMatters() != null) {
+                sentences.put(seed.code(), seed.whyItMatters());
+            }
             Skill.SkillDefinition definition =
                     new Skill.SkillDefinition(
                             seed.name(),
@@ -91,6 +100,7 @@ public class SkillCatalogSeedService {
         List<String> implicitlyRetired = deactivateMissing(command, existing);
         replacePrerequisites(command, existing);
         upsertRoleTargets(command, existing);
+        whyItMattersRegistry.register(sentences);
         return new SeedOutcome(created, command.skills().size() - created, implicitlyRetired);
     }
 
@@ -184,13 +194,19 @@ public class SkillCatalogSeedService {
         }
     }
 
-    /** skill tree 항목 하나. {@code sortOrder}는 catalog 파일 순서 index. */
+    /**
+     * skill tree 항목 하나. {@code sortOrder}는 catalog 파일 순서 index.
+     *
+     * @param whyItMatters 모르면 무엇이 잘못되는지 한 줄. <b>저장하지 않고</b> {@link WhyItMattersRegistry}에 등록한다
+     *     (docs/19 §3.2). root skill에는 없다
+     */
     public record SkillSeed(
             String code,
             String name,
             SkillCategory category,
             @Nullable String parentCode,
             String description,
+            @Nullable String whyItMatters,
             int minutesPerLevelStep,
             int sortOrder,
             List<String> prerequisiteCodes) {

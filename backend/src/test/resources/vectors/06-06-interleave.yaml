@@ -1,0 +1,18 @@
+# source: 06 §6.6 RV-INTERLEAVE, rows: 3
+# 입력은 §6.5 1~2단계를 마친 목록(카드:skill), 출력은 재배치 후 카드 순서. swaps는 바뀐 횟수다.
+vectors:
+  - id: V01
+    case: (a) 같은 skill 5장이 연속
+    input: [R1:A, R2:A, R3:A, R4:A, R5:A, R6:B, R7:B, R8:B, R9:B, R10:B]
+    expected: [R1, R2, R6, R4, R5, R7, R3, R8, R9, R10]
+    swaps: 2
+  - id: V02
+    case: (b) skill이 1종뿐
+    input: [R1:A, R2:A, R3:A, R4:A, R5:A]
+    expected: [R1, R2, R3, R4, R5]
+    swaps: 0
+  - id: V03
+    case: (c) 이미 섞여 있음
+    input: [R1:A, R2:B, R3:A, R4:B, R5:C, R6:A]
+    expected: [R1, R2, R3, R4, R5, R6]
+    swaps: 0

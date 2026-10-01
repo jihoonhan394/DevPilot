@@ -122,22 +122,35 @@ devpilot:
   time:
     default-zone: Asia/Seoul
     default-day-start-hour: 4
+  tracks:                                  # 학습 트랙 기본값. 키는 TargetRole 값 (04 §3). 누락되면 기동 실패
+    JAVA_BACKEND:         { max-task-difficulty: 5, read-code-min-knowledge: 1, challenge-min-knowledge: 1, lesson-max-knowledge: 2, basic-tips-first: false }  # 06 §5.3, RC-3, ADR-045
+    JAVA_BACKEND_STARTER: { max-task-difficulty: 3, read-code-min-knowledge: 2, challenge-min-knowledge: 1, lesson-max-knowledge: 4, basic-tips-first: true }   # 입문 트랙: 쉬운 기본값, 기초 팁 먼저
+    INTEGRATION_ENGINEER: { max-task-difficulty: 4, read-code-min-knowledge: 1, challenge-min-knowledge: 1, lesson-max-knowledge: 4, basic-tips-first: false }  # 연동·구축 트랙 (06 §5.3)
   planner:
-    weights: { practical-importance: 0.25, skill-gap: 0.20, review-urgency: 0.20, milestone-urgency: 0.15, project-need: 0.10, prerequisite-readiness: 0.10 }
+    # 앞의 여섯은 합이 1.0이어야 한다. stage-gap 은 그 가중합 위에 얹는 보너스라 합에 넣지 않는다 (06 §5.4)
+    weights: { practical-importance: 0.25, skill-gap: 0.20, review-urgency: 0.20, milestone-urgency: 0.15, project-need: 0.10, prerequisite-readiness: 0.10, stage-gap: 0.005 }
+    study-thread-max-consecutive-days: 7   # 06 §5.13 TH-4 한 skill을 이어 갈 수 있는 최대 plan-day
+    redo:                                  # 06 §5.10 RE-2·RE-3
+      min-days-after: 3                    # 완료 3일 뒤부터 (경계 포함)
+      max-days-after: 7                    # 7일 뒤까지 (경계 포함)
+      max-attempts: 2                      # 실패·건너뜀 2회면 더 붙잡지 않는다
     modifiers:
       risk-high-must: 1.20
       risk-high-should: 0.80
       low-energy-deep-task: 0.70
       high-energy-hard-task: 1.10
-      fatigue-one-day: 0.80
-      fatigue-two-days: 0.60
       continuation-bonus: 1.15
       comeback-hard-task: 0.70             # 06 §5.5 COMEBACK_HARD_TASK (7_000bp)
+      monotony-three-days: 0.70            # 06 §5.5 MONOTONY_THREE_DAYS (7_000bp)
+      monotony-five-days: 0.40             # 06 §5.5 MONOTONY_FIVE_DAYS (4_000bp)
+      redo-due: 1.30                       # 06 §5.5 REDO_DUE (13_000bp)
     low-energy-long-task-minutes: 30
     min-prerequisite-readiness: 0.5
     overrun-tolerance: 1.10
     min-main-task-minutes: 10
     min-available-minutes: 5
+    extra-task-min-minutes: 15             # 06 §5.6 추가 과제를 만드는 최소 잔여 예산
+    max-extra-tasks: 3                     # 06 §5.6 하루 추가 과제 상한 (main 1 + 추가 3)
     challenge-repeat-exclusion-days: 14
     comeback-inactive-days: 3
     review-minutes-per-card: 1.5
@@ -158,6 +171,7 @@ devpilot:
     axis-cost: { knowledge: 0.5, implementation: 1.0, explanation: 0.4, debugging: 0.8 }
     review-overhead: 1.15
     risk-thresholds: { low-max: 0.80, medium-max: 1.00, high-max: 1.25 }
+    replan-recommend-after-days: 7        # 스냅샷이 연속 이 날 수만큼 risk ≥ HIGH면 replan 권고 (ADR-046)
     # 소수 설정값은 기동 시 bp(×10000)/micro(×1000000) 정수로 변환. 정수가 아니면 기동 실패 (06 §1 N-6)
   review:
     max-per-day: 20
@@ -172,6 +186,11 @@ devpilot:
     easy-min-days: 4
     variant-after-failures: 2
     suspend-after-failures: 4
+    lesson-helped-first-due-days: 1          # ADR-051 막혀서 도움받은 단위: 다음 날
+    lesson-solved-alone-first-due-days: 7    # ADR-051 혼자 푼 단위: 7일 뒤 한 번
+  tips:                                     # 06 §5.12
+    experiment-minutes: 25                  # TIP-6 실험 후보의 표시 시간. 과제가 아니라 표시용이다
+
   rubberduck:
     max-turns: 5                            # 06 §9.5 RD-4
     stuck-turns-before-hint: 2             # RD-3
@@ -185,10 +204,19 @@ devpilot:
     axis-change-cooldown: 24h
     self-assessment-cap: 3
     diagnostic-max-level: 3                # 06 §7.4 min(claimedLevel, 3)
+    # 06 §7.6: 지금 근거를 쌓을 수 있는 축. DEBUGGING은 COACH_* 이벤트로만 오르는데 coach 모듈이 S4라
+    # 아직 없다. 목표에 남겨 두면 어떤 단계도 끝나지 않아 Today가 1단계에서 멈춘다. coach가 들어오면 여기에 더한다.
+    measurable-axes: [KNOWLEDGE, IMPLEMENTATION, EXPLANATION]
+  side-project:                            # ADR-050. 온보딩에서 만들 것을 정하지 않았을 때 주는 프로젝트
+    default-name: 주문 시스템
+    default-description: 상품을 고르고 주문하고 결제하는 가장 작은 흐름을 직접 만든다. 개념 노트의 예제가 모두 이 프로젝트를 기준으로 쓰여 있다.
+    default-stack: Java 25, Spring Boot 4.1, PostgreSQL 16
   radar:
     default-target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }   # 06 §13 target 없을 때
   training:
     max-submissions-per-attempt: 5
+    correct-coverage: 0.80         # 06 §8.1 evaluatedOutcome CORRECT 경계 (8000bp)
+    partial-coverage: 0.40         # 06 §8.1 evaluatedOutcome PARTIAL 경계 (4000bp)
   coach:
     max-content-bytes: 30000
     max-content-lines: 1000
@@ -200,7 +228,7 @@ devpilot:
     idempotency-ttl: 24h
   content:
     seed-on-startup: true
-    seed-challenges: false         # S1~S2 빌드는 false (challenge upsert는 S3 training 모듈부터, docs/04 §9)
+    seed-challenges: true          # seed challenge upsert (docs/04 §9 5단계)
     location: classpath:content/
   ai:
     provider: ${DEVPILOT_AI_PROVIDER:deepseek}          # deepseek | fake | disabled
@@ -218,14 +246,15 @@ devpilot:
       COACH_RESPONSE_FEEDBACK: { mode: SYNC,  thinking: false, max-tokens: 2000,  timeout: 20s,  max-retries: 0, input-token-budget: 6000 }
       CHALLENGE_GENERATE:      { mode: ASYNC, thinking: true,  reasoning-effort: high, max-tokens: 32000, timeout: 180s, max-retries: 1, input-token-budget: 4000 }
       CHALLENGE_EVALUATE:      { mode: ASYNC, thinking: true,  reasoning-effort: low,  max-tokens: 16000, timeout: 120s, max-retries: 1, input-token-budget: 8000 }
-      HINT_GENERATE:           { mode: SYNC,  thinking: false, max-tokens: 3000,  timeout: 20s,  max-retries: 0, input-token-budget: 6000 }
+      HINT_GENERATE:           { mode: SYNC,  thinking: false, max-tokens: 3000,  timeout: 20s,  max-retries: 1, input-token-budget: 6000 }   # level·길이 위반은 피드백을 붙여 한 번 더 묻는다 — 실패한 힌트는 0초여도 쓸모가 없다
       REVIEW_VARIANT:          { mode: ASYNC, thinking: false, max-tokens: 4000,  timeout: 60s,  max-retries: 1, input-token-budget: 3000 }   # Later
       REVIEW_EVALUATE:         { mode: SYNC,  thinking: false, max-tokens: 2000,  timeout: 20s,  max-retries: 0, input-token-budget: 3000 }
       EVIDENCE_DRAFT:          { mode: ASYNC, thinking: true,  reasoning-effort: low,  max-tokens: 16000, timeout: 120s, max-retries: 1, input-token-budget: 6000 }
       REQUIREMENT_EXTRACT:     { mode: ASYNC, thinking: false, max-tokens: 8000,  timeout: 120s, max-retries: 1, input-token-budget: 8000 }
       RUBBER_DUCK:             { mode: SYNC,  thinking: false, max-tokens: 1500,  timeout: 20s,  max-retries: 0, input-token-budget: 6000 }
       RUBBER_DUCK_SUMMARY:     { mode: SYNC,  thinking: true,  reasoning-effort: low, max-tokens: 4000, timeout: 30s, max-retries: 0, input-token-budget: 8000 }
-    trusted-source-hosts: [docs.spring.io, spring.io, docs.oracle.com, openjdk.org, www.postgresql.org, owasp.org, cheatsheetseries.owasp.org, www.kisa.or.kr, supabase.com, dart.dev, docs.flutter.dev, api.flutter.dev, pmd.github.io, spotbugs.readthedocs.io, checkstyle.org, junit.org, hibernate.org, docs.jboss.org, developer.mozilla.org, www.rfc-editor.org]
+      LESSON_REEXPLAIN:        { mode: SYNC,  thinking: false, max-tokens: 2000,  timeout: 20s,  max-retries: 0, input-token-budget: 3000 }   # ADR-047
+    trusted-source-hosts: [docs.spring.io, spring.io, docs.oracle.com, openjdk.org, www.postgresql.org, owasp.org, cheatsheetseries.owasp.org, www.kisa.or.kr, supabase.com, dart.dev, docs.flutter.dev, api.flutter.dev, pmd.github.io, spotbugs.readthedocs.io, checkstyle.org, junit.org, hibernate.org, docs.jboss.org, developer.mozilla.org, www.rfc-editor.org, git-scm.com, spec.openapis.org, docs.gradle.org, man7.org, docs.docker.com, docs.github.com, kubernetes.io, docs.aws.amazon.com]
     curated-sources-location: classpath:content/curated-sources.yaml
     pricing:                    # USD / 1M tokens, 2026-09-18 확인
       peak-multiplier: 2        # 결정 F: 시각과 무관하게 항상 곱한다
@@ -249,3 +278,4 @@ devpilot:
       requirement.extract: v1
       rubber.duck: v1
       rubber.duck.summary: v1
+      lesson.reexplain: v1

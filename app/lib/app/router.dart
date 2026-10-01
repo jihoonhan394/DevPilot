@@ -1,20 +1,23 @@
-import 'dart:async';
-
 import 'package:devpilot_app/app/app_shell.dart';
+import 'package:devpilot_app/app/install_card.dart';
+import 'package:devpilot_app/app/learning_routes.dart';
 import 'package:devpilot_app/app/more_screen.dart';
 import 'package:devpilot_app/app/not_found_screen.dart';
+import 'package:devpilot_app/app/route_helpers.dart';
 import 'package:devpilot_app/app/routes.dart';
 import 'package:devpilot_app/app/session_redirect.dart';
 import 'package:devpilot_app/core/api/api_enums.dart';
 import 'package:devpilot_app/core/auth/auth_controller.dart';
-import 'package:devpilot_app/core/widgets/confirm_dialog.dart';
 import 'package:devpilot_app/features/auth/presentation/login_screen.dart';
 import 'package:devpilot_app/features/auth/presentation/not_allowed_screen.dart';
+import 'package:devpilot_app/features/dashboard/presentation/dashboard_screen.dart';
+import 'package:devpilot_app/features/history/presentation/recent_screen.dart';
 import 'package:devpilot_app/features/onboarding/presentation/onboarding_goal_screen.dart';
 import 'package:devpilot_app/features/onboarding/presentation/onboarding_level_screen.dart';
 import 'package:devpilot_app/features/onboarding/presentation/onboarding_plan_screen.dart';
 import 'package:devpilot_app/features/onboarding/presentation/onboarding_project_screen.dart';
 import 'package:devpilot_app/features/onboarding/presentation/onboarding_time_screen.dart';
+import 'package:devpilot_app/features/plan/presentation/buildable_screen.dart';
 import 'package:devpilot_app/features/plan/presentation/learning_goal_controller.dart';
 import 'package:devpilot_app/features/plan/presentation/learning_goal_screen.dart';
 import 'package:devpilot_app/features/plan/presentation/plan_history_screen.dart';
@@ -22,21 +25,24 @@ import 'package:devpilot_app/features/plan/presentation/plan_screen.dart';
 import 'package:devpilot_app/features/plan/presentation/plan_version_screen.dart';
 import 'package:devpilot_app/features/plan/presentation/replan_controller.dart';
 import 'package:devpilot_app/features/plan/presentation/replan_screen.dart';
+import 'package:devpilot_app/features/project/data/project_note_models.dart';
+import 'package:devpilot_app/features/project/presentation/project_detail_screen.dart';
+import 'package:devpilot_app/features/project/presentation/project_note_edit_screen.dart';
 import 'package:devpilot_app/features/project/presentation/projects_screen.dart';
+import 'package:devpilot_app/features/review/presentation/review_home_screen.dart';
+import 'package:devpilot_app/features/review/presentation/review_session_screen.dart';
 import 'package:devpilot_app/features/settings/data/me_provider.dart';
+import 'package:devpilot_app/features/settings/presentation/progress_reset_screen.dart';
 import 'package:devpilot_app/features/settings/presentation/settings_controller.dart';
 import 'package:devpilot_app/features/settings/presentation/settings_screen.dart';
+import 'package:devpilot_app/features/skill/presentation/self_assessment_screen.dart';
 import 'package:devpilot_app/features/skill/presentation/skill_detail_screen.dart';
 import 'package:devpilot_app/features/skill/presentation/skill_tree_screen.dart';
+import 'package:devpilot_app/features/today/presentation/reading_history_screen.dart';
+import 'package:devpilot_app/features/today/presentation/today_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/misc.dart';
 import 'package:go_router/go_router.dart';
-
-/// Path parameters are UUIDs; anything else shows SCR-NOT-FOUND (docs/02 §2.3).
-final _uuidPattern = RegExp(
-  r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
-);
 
 /// Notifies go_router when the session or the profile status changes.
 final class _RouterRefresh extends ChangeNotifier {
@@ -90,16 +96,52 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.onboardingPlan,
         builder: (context, state) => const OnboardingPlanScreen(),
       ),
+      // A focus screen without the navigation frame (docs/02 §2.2).
+      GoRoute(
+        path: AppRoutes.reviewSession,
+        onExit: (context, state) => confirmReviewSessionExit(
+          context,
+          state.uri.queryParameters[AppRoutes.taskIdParameter],
+        ),
+        builder: (context, state) =>
+            ReviewSessionScreen(taskId: state.uri.queryParameters[AppRoutes.taskIdParameter]),
+      ),
+      // SCR-RUBBER-DUCK is a focus screen too (docs/02 §2.2).
+      ...rubberDuckRoutes(),
       ShellRoute(
         builder: (context, state, child) => AppShell(location: state.uri.path, child: child),
         routes: [
+          GoRoute(
+            path: AppRoutes.today,
+            builder: (context, state) => TodayScreen(
+              completeTaskId: state.uri.queryParameters[AppRoutes.completeParameter],
+              footer: const InstallCard(),
+            ),
+            routes: todaySubRoutes(),
+          ),
+          lessonListRoute(),
+          lessonRoute(),
+          tipsListRoute(),
+          termsListRoute(),
+          tipDetailRoute(),
+          termDetailRoute(),
+          GoRoute(path: AppRoutes.dashboard, builder: (context, state) => const DashboardScreen()),
+          GoRoute(
+            path: AppRoutes.readings,
+            builder: (context, state) => const ReadingHistoryScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.review,
+            builder: (context, state) => const ReviewHomeScreen(),
+            routes: reviewSubRoutes(),
+          ),
           GoRoute(
             path: AppRoutes.plan,
             builder: (context, state) => const PlanScreen(),
             routes: [
               GoRoute(
                 path: 'replan',
-                onExit: (context, state) => _confirmLeave(context, replanHasUnsavedChangesProvider),
+                onExit: (context, state) => confirmLeave(context, replanHasUnsavedChangesProvider),
                 builder: (context, state) => ReplanScreen(
                   fromGoal: state.uri.queryParameters['from'] == AppRoutes.replanFromGoal,
                 ),
@@ -107,8 +149,12 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'goal',
                 onExit: (context, state) =>
-                    _confirmLeave(context, learningGoalHasUnsavedChangesProvider),
+                    confirmLeave(context, learningGoalHasUnsavedChangesProvider),
                 builder: (context, state) => const LearningGoalScreen(),
+              ),
+              GoRoute(
+                path: 'buildable',
+                builder: (context, state) => const BuildableScreen(),
               ),
               GoRoute(
                 path: 'versions',
@@ -117,7 +163,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: ':planId',
                     builder: (context, state) =>
-                        _withUuid(state, 'planId', (planId) => PlanVersionScreen(planId: planId)),
+                        withUuid(state, 'planId', (planId) => PlanVersionScreen(planId: planId)),
                   ),
                 ],
               ),
@@ -130,16 +176,54 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: ':skillId',
                 builder: (context, state) =>
-                    _withUuid(state, 'skillId', (skillId) => SkillDetailScreen(skillId: skillId)),
+                    withUuid(state, 'skillId', (skillId) => SkillDetailScreen(skillId: skillId)),
               ),
             ],
           ),
-          GoRoute(path: AppRoutes.projects, builder: (context, state) => const ProjectsScreen()),
+          trainingRoute(),
+          GoRoute(
+            path: AppRoutes.projects,
+            builder: (context, state) => const ProjectsScreen(),
+            routes: [
+              // 기록 작성은 `:sideProjectId` 아래다 — 소유권을 부모와 함께 본다 (docs/07 §4.3)
+              GoRoute(
+                path: ':sideProjectId/notes/new',
+                builder: (context, state) => ProjectNoteEditScreen(
+                  sideProjectId: state.pathParameters['sideProjectId'] ?? '',
+                  noteType: state.uri.queryParameters['noteType'] == 'INCIDENT'
+                      ? SideProjectNoteType.incident
+                      : SideProjectNoteType.decision,
+                ),
+              ),
+              GoRoute(
+                path: ':sideProjectId/notes/:noteId',
+                builder: (context, state) => ProjectNoteEditScreen(
+                  sideProjectId: state.pathParameters['sideProjectId'] ?? '',
+                  noteId: state.pathParameters['noteId'],
+                ),
+              ),
+              GoRoute(
+                path: ':sideProjectId',
+                builder: (context, state) => ProjectDetailScreen(
+                  sideProjectId: state.pathParameters['sideProjectId'] ?? '',
+                ),
+              ),
+            ],
+          ),
           GoRoute(
             path: AppRoutes.settings,
-            onExit: (context, state) => _confirmLeave(context, settingsHasUnsavedChangesProvider),
+            onExit: (context, state) => confirmLeave(context, settingsHasUnsavedChangesProvider),
             builder: (context, state) => const SettingsScreen(),
           ),
+          GoRoute(
+            path: AppRoutes.settingsReset,
+            builder: (context, state) => const ProgressResetScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.settingsSelfAssessment,
+            builder: (context, state) => const SelfAssessmentScreen(),
+          ),
+          GoRoute(path: AppRoutes.recent, builder: (context, state) => const RecentScreen()),
           GoRoute(path: AppRoutes.more, builder: (context, state) => const MoreScreen()),
         ],
       ),
@@ -152,18 +236,3 @@ final routerProvider = Provider<GoRouter>((ref) {
   });
   return router;
 });
-
-Widget _withUuid(GoRouterState state, String name, Widget Function(String id) build) {
-  final value = state.pathParameters[name];
-  return value != null && _uuidPattern.hasMatch(value) ? build(value) : const NotFoundScreen();
-}
-
-/// Leaves at once when nothing is dirty, otherwise asks first (docs/02 §6.8). A sign-out or an
-/// expired session always leaves: the screen cannot save without a session.
-FutureOr<bool> _confirmLeave(BuildContext context, ProviderListenable<bool> hasUnsavedChanges) {
-  final container = ProviderScope.containerOf(context, listen: false);
-  if (container.read(authStateProvider) is SignedOut || !container.read(hasUnsavedChanges)) {
-    return true;
-  }
-  return confirmDiscardChanges(context);
-}

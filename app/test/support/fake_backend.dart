@@ -6,17 +6,39 @@ import 'package:devpilot_app/features/onboarding/data/onboarding_models.dart';
 import 'package:devpilot_app/features/onboarding/data/onboarding_repository.dart';
 import 'package:devpilot_app/features/plan/data/learning_goal_models.dart';
 import 'package:devpilot_app/features/plan/data/learning_goal_repository.dart';
+import 'package:devpilot_app/features/plan/data/plan_budget_models.dart';
+import 'package:devpilot_app/features/plan/data/plan_buildable_models.dart';
 import 'package:devpilot_app/features/plan/data/plan_models.dart';
 import 'package:devpilot_app/features/plan/data/plan_repository.dart';
 import 'package:devpilot_app/features/project/data/side_project_models.dart';
 import 'package:devpilot_app/features/project/data/side_project_repository.dart';
 import 'package:devpilot_app/features/settings/data/me_repository.dart';
 import 'package:devpilot_app/features/settings/data/me_response.dart';
+import 'package:devpilot_app/features/settings/data/progress_reset_response.dart';
 import 'package:devpilot_app/features/settings/data/update_me_request.dart';
+import 'package:devpilot_app/features/skill/data/skill_history_models.dart';
 import 'package:devpilot_app/features/skill/data/skill_models.dart';
 import 'package:devpilot_app/features/skill/data/skill_repository.dart';
+import 'package:devpilot_app/features/today/data/today_models.dart';
 
 import 'fixtures.dart';
+import 'learning_fakes.dart';
+import 'learning_fixtures.dart';
+import 'lesson_fakes.dart';
+import 'project_note_fakes.dart';
+import 'reading_fakes.dart';
+import 'review_item_fakes.dart';
+import 'rubber_duck_fakes.dart';
+import 'skill_history_fakes.dart';
+import 'term_fakes.dart';
+import 'tip_fakes.dart';
+import 'training_fakes.dart';
+
+export 'learning_fakes.dart';
+export 'reading_fakes.dart';
+export 'review_item_fakes.dart';
+export 'rubber_duck_fakes.dart';
+export 'training_fakes.dart';
 
 /// Takes the next queued failure, if any.
 ApiException? _next(List<ApiException> failures) => failures.isEmpty ? null : failures.removeAt(0);
@@ -41,6 +63,31 @@ final class FakeMeRepository implements MeRepository {
   final updateFailures = <ApiException>[];
   final updates = <UpdateMeRequest>[];
   var fetchCount = 0;
+
+  /// 보낸 초기화 요청. 확인 문구와 체크박스가 그대로 갔는지 본다.
+  final resets = <({String confirmation, bool includeProjects})>[];
+
+  /// 설정하면 초기화가 그 오류로 실패한다.
+  ApiException? resetFailure;
+
+  @override
+  Future<ProgressResetResponse> resetProgress({
+    required String confirmation,
+    required bool includeProjects,
+    required IdempotencyKey idempotencyKey,
+  }) async {
+    final failure = resetFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    resets.add((confirmation: confirmation, includeProjects: includeProjects));
+    me = me.copyWith(onboardingCompleted: false);
+    return ProgressResetResponse(
+      resetAt: DateTime.utc(2026, 9, 26),
+      deletedRows: 12,
+      projectsDeleted: includeProjects,
+    );
+  }
 
   @override
   Future<MeResponse> fetchMe() async {
@@ -93,14 +140,12 @@ final class FakeOnboardingRepository implements OnboardingRepository {
     final user = _meRepository.me = _meRepository.me.copyWith(
       displayName: request.displayName,
       onboardingCompleted: true,
-      experienceProfile: request.experienceProfile,
     );
     final project = request.sideProject;
     return OnboardingResponse(
       user: user,
       learningGoal: testGoal(
         completion: request.learningGoal.targetCompletionDate,
-        checkpoint: request.learningGoal.checkpointDate,
       ),
       activePlan: testPlanSummary(),
       sideProject: project == null
@@ -224,6 +269,50 @@ class FakePlanRepository implements PlanRepository {
   @override
   Future<PlanView> createPlan({required IdempotencyKey idempotencyKey}) async =>
       activePlan = testPlan();
+
+  BudgetView budget = testBudget();
+  final budgetFailures = <ApiException>[];
+  var budgetFetchCount = 0;
+
+  BuildableView buildable = testBuildable();
+  final buildableFailures = <ApiException>[];
+  var buildableFetchCount = 0;
+
+  /// Answers every preview; defaults to a HIGH-risk shrink preview.
+  ReplanPreviewResponse Function(ReplanRequest request) previewResponder = (_) =>
+      testShrinkPreview();
+  final previews = <ReplanRequest>[];
+  final previewFailures = <ApiException>[];
+
+  @override
+  Future<BudgetView> fetchActiveBudget() async {
+    budgetFetchCount++;
+    final failure = _next(budgetFailures);
+    if (failure != null) {
+      throw failure;
+    }
+    return budget;
+  }
+
+  @override
+  Future<BuildableView> fetchActiveBuildable() async {
+    buildableFetchCount++;
+    final failure = _next(buildableFailures);
+    if (failure != null) {
+      throw failure;
+    }
+    return buildable;
+  }
+
+  @override
+  Future<ReplanPreviewResponse> previewReplan(String planId, ReplanRequest request) async {
+    previews.add(request);
+    final failure = _next(previewFailures);
+    if (failure != null) {
+      throw failure;
+    }
+    return previewResponder(request);
+  }
 }
 
 final class FakeLearningGoalRepository implements LearningGoalRepository {
@@ -244,7 +333,6 @@ final class FakeLearningGoalRepository implements LearningGoalRepository {
       throw failure;
     }
     return goal = goal.copyWith(
-      checkpointDate: request.checkpointDate,
       targetCompletionDate: request.targetCompletionDate,
       version: goal.version + 1,
     );
@@ -254,14 +342,67 @@ final class FakeLearningGoalRepository implements LearningGoalRepository {
 final class FakeSkillRepository implements SkillRepository {
   var treeFetchCount = 0;
 
+  /// Level changes of every skill, served two per page.
+  List<SkillStateChangeView> history = testSkillHistory();
+  final historyQueries = <({String skillId, String? cursor})>[];
+  final historyFailures = <ApiException>[];
+  static const historyPageSize = 2;
+
+  /// Roles asked for, in order — SCR-ONBOARDING step 1 asks once per track (docs/02 §3.4).
+  final treeRoles = <TargetRole>[];
+
+  /// Per-track answer; a track without an entry gets [testSkillTree].
+  final treeByRole = <TargetRole, SkillTreeResponse>{};
+
   @override
   Future<SkillTreeResponse> fetchTree({TargetRole role = TargetRole.javaBackend}) async {
     treeFetchCount++;
-    return testSkillTree();
+    treeRoles.add(role);
+    return treeByRole[role] ?? testSkillTree();
   }
 
   @override
   Future<UserSkillStatesResponse> fetchMyStates() async => testSkillStates();
+
+  /// 마지막으로 보낸 자기평가 수정 (docs/05 §6.5). 적은 category만 담겨야 한다.
+  Map<SkillCategory, int>? revisedSelfAssessment;
+
+  @override
+  Future<UserSkillStatesResponse> updateSelfAssessment(Map<SkillCategory, int> levels) async {
+    revisedSelfAssessment = Map.of(levels);
+    return testSkillStates();
+  }
+
+  /// `GET /skills/{skillId}`. 설정하면 그 오류로 실패한다 — 단계 영역만 인라인 오류가 되는지 본다.
+  SkillDetailView detail = testSkillDetail();
+  ApiException? detailFailure;
+
+  @override
+  Future<SkillDetailView> fetchDetail(String skillId) async {
+    final failure = detailFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return detail;
+  }
+
+  @override
+  Future<CursorPage<SkillStateChangeView>> fetchHistory({
+    required String skillId,
+    String? cursor,
+  }) async {
+    historyQueries.add((skillId: skillId, cursor: cursor));
+    final failure = historyFailures.isEmpty ? null : historyFailures.removeAt(0);
+    if (failure != null) {
+      throw failure;
+    }
+    final from = cursor == null ? 0 : int.parse(cursor);
+    final to = (from + historyPageSize).clamp(0, history.length);
+    return CursorPage(
+      items: history.sublist(from.clamp(0, history.length), to),
+      nextCursor: to < history.length ? '$to' : null,
+    );
+  }
 }
 
 final class FakeSideProjectRepository implements SideProjectRepository {
@@ -360,10 +501,14 @@ final class FakeBackend {
     PlanView? activePlan,
     List<SideProjectView>? projects,
     FakePlanRepository? planRepository,
+    TodayView? today,
+    FakeTodayRepository? todayRepository,
   }) : meRepository = FakeMeRepository(me ?? testMe()),
        planRepository = planRepository ?? FakePlanRepository(activePlan: activePlan),
-       sideProjectRepository = FakeSideProjectRepository(projects: projects) {
+       sideProjectRepository = FakeSideProjectRepository(projects: projects),
+       todayRepository = todayRepository ?? FakeTodayRepository(today: today) {
     onboardingRepository = FakeOnboardingRepository(meRepository);
+    sessionRepository = FakeLearningSessionRepository(this.todayRepository, clock);
   }
 
   final FakeMeRepository meRepository;
@@ -372,4 +517,18 @@ final class FakeBackend {
   final learningGoalRepository = FakeLearningGoalRepository();
   final skillRepository = FakeSkillRepository();
   final FakeSideProjectRepository sideProjectRepository;
+  final clock = TestClock();
+  final FakeTodayRepository todayRepository;
+  late final FakeLearningSessionRepository sessionRepository;
+  final reviewRepository = FakeReviewRepository();
+  final dashboardRepository = FakeDashboardRepository();
+  final trainingRepository = FakeTrainingRepository();
+  final diagnosticRepository = FakeDiagnosticRepository();
+  final rubberDuckRepository = FakeRubberDuckRepository();
+  final readingRepository = FakeReadingRepository();
+  final lessonRepository = FakeLessonRepository();
+  final reviewItemRepository = FakeReviewItemRepository();
+  final tipRepository = FakeTipRepository();
+  final termRepository = FakeTermRepository();
+  final projectNoteRepository = FakeProjectNoteRepository();
 }

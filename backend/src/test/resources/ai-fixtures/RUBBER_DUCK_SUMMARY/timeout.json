@@ -1,0 +1,8 @@
+{
+  "description": "공급자 timeout",
+  "attempts": [
+    {
+      "simulate": "TIMEOUT"
+    }
+  ]
+}

@@ -1,0 +1,412 @@
+# DevPilot 개념 노트 — 인증서 오류를 읽는 법
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 4단계(배포와 로그 확인)에서 쓴다. NETWORK.TCP_IP·NETWORK.DNS 노트를 전제한다
+# - 예제는 주문 시스템 상황으로 쓴다 (CV-134)
+lessons:
+  - key: LESSON.NETWORK.TLS.001
+    skillCode: NETWORK.TLS
+    title: 인증서 오류를 읽는 법 (HTTPS)
+    whyItMatters: |-
+      배포하고 나면 거의 반드시 인증서 오류를 한 번 만난다. 그때 가장 흔한 대응이
+      **검증을 꺼 버리는 것**이다. 한 줄이면 사라지고, 사라지면 다시 안 본다.
+      그런데 그 한 줄은 "누가 상대인지 확인하지 않겠다"는 뜻이고, HTTPS를 쓰는
+      이유를 통째로 지운다. 메시지를 읽을 줄 알면 끌 필요가 없어진다.
+    oneLine: 인증서 오류는 대개 셋 중 하나다 — 이름이 안 맞거나, 만료됐거나, 발급자를 모르거나.
+    units:
+      - key: LESSON.NETWORK.TLS.001.U1
+        title: HTTPS가 실제로 하는 두 가지
+        minutes: 10
+        core: true
+        explain: |-
+          HTTPS는 흔히 "암호화"로 뭉뚱그려지지만 하는 일이 **둘**이다.
+
+          | 하는 일 | 없으면 |
+          |---|---|
+          | 내용을 가린다 | 중간에서 요청·응답을 그대로 읽는다 |
+          | **상대가 맞는지 확인한다** | 가짜 서버에 암호화해서 보낸다 |
+
+          두 번째가 인증서의 몫이다. 암호화만 하고 상대를 확인하지 않으면
+          **중간에 낀 누군가와 안전하게 대화하는 꼴**이 된다.
+
+          확인은 세 가지를 본다.
+
+          1. **이름** — 내가 접속한 이름이 인증서에 적힌 이름과 같은가
+          2. **기간** — 아직 유효한가
+          3. **발급자** — 내가 믿는 기관이 발급한 것인가 (믿는 목록은 내 쪽에 있다)
+
+          그래서 오류도 대개 이 셋 중 하나다. 메시지를 보면 **어느 검사가 걸렸는지**가
+          거의 그대로 적혀 있다.
+        example:
+          language: text
+          code: |-
+            # 인증서를 직접 들여다본다
+            $ openssl s_client -connect payment.example.com:443 \
+                -servername payment.example.com </dev/null 2>/dev/null \
+              | openssl x509 -noout -subject -issuer -dates -ext subjectAltName
+
+            subject=CN = payment.example.com
+            issuer=C = US, O = Let's Encrypt, CN = R11
+            notBefore=Sep  1 00:00:00 2026 GMT
+            notAfter=Nov 30 23:59:59 2026 GMT
+            X509v3 Subject Alternative Name:
+                DNS:payment.example.com, DNS:www.payment.example.com
+          output: |-
+            세 검사에 대응
+              이름   → subjectAltName에 payment.example.com 이 있다      ✓
+              기간   → 오늘이 notBefore ~ notAfter 사이다                ✓
+              발급자 → Let's Encrypt R11을 내 쪽에서 믿는가              ← 여기만 내 설정
+          note: |-
+            - 이름 검사는 `CN`이 아니라 **`subjectAltName`** 을 본다. CN만 맞고 SAN에 없으면 실패한다
+            - '`-servername`은 한 IP에 여러 도메인이 있을 때 어느 인증서를 달라고 말하는 것이다'
+            - '`notAfter`가 지나면 코드를 한 줄도 안 고쳤는데 어느 날 갑자기 실패한다'
+            - 발급자를 믿는 목록은 **상대가 아니라 내 쪽**에 있다. 그래서 컴퓨터마다 결과가 다를 수 있다
+        predict:
+          question: "인증서 `CN`은 `payment.example.com`인데 SAN에는 `www.payment.example.com`만 있다면?"
+          choices:
+            - payment.example.com으로 접속하면 이름 불일치로 실패한다
+            - CN이 맞으므로 통과한다
+            - 만료 오류가 난다
+            - 발급자 오류가 난다
+          answer: payment.example.com으로 접속하면 이름 불일치로 실패한다
+          explanation: |-
+            지금 클라이언트는 이름 검사에 **SAN만** 쓴다. CN은 사람이 보라고 남아 있는 값에 가깝다.
+            "분명 CN이 맞는데 왜 안 되지"가 여기서 나온다 — 볼 곳이 다르다.
+        complete:
+          question: 인증서의 세 검사 항목을 한 번에 보는 명령을 채우세요.
+          code: |-
+            $ openssl s_client -connect payment.example.com:443 \
+                -___ payment.example.com </dev/null 2>/dev/null \
+              | openssl x509 -noout -subject -issuer -dates -ext ___
+          answers:
+            - [servername]
+            - [subjectAltName]
+          explanation: |-
+            `-servername`을 빼면 그 IP의 기본 인증서를 받아 와 **엉뚱한 것을 보고
+            판단**하게 된다. 이름 검사는 `subjectAltName`을 봐야 실제 검사와 같다.
+        problem:
+          prompt: |-
+            주문 시스템이 부르는 바깥 API 하나를 골라 **인증서를 직접 읽어** 보세요.
+
+            - subject·issuer·기간·SAN을 뽑아 적습니다
+            - 세 검사(이름·기간·발급자)에 각각 어떤 값이 대응하는지 표로 적으세요
+            - '`-servername`을 **뺀 것과 넣은 것**의 결과를 비교하세요'
+            - 만료까지 며칠 남았는지 계산하고, 만료되면 무엇이 깨질지 적으세요
+          deliverables:
+            - 인증서에서 뽑은 네 값
+            - 세 검사에 값이 대응하는 표
+            - servername 유무에 따른 차이
+          hints:
+            - 공개된 API 주소면 어디든 됩니다.
+            - '`-servername`을 빼면 다른 인증서가 올 수도, 같은 것이 올 수도 있습니다.'
+            - 날짜 계산은 `date -d`로 할 수 있습니다.
+          modelAnswer: |-
+            ```text
+            subject  CN = api.example.com
+            issuer   O = Let's Encrypt, CN = R11
+            notAfter Nov 30 23:59:59 2026 GMT     (오늘 기준 66일 남음)
+            SAN      DNS:api.example.com
+
+            검사      보는 값                       내 쪽에 있나
+            이름      SAN 목록                      아니오
+            기간      notBefore ~ notAfter          아니오
+            발급자    issuer를 믿는지               예 ← 여기만 내 설정
+            ```
+
+            `-servername`을 뺐더니 **다른 도메인의 인증서**가 왔다. 한 IP에서
+            여러 도메인을 서비스하고 있어서다. 이걸 모르고 "인증서가 이상한데요"
+            하면 엉뚱한 것을 보고 말한 것이 된다.
+
+            만료되면 깨지는 것: 주문 시스템에서 결제 API 호출이 전부 실패한다.
+            **코드는 한 줄도 안 바뀌었는데** 어느 날 갑자기 그렇게 된다.
+            그래서 만료는 "고칠 버그"가 아니라 **달력에 적어 둘 일**이다.
+
+            표에서 배운 것 하나: 세 검사 중 내가 손댈 수 있는 것은 발급자 신뢰뿐이다.
+            그래서 U2에서 볼 오류도 대부분 그 자리의 문제다.
+          selfChecks:
+            - 인증서에서 네 값을 직접 뽑았는가
+            - 세 검사에 값을 대응시켰는가
+            - servername 유무의 차이를 확인했는가
+            - 만료까지 남은 날과 그때 깨질 것을 적었는가
+      - key: LESSON.NETWORK.TLS.001.U2
+        title: 오류 메시지가 가리키는 곳
+        minutes: 12
+        core: true
+        explain: |-
+          자바에서 나오는 TLS 오류는 길지만, **어느 검사가 걸렸는지**는 거의 항상 적혀 있다.
+
+          | 메시지 | 걸린 검사 | 고칠 곳 |
+          |---|---|---|
+          | `No subject alternative names matching...` | 이름 | 접속하는 이름 또는 인증서 |
+          | `NotAfter: ...` / `certificate expired` | 기간 | 인증서를 새로 발급 |
+          | `unable to find valid certification path` | 발급자 | **내 쪽 신뢰 목록** |
+
+          마지막 줄이 가장 자주 나오고 가장 자주 잘못 대응된다.
+          이것은 **상대 인증서가 잘못됐다는 뜻이 아니라, 내가 그 발급자를 모른다**는 뜻이다.
+          사내 인증서나 중간 인증서가 빠진 경우가 대부분이다.
+
+          그래서 답도 정해져 있다 — **그 발급자를 내 신뢰 목록에 넣는 것**이다.
+          검증을 끄는 것이 아니라.
+
+          검증을 끄면 셋 다 통과한다. 즉 **가짜 서버도 통과한다.** 급해서 한 번 끄면
+          그 줄은 대개 지워지지 않고 운영까지 따라간다.
+        example:
+          language: text
+          code: |-
+            # ① 이름이 안 맞을 때
+            javax.net.ssl.SSLHandshakeException:
+              No subject alternative DNS name matching payment.internal found.
+
+            # ② 기간이 지났을 때
+            sun.security.validator.ValidatorException: PKIX path validation failed:
+              java.security.cert.CertPathValidatorException: validity check failed
+              NotAfter: Sun Aug 31 23:59:59 KST 2026
+
+            # ③ 발급자를 모를 때 (가장 흔하다)
+            sun.security.validator.ValidatorException: PKIX path building failed:
+              unable to find valid certification path to requested target
+          output: |-
+            대응
+              ① 접속 이름과 SAN 중 무엇이 맞는지 먼저 정한다. 코드가 아니라 사실 확인이다
+              ② 인증서를 새로 발급받는다. 코드로 할 일이 없다
+              ③ 발급자(사내 CA·중간 인증서)를 내 신뢰 저장소에 넣는다
+
+            어느 경우에도 "검증 끄기"는 답이 아니다
+          note: |-
+            - '`path building failed`(길을 못 만든다)와 `path validation failed`(만들었는데 조건이 안 맞는다)는 다르다'
+            - ③은 상대 서버가 **중간 인증서를 같이 안 보내서** 나기도 한다. 그때는 상대가 고칠 일이다
+            - 자바는 자체 신뢰 저장소를 쓴다. **OS 브라우저에서 되는데 앱에서 안 되는** 이유가 이것이다
+            - 신뢰 저장소에 넣는 것은 "이 발급자를 믿는다"는 결정이다. 아무거나 넣지 않는다
+        predict:
+          question: "브라우저로는 열리는데 자바 앱에서만 `unable to find valid certification path`가 난다면?"
+          choices:
+            - 자바의 신뢰 저장소에 그 발급자가 없다
+            - 인증서가 만료됐다
+            - 이름이 안 맞는다
+            - 서버가 꺼져 있다
+          answer: 자바의 신뢰 저장소에 그 발급자가 없다
+          explanation: |-
+            브라우저와 자바는 **믿는 발급자 목록을 따로** 들고 있다. 사내 CA를 OS에만
+            깔아 두면 브라우저는 되고 앱은 안 된다. "브라우저에서는 되는데요"는
+            같은 문제가 아니라는 신호다.
+        complete:
+          question: 발급자를 자바 신뢰 저장소에 넣는 명령을 채우세요.
+          code: |-
+            # 상대가 보내는 인증서 사슬을 저장한다
+            $ openssl s_client -showcerts -connect payment.internal:443 \
+                -servername payment.internal </dev/null > chain.pem
+
+            # 발급자(CA) 인증서를 신뢰 저장소에 넣는다
+            $ keytool -___ -alias internal-ca \
+                -file internal-ca.pem -cacerts -storepass ___
+          answers:
+            - [importcert]
+            - [changeit]
+          explanation: |-
+            `-importcert`는 인증서를 저장소에 넣는 동작이고, `-cacerts`는 자바가 쓰는
+            기본 신뢰 저장소를 가리킨다. 기본 비밀번호가 `changeit`이라는 사실 자체가
+            **이 저장소는 비밀이 아니라 목록**임을 말해 준다.
+        problem:
+          prompt: |-
+            주문 시스템에서 **세 가지 TLS 오류를 하나씩 재현하고 메시지로 구분**하세요.
+
+            - ① 인증서에 없는 이름으로 접속해 이름 불일치를 봅니다
+            - ② 스스로 서명한 인증서로 서버를 띄워 `path building failed`를 봅니다
+            - ③ 그 인증서를 신뢰 저장소에 넣고 **정상 통과**하는 것을 확인합니다
+            - 각 단계의 메시지 첫 두 줄을 적고, 무엇을 보고 구분했는지 쓰세요
+          deliverables:
+            - 세 경우의 메시지 첫 두 줄
+            - 각 메시지에서 검사 종류를 알아낸 근거
+            - 신뢰 저장소에 넣은 뒤 통과한 기록
+          hints:
+            - 스스로 서명한 인증서는 keytool이나 openssl로 만들 수 있습니다.
+            - hosts 파일로 아무 이름이나 로컬로 향하게 할 수 있습니다.
+            - 저장소를 바꾼 뒤에는 앱을 다시 띄워야 반영됩니다.
+          modelAnswer: |-
+            ```text
+            ① hosts로 wrong.local → 127.0.0.1, 인증서는 CN=localhost
+               SSLHandshakeException: No subject alternative DNS name
+               matching wrong.local found.
+               → "matching <이름> found" → 이름 검사다
+
+            ② 스스로 서명한 인증서로 https 서버 기동
+               ValidatorException: PKIX path building failed:
+               unable to find valid certification path to requested target
+               → "path building" → 발급자까지 길을 못 만든다 = 발급자 검사다
+
+            ③ keytool -importcert 로 그 인증서를 넣고 앱 재기동
+               HTTP/1.1 200 OK
+               → 검증을 켠 채로 통과했다
+            ```
+
+            ③이 이 과제의 전부다. **검증을 끄지 않고도 해결된다.**
+            ②에서 막혔을 때 "검증 끄기"를 검색하면 한 줄짜리 답이 바로 나오고,
+            그것이 통하기 때문에 대부분 거기서 멈춘다. 하지만 그 줄은
+            ①도 ②도 ③도 전부 통과시킨다 — **가짜 서버까지.**
+
+            구분 근거를 한 줄로 정리하면:
+            - '`matching ... found` → 이름'
+            - '`NotAfter` / `validity check` → 기간'
+            - '`path building failed` → 발급자 (내 쪽 목록)'
+
+            세 줄을 외워 두면 다음부터 메시지 첫 두 줄만 보고 어디를 볼지 정해진다.
+          selfChecks:
+            - 세 오류를 실제로 재현했는가
+            - 메시지에서 검사 종류를 구분할 수 있는가
+            - 검증을 끄지 않고 ③을 통과시켰는가
+            - 신뢰 저장소에 넣는 것이 무슨 결정인지 말할 수 있는가
+      - key: LESSON.NETWORK.TLS.001.U3
+        title: 어디서부터 어디까지 암호화되는가
+        minutes: 10
+        core: true
+        explain: |-
+          "HTTPS를 쓰니까 안전하다"가 어디까지 참인지 알아야 한다.
+          암호화되는 구간은 **클라이언트와 TLS를 끝내는 지점 사이**뿐이다.
+
+          ```text
+          브라우저 ──(암호화)──▶ 리버스 프록시 ──(평문?)──▶ 주문 시스템
+                                 └ 여기서 TLS가 끝난다
+          ```
+
+          앞단에서 TLS를 끝내는 구성이 흔하다. 그러면 프록시 뒤는 평문이고,
+          그 구간이 안전한지는 **네트워크가 보장**해야 한다.
+
+          앱 쪽에서 실제로 바뀌는 것이 하나 있다. 프록시 뒤의 앱은
+          **자기가 http로 불린다고 생각한다.** 그래서 앱이 만드는 링크가 `http://`가 되거나,
+          클라이언트 IP가 전부 프록시의 IP로 보인다.
+
+          그래서 앞단이 원래 무엇이었는지를 헤더로 전달받아야 하고,
+          앱은 **믿을 수 있는 앞단에서 온 헤더만** 받아들여야 한다.
+          아무 헤더나 믿으면 클라이언트가 스스로 "나 https로 왔어요"라고 말할 수 있다.
+        example:
+          language: yaml
+          code: |-
+            # application.yml — 프록시 뒤에 있을 때
+            server:
+              forward-headers-strategy: framework
+              tomcat:
+                remoteip:
+                  # 이 주소에서 온 요청의 헤더만 믿는다
+                  internal-proxies: "10\\.0\\.1\\.\\d{1,3}"
+          output: |-
+            설정 전
+              request.isSecure()  = false
+              request.getScheme() = http
+              생성한 링크         = http://order.example.com/orders/1
+              클라이언트 IP       = 10.0.1.7   (프록시)
+
+            설정 후
+              request.isSecure()  = true
+              request.getScheme() = https
+              생성한 링크         = https://order.example.com/orders/1
+              클라이언트 IP       = 203.0.113.9   (진짜 클라이언트)
+          note: |-
+            - 링크가 `http://`로 나가면 브라우저가 막거나 한 번 더 왕복한다
+            - 클라이언트 IP가 전부 같으면 **접근 제한이나 이상 탐지가 무의미해진다**
+            - '`internal-proxies`를 안 좁히면 아무나 헤더를 꾸며 보낼 수 있다'
+            - 프록시가 없다면 이 설정을 켜면 안 된다 — 켜는 순간 헤더를 믿게 된다
+        predict:
+          question: 프록시 뒤 앱이 클라이언트 IP를 전부 프록시 IP로 본다면 무엇이 무의미해지나?
+          choices:
+            - IP 기반 접근 제한과 이상 요청 탐지
+            - 데이터베이스 인덱스
+            - 테스트 커버리지
+            - 빌드 시간
+          answer: IP 기반 접근 제한과 이상 요청 탐지
+          explanation: |-
+            모든 요청이 같은 IP에서 온 것처럼 보이면 "이 IP가 너무 자주 부른다"
+            같은 판단이 성립하지 않는다. 로그에 남는 IP도 전부 같아
+            **나중에 추적할 수도 없다.**
+        complete:
+          question: 프록시 뒤 설정을 채우세요.
+          code: |-
+            server:
+              ___-headers-strategy: framework      # 앞단 헤더를 반영한다
+              tomcat:
+                remoteip:
+                  ___-proxies: "10\\.0\\.1\\.\\d{1,3}"   # 믿을 앞단 주소
+          answers:
+            - [forward]
+            - [internal]
+          explanation: |-
+            앞의 설정이 "헤더를 반영한다"이고, 뒤가 **"누구의 헤더를 믿을지"** 다.
+            뒤를 비워 두면 아무 헤더나 믿게 되어 없느니만 못하다.
+        problem:
+          prompt: |-
+            주문 시스템을 **리버스 프록시 뒤에 두고** 무엇이 달라지는지 확인하세요.
+
+            - 앞단에서 TLS를 끝내고 뒤로는 http로 넘기는 구성을 만듭니다
+            - 설정 전후로 `isSecure()`·`getScheme()`·클라이언트 IP를 찍어 비교하세요
+            - '`internal-proxies`를 넓게 열어 두고, 클라이언트가 **직접 헤더를 꾸며** 보내 보세요'
+            - 그 결과를 보고 이 설정의 위험을 한 문단으로 적으세요
+          deliverables:
+            - 설정 전후의 세 값 비교
+            - 헤더를 꾸며 보냈을 때의 결과
+            - 이 설정의 위험에 대한 한 문단
+          hints:
+            - 프록시는 가벼운 것으로 로컬에서 띄워도 됩니다.
+            - 헤더를 꾸미는 것은 curl의 -H 옵션으로 됩니다.
+            - 넓게 열었을 때와 좁혔을 때를 둘 다 해 보세요.
+          modelAnswer: |-
+            ```text
+            설정 전 (프록시 뒤인데 헤더를 안 봄)
+              isSecure=false  scheme=http  clientIp=172.18.0.2
+
+            설정 후 (internal-proxies를 프록시 주소로 좁힘)
+              isSecure=true   scheme=https clientIp=203.0.113.9
+
+            헤더를 꾸며 직접 호출 (internal-proxies를 넓게 열어 둔 상태)
+              $ curl -H 'X-Forwarded-For: 1.2.3.4' \
+                     -H 'X-Forwarded-Proto: https' http://localhost:8080/debug/req
+              isSecure=true   scheme=https clientIp=1.2.3.4
+              → 평문 http로 불렀는데 앱은 https라고 믿는다
+            ```
+
+            마지막 줄이 이 단위의 결론이다. 이 설정은 **"앞단이 진실을 말한다"는
+            전제 위에서만** 동작한다. 전제가 깨지면 클라이언트가 자기 IP와
+            프로토콜을 마음대로 정하게 된다 — IP 기반 제한을 우회하고,
+            로그에는 가짜 IP가 남는다.
+
+            그래서 규칙이 둘이다.
+            1. 프록시 **뒤에 있을 때만** 켠다. 앞단이 없으면 켜지 않는다
+            2. 켤 때는 **믿을 주소를 반드시 좁힌다**. 기본값을 그대로 두지 않는다
+
+            "설정 하나 켜면 되는 일"처럼 보이지만, 실제로는 신뢰 경계를 어디에
+            그을지 정하는 일이다. 켜는 이유를 말할 수 없으면 켜지 않는 편이 낫다.
+          selfChecks:
+            - 설정 전후 세 값을 직접 비교했는가
+            - 헤더를 꾸며 보내 결과를 확인했는가
+            - internal-proxies를 좁혔을 때와 열었을 때를 둘 다 봤는가
+            - 이 설정이 무엇을 전제하는지 말할 수 있는가
+    commonMistakes:
+      - 오류가 나면 검증을 꺼 버린다. 세 검사가 한꺼번에 사라지고 그 줄은 운영까지 간다 (U2)
+      - 브라우저에서 되니까 앱에서도 될 것이라 본다. 신뢰 목록이 서로 다르다 (U2)
+      - 프록시 뒤인데 헤더 설정을 안 하거나, 하면서 믿을 주소를 안 좁힌다 (U3)
+    inProject: |-
+      4단계에서 주문 시스템을 서버에 올리고 https로 열 때 이 노트가 통째로 쓰인다.
+      바깥 API를 부르는 코드(`NETWORK.TCP_IP` U2의 타임아웃과 같은 자리)에서
+      인증서 오류가 나면 U2의 세 줄로 먼저 가른다.
+      앞단에 프록시를 두는 순간 U3의 두 규칙을 같이 적용한다 — 켜는 것과
+      믿을 주소를 좁히는 것은 **한 번에** 한다.
+    sources:
+      - title: RFC 8446 — The Transport Layer Security (TLS) Protocol Version 1.3
+        url: https://www.rfc-editor.org/rfc/rfc8446.html
+        versionScope: RFC 8446
+      - title: RFC 6125 — Representation and Verification of Domain-Based Application Service Identity
+        url: https://www.rfc-editor.org/rfc/rfc6125.html
+        versionScope: RFC 6125
+      - title: MDN — Transport Layer Security
+        url: https://developer.mozilla.org/en-US/docs/Web/Security/Transport_Layer_Security
+        versionScope: MDN 최신
+      - title: Spring Boot — Running Behind a Front-end Proxy Server
+        url: https://docs.spring.io/spring-boot/reference/web/servlet.html
+        versionScope: Spring Boot 3.x+
+      - title: OWASP Cheat Sheet — Transport Layer Security
+        url: https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Security_Cheat_Sheet.html
+        versionScope: OWASP Cheat Sheet Series
+    readMore:
+      - title: Java SE 25 — JSSE Reference Guide
+        url: https://docs.oracle.com/en/java/javase/25/security/java-secure-socket-extension-jsse-reference-guide.html
+    verifiedAt: 2026-09-25

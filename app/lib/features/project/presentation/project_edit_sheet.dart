@@ -95,6 +95,13 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
           children: [
             SectionTitle(values.isCreate ? l10n.projectsEditTitleNew : l10n.projectsEditTitle),
             const SizedBox(height: AppSpacing.lg),
+            // 맨 위다 — 이 선택이 나머지 입력의 뜻을 바꾼다 (docs/02 §3.15)
+            ProjectKindSegment(
+              kind: values.kind,
+              enabled: !state.isSaving,
+              onChanged: (kind) => _controller.edit((values) => values.copyWith(kind: kind)),
+            ),
+            const SizedBox(height: AppSpacing.md),
             ProjectTextField(
               fieldKey: const Key('projects.nameField'),
               controller: _name,

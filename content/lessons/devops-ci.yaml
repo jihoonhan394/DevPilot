@@ -1,0 +1,421 @@
+# DevPilot 개념 노트 — 내가 없을 때도 검사가 돈다
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 4단계(배포와 로그 확인)에서 쓴다. TESTING 노트들을 먼저 본 것으로 전제한다
+# - 예제는 주문 시스템 상황으로 쓴다 (CV-134)
+lessons:
+  - key: LESSON.DEVOPS.CI_GITHUB_ACTIONS.001
+    skillCode: DEVOPS.CI_GITHUB_ACTIONS
+    title: 내가 없을 때도 검사가 돌게 하기
+    whyItMatters: |-
+      테스트를 잘 써 두어도 **돌려야 의미가 있다.** 그런데 사람은 바쁘면 안 돌리고,
+      "이 정도는 괜찮겠지" 하고 올린다. 그 한 번이 나중에 며칠을 잡아먹는다.
+      CI는 규율을 요구하는 대신 **자동으로 돌려 주는 것**이다. 한 번 만들어 두면
+      내 컴퓨터 상태와 무관하게, 잊어버려도, 매번 같은 검사가 돈다.
+    oneLine: CI는 내 컴퓨터에서 돌리던 명령을 깨끗한 남의 컴퓨터에서 매번 자동으로 돌리는 것이다.
+    units:
+      - key: LESSON.DEVOPS.CI_GITHUB_ACTIONS.001.U1
+        title: 내 컴퓨터에서 되는 것과 CI에서 되는 것
+        minutes: 12
+        core: true
+        explain: |-
+          CI가 처음 깨지는 이유는 대개 코드가 아니라 **내 컴퓨터에만 있는 것** 때문이다.
+
+          | 내 컴퓨터에 있는 것 | CI에는 |
+          |---|---|
+          | 깔아 둔 Java 버전 | 없다 — 골라서 깔아야 한다 |
+          | 환경변수 (`DB_PASSWORD` 등) | 없다 |
+          | 이미 받아 둔 의존성 | 없다 — 매번 받는다 |
+          | 어제 돌린 흔적(`build/`) | 없다 — 늘 빈 상태다 |
+
+          그래서 CI는 **재현 가능한지 묻는 시험**이기도 하다. 여기서 깨지면
+          "내 컴퓨터에만 있는 것에 기대고 있었다"는 뜻이다.
+
+          구성은 단순하다 — **언제 돌릴지(트리거)**, **어디서 돌릴지(러너)**,
+          **무엇을 돌릴지(스텝)** 셋뿐이다. 나머지는 이 셋의 변형이다.
+
+          `gradlew`를 쓰는 이유가 여기서 드러난다. Gradle을 깔지 않아도
+          **저장소가 자기 Gradle을 받아 온다.** 깔아야 할 것이 하나 줄어든다.
+        example:
+          language: yaml
+          code: |-
+            # .github/workflows/ci.yml
+            name: CI
+
+            on:                       # 언제
+              push:
+                branches: [main]
+              pull_request:
+
+            jobs:
+              build:
+                runs-on: ubuntu-latest      # 어디서 (매번 깨끗한 컴퓨터)
+                steps:                      # 무엇을
+                  - uses: actions/checkout@v4
+                  - uses: actions/setup-java@v4
+                    with:
+                      distribution: temurin
+                      java-version: '25'
+                  - run: ./gradlew build --no-daemon
+          output: |-
+            Run ./gradlew build --no-daemon
+            Downloading gradle-9.0-bin.zip     ← 저장소가 자기 Gradle을 받는다
+            > Task :test
+            BUILD SUCCESSFUL in 2m 14s
+            Error: Process completed with exit code 1   ← 실패하면 이 줄이 남는다
+          note: |-
+            - `on:`이 없으면 아무 때도 안 돈다. 가장 흔한 "왜 안 돌죠"의 답이다
+            - `runs-on`은 **매번 새 컴퓨터**다. 어제 것이 남아 있지 않다
+            - `--no-daemon`은 한 번 쓰고 버릴 컴퓨터에서 뒤에 남는 프로세스를 안 만든다
+            - 종료 코드가 0이 아니면 그 단계에서 멈춘다. 뒤의 스텝은 안 돈다
+        predict:
+          question: "로컬에서는 `./gradlew build`가 되는데 CI에서만 DB 연결 오류로 실패한다면?"
+          choices:
+            - 테스트가 내 컴퓨터에 깔린 DB에 기대고 있었다
+            - CI 서버가 느리다
+            - Java 버전이 높다
+            - Gradle을 안 받았다
+          answer: 테스트가 내 컴퓨터에 깔린 DB에 기대고 있었다
+          explanation: |-
+            내 컴퓨터에는 예전에 띄워 둔 DB가 돌고 있어 조용히 붙었던 것이다.
+            CI에는 없으니 그제야 드러난다. **CI가 잘못된 것이 아니라 그동안
+            테스트가 재현 가능하지 않았던 것**이다. 고칠 곳은 테스트 쪽이다.
+        complete:
+          question: 트리거와 러너를 채우세요.
+          code: |-
+            name: CI
+
+            ___:                      # 언제 돌릴지
+              pull_request:
+
+            jobs:
+              build:
+                ___: ubuntu-latest    # 어디서 돌릴지
+                steps:
+                  - uses: actions/checkout@v4
+          answers:
+            - [on]
+            - [runs-on]
+          explanation: |-
+            `on:`이 비면 아무 일에도 반응하지 않고, `runs-on:`이 비면 돌릴 컴퓨터가 없다.
+            이 둘이 CI의 "언제·어디서"다.
+        problem:
+          prompt: |-
+            주문 시스템 저장소에 **CI를 하나 만들고 일부러 깨뜨려** 보세요.
+
+            - push와 pull request에서 `./gradlew build`를 돌리는 워크플로를 만듭니다
+            - 먼저 통과하는 것을 확인합니다
+            - 테스트 하나를 일부러 실패하게 고쳐 올리고, CI가 **막아 주는지** 봅니다
+            - 로그에서 실패한 스텝과 원인 줄을 찾아 적으세요
+          deliverables:
+            - 워크플로 파일과 통과한 실행 기록
+            - 일부러 실패시켰을 때의 로그에서 원인 줄
+            - 로컬과 CI에서 결과가 달랐던 것이 있으면 그 원인
+          hints:
+            - 워크플로 파일은 `.github/workflows/` 아래에 두어야 인식됩니다.
+            - Java 버전은 로컬과 같은 것을 고르세요. 다르면 그것부터 문제가 됩니다.
+            - 실패 로그는 긴 출력 중 `FAILED`나 `Error:` 줄부터 보세요.
+          modelAnswer: |-
+            ```text
+            1회차 (그대로 올림)
+              BUILD SUCCESSFUL in 2m 51s  ✓
+
+            2회차 (assert 하나를 뒤집음)
+              OrderCancelTest > shouldRejectCancelAfterShipping() FAILED
+                  org.opentest4j.AssertionFailedError:
+                  expected: 409 but was: 200
+              > Task :test FAILED
+              Error: Process completed with exit code 1
+            ```
+
+            바로 보이는 값: **올리기 전에는 몰랐고 올린 뒤 2분 만에 알았다.**
+            이 2분이 없으면 그 상태로 다음 작업을 쌓게 된다.
+
+            로컬과 달랐던 것 하나: 로컬은 `build/`에 어제 결과가 남아 있어
+            테스트 일부가 건너뛰어졌다. CI는 늘 빈 상태라 **전부 돌았고**,
+            그중 하나가 원래 깨져 있었다. CI를 붙이고 나서야 알았다.
+
+            그래서 CI의 값은 "자동으로 돌려 준다"만이 아니다 —
+            **늘 같은 조건에서 돈다**는 쪽이 더 크다. 내 컴퓨터는 어제의 흔적이 쌓인다.
+          selfChecks:
+            - 워크플로가 실제로 돌아 통과를 확인했는가
+            - 일부러 깨뜨렸을 때 CI가 막아 주는 것을 봤는가
+            - 실패 로그에서 원인 줄을 찾았는가
+            - 로컬과 CI가 달랐던 점을 하나라도 찾았는가
+      - key: LESSON.DEVOPS.CI_GITHUB_ACTIONS.001.U2
+        title: 비밀 값은 저장소 밖에 둔다
+        minutes: 10
+        core: true
+        explain: |-
+          CI가 DB에 붙거나 어딘가에 배포하려면 **비밀번호나 키가 필요하다.**
+          그것을 워크플로 파일에 적으면 저장소에 그대로 올라간다.
+
+          더 나쁜 것은 **지워도 남는다**는 점이다. 커밋 기록에 남아 있어
+          파일에서 지워도 예전 커밋을 열면 보인다. 그래서 한 번 올라간 비밀 값은
+          지우는 것이 아니라 **바꾸는 것**이 정답이다.
+
+          비밀 값은 저장소 밖(CI 설정)에 넣어 두고 **이름으로만** 가져온다.
+
+          ```yaml
+          env:
+            DB_PASSWORD: ${{ secrets.DB_PASSWORD }}   # 값이 아니라 이름
+          ```
+
+          이렇게 두면 로그에도 안 찍힌다 — CI가 그 값과 같은 문자열을 출력에서 가린다.
+          다만 **가려 주는 것은 정확히 그 값뿐**이다. 값을 조각내거나 가공해 찍으면
+          그대로 나간다.
+        example:
+          language: yaml
+          code: |-
+            jobs:
+              build:
+                runs-on: ubuntu-latest
+                steps:
+                  - uses: actions/checkout@v4
+                  - uses: actions/setup-java@v4
+                    with:
+                      distribution: temurin
+                      java-version: '25'
+
+                  - run: ./gradlew build --no-daemon
+                    env:
+                      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+                      # 값은 저장소 설정에 넣어 두고 여기엔 이름만 적는다
+          output: |-
+            로그에 찍히는 모습
+              Run ./gradlew build --no-daemon
+                env:
+                  DB_PASSWORD: ***          ← 가려진다
+
+            잘못 찍으면
+              echo "pw=$DB_PASSWORD"  →  pw=***          (가려짐)
+              echo "pw=${DB_PASSWORD:0:4}"  →  pw=s3cr   (안 가려짐!)
+          note: |-
+            - 파일에는 **이름만** 남는다. 값은 저장소 설정에 있다
+            - 가림은 문자열 일치로 동작한다. 자르거나 인코딩하면 못 가린다
+            - 포크에서 온 pull request에는 비밀 값을 주지 않는 것이 기본이다
+            - 이 프로젝트의 `.env`를 커밋하지 않는 것과 같은 규칙이다
+        predict:
+          question: 비밀번호를 워크플로 파일에 적었다가 다음 커밋에서 지우면 안전해지나?
+          choices:
+            - 아니다 — 예전 커밋에 남아 있으므로 값을 바꿔야 한다
+            - 안전해진다
+            - CI가 자동으로 지워 준다
+            - 파일에서 지우면 기록에서도 사라진다
+          answer: 아니다 — 예전 커밋에 남아 있으므로 값을 바꿔야 한다
+          explanation: |-
+            Git은 변경 이력을 전부 들고 있다. 파일에서 지워도 그 값이 있던 커밋을
+            열면 그대로 보이고, 이미 받아 간 사람의 복제본에도 남아 있다.
+            **유출된 비밀 값을 되돌리는 방법은 폐기하고 새로 만드는 것뿐이다.**
+        complete:
+          question: 비밀 값을 이름으로만 쓰도록 채우세요.
+          code: |-
+            - run: ./gradlew build --no-daemon
+              ___:
+                DB_PASSWORD: ${{ ___.DB_PASSWORD }}
+          answers:
+            - [env]
+            - [secrets]
+          explanation: |-
+            `env:`는 그 스텝에 넘길 환경변수이고, `secrets.<이름>`은 저장소 설정에
+            넣어 둔 값을 **이름으로** 꺼내는 것이다. 파일에는 값이 남지 않는다.
+        problem:
+          prompt: |-
+            주문 시스템 CI에서 **비밀 값을 안전하게 쓰는 것**과 **새어 나가는 것**을 둘 다 확인하세요.
+
+            - 아무 값이나 하나를 비밀 값으로 등록하고 워크플로에서 환경변수로 받습니다
+            - 그 값을 그대로 출력해 보고 로그가 가려 주는지 봅니다
+            - 이번에는 값의 **앞 네 글자만** 출력해 보고 어떻게 되는지 봅니다
+            - 결과를 보고, 애플리케이션 로그에 지켜야 할 규칙을 세 줄로 적으세요
+          deliverables:
+            - 비밀 값을 환경변수로 받는 워크플로
+            - 그대로 출력했을 때와 잘라서 출력했을 때의 로그
+            - 애플리케이션 로그 규칙 세 줄
+          hints:
+            - 실제 비밀번호 말고 시험용 문자열을 쓰세요.
+            - 자르거나 이어 붙이면 원래 값과 다른 문자열이 됩니다.
+            - 규칙은 "무엇을 안 찍는다"로 쓰면 지키기 쉽습니다.
+          modelAnswer: |-
+            ```text
+            $ echo "full=$SAMPLE_SECRET"
+            full=***
+
+            $ echo "head=${SAMPLE_SECRET:0:4}"
+            head=s3cr          ← 가려지지 않았다
+            ```
+
+            가림은 **똑같은 문자열**을 찾아 지우는 것이다. 한 글자라도 다르면 못 찾는다.
+            즉 **가림 기능을 믿고 찍는 것이 아니라, 애초에 안 찍는 것**이 규칙이어야 한다.
+
+            애플리케이션 로그 규칙:
+            1. 비밀번호·토큰·키·Authorization 헤더는 **가공해서도** 찍지 않는다 (앞 네 자리도 안 된다)
+            2. 요청 본문과 사용자가 쓴 코드는 통째로 찍지 않는다 — 어디에 무엇이 들었는지 모른다
+            3. 남길 것은 **무엇이 어디서 왜 실패했는지**다. 값이 아니라 상황이다
+
+            3번이 핵심이다. 디버깅에 필요한 것은 대개 "그 값이 무엇이었나"가 아니라
+            "어느 경로에서 어떤 종류의 오류가 났나"다. 값을 찍는 습관은 편해서 생기는데,
+            정작 원인을 좁히는 데는 거의 도움이 안 된다.
+          selfChecks:
+            - 비밀 값을 파일이 아니라 설정에 넣었는가
+            - 그대로 출력했을 때 가려지는 것을 봤는가
+            - 잘라서 출력했을 때 새어 나가는 것을 봤는가
+            - 로그 규칙 세 줄을 자기 말로 적었는가
+      - key: LESSON.DEVOPS.CI_GITHUB_ACTIONS.001.U3
+        title: 무엇까지 막을 것인가
+        minutes: 12
+        core: true
+        explain: |-
+          CI에 넣을 수 있는 검사는 많다 — 테스트, 코드 스타일, 정적 분석, 취약점 검사,
+          커버리지. 다 넣으면 좋을 것 같지만 **느려지고, 느려지면 안 보게 된다.**
+
+          기준은 하나다. **깨지면 올리면 안 되는 것만 막는다.**
+
+          | 검사 | 막을까 | 왜 |
+          |---|---|---|
+          | 컴파일·테스트 | 막는다 | 깨진 채로 올라가면 안 된다 |
+          | 코드 스타일 | 막는다 | 고치는 데 1초다. 대신 자동 고치기를 준다 |
+          | 정적 분석 | 막는다 | 규칙을 고른 이상 지켜야 의미가 있다 |
+          | 취약점 알림 | 막지 않는다 | 내 코드와 무관하게 오늘 새로 생길 수 있다 |
+
+          마지막 줄이 중요하다. **내가 아무것도 안 했는데 빨개지는 검사**는
+          막는 자리에 두지 않는다. 몇 번 겪으면 빨간 표시를 무시하게 되고,
+          그러면 진짜 실패도 같이 무시된다.
+
+          순서도 정한다 — **빨리 깨지는 것을 앞에** 둔다. 컴파일이 깨질 것을
+          10분짜리 통합 테스트 뒤에 알 이유가 없다.
+        example:
+          language: yaml
+          code: |-
+            jobs:
+              verify:
+                runs-on: ubuntu-latest
+                steps:
+                  - uses: actions/checkout@v4
+                  - uses: actions/setup-java@v4
+                    with: { distribution: temurin, java-version: '25' }
+
+                  # 빠른 것부터 — 여기서 깨지면 뒤는 안 돈다
+                  - run: ./gradlew spotlessCheck --no-daemon
+                  - run: ./gradlew compileJava compileTestJava --no-daemon
+                  - run: ./gradlew test --no-daemon
+
+                  # 느린 것은 뒤로
+                  - run: ./gradlew integrationTest --no-daemon
+
+                  # 깨져도 막지 않는 것
+                  - run: ./gradlew dependencyCheck --no-daemon
+                    continue-on-error: true
+          output: |-
+            spotlessCheck      12s   ✓
+            compileJava        31s   ✓
+            test               1m40s ✓
+            integrationTest    3m10s ✓
+            dependencyCheck    45s   ✗  (막지 않음 — 알림만)
+
+            총 6분 18초 / 막는 검사 4개 / 알리는 검사 1개
+          note: |-
+            - 스타일 검사를 맨 앞에 둔 이유는 **가장 빠르고 가장 자주 깨져서**다
+            - `continue-on-error: true`는 "보이되 막지는 않는다"는 뜻이다
+            - 총 시간이 10분을 넘기 시작하면 사람이 CI를 안 기다린다
+            - 통합 테스트가 길어지면 별도 작업으로 떼어 병렬로 돌린다
+        predict:
+          question: 내 코드와 무관하게 자주 빨개지는 검사를 "막는 검사"에 두면 어떻게 되나?
+          choices:
+            - 빨간 표시를 무시하게 되어 진짜 실패도 같이 놓친다
+            - 코드 품질이 올라간다
+            - CI가 빨라진다
+            - 아무 영향이 없다
+          answer: 빨간 표시를 무시하게 되어 진짜 실패도 같이 놓친다
+          explanation: |-
+            경보는 **틀릴 때마다 값이 떨어진다.** 내가 한 일과 상관없이 빨개지는 일이
+            몇 번 반복되면 빨간 표시를 보고도 "또 그거겠지" 하게 된다.
+            그래서 막는 검사는 **내가 고칠 수 있는 것**으로만 채운다.
+        complete:
+          question: 막지 않는 검사로 만드세요.
+          code: |-
+            # 빠른 것부터, 막는 검사
+            - run: ./gradlew ___ --no-daemon        # 스타일 (가장 빠르다)
+            - run: ./gradlew test --no-daemon
+
+            # 알리기만 하는 검사
+            - run: ./gradlew dependencyCheck --no-daemon
+              ___: true
+          answers:
+            - [spotlessCheck]
+            - [continue-on-error]
+          explanation: |-
+            순서는 **깨질 확률 × 빠르기**로 정하고, `continue-on-error`로
+            "보이되 막지 않는" 자리를 만든다. 둘 다 사람이 CI를 계속 보게 하려는 장치다.
+        problem:
+          prompt: |-
+            주문 시스템 CI의 **검사 목록을 직접 정하고 시간을 재세요.**
+
+            - 지금 프로젝트에서 돌릴 수 있는 검사를 모두 적습니다
+            - 각각 "막는다 / 알리기만 한다"를 정하고 **이유를 한 줄씩** 적습니다
+            - 실제로 붙여 돌리고 **각 검사의 소요 시간**을 적습니다
+            - 총 시간이 10분을 넘으면 무엇을 떼거나 뒤로 미룰지 정하세요
+          deliverables:
+            - 검사 목록과 막을지 여부, 이유 한 줄씩
+            - 각 검사의 실제 소요 시간
+            - 10분 기준으로 내린 조정과 그 이유
+          hints:
+            - 지금 `./gradlew check`에 무엇이 묶여 있는지부터 보세요.
+            - 시간은 CI 로그에 스텝마다 찍힙니다.
+            - 못 줄이겠으면 "언제 돌릴지"를 바꾸는 방법도 있습니다.
+          modelAnswer: |-
+            ```text
+            막는다
+              spotlessCheck     12s   고치는 데 1초다. 대신 spotlessApply를 안내한다
+              compile           31s   깨진 코드는 올라가면 안 된다
+              test              1m40s 단위 테스트는 빠르고 내 코드에만 달렸다
+              integrationTest   3m10s 느리지만 DB 규칙이 깨지면 운영이 깨진다
+
+            알리기만 한다
+              dependencyCheck   45s   오늘 새로 알려진 취약점 때문에 빨개질 수 있다
+
+            총 6분 18초 → 그대로 둔다
+            ```
+
+            "막는다"에 넣은 넷은 전부 **내가 한 일 때문에만 깨진다.** 이 기준으로
+            고르면 빨간 표시가 항상 내 책임이라 무시하지 않게 된다.
+
+            10분을 넘겼다면 이렇게 줄였을 것이다:
+            - 통합 테스트를 별도 작업으로 떼어 단위 테스트와 **동시에** 돌린다
+            - 매 push가 아니라 pull request에서만 돌리는 검사를 나눈다
+            - 그래도 길면 **느린 테스트가 정말 느려야 하는지**를 본다 — 대개 아니다
+
+            마지막이 제일 자주 답이다. 통합 테스트가 느린 이유는 대개 DB가 아니라
+            **테스트마다 컨테이너를 새로 띄우기** 때문이고, 그것은 고칠 수 있다.
+          selfChecks:
+            - 검사마다 막을지 여부와 이유를 적었는가
+            - 실제로 돌려 시간을 쟀는가
+            - 막는 검사가 전부 "내가 고칠 수 있는 것"인가
+            - 총 시간에 대해 판단을 내렸는가
+    commonMistakes:
+      - 내 컴퓨터에만 있는 것(DB, 환경변수, 남은 build 폴더)에 기대어 CI에서만 깨진다 (U1)
+      - 비밀 값을 워크플로 파일에 적는다. 지워도 커밋 기록에 남는다 (U2)
+      - 내 코드와 무관하게 빨개지는 검사를 막는 자리에 두어 빨간 표시를 무시하게 된다 (U3)
+    inProject: |-
+      4단계에서 주문 시스템 저장소에 워크플로 하나를 붙인다. 3단계에서 쓴 테스트가
+      여기서 처음으로 **자동으로** 돌고, 그때 "내 컴퓨터에만 있던 것"이 드러난다.
+      비밀 값 규칙(U2)은 배포 때 그대로 이어진다 — 배포 키도 같은 자리에 둔다.
+      검사 목록(U3)은 한 번 정하고 끝이 아니라, 느려질 때마다 다시 본다.
+    sources:
+      - title: GitHub Actions — Workflow syntax
+        url: https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions
+        versionScope: GitHub Actions 최신
+      - title: GitHub Actions — Events that trigger workflows
+        url: https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows
+        versionScope: GitHub Actions 최신
+      - title: Gradle — The Gradle Wrapper
+        url: https://docs.gradle.org/current/userguide/gradle_wrapper.html
+        versionScope: Gradle 8.x+
+      - title: Gradle — Command-Line Interface
+        url: https://docs.gradle.org/current/userguide/command_line_interface.html
+        versionScope: Gradle 8.x+
+    readMore:
+      - title: Git — gitignore (무엇을 저장소에 올리지 않을까)
+        url: https://git-scm.com/docs/gitignore
+    verifiedAt: 2026-09-25

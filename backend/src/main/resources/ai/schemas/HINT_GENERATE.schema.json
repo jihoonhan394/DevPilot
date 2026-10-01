@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "devpilot/ai/HINT_GENERATE.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "level",
+    "content",
+    "containsCode"
+  ],
+  "properties": {
+    "level": {
+      "type": "string",
+      "enum": [
+        "QUESTION_ONLY",
+        "CONCEPT_HINT",
+        "DIRECTION",
+        "PSEUDOCODE",
+        "PARTIAL_CODE",
+        "FULL_EXAMPLE"
+      ]
+    },
+    "content": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1500
+    },
+    "containsCode": {
+      "type": "boolean"
+    }
+  }
+}

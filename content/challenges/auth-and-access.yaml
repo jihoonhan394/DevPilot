@@ -1,0 +1,228 @@
+# Seed challenges — 인증과 권한의 빈 자리 (PRACTICE)
+# Spec: docs/19-content-spec.md §3.6 (schema), §6 (난이도), §7 (rubric·hint 작성 가이드)
+# 기준: Java 25 / Spring Boot 4.1 / Spring Security
+#
+# 연동 트랙 2단계(인증과 권한)의 관문 skill 중 연습문제가 없던 넷을 채운다.
+challenges:
+  - seedKey: PRACTICE.WEB_HTTP.AUTH_SESSION_TOKEN.L2.001
+    purpose: PRACTICE
+    skills:
+      - WEB_HTTP.AUTH_SESSION_TOKEN
+    difficulty: 2
+    estimatedMinutes: 30
+    isTransfer: false
+    title: 사람이 쓰는 로그인과 시스템이 쓰는 연동 인증 나누기
+    scenario: |-
+      주문 시스템에 두 종류의 호출자가 붙습니다. 하나는 브라우저로 들어오는 담당자이고, 다른 하나는
+      밤마다 실적을 끌어가는 상대 시스템입니다. 지금은 둘 다 같은 로그인 API로 토큰을 받아 쓰는데,
+      상대 시스템 쪽 토큰이 만료될 때마다 배치가 실패하고 사람이 새벽에 다시 받아 넣고 있습니다.
+    prompt: |-
+      1. 두 호출자에게 각각 어떤 인증 방식이 맞는지 고르고 이유를 설명하세요.
+      2. 사람 쪽 토큰의 **만료와 갱신**을 어떻게 다룰지 적으세요.
+      3. 시스템 쪽 자격 증명을 **어디에 두고 언제 바꿀지** 적고, 사람 쪽과 다르게 가는 이유를 설명하세요.
+    constraints:
+      - 실제 키나 토큰 값은 적지 않는다
+      - 자격 증명 저장 위치는 종류만 적는다
+    expectedConcepts:
+      - 세션과 토큰의 차이
+      - 액세스 토큰과 갱신 토큰
+      - client credentials
+      - 자격 증명 교체 주기
+      - 사람 대 시스템 호출자
+    rubric:
+      - id: R1
+        criterion: 두 호출자에 서로 다른 인증 방식을 고르고 각각의 근거를 댄다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 사람 쪽 토큰의 만료·갱신 흐름을 설명한다
+        weightBp: 2500
+        axis: EXPLANATION
+      - id: R3
+        criterion: 시스템 쪽 자격 증명의 보관과 교체를 사람 쪽과 구분해 설명한다
+        weightBp: 2500
+        axis: EXPLANATION
+      - id: R4
+        criterion: 지금처럼 하나로 묶었을 때 배치가 새벽에 끊기는 이유를 짚는다
+        weightBp: 1500
+        axis: DEBUGGING
+    commonMistakes:
+      - 두 호출자에게 같은 만료 정책을 적용함
+      - 갱신 토큰을 브라우저가 읽을 수 있는 자리에 둠
+      - 시스템 자격 증명을 한 번 발급하고 교체 계획을 세우지 않음
+    transferTargets:
+      - SECURITY.SECRET_MANAGEMENT
+    hints:
+      QUESTION_ONLY: 사람은 화면 앞에 있어서 다시 로그인할 수 있습니다. 새벽 세 시의 배치는 무엇을 할 수 있나요?
+      CONCEPT_HINT: 사람 인증은 "이 사람이 지금 있다"를 재고, 시스템 인증은 "이 프로그램이 이 일을 해도 된다"를 잽니다. 재는 것이 다르면 만료도 갱신도 달라집니다.
+      DIRECTION: 두 호출자를 한 줄씩 적고 각각에 대해 누가 자격 증명을 쥐고, 만료되면 누가 다시 받는지를 채워 보세요. 빈칸이 생기는 쪽이 지금 깨지는 쪽입니다.
+
+  - seedKey: PRACTICE.WEB_HTTP.CORS.L2.001
+    purpose: PRACTICE
+    skills:
+      - WEB_HTTP.CORS
+    difficulty: 2
+    estimatedMinutes: 25
+    isTransfer: false
+    title: 관리 화면에서 주문 API를 부를 때 막히는 이유 찾기
+    scenario: |-
+      관리 화면(다른 출처에서 서비스됩니다)에서 주문 취소를 누르면 브라우저 콘솔에 이렇게 뜹니다.
+      ```text
+      Access to fetch at '.../api/v1/orders/1/cancel' from origin '...' has been blocked
+      by CORS policy: Response to preflight request doesn't pass access control check.
+      ```
+      서버 로그에는 `DELETE` 요청 기록이 없습니다. curl로 같은 요청을 보내면 잘 됩니다.
+      팀에서는 "모든 출처를 허용으로 바꾸자"는 의견이 나왔습니다.
+    prompt: |-
+      1. 서버 로그에 요청이 없는데 브라우저는 막혔다고 하는 이유를 설명하세요.
+      2. 이 요청이 통과하려면 서버가 무엇을 돌려줘야 하는지 적으세요.
+      3. "모든 출처 허용"이 왜 답이 아닌지, 인증 정보를 함께 보내는 경우에 무슨 일이 생기는지 설명하세요.
+    constraints:
+      - 실제 도메인 이름은 적지 않는다
+      - 설정은 Spring Boot 4.1 기준으로 적는다
+    expectedConcepts:
+      - 사전 요청
+      - 허용 출처
+      - 허용 메서드와 헤더
+      - 자격 증명 포함 요청
+      - 동일 출처 정책
+    rubric:
+      - id: R1
+        criterion: 사전 요청이 먼저 가고 그것이 막혔다는 것을 설명한다
+        weightBp: 3000
+        axis: EXPLANATION
+      - id: R2
+        criterion: 통과에 필요한 응답 헤더와 서버 설정을 구체적으로 적는다
+        weightBp: 3000
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 모든 출처 허용과 자격 증명 포함을 함께 쓸 수 없다는 것을 설명한다
+        weightBp: 2500
+        axis: EXPLANATION
+      - id: R4
+        criterion: 서버 로그와 브라우저 콘솔이 다르게 보이는 이유로 원인을 좁히는 순서를 제시한다
+        weightBp: 1500
+        axis: DEBUGGING
+    commonMistakes:
+      - 모든 출처를 허용으로 열어 두고 끝냄
+      - 허용 메서드에 실제 쓰는 메서드를 빠뜨림
+      - 서버 로그에 없으니 서버 문제가 아니라고 판단함
+    transferTargets:
+      - SECURITY.AUTHN_AUTHZ
+    hints:
+      QUESTION_ONLY: 브라우저가 진짜 요청을 보내기 전에 서버에 먼저 물어보는 것이 있다면, 그 물음은 어떤 메서드로 갈까요?
+      CONCEPT_HINT: 브라우저는 안전하지 않은 요청을 보내기 전에 허락을 먼저 구합니다. 그 허락이 거절되면 본 요청은 아예 나가지 않습니다.
+      DIRECTION: 개발자 도구 네트워크 탭에서 본 요청 앞에 붙은 요청을 찾아 그 응답 헤더를 보세요. 무엇이 빠졌는지가 서버가 더해야 할 것입니다.
+
+  - seedKey: PRACTICE.NETWORK.TLS.L2.001
+    purpose: PRACTICE
+    skills:
+      - NETWORK.TLS
+    difficulty: 2
+    estimatedMinutes: 25
+    isTransfer: false
+    title: 연동 중 인증서 오류를 끄지 않고 푸는 법
+    scenario: |-
+      상대 시스템에 붙는 배치가 이렇게 실패합니다.
+      ```text
+      PKIX path building failed: unable to find valid certification path to requested target
+      ```
+      브라우저로 같은 주소를 열면 자물쇠가 보입니다. 검색해 보니 검증을 끄는 방법이 가장 먼저
+      나오고, 팀에서도 "일단 그걸로 넘기자"는 말이 나왔습니다.
+    prompt: |-
+      1. 브라우저는 되는데 배치는 실패하는 이유를 설명하세요.
+      2. 검증을 끄지 않고 푸는 방법을 적고, 어떤 파일을 어디에 넣는지 쓰세요.
+      3. 검증을 끄면 정확히 무엇을 잃는지 설명하세요.
+    constraints:
+      - 실제 호스트명이나 인증서 내용은 적지 않는다
+      - 상대 시스템 설정을 바꿀 수 없다고 가정한다
+    expectedConcepts:
+      - 인증서 체인
+      - 신뢰 저장소
+      - 중간 인증서 누락
+      - 호스트 이름 검증
+      - 중간자 공격
+    rubric:
+      - id: R1
+        criterion: 브라우저와 JVM이 서로 다른 신뢰 목록을 본다는 것을 설명한다
+        weightBp: 3000
+        axis: EXPLANATION
+      - id: R2
+        criterion: 신뢰 저장소에 인증서를 더하는 방법을 구체적으로 적는다
+        weightBp: 3000
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 검증을 끄면 상대가 누구인지 확인할 방법이 사라진다는 것을 설명한다
+        weightBp: 2500
+        axis: EXPLANATION
+      - id: R4
+        criterion: 체인이 어디서 끊겼는지 확인하는 방법을 제시한다
+        weightBp: 1500
+        axis: DEBUGGING
+    commonMistakes:
+      - 검증을 끄고 넘어간 뒤 운영까지 그대로 감
+      - 말단 인증서만 넣고 중간 인증서를 빠뜨림
+      - 만료일을 확인하지 않아 같은 실패가 다시 남
+    transferTargets:
+      - SECURITY.SECRET_MANAGEMENT
+    hints:
+      QUESTION_ONLY: 브라우저와 배치는 "이 인증서를 믿어도 되는가"를 각각 어디에 적힌 목록으로 판단하나요?
+      CONCEPT_HINT: 서버가 보내는 인증서는 보통 혼자가 아니라 사슬로 옵니다. 그 사슬이 내가 이미 믿는 뿌리까지 닿아야 검증이 끝납니다.
+      DIRECTION: 서버가 실제로 보내는 인증서 목록을 먼저 확인하고, 그중 어디까지가 내 신뢰 저장소에 있는지 맞춰 보세요. 끊긴 자리에 있는 것을 넣으면 됩니다.
+
+  - seedKey: PRACTICE.SPRING.SECURITY.JWT_RESOURCE_SERVER.L3.001
+    purpose: PRACTICE
+    skills:
+      - SPRING.SECURITY.JWT_RESOURCE_SERVER
+      - SPRING.SECURITY
+    difficulty: 3
+    estimatedMinutes: 40
+    isTransfer: false
+    title: 주문 API를 토큰으로 지키고 남의 주문은 없는 것처럼 만들기
+    scenario: |-
+      주문 API가 지금은 아무 검사 없이 열려 있습니다. 앞에 붙일 것은 이미 정해졌습니다 — 상대가
+      보내는 JWT를 검증하고, 그 안의 주체로 소유권을 판단합니다.
+      요구는 셋입니다. 토큰이 없으면 401, 허용되지 않은 자리면 403, **남의 주문을 조회하면 404**.
+      마지막 것을 두고 "403이 맞지 않냐"는 의견이 팀에 있습니다.
+    prompt: |-
+      1. 리소스 서버 설정과 필터 체인을 쓰세요. 공개 경로와 보호 경로를 나누세요.
+      2. 소유권 검사를 어느 계층에 둘지 정하고 그 이유를 설명하세요.
+      3. 남의 주문을 404로 돌려주는 선택의 근거를 설명하고, 403과 무엇이 달라지는지 쓰세요.
+    constraints:
+      - Spring Boot 4.1 · Spring Security 기준으로 답한다
+      - 실제 키나 발급자 주소는 적지 않는다
+      - 검증 키는 설정에서 주입받는다고 가정한다
+    expectedConcepts:
+      - 리소스 서버
+      - 필터 체인 경로 분리
+      - 토큰 주체
+      - 소유권 검사 위치
+      - 존재 여부 노출
+    rubric:
+      - id: R1
+        criterion: 보호 경로와 공개 경로를 나눈 필터 체인과 JWT 검증 설정을 쓴다
+        weightBp: 3000
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 소유권 검사를 컨트롤러가 아닌 자리에 두고 그 이유를 설명한다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 404로 감추는 선택이 무엇을 막는지, 403과 어떻게 다른지 설명한다
+        weightBp: 2500
+        axis: EXPLANATION
+      - id: R4
+        criterion: 401·403·404가 뒤섞였을 때 어디를 먼저 확인할지 순서를 제시한다
+        weightBp: 2000
+        axis: DEBUGGING
+    commonMistakes:
+      - 소유권 검사를 컨트롤러에 흩어 놓아 빠뜨린 자리가 생김
+      - 남의 자원을 403으로 돌려주어 그 자원이 있다는 것을 알려 줌
+      - 공개 경로를 넓게 열어 두어 보호 경로까지 함께 열림
+    transferTargets:
+      - SECURITY.AUTHN_AUTHZ
+      - SECURITY.OWASP_TOP10
+    hints:
+      QUESTION_ONLY: 403을 받은 사람은 "그 주문이 있긴 하구나"를 알게 됩니다. 그것이 알려져도 괜찮은 정보인가요?
+      CONCEPT_HINT: 인증은 "누구인가", 인가는 "해도 되는가"입니다. 그리고 둘과 별개로 "있다는 사실을 알려도 되는가"라는 질문이 하나 더 있습니다.
+      DIRECTION: 필터 체인에서 경로를 먼저 나누고, 소유권은 조회 시점에 사용자 조건을 함께 걸어 처리해 보세요. 없으면 없는 것으로 끝나 분기가 하나 줄어듭니다.

@@ -24,6 +24,7 @@ public class OnboardingRequiredInterceptor implements HandlerInterceptor {
                     "GET /api/v1/me",
                     "PATCH /api/v1/me",
                     "DELETE /api/v1/me",
+                    "POST /api/v1/me/reset",
                     "GET /api/v1/me/export",
                     "POST /api/v1/onboarding",
                     "GET /api/v1/skills/tree");

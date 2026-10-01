@@ -12,7 +12,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Objects;
 import java.util.UUID;
@@ -56,13 +55,6 @@ public class AppUser extends BaseTimeEntity {
 
     @Column(name = "weekend_study_minutes", nullable = false)
     private int weekendStudyMinutes;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "experience_profile")
-    private @Nullable ExperienceProfile experienceProfile;
-
-    @Column(name = "experience_start_date")
-    private @Nullable LocalDate experienceStartDate;
 
     @Column(name = "onboarding_completed_at")
     private @Nullable Instant onboardingCompletedAt;
@@ -125,9 +117,16 @@ public class AppUser extends BaseTimeEntity {
         dayStartHour = (short) profile.dayStartHour();
         weekdayStudyMinutes = profile.weekdayStudyMinutes();
         weekendStudyMinutes = profile.weekendStudyMinutes();
-        experienceProfile = profile.experienceProfile();
-        experienceStartDate = profile.experienceStartDate();
         onboardingCompletedAt = Objects.requireNonNull(completedAt, "completedAt");
+    }
+
+    /**
+     * 온보딩 이전으로 되돌린다 (docs/05 §3.7, ADR-056). 계정·표시 이름·시간 설정은 <b>그대로 둔다</b> — 온보딩이 다시 받는다. 캘린더 토큰은
+     * 지워 피드를 즉시 끊는다.
+     */
+    public void resetProgress() {
+        onboardingCompletedAt = null;
+        calendarTokenHash = null;
     }
 
     /**
@@ -185,14 +184,6 @@ public class AppUser extends BaseTimeEntity {
         return weekendStudyMinutes;
     }
 
-    public @Nullable ExperienceProfile getExperienceProfile() {
-        return experienceProfile;
-    }
-
-    public @Nullable LocalDate getExperienceStartDate() {
-        return experienceStartDate;
-    }
-
     public @Nullable Instant getOnboardingCompletedAt() {
         return onboardingCompletedAt;
     }
@@ -229,7 +220,5 @@ public class AppUser extends BaseTimeEntity {
             String timezone,
             int dayStartHour,
             int weekdayStudyMinutes,
-            int weekendStudyMinutes,
-            ExperienceProfile experienceProfile,
-            @Nullable LocalDate experienceStartDate) {}
+            int weekendStudyMinutes) {}
 }

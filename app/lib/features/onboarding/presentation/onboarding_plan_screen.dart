@@ -11,6 +11,7 @@ import 'package:devpilot_app/features/onboarding/presentation/onboarding_step_sc
 import 'package:devpilot_app/features/onboarding/presentation/onboarding_submit_controller.dart';
 import 'package:devpilot_app/features/plan/data/plan_models.dart';
 import 'package:devpilot_app/features/plan/data/plan_repository.dart';
+import 'package:devpilot_app/features/settings/data/me_provider.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -156,14 +157,15 @@ class _MilestoneRow extends StatelessWidget {
   }
 }
 
-/// Side project, seed cards and diagnostic lines (docs/02 step 5 "데이터").
-class _ResultNotes extends StatelessWidget {
+/// Side project, seed cards and diagnostic lines (docs/02 step 5 "데이터"). Evaluating a
+/// diagnostic answer needs the AI, so the card says so while it is off (docs/02 step 5 "AI").
+class _ResultNotes extends ConsumerWidget {
   const _ResultNotes({required this.result});
 
   final OnboardingResult result;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final response = result.response;
     final project = response.sideProject;
@@ -177,20 +179,61 @@ class _ResultNotes extends StatelessWidget {
         ),
         if (response.assignedSeedCardCount > 0)
           Text(l10n.onboardingPlanCards(response.assignedSeedCardCount)),
+        const SizedBox(height: AppSpacing.md),
+        // 계획만 보여 주고 끝내면 다음에 뭘 하는지 모른다 (docs/02 §3.4, BL-CLI-49)
+        const _NextSteps(key: Key('onboarding.plan.next')),
         if (result.runDiagnostic) ...[
           const SizedBox(height: AppSpacing.md),
           Card(
             key: const Key('onboarding.plan.diagnosticCard'),
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Text(
-                suggestions.isEmpty
-                    ? l10n.onboardingPlanDiagnosticNone
-                    : l10n.onboardingPlanDiagnostic(suggestions.length),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    suggestions.isEmpty
+                        ? l10n.onboardingPlanDiagnosticNone
+                        : l10n.onboardingPlanDiagnostic(suggestions.length),
+                  ),
+                  if (suggestions.isNotEmpty && !ref.watch(aiStatusProvider).allowsAi)
+                    Text(
+                      l10n.diagnosticsAiNote,
+                      key: const Key('onboarding.plan.diagnosticAiNote'),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ],
               ),
             ),
           ),
         ],
+      ],
+    );
+  }
+}
+
+/// 계획 다음에 무엇이 오는지 세 줄 (docs/02 §3.4, BL-CLI-49).
+class _NextSteps extends StatelessWidget {
+  const _NextSteps({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l10n.onboardingPlanNextTitle, style: theme.textTheme.titleSmall),
+        const SizedBox(height: AppSpacing.xs),
+        for (final (index, step) in [
+          l10n.onboardingPlanNextStep1,
+          l10n.onboardingPlanNextStep2,
+          l10n.onboardingPlanNextStep3,
+        ].indexed)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+            child: Text('${index + 1}. $step', style: theme.textTheme.bodySmall),
+          ),
       ],
     );
   }

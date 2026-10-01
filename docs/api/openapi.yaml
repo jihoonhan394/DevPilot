@@ -7,6 +7,339 @@ servers:
 security:
 - bearerAuth: []
 paths:
+  /api/v1/challenge-attempts/{attemptId}:
+    get:
+      operationId: trainingGetAttempt
+      parameters:
+      - in: path
+        name: attemptId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttemptView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - training
+  /api/v1/challenge-attempts/{attemptId}/abandon:
+    post:
+      operationId: trainingAbandonAttempt
+      parameters:
+      - in: path
+        name: attemptId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttemptView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - training
+  /api/v1/challenge-attempts/{attemptId}/hints:
+    post:
+      operationId: trainingRequestHint
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: attemptId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HintRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HintResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - training
+  /api/v1/challenge-attempts/{attemptId}/self-explanation:
+    post:
+      operationId: trainingSubmitSelfExplanation
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: attemptId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SelfExplanationRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttemptView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - training
+  /api/v1/challenge-attempts/{attemptId}/submissions:
+    post:
+      operationId: trainingSubmitAnswer
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: attemptId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmissionRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsyncStatusView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - training
+  /api/v1/challenge-attempts/{attemptId}/submissions/{submissionNo}/retry:
+    post:
+      operationId: trainingRetryEvaluation
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: attemptId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: submissionNo
+        required: true
+        schema:
+          type: integer
+          format: int32
+          minimum: 1
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsyncStatusView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - training
+  /api/v1/challenges:
+    get:
+      operationId: trainingListChallenges
+      parameters:
+      - in: query
+        name: skillId
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: purpose
+        required: false
+        schema:
+          type: string
+          enum:
+          - PRACTICE
+          - DIAGNOSTIC
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CursorPageChallengeSummaryView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - training
+  /api/v1/challenges/{challengeId}:
+    get:
+      operationId: trainingGetChallenge
+      parameters:
+      - in: path
+        name: challengeId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChallengeView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - training
+  /api/v1/challenges/{challengeId}/attempts:
+    post:
+      operationId: trainingStartAttempt
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: challengeId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttemptView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - training
+  /api/v1/dashboard:
+    get:
+      operationId: dashboardGet
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - dashboard
+  /api/v1/diagnostics/suggestions:
+    get:
+      operationId: onboardingGetDiagnosticSuggestions
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosticSuggestionsResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - onboarding
   /api/v1/learning-goal:
     get:
       operationId: goalGetGoal
@@ -48,6 +381,391 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - goal
+  /api/v1/learning-sessions:
+    get:
+      operationId: learningListSessions
+      parameters:
+      - in: query
+        name: from
+        required: false
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: to
+        required: false
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+          maxLength: 512
+          minLength: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CursorPageSessionView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - learning
+    post:
+      operationId: learningStartSession
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SessionStartRequest"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionStartResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - learning
+  /api/v1/learning-sessions/{sessionId}/abandon:
+    post:
+      operationId: learningAbandonSession
+      parameters:
+      - in: path
+        name: sessionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - learning
+  /api/v1/learning-sessions/{sessionId}/complete:
+    post:
+      operationId: learningCompleteSession
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: sessionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SessionCompleteRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - learning
+  /api/v1/lessons:
+    get:
+      operationId: lessonList
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LessonListView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/lessons/{lessonKey}:
+    get:
+      operationId: lessonGet
+      parameters:
+      - in: path
+        name: lessonKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}$"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LessonView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/lessons/{lessonKey}/units/{unitKey}/answer:
+    get:
+      operationId: lessonGetAnswer
+      parameters:
+      - in: path
+        name: lessonKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}$"
+      - in: path
+        name: unitKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}\\.U[0-9]{1,2}$"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnswerResult"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/lessons/{lessonKey}/units/{unitKey}/complete:
+    post:
+      operationId: lessonCheckComplete
+      parameters:
+      - in: path
+        name: lessonKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}$"
+      - in: path
+        name: unitKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}\\.U[0-9]{1,2}$"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompleteResult"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/lessons/{lessonKey}/units/{unitKey}/finish:
+    post:
+      operationId: lessonFinishUnit
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: lessonKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}$"
+      - in: path
+        name: unitKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}\\.U[0-9]{1,2}$"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinishRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinishResult"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/lessons/{lessonKey}/units/{unitKey}/predict:
+    post:
+      operationId: lessonCheckPredict
+      parameters:
+      - in: path
+        name: lessonKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}$"
+      - in: path
+        name: unitKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}\\.U[0-9]{1,2}$"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PredictRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PredictResult"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/lessons/{lessonKey}/units/{unitKey}/reexplain:
+    post:
+      operationId: lessonReexplain
+      parameters:
+      - in: path
+        name: lessonKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}$"
+      - in: path
+        name: unitKey
+        required: true
+        schema:
+          type: string
+          maxLength: 140
+          minLength: 0
+          pattern: "^LESSON\\.[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)*\\.[0-9]{3}\\.U[0-9]{1,2}$"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReexplainRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReexplainView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
   /api/v1/me:
     delete:
       operationId: userDeleteMe
@@ -97,6 +815,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MeResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - user
+  /api/v1/me/reset:
+    post:
+      operationId: userResetProgress
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProgressResetRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgressResetResponse"
           description: OK
         default:
           content:
@@ -180,6 +928,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PlanView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - plan
+  /api/v1/plans/active/budget:
+    get:
+      operationId: planGetActiveBudget
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - plan
+  /api/v1/plans/active/buildable:
+    get:
+      operationId: planGetActiveBuildable
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuildableView"
           description: OK
         default:
           content:
@@ -287,6 +1071,446 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - plan
+  /api/v1/plans/{planId}/replan/preview:
+    post:
+      operationId: planPreviewReplan
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: false
+        schema:
+          type: string
+      - in: path
+        name: planId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplanRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReplanPreviewResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - plan
+  /api/v1/readings:
+    get:
+      operationId: todayListReadings
+      parameters:
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 50
+          maximum: 200
+          minimum: 1
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadingHistoryResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/readings/{readingKey}:
+    get:
+      operationId: todayGetReading
+      parameters:
+      - in: path
+        name: readingKey
+        required: true
+        schema:
+          type: string
+          pattern: "^[A-Z0-9][A-Z0-9_.]{2,149}$"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadingView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/review-items:
+    get:
+      operationId: reviewListItems
+      parameters:
+      - in: query
+        name: skillId
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: status
+        required: false
+        schema:
+          type: string
+          enum:
+          - ACTIVE
+          - SUSPENDED
+          - ARCHIVED
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CursorPageReviewItemView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - review
+    post:
+      operationId: reviewCreateItem
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewItemCreateRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewItemView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - review
+  /api/v1/review-items/{reviewItemId}:
+    patch:
+      operationId: reviewUpdateItem
+      parameters:
+      - in: path
+        name: reviewItemId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewItemPatchRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewItemView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - review
+  /api/v1/reviews/due:
+    get:
+      operationId: reviewGetDue
+      parameters:
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+          maximum: 100
+          minimum: 1
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DueReviewsResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - review
+  /api/v1/reviews/{reviewItemId}/answer:
+    post:
+      operationId: reviewAnswer
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: reviewItemId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewAnswerRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewAnswerResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - review
+  /api/v1/rubber-duck:
+    get:
+      operationId: rubberDuckList
+      parameters:
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+          maxLength: 512
+          minLength: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CursorPageRubberDuckSessionSummaryView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - rubber-duck
+    post:
+      operationId: learningStartRubberDuck
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RubberDuckStartRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RubberDuckStartResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - rubber-duck
+  /api/v1/rubber-duck/{sessionId}:
+    get:
+      operationId: learningGetRubberDuck
+      parameters:
+      - in: path
+        name: sessionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RubberDuckSessionView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - rubber-duck
+  /api/v1/rubber-duck/{sessionId}/abandon:
+    post:
+      operationId: learningAbandonRubberDuck
+      parameters:
+      - in: path
+        name: sessionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RubberDuckSessionView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - rubber-duck
+  /api/v1/rubber-duck/{sessionId}/complete:
+    post:
+      operationId: learningCompleteRubberDuck
+      parameters:
+      - in: path
+        name: sessionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RubberDuckCompleteResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - rubber-duck
+  /api/v1/rubber-duck/{sessionId}/turns:
+    post:
+      operationId: learningSubmitRubberDuckTurn
+      parameters:
+      - in: path
+        name: sessionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RubberDuckTurnRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RubberDuckTurnResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - rubber-duck
   /api/v1/side-projects:
     get:
       operationId: projectList
@@ -435,9 +1659,235 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - project
+  /api/v1/side-projects/{sideProjectId}/notes:
+    get:
+      operationId: projectListNotes
+      parameters:
+      - in: path
+        name: sideProjectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: noteType
+        required: false
+        schema:
+          type: string
+          enum:
+          - DECISION
+          - INCIDENT
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+          maxLength: 512
+          minLength: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CursorPageSideProjectNoteView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - project
+    post:
+      operationId: projectCreateNote
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: sideProjectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SideProjectNoteCreateRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SideProjectNoteView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - project
+  /api/v1/side-projects/{sideProjectId}/notes/export:
+    get:
+      operationId: projectExportNotes
+      parameters:
+      - in: path
+        name: sideProjectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            text/markdown;charset=UTF-8:
+              schema:
+                type: string
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - project
+  /api/v1/side-projects/{sideProjectId}/notes/{noteId}:
+    delete:
+      operationId: projectDeleteNote
+      parameters:
+      - in: path
+        name: sideProjectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: noteId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - project
+    get:
+      operationId: projectGetNote
+      parameters:
+      - in: path
+        name: sideProjectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: noteId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SideProjectNoteView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - project
+    patch:
+      operationId: projectUpdateNote
+      parameters:
+      - in: path
+        name: sideProjectId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: noteId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SideProjectNotePatchRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SideProjectNoteView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - project
   /api/v1/skills/me:
     get:
       operationId: skillGetMyStates
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSkillStatesResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - skill
+  /api/v1/skills/me/self-assessment:
+    put:
+      operationId: skillUpdateSelfAssessment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SelfAssessmentUpdateRequest"
+        required: true
       responses:
         "200":
           content:
@@ -465,6 +1915,8 @@ paths:
           default: JAVA_BACKEND
           enum:
           - JAVA_BACKEND
+          - JAVA_BACKEND_STARTER
+          - INTEGRATION_ENGINEER
       responses:
         "200":
           content:
@@ -480,6 +1932,420 @@ paths:
           description: Problem Details (docs/05 §1.2)
       tags:
       - skill
+  /api/v1/skills/{skillId}:
+    get:
+      operationId: skillGet
+      parameters:
+      - in: path
+        name: skillId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillDetailView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - skill
+  /api/v1/skills/{skillId}/history:
+    get:
+      operationId: skillGetHistory
+      parameters:
+      - in: path
+        name: skillId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CursorPageSkillStateChangeView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - skill
+  /api/v1/skills/{skillId}/lesson:
+    get:
+      operationId: lessonGetForSkill
+      parameters:
+      - in: path
+        name: skillId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LessonView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/terms:
+    get:
+      operationId: reviewListTerms
+      parameters:
+      - in: query
+        name: q
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          minLength: 0
+      - in: query
+        name: skillId
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+          maxLength: 512
+          minLength: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CursorPageTermSummaryView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - review
+  /api/v1/terms/{termKey}:
+    get:
+      operationId: reviewGetTerm
+      parameters:
+      - in: path
+        name: termKey
+        required: true
+        schema:
+          type: string
+          maxLength: 120
+          minLength: 0
+          pattern: "^TERM\\.[A-Z][A-Z0-9_]*\\.[A-Z][A-Z0-9_]*$"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TermView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - review
+  /api/v1/terms/{termKey}/card:
+    post:
+      operationId: reviewCreateTermCard
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: termKey
+        required: true
+        schema:
+          type: string
+          maxLength: 120
+          minLength: 0
+          pattern: "^TERM\\.[A-Z][A-Z0-9_]*\\.[A-Z][A-Z0-9_]*$"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TermCardResponse"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - review
+  /api/v1/tips:
+    get:
+      operationId: todayListTips
+      parameters:
+      - in: query
+        name: series
+        required: false
+        schema:
+          type: string
+          enum:
+          - ERROR_READING
+          - RESOURCE
+          - LOGGING
+          - HTTP_INTEGRATION
+          - DATABASE
+          - OPERATIONS
+          - CONVENTION
+      - in: query
+        name: level
+        required: false
+        schema:
+          type: string
+          enum:
+          - BASIC
+          - PRACTICAL
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+          maxLength: 512
+          minLength: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CursorPageTipSummaryView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/tips/today:
+    get:
+      operationId: todayGetDailyTip
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyTipView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/tips/{tipKey}:
+    get:
+      operationId: todayGetTip
+      parameters:
+      - in: path
+        name: tipKey
+        required: true
+        schema:
+          type: string
+          maxLength: 120
+          minLength: 0
+          pattern: "^TIP\\.[A-Z0-9_]+\\.[A-Z0-9_]+\\.[0-9]{3}$"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyTipView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/tips/{tipKey}/feedback:
+    post:
+      operationId: todaySubmitTipFeedback
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: tipKey
+        required: true
+        schema:
+          type: string
+          maxLength: 120
+          minLength: 0
+          pattern: "^TIP\\.[A-Z0-9_]+\\.[A-Z0-9_]+\\.[0-9]{3}$"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TipFeedbackRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyTipView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/today:
+    get:
+      operationId: todayGet
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TodayView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/today/generate:
+    post:
+      operationId: todayGenerate
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TodayGenerateRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TodayView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
+  /api/v1/today/tasks/{taskId}:
+    patch:
+      operationId: todayUpdateTaskStatus
+      parameters:
+      - in: path
+        name: taskId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskStatusPatchRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskStatusView"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          description: Problem Details (docs/05 §1.2)
+      tags:
+      - today
 components:
   schemas:
     AccountDeletionResponse:
@@ -496,9 +2362,29 @@ components:
       required:
       - deletionRequestedAt
       - status
+    AiMeta:
+      type: object
+      properties:
+        guardActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuardActionView"
+        model:
+          type: string
+        promptVersion:
+          type: string
+      required:
+      - guardActions
+      - model
+      - promptVersion
     AiUsageView:
       type: object
       properties:
+        balanceCheckedAt:
+          type: string
+          format: date-time
+        balanceUsd:
+          type: string
         dailyCallLimit:
           type: integer
           format: int32
@@ -510,10 +2396,179 @@ components:
           type: integer
           format: int32
       required:
+      - balanceCheckedAt
+      - balanceUsd
       - dailyCallLimit
       - monthCostUsd
       - monthlyBudgetUsd
       - todayCalls
+    AnswerResult:
+      type: object
+      properties:
+        modelAnswer:
+          type: string
+        selfChecks:
+          type: array
+          items:
+            type: string
+    AsyncStatusView:
+      type: object
+      properties:
+        failureCode:
+          type: string
+          enum:
+          - AI_UNAVAILABLE
+          - AI_TIMEOUT
+          - AI_REFUSED
+          - AI_OUTPUT_INVALID
+          - AI_BUDGET_EXCEEDED
+          - AI_RATE_LIMITED
+          - CONFIDENTIAL_SUSPECTED
+          - INTERRUPTED
+          - INTERNAL_ERROR
+        id:
+          type: string
+          format: uuid
+        maskedSecretCount:
+          type: integer
+          format: int32
+        pollPath:
+          type: string
+        status:
+          type: string
+          enum:
+          - PENDING
+          - RUNNING
+          - COMPLETED
+          - FAILED
+        statusUpdatedAt:
+          type: string
+          format: date-time
+        submissionNo:
+          type: integer
+          format: int32
+      required:
+      - failureCode
+      - id
+      - maskedSecretCount
+      - pollPath
+      - status
+      - statusUpdatedAt
+      - submissionNo
+    AttemptView:
+      type: object
+      properties:
+        challengeId:
+          type: string
+          format: uuid
+        challengeTitle:
+          type: string
+        completedAt:
+          type: string
+          format: date-time
+        difficulty:
+          type: integer
+          format: int32
+        evaluatedOutcome:
+          type: string
+          enum:
+          - CORRECT
+          - PARTIAL
+          - INCORRECT
+          - NOT_EVALUATED
+        evidenceSourceEventId:
+          type: string
+          format: uuid
+        explanationCoverageBp:
+          type: integer
+          format: int32
+        hints:
+          type: array
+          items:
+            $ref: "#/components/schemas/DisclosedHintView"
+        id:
+          type: string
+          format: uuid
+        maxHintLevel:
+          type: string
+          enum:
+          - SELF_EXPLAIN
+          - QUESTION_ONLY
+          - CONCEPT_HINT
+          - DIRECTION
+          - PSEUDOCODE
+          - PARTIAL_CODE
+          - FULL_EXAMPLE
+        maxSubmissions:
+          type: integer
+          format: int32
+        outcome:
+          type: string
+          enum:
+          - SOLVED_INDEPENDENTLY
+          - SOLVED_WITH_HINTS
+          - PARTIAL
+          - FAILED
+          - ABANDONED
+        purpose:
+          type: string
+          enum:
+          - PRACTICE
+          - DIAGNOSTIC
+        reviewScheduled:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduledReviewView"
+        rubricCoverageBp:
+          type: integer
+          format: int32
+        selfExplanation:
+          type: string
+        selfExplanationSkipped:
+          type: boolean
+        startedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+          - STARTED
+          - SUBMITTED
+          - EVALUATED
+          - ABANDONED
+        submissionCount:
+          type: integer
+          format: int32
+        submissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubmissionView"
+        version:
+          type: integer
+          format: int64
+      required:
+      - challengeId
+      - challengeTitle
+      - completedAt
+      - difficulty
+      - evaluatedOutcome
+      - evidenceSourceEventId
+      - explanationCoverageBp
+      - hints
+      - id
+      - maxHintLevel
+      - maxSubmissions
+      - outcome
+      - purpose
+      - reviewScheduled
+      - rubricCoverageBp
+      - selfExplanation
+      - selfExplanationSkipped
+      - startedAt
+      - status
+      - submissionCount
+      - submissions
+      - version
     AxisLevels:
       type: object
       properties:
@@ -534,6 +2589,555 @@ components:
       - explanation
       - implementation
       - knowledge
+    BudgetView:
+      type: object
+      properties:
+        completionRateBp:
+          type: integer
+          format: int32
+        effectiveBudgetMinutes:
+          type: integer
+          format: int32
+        horizonDate:
+          type: string
+          format: date
+        nominalBudgetMinutes:
+          type: integer
+          format: int32
+        planId:
+          type: string
+          format: uuid
+        ratioBp:
+          type: integer
+          format: int32
+        requiredMustMinutes:
+          type: integer
+          format: int32
+        requiredShouldMinutes:
+          type: integer
+          format: int32
+        riskLevel:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+        today:
+          type: string
+          format: date
+      required:
+      - completionRateBp
+      - effectiveBudgetMinutes
+      - horizonDate
+      - nominalBudgetMinutes
+      - planId
+      - ratioBp
+      - requiredMustMinutes
+      - requiredShouldMinutes
+      - riskLevel
+      - today
+    BuildableGapView:
+      type: object
+      properties:
+        evidenceLevels:
+          $ref: "#/components/schemas/AxisLevels"
+        skill:
+          $ref: "#/components/schemas/SkillRef"
+        targets:
+          $ref: "#/components/schemas/AxisLevels"
+      required:
+      - evidenceLevels
+      - skill
+      - targets
+    BuildableStepView:
+      type: object
+      properties:
+        description:
+          type: string
+        endDate:
+          type: string
+          format: date
+        gaps:
+          type: array
+          items:
+            $ref: "#/components/schemas/BuildableGapView"
+        gateSkillCount:
+          type: integer
+          format: int32
+        metSkillCount:
+          type: integer
+          format: int32
+        milestoneId:
+          type: string
+          format: uuid
+        sortOrder:
+          type: integer
+          format: int32
+        startDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum:
+          - BUILDABLE
+          - NEXT
+          - NOT_YET
+        title:
+          type: string
+      required:
+      - description
+      - endDate
+      - gaps
+      - gateSkillCount
+      - metSkillCount
+      - milestoneId
+      - sortOrder
+      - startDate
+      - status
+      - title
+    BuildableView:
+      type: object
+      properties:
+        buildableStepCount:
+          type: integer
+          format: int32
+        countedAxes:
+          type: array
+          items:
+            type: string
+            enum:
+            - KNOWLEDGE
+            - IMPLEMENTATION
+            - EXPLANATION
+            - DEBUGGING
+        nextStepId:
+          type: string
+          format: uuid
+        planId:
+          type: string
+          format: uuid
+        planVersion:
+          type: integer
+          format: int32
+        stepCount:
+          type: integer
+          format: int32
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/BuildableStepView"
+        today:
+          type: string
+          format: date
+        uncountedAxes:
+          type: array
+          items:
+            type: string
+            enum:
+            - KNOWLEDGE
+            - IMPLEMENTATION
+            - EXPLANATION
+            - DEBUGGING
+      required:
+      - buildableStepCount
+      - countedAxes
+      - nextStepId
+      - planId
+      - planVersion
+      - stepCount
+      - steps
+      - today
+      - uncountedAxes
+    BuiltItemView:
+      type: object
+      properties:
+        planDate:
+          type: string
+          format: date
+        taskId:
+          type: string
+          format: uuid
+        taskType:
+          type: string
+          enum:
+          - RECALL
+          - REVIEW
+          - CHALLENGE
+          - PROJECT_TASK
+          - COACH_REVIEW
+          - READING
+          - READ_CODE
+          - EXPLAIN
+          - REDO
+        title:
+          type: string
+      required:
+      - planDate
+      - taskId
+      - taskType
+      - title
+    CategoryLevel:
+      type: object
+      properties:
+        category:
+          type: string
+          enum:
+          - JAVA
+          - SPRING
+          - DATABASE
+          - WEB_HTTP
+          - NETWORK
+          - CS
+          - ALGORITHM
+          - TESTING
+          - DEVOPS
+          - SECURITY
+          - INTEGRATION
+          - PRACTICAL_ENGINEERING
+          - SYSTEM_DESIGN
+          - EXPLANATION
+        level:
+          type: integer
+          format: int32
+          maximum: 5
+          minimum: 0
+      required:
+      - category
+      - level
+    ChallengeSummaryView:
+      type: object
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        difficulty:
+          type: integer
+          format: int32
+        estimatedMinutes:
+          type: integer
+          format: int32
+        id:
+          type: string
+          format: uuid
+        isTransfer:
+          type: boolean
+        lastAttempt:
+          $ref: "#/components/schemas/LastAttemptView"
+        origin:
+          type: string
+          enum:
+          - SEED
+          - MANUAL
+          - AI_GENERATED
+        purpose:
+          type: string
+          enum:
+          - PRACTICE
+          - DIAGNOSTIC
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillRef"
+        title:
+          type: string
+      required:
+      - createdAt
+      - difficulty
+      - estimatedMinutes
+      - id
+      - isTransfer
+      - lastAttempt
+      - origin
+      - purpose
+      - skills
+      - title
+    ChallengeView:
+      type: object
+      properties:
+        activeAttemptId:
+          type: string
+          format: uuid
+        aiMeta:
+          $ref: "#/components/schemas/AiMeta"
+        answerRevealed:
+          type: boolean
+        commonMistakes:
+          type: array
+          items:
+            type: string
+        constraints:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        difficulty:
+          type: integer
+          format: int32
+        estimatedMinutes:
+          type: integer
+          format: int32
+        expectedConcepts:
+          type: array
+          items:
+            type: string
+        failureCode:
+          type: string
+          enum:
+          - AI_UNAVAILABLE
+          - AI_TIMEOUT
+          - AI_REFUSED
+          - AI_OUTPUT_INVALID
+          - AI_BUDGET_EXCEEDED
+          - AI_RATE_LIMITED
+          - CONFIDENTIAL_SUSPECTED
+          - INTERRUPTED
+          - INTERNAL_ERROR
+        generationStatus:
+          type: string
+          enum:
+          - PENDING
+          - RUNNING
+          - COMPLETED
+          - FAILED
+        id:
+          type: string
+          format: uuid
+        isTransfer:
+          type: boolean
+        origin:
+          type: string
+          enum:
+          - SEED
+          - MANUAL
+          - AI_GENERATED
+        prompt:
+          type: string
+        purpose:
+          type: string
+          enum:
+          - PRACTICE
+          - DIAGNOSTIC
+        rubric:
+          type: array
+          items:
+            $ref: "#/components/schemas/RubricItemView"
+        scenario:
+          type: string
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillRef"
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - VALIDATED
+          - REJECTED
+          - RETIRED
+        statusUpdatedAt:
+          type: string
+          format: date-time
+        title:
+          type: string
+        transferTargetSkillCodes:
+          type: array
+          items:
+            type: string
+      required:
+      - activeAttemptId
+      - aiMeta
+      - answerRevealed
+      - commonMistakes
+      - constraints
+      - createdAt
+      - difficulty
+      - estimatedMinutes
+      - expectedConcepts
+      - failureCode
+      - generationStatus
+      - id
+      - isTransfer
+      - origin
+      - prompt
+      - purpose
+      - rubric
+      - scenario
+      - skills
+      - status
+      - statusUpdatedAt
+      - title
+      - transferTargetSkillCodes
+    ChecklistView:
+      type: object
+      properties:
+        after:
+          type: array
+          items:
+            type: string
+        before:
+          type: array
+          items:
+            type: string
+        key:
+          type: string
+      required:
+      - after
+      - before
+      - key
+    CodeReadingView:
+      type: object
+      properties:
+        endLine:
+          type: integer
+          format: int32
+        lookFor:
+          type: array
+          items:
+            type: string
+        path:
+          type: string
+        question:
+          type: string
+        repo:
+          $ref: "#/components/schemas/CuratedRepoView"
+        startLine:
+          type: integer
+          format: int32
+      required:
+      - endLine
+      - lookFor
+      - path
+      - question
+      - repo
+      - startLine
+    CompleteRequest:
+      type: object
+      properties:
+        answers:
+          type: array
+          items:
+            type: string
+            maxLength: 200
+            minLength: 0
+          maxItems: 4
+          minItems: 0
+      required:
+      - answers
+    CompleteResult:
+      type: object
+      properties:
+        correct:
+          type: boolean
+        expected:
+          type: array
+          items:
+            type: string
+        explanation:
+          type: string
+        results:
+          type: array
+          items:
+            type: boolean
+    ConceptReadingView:
+      type: object
+      properties:
+        checkPoints:
+          type: array
+          items:
+            type: string
+        publisher:
+          type: string
+        title:
+          type: string
+        url:
+          type: string
+        verifiedAt:
+          type: string
+          format: date
+        versionScope:
+          type: string
+        whyRead:
+          type: string
+      required:
+      - checkPoints
+      - publisher
+      - title
+      - url
+      - verifiedAt
+      - versionScope
+      - whyRead
+    CreatedCardView:
+      type: object
+      properties:
+        conceptKey:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        reviewItemId:
+          type: string
+          format: uuid
+        reviewType:
+          type: string
+          enum:
+          - RECALL
+          - BUG_SPOT
+          - EXPLAIN
+          - CHOICE
+      required:
+      - conceptKey
+      - dueDate
+      - reviewItemId
+      - reviewType
+    CuratedRepoView:
+      type: object
+      properties:
+        cloneHint:
+          type: string
+        key:
+          type: string
+        license:
+          type: string
+        licenseNote:
+          type: string
+        name:
+          type: string
+        pinnedCommit:
+          type: string
+        stack:
+          type: string
+        subPath:
+          type: string
+        url:
+          type: string
+        why:
+          type: string
+      required:
+      - cloneHint
+      - key
+      - license
+      - licenseNote
+      - name
+      - pinnedCommit
+      - stack
+      - subPath
+      - url
+      - why
+    CursorPageChallengeSummaryView:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChallengeSummaryView"
+        nextCursor:
+          type: string
+      required:
+      - items
+      - nextCursor
     CursorPagePlanSummaryView:
       type: object
       properties:
@@ -541,6 +3145,54 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PlanSummaryView"
+        nextCursor:
+          type: string
+      required:
+      - items
+      - nextCursor
+    CursorPageReviewItemView:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewItemView"
+        nextCursor:
+          type: string
+      required:
+      - items
+      - nextCursor
+    CursorPageRubberDuckSessionSummaryView:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RubberDuckSessionSummaryView"
+        nextCursor:
+          type: string
+      required:
+      - items
+      - nextCursor
+    CursorPageSessionView:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SessionView"
+        nextCursor:
+          type: string
+      required:
+      - items
+      - nextCursor
+    CursorPageSideProjectNoteView:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SideProjectNoteView"
         nextCursor:
           type: string
       required:
@@ -558,9 +3210,207 @@ components:
       required:
       - items
       - nextCursor
+    CursorPageSkillStateChangeView:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillStateChangeView"
+        nextCursor:
+          type: string
+      required:
+      - items
+      - nextCursor
+    CursorPageTermSummaryView:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TermSummaryView"
+        nextCursor:
+          type: string
+      required:
+      - items
+      - nextCursor
+    CursorPageTipSummaryView:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TipSummaryView"
+        nextCursor:
+          type: string
+      required:
+      - items
+      - nextCursor
+    DailyTipView:
+      type: object
+      properties:
+        cause:
+          type: string
+        estimatedMinutes:
+          type: integer
+          format: int32
+        example:
+          type: string
+        experiment:
+          type: string
+        feedback:
+          type: string
+          enum:
+          - KNEW_IT
+          - LEARNED
+          - WILL_TRY
+        level:
+          type: string
+          enum:
+          - BASIC
+          - PRACTICAL
+        series:
+          type: string
+          enum:
+          - ERROR_READING
+          - RESOURCE
+          - LOGGING
+          - HTTP_INTEGRATION
+          - DATABASE
+          - OPERATIONS
+          - CONVENTION
+        shownOn:
+          type: string
+          format: date
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillRef"
+        sourceUrl:
+          type: string
+        symptom:
+          type: string
+        tipKey:
+          type: string
+        title:
+          type: string
+        whereToLook:
+          type: string
+      required:
+      - cause
+      - estimatedMinutes
+      - example
+      - experiment
+      - feedback
+      - level
+      - series
+      - shownOn
+      - skills
+      - sourceUrl
+      - symptom
+      - tipKey
+      - title
+      - whereToLook
+    DashboardView:
+      type: object
+      properties:
+        aiStatus:
+          type: string
+          enum:
+          - ENABLED
+          - BUDGET_WARNING
+          - BALANCE_EXHAUSTED
+          - DISABLED
+        dueReviewCount:
+          type: integer
+          format: int32
+        milestoneTimeline:
+          $ref: "#/components/schemas/MilestoneTimelineView"
+        replanRecommended:
+          type: boolean
+        risk:
+          $ref: "#/components/schemas/RiskSummaryView"
+        skillCategories:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillCategorySummaryView"
+        streakDays:
+          type: integer
+          format: int32
+        today:
+          type: string
+          format: date
+        todaySummary:
+          $ref: "#/components/schemas/TodaySummaryView"
+        weakThinkingAxes:
+          type: array
+          items:
+            type: string
+            enum:
+            - CORRECTNESS
+            - NULL_BOUNDARY
+            - RESOURCE_LIFECYCLE
+            - EXCEPTION_STRATEGY
+            - SECURITY
+            - PERFORMANCE
+            - CONCURRENCY
+            - OBSERVABILITY
+            - MAINTAINABILITY
+            - TRANSACTION_DATA_CONSISTENCY
+        weekCompletedSessions:
+          type: integer
+          format: int32
+        weekStartDate:
+          type: string
+          format: date
+        weekStudyMinutes:
+          type: integer
+          format: int32
+        weeklySummary:
+          $ref: "#/components/schemas/WeeklySummaryView"
+      required:
+      - aiStatus
+      - dueReviewCount
+      - milestoneTimeline
+      - replanRecommended
+      - risk
+      - skillCategories
+      - streakDays
+      - today
+      - todaySummary
+      - weakThinkingAxes
+      - weekCompletedSessions
+      - weekStartDate
+      - weekStudyMinutes
+      - weeklySummary
+    DeferSuggestionView:
+      type: object
+      properties:
+        practicalImportanceBp:
+          type: integer
+          format: int32
+        priority:
+          type: string
+          enum:
+          - MUST
+          - SHOULD
+          - LATER
+        requiredMinutes:
+          type: integer
+          format: int32
+        skill:
+          $ref: "#/components/schemas/SkillRef"
+      required:
+      - practicalImportanceBp
+      - priority
+      - requiredMinutes
+      - skill
     DiagnosticSuggestionView:
       type: object
       properties:
+        activeAttemptId:
+          type: string
+          format: uuid
         category:
           type: string
           enum:
@@ -574,6 +3424,7 @@ components:
           - TESTING
           - DEVOPS
           - SECURITY
+          - INTEGRATION
           - PRACTICAL_ENGINEERING
           - SYSTEM_DESIGN
           - EXPLANATION
@@ -594,6 +3445,7 @@ components:
         title:
           type: string
       required:
+      - activeAttemptId
       - category
       - challengeId
       - difficulty
@@ -601,6 +3453,234 @@ components:
       - selfAssessedLevel
       - skill
       - title
+    DiagnosticSuggestionsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiagnosticSuggestionView"
+      required:
+      - items
+    DisclosedHintView:
+      type: object
+      properties:
+        content:
+          type: string
+        contentOrigin:
+          type: string
+          enum:
+          - SEED
+          - PREGENERATED
+          - AI_GENERATED
+        disclosedAt:
+          type: string
+          format: date-time
+        level:
+          type: string
+          enum:
+          - SELF_EXPLAIN
+          - QUESTION_ONLY
+          - CONCEPT_HINT
+          - DIRECTION
+          - PSEUDOCODE
+          - PARTIAL_CODE
+          - FULL_EXAMPLE
+      required:
+      - content
+      - contentOrigin
+      - disclosedAt
+      - level
+    DueReviewItemView:
+      type: object
+      properties:
+        dueDate:
+          type: string
+          format: date
+        expectedAnswer:
+          type: string
+        overdueDays:
+          type: integer
+          format: int32
+        prompt:
+          type: string
+        reviewItemId:
+          type: string
+          format: uuid
+        reviewType:
+          type: string
+          enum:
+          - RECALL
+          - BUG_SPOT
+          - EXPLAIN
+          - CHOICE
+        rubric:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewRubricItemView"
+        skillCode:
+          type: string
+        skillName:
+          type: string
+        wasVariant:
+          type: boolean
+      required:
+      - dueDate
+      - expectedAnswer
+      - overdueDays
+      - prompt
+      - reviewItemId
+      - reviewType
+      - rubric
+      - skillCode
+      - skillName
+      - wasVariant
+    DueReviewsResponse:
+      type: object
+      properties:
+        cap:
+          type: integer
+          format: int32
+        comebackMode:
+          type: boolean
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DueReviewItemView"
+        planDate:
+          type: string
+          format: date
+        totalDueCount:
+          type: integer
+          format: int32
+      required:
+      - cap
+      - comebackMode
+      - items
+      - planDate
+      - totalDueCount
+    EvaluationView:
+      type: object
+      properties:
+        evaluatedOutcome:
+          type: string
+          enum:
+          - CORRECT
+          - PARTIAL
+          - INCORRECT
+          - NOT_EVALUATED
+        explanationCoverageBp:
+          type: integer
+          format: int32
+        followUpQuestion:
+          type: string
+        misconceptions:
+          type: array
+          items:
+            type: string
+        rubric:
+          type: array
+          items:
+            $ref: "#/components/schemas/RubricResultView"
+        rubricCoverageBp:
+          type: integer
+          format: int32
+      required:
+      - evaluatedOutcome
+      - explanationCoverageBp
+      - followUpQuestion
+      - misconceptions
+      - rubric
+      - rubricCoverageBp
+    EvidenceEventView:
+      type: object
+      properties:
+        eventType:
+          type: string
+          enum:
+          - SESSION_STARTED
+          - SESSION_COMPLETED
+          - SELF_EXPLANATION_SUBMITTED
+          - SELF_EXPLANATION_SKIPPED
+          - HINT_DISCLOSED
+          - CHALLENGE_STARTED
+          - CHALLENGE_SUBMITTED
+          - CHALLENGE_EVALUATED
+          - REVIEW_ANSWERED
+          - LEECH_DETECTED
+          - RUBBER_DUCK_COMPLETED
+          - COACH_REVIEW_COMPLETED
+          - COACH_FINDING_CLOSED
+          - DIAGNOSTIC_PASSED
+          - DIAGNOSTIC_FAILED
+          - EVIDENCE_ACCEPTED
+          - PLAN_REPLANNED
+          - REDO_COMPLETED
+          - TIP_VIEWED
+          - TERM_CARD_CREATED
+          - UNIT_SOLVED
+          - TASK_COMPLETED
+        id:
+          type: string
+          format: uuid
+        invalidated:
+          type: boolean
+        occurredAt:
+          type: string
+          format: date-time
+        planDate:
+          type: string
+          format: date
+      required:
+      - eventType
+      - id
+      - invalidated
+      - occurredAt
+      - planDate
+    ExpansionSuggestionView:
+      type: object
+      properties:
+        addedMinutes:
+          type: integer
+          format: int32
+        axis:
+          type: string
+          enum:
+          - KNOWLEDGE
+          - IMPLEMENTATION
+          - EXPLANATION
+          - DEBUGGING
+        currentTarget:
+          type: integer
+          format: int32
+        kind:
+          type: string
+          enum:
+          - RESTORE_DEFERRED
+          - RAISE_TARGET
+        newTarget:
+          type: integer
+          format: int32
+        practicalImportanceBp:
+          type: integer
+          format: int32
+        priority:
+          type: string
+          enum:
+          - MUST
+          - SHOULD
+          - LATER
+        skill:
+          $ref: "#/components/schemas/SkillRef"
+      required:
+      - addedMinutes
+      - axis
+      - currentTarget
+      - kind
+      - newTarget
+      - practicalImportanceBp
+      - priority
+      - skill
     FieldError:
       type: object
       properties:
@@ -614,12 +3694,158 @@ components:
       - code
       - field
       - message
+    FinishRequest:
+      type: object
+      properties:
+        helpLevel:
+          type: string
+          enum:
+          - NONE
+          - HINT
+          - DUCK
+          - ANSWER
+        selfChecksMet:
+          type: integer
+          format: int32
+          minimum: 0
+      required:
+      - helpLevel
+    FinishResult:
+      type: object
+      properties:
+        helpLevel:
+          type: string
+          enum:
+          - NONE
+          - HINT
+          - DUCK
+          - ANSWER
+        recordedAt:
+          type: string
+          format: date-time
+        selfChecksMet:
+          type: integer
+          format: int32
+        unitKey:
+          type: string
+    GuardActionView:
+      type: object
+      properties:
+        action:
+          type: string
+        detail:
+          type: string
+        guard:
+          type: string
+      required:
+      - action
+      - detail
+      - guard
+    HintRequest:
+      type: object
+      properties:
+        acknowledgeEvidenceImpact:
+          type: boolean
+        giveUp:
+          type: boolean
+        requestedLevel:
+          type: string
+          enum:
+          - SELF_EXPLAIN
+          - QUESTION_ONLY
+          - CONCEPT_HINT
+          - DIRECTION
+          - PSEUDOCODE
+          - PARTIAL_CODE
+          - FULL_EXAMPLE
+        skipSelfExplanation:
+          type: boolean
+      required:
+      - requestedLevel
+    HintResponse:
+      type: object
+      properties:
+        aiMeta:
+          $ref: "#/components/schemas/AiMeta"
+        content:
+          type: string
+        contentOrigin:
+          type: string
+          enum:
+          - SEED
+          - PREGENERATED
+          - AI_GENERATED
+        level:
+          type: string
+          enum:
+          - SELF_EXPLAIN
+          - QUESTION_ONLY
+          - CONCEPT_HINT
+          - DIRECTION
+          - PSEUDOCODE
+          - PARTIAL_CODE
+          - FULL_EXAMPLE
+        maxHintLevel:
+          type: string
+          enum:
+          - SELF_EXPLAIN
+          - QUESTION_ONLY
+          - CONCEPT_HINT
+          - DIRECTION
+          - PSEUDOCODE
+          - PARTIAL_CODE
+          - FULL_EXAMPLE
+        skippedLevels:
+          type: array
+          items:
+            type: string
+            enum:
+            - SELF_EXPLAIN
+            - QUESTION_ONLY
+            - CONCEPT_HINT
+            - DIRECTION
+            - PSEUDOCODE
+            - PARTIAL_CODE
+            - FULL_EXAMPLE
+      required:
+      - aiMeta
+      - content
+      - contentOrigin
+      - level
+      - maxHintLevel
+      - skippedLevels
+    LastAttemptView:
+      type: object
+      properties:
+        attemptId:
+          type: string
+          format: uuid
+        outcome:
+          type: string
+          enum:
+          - SOLVED_INDEPENDENTLY
+          - SOLVED_WITH_HINTS
+          - PARTIAL
+          - FAILED
+          - ABANDONED
+        startedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+          - STARTED
+          - SUBMITTED
+          - EVALUATED
+          - ABANDONED
+      required:
+      - attemptId
+      - outcome
+      - startedAt
+      - status
     LearningGoalInput:
       type: object
       properties:
-        checkpointDate:
-          type: string
-          format: date
         focusSkillCodes:
           type: array
           items:
@@ -635,6 +3861,8 @@ components:
           type: string
           enum:
           - JAVA_BACKEND
+          - JAVA_BACKEND_STARTER
+          - INTEGRATION_ENGINEER
       required:
       - focusSkillCodes
       - targetCompletionDate
@@ -642,9 +3870,6 @@ components:
     LearningGoalUpdateRequest:
       type: object
       properties:
-        checkpointDate:
-          type: string
-          format: date
         focusSkillCodes:
           type: array
           items:
@@ -660,6 +3885,8 @@ components:
           type: string
           enum:
           - JAVA_BACKEND
+          - JAVA_BACKEND_STARTER
+          - INTEGRATION_ENGINEER
         version:
           type: integer
           format: int64
@@ -671,9 +3898,6 @@ components:
     LearningGoalView:
       type: object
       properties:
-        checkpointDate:
-          type: string
-          format: date
         createdAt:
           type: string
           format: date-time
@@ -693,6 +3917,8 @@ components:
           type: string
           enum:
           - JAVA_BACKEND
+          - JAVA_BACKEND_STARTER
+          - INTEGRATION_ENGINEER
         updatedAt:
           type: string
           format: date-time
@@ -700,7 +3926,6 @@ components:
           type: integer
           format: int64
       required:
-      - checkpointDate
       - createdAt
       - focusSkills
       - id
@@ -709,6 +3934,351 @@ components:
       - targetRole
       - updatedAt
       - version
+    LearningStageView:
+      type: object
+      properties:
+        completed:
+          type: boolean
+        completedAt:
+          type: string
+          format: date-time
+        stage:
+          type: string
+          enum:
+          - BUILD
+          - READ_CONCEPT
+          - READ_CODE
+          - EXPLAIN
+          - REVIEW
+          - REDO
+      required:
+      - completed
+      - completedAt
+      - stage
+    LessonExampleView:
+      type: object
+      properties:
+        code:
+          type: string
+        language:
+          type: string
+        note:
+          type: string
+        output:
+          type: string
+      required:
+      - code
+      - language
+      - note
+      - output
+    LessonListView:
+      type: object
+      properties:
+        lessons:
+          type: array
+          items:
+            $ref: "#/components/schemas/LessonSummaryView"
+      required:
+      - lessons
+    LessonProblemView:
+      type: object
+      properties:
+        deliverables:
+          type: array
+          items:
+            type: string
+        hints:
+          type: array
+          items:
+            type: string
+        prompt:
+          type: string
+        starterCode:
+          type: string
+      required:
+      - deliverables
+      - hints
+      - prompt
+      - starterCode
+    LessonQuestionView:
+      type: object
+      properties:
+        blanks:
+          type: integer
+          format: int32
+        choices:
+          type: array
+          items:
+            type: string
+        code:
+          type: string
+        question:
+          type: string
+      required:
+      - blanks
+      - choices
+      - code
+      - question
+    LessonSourceView:
+      type: object
+      properties:
+        title:
+          type: string
+        url:
+          type: string
+        versionScope:
+          type: string
+      required:
+      - title
+      - url
+      - versionScope
+    LessonSummaryView:
+      type: object
+      properties:
+        lastSolvedAt:
+          type: string
+          format: date-time
+        lessonKey:
+          type: string
+        minutes:
+          type: integer
+          format: int32
+        oneLine:
+          type: string
+        skillCode:
+          type: string
+        skillId:
+          type: string
+        skillName:
+          type: string
+        solvedUnitCount:
+          type: integer
+          format: int32
+        status:
+          type: string
+          enum:
+          - NOT_STARTED
+          - IN_PROGRESS
+          - DONE
+        title:
+          type: string
+        unitCount:
+          type: integer
+          format: int32
+      required:
+      - lastSolvedAt
+      - lessonKey
+      - minutes
+      - oneLine
+      - skillCode
+      - skillId
+      - skillName
+      - solvedUnitCount
+      - status
+      - title
+      - unitCount
+    LessonUnitView:
+      type: object
+      properties:
+        complete:
+          $ref: "#/components/schemas/LessonQuestionView"
+        core:
+          type: boolean
+        example:
+          $ref: "#/components/schemas/LessonExampleView"
+        explain:
+          type: string
+        minutes:
+          type: integer
+          format: int32
+        predict:
+          $ref: "#/components/schemas/LessonQuestionView"
+        prerequisiteUnits:
+          type: array
+          items:
+            type: string
+        problem:
+          $ref: "#/components/schemas/LessonProblemView"
+        progress:
+          $ref: "#/components/schemas/UnitProgressView"
+        title:
+          type: string
+        unitKey:
+          type: string
+      required:
+      - complete
+      - core
+      - example
+      - explain
+      - minutes
+      - predict
+      - prerequisiteUnits
+      - problem
+      - progress
+      - title
+      - unitKey
+    LessonView:
+      type: object
+      properties:
+        commonMistakes:
+          type: array
+          items:
+            type: string
+        inProject:
+          type: string
+        lessonKey:
+          type: string
+        oneLine:
+          type: string
+        readMore:
+          type: array
+          items:
+            $ref: "#/components/schemas/LessonSourceView"
+        retired:
+          type: boolean
+        skillCode:
+          type: string
+        skillId:
+          type: string
+          format: uuid
+        skillName:
+          type: string
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/LessonSourceView"
+        title:
+          type: string
+        units:
+          type: array
+          items:
+            $ref: "#/components/schemas/LessonUnitView"
+        whyItMatters:
+          type: string
+      required:
+      - commonMistakes
+      - inProject
+      - lessonKey
+      - oneLine
+      - readMore
+      - retired
+      - skillCode
+      - skillId
+      - skillName
+      - sources
+      - title
+      - units
+      - whyItMatters
+    MainTaskView:
+      type: object
+      properties:
+        challengeId:
+          type: string
+          format: uuid
+        checklist:
+          $ref: "#/components/schemas/ChecklistView"
+        completedAt:
+          type: string
+          format: date-time
+        description:
+          type: string
+        estimatedMinutes:
+          type: integer
+          format: int32
+        explainedNote:
+          type: string
+        explainedToPerson:
+          type: boolean
+        id:
+          type: string
+          format: uuid
+        milestoneId:
+          type: string
+          format: uuid
+        readingKey:
+          type: string
+        reasons:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReasonView"
+        redoSourceTaskId:
+          type: string
+          format: uuid
+        redoSourceTaskType:
+          type: string
+          enum:
+          - RECALL
+          - REVIEW
+          - CHALLENGE
+          - PROJECT_TASK
+          - COACH_REVIEW
+          - READING
+          - READ_CODE
+          - EXPLAIN
+          - REDO
+        redoWithoutAi:
+          type: boolean
+        sideProjectId:
+          type: string
+          format: uuid
+        skillCode:
+          type: string
+        skillId:
+          type: string
+          format: uuid
+        skillName:
+          type: string
+        status:
+          type: string
+          enum:
+          - PLANNED
+          - IN_PROGRESS
+          - COMPLETED
+          - SKIPPED
+          - DEFERRED
+        taskType:
+          type: string
+          enum:
+          - RECALL
+          - REVIEW
+          - CHALLENGE
+          - PROJECT_TASK
+          - COACH_REVIEW
+          - READING
+          - READ_CODE
+          - EXPLAIN
+          - REDO
+        title:
+          type: string
+        version:
+          type: integer
+          format: int64
+        whyItMatters:
+          type: string
+      required:
+      - challengeId
+      - checklist
+      - completedAt
+      - description
+      - estimatedMinutes
+      - explainedNote
+      - explainedToPerson
+      - id
+      - milestoneId
+      - readingKey
+      - reasons
+      - redoSourceTaskId
+      - redoSourceTaskType
+      - redoWithoutAi
+      - sideProjectId
+      - skillCode
+      - skillId
+      - skillName
+      - status
+      - taskType
+      - title
+      - version
+      - whyItMatters
     MeResponse:
       type: object
       properties:
@@ -734,15 +4304,6 @@ components:
           format: date-time
         displayName:
           type: string
-        experienceProfile:
-          type: string
-          enum:
-          - WORKING_DEVELOPER
-          - DEVELOPER_STARTER
-          - OTHER
-        experienceStartDate:
-          type: string
-          format: date
         id:
           type: string
           format: uuid
@@ -783,8 +4344,6 @@ components:
       - dayStartHour
       - deletionRequestedAt
       - displayName
-      - experienceProfile
-      - experienceStartDate
       - id
       - onboardingCompleted
       - onboardingCompletedAt
@@ -887,6 +4446,31 @@ components:
           format: int64
       required:
       - version
+    MilestoneTimelineView:
+      type: object
+      properties:
+        horizonDate:
+          type: string
+          format: date
+        milestones:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimelineMilestoneView"
+        planId:
+          type: string
+          format: uuid
+        planVersion:
+          type: integer
+          format: int32
+        todayMarker:
+          type: string
+          format: date
+      required:
+      - horizonDate
+      - milestones
+      - planId
+      - planVersion
+      - todayMarker
     MilestoneView:
       type: object
       properties:
@@ -954,15 +4538,6 @@ components:
           type: string
           maxLength: 100
           minLength: 0
-        experienceProfile:
-          type: string
-          enum:
-          - WORKING_DEVELOPER
-          - DEVELOPER_STARTER
-          - OTHER
-        experienceStartDate:
-          type: string
-          format: date
         learningGoal:
           $ref: "#/components/schemas/LearningGoalInput"
         runDiagnostic:
@@ -971,7 +4546,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SelfAssessmentInput"
-          maxItems: 13
+          maxItems: 14
           minItems: 0
         sideProject:
           $ref: "#/components/schemas/SideProjectInput"
@@ -994,7 +4569,6 @@ components:
       required:
       - dayStartHour
       - displayName
-      - experienceProfile
       - learningGoal
       - runDiagnostic
       - selfAssessments
@@ -1165,6 +4739,24 @@ components:
       - supersedesPlanId
       - title
       - version
+    PredictRequest:
+      type: object
+      properties:
+        answer:
+          type: string
+          maxLength: 200
+          minLength: 0
+      required:
+      - answer
+    PredictResult:
+      type: object
+      properties:
+        correct:
+          type: boolean
+        expected:
+          type: string
+        explanation:
+          type: string
     ProblemDetail:
       type: object
       properties:
@@ -1196,6 +4788,155 @@ components:
       - title
       - traceId
       - type
+    ProgressResetRequest:
+      type: object
+      properties:
+        confirmation:
+          type: string
+          maxLength: 50
+          minLength: 0
+        includeProjects:
+          type: boolean
+      required:
+      - confirmation
+    ProgressResetResponse:
+      type: object
+      properties:
+        deletedRows:
+          type: integer
+          format: int32
+        projectsDeleted:
+          type: boolean
+        resetAt:
+          type: string
+          format: date-time
+      required:
+      - deletedRows
+      - projectsDeleted
+      - resetAt
+    ReadingHistoryResponse:
+      type: object
+      properties:
+        readings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReadingHistoryView"
+      required:
+      - readings
+    ReadingHistoryView:
+      type: object
+      properties:
+        completed:
+          type: boolean
+        estimatedMinutes:
+          type: integer
+          format: int32
+        kind:
+          type: string
+          enum:
+          - CODE
+          - CONCEPT
+          - LESSON
+        lastPlanDate:
+          type: string
+          format: date
+        readingKey:
+          type: string
+        retired:
+          type: boolean
+        source:
+          type: string
+        title:
+          type: string
+      required:
+      - completed
+      - estimatedMinutes
+      - kind
+      - lastPlanDate
+      - readingKey
+      - retired
+      - source
+      - title
+    ReadingView:
+      type: object
+      properties:
+        code:
+          $ref: "#/components/schemas/CodeReadingView"
+        concept:
+          $ref: "#/components/schemas/ConceptReadingView"
+        estimatedMinutes:
+          type: integer
+          format: int32
+        key:
+          type: string
+        kind:
+          type: string
+          enum:
+          - CODE
+          - CONCEPT
+          - LESSON
+        retired:
+          type: boolean
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillRef"
+      required:
+      - code
+      - concept
+      - estimatedMinutes
+      - key
+      - kind
+      - retired
+      - skills
+    ReasonView:
+      type: object
+      properties:
+        code:
+          type: string
+          enum:
+          - MILESTONE_CORE
+          - MILESTONE_NEXT
+          - HIGH_PRACTICAL_IMPORTANCE
+          - LARGE_SKILL_GAP
+          - REVIEW_OVERDUE
+          - RECENT_RECALL_FAILURE
+          - PROJECT_FOCUS
+          - READ_REAL_CODE
+          - REDO_WITHOUT_AI
+          - CONTINUE_YESTERDAY
+          - DEADLINE_RISK_MUST
+          - LOW_ENERGY_LIGHT_TASK
+          - COMEBACK_EASY_START
+        text:
+          type: string
+      required:
+      - code
+      - text
+    ReexplainRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          enum:
+          - UNFAMILIAR_TERMS
+          - WHY_NOT_CLEAR
+          - EXAMPLE_UNCLEAR
+      required:
+      - reason
+    ReexplainView:
+      type: object
+      properties:
+        aiMeta:
+          $ref: "#/components/schemas/AiMeta"
+        analogy:
+          type: string
+        explanation:
+          type: string
+      required:
+      - aiMeta
+      - analogy
+      - explanation
     ReplanCommitResponse:
       type: object
       properties:
@@ -1208,6 +4949,72 @@ components:
       required:
       - milestoneIdMapping
       - plan
+    ReplanPreviewResponse:
+      type: object
+      properties:
+        completionRateBp:
+          type: integer
+          format: int32
+        deferSuggestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeferSuggestionView"
+        effectiveBudgetMinutes:
+          type: integer
+          format: int32
+        expansionSuggestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExpansionSuggestionView"
+        horizonDate:
+          type: string
+          format: date
+        mustTargetReductionSuggestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/TargetReductionSuggestionView"
+        nominalBudgetMinutes:
+          type: integer
+          format: int32
+        planId:
+          type: string
+          format: uuid
+        ratioBp:
+          type: integer
+          format: int32
+        requiredMustMinutes:
+          type: integer
+          format: int32
+        requiredShouldMinutes:
+          type: integer
+          format: int32
+        riskAfterSuggestions:
+          $ref: "#/components/schemas/RiskEstimateView"
+        riskLevel:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+        today:
+          type: string
+          format: date
+      required:
+      - completionRateBp
+      - deferSuggestions
+      - effectiveBudgetMinutes
+      - expansionSuggestions
+      - horizonDate
+      - mustTargetReductionSuggestions
+      - nominalBudgetMinutes
+      - planId
+      - ratioBp
+      - requiredMustMinutes
+      - requiredShouldMinutes
+      - riskAfterSuggestions
+      - riskLevel
+      - today
     ReplanRequest:
       type: object
       properties:
@@ -1260,6 +5067,429 @@ components:
       - reason
       - restoredDeferrals
       - version
+    ReviewAnswerRequest:
+      type: object
+      properties:
+        answerText:
+          type: string
+          maxLength: 5000
+          minLength: 0
+        evaluate:
+          type: boolean
+        hintLevel:
+          type: string
+          enum:
+          - SELF_EXPLAIN
+          - QUESTION_ONLY
+          - CONCEPT_HINT
+          - DIRECTION
+          - PSEUDOCODE
+          - PARTIAL_CODE
+          - FULL_EXAMPLE
+        responseSeconds:
+          type: integer
+          format: int32
+          maximum: 86400
+          minimum: 0
+        selfRating:
+          type: string
+          enum:
+          - AGAIN
+          - HARD
+          - GOOD
+          - EASY
+        wasVariant:
+          type: boolean
+      required:
+      - hintLevel
+      - responseSeconds
+      - selfRating
+    ReviewAnswerResponse:
+      type: object
+      properties:
+        adjustedBy:
+          type: array
+          items:
+            type: string
+            enum:
+            - EVALUATED_INCORRECT
+            - EVALUATED_PARTIAL
+            - HINT_CAP_AGAIN
+            - HINT_CAP_HARD
+            - HINT_CAP_GOOD
+        aiMeta:
+          $ref: "#/components/schemas/AiMeta"
+        evaluatedOutcome:
+          type: string
+          enum:
+          - CORRECT
+          - PARTIAL
+          - INCORRECT
+          - NOT_EVALUATED
+        evaluationFeedback:
+          type: string
+        evaluationSkippedReason:
+          type: string
+          enum:
+          - AI_UNAVAILABLE
+          - AI_TIMEOUT
+          - AI_REFUSED
+          - AI_OUTPUT_INVALID
+          - AI_BUDGET_EXCEEDED
+          - AI_RATE_LIMITED
+          - CONFIDENTIAL_SUSPECTED
+          - INTERRUPTED
+          - INTERNAL_ERROR
+        finalRating:
+          type: string
+          enum:
+          - AGAIN
+          - HARD
+          - GOOD
+          - EASY
+        intervalAfter:
+          type: integer
+          format: int32
+        intervalBefore:
+          type: integer
+          format: int32
+        leechDetected:
+          type: boolean
+        nextDueDate:
+          type: string
+          format: date
+        reviewAnswerId:
+          type: string
+          format: uuid
+        rubricCoverageBp:
+          type: integer
+          format: int32
+        rubricResults:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewRubricResultView"
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - SUSPENDED
+          - ARCHIVED
+      required:
+      - adjustedBy
+      - aiMeta
+      - evaluatedOutcome
+      - evaluationFeedback
+      - evaluationSkippedReason
+      - finalRating
+      - intervalAfter
+      - intervalBefore
+      - leechDetected
+      - nextDueDate
+      - reviewAnswerId
+      - rubricCoverageBp
+      - rubricResults
+      - status
+    ReviewItemCreateRequest:
+      type: object
+      properties:
+        conceptKey:
+          type: string
+          pattern: "^[A-Z0-9_.:-]{3,150}$"
+        expectedAnswer:
+          type: string
+          maxLength: 3000
+          minLength: 0
+        prompt:
+          type: string
+          maxLength: 2000
+          minLength: 0
+        reviewType:
+          type: string
+          enum:
+          - RECALL
+          - BUG_SPOT
+          - EXPLAIN
+          - CHOICE
+        rubric:
+          type: array
+          items:
+            type: string
+            maxLength: 500
+            minLength: 0
+          maxItems: 6
+          minItems: 1
+        skillCode:
+          type: string
+          maxLength: 100
+          minLength: 0
+      required:
+      - conceptKey
+      - expectedAnswer
+      - prompt
+      - reviewType
+      - rubric
+      - skillCode
+    ReviewItemPatchRequest:
+      type: object
+      properties:
+        expectedAnswer:
+          type: string
+          maxLength: 3000
+          minLength: 1
+        prompt:
+          type: string
+          maxLength: 2000
+          minLength: 1
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - SUSPENDED
+          - ARCHIVED
+        version:
+          type: integer
+          format: int64
+      required:
+      - version
+    ReviewItemView:
+      type: object
+      properties:
+        conceptKey:
+          type: string
+        consecutiveFailures:
+          type: integer
+          format: int32
+        consecutiveSuccesses:
+          type: integer
+          format: int32
+        createdAt:
+          type: string
+          format: date-time
+        dueAt:
+          type: string
+          format: date-time
+        dueDate:
+          type: string
+          format: date
+        expectedAnswer:
+          type: string
+        id:
+          type: string
+          format: uuid
+        intervalDays:
+          type: integer
+          format: int32
+        lastResult:
+          type: string
+          enum:
+          - AGAIN
+          - HARD
+          - GOOD
+          - EASY
+        lastReviewedAt:
+          type: string
+          format: date-time
+        origin:
+          type: string
+          enum:
+          - SEED
+          - MANUAL
+          - AI_GENERATED
+        prompt:
+          type: string
+        reviewCount:
+          type: integer
+          format: int32
+        reviewType:
+          type: string
+          enum:
+          - RECALL
+          - BUG_SPOT
+          - EXPLAIN
+          - CHOICE
+        rubric:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewRubricItemView"
+        skill:
+          $ref: "#/components/schemas/SkillRef"
+        sourceId:
+          type: string
+          format: uuid
+        sourceType:
+          type: string
+          enum:
+          - SEED_CARD
+          - MANUAL
+          - CHALLENGE_ATTEMPT
+          - COACH_FINDING
+          - EVIDENCE
+          - RUBBER_DUCK
+          - REDO_TASK
+          - TERM
+          - TIP
+          - LESSON_UNIT
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - SUSPENDED
+          - ARCHIVED
+        variantStatus:
+          type: string
+          enum:
+          - NONE
+          - PENDING
+          - RUNNING
+          - READY
+          - FAILED
+        version:
+          type: integer
+          format: int64
+      required:
+      - conceptKey
+      - consecutiveFailures
+      - consecutiveSuccesses
+      - createdAt
+      - dueAt
+      - dueDate
+      - expectedAnswer
+      - id
+      - intervalDays
+      - lastResult
+      - lastReviewedAt
+      - origin
+      - prompt
+      - reviewCount
+      - reviewType
+      - rubric
+      - skill
+      - sourceId
+      - sourceType
+      - status
+      - variantStatus
+      - version
+    ReviewRubricItemView:
+      type: object
+      properties:
+        criterion:
+          type: string
+        id:
+          type: string
+      required:
+      - criterion
+      - id
+    ReviewRubricResultView:
+      type: object
+      properties:
+        criterion:
+          type: string
+        id:
+          type: string
+        met:
+          type: boolean
+      required:
+      - criterion
+      - id
+      - met
+    ReviewTaskView:
+      type: object
+      properties:
+        dueReviewCount:
+          type: integer
+          format: int32
+        estimatedMinutes:
+          type: integer
+          format: int32
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - PLANNED
+          - IN_PROGRESS
+          - COMPLETED
+          - SKIPPED
+          - DEFERRED
+        version:
+          type: integer
+          format: int64
+      required:
+      - dueReviewCount
+      - estimatedMinutes
+      - id
+      - status
+      - version
+    RiskEstimateView:
+      type: object
+      properties:
+        ratioBp:
+          type: integer
+          format: int32
+        requiredMustMinutes:
+          type: integer
+          format: int32
+        requiredShouldMinutes:
+          type: integer
+          format: int32
+        riskLevel:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+      required:
+      - ratioBp
+      - requiredMustMinutes
+      - requiredShouldMinutes
+      - riskLevel
+    RiskPointView:
+      type: object
+      properties:
+        ratioBp:
+          type: integer
+          format: int32
+        riskLevel:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+        snapshotDate:
+          type: string
+          format: date
+      required:
+      - ratioBp
+      - riskLevel
+      - snapshotDate
+    RiskSummaryView:
+      type: object
+      properties:
+        currentRatioBp:
+          type: integer
+          format: int32
+        currentRiskLevel:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+        currentSnapshotDate:
+          type: string
+          format: date
+        trend:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskPointView"
+      required:
+      - currentRatioBp
+      - currentRiskLevel
+      - currentSnapshotDate
+      - trend
     RoleTargetView:
       type: object
       properties:
@@ -1278,6 +5508,385 @@ components:
       - practicalImportanceBp
       - priority
       - targets
+    RubberDuckCompleteResponse:
+      type: object
+      properties:
+        aiMeta:
+          $ref: "#/components/schemas/AiMeta"
+        confirmed:
+          type: array
+          items:
+            type: string
+        createdReviewItemCount:
+          type: integer
+          format: int32
+        gaps:
+          type: array
+          items:
+            $ref: "#/components/schemas/RubberDuckGapView"
+        overallNote:
+          type: string
+        sessionId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - IN_PROGRESS
+          - COMPLETED
+          - ABANDONED
+        summarySkippedReason:
+          type: string
+          enum:
+          - AI_UNAVAILABLE
+          - AI_TIMEOUT
+          - AI_REFUSED
+          - AI_OUTPUT_INVALID
+          - AI_BUDGET_EXCEEDED
+          - AI_RATE_LIMITED
+          - CONFIDENTIAL_SUSPECTED
+          - INTERRUPTED
+          - INTERNAL_ERROR
+        version:
+          type: integer
+          format: int64
+      required:
+      - aiMeta
+      - confirmed
+      - createdReviewItemCount
+      - gaps
+      - overallNote
+      - sessionId
+      - status
+      - summarySkippedReason
+      - version
+    RubberDuckGapView:
+      type: object
+      properties:
+        conceptKey:
+          type: string
+        reviewItemId:
+          type: string
+          format: uuid
+        reviewQuestion:
+          type: string
+        whatWasMissed:
+          type: string
+        whyItMatters:
+          type: string
+      required:
+      - conceptKey
+      - reviewItemId
+      - reviewQuestion
+      - whatWasMissed
+      - whyItMatters
+    RubberDuckSessionSummaryView:
+      type: object
+      properties:
+        completedAt:
+          type: string
+          format: date-time
+        gapCount:
+          type: integer
+          format: int32
+        id:
+          type: string
+          format: uuid
+        skill:
+          $ref: "#/components/schemas/SkillRef"
+        startedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+          - IN_PROGRESS
+          - COMPLETED
+          - ABANDONED
+        targetTitle:
+          type: string
+        targetType:
+          type: string
+          enum:
+          - CODE_READING
+          - CHALLENGE
+          - REVIEW_ITEM
+          - CONCEPT
+          - PROJECT_WORK
+        turnCount:
+          type: integer
+          format: int32
+      required:
+      - completedAt
+      - gapCount
+      - id
+      - skill
+      - startedAt
+      - status
+      - targetTitle
+      - targetType
+      - turnCount
+    RubberDuckSessionView:
+      type: object
+      properties:
+        completedAt:
+          type: string
+          format: date-time
+        conceptKey:
+          type: string
+        id:
+          type: string
+          format: uuid
+        learningSessionId:
+          type: string
+          format: uuid
+        maxTurns:
+          type: integer
+          format: int32
+        readingKey:
+          type: string
+        skill:
+          $ref: "#/components/schemas/SkillRef"
+        startedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+          - IN_PROGRESS
+          - COMPLETED
+          - ABANDONED
+        suggestHint:
+          type: boolean
+        summary:
+          $ref: "#/components/schemas/RubberDuckSummaryView"
+        summarySkippedReason:
+          type: string
+          enum:
+          - AI_UNAVAILABLE
+          - AI_TIMEOUT
+          - AI_REFUSED
+          - AI_OUTPUT_INVALID
+          - AI_BUDGET_EXCEEDED
+          - AI_RATE_LIMITED
+          - CONFIDENTIAL_SUSPECTED
+          - INTERRUPTED
+          - INTERNAL_ERROR
+        targetId:
+          type: string
+          format: uuid
+        targetTitle:
+          type: string
+        targetType:
+          type: string
+          enum:
+          - CODE_READING
+          - CHALLENGE
+          - REVIEW_ITEM
+          - CONCEPT
+          - PROJECT_WORK
+        turnCount:
+          type: integer
+          format: int32
+        turns:
+          type: array
+          items:
+            $ref: "#/components/schemas/RubberDuckTurnView"
+        version:
+          type: integer
+          format: int64
+      required:
+      - completedAt
+      - conceptKey
+      - id
+      - learningSessionId
+      - maxTurns
+      - readingKey
+      - skill
+      - startedAt
+      - status
+      - suggestHint
+      - summary
+      - summarySkippedReason
+      - targetId
+      - targetTitle
+      - targetType
+      - turnCount
+      - turns
+      - version
+    RubberDuckStartRequest:
+      type: object
+      properties:
+        conceptKey:
+          type: string
+          maxLength: 120
+          minLength: 0
+          pattern: "^[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)+$"
+        skillCode:
+          type: string
+          maxLength: 100
+          minLength: 0
+        targetId:
+          type: string
+          format: uuid
+        targetType:
+          type: string
+          enum:
+          - CODE_READING
+          - CHALLENGE
+          - REVIEW_ITEM
+          - CONCEPT
+          - PROJECT_WORK
+      required:
+      - targetType
+    RubberDuckStartResponse:
+      type: object
+      properties:
+        abandonedSessionId:
+          type: string
+          format: uuid
+        session:
+          $ref: "#/components/schemas/RubberDuckSessionView"
+      required:
+      - abandonedSessionId
+      - session
+    RubberDuckSummaryView:
+      type: object
+      properties:
+        confirmed:
+          type: array
+          items:
+            type: string
+        gaps:
+          type: array
+          items:
+            $ref: "#/components/schemas/RubberDuckGapView"
+        overallNote:
+          type: string
+      required:
+      - confirmed
+      - gaps
+      - overallNote
+    RubberDuckTurnRequest:
+      type: object
+      properties:
+        explanation:
+          type: string
+          minLength: 1
+      required:
+      - explanation
+    RubberDuckTurnResponse:
+      type: object
+      properties:
+        aiMeta:
+          $ref: "#/components/schemas/AiMeta"
+        question:
+          type: string
+        remainingTurns:
+          type: integer
+          format: int32
+        suggestHint:
+          type: boolean
+        turnNo:
+          type: integer
+          format: int32
+        version:
+          type: integer
+          format: int64
+      required:
+      - aiMeta
+      - question
+      - remainingTurns
+      - suggestHint
+      - turnNo
+      - version
+    RubberDuckTurnView:
+      type: object
+      properties:
+        aiMeta:
+          $ref: "#/components/schemas/AiMeta"
+        createdAt:
+          type: string
+          format: date-time
+        learnerStuck:
+          type: boolean
+        question:
+          type: string
+        turnNo:
+          type: integer
+          format: int32
+        userText:
+          type: string
+      required:
+      - aiMeta
+      - createdAt
+      - learnerStuck
+      - question
+      - turnNo
+      - userText
+    RubricItemView:
+      type: object
+      properties:
+        axis:
+          type: string
+          enum:
+          - IMPLEMENTATION
+          - EXPLANATION
+          - DEBUGGING
+        criterion:
+          type: string
+        id:
+          type: string
+        weightBp:
+          type: integer
+          format: int32
+      required:
+      - axis
+      - criterion
+      - id
+      - weightBp
+    RubricResultView:
+      type: object
+      properties:
+        axis:
+          type: string
+          enum:
+          - IMPLEMENTATION
+          - EXPLANATION
+          - DEBUGGING
+        criterion:
+          type: string
+        evidenceQuote:
+          type: string
+        id:
+          type: string
+        met:
+          type: boolean
+        weightBp:
+          type: integer
+          format: int32
+      required:
+      - axis
+      - criterion
+      - evidenceQuote
+      - id
+      - met
+      - weightBp
+    ScheduledReviewView:
+      type: object
+      properties:
+        dueDate:
+          type: string
+          format: date
+        reviewItemId:
+          type: string
+          format: uuid
+        skillCode:
+          type: string
+      required:
+      - dueDate
+      - reviewItemId
+      - skillCode
     SelfAssessmentInput:
       type: object
       properties:
@@ -1294,6 +5903,7 @@ components:
           - TESTING
           - DEVOPS
           - SECURITY
+          - INTEGRATION
           - PRACTICAL_ENGINEERING
           - SYSTEM_DESIGN
           - EXPLANATION
@@ -1305,6 +5915,99 @@ components:
       required:
       - category
       - level
+    SelfAssessmentUpdateRequest:
+      type: object
+      properties:
+        assessments:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryLevel"
+          maxItems: 14
+          minItems: 1
+      required:
+      - assessments
+    SelfExplanationRequest:
+      type: object
+      properties:
+        skipped:
+          type: boolean
+        text:
+          type: string
+          maxLength: 5000
+          minLength: 0
+    SessionCompleteRequest:
+      type: object
+      properties:
+        actualMinutes:
+          type: integer
+          format: int32
+          maximum: 720
+          minimum: 0
+        selfReflection:
+          type: string
+          maxLength: 5000
+          minLength: 0
+      required:
+      - actualMinutes
+    SessionStartRequest:
+      type: object
+      properties:
+        learningTaskId:
+          type: string
+          format: uuid
+    SessionStartResponse:
+      type: object
+      properties:
+        abandonedSessionId:
+          type: string
+          format: uuid
+        session:
+          $ref: "#/components/schemas/SessionView"
+      required:
+      - abandonedSessionId
+      - session
+    SessionView:
+      type: object
+      properties:
+        actualMinutes:
+          type: integer
+          format: int32
+        completedAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        learningTaskId:
+          type: string
+          format: uuid
+        planDate:
+          type: string
+          format: date
+        selfReflection:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+          - IN_PROGRESS
+          - COMPLETED
+          - ABANDONED
+        version:
+          type: integer
+          format: int64
+      required:
+      - actualMinutes
+      - completedAt
+      - id
+      - learningTaskId
+      - planDate
+      - selfReflection
+      - startedAt
+      - status
+      - version
     SideProjectCreateRequest:
       type: object
       properties:
@@ -1312,6 +6015,11 @@ components:
           type: string
           maxLength: 1000
           minLength: 0
+        kind:
+          type: string
+          enum:
+          - SIDE
+          - PAST_WORK
         name:
           type: string
           maxLength: 100
@@ -1347,6 +6055,165 @@ components:
           minLength: 0
       required:
       - name
+    SideProjectNoteCreateRequest:
+      type: object
+      properties:
+        decisionChoice:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        decisionOptions:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        decisionRationale:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        incidentDetection:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        incidentFix:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        incidentPrevention:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        incidentSymptom:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        noteType:
+          type: string
+          enum:
+          - DECISION
+          - INCIDENT
+        occurredOn:
+          type: string
+          format: date
+        skillCode:
+          type: string
+          maxLength: 100
+          minLength: 0
+        title:
+          type: string
+          maxLength: 200
+          minLength: 0
+      required:
+      - noteType
+      - occurredOn
+      - title
+    SideProjectNotePatchRequest:
+      type: object
+      properties:
+        decisionChoice:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        decisionOptions:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        decisionRationale:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        incidentDetection:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        incidentFix:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        incidentPrevention:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        incidentSymptom:
+          type: string
+          maxLength: 4000
+          minLength: 0
+        occurredOn:
+          type: string
+          format: date
+        skillCode:
+          type: string
+          maxLength: 100
+          minLength: 0
+        title:
+          type: string
+          maxLength: 200
+          minLength: 0
+        version:
+          type: integer
+          format: int64
+      required:
+      - version
+    SideProjectNoteView:
+      type: object
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        decisionChoice:
+          type: string
+        decisionOptions:
+          type: string
+        decisionRationale:
+          type: string
+        id:
+          type: string
+          format: uuid
+        incidentDetection:
+          type: string
+        incidentFix:
+          type: string
+        incidentPrevention:
+          type: string
+        incidentSymptom:
+          type: string
+        noteType:
+          type: string
+          enum:
+          - DECISION
+          - INCIDENT
+        occurredOn:
+          type: string
+          format: date
+        sideProjectId:
+          type: string
+          format: uuid
+        skill:
+          $ref: "#/components/schemas/SkillRef"
+        title:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+      required:
+      - createdAt
+      - decisionChoice
+      - decisionOptions
+      - decisionRationale
+      - id
+      - incidentDetection
+      - incidentFix
+      - incidentPrevention
+      - incidentSymptom
+      - noteType
+      - occurredOn
+      - sideProjectId
+      - skill
+      - title
+      - updatedAt
+      - version
     SideProjectPatchRequest:
       type: object
       properties:
@@ -1354,6 +6221,11 @@ components:
           type: string
           maxLength: 1000
           minLength: 0
+        kind:
+          type: string
+          enum:
+          - SIDE
+          - PAST_WORK
         name:
           type: string
           maxLength: 100
@@ -1388,6 +6260,11 @@ components:
         id:
           type: string
           format: uuid
+        kind:
+          type: string
+          enum:
+          - SIDE
+          - PAST_WORK
         name:
           type: string
         repoUrl:
@@ -1410,12 +6287,86 @@ components:
       - createdAt
       - description
       - id
+      - kind
       - name
       - repoUrl
       - stack
       - status
       - updatedAt
       - version
+    SkillCategorySummaryView:
+      type: object
+      properties:
+        avgPlanningLevelMilli:
+          type: integer
+          format: int32
+        avgTargetLevelMilli:
+          type: integer
+          format: int32
+        category:
+          type: string
+          enum:
+          - JAVA
+          - SPRING
+          - DATABASE
+          - WEB_HTTP
+          - NETWORK
+          - CS
+          - ALGORITHM
+          - TESTING
+          - DEVOPS
+          - SECURITY
+          - INTEGRATION
+          - PRACTICAL_ENGINEERING
+          - SYSTEM_DESIGN
+          - EXPLANATION
+        skillCount:
+          type: integer
+          format: int32
+      required:
+      - avgPlanningLevelMilli
+      - avgTargetLevelMilli
+      - category
+      - skillCount
+    SkillDetailView:
+      type: object
+      properties:
+        description:
+          type: string
+        evidenceLevels:
+          $ref: "#/components/schemas/AxisLevels"
+        learningStages:
+          type: array
+          items:
+            $ref: "#/components/schemas/LearningStageView"
+        minutesPerLevelStep:
+          type: integer
+          format: int32
+        parentCode:
+          type: string
+        planningLevels:
+          $ref: "#/components/schemas/AxisLevels"
+        prerequisiteCodes:
+          type: array
+          items:
+            type: string
+        skill:
+          $ref: "#/components/schemas/SkillRef"
+        target:
+          $ref: "#/components/schemas/SkillTargetView"
+        whyItMatters:
+          type: string
+      required:
+      - description
+      - evidenceLevels
+      - learningStages
+      - minutesPerLevelStep
+      - parentCode
+      - planningLevels
+      - prerequisiteCodes
+      - skill
+      - target
+      - whyItMatters
     SkillNodeView:
       type: object
       properties:
@@ -1432,6 +6383,7 @@ components:
           - TESTING
           - DEVOPS
           - SECURITY
+          - INTEGRATION
           - PRACTICAL_ENGINEERING
           - SYSTEM_DESIGN
           - EXPLANATION
@@ -1485,6 +6437,7 @@ components:
           - TESTING
           - DEVOPS
           - SECURITY
+          - INTEGRATION
           - PRACTICAL_ENGINEERING
           - SYSTEM_DESIGN
           - EXPLANATION
@@ -1500,6 +6453,42 @@ components:
       - code
       - id
       - name
+    SkillStateChangeView:
+      type: object
+      properties:
+        axis:
+          type: string
+          enum:
+          - KNOWLEDGE
+          - IMPLEMENTATION
+          - EXPLANATION
+          - DEBUGGING
+        changedAt:
+          type: string
+          format: date-time
+        evidenceEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvidenceEventView"
+        fromLevel:
+          type: integer
+          format: int32
+        id:
+          type: string
+          format: uuid
+        ruleCode:
+          type: string
+        toLevel:
+          type: integer
+          format: int32
+      required:
+      - axis
+      - changedAt
+      - evidenceEvents
+      - fromLevel
+      - id
+      - ruleCode
+      - toLevel
     SkillTargetView:
       type: object
       properties:
@@ -1539,6 +6528,8 @@ components:
           type: string
           enum:
           - JAVA_BACKEND
+          - JAVA_BACKEND_STARTER
+          - INTEGRATION_ENGINEER
         skills:
           type: array
           items:
@@ -1595,6 +6586,96 @@ components:
       - requiredShouldMinutes
       - riskLevel
       - snapshotDate
+    SubmissionRequest:
+      type: object
+      properties:
+        answerText:
+          type: string
+          maxLength: 5000
+          minLength: 0
+        code:
+          type: string
+        language:
+          type: string
+          enum:
+          - JAVA
+          - KOTLIN
+          - SQL
+          - DART
+          - YAML
+          - PROPERTIES
+          - XML
+          - SHELL
+          - OTHER
+    SubmissionView:
+      type: object
+      properties:
+        aiMeta:
+          $ref: "#/components/schemas/AiMeta"
+        answerText:
+          type: string
+        code:
+          type: string
+        evaluatedAt:
+          type: string
+          format: date-time
+        evaluation:
+          $ref: "#/components/schemas/EvaluationView"
+        evaluationStatus:
+          type: string
+          enum:
+          - PENDING
+          - RUNNING
+          - COMPLETED
+          - FAILED
+        failureCode:
+          type: string
+          enum:
+          - AI_UNAVAILABLE
+          - AI_TIMEOUT
+          - AI_REFUSED
+          - AI_OUTPUT_INVALID
+          - AI_BUDGET_EXCEEDED
+          - AI_RATE_LIMITED
+          - CONFIDENTIAL_SUSPECTED
+          - INTERRUPTED
+          - INTERNAL_ERROR
+        language:
+          type: string
+          enum:
+          - JAVA
+          - KOTLIN
+          - SQL
+          - DART
+          - YAML
+          - PROPERTIES
+          - XML
+          - SHELL
+          - OTHER
+        retryable:
+          type: boolean
+        statusUpdatedAt:
+          type: string
+          format: date-time
+        submissionNo:
+          type: integer
+          format: int32
+        submittedAt:
+          type: string
+          format: date-time
+      required:
+      - aiMeta
+      - answerText
+      - code
+      - evaluatedAt
+      - evaluation
+      - evaluationStatus
+      - failureCode
+      - language
+      - retryable
+      - statusUpdatedAt
+      - submissionNo
+      - submittedAt
     TargetRaiseInput:
       type: object
       properties:
@@ -1641,6 +6722,476 @@ components:
       - axis
       - newTarget
       - skillCode
+    TargetReductionSuggestionView:
+      type: object
+      properties:
+        axis:
+          type: string
+          enum:
+          - KNOWLEDGE
+          - IMPLEMENTATION
+          - EXPLANATION
+          - DEBUGGING
+        currentTarget:
+          type: integer
+          format: int32
+        newTarget:
+          type: integer
+          format: int32
+        planningLevel:
+          type: integer
+          format: int32
+        savedMinutes:
+          type: integer
+          format: int32
+        skill:
+          $ref: "#/components/schemas/SkillRef"
+      required:
+      - axis
+      - currentTarget
+      - newTarget
+      - planningLevel
+      - savedMinutes
+      - skill
+    TaskStatusPatchRequest:
+      type: object
+      properties:
+        explainedNote:
+          type: string
+          maxLength: 500
+          minLength: 0
+        explainedToPerson:
+          type: boolean
+        readingFeedback:
+          type: string
+          enum:
+          - HELPFUL
+          - TOO_HARD
+          - BORING
+        redoWithoutAi:
+          type: boolean
+        status:
+          type: string
+          enum:
+          - PLANNED
+          - IN_PROGRESS
+          - COMPLETED
+          - SKIPPED
+          - DEFERRED
+        version:
+          type: integer
+          format: int64
+      required:
+      - status
+      - version
+    TaskStatusView:
+      type: object
+      properties:
+        completedAt:
+          type: string
+          format: date-time
+        dailyPlanId:
+          type: string
+          format: uuid
+        id:
+          type: string
+          format: uuid
+        main:
+          type: boolean
+        planDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum:
+          - PLANNED
+          - IN_PROGRESS
+          - COMPLETED
+          - SKIPPED
+          - DEFERRED
+        taskType:
+          type: string
+          enum:
+          - RECALL
+          - REVIEW
+          - CHALLENGE
+          - PROJECT_TASK
+          - COACH_REVIEW
+          - READING
+          - READ_CODE
+          - EXPLAIN
+          - REDO
+        version:
+          type: integer
+          format: int64
+      required:
+      - completedAt
+      - dailyPlanId
+      - id
+      - main
+      - planDate
+      - status
+      - taskType
+      - version
+    TermCardResponse:
+      type: object
+      properties:
+        cards:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreatedCardView"
+        createdCount:
+          type: integer
+          format: int32
+        termKey:
+          type: string
+      required:
+      - cards
+      - createdCount
+      - termKey
+    TermRefView:
+      type: object
+      properties:
+        english:
+          type: string
+        representative:
+          type: string
+        termKey:
+          type: string
+      required:
+      - english
+      - representative
+      - termKey
+    TermSummaryView:
+      type: object
+      properties:
+        cardCreated:
+          type: boolean
+        definition:
+          type: string
+        english:
+          type: string
+        level:
+          type: string
+          enum:
+          - BASIC
+          - PRACTICAL
+        representative:
+          type: string
+        termKey:
+          type: string
+      required:
+      - cardCreated
+      - definition
+      - english
+      - level
+      - representative
+      - termKey
+    TermView:
+      type: object
+      properties:
+        aliases:
+          type: array
+          items:
+            type: string
+        cards:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreatedCardView"
+        confusableWith:
+          type: array
+          items:
+            $ref: "#/components/schemas/TermRefView"
+        definition:
+          type: string
+        english:
+          type: string
+        example:
+          type: string
+        level:
+          type: string
+          enum:
+          - BASIC
+          - PRACTICAL
+        representative:
+          type: string
+        retired:
+          type: boolean
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillRef"
+        sourceUrl:
+          type: string
+        termKey:
+          type: string
+      required:
+      - aliases
+      - cards
+      - confusableWith
+      - definition
+      - english
+      - example
+      - level
+      - representative
+      - retired
+      - skills
+      - sourceUrl
+      - termKey
+    TimelineMilestoneView:
+      type: object
+      properties:
+        current:
+          type: boolean
+        endDate:
+          type: string
+          format: date
+        id:
+          type: string
+          format: uuid
+        priority:
+          type: string
+          enum:
+          - MUST
+          - SHOULD
+          - LATER
+        startDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum:
+          - PLANNED
+          - IN_PROGRESS
+          - DONE
+          - DEFERRED
+          - DROPPED
+        title:
+          type: string
+      required:
+      - current
+      - endDate
+      - id
+      - priority
+      - startDate
+      - status
+      - title
+    TipExperimentView:
+      type: object
+      properties:
+        estimatedMinutes:
+          type: integer
+          format: int32
+        experiment:
+          type: string
+        tipKey:
+          type: string
+        title:
+          type: string
+      required:
+      - estimatedMinutes
+      - experiment
+      - tipKey
+      - title
+    TipFeedbackRequest:
+      type: object
+      properties:
+        feedback:
+          type: string
+          enum:
+          - KNEW_IT
+          - LEARNED
+          - WILL_TRY
+      required:
+      - feedback
+    TipSummaryView:
+      type: object
+      properties:
+        estimatedMinutes:
+          type: integer
+          format: int32
+        feedback:
+          type: string
+          enum:
+          - KNEW_IT
+          - LEARNED
+          - WILL_TRY
+        level:
+          type: string
+          enum:
+          - BASIC
+          - PRACTICAL
+        series:
+          type: string
+          enum:
+          - ERROR_READING
+          - RESOURCE
+          - LOGGING
+          - HTTP_INTEGRATION
+          - DATABASE
+          - OPERATIONS
+          - CONVENTION
+        symptom:
+          type: string
+        tipKey:
+          type: string
+        title:
+          type: string
+      required:
+      - estimatedMinutes
+      - feedback
+      - level
+      - series
+      - symptom
+      - tipKey
+      - title
+    TodayGenerateRequest:
+      type: object
+      properties:
+        availableMinutes:
+          type: integer
+          format: int32
+          maximum: 720
+          minimum: 5
+        energyLevel:
+          type: string
+          enum:
+          - LOW
+          - NORMAL
+          - HIGH
+        force:
+          type: boolean
+      required:
+      - availableMinutes
+      - energyLevel
+    TodaySummaryView:
+      type: object
+      properties:
+        generated:
+          type: boolean
+        mainTaskEstimatedMinutes:
+          type: integer
+          format: int32
+        mainTaskId:
+          type: string
+          format: uuid
+        mainTaskStatus:
+          type: string
+          enum:
+          - PLANNED
+          - IN_PROGRESS
+          - COMPLETED
+          - SKIPPED
+          - DEFERRED
+        mainTaskTitle:
+          type: string
+        mainTaskType:
+          type: string
+          enum:
+          - RECALL
+          - REVIEW
+          - CHALLENGE
+          - PROJECT_TASK
+          - COACH_REVIEW
+          - READING
+          - READ_CODE
+          - EXPLAIN
+          - REDO
+        reviewTaskStatus:
+          type: string
+          enum:
+          - PLANNED
+          - IN_PROGRESS
+          - COMPLETED
+          - SKIPPED
+          - DEFERRED
+      required:
+      - generated
+      - mainTaskEstimatedMinutes
+      - mainTaskId
+      - mainTaskStatus
+      - mainTaskTitle
+      - mainTaskType
+      - reviewTaskStatus
+    TodayView:
+      type: object
+      properties:
+        availableMinutes:
+          type: integer
+          format: int32
+        comebackMode:
+          type: boolean
+        dailyPlanId:
+          type: string
+          format: uuid
+        deadlineRisk:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+        earlierMainTasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/MainTaskView"
+        energyLevel:
+          type: string
+          enum:
+          - LOW
+          - NORMAL
+          - HIGH
+        generatedAt:
+          type: string
+          format: date-time
+        generationCount:
+          type: integer
+          format: int32
+        mainTask:
+          $ref: "#/components/schemas/MainTaskView"
+        planDate:
+          type: string
+          format: date
+        reviewTask:
+          $ref: "#/components/schemas/ReviewTaskView"
+        tipExperiment:
+          $ref: "#/components/schemas/TipExperimentView"
+      required:
+      - availableMinutes
+      - comebackMode
+      - dailyPlanId
+      - deadlineRisk
+      - earlierMainTasks
+      - energyLevel
+      - generatedAt
+      - generationCount
+      - mainTask
+      - planDate
+      - reviewTask
+      - tipExperiment
+    UnitProgressView:
+      type: object
+      properties:
+        helpLevel:
+          type: string
+          enum:
+          - NONE
+          - HINT
+          - DUCK
+          - ANSWER
+        selfChecksMet:
+          type: integer
+          format: int32
+        solved:
+          type: boolean
+        solvedAt:
+          type: string
+          format: date-time
+      required:
+      - helpLevel
+      - selfChecksMet
+      - solved
+      - solvedAt
     UpdateMeRequest:
       type: object
       properties:
@@ -1716,6 +7267,27 @@ components:
             $ref: "#/components/schemas/UserSkillStateView"
       required:
       - items
+    WeeklySummaryView:
+      type: object
+      properties:
+        builtThisWeek:
+          type: array
+          items:
+            $ref: "#/components/schemas/BuiltItemView"
+        completedTasks:
+          type: integer
+          format: int32
+        notesWritten:
+          type: integer
+          format: int32
+        studyMinutes:
+          type: integer
+          format: int32
+      required:
+      - builtThisWeek
+      - completedTasks
+      - notesWritten
+      - studyMinutes
   securitySchemes:
     bearerAuth:
       bearerFormat: JWT

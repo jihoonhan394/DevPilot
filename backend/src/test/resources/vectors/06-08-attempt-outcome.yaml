@@ -1,0 +1,51 @@
+# source: 06 §8.1 §8.2 §8.3, rows: 6
+# rubric 항목은 weightBp|axis|met. axis가 비면 복습 rubric(가중치 없음, 균등 배분)이다.
+# expectedExplanationCoverageBp가 없으면 null(=EXPLANATION 축 rubric 없음)이다.
+vectors:
+  - id: V01
+    case: coverage 8000 → CORRECT, 독립 풀이
+    rubric: ["4000|IMPLEMENTATION|true", "4000|EXPLANATION|true", "2000|IMPLEMENTATION|false"]
+    expectedCoverageBp: 8000
+    expectedExplanationCoverageBp: 10000
+    expectedEvaluatedOutcome: CORRECT
+    maxHintLevel: QUESTION_ONLY
+    expectedOutcome: SOLVED_INDEPENDENTLY
+  - id: V02
+    case: coverage 6000 → PARTIAL, EXPLANATION 미달
+    rubric: ["4000|IMPLEMENTATION|true", "4000|EXPLANATION|false", "2000|IMPLEMENTATION|true"]
+    expectedCoverageBp: 6000
+    expectedExplanationCoverageBp: 0
+    expectedEvaluatedOutcome: PARTIAL
+    maxHintLevel: SELF_EXPLAIN
+    expectedOutcome: PARTIAL
+  - id: V03
+    case: EXPLANATION 축 rubric이 없으면 설명 coverage는 null
+    rubric: ["5000|IMPLEMENTATION|false", "5000|IMPLEMENTATION|true"]
+    expectedCoverageBp: 5000
+    expectedEvaluatedOutcome: PARTIAL
+    maxHintLevel: SELF_EXPLAIN
+    expectedOutcome: PARTIAL
+  - id: V04
+    case: coverage 3000 → INCORRECT → FAILED
+    rubric: ["3000|IMPLEMENTATION|true", "3000|EXPLANATION|false", "4000|EXPLANATION|false"]
+    expectedCoverageBp: 3000
+    expectedExplanationCoverageBp: 0
+    expectedEvaluatedOutcome: INCORRECT
+    maxHintLevel: SELF_EXPLAIN
+    expectedOutcome: FAILED
+  - id: V05
+    case: 전부 met + hint를 봤으면 SOLVED_WITH_HINTS
+    rubric: ["5000|IMPLEMENTATION|true", "5000|EXPLANATION|true"]
+    expectedCoverageBp: 10000
+    expectedExplanationCoverageBp: 10000
+    expectedEvaluatedOutcome: CORRECT
+    maxHintLevel: CONCEPT_HINT
+    expectedOutcome: SOLVED_WITH_HINTS
+  - id: V06
+    case: 복습 rubric 3개 균등 배분(3334/3333/3333), met T·F·T
+    rubric: ["0||true", "0||false", "0||true"]
+    evenWeights: true
+    expectedCoverageBp: 6667
+    expectedEvaluatedOutcome: PARTIAL
+    maxHintLevel: SELF_EXPLAIN
+    expectedOutcome: PARTIAL

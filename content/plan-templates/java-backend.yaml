@@ -39,7 +39,7 @@ milestones:
       - TESTING.SPRING_TEST
   - key: MEMBER_AND_AUTH
     title: 회원과 인증
-    description: 회원가입과 로그인을 직접 만든다. 비밀번호를 어떻게 저장하고 세션·토큰 중 무엇을 쓸지 스스로 정하고 근거를 남긴다. 읽을 만한 공개 예제가 마땅치 않은 영역이라 구현과 문제로 채운다.
+    description: 회원가입과 로그인을 직접 만든다. 비밀번호를 어떻게 저장하고 세션·토큰 중 무엇을 쓸지 스스로 정하고 근거를 남긴다. Spring Security 공식 예제의 JWT 로그인·세션 설정과 WebGoat의 취약한 코드를 먼저 읽고 비교한다.
     priority: MUST
     weightBp: 1200
     phase: PREPARATION
@@ -75,7 +75,7 @@ milestones:
       - TESTING.TEST_DOUBLE
   - key: ORDER_CREATION
     title: 주문 생성
-    description: 트랜잭션 경계를 어디에 둘지 정하고 재고를 차감한다. 두 요청이 같은 재고를 건드릴 때 무엇이 깨지는지 직접 재현한다. restbucks의 Order 애그리거트를 읽는다.
+    description: 트랜잭션 경계를 어디에 둘지 정하고 재고를 차감한다. 두 요청이 같은 재고를 건드릴 때 무엇이 깨지는지 직접 재현한다. modular-monolith 예제의 주문·재고 흐름과 Spring의 트랜잭션·프록시 코드를 읽는다.
     priority: MUST
     weightBp: 1500
     phase: PREPARATION
@@ -89,7 +89,7 @@ milestones:
       - JAVA.CONCURRENCY.VIRTUAL_THREAD
   - key: CANCEL_AND_REFUND
     title: 취소와 환불
-    description: 주문 상태 전이를 표로 정리하고 되돌리는 경로를 만든다. 같은 취소 요청이 두 번 와도 결과가 같게 만든다. restbucks의 payment 흐름을 읽는다.
+    description: 주문 상태 전이를 표로 정리하고 되돌리는 경로를 만든다. 같은 취소 요청이 두 번 와도 결과가 같게 만든다. 커넥션 풀(HikariCP)이 커넥션을 빌리고 돌려주는 코드를 읽는다.
     priority: MUST
     weightBp: 1200
     phase: PREPARATION
@@ -113,7 +113,7 @@ milestones:
       - SYSTEM_DESIGN.CACHING
   - key: STRUCTURE_CLEANUP
     title: 구조 정리
-    description: 커진 코드의 모듈 경계를 다시 긋고 직접 호출을 이벤트로 바꿔 결합을 낮춘다. modulith 예제 전체(main 298줄)를 읽고 같은 검사를 내 프로젝트에 넣는다.
+    description: 커진 코드의 모듈 경계를 다시 긋고 직접 호출을 이벤트로 바꿔 결합을 낮춘다. modulith 예제 전체(main 298줄)와 modular-monolith 예제의 구조 테스트를 읽고 같은 검사를 내 프로젝트에 넣는다.
     priority: SHOULD
     weightBp: 700
     phase: PREPARATION
@@ -123,7 +123,7 @@ milestones:
       - SYSTEM_DESIGN.SCALABILITY
   - key: DEPLOY_AND_OPERATE
     title: 배포와 운영
-    description: 컨테이너로 띄우고 CI를 붙이고 로그와 지표를 남긴다. 장애가 났을 때 무엇을 보고 원인을 좁힐지 미리 정해 둔다.
+    description: 컨테이너로 띄우고 CI를 붙이고 로그와 지표를 남긴다. 장애가 났을 때 무엇을 보고 원인을 좁힐지 미리 정해 둔다. petclinic과 modular-monolith 예제의 CI 워크플로·compose 파일을 읽는다.
     priority: SHOULD
     weightBp: 800
     phase: PREPARATION

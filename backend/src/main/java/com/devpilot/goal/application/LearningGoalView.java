@@ -6,7 +6,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
-import org.jspecify.annotations.Nullable;
 
 /**
  * 학습 목표 조회 결과 (docs/05 §5.1). 온보딩 응답도 같은 타입을 쓴다.
@@ -17,7 +16,6 @@ import org.jspecify.annotations.Nullable;
 public record LearningGoalView(
         UUID id,
         TargetRole targetRole,
-        @Nullable LocalDate checkpointDate,
         LocalDate targetCompletionDate,
         List<SkillRef> focusSkills,
         boolean replanRecommended,

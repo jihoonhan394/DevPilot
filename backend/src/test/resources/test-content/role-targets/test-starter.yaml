@@ -1,0 +1,44 @@
+# 테스트 role target (입문 트랙): 기본 트랙과 같은 non-root skill 집합 (docs/19 §3.3, CV-21·CV-25)
+# 기본 트랙의 낮은 수준판이다 — 축별 목표는 같은 skill의 기본 트랙 값 이하다 (CV-26, §10.4 A)
+targetRole: JAVA_BACKEND_STARTER
+targets:
+  - skill: JAVA.EXCEPTION
+    priority: MUST
+    importance: 0.90
+    target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }
+  - skill: JAVA.COLLECTION
+    priority: SHOULD
+    importance: 0.60
+    target: { knowledge: 2, implementation: 3, explanation: 2, debugging: 2 }
+  - skill: SPRING.TRANSACTION
+    priority: SHOULD
+    importance: 0.55
+    target: { knowledge: 2, implementation: 2, explanation: 2, debugging: 1 }
+  - skill: DATABASE.INDEX
+    priority: SHOULD
+    importance: 0.50
+    target: { knowledge: 2, implementation: 2, explanation: 2, debugging: 1 }
+  - skill: WEB_HTTP.HTTP_BASICS
+    priority: MUST
+    importance: 0.85
+    target: { knowledge: 3, implementation: 2, explanation: 3, debugging: 2 }
+  - skill: ALGORITHM.SORT_SEARCH
+    priority: SHOULD
+    importance: 0.35
+    target: { knowledge: 2, implementation: 2, explanation: 2, debugging: 1 }
+  - skill: TESTING.JUNIT
+    priority: MUST
+    importance: 0.85
+    target: { knowledge: 2, implementation: 3, explanation: 3, debugging: 2 }
+  - skill: DEVOPS.DOCKER
+    priority: SHOULD
+    importance: 0.60
+    target: { knowledge: 2, implementation: 3, explanation: 2, debugging: 2 }
+  - skill: SYSTEM_DESIGN.CACHING
+    priority: LATER
+    importance: 0.20
+    target: { knowledge: 1, implementation: 1, explanation: 1, debugging: 0 }
+  - skill: EXPLANATION.PROJECT_STORY
+    priority: MUST
+    importance: 0.70
+    target: { knowledge: 2, implementation: 0, explanation: 2, debugging: 0 }

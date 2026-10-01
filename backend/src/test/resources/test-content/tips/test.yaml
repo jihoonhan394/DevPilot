@@ -1,0 +1,79 @@
+# 테스트 전용 팁 (docs/19 §3.9). 시리즈마다 하나씩 둬서 CV-96 경고가 나지 않게 한다.
+# 본문은 운영 콘텐츠가 아니라 길이 검사(CV-94)를 넘기기 위한 최소 문장이다.
+tips:
+  - key: TIP.ERROR_READING.STACKTRACE.001
+    series: ERROR_READING
+    level: BASIC
+    skillCodes: [JAVA.EXCEPTION]
+    title: 스택 트레이스는 아래에서 위로 읽는다
+    symptom: 예외가 길게 찍히는데 어디가 내 코드인지 찾지 못하고 맨 윗줄만 본다.
+    cause: 맨 위는 가장 마지막에 일어난 일이고, 원인은 Caused by 아래쪽에 남는다. 내 패키지가 처음 나오는 줄이 내가 고칠 자리다.
+    whereToLook: 로그에서 Caused by 를 모두 찾고, 그중 내 패키지 이름이 처음 나오는 줄을 본다.
+    experiment: 일부러 null 을 넣어 예외를 내고, 스택에서 내 클래스 이름이 몇 번째 줄에 있는지 세어 본다.
+    estimatedMinutes: 3
+
+  - key: TIP.RESOURCE.CONNECTION.001
+    series: RESOURCE
+    level: PRACTICAL
+    skillCodes: [JAVA.COLLECTION]
+    title: 닫지 않은 자원은 나중에 남의 문제가 된다
+    symptom: 처음에는 잘 돌다가 한참 뒤에 자원이 부족하다는 오류가 갑자기 나기 시작한다.
+    cause: 빌려 쓴 자원을 돌려주지 않으면 요청마다 조금씩 쌓인다. 터지는 시점이 빌린 시점과 멀어서 원인을 찾기 어렵다.
+    whereToLook: 자원을 여는 코드마다 try-with-resources 로 감쌌는지 훑어본다.
+    experiment: 반복문에서 자원을 열고 닫지 않은 채 수백 번 돌려 언제 실패하는지 본다.
+    estimatedMinutes: 4
+
+  - key: TIP.LOGGING.LEVELS.001
+    series: LOGGING
+    level: BASIC
+    skillCodes: [TESTING.JUNIT]
+    title: 로그 레벨은 읽는 사람을 정하는 일이다
+    symptom: 문제가 났을 때 로그가 너무 많거나, 정작 필요한 줄이 남아 있지 않다.
+    cause: 레벨은 심각도가 아니라 누가 언제 읽을지를 정한다. 전부 INFO 로 찍으면 평소에 시끄럽고 사고 때는 묻힌다.
+    whereToLook: 운영에서 켜 둔 레벨과 코드가 쓰는 레벨을 나란히 비교한다.
+    experiment: 같은 코드를 DEBUG 와 INFO 로 각각 돌려 남는 줄 수를 세어 본다.
+    estimatedMinutes: 3
+
+  - key: TIP.HTTP_INTEGRATION.TIMEOUT.001
+    series: HTTP_INTEGRATION
+    level: PRACTICAL
+    skillCodes: [WEB_HTTP.HTTP_BASICS]
+    title: 타임아웃이 없으면 남의 장애가 내 장애가 된다
+    symptom: 외부 API 가 느려지자 우리 쪽 요청까지 전부 같이 멈춰 버린다.
+    cause: 타임아웃을 정하지 않으면 응답을 무한정 기다린다. 기다리는 동안 처리 자리를 붙잡고 있어서 느림이 그대로 옮는다.
+    whereToLook: HTTP 클라이언트를 만드는 자리에서 연결과 읽기 타임아웃이 둘 다 있는지 본다.
+    experiment: 일부러 늦게 답하는 엔드포인트를 만들어 타임아웃이 있을 때와 없을 때를 비교한다.
+    estimatedMinutes: 5
+
+  - key: TIP.DATABASE.INDEX.001
+    series: DATABASE
+    level: PRACTICAL
+    skillCodes: [DATABASE.INDEX]
+    title: 인덱스는 조건의 순서를 따라간다
+    symptom: 인덱스를 만들었는데도 조회가 느리고 실행 계획에 전체 스캔이 그대로 남는다.
+    cause: 여러 칼럼 인덱스는 앞 칼럼부터 차례로 쓰인다. 앞 칼럼이 조건에 없으면 뒤 칼럼만으로는 인덱스를 타지 못한다.
+    whereToLook: 실행 계획을 보고 쓰인 인덱스 이름과 조건에 적힌 칼럼 순서를 맞춰 본다.
+    experiment: 칼럼 순서만 바꾼 인덱스를 하나 더 만들어 실행 계획이 달라지는지 본다.
+    estimatedMinutes: 5
+
+  - key: TIP.OPERATIONS.HEALTHCHECK.001
+    series: OPERATIONS
+    level: BASIC
+    skillCodes: [DEVOPS.DOCKER]
+    title: 살아 있다와 받을 수 있다는 다른 질문이다
+    symptom: 프로세스는 떠 있는데 요청은 계속 실패하고, 감시 도구는 정상이라고 말한다.
+    cause: 프로세스가 죽었는지만 보면 안에서 막힌 상태를 못 본다. 받을 준비가 됐는지는 따로 물어봐야 한다.
+    whereToLook: 헬스 체크가 무엇을 확인하는지, 의존하는 곳까지 보는지 확인한다.
+    experiment: 데이터베이스만 끊고 헬스 체크가 그대로 정상이라고 답하는지 본다.
+    estimatedMinutes: 4
+
+  - key: TIP.CONVENTION.NAMING.001
+    series: CONVENTION
+    level: BASIC
+    skillCodes: [EXPLANATION.PROJECT_STORY]
+    title: 이름은 다음에 읽을 사람에게 쓰는 문장이다
+    symptom: 한 달 뒤에 내가 쓴 코드를 열고 이 변수가 무엇인지 다시 찾아 읽게 된다.
+    cause: 줄여 쓴 이름은 쓰는 순간에만 짧다. 읽는 쪽은 정의를 찾아가야 해서 읽는 시간이 오히려 늘어난다.
+    whereToLook: 최근 커밋에서 한 글자나 두 글자 이름을 찾아 무엇을 담고 있는지 말해 본다.
+    experiment: 이름만 바꿔 보고, 주석을 지워도 뜻이 남는지 확인한다.
+    estimatedMinutes: 3

@@ -1,6 +1,7 @@
 package com.devpilot.project.presentation;
 
 import com.devpilot.project.application.SideProjectService;
+import com.devpilot.project.domain.SideProjectKind;
 import com.devpilot.project.domain.SideProjectStatus;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -16,10 +17,11 @@ public record SideProjectPatchRequest(
         @Nullable @Size(max = 500) String repoUrl,
         @Nullable @Size(max = 300) String stack,
         @Nullable SideProjectStatus status,
+        @Nullable SideProjectKind kind,
         @NotNull Long version) {
 
     SideProjectService.SideProjectPatchCommand toCommand() {
         return new SideProjectService.SideProjectPatchCommand(
-                name, description, repoUrl, stack, status, version);
+                name, description, repoUrl, stack, status, kind, version);
     }
 }

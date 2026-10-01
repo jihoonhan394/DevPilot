@@ -1,0 +1,27 @@
+{
+  "description": "rubric 전부 충족 (local·demo)",
+  "attempts": [
+    {
+      "finishReason": "completed",
+      "output": {
+        "rubric": [
+          {
+            "id": "R1",
+            "met": true
+          },
+          {
+            "id": "R2",
+            "met": true
+          }
+        ],
+        "feedback": "핵심 두 가지를 모두 설명했습니다. 다음에는 예외 상황도 함께 떠올려 보세요."
+      },
+      "usage": {
+        "inputTokens": 2400,
+        "cachedTokens": 0,
+        "outputTokens": 180,
+        "reasoningTokens": 0
+      }
+    }
+  ]
+}

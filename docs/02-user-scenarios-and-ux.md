@@ -1,10 +1,16 @@
 # 02. User Scenarios & UX
 
-> Status: Accepted (v3) · Last updated: 2026-09-18 · Related: DEC-10, DEC-12, DEC-18, `01-product-requirements.md`, `05-api-spec.md`, `06-learning-engine-rules.md`, `17-ai-integration.md`
+> Status: Accepted (v3) · Last updated: 2026-09-20 · Related: DEC-10, DEC-12, DEC-18, DEC-27, DEC-28, ADR-041, ADR-042, `01-product-requirements.md`, `05-api-spec.md`, `06-learning-engine-rules.md`, `17-ai-integration.md`, `19-content-spec.md`
 >
 > 이 문서는 Flutter 클라이언트의 **화면 ID(SCR), 라우트, 화면별 레이아웃·데이터·상태·검증·문구, 핵심 흐름, 오류 코드별 UI 처리, 공통 컴포넌트, 접근성, PWA, 테마 토큰**을 정의한다. 기능 규칙은 `01`의 FR, 요청·응답 필드는 `05-api-spec.md`가 기준이다. API는 base `/api/v1`을 생략하고 `METHOD path`로 적는다.
 >
 > **v3 (2026-09-18)** — 핵심 루프 "읽는다 → 만든다 → 설명한다 → 반복한다"(`01` §5)에 맞춰 SCR-RUBBER-DUCK·SCR-READ-CODE·SCR-PROJECTS를 추가하고(§3.16), 온보딩을 5단계(짧은 진단·사이드 프로젝트)로 바꾸고, 기한 역산 확장 제안을 SCR-REPLAN에 넣었다. 핵심 루프 하루 시나리오는 §4.16이다.
+>
+> 온보딩 1단계에서 **학습 트랙**을 고르고(FR-03), SCR-TODAY에 **재현 과제** 카드와 완료 질문이 있으며(FR-28, §4.18), 사이드 프로젝트의 **결정·장애 기록**은 SCR-PROJECT-DETAIL·SCR-PROJECT-NOTE-EDIT에서 남긴다(FR-29, §4.19).
+>
+> **2026-09-20** — 짧게 읽는 것(오늘의 팁)과 말을 고르는 것(용어 사전)을 넣었다. 새 화면은 **SCR-TIPS · SCR-TIP-DETAIL · SCR-TERMS · SCR-TERM-DETAIL**(§3.17)이고, SCR-TODAY(팁 카드·`whyItMatters`·확인 목록)·SCR-SKILL-DETAIL(학습 단계 6칸)·SCR-DASHBOARD(이번 주에 만든 것·연속 학습 일수)·SCR-PROJECT-DETAIL(프로젝트 종류·Markdown 내려받기)을 넓혔다. 팁·용어·확인 목록 본문은 DB가 아니라 **콘텐츠**이고(ADR-041, `19-content-spec.md` §3.9~§3.11) 학습 단계는 저장하지 않고 기존 기록에서 계산한다(ADR-042, `06` §5.11).
+>
+> **2026-09-21** — **개념 읽기**(`READING` 과제)가 무엇을 읽어야 하는지 알려 준다. SCR-TODAY의 `READING` 카드에 자료 제목·출처·"자료 열기"(새 탭)·"읽고 답할 3가지"를 붙였다(§3.5). **새 화면은 없다** — 자료 블록은 Today 카드 안에 있고 `GET /readings/{readingKey}`가 코드 읽기(`kind = CODE`)와 개념 읽기(`kind = CONCEPT`) 두 종류를 돌려준다(`05` §19.7). 자료 본문은 DB가 아니라 콘텐츠다(`19` §3.13). 자료가 없는 skill의 `READING`은 전과 똑같이 보인다.
 >
 > 클라이언트 스택: Flutter web(PWA), Riverpod, go_router, dio, freezed(DEC-10, DEC-12). 인증은 `AUTH_MODE` dart-define으로 고른다 — `dev`(기본: `POST /api/v1/dev/token`) / `supabase`(Later: `supabase_flutter`).
 
@@ -16,7 +22,7 @@
 |---|---|---|
 | U-1 | **오늘 중요한 것 하나** | 로그인 후 첫 화면은 항상 SCR-TODAY다. 차트가 아니라 main task 1개가 화면 중심이다. 한 화면의 primary 버튼(filled)은 1개다 |
 | U-2 | **낮은 결정 비용** | 선택지는 칩·세그먼트로 3~7개만 준다. 모든 입력에 기본값을 채운다(Today 시간 = 설정값, 컨디션 = `NORMAL`). 설정·온보딩은 나중에 고칠 수 있음을 알린다 |
-| U-3 | **죄책감 UI 금지** | 연속 학습일(streak), 쉰 날 수, "놓친" 과제 수, 빨간 경고 숫자를 표시하지 않는다. 누적 지표("이번 주 학습 시간")만 보여준다. 단, deadline risk는 숨기지 않고 사실과 다음 행동으로 보여준다 |
+| U-3 | **죄책감 UI 금지** | 쉰 날 수, "놓친" 과제 수, 빨간 경고 숫자, 연속 기록이 끊겼다는 표시를 하지 않는다. 누적 지표("이번 주에 만든 것", "이번 주 학습 시간")만 보여준다. **연속 학습 일수는 SCR-DASHBOARD 한 곳에서만, 1일 이상일 때만, 목표·불꽃·재촉 문구 없이 사실 한 줄로** 보인다(§3.11). 단, deadline risk는 숨기지 않고 사실과 다음 행동으로 보여준다 |
 | U-4 | **근거와 AI 확신도를 숨기지 않는다** | Today 이유(1~3개), 복습 등급 조정 사유(`adjustedBy`), skill 레벨 변경 근거(rule), finding의 verification·confidence 배지를 항상 텍스트로 보여준다. AI가 만든 내용에는 "AI" 표시를 붙인다 |
 | U-5 | **BUG와 더 나은 선택을 구분** | `BUG`는 "실제 오류 가능성"으로 분명히 말한다. `RISK`는 "지금은 동작하지만 문제가 될 수 있음", `LEARNING_POINT`는 "틀린 것이 아니라 더 나은 선택"으로 표현하고 오류 색을 쓰지 않는다 |
 | U-6 | **생각 먼저, 도움은 한 단계씩** | 답·힌트·분석 전에 self-explanation/self-review 입력을 먼저 보여준다. 힌트는 다음 단계 버튼만 활성화한다 |
@@ -38,6 +44,10 @@
 | Tablet | 600 ~ 1023 | 좌측 `NavigationRail`(아이콘 + 아래 라벨, 폭 80), 데스크톱과 같은 목적지 | 최대 720, 가운데 정렬 |
 | Desktop | ≥ 1024 | 좌측 `NavigationRail` extended(아이콘 + 오른쪽 라벨, 폭 220) | 최대 960. 2단 레이아웃을 쓰는 화면은 §3에 명시 |
 
+**예외 — 답을 쓰는 화면은 1200이다.** 960은 **읽는** 폭이다. 그 안에 설명 입력란과 코드 입력란을
+넣으면 쓰는 쪽이 좁아진다. 긴 답과 코드를 함께 쓰는 화면(SCR-ATTEMPT)은 Desktop에서 최대 1200을
+쓴다(`ScreenBody(wide: true)`). Tablet·Mobile은 그대로다 — 거기서는 화면이 이미 한계다.
+
 - 최소 지원 폭은 360이다. 360~599는 같은 레이아웃이다.
 - 화면 방향 전환이나 창 크기 변경 시 입력 중인 내용은 유지한다(상태는 Riverpod provider에 둔다).
 - **하단 탭은 v3에서도 4개(Today · Review · Plan · More)를 유지한다.** 러버덕은 중심 기능이지만 탭으로 두지 않는다 — ① 러버덕 세션은 항상 대상(읽은 코드, 문제, 복습 카드, 개념, 프로젝트 작업)이 있어야 시작되므로 그 대상 화면에서 여는 편이 결정 비용이 낮고(U-2), ② 세션 목록 API가 없어(`05` §9.10) 탭 첫 화면이 빈 화면이 되며, ③ Today가 `READ_CODE`·`PROJECT_TASK`로 러버덕을 매일 끌어오고 진행 중 세션은 Today에서 이어 열 수 있고(§3.5), ④ 360px에서 탭 5개는 라벨이 좁아진다. 사이드 프로젝트는 자주 여는 화면이 아니므로 More(모바일)·rail(태블릿·데스크톱)에 둔다.
@@ -47,6 +57,7 @@
 | 목적지 | 아이콘(Material Symbols) | 라우트 | Mobile | Tablet·Desktop | Sprint |
 |---|---|---|---|---|---|
 | Today | `today` | `/today` | 탭 | rail | S2 (S1은 SCR-PLAN으로 대체) |
+| Notes | `menu_book` | `/lessons` | More | rail | S3 |
 | Review | `style` | `/review` | 탭 | rail | S2 |
 | Training | `fitness_center` | `/training` | More | rail | S3 |
 | Coach | `rate_review` | `/coach` | More | rail | S4 |
@@ -59,15 +70,18 @@
 | More | `menu` | `/more` | 탭 | 없음 | S2 |
 
 - Dashboard(`/dashboard`)와 Weekly(`/weekly`)는 목적지가 아니다. SCR-TODAY 헤더의 "진행 현황" 링크, SCR-MORE, SCR-PLAN에서 진입한다.
-- 러버덕(`/rubber-duck/*`)은 목적지가 아니다. 진입점: SCR-READ-CODE "읽었으면 설명하기", SCR-TODAY(PROJECT_TASK·EXPLAIN 카드, 진행 중 세션 이어 하기), SCR-TRAINING-ATTEMPT 결과, SCR-REVIEW-SESSION 끝 화면, SCR-REVIEW-ITEMS 메뉴, SCR-SKILL-DETAIL "개념 설명하기", SCR-PROJECTS "이 프로젝트 작업 설명하기". 러버덕 화면은 하단 탭·rail을 숨기는 집중 화면이다(SCR-REVIEW-SESSION과 같음).
-- 현재 라우트가 목적지 하위(예: `/training/attempts/…`, `/today/read/…`)면 해당 목적지를 선택 상태로 표시한다. `/dashboard`, `/weekly/*`는 Mobile에서 More, 그 외에서는 Today를 선택 상태로 표시한다.
+- 러버덕(`/rubber-duck/*`)은 목적지가 아니다. 진입점: SCR-READ-CODE "읽었으면 설명하기", SCR-TODAY(PROJECT_TASK·EXPLAIN 카드, 진행 중 세션 이어 하기), SCR-TRAINING-ATTEMPT 결과, SCR-REVIEW-SESSION 끝 화면, SCR-REVIEW-ITEMS 메뉴, SCR-SKILL-DETAIL "개념 설명하기", SCR-PROJECTS·SCR-PROJECT-DETAIL "이 프로젝트 작업 설명하기", SCR-PROJECT-DETAIL 기록 카드 `⋮` "러버덕으로 설명하기". 러버덕 화면은 하단 탭·rail을 숨기는 집중 화면이다(SCR-REVIEW-SESSION과 같음).
+- 사이드 프로젝트 상세(`/projects/:sideProjectId`)와 기록 편집(`…/notes/*`)도 목적지가 아니다. 진입점은 SCR-PROJECTS 카드와 SCR-TODAY `PROJECT_TASK` 카드의 "이 프로젝트 기록"이다.
+- 진단(`/today/diagnostics`)도 목적지가 아니다. 진입점: SCR-MORE "지금 수준 확인"(**항상 열려 있다**), SCR-TODAY의 진단 카드(생성 전·후 모두), 온보딩 5단계, 진단 결과 화면. 뒤의 셋은 조건이 닫히면 다시 열리지 않으므로 SCR-MORE 항목을 지우지 않는다.
+- 팁(`/tips*`)과 용어(`/terms*`)도 목적지가 아니다. 진입점: 팁은 SCR-TODAY 오늘의 팁 카드 "자세히"와 SCR-MORE "오늘의 팁", 용어는 SCR-REVIEW-HOME "용어 찾기"와 SCR-MORE "용어 사전", SCR-TIP-DETAIL·SCR-TERM-DETAIL 안의 용어 링크다. 하단 탭·rail을 그대로 두는 보통 화면이다(러버덕 같은 집중 화면이 아니다).
+- 현재 라우트가 목적지 하위(예: `/training/attempts/…`, `/today/read/…`)면 해당 목적지를 선택 상태로 표시한다. `/dashboard`, `/weekly/*`, `/tips*`는 Mobile에서 More, 그 외에서는 Today를 선택 상태로 표시한다. `/terms*`는 Review를 선택 상태로 표시한다(복습 카드를 만드는 화면이다).
 - 하위 화면은 앱 바 뒤로가기(`←`)를 둔다. 목적지 화면에는 뒤로가기가 없다.
 - 브라우저 뒤로가기는 go_router 히스토리를 따른다. 작성 중인 입력이 있으면 §6.8 이탈 확인을 띄운다.
 
 ### 2.3 라우트 표 (go_router)
 
 - `인증` = 저장된 access token 필요. `온보딩` = `GET /me.onboardingCompleted=true` 필요.
-- 경로 파라미터는 UUID(주간 리뷰만 `yyyy-MM-dd`, 코드 읽기만 reading key `^[A-Z0-9][A-Z0-9_.]{2,149}$`). 형식이 틀리면 SCR-NOT-FOUND.
+- 경로 파라미터는 UUID(주간 리뷰만 `yyyy-MM-dd`, 코드 읽기만 reading key `^[A-Z0-9][A-Z0-9_.]{2,149}$`, 팁만 tip key `^TIP\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\.[0-9]{3}$`, 용어만 term key `^TERM\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*$` — 각 ≤ 120자, `05` §20). 형식이 틀리면 SCR-NOT-FOUND.
 - `/`는 `/today`로 redirect한다. S1(Today 출시 전)에는 `/plan`으로 redirect한다.
 
 | 경로 | SCR ID | 인증 | 온보딩 | Sprint |
@@ -82,10 +96,21 @@
 | `/onboarding/plan` | SCR-ONBOARDING (5 계획 확인) | Y | 완료 직후 | S1 |
 | `/today` | SCR-TODAY | Y | Y | S2 |
 | `/today/diagnostics` | SCR-DIAGNOSTICS | Y | Y | S3 |
+| `/readings` | SCR-READING-LIST | Y | Y | S3 |
 | `/today/read/:readingKey` | SCR-READ-CODE | Y | Y | S3 |
+| `/lessons` | SCR-LESSON-LIST | Y | Y | S3 |
+| `/lessons/:lessonKey` | SCR-LESSON | Y | Y | S3 |
+| `/tips` | SCR-TIPS | Y | Y | S3 |
+| `/tips/:tipKey` | SCR-TIP-DETAIL | Y | Y | S3 |
+| `/terms` | SCR-TERMS | Y | Y | S3 |
+| `/terms/:termKey` | SCR-TERM-DETAIL | Y | Y | S3 |
 | `/rubber-duck/new` | SCR-RUBBER-DUCK (시작 전) | Y | Y | S3 |
+| `/rubber-duck/history` | SCR-RUBBER-DUCK-LIST | Y | Y | S3 |
 | `/rubber-duck/:sessionId` | SCR-RUBBER-DUCK | Y | Y | S3 |
 | `/projects` | SCR-PROJECTS | Y | Y | S1 |
+| `/projects/:sideProjectId` | SCR-PROJECT-DETAIL | Y | Y | S3 |
+| `/projects/:sideProjectId/notes/new` | SCR-PROJECT-NOTE-EDIT (생성) | Y | Y | S3 |
+| `/projects/:sideProjectId/notes/:noteId` | SCR-PROJECT-NOTE-EDIT (수정) | Y | Y | S3 |
 | `/dashboard` | SCR-DASHBOARD | Y | Y | S2 (최소) / S5 (완성) |
 | `/review` | SCR-REVIEW-HOME | Y | Y | S2 |
 | `/review/session` | SCR-REVIEW-SESSION | Y | Y | S2 |
@@ -101,6 +126,7 @@
 | `/plan` | SCR-PLAN | Y | Y | S1 |
 | `/plan/replan` | SCR-REPLAN | Y | Y | S1 (저장만) / S2 (미리보기·축소/확장 제안) |
 | `/plan/goal` | SCR-LEARNING-GOAL | Y | Y | S1 |
+| `/plan/buildable` | SCR-BUILDABLE | Y | Y | S3 |
 | `/plan/versions` | SCR-PLAN-HISTORY | Y | Y | S1 |
 | `/plan/versions/:planId` | SCR-PLAN-VERSION | Y | Y | S1 |
 | `/skills` | SCR-SKILL-TREE | Y | Y | S1 |
@@ -114,6 +140,8 @@
 | `/radar/new` | SCR-REQUIREMENT-NEW | Y | Y | S7 |
 | `/radar/:requirementDocId` | SCR-REQUIREMENT-DETAIL | Y | Y | S7 |
 | `/settings` | SCR-SETTINGS | Y | N | S1 (AI 사용량 S3, 캘린더 S5, export·삭제 S6) |
+| `/settings/reset` | SCR-ACCOUNT-RESET | Y | N | S3 |
+| `/settings/self-assessment` | SCR-SELF-ASSESSMENT | Y | Y | S3 |
 | `/settings/delete-account` | SCR-ACCOUNT-DELETE | Y | N | S6 |
 | `/more` | SCR-MORE | Y | Y | S2 (폭 ≥ 600이면 `/today`로 redirect) |
 | 그 외 | SCR-NOT-FOUND | N | N | S0 |
@@ -124,18 +152,43 @@
 |---|---|---|
 | `/login` | `from` (URL 인코딩된 경로), `reason` (`expired`, `deleted`) | 로그인 후 복귀, 안내 문구 |
 | `/today` | `complete=<taskId>` | 완료 시트를 바로 연다 (Training·Review에서 복귀) |
+| `/projects/:sideProjectId/notes/new` | `noteType` (필수, `DECISION` \| `INCIDENT`) | 어느 유형을 만들지. 유형은 생성 후 바꿀 수 없다(PN-2) |
 | `/review/session` | `taskId` | Today REVIEW task에서 진입 |
 | `/review/items` | `skillId`, `status` | 필터 초기값 |
 | `/training` | `skillId` | 필터 초기값 |
 | `/training/challenges/:challengeId` | `taskId` | Today CHALLENGE task에서 진입 |
 | `/today/read/:readingKey` | `taskId` (필수) | Today READ_CODE task. 러버덕 대상(`CODE_READING`의 `targetId`)이자 완료 대상. 없으면 읽기 안내만 보이고 "설명하기"는 비활성 |
+| `/tips` | `series` (`TipSeries`), `level` (`TipLevel`) | 목록 필터 초기값 |
+| `/tips/:tipKey` | `from=today` | SCR-TODAY 팁 카드에서 왔을 때. 뒤로가기가 없으면 `/today`로 돌아간다 |
+| `/terms` | `q` (검색어), `skillId` | 검색어·기술 필터 초기값 |
 | `/rubber-duck/new` | `targetType` (필수), `targetId` 또는 `conceptKey`, `skillCode`(선택), `taskId`(선택) | 시작 전 화면. `05` §9.6 `RubberDuckStartRequest`와 같은 값. `taskId`는 Today task에서 왔을 때 끝나고 돌아갈 곳(`/today?complete=`) |
 | `/rubber-duck/:sessionId` | `taskId` (선택) | 같음 |
 | `/coach/new` | `taskId` | Today COACH_REVIEW task에서 진입 |
 | `/plan/replan` | `from=goal` | 목표 변경 후 진입 안내 |
 | `/settings/delete-account` | `reauth=1` | 재로그인 직후 |
 
-### 2.4 Redirect 규칙과 feature flag
+### 2.4 본문 표기와 복사 (마크다운, 코드, 선택)
+
+콘텐츠와 AI 출력은 **마크다운**으로 쓰여 있다(문제의 상황·지시·제약, 힌트, 평가 근거, 복습 카드의 문항·정답, 개념 읽기, 러버덕 말풍선, 과제 설명). 본문은 `MarkdownText`로 그린다. `Text`로 그대로 찍으면 ```` ``` ````과 `#`이 글자로 보인다.
+
+| 규칙 | 내용 |
+|---|---|
+| 코드 블록 | 고정폭 글꼴, 옅은 배경 카드, **가로 스크롤**(줄바꿈하지 않는다 — 360px에서도 화면이 넓어지지 않는다), 왼쪽 위에 언어, 오른쪽 위에 복사 버튼(`code.copyButton`) |
+| 인라인 코드 | 고정폭 + 옅은 배경 |
+| 그림 | **불러오지 않는다.** 앱도 서버도 콘텐츠가 가리키는 것을 fetch하지 않으므로(`07` §4.2) `![alt](url)`은 alt 글자로 보인다 |
+| raw HTML | 파서에서 끈다. `<script>`는 글자 그대로 남는다. 같은 위젯이 AI 출력과 사용자가 쓴 글도 그린다 |
+| 링크 | 새 탭으로 열기만 한다(http·https). 앱이 그 페이지를 직접 불러오지 않는다 |
+
+**선택과 복사** — 화면 본문은 `ScreenBody` 하나가 **선택 범위 하나**다. 본문의 어떤 글자든 드래그해 복사할 수 있고, 한 번의 드래그가 화면 전체를 가로지른다. 지켜야 할 것 둘:
+
+- 안에 `SelectionArea`를 **또 두지 않는다.** 선택 범위가 쪼개져 드래그가 중간에 끊긴다.
+- 화면이 **보일 때만** 선택 범위를 만든다(`TickerMode.of(context)`). Navigator가 뒤에 살려 둔 화면은 레이아웃되지 않는데, 그 안의 선택 범위가 위치로 정렬하려 하면 크기가 없는 render box를 읽어 터진다.
+- 진행 표시기(`CircularProgressIndicator` 등)는 `SelectionContainer.disabled`로 선택에서 뺀다. 고를 글자가 없고, 회전 변환 때문에 같은 문제를 일으킨다.
+- 입력칸은 자기 선택을 그대로 쓴다. **붙여넣기를 막는 곳은 없다** — 재현 과제(`REDO`)도 예외가 아니다.
+
+---
+
+### 2.5 Redirect 규칙과 feature flag
 
 go_router `redirect`는 아래 순서로 평가하고 처음 해당하는 규칙에서 멈춘다.
 
@@ -151,7 +204,7 @@ go_router `redirect`는 아래 순서로 평가하고 처음 해당하는 규칙
 | 8 | 경로의 feature flag가 꺼짐 | `/today` (S1은 `/plan`) |
 
 - `meProvider`는 `GET /me` 결과다. 앱 시작, 로그인 직후, 브라우저 탭이 다시 보일 때(`visibilitychange`), AI 관련 429/503 응답 직후 다시 읽는다.
-- feature flag는 `lib/app/feature_flags.dart`의 `const bool` 값이며 빌드 시 `--dart-define=DEVPILOT_FEATURES=today,review,…`로 켠다. 꺼진 기능의 목적지·진입 버튼·라우트는 모두 숨긴다. 플래그 이름과 켜지는 단계: `projects`(S1), `today`·`review`·`replan_preview`(S2), `training`·`diagnostics`·`ai_usage`·`review_evaluate`·`read_code`·`rubber_duck`(S3), `coach`(S4), `dashboard_full`·`weekly`·`calendar`·`challenge_generate`(S5), `evidence`·`account`(S6), `radar`(S7). `diagnostics`가 꺼져 있으면 온보딩 3단계는 자기평가만 보인다. `rubber_duck`이 꺼져 있으면 모든 러버덕 진입 버튼을 숨긴다. `challenge_generate`는 SCR-TRAINING-LIST "AI로 문제 만들기"만 켠다.
+- feature flag는 `lib/app/feature_flags.dart`의 `const bool` 값이며 빌드 시 `--dart-define=DEVPILOT_FEATURES=today,review,…`로 켠다. 꺼진 기능의 목적지·진입 버튼·라우트는 모두 숨긴다. 플래그 이름과 켜지는 단계: `projects`(S1), `today`·`review`·`replan_preview`(S2), `training`·`diagnostics`·`ai_usage`·`review_evaluate`·`read_code`·`rubber_duck`·`tips`·`terms`(S3), `coach`(S4), `dashboard_full`·`weekly`·`calendar`·`challenge_generate`(S5), `evidence`·`account`(S6), `radar`(S7). `diagnostics`가 꺼져 있으면 온보딩 3단계는 자기평가만 보인다. `rubber_duck`이 꺼져 있으면 모든 러버덕 진입 버튼을 숨긴다. `challenge_generate`는 SCR-TRAINING-LIST "AI로 문제 만들기"만 켠다. `tips`가 꺼져 있으면 SCR-TODAY 오늘의 팁 카드와 팁 진입점을, `terms`가 꺼져 있으면 용어 진입점과 SCR-TERM-DETAIL "복습 카드 만들기"를 숨긴다.
 
 ---
 
@@ -162,7 +215,7 @@ go_router `redirect`는 아래 순서로 평가하고 처음 해당하는 규칙
 **화면 명세 항목**: 목적 · 진입 경로 · 레이아웃(모바일 기준, 폭 360) · 컴포넌트 · 데이터 · 상태 · 사용자 행동과 검증 · 주요 문구. 상태 칸에 "공통"이라고 쓴 것은 §3.3 기본 동작을 그대로 쓴다는 뜻이다.
 
 - **Sprint** 칸의 S0~S7은 구현 단계 ID다(`01` §7). 기간·날짜가 없다. M1 = S0~S3(S3 완료 = 실사용 시작), M2 = S4~S7.
-- 와이어프레임 안의 날짜·이름·숫자는 모두 **예시**다. 학습 완료 목표일·중간 점검일은 사용자가 등록한 값이 들어간다.
+- 와이어프레임 안의 날짜·이름·숫자는 모두 **예시**다. 목표일은 사용자가 등록한 값이 들어간다.
 
 **문구 key와 l10n**
 - 파일: `lib/l10n/app_ko.arb` 하나(한국어만, `01` §10.1 C-3). `flutter gen-l10n`을 쓴다.
@@ -187,8 +240,10 @@ go_router `redirect`는 아래 순서로 평가하고 처음 해당하는 규칙
 | Enum | 값 → 라벨 |
 |---|---|
 | `EnergyLevel` | LOW 낮음 · NORMAL 보통 · HIGH 좋음 |
-| `TaskType` | RECALL 떠올리기 · REVIEW 복습 · CHALLENGE 문제 풀이 · PROJECT_TASK 프로젝트 과제 · COACH_REVIEW 코드 리뷰 · READING 개념 읽기 · READ_CODE 코드 읽기 · EXPLAIN 설명하기 |
+| `TaskType` | RECALL 떠올리기 · REVIEW 복습 · CHALLENGE 문제 풀이 · PROJECT_TASK 프로젝트 과제 · COACH_REVIEW 코드 리뷰 · READING 개념 읽기 · READ_CODE 코드 읽기 · EXPLAIN 설명하기 · REDO AI 없이 재현 |
 | `RubberDuckTargetType` | CODE_READING 읽은 코드 · CHALLENGE 문제 풀이 · REVIEW_ITEM 복습 카드 · CONCEPT 개념 · PROJECT_WORK 프로젝트 작업 |
+| `SideProjectNoteType` | DECISION 결정 기록 · INCIDENT 장애 기록 |
+| `SideProjectKind` | SIDE 지금 만드는 것 · PAST_WORK 지난 경험 |
 | `RubberDuckStatus` | IN_PROGRESS 설명 중 · COMPLETED 정리함 · ABANDONED 그만둠 |
 | `SideProjectStatus` | ACTIVE 진행 중 · PAUSED 잠시 멈춤 · DONE 완료 |
 | `ExpansionKind` | RESTORE_DEFERRED 다시 포함 · RAISE_TARGET 목표 올리기 |
@@ -210,8 +265,13 @@ go_router `redirect`는 아래 순서로 평가하고 처음 해당하는 규칙
 | `ThinkingAxis` | CORRECTNESS 정확성 · NULL_BOUNDARY null·경계 · RESOURCE_LIFECYCLE 자원 수명 · EXCEPTION_STRATEGY 예외 처리 · SECURITY 보안 · PERFORMANCE 성능 · CONCURRENCY 동시성 · OBSERVABILITY 관측성 · MAINTAINABILITY 유지보수성 · TRANSACTION_DATA_CONSISTENCY 트랜잭션·데이터 일관성 |
 | `SkillAxis` | KNOWLEDGE 지식 · IMPLEMENTATION 구현 · EXPLANATION 설명 · DEBUGGING 문제 인지 |
 | `SkillLevel` | 0 모름 · 1 본 적 있음 · 2 도움받아 가능 · 3 혼자 기본 가능 · 4 실무 적용 · 5 응용·전이 |
-| `SkillCategory` | JAVA Java · SPRING Spring · DATABASE 데이터베이스·JPA · WEB_HTTP 웹·HTTP · NETWORK 네트워크 · CS CS 기초 · ALGORITHM 알고리즘·문제 풀이 · TESTING 테스트 · DEVOPS DevOps·배포 · SECURITY 보안 · PRACTICAL_ENGINEERING 실무 엔지니어링 · SYSTEM_DESIGN 시스템 설계 · EXPLANATION 기술 설명 |
-| `ExperienceProfile` | WORKING_DEVELOPER 현업 개발자 · DEVELOPER_STARTER 개발 입문 · OTHER 기타 |
+| `SkillCategory` | JAVA Java · SPRING Spring · DATABASE 데이터베이스·JPA · WEB_HTTP 웹·HTTP · NETWORK 네트워크 · CS CS 기초 · ALGORITHM 알고리즘·문제 풀이 · TESTING 테스트 · DEVOPS DevOps·배포 · SECURITY 보안 · INTEGRATION 연동 · PRACTICAL_ENGINEERING 실무 엔지니어링 · SYSTEM_DESIGN 시스템 설계 · EXPLANATION 기술 설명 |
+| `TargetRole` (학습 트랙) | JAVA_BACKEND Java 백엔드 · JAVA_BACKEND_STARTER Java 백엔드 입문 · INTEGRATION_ENGINEER 연동·구축 엔지니어 |
+| `LearningStage` | BUILD 만들기 · READ_CONCEPT 개념 읽기 · READ_CODE 코드 읽기 · EXPLAIN 설명하기 · REVIEW 복습 · REDO AI 없이 재현 |
+| `TipSeries` | ERROR_READING 오류 읽기 · RESOURCE 자원 · LOGGING 로그 · HTTP_INTEGRATION HTTP 연동 · DATABASE 데이터베이스 · OPERATIONS 운영 · CONVENTION 관례 |
+| `TipLevel` | BASIC 기본 · PRACTICAL 실무 |
+| `TipFeedback` | KNEW_IT 알고 있었어요 · LEARNED 새로 알았어요 · WILL_TRY 직접 해 볼래요 |
+| `ReadingFeedback` | HELPFUL 도움 됐어요 · TOO_HARD 어려웠어요 · BORING 지루했어요 |
 | `CoachContentType` | CODE 코드 · DIFF Diff · LOG 로그 |
 | `EvidenceStatus` | CANDIDATE 후보 · ACCEPTED 승인 · REJECTED 거절 |
 | `RequirementType` | REQUIRED 필수 · PREFERRED 권장 |
@@ -230,15 +290,20 @@ go_router `redirect`는 아래 순서로 평가하고 처음 해당하는 규칙
 | `dayStartHour` | SCR-ONBOARDING, SCR-SETTINGS | 0~6 선택 | — |
 | `weekdayStudyMinutes`, `weekendStudyMinutes` | SCR-ONBOARDING, SCR-SETTINGS | 정수 0~720 | `validation.range` |
 | `availableMinutes` | SCR-TODAY | 정수 5~720 | `validation.range` |
-| `targetCompletionDate` | SCR-ONBOARDING, SCR-LEARNING-GOAL | 필수, 오늘(plan-day) < 값 ≤ 오늘+3년 | `validation.dateFuture`, `validation.dateTooFar` |
-| `checkpointDate` | 같음 | 선택, 오늘−1년 ≤ 값 ≤ `targetCompletionDate` | `validation.checkpointAfterCompletion` |
-| `experienceStartDate` | SCR-ONBOARDING | 선택, 1970-01-01 ≤ 값 ≤ 오늘 | `validation.datePast` |
+| `targetCompletionDate` (목표일) | SCR-ONBOARDING, SCR-LEARNING-GOAL | 필수, 내일(plan-day + 1) ≤ 값 ≤ 오늘+3년. 날짜 선택기도 이 범위만 연다 | `validation.dateFuture`, `validation.dateTooFar` |
 | `focusSkillCodes` | SCR-ONBOARDING, SCR-LEARNING-GOAL | 0~10개 | `validation.maxItems` |
-| 카테고리 자기평가 | SCR-ONBOARDING | 자기평가를 고른 경우에만. 13개 모두 0~4 (기본 0). 짧은 진단을 고르면 보내지 않는다(`[]`) | — |
+| 카테고리 자기평가 | SCR-ONBOARDING | 자기평가를 고른 경우에만. `SkillCategory` 값 수(14개) 모두 0~4 (기본 0). 짧은 진단을 고르면 보내지 않는다(`[]`) | — |
 | 사이드 프로젝트 `name` | SCR-ONBOARDING, SCR-PROJECTS | 앞뒤 공백 제거 후 1~100자 (온보딩 기본값 "주문 시스템") | `validation.required`, `validation.maxLength` |
 | 사이드 프로젝트 `description` | SCR-PROJECTS | 0~1000자 | `validation.maxLength` |
 | 사이드 프로젝트 `repoUrl` | SCR-PROJECTS | 선택, `http://` 또는 `https://`, ≤ 500자 | `validation.url`, `validation.maxLength` |
 | 사이드 프로젝트 `stack` | SCR-PROJECTS | 0~300자 | `validation.maxLength` |
+| 프로젝트 기록 `title` | SCR-PROJECT-NOTE-EDIT | 앞뒤 공백 제거 후 1~200자 | `validation.required`, `validation.maxLength` |
+| 프로젝트 기록 `occurredOn` | SCR-PROJECT-NOTE-EDIT | 필수, 오늘(plan-day) 이하. 날짜 선택기도 이 범위만 연다 | `validation.required`, `validation.datePast` |
+| 프로젝트 기록 본문 항목 | SCR-PROJECT-NOTE-EDIT | 고른 유형의 항목 **전부** 필수, 각 1~4000자. 유형에 맞지 않는 항목은 화면에 없다 | `validation.required`, `validation.maxLength` |
+| 프로젝트 기록 `skillCode` | SCR-PROJECT-NOTE-EDIT | 선택. skill 검색 목록에서 고른다 | — |
+| `redoWithoutAi` | SCR-TODAY 완료 시트 | `REDO` 과제를 완료할 때 **필수**, 예/아니오 | `validation.required` |
+| `explainedNote` | SCR-TODAY 완료 시트 | `EXPLAIN`·`READ_CODE` 과제를 완료할 때만. 0~500자이고 `explainedToPerson = true`일 때만 보낸다 | `validation.maxLength` |
+| 용어 검색어 `q` | SCR-TERMS | 0~100자. 앞뒤 공백은 지우고 보낸다 | `validation.maxLength` |
 | 러버덕 `explanation` | SCR-RUBBER-DUCK | 공백 아닌 문자 1개 이상, ≤ 2000자(`devpilot.rubberduck.max-explanation-chars`), private key 정규식 불일치 | `validation.required`, `validation.maxLength`, `rubberDuck.validation.privateKey` |
 | milestone `title` | SCR-REPLAN | 1~200자 | `validation.required`, `validation.maxLength` |
 | milestone `description` | SCR-PLAN, SCR-REPLAN | 0~2000자 | `validation.maxLength` |
@@ -267,10 +332,11 @@ go_router `redirect`는 아래 순서로 평가하고 처음 해당하는 규칙
 | evidence `referenceLinks` | 같음 | 0~10개, `https://`로 시작, 각 ≤ 500자 | `validation.httpsUrl` |
 | evidence `explanationTopics` | 같음 | 0~10개, 각 1~200자 | `validation.maxItems` |
 | weekly `reflection` | SCR-WEEKLY-DETAIL | 0~5000자 | `validation.maxLength` |
-| 요구사항 문서 `title` | SCR-REQUIREMENT-NEW | 1~200자 | `validation.required` |
-| 요구사항 문서 `sourceUrl` | SCR-REQUIREMENT-NEW | 선택, `http://` 또는 `https://`, ≤ 2000자 | `validation.url` |
-| 요구사항 문서 `sourceText` | SCR-REQUIREMENT-NEW | 공백 아닌 문자 1개 이상, UTF-8 20000 bytes 이하 | `radar.new.validation.tooLarge` |
+| 로드맵 비교 `title` | SCR-REQUIREMENT-NEW | 1~200자 | `validation.required` |
+| 로드맵 비교 `sourceUrl` | SCR-REQUIREMENT-NEW | 선택, `http://` 또는 `https://`, ≤ 2000자 | `validation.url` |
+| 로드맵 비교 `sourceText` | SCR-REQUIREMENT-NEW | 공백 아닌 문자 1개 이상, UTF-8 20000 bytes 이하 | `radar.new.validation.tooLarge` |
 | 계정 삭제 확인 문구 | SCR-ACCOUNT-DELETE | 정확히 `삭제합니다` | — (버튼 비활성) |
+| 진도 초기화 확인 문구 | SCR-ACCOUNT-RESET | 정확히 `초기화합니다` | — (버튼 비활성) |
 
 private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYPTED|PGP) )?PRIVATE KEY( BLOCK)?-----`
 
@@ -311,9 +377,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `validation.maxItems` | 최대 {max}개까지 고를 수 있어요 |
 | `validation.dateFuture` | 오늘 이후 날짜를 골라 주세요 |
 | `validation.dateTooFar` | 3년 이내 날짜를 골라 주세요 |
-| `validation.datePast` | 오늘 이전 날짜를 골라 주세요 |
 | `validation.dateRange` | 시작일이 종료일보다 늦어요 |
-| `validation.checkpointAfterCompletion` | 중간 점검일은 학습 완료 목표일 이전이어야 해요 |
 | `validation.milestoneCount` | milestone은 1~24개여야 해요 |
 | `validation.httpsUrl` | https:// 로 시작하는 주소를 입력해 주세요 |
 | `validation.url` | http:// 또는 https:// 로 시작하는 주소를 입력해 주세요 |
@@ -396,7 +460,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 #### SCR-ONBOARDING
 
-- **목적**: 5단계로 목표(학습 목표일)·시간·현재 수준 확인 방식·사이드 프로젝트를 받고 계획 v1을 만든다(FR-02, FR-26 SP-1). 현재 수준은 **짧은 진단이 기본**이고, 건너뛰면 자기평가로 대체한다. **진입**: `onboardingCompleted=false` redirect. **Sprint**: S1 (3단계 "짧은 진단" 선택지는 `diagnostics` flag가 켜지는 S3).
+- **목적**: 5단계로 목표(무엇을·언제까지 — 학습 트랙과 목표일)·시간·현재 수준 확인 방식·사이드 프로젝트를 받고 계획 v1을 만든다(FR-02, FR-26 SP-1). 현재 수준은 **짧은 진단이 기본**이고, 건너뛰면 자기평가로 대체한다. **진입**: `onboardingCompleted=false` redirect. **Sprint**: S1 (3단계 "짧은 진단" 선택지는 `diagnostics` flag가 켜지는 S3).
 - **공통 레이아웃**: 상단 진행 막대 + `n / 5`, 제목, 본문(스크롤), 하단 고정 버튼 영역(좌 "이전" `TextButton`, 우 "다음" `FilledButton`). 1단계에는 "이전"이 없다. 5단계에는 "이전"이 없다(이미 저장됨). 데스크톱은 폭 560 카드 가운데 정렬.
 - **입력 보관**: ①~④ 입력은 `onboardingDraftProvider`에 두고, 새로고침 대비로 `localStorage` key `devpilot.onboarding.draft.<externalAuthId>`에 저장한다(읽기·쓰기 모두 try/catch, 실패해도 동작). 제출 성공 시 삭제한다.
 
@@ -405,40 +469,46 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 ```text
 ┌────────────────────────────────┐
 │ ━━━━━───────────────────── 1/5 │
-│ 목표를 알려 주세요              │
+│ 무엇을, 언제까지 공부할지 정해요  │
 │                                │
-│ 학습 트랙                       │
+│ 표시 이름 *                      │
+│ [MT                          ]  │
+│                                │
+│ 학습 트랙 *                     │
 │ ┌────────────────────────────┐ │
-│ │ Java 백엔드                 │ │  읽기 전용
+│ │ (●) Java 백엔드              │ │
+│ │     Spring Boot·JPA·DB를 실무 │ │
+│ │     수준으로 (필수 34개)      │ │
+│ ├────────────────────────────┤ │
+│ │ ( ) Java 백엔드 입문         │ │
+│ │     개발을 막 시작했다면 여기 │ │
+│ │     부터 (필수 14개, 쉬운 과제)│ │
+│ ├────────────────────────────┤ │
+│ │ ( ) 연동·구축 엔지니어        │ │
+│ │     외부 시스템 연동과 배포·  │ │
+│ │     운영 위주 (필수 22개)     │ │
 │ └────────────────────────────┘ │
-│ 지금 나에게 가까운 것            │
-│ (●) 현업 개발자                 │
-│     개발·운영 실무 경험이 있어요 │
-│ ( ) 개발 입문                   │
-│     실제 개발 경험이 적어요      │
-│ ( ) 기타                        │
+│ 트랙은 나중에 바꿀 수 없어요.     │
 │                                │
-│ 개발 시작일 (선택) [2020년 2월 ▾]│
-│                                │
-│ 학습 완료 목표일 *               │
-│ [3개월 후] [6개월 후] [직접 선택] │
+│ 목표일 *                         │
+│ [3개월 후] [6개월 후] [1년 후]    │
+│ [직접 선택]                      │
 │ 2027년 4월 1일 (목)             │
-│ 이 날짜로 남은 시간을 거꾸로      │
-│ 계산해 무엇을 먼저 할지 정해요.   │
-│                                │
-│ 중간 점검일 (선택)               │
-│ [완료일 3개월 전] [직접] [없음]   │
-│ 2027년 1월 1일 (금)             │
+│ 목표일까지 남은 시간으로 무엇을   │
+│ 먼저 할지 정해요.                │
 │ ────────────────────────────── │
 │                      [  다음  ] │
 └────────────────────────────────┘
 ```
 
-- 기본값: `experienceProfile` 선택 없음(필수), 목표일 없음(필수), 중간 점검일 "없음". 날짜는 사용자가 고른 값이다(와이어프레임의 날짜는 예시).
-- 학습 트랙 위에 "표시 이름" 입력(1~100자, 기본값 `GET /me.displayName`)을 둔다.
-- "3개월 후" = 오늘+3개월, "완료일 3개월 전" = 완료일−3개월(오늘 이전이 되면 칩 비활성).
-- 목표일 아래에 `onboarding.goal.completion.help`를 둔다. 이 날짜는 나중에 설정 > 학습 목표(SCR-LEARNING-GOAL)에서 바꿀 수 있다. 중간 점검일은 필수(MUST) 항목을 먼저 끝내 둘 날짜이고, 그 뒤는 만든 것을 설명하고 CS 기초를 채우는 정리 단계다(`01` FR-03).
-- "다음" 활성 조건: `experienceProfile` 선택 + `displayName` 유효 + `targetCompletionDate` 유효(§3.2).
+- 필드는 셋이다: 표시 이름(1~100자, 기본값 `GET /me.displayName`), **학습 트랙**(필수, 라디오 3개), 목표일(`targetCompletionDate`, 필수). 학습 목표는 무엇을(학습 트랙)·언제까지(목표일) 두 가지뿐이다(`01` FR-03).
+- **학습 트랙 선택**: `JAVA_BACKEND`("Java 백엔드", 기본 선택), `JAVA_BACKEND_STARTER`("Java 백엔드 입문"), `INTEGRATION_ENGINEER`("연동·구축 엔지니어" — 기본기 위에 외부 시스템 연동과 배포·운영을 더 다루는 구성이다. 입문 트랙과 달리 낮은 수준판이 아니라 **다른 구성**이다, `19` §3.3). 순서는 `TargetRole` 선언 순서다. 각 항목은 이름 + 한 줄 설명 + 필수 skill 수를 보인다. 필수 skill 수는 `GET /skills/tree?role={트랙}`의 `roleTarget.priority = MUST` 개수로 채우고, 조회에 실패하면 설명만 보인다(숫자는 생략). 아래에 `onboarding.goal.track.locked`("트랙은 나중에 바꿀 수 없어요.")를 둔다 — 서버도 `PUT /learning-goal`에서 변경을 막는다(`05` §5.2).
+- 트랙을 바꾸면 3단계(자기평가·진단)의 카테고리 목록과 5단계 계획 미리보기가 달라진다. 그래서 트랙 변경 시 3단계의 입력값을 지우고 다시 받는다(사용자에게 `onboarding.goal.track.reset` 토스트).
+- 기본값: 목표일 없음(필수). 날짜는 사용자가 고른 값이다(와이어프레임의 날짜는 예시).
+- 빠른 선택 칩: "3개월 후" = 오늘(plan-day) + 3개월, "6개월 후" = + 6개월, "1년 후" = + 1년, "직접 선택" = 날짜 선택기(범위 내일 ~ 오늘+3년). 칩을 누르면 계산한 날짜를 칩 아래에 보이고, 선택한 칩은 선택 상태로 둔다. 날짜를 직접 고르면 "직접 선택"이 선택 상태가 된다.
+- 목표일 아래에 `onboarding.goal.completion.help`를 둔다. 이 날짜는 나중에 설정 > 학습 목표(SCR-LEARNING-GOAL)에서 바꿀 수 있다.
+- 검증: 목표일은 내일(plan-day + 1)부터 오늘+3년까지(§3.2, 서버 `DATE_OUT_OF_RANGE`).
+- "다음" 활성 조건: `displayName` 유효 + `targetCompletionDate` 유효(§3.2).
 
 **2단계 — 시간** (`/onboarding/time`)
 
@@ -478,14 +548,15 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ 지금 수준을 확인해요             │
 │                                │
 │ ┌────────────────────────────┐ │
-│ │ (●) 짧은 진단으로 시작 [권장] │ │
-│ │ 분야마다 1문제, 최대 5문제예요.│ │
-│ │ 계획을 만든 뒤 바로 풀어요.    │ │
-│ │ 스스로 고르는 것보다 정확해요. │ │
+│ │ (●) 직접 고르기       [권장] │ │
+│ │ 분야별 수준을 직접 골라요.     │ │
+│ │ 다섯 단계라 더 촘촘하고, 여기서 │ │
+│ │ 정한 수준이 첫 과제 난이도예요. │ │
 │ └────────────────────────────┘ │
 │ ┌────────────────────────────┐ │
-│ │ ( ) 진단 건너뛰고 직접 고르기 │ │
-│ │ 분야별 수준을 직접 골라요.     │ │
+│ │ ( ) 짧은 진단      [문제 풀기]│ │
+│ │ 분야마다 1문제, 최대 5문제예요.│ │
+│ │ 지금은 모두 같은 난이도예요.   │ │
 │ └────────────────────────────┘ │
 │                                │
 │ ▸ 지금 프로젝트에 필요한 기술     │
@@ -508,10 +579,10 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ … 13개 카테고리                 │
 ```
 
-- 기본 선택 = 짧은 진단(`runDiagnostic=true`, `selfAssessments=[]`). 자기평가를 고르면 `runDiagnostic=false`, `selfAssessments` 13개(`05` §4.1: 진단 모드에서 자기평가를 보내면 `MUTUALLY_EXCLUSIVE`, 자기평가 모드에서 비우면 `ONE_OF_REQUIRED`).
-- `diagnostics` flag가 꺼진 빌드(S1~S2)는 두 카드 없이 자기평가 칩만 보여주고(제목 `onboarding.level.titleSelf`) `runDiagnostic=false`로 보낸다. 이 사용자는 S3 이후 자기평가 3 이상인 분야에 한해 Today에서 진단을 제안받는다(FR-15).
+- **기본 선택 = 자기평가**(`runDiagnostic=false`). seed 진단이 전부 difficulty 3이고 판정이 통과/실패뿐이라(`06` §7.4) 나오는 값이 3 아니면 0이다 — 다섯 단계 자기평가보다 거칠다. **진단에 난이도 사다리가 생기면 기본값을 되돌린다.** 진단을 고르면 `runDiagnostic=true`, `selfAssessments=[]`. 자기평가를 고르면 `runDiagnostic=false`, `selfAssessments` 13개(`05` §4.1: 진단 모드에서 자기평가를 보내면 `MUTUALLY_EXCLUSIVE`, 자기평가 모드에서 비우면 `ONE_OF_REQUIRED`).
+- `diagnostics` flag가 꺼진 빌드(S1~S2)는 두 카드 없이 자기평가 칩만 보여주고(제목 `onboarding.level.titleSelf`) `runDiagnostic=false`로 보낸다. 이 사용자는 S3 이후 자기평가 **1 이상**인 분야에서 Today의 진단 제안을 받는다(FR-15, ADR-058).
 - 진단 문제는 이 단계에서 풀지 않는다. 서버가 제출 응답의 `suggestedDiagnostics`(카테고리당 1문제, 최대 5개, `05` §4.2)로 문제를 정하므로 5단계 이후 SCR-DIAGNOSTICS에서 푼다.
-- 자기평가: 카테고리 순서는 §3.1 `SkillCategory` 표 순서. 선택지는 `ChoiceChip` 5개(0~4), 기본 0. 3 이상을 고른 카테고리가 있으면 칩 아래에 `onboarding.level.diagnosticNote`를 보여준다(S3 이후).
+- 자기평가: 카테고리 순서는 §3.1 `SkillCategory` 표 순서. 선택지는 `ChoiceChip` 5개(0~4), 기본 0. **한 번도 고르지 않은 카테고리가 있으면 칩 아래에 `onboarding.level.unsetNote`로 남은 개수를 알린다** — 손대지 않으면 0으로 나가고, 전부 0이면 계획이 첫날부터 CRITICAL이 된다. 3 이상을 고른 카테고리가 있으면 칩 아래에 `onboarding.level.diagnosticNote`를 보여준다(S3 이후).
 - "프로젝트에 필요한 기술" 펼침: `GET /skills/tree?role=JAVA_BACKEND`의 skill을 카테고리별 검색 목록으로 보여주고 최대 10개 선택.
 - "다음"은 항상 활성이다(두 방식 모두 기본값이 있다). 여기서는 아직 제출하지 않는다.
 
@@ -543,7 +614,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 - 이름 기본값 "주문 시스템"은 **클라이언트가 채운다**(서버는 기본값을 만들지 않는다, `05` §4.1 10단계). 온보딩에서는 이름만 바꿀 수 있다(SP-1). `description`은 고정 문구 `onboarding.project.defaultDescription`을 보내고 `repoUrl`, `stack`은 보내지 않는다(`null`). 나머지는 SCR-PROJECTS에서 고친다.
 - 안내 카드(`ReferenceProjectCard`)는 계획 템플릿 milestone 순서를 요약한 고정 문구다. 사용자가 이름을 바꿔도 그대로 둔다.
 - "건너뛰기" → 대화상자 `onboarding.project.skip.*`(건너뛰면 Today가 프로젝트 과제를 제안하지 않는다는 사실 + 나중에 만들 수 있음) → "건너뛰고 계획 만들기"를 누르면 `sideProject: null`로 바로 제출한다.
-- "계획 만들기" → `POST /onboarding` `{displayName, timezone, dayStartHour, weekdayStudyMinutes, weekendStudyMinutes, experienceProfile, experienceStartDate, learningGoal: {targetRole, checkpointDate, targetCompletionDate, focusSkillCodes}, runDiagnostic, selfAssessments, sideProject: {name, description} 또는 null, useTemplate: true}`(IK, 버튼 로딩, 이전·뒤로가기 비활성). 성공 → `meProvider` 갱신 → `/onboarding/plan`.
+- "계획 만들기" → `POST /onboarding` `{displayName, timezone, dayStartHour, weekdayStudyMinutes, weekendStudyMinutes, learningGoal: {targetRole, targetCompletionDate, focusSkillCodes}, runDiagnostic, selfAssessments, sideProject: {name, description} 또는 null, useTemplate: true}`(IK, 버튼 로딩, 이전·뒤로가기 비활성). 성공 → `meProvider` 갱신 → `/onboarding/plan`.
 - "계획 만들기" 활성 조건: 이름 1~100자(§3.2).
 
 **5단계 — 계획 확인** (`/onboarding/plan`)
@@ -595,20 +666,23 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `onboarding.progress` | {step} / 5 |
 | `onboarding.next` | 다음 |
 | `onboarding.back` | 이전 |
-| `onboarding.goal.title` | 목표를 알려 주세요 |
+| `onboarding.goal.title` | 무엇을, 언제까지 공부할지 정해요 |
+| `onboarding.goal.displayName` | 표시 이름 |
 | `onboarding.goal.role` | 학습 트랙 |
-| `onboarding.goal.profile` | 지금 나에게 가까운 것 |
-| `onboarding.goal.profile.working.desc` | 개발·운영 실무 경험이 있어요 |
-| `onboarding.goal.profile.starter.desc` | 실제 개발 경험이 적어요 |
-| `onboarding.goal.experienceStart` | 개발 시작일 (선택) |
-| `onboarding.goal.completion` | 학습 완료 목표일 |
-| `onboarding.goal.completion.help` | 이 날짜로 남은 시간을 거꾸로 계산해 무엇을 먼저 할지 정해요. |
-| `onboarding.goal.checkpoint` | 중간 점검일 (선택) |
+| 트랙 이름 | 새 키를 두지 않고 §3.1 `TargetRole` 라벨(`enumTargetRole*`)을 그대로 쓴다 — 같은 문구를 두 곳에 두지 않는다 |
+| `onboarding.goal.track.javaBackend.desc` | Spring Boot · JPA · DB를 실무 수준으로 |
+| `onboarding.goal.track.javaBackendStarter.desc` | 개발을 막 시작했다면 여기부터. 필수 항목이 적고 과제가 쉬워요 |
+| `onboarding.goal.track.integrationEngineer.desc` | 기본기 위에 외부 시스템 연동과 배포·운영을 더 다뤄요. 쉽게 만든 판이 아니라 다른 구성이에요 |
+| `onboarding.goal.track.mustCount` | 필수 {count}개 |
+| `onboarding.goal.track.locked` | 트랙은 나중에 바꿀 수 없어요. |
+| `onboarding.goal.targetDate.help` | 이 날짜에서 거꾸로 계산해 하루 분량이 정해져요. 처음이면 3개월쯤이 무난해요. |
+| `onboarding.goal.track.reset` | 트랙을 바꿔서 수준 입력을 다시 받아요. |
+| `onboarding.goal.completion` | 목표일 |
+| `onboarding.goal.completion.help` | 목표일까지 남은 시간으로 무엇을 먼저 할지 정해요. |
 | `onboarding.goal.quick.3m` | 3개월 후 |
 | `onboarding.goal.quick.6m` | 6개월 후 |
+| `onboarding.goal.quick.1y` | 1년 후 |
 | `onboarding.goal.quick.custom` | 직접 선택 |
-| `onboarding.goal.quick.before3m` | 완료일 3개월 전 |
-| `onboarding.goal.quick.none` | 없음 |
 | `onboarding.time.title` | 공부할 수 있는 시간은? |
 | `onboarding.time.weekday` | 평일 하루 |
 | `onboarding.time.weekend` | 주말 하루 |
@@ -640,6 +714,10 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `onboarding.project.skip.cancel` | 프로젝트 만들기 |
 | `onboarding.submit` | 계획 만들기 |
 | `onboarding.plan.title` | 계획을 만들었어요 |
+| `onboarding.plan.next.title` | 앞으로 이렇게 진행돼요 |
+| `onboarding.plan.next.step1` | 매일 Today에서 오늘 할 것 하나를 받아요 |
+| `onboarding.plan.next.step2` | 혼자 해 보고, 막히면 힌트를 한 단계씩 열어요 |
+| `onboarding.plan.next.step3` | 끝낸 것은 1일·1주·1개월 뒤 복습으로 돌아와요 |
 | `onboarding.plan.cards` | 복습 카드 {count}장을 하루 5장씩 나눠 두었어요. |
 | `onboarding.plan.project` | 사이드 프로젝트: {name} |
 | `onboarding.plan.noProject` | 사이드 프로젝트 없이 시작해요. 프로젝트 과제는 제안되지 않아요. |
@@ -655,12 +733,21 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 #### SCR-TODAY
 
-- **목적**: 오늘 가능 시간·컨디션을 받아 main task 1개를 보여주고 시작·완료를 기록한다(FR-07, FR-08, FR-21). 핵심 루프의 출발점이다 — `READ_CODE`는 SCR-READ-CODE로, `PROJECT_TASK`는 사이드 프로젝트 구현과 러버덕으로 이어진다(FR-26, FR-27). **진입**: 로그인 후 기본 화면, 하단 탭 Today, Training·Review·러버덕 종료 후 복귀. **Sprint**: S2 (READ_CODE 카드·러버덕 진입 S3).
+- **목적**: 오늘 가능 시간·컨디션을 받아 main task 1개를 보여주고 시작·완료를 기록한다(FR-07, FR-08, FR-21). 핵심 루프의 출발점이다 — `READ_CODE`는 SCR-READ-CODE로, `PROJECT_TASK`는 사이드 프로젝트 구현과 러버덕으로 이어진다(FR-26, FR-27). `READING`은 **카드 안에서** 읽을 자료를 보여주고 새 탭으로 연다(별도 화면 없음). **진입**: 로그인 후 기본 화면, 하단 탭 Today, Training·Review·러버덕 종료 후 복귀. **Sprint**: S2 (READ_CODE 카드·READING 자료 블록·러버덕 진입 S3).
 - **레이아웃 (생성 전 — `404 TODAY_NOT_GENERATED`)**
 
 ```text
 ┌────────────────────────────────┐
 │ 10월 13일 (화)      진행 현황 > │
+│ ┌ 처음이신가요? ───────────  ✕ ┐│  BL-CLI-49, 닫기 전까지만 (생성 후에도 같은 자리)
+│ │ 매일 여는 곳은 여기 하나예요. ││
+│ │ 1. 시간과 컨디션을 고르면      ││
+│ │    오늘 할 것 하나를 골라 드려요││
+│ │ 2. 혼자 해 보고, 막히면 힌트를 ││
+│ │    한 단계씩 열어요            ││
+│ │ 3. 끝낸 것은 1일·1주·1개월 뒤  ││
+│ │    복습으로 돌아와요           ││
+│ └──────────────────────────────┘│
 │                                │
 │ 오늘 얼마나 할 수 있나요?        │
 │ [15분][30분][45분✓][60분]       │
@@ -685,6 +772,13 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 └────────────────────────────────┘
 ```
 
+- **처음 안내 카드는 생성 전·후 둘 다 맨 위에 둔다.** 계획을 만든 뒤에 사라지면, 계획이 이미 있는 채로 처음 여는 사람(다른 기기에서 열거나, 계획만 먼저 만들어진 경우)은 안내를 한 번도 보지 못한다. 닫으면 이 브라우저에서 다시 뜨지 않는다.
+- **곁가지 구역** (`today.optionalTitle` "천천히 봐도 되는 것" + `today.optionalLead` "오늘 안 해도 괜찮아요."): 실력 확인 카드와 오늘의 팁은 **오늘 해야 할 일이 아니다.** 구분선과 흐린 제목 아래로 묶어 오늘의 핵심과 무게를 다르게 한다 — 같은 카드, 같은 크기로 나오면 처음 쓰는 사람에게 셋이 같은 중요도로 보인다(2026-09-30 실사용에서 확인). 생성 전 레이아웃에서도 같다. 이 구역 안에서는 **채운 버튼·테두리 버튼을 쓰지 않는다** — 진단의 "풀기"도 text 버튼이다.
+- **"지금 할 일" 한 줄** (`today.nextStep`): 오늘의 핵심 카드 **맨 위**에 둔다. 카드에는 제목·설명·왜 오늘·확인 목록·개념 노트 버튼이 함께 있어 처음 쓰는 사람은 무엇을 먼저 눌러야 하는지 알 수 없다. 이 줄은 **지금 할 동작 하나**를 명령문으로 말하고, 과제 종류와 상태로만 정해진다.
+  - `PLANNED`: 과제 종류마다 문구가 다르다 — 개념 노트(`readingKey`가 `LESSON.*`)는 "개념 노트 열기를 누르고 단위를 하나씩", 읽을거리(`DOC.*`)는 "자료 열기로 읽고 3가지에 답하기", CHALLENGE는 "시작을 누르고 먼저 혼자", READ_CODE·PROJECT_TASK·EXPLAIN·REDO도 각각 한 줄.
+  - `IN_PROGRESS`: "다 했으면 완료를, 중간까지만 했으면 여기까지 기록을".
+  - `COMPLETED`: 두지 않는다 — 할 일이 남아 있지 않다.
+
 - **레이아웃 (생성 후 — main `PLANNED`)**
 
 ```text
@@ -701,11 +795,15 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ │ [문제 풀이]  Spring Transaction│
 │ │ 트랜잭션 전파 수정하기        │ │
 │ │ 약 35분 · L2 작은 변형        │ │
+│ │ 왜 중요한가 — 경계를 모르면   │ │  whyItMatters (있을 때만 1줄)
+│ │ 어디서 데이터가 어긋나는지    │ │
+│ │ 설명할 수 없다.               │ │
 │ │                              │ │
 │ │ 왜 오늘?                      │ │
 │ │ • Spring/JPA milestone 핵심 항목│
 │ │ • 최근 복습에서 기억이 흔들림  │ │
 │ │ • 현재 프로젝트에 필요         │ │
+│ │ ▸ 시작 전 확인 3가지           │ │  checklist.before (접힘)
 │ │ ┌──────────────────────────┐ │ │
 │ │ │          시작            │ │ │
 │ │ └──────────────────────────┘ │ │
@@ -714,11 +812,32 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ ┌────────────────────────────┐ │  REVIEW task가 있을 때
 │ │ 복습 6장 · 약 9분     [복습] │ │
 │ └────────────────────────────┘ │
+│ ┌────────────────────────────┐ │  오늘의 팁 (S3, tips flag)
+│ │ 오늘의 팁 · 약 3분            │ │
+│ │ 로그 레벨은 언제 무엇을 쓰나  │ │  title
+│ │ 장애가 났는데 로그에는 INFO   │ │  symptom 2줄
+│ │ 한 줄만 남아 있고…            │ │
+│ │                    자세히 >  │ │
+│ └────────────────────────────┘ │
+│ ┌────────────────────────────┐ │  tipExperiment가 있을 때
+│ │ 직접 해 보기 · 약 25분         │ │
+│ │ 로그 레벨은 언제 무엇을 쓰나  │ │
+│ │ 레벨을 한 단계 올리고 같은…   │ │
+│ │                    자세히 >  │ │
+│ └────────────────────────────┘ │
 ├────────────────────────────────┤
 │  Today   Review   Plan   More  │
 └────────────────────────────────┘
 ```
 
+- **`whyItMatters` 줄** (S3): main 카드의 예상 시간 아래 한 줄이다. `MainTaskView.whyItMatters`(`05` §8.1)를 그대로 쓴다 — 서버가 응답을 만들 때 기술 트리 콘텐츠에서 읽은 값이므로 클라이언트가 조합하거나 다듬지 않는다. 라벨은 `today.whyItMatters`이고 최대 2줄까지 보인 뒤 말줄임한다. `null`(값이 없는 skill, skill 없는 과제)이면 줄 전체를 숨긴다. **"왜 오늘?"과 다르다** — "왜 오늘?"은 오늘 이 과제를 고른 이유(`reasons`)이고, 이 줄은 **그 기술을 왜 하는지**다. 두 영역을 나란히 두고 각각 제목을 붙인다(A-3).
+- **확인 목록 (S3)**: `MainTaskView.checklist`(`05` §8.1, 콘텐츠 `19` §3.11)가 있을 때만 보인다.
+  - **시작 전**: `PLANNED` 카드에서 "시작" 위에 접힘 줄 `today.checklist.before`. 펼치면 `before[]` 3~5개를 글머리표로 보여준다. `IN_PROGRESS`에서도 같은 자리에 접힌 채로 남는다(하던 중에 다시 볼 수 있다).
+  - **끝내기 전**: 완료 시트 맨 위에 `today.checklist.after`와 `after[]`.
+  - **체크박스가 아니라 읽는 목록이다.** 개별 항목의 체크 상태를 서버에 보내지도, 기기에 저장하지도 않는다 — 확인 목록은 저장하지 않는 콘텐츠다(`05` §8.1). 완료를 막지도 않는다.
+  - `checklist = null`이면 두 영역을 모두 숨긴다. `earlierMainTasks` 접힘 목록에는 보이지 않는다.
+- **오늘의 팁 카드 (S3, `tips` flag)**: 복습 줄 아래에 한 장 둔다. 제목(`title`) + 증상(`symptom`) **2줄 말줄임** + "자세히"(→ `/tips/{tipKey}?from=today`)이고, 머리줄은 `today.tip.title` + `약 {estimatedMinutes}`이다. 카드 전체가 하나의 터치 대상이고(A-1) "자세히"는 그 안의 보조 표시다. 이미 고른 값이 있으면(`feedback ≠ null`) 머리줄 오른쪽에 그 `TipFeedback` 라벨을 텍스트로 붙인다. 하루에 한 개이고 같은 날 다시 열어도 같은 팁이다(`06` §5.12 TIP-3). **계획을 만들기 전(생성 전 레이아웃)에는 보이지 않는다** — 팁 선택이 오늘 main task의 기술을 먼저 보기 때문이다(`06` §5.12 묶음 1).
+- **"직접 해 보기" 줄 (S3)**: `TodayView.tipExperiment`가 있으면 팁 카드 아래에 한 줄 둔다(`today.tipExperiment.title` + `약 {estimatedMinutes}` + 팁 제목 + `experiment` 1줄 말줄임 + "자세히" → 같은 팁 상세). 전에 "직접 해 볼래요"를 고른 팁이 다음 날부터 올라오는 자리다(`06` §5.12 TIP-6). **과제가 아니다** — 시작·완료 버튼이 없고 계획·시간 배분에도 들어가지 않는다. `null`이면 숨긴다.
 - **main 카드 — `READ_CODE`** (예: reading `READ.PETCLINIC.CONTROLLER_SLICE.001`)
 
 ```text
@@ -746,6 +865,77 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
   - 제목·예상 시간·설명은 `MainTaskView`의 `title`, `estimatedMinutes`, `description`(서버가 `06` §5.3 템플릿으로 만든 값)을 그대로 쓴다. 파일·줄 범위를 클라이언트가 다시 조합하지 않는다.
   - description은 reading의 `question` + "읽고 나서 러버덕으로 설명하면 완료입니다."(`06` §5.3)이다. 카드에서는 2줄로 접고 펼쳐 볼 수 있다. 그 아래 보조 줄 `today.readCode.local`로 코드는 사용자 컴퓨터에서 읽는다는 것을 알린다(서버는 코드를 가져오지 않는다).
 
+- **main 카드 — `READING`** (개념 읽기, S3. `06` §5.3, 콘텐츠 `19` §3.13)
+
+```text
+│ ┌────────────────────────────┐ │
+│ │ [개념 읽기]  Git 협업          │ │
+│ │ Git 협업 개념 읽기 —          │ │  title (06 §5.3 템플릿)
+│ │ Pro Git — 3.2 Git Branching, │ │
+│ │ Basic Branching and Merging  │ │
+│ │ 약 25분                        │ │
+│ │ 브랜치를 복사본이 아니라 커밋을 │ │  description 2줄 + 펼치기
+│ │ 가리키는 이름으로 이해하게…  ▾ │ │  (whyRead + 완료 안내)
+│ │                              │ │
+│ │ 자료                          │ │  today.reading.material
+│ │ Pro Git — 3.2 Git Branching, │ │  concept.title
+│ │ Basic Branching and Merging  │ │
+│ │ Git · Pro Git 2nd Edition     │ │  publisher · versionScope
+│ │ ┌──────────────────────────┐ │ │
+│ │ │      자료 열기  ↗         │ │ │  → concept.url (새 탭)
+│ │ └──────────────────────────┘ │ │
+│ │ ▸ 읽고 답할 3가지             │ │  today.reading.checkPoints (접힘)
+│ │                              │ │
+│ │ 왜 오늘?                      │ │
+│ │ • 기반 다지기 milestone 핵심 항목│
+│ │ ┌──────────────────────────┐ │ │
+│ │ │          시작            │ │ │
+│ │ └──────────────────────────┘ │ │
+│ │         오늘은 건너뛰기       │ │
+│ └────────────────────────────┘ │
+```
+
+  - **이 카드가 푸는 문제**: 전에는 `READING` 카드에 제목과 "공식 문서를 읽고 핵심 3가지를 스스로 적어 보세요"만 있어서 **무엇을 읽어야 하는지 알 수 없었다.** 자료 블록이 그 자리를 채운다.
+  - **데이터**: `MainTaskView.readingKey`가 있으면 `GET /readings/{readingKey}`(`05` §19.7)로 `kind = CONCEPT` 응답을 받아 `concept`을 쓴다. `READ_CODE`가 같은 endpoint를 쓰는 것과 같은 방식이고 **별도 화면을 만들지 않는다** — 자료 블록은 Today 카드 안에 있다. 조회에 실패하면 자료 블록만 숨기고 과제는 그대로 보인다(제목·설명은 이미 `MainTaskView`에 있다).
+  - **자료 블록**: 머리줄 `today.reading.material` + `concept.title`(최대 3줄) + 보조 줄 `{concept.publisher} · {concept.versionScope}`. 제목은 문서 원문 제목이라 번역하거나 줄이지 않는다.
+  - **"자료 열기"**(`today.reading.open`): `concept.url`을 **새 탭·외부 브라우저**로 연다(앱 안 WebView로 감싸지 않는다 — 공식 문서는 그 사이트에서 읽는 것이 맞고, 서버도 앱도 그 URL을 대신 가져오지 않는다). 카드 안의 secondary 버튼이며 한 화면 primary 1개 규칙(U-1)을 지킨다 — primary는 "시작"이다.
+  - **"읽고 답할 3가지"**(`today.reading.checkPoints`): `concept.checkPoints` 3개를 글머리표로 보여 주는 접힘 줄이다. **체크박스가 아니라 읽는 목록**이고 서버에 답을 보내지 않는다(확인 목록과 같은 취급). `IN_PROGRESS`에서도 접힌 채로 남는다.
+  - **`readingKey`가 `null`일 때**(그 skill에 개념 읽기가 없다): 자료 블록과 "자료 열기", "읽고 답할 3가지"를 **모두 숨긴다.** 카드는 전과 똑같이 제목 + `skill.description` + "공식 문서를 읽고 핵심 3가지를 스스로 적어 보세요"만 보인다(회귀 없음).
+  - **완료 조건이 없다.** `READ_CODE`와 달리 러버덕 세션 없이도 "완료"를 누를 수 있다. `IN_PROGRESS`에서 보조 버튼 "러버덕으로 설명하기"는 그대로 둔다(권장이지 조건이 아니다).
+  - `verifiedAt`은 카드에 보이지 않는다. 링크가 언제 확인됐는지는 콘텐츠 점검용 값이고 사용자 판단에 쓰이지 않는다(`19` §8.5).
+
+- **main 카드 — `REDO`** (재현 과제, S4. FR-28, `06` §5.10)
+
+```text
+│ ┌────────────────────────────┐ │
+│ │ [AI 없이 재현] Spring Transaction│
+│ │ 트랜잭션 전파 수정하기        │ │  "{원본 제목} 혼자 다시 만들기"
+│ │ 혼자 다시 만들기              │ │
+│ │ 약 35분 · AI 도움 없이         │ │
+│ │ 4일 전에 한 과제입니다. 이번에는│ │
+│ │ AI 도움 없이 처음부터 혼자 다시 │ │
+│ │ 만들어 보세요. 막히면 기록해   │ │
+│ │ 두고, 끝나고 혼자 해냈는지     │ │
+│ │ 답해 주세요.                  │ │
+│ │ 🔒 이 과제를 하는 동안 이 문제의│ │  today.redo.locked
+│ │ 힌트와 러버덕은 잠겨 있어요.   │ │
+│ │                              │ │
+│ │ 왜 오늘?                      │ │
+│ │ • 4일 전에 한 것을 AI 없이 혼자 │ │  REDO_WITHOUT_AI
+│ │   다시 만들어 확인합니다       │ │
+│ │ ┌──────────────────────────┐ │ │
+│ │ │          시작            │ │ │
+│ │ └──────────────────────────┘ │ │
+│ │       원본 과제 보기          │ │
+│ │       오늘은 건너뛰기         │ │
+│ └────────────────────────────┘ │
+```
+
+  - 제목·설명·예상 시간은 `MainTaskView`를 그대로 쓴다(`06` §5.3 템플릿). 배지는 `taskType` 라벨 `task.type.REDO`("AI 없이 재현")다.
+  - **잠금 줄 `today.redo.locked`는 카드에 항상 보인다**(`PLANNED`·`IN_PROGRESS`). 왜 잠겼는지를 사용자가 다른 화면에서 처음 알게 되지 않도록 여기서 먼저 알린다(RE-5).
+  - 보조 "원본 과제 보기": `redoSourceTaskType`이 `CHALLENGE`면 `/training/challenges/{원본 challengeId}`(원본 task의 `challengeId`는 `GET /today`의 `earlierMainTasks`나 과거 기록에 없을 수 있으므로, 없으면 이 버튼을 숨긴다), `PROJECT_TASK`면 `/projects/{sideProjectId}`. 원본을 **다시 풀라는 뜻이 아니라** 무엇을 만들었는지 확인하는 용도다.
+  - `IN_PROGRESS`에서는 보조 버튼에 "러버덕으로 설명하기"를 **두지 않는다**(잠겨 있다). primary는 "완료"다.
+
 - **main 카드 — `PROJECT_TASK`** (SP-2: 제목에 사이드 프로젝트 이름)
 
 ```text
@@ -765,14 +955,15 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 ```
 
   - `IN_PROGRESS`가 되면 보조 버튼 "러버덕으로 설명하기"(`today.explainWithDuck`)가 생긴다 → `/rubber-duck/new?targetType=PROJECT_WORK&targetId={sideProjectId}&skillCode={skillCode}&taskId={taskId}`. 완료 조건이 아니라 권장이다. `sideProjectId`가 `null`(프로젝트 삭제)이면 이 버튼을 숨긴다.
+  - 보조 버튼 "이 프로젝트 기록"(`today.projectNotes`) → `/projects/{sideProjectId}`(SCR-PROJECT-DETAIL, S3). 구현하면서 내린 결정과 겪은 장애를 그 자리에서 남기게 한다(FR-29). `sideProjectId`가 `null`이면 숨긴다.
   - `EXPLAIN`·`READING` task도 `IN_PROGRESS`에서 같은 보조 버튼을 두고 `targetType=CONCEPT&conceptKey={skillCode}&skillCode={skillCode}`로 연다.
 
 - **main task 상태별 카드 하단**
 
 | main 상태 | 표시 | primary | 보조 |
 |---|---|---|---|
-| `PLANNED` | 이유 목록 | "시작" | "오늘은 건너뛰기" |
-| `IN_PROGRESS` | "진행 중 · {n}분째"(세션 `startedAt` 기준 1분마다 갱신) | "완료". **`READ_CODE`는 이 task를 대상으로 한 러버덕이 `COMPLETED`로 확인될 때만 "완료"**, 아니면 primary는 "코드 읽기로 돌아가기"(RC-1) | "여기까지 기록", CHALLENGE면 "문제로 돌아가기", COACH_REVIEW면 "리뷰로 돌아가기", PROJECT_TASK·EXPLAIN·READING이면 "러버덕으로 설명하기" |
+| `PLANNED` | 이유 목록 (REDO면 잠금 줄 `today.redo.locked` 포함) | "시작" | "오늘은 건너뛰기", REDO면 "원본 과제 보기"도 |
+| `IN_PROGRESS` | "진행 중 · {n}분째"(세션 `startedAt` 기준 1분마다 갱신) | "완료". **`READ_CODE`는 이 task를 대상으로 한 러버덕이 `COMPLETED`로 확인될 때만 "완료"**, 아니면 primary는 "코드 읽기로 돌아가기"(RC-1) | "여기까지 기록", CHALLENGE면 "문제로 돌아가기", COACH_REVIEW면 "리뷰로 돌아가기", PROJECT_TASK·EXPLAIN·READING이면 "러버덕으로 설명하기", **REDO면 러버덕 버튼을 두지 않는다**(RE-5) |
 | `COMPLETED` | 체크 아이콘 + "오늘의 핵심을 마쳤어요" + 기록한 시간 | 없음 | "하나 더 하기" |
 | `SKIPPED` (active main 없음) | "오늘 과제를 건너뛰었어요" | "다시 만들기" | "되돌리기" (같은 날 active main이 없을 때만) |
 | `DEFERRED` (active main 없음) | "내일 이어서 할 수 있어요" | "다시 만들기" | — |
@@ -783,52 +974,94 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 ```text
 ┌────────────────────────────────┐
 │ 수고했어요                      │
+│ 끝내기 전 확인                   │  checklist.after 가 있을 때
+│ • 오류 응답 형식을 맞췄나        │
+│ • 같은 요청을 두 번 보내도 결과가 │
+│   같은가                        │
+│ • 목록 응답에 페이지 기준을 넣었나│
 │ 실제로 공부한 시간               │
 │   [ − ]     35 분     [ + ]     │
 │ 한 줄 회고 (선택)                │
 │ ┌────────────────────────────┐ │
 │ │ 오늘 배운 것, 막힌 것…        │ │
 │ └────────────────────────────┘ │
+│ 지금 이 개념을 설명할 수 있나요?  │  "완료"로 열었을 때
+│ [네, 설명할 수 있어요] [아직 모르겠어요]│
 │ ┌────────────────────────────┐ │
-│ │         완료 기록            │ │
+│ │         완료 기록            │ │  "아직"이면 "내일 이어서 하기"
 │ └────────────────────────────┘ │
 └────────────────────────────────┘
 ```
 
   - 시간 기본값 = 세션 시작부터 경과 분(반올림, 최소 1). 최댓값 = `min(720, ⌈경과 분 × 1.5⌉)`(`05-api-spec.md` §9.2). `−`/`+`는 5분 단위.
   - "여기까지 기록"도 같은 시트를 제목 `today.partial.title`로 연다. 0분으로 기록하면 세션을 abandon한다.
+  - **`READ_CODE` 읽기 평가 (S3)**: 완료할 task가 `READ_CODE`이면 "완료 기록" 시트의 회고 아래에 `today.readCode.feedback.title`과 칩 3개(`ReadingFeedback` 라벨: 도움 됐어요 · 어려웠어요 · 지루했어요)를 둔다. **선택 사항이다** — 아무것도 고르지 않아도 되고, 고른 칩을 다시 누르면 선택이 풀린다. 고른 값은 완료 `PATCH /today/tasks/{taskId}` `{status: COMPLETED, readingFeedback, version}`에 넣는다(`05` §8.4). 고르지 않으면 `readingFeedback`을 보내지 않는다. "여기까지 기록"(`DEFERRED`) 시트와 다른 task 유형에는 칩이 없다. 평가는 계획·레벨에 영향이 없고 저장소·단위를 고르는 소스 점검(`19` §8.5)에만 쓰인다.
+
+```text
+│ 이 코드 읽기는 어땠나요? (선택)   │
+│ [도움 됐어요] [어려웠어요] [지루했어요]│
+```
+
+  - **`REDO` 재현 결과 (S4)**: 완료할 task가 `REDO`이면 "완료 기록" 시트의 회고 **위**에 질문 하나를 둔다 — `today.redo.question`("AI 도움 없이 끝냈나요?")과 버튼 둘(`today.redo.answer.yes` "네, 혼자 했어요" / `today.redo.answer.no` "아니요, 도움을 받았어요"). **필수다** — 고르지 않으면 "완료 기록"이 비활성이다(`05` §8.4 `VALUE_REQUIRED`). 고른 값은 `PATCH /today/tasks/{taskId}` `{status: COMPLETED, redoWithoutAi, version}`에 넣는다.
+  - 질문 아래에 `today.redo.answer.help`("솔직하게 고르는 게 도움이 돼요. '아니요'를 고르면 벌점이 아니라 복습 카드가 생겨요.")를 둔다. "아니요"로 완료하면 결과 토스트 `today.redo.reviewCreated`를 보이고 "복습하러 가기"(→ `/review`)를 함께 준다.
+  - "여기까지 기록"(`DEFERRED`) 시트에는 이 질문이 없다(아직 해 보지 않은 것이다). `SKIPPED`도 마찬가지다.
+  - **알게 되었나 (S3)**: "완료"로 연 시트에는 유형과 무관하게 질문 하나를 더 둔다 — `today.complete.understand.title`("지금 이 개념을 설명할 수 있나요?")과 칩 둘(`…understand.yes` "네, 설명할 수 있어요" / `…understand.no` "아직 모르겠어요"). **필수다** — 고르기 전에는 보내는 버튼이 비활성이다. 기본값을 "네"로 두면 모른 채로 완료되는 일이 그대로 남는다.
+    - **시간을 썼다는 것과 알게 되었다는 것은 다르다.** 지금까지 완료는 "시간을 썼다"만 뜻했고, 답을 모르는 채 완료하면 그 개념은 다시 나오지 않았다.
+    - "아직 모르겠어요"를 고르면 **세션은 실제 시간 그대로 기록**하고(쓴 시간은 사실이다) 과제는 `COMPLETED`가 아니라 **`DEFERRED`**가 된다. 다음 날 같은 skill이 `CONTINUATION`으로 이어진다(`06` §5.4 3a). 보내는 버튼은 `today.complete.submit.notYet`("내일 이어서 하기")으로 바뀌고, 칩 아래에 무슨 일이 생기는지 한 줄(`today.complete.notYet.note`)을 둔다.
+    - `DEFERRED`로 가므로 `READ_CODE` 읽기 평가와 `REDO` 재현 결과는 함께 보내지 않는다(둘 다 `COMPLETED` 전용이다).
+    - **복습 카드는 아직 만들지 않는다** — 자동 등록은 R-3(1·7·30일 사다리)과 함께 정한다.
+
+```text
+│ AI 도움 없이 끝냈나요? *          │
+│ [네, 혼자 했어요][아니요, 도움 받았어요]│
+│ 솔직하게 고르는 게 도움이 돼요.    │
+```
+
+  - **설명 기록 (S3)**: 완료할 task가 `EXPLAIN` 또는 `READ_CODE`이면 회고 아래에 체크 `today.explainedToPerson`("다른 사람에게 설명했어요")과, 켰을 때만 펼쳐지는 한 줄 메모(`today.explainedNote`, 0~500자, §3.2)를 둔다. **선택 사항이다** — 켜지 않으면 두 값을 모두 보내지 않는다. 켠 채로 메모를 비워도 된다(`explainedToPerson`만 보낸다). 고른 값은 `PATCH /today/tasks/{taskId}` `{status: COMPLETED, explainedToPerson, explainedNote, version}`에 넣는다(`05` §8.4). `explainedToPerson`을 켜지 않고 메모만 보내면 서버가 400을 주므로 클라이언트가 먼저 막는다.
+  - 체크 아래에 `today.explainedToPerson.help`를 둔다 — `EXPLAIN` 과제를 이렇게 완료하면 그 기술의 **설명하기 학습 단계**가 채워진다(`06` §5.11, SCR-SKILL-DETAIL). 사람에게 말한 적이 없으면 켜지 않는 것이 맞고, 러버덕으로 설명한 것도 같은 단계를 채우므로 둘 중 하나면 된다.
+  - 메모는 저장 전에 마스킹한다(`projectNote.maskingNote`와 같은 안내 `today.explainedNote.maskingNote`). `422 SECRET_DETECTED_BLOCKED`면 메모 아래 인라인 `projects.secretBlocked`.
+  - "여기까지 기록"(`DEFERRED`) 시트와 다른 task 유형에는 이 영역이 없다.
+
+```text
+│ [ ] 다른 사람에게 설명했어요       │  EXPLAIN · READ_CODE
+│ ┌────────────────────────────┐ │  켰을 때만
+│ │ 누구에게, 어디서 막혔는지     │ │
+│ └────────────────────────────┘ │
+│ 비밀값은 저장 전에 가려요.  0 / 500│
+```
 
 - **진행 중 러버덕 줄** (`ActiveRubberDuckTile`, S3): 기기에 저장한 진행 중 세션(`localStorage` `devpilot.rubberduck.active.<externalAuthId>` = `{sessionId, taskId}`, try/catch)이 있고 `GET /rubber-duck/{sessionId}`가 `IN_PROGRESS`이면 복습 줄 위에 `today.duck.continue` + "이어서 설명하기"(→ `/rubber-duck/{sessionId}`)를 한 줄로 보인다. `IN_PROGRESS`가 아니거나 404면 저장값을 지우고 숨긴다. 세션 목록 API가 없어서 다른 기기에서 시작한 세션은 보이지 않는다(`05` §9.10).
-- **`READ_CODE` 완료 확인**: 서버가 한다. `CODE_READING` 러버덕 세션이 `COMPLETED`가 되면 서버가 같은 트랜잭션에서 그 `READ_CODE` 과제를 `COMPLETED`로 바꾼다(`05` §9.8 7번, RC-1). 클라이언트는 러버덕 정리 화면에서 Today로 돌아오면 `GET /today`를 다시 읽어 과제 상태로 "완료"를 보인다(기기와 무관). 과제가 아직 `PLANNED`·`IN_PROGRESS`이면 "코드 읽기로 돌아가기"와 "설명하기"를 보인다. 읽기만 하고 완료 버튼을 누르면 서버가 `409 INVALID_STATE_TRANSITION`을 주고 토스트 `today.readCode.needDuck`.
-- **컴포넌트**: `MinutesChips`, `EnergySegmented`, `MainTaskCard`(유형별 변형: `READ_CODE`·`PROJECT_TASK` 위 와이어프레임), `ReasonList`, `RiskBadge`(§6.1), `ComebackBanner`, `ActiveRubberDuckTile`, `ReviewTaskTile`, `DiagnosticSuggestionCard`, `CompleteSessionSheet`, `RegenerateSheet`(시간·컨디션 재입력).
+- **`READ_CODE` 완료 확인**: 완료 조건(RC-1)은 서버가 검사한다 — 그 task를 대상으로 한 `COMPLETED` 러버덕 세션이 있어야 `PATCH /today/tasks/{taskId}` `{status: COMPLETED}`가 성공한다(`05` §8.4). 러버덕 정리는 과제 상태를 바꾸지 않는다(`05` §9.8). 클라이언트는 러버덕 정리 화면의 "Today로 돌아가 완료하기"(`/today?complete={taskId}`)로 돌아오면 완료 시트(읽기 평가 칩 포함)를 연다. 그 밖의 진입에서는 기기에 저장한 기록(`devpilot.rubberduck.task.<taskId>`)의 세션이 `COMPLETED`이면 "완료"를, 아니면 "코드 읽기로 돌아가기"와 "설명하기"를 보인다. 러버덕 없이 완료를 누르면 서버가 `409 INVALID_STATE_TRANSITION`을 주고 토스트 `today.readCode.needDuck`.
+- **컴포넌트**: `MinutesChips`, `EnergySegmented`, `MainTaskCard`(유형별 변형: `READ_CODE`·`READING`·`PROJECT_TASK`·`REDO` 위 와이어프레임), `ConceptReadingSection`(`READING` 자료 블록 + "자료 열기" + 읽고 답할 3가지), `WhyItMattersLine`, `ChecklistSection`(before 접힘 / after 목록), `ReasonList`, `RiskBadge`(§6.1), `ComebackBanner`, `ActiveRubberDuckTile`, `ReviewTaskTile`, `DailyTipCard`, `TipExperimentTile`, `DiagnosticSuggestionCard`, `CompleteSessionSheet`(`ExplainedToPersonField` 포함), `RegenerateSheet`(시간·컨디션 재입력).
 - **데이터**
 
 | 시점 | API |
 |---|---|
 | 진입, 탭 재선택, 화면 복귀(visibility) | `GET /today` (404 `TODAY_NOT_GENERATED` → 생성 전 레이아웃) |
-| 생성 전 레이아웃 표시 시 (S3) | `GET /diagnostics/suggestions` (실패해도 카드만 숨김) |
+| **생성 전·생성 후 레이아웃 모두 (S3)** | `GET /diagnostics/suggestions` (실패해도 카드만 숨김). **카드는 남은 진단이 있을 때만 그려진다** — 생성 전에만 두면 계획을 한 번 만든 사용자는 진단에 도달할 수 없다(다른 입구인 온보딩 5단계·진단 결과 화면도 한 번 닫히면 열리지 않는다). 항상 열려 있는 입구는 SCR-MORE의 "지금 수준 확인"이다 |
 | 진입 시, 기기에 진행 중 러버덕·READ_CODE 완료 기록이 있을 때 (S3) | `GET /rubber-duck/{sessionId}` (실패하면 해당 줄·버튼만 기본 상태) |
+| 진입·화면 복귀, 계획이 있을 때 (S3, `tips` flag) | `GET /tips/today` (404 `RESOURCE_NOT_FOUND` = 더 보여 줄 팁이 없음 → 카드만 숨김. 그 밖의 실패도 카드만 숨기고 화면 오류로 만들지 않는다) |
 | 진입 시, "시작" 직전 | `GET /learning-sessions?from={planDate}&to={planDate}` → `IN_PROGRESS` 세션(있으면 1개)과 그 `learningTaskId` 확인 |
 | "오늘 계획 만들기" / 재생성 | `POST /today/generate` `{availableMinutes, energyLevel, force}` |
 | "시작" | `PATCH /today/tasks/{taskId}` `{status: IN_PROGRESS, version}` → 진행 중 세션이 없거나 그 `learningTaskId`가 이 task가 아니면 `POST /learning-sessions` `{learningTaskId}`(서버가 기존 세션을 ABANDONED로 닫음) |
 | "오늘은 건너뛰기" | `PATCH /today/tasks/{taskId}` `{status: SKIPPED, version}` |
 | "되돌리기" | `PATCH /today/tasks/{taskId}` `{status: PLANNED, version}` |
-| "완료 기록" | `POST /learning-sessions/{sessionId}/complete` `{actualMinutes, selfReflection}` → `PATCH /today/tasks/{taskId}` `{status: COMPLETED, version}` |
+| "완료 기록" | `POST /learning-sessions/{sessionId}/complete` `{actualMinutes, selfReflection}` → `PATCH /today/tasks/{taskId}` `{status: COMPLETED, version}` (`READ_CODE`이고 평가를 골랐으면 `readingFeedback`, `EXPLAIN`·`READ_CODE`이고 체크를 켰으면 `explainedToPerson`·`explainedNote`, `REDO`면 `redoWithoutAi` 추가) |
 | "여기까지 기록" (> 0분) | `POST /learning-sessions/{sessionId}/complete` → `PATCH … {status: DEFERRED}` |
 | "여기까지 기록" (0분) | `POST /learning-sessions/{sessionId}/abandon` → `PATCH … {status: DEFERRED}` |
 
 - **상태**
-  - Loading: 날짜 줄 + main 카드 skeleton 1개 + 복습 줄 skeleton.
-  - Empty: 해당 없음(생성 전 레이아웃이 empty 역할).
-  - Error: 조회는 공통. `404 PLAN_NOT_FOUND`(생성 시) → 전체 영역 `today.noPlan` + "계획 만들기" 버튼(`POST /plans` → 성공 시 재생성).
-  - AI unavailable·budget: 표시하지 않는다(Today는 AI를 쓰지 않음).
+  - Loading: 날짜 줄 + main 카드 skeleton 1개 + 복습 줄 skeleton. 팁 카드는 별도 skeleton 1장(main과 따로 로드한다).
+  - Empty: 해당 없음(생성 전 레이아웃이 empty 역할). 오늘의 팁이 없으면(404) 카드 자리를 비우고 `EmptyState`를 두지 않는다 — 팁은 보조 정보라 빈 상태를 만들지 않는다.
+  - Error: 조회는 공통. `404 PLAN_NOT_FOUND`(생성 시) → 전체 영역 `today.noPlan` + "계획 만들기" 버튼(`POST /plans` → 성공 시 재생성). 팁 조회 실패는 카드만 숨긴다(재시도 버튼도 두지 않는다).
+  - AI unavailable·budget: 표시하지 않는다(Today는 AI를 쓰지 않음 — `GET /today`도 `GET /tips/today`도 AI를 호출하지 않는다, `05` §8·§20).
   - Async: 해당 없음.
   - Offline: 공통. 메모리의 today 데이터는 보이지만 모든 버튼 비활성.
 - **행동·검증**
   - 시간 기본값: 오늘이 토·일이면 `weekendStudyMinutes`, 아니면 `weekdayStudyMinutes`(`/me`). 0이면 30. 칩에 없는 값이면 "직접 입력" 칩에 값을 표시한다.
   - "직접 입력": 숫자 대화상자 5~720.
   - 날짜 헤더는 `GET /today.planDate`, 생성 전에는 `GET /me.today`를 쓴다.
-  - `earlierMainTasks`(같은 날 먼저 끝냈거나 미룬 main)가 있으면 main 카드 아래 `today.earlier` 접힘 목록(제목·상태 라벨)으로 보여준다.
+  - `earlierMainTasks`(같은 날의 다른 학습 과제 — 먼저 끝냈거나 미룬 main과 §5.6의 추가 과제)가 있으면 main 카드 아래 `today.earlier` 접힘 목록(제목·상태 라벨·예상 시간)으로 보여준다. **기본은 접힘이고 개수 배지·진행률·퍼센트를 붙이지 않는다** — 오늘 시간이 남을 때 이어서 할 수 있는 것이지 할당량이 아니다(U-3). `PLANNED`인 항목은 눌러 바로 시작할 수 있다.
   - `aiStatus`가 `DISABLED`/`BALANCE_EXHAUSTED`면 서버가 CHALLENGE task를 제안하지 않는다(`06` §5.3). 이미 만들어진 CHALLENGE task는 시작할 수 있지만 문제 화면에서 제출이 막힌다.
   - main `PLANNED`에서 재생성: 확인 없이 `force=false`.
   - main `IN_PROGRESS`에서 "변경"(재생성): 대화상자 `today.regenerate.startedDialog` → 확인 시 `force=true`.
@@ -841,11 +1074,22 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
   - `reviewTask = null`(due 없음, 또는 가능 시간이 짧아 `reviewMinutes = 0` — 예: 5분)이면 복습 줄을 숨긴다. due 카드가 있으면 Review 탭에서는 그대로 복습할 수 있다.
   - `PATCH`가 `409 CONCURRENT_MODIFICATION`이면 `GET /today`로 새 `version`을 받아 같은 요청을 1회 재시도한다. 상태가 이미 목표 상태면 성공으로 처리한다.
   - `?complete=<taskId>`로 진입하면 해당 task가 `IN_PROGRESS`일 때 완료 시트를 바로 연다.
-  - 스크린 리더: main 카드 전체를 하나의 semantics 그룹으로 읽는다("문제 풀이, 트랜잭션 전파 수정하기, 약 35분, 이유 3개").
+  - 오늘의 팁 카드는 **읽기만 한다** — 여기서는 "알고 있었어요 / 새로 알았어요 / 직접 해 볼래요"를 고를 수 없고 SCR-TIP-DETAIL에서 고른다. 상세에서 고르고 돌아오면 `GET /tips/today`를 다시 읽어 라벨을 갱신한다.
+  - 확인 목록·`whyItMatters`는 화면에서 편집할 수 없다. 콘텐츠가 바뀌면 다음 조회부터 새 문구가 보인다(`05` §8.1).
+  - 스크린 리더: main 카드 전체를 하나의 semantics 그룹으로 읽는다("문제 풀이, 트랜잭션 전파 수정하기, 약 35분, 왜 중요한가 있음, 이유 3개"). 확인 목록은 펼쳤을 때 "시작 전 확인, 3개 항목"으로 읽고 각 항목을 목록으로 읽는다. 팁 카드는 "오늘의 팁, {제목}, 약 {n}분"으로 읽는다.
+- **처음 안내 카드** (BL-CLI-49): 맨 위에 `today.firstRun.*` 카드를 두고 **세 걸음의 순서**를 말한다. 어디에 무엇이 있는지가 아니라 **무엇부터 하는지**를 말하는 자리다 — 목적지 이름만으로는 처음 쓰는 사람이 시작점을 찾지 못한다.
+  - `✕`로 닫으면 `KeyValueStore`에 `devpilot.today.firstRun.dismissed.{externalAuthId}` = `"1"`을 쓰고 다시 보이지 않는다. 저장이 막힌 브라우저(사생활 보호 모드)에서는 매번 보이지만 화면은 그대로 동작한다(§8.3).
+  - **생성 전 레이아웃에서만** 보인다. 오늘 계획을 이미 만든 뒤에는 안내가 아니라 방해다.
 - **문구**
 
 | key | 문구 |
 |---|---|
+| `today.firstRun.title` | 처음이신가요? |
+| `today.firstRun.lead` | 매일 여는 곳은 여기 하나예요. |
+| `today.firstRun.step1` | 시간과 컨디션을 고르면 오늘 할 것 하나를 골라 드려요 |
+| `today.firstRun.step2` | 혼자 해 보고, 막히면 힌트를 한 단계씩 열어요 |
+| `today.firstRun.step3` | 끝낸 것은 1일·1주·1개월 뒤 복습으로 돌아와요 |
+| `today.firstRun.dismiss` | 닫기 |
 | `today.dashboardLink` | 진행 현황 |
 | `today.minutes.question` | 오늘 얼마나 할 수 있나요? |
 | `today.minutes.custom` | 직접 입력 |
@@ -856,7 +1100,13 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `today.risk.label` | 마감 위험 |
 | `today.main.title` | 오늘의 핵심 |
 | `today.main.estimated` | 약 {minutes} |
+| `today.whyItMatters` | 왜 중요한가 |
 | `today.reasons.title` | 왜 오늘? |
+| `today.checklist.before` | 시작 전 확인 {count}가지 |
+| `today.checklist.after` | 끝내기 전 확인 |
+| `today.tip.title` | 오늘의 팁 |
+| `today.tip.more` | 자세히 |
+| `today.tipExperiment.title` | 직접 해 보기 |
 | `today.start.button` | 시작 |
 | `today.skip.button` | 오늘은 건너뛰기 |
 | `today.skip.done` | 건너뛰었어요 |
@@ -885,6 +1135,15 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `today.completeSheet.reflection` | 한 줄 회고 (선택) |
 | `today.completeSheet.reflection.hint` | 오늘 배운 것, 막힌 것… |
 | `today.completeSheet.submit` | 완료 기록 |
+| `today.redo.locked` | 이 과제를 하는 동안 이 문제의 힌트와 러버덕은 잠겨 있어요. |
+| `today.redo.viewSource` | 원본 과제 보기 |
+| `today.redo.question` | AI 도움 없이 끝냈나요? |
+| `today.redo.answer.yes` | 네, 혼자 했어요 |
+| `today.redo.answer.no` | 아니요, 도움을 받았어요 |
+| `today.redo.answer.help` | 솔직하게 고르는 게 도움이 돼요. '아니요'를 고르면 벌점이 아니라 복습 카드가 생겨요. |
+| `today.redo.reviewCreated` | 막힌 부분을 복습 카드로 만들었어요. |
+| `today.projectNotes` | 이 프로젝트 기록 |
+| `today.redo.lockedElsewhere` | 지금은 이 과제를 AI 없이 혼자 다시 만드는 중이에요. Today의 재현 과제를 마치면 다시 쓸 수 있어요. |
 | `today.noPlan` | 활성 계획이 없어요. 계획을 먼저 만들어 주세요. |
 | `today.noPlan.button` | 계획 만들기 |
 | `today.noCandidate` | 목표를 모두 달성했어요. 계획을 조정해 새 목표를 잡아 보세요. |
@@ -899,9 +1158,25 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `today.readCode.local` | 코드는 내 컴퓨터에서 읽어요. |
 | `today.readCode.back` | 코드 읽기로 돌아가기 |
 | `today.readCode.needDuck` | 러버덕으로 설명을 마쳐야 완료할 수 있어요. |
+| `today.readCode.feedback.title` | 이 코드 읽기는 어땠나요? (선택) |
+| `today.reading.material` | 자료 |
+| `today.reading.open` | 자료 열기 |
+| `today.reading.openHint` | 새 탭에서 열려요. |
+| `today.reading.checkPoints` | 읽고 답할 3가지 |
+| `enum.ReadingFeedback.HELPFUL` | 도움 됐어요 |
+| `enum.ReadingFeedback.TOO_HARD` | 어려웠어요 |
+| `enum.ReadingFeedback.BORING` | 지루했어요 |
 | `today.explainWithDuck` | 러버덕으로 설명하기 |
 | `today.duck.continue` | 설명하던 러버덕이 있어요. |
 | `today.duck.continueButton` | 이어서 설명하기 |
+| `today.explainedToPerson` | 다른 사람에게 설명했어요 |
+| `today.explainedToPerson.help` | 사람에게 말로 설명했으면 골라 주세요. 러버덕으로 설명한 것도 같은 단계로 쳐요. |
+| `today.explainedNote` | 한 줄 메모 (선택) |
+| `today.explainedNote.hint` | 누구에게 설명했는지, 어디서 막혔는지 |
+| `today.explainedNote.maskingNote` | 비밀값은 저장 전에 가려요. |
+| `enum.TipFeedback.KNEW_IT` | 알고 있었어요 |
+| `enum.TipFeedback.LEARNED` | 새로 알았어요 |
+| `enum.TipFeedback.WILL_TRY` | 직접 해 볼래요 |
 
 #### SCR-DIAGNOSTICS
 
@@ -948,12 +1223,13 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │                                │
 │ 카드 관리                    >  │
 │ 카드 직접 추가               >  │
+│ 용어 찾기                    >  │  S3, terms flag
 ├────────────────────────────────┤
 │  Today   Review   Plan   More  │
 └────────────────────────────────┘
 ```
 
-- **컴포넌트**: `DueSummaryCard`(카드 수 = `items.length`, 예상 분 = `ceilDiv(n × 3, 2)`, 기술별 개수. `totalDueCount > cap`이어도 남은 수는 표시하지 않는다(U-3)), `ListTile` 2개.
+- **컴포넌트**: `DueSummaryCard`(카드 수 = `items.length`, 예상 분 = `ceilDiv(n × 3, 2)`, 기술별 개수. `totalDueCount > cap`이어도 남은 수는 표시하지 않는다(U-3)), `ListTile` 3개(맨 아래 "용어 찾기"는 `terms` flag가 켜진 S3부터, → `/terms`).
 - **데이터**: 진입·탭 재선택 시 `GET /reviews/due`(limit 생략 = 서버 cap). 결과 목록은 `dueReviewsProvider`에 두고 SCR-REVIEW-SESSION이 그대로 쓴다.
 - **상태**: Loading — 요약 카드 skeleton. Empty — `review.home.empty` + "카드 직접 추가". Error·Offline — 공통. AI — 해당 없음.
 - **문구**
@@ -966,6 +1242,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `review.home.start` | 복습 시작 |
 | `review.home.manage` | 카드 관리 |
 | `review.home.add` | 카드 직접 추가 |
+| `review.home.terms` | 용어 찾기 |
 | `review.home.empty` | 오늘 복습할 카드가 없어요. 학습을 하면 복습 카드가 자동으로 생겨요. |
 
 #### SCR-REVIEW-SESSION
@@ -1020,7 +1297,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ • 내부 호출은 프록시를 우회        │
 │ • 해결 방법 1개 이상              │
 │                                │
-│ [ ] AI로 채점하기 (S3)            │
+│ [ ] AI로 채점하기                 │
 │ 얼마나 잘 떠올렸나요?             │
 │ ┌──────┬──────┬──────┬──────┐  │
 │ │ 다시 │어려움│알맞음│ 쉬움 │  │
@@ -1030,8 +1307,11 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 ```
 
   - 평가 버튼 4개는 한 줄, 각 높이 56 이상. 버튼 아래 작은 숫자는 데스크톱에서만 보인다(단축키 안내).
-  - "AI로 채점하기" 스위치는 `answerText`가 비어 있지 않고, flag `review_evaluate`가 켜져 있고, **`aiAvailable`**(= `aiStatus ∉ {DISABLED, BALANCE_EXHAUSTED}`, §6.4)일 때만 보인다. 기본값은 마지막 선택(`localStorage` `devpilot.review.evaluate`, 없으면 꺼짐).
-  - 평가 버튼을 누르면 버튼 영역이 진행 표시로 바뀐다. 채점이 켜져 있으면 `review.session.evaluating`(최대 20초)을 보여준다.
+  - "AI로 채점하기" 체크는 `answerText`가 비어 있지 않고, **카드에 rubric이 있고**(비어 있으면 서버가 채점 대상으로 보지 않는다 — `05` §11.3), **`aiAvailable`**(= `aiStatus ∉ {DISABLED, BALANCE_EXHAUSTED}`, §6.4)일 때만 보인다.
+  - **기본값은 항상 꺼짐이고 카드마다 다시 고른다.** 마지막 선택을 기억하지 않는다 — 실제 AI 호출이라 비용이 들고(`17` §8), 켜 둔 것을 잊은 채 복습을 도는 일이 없어야 한다.
+  - 평가 버튼을 누르면 버튼 영역이 진행 표시로 바뀐다. 채점이 켜져 있으면 `review.session.evaluating`을 읽어 준다.
+  - 채점에 성공하면 다음 카드로 넘어가기 전에 시트를 띄운다: 루브릭 항목마다 "짚었어요 / 빠졌어요 — {기준}"과 총평 한 줄(`05` §11.3 `rubricResults`·`evaluationFeedback`. 둘 다 저장하지 않으므로 이 자리에서만 보인다). 닫으면 ③ 조정 토스트로 이어진다.
+  - 채점하지 못하면(`evaluationSkippedReason`) 오류를 띄우지 않는다 — 자기평가만으로 진행하고 ③에 한 줄로 알린다.
 
 - **레이아웃 ③ 조정 토스트 (다음 카드 위에 4초)**
 
@@ -1122,7 +1402,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 - **목적**: 복습 카드를 찾아 일시중지·다시 사용·보관·수정한다(FR-11). **진입**: SCR-REVIEW-HOME "카드 관리", SCR-SKILL-DETAIL "복습 카드". **Sprint**: S2.
 - **레이아웃**: 상단 상태 `SegmentedButton`(사용 중·일시중지·보관, 기본 사용 중) + skill 필터 칩(탭 → `SkillPicker`) + "추가" 아이콘 버튼. 목록 행: 문항 2줄 말줄임, `skill 이름 · 유형 라벨 · 출처 라벨`, `다음 복습 {date}` 또는 상태, 마지막 결과 라벨. 행 오른쪽 `⋮` 메뉴.
-- **출처 라벨**: `SEED_CARD` 기본 카드 · `MANUAL` 직접 만듦 · `CHALLENGE_ATTEMPT` 문제 풀이 · `COACH_FINDING` 코드 리뷰 · `EVIDENCE` 증거 · `RUBBER_DUCK` 러버덕(설명하다 막힌 곳).
+- **출처 라벨**: `SEED_CARD` 기본 카드 · `MANUAL` 직접 만듦 · `CHALLENGE_ATTEMPT` 문제 풀이 · `COACH_FINDING` 코드 리뷰 · `EVIDENCE` 증거 · `RUBBER_DUCK` 러버덕(설명하다 막힌 곳) · `REDO_TASK` 재현 과제(혼자 다시 만들 때 막힌 곳) · `TERM` 용어 사전(S3) · `TIP` 오늘의 팁(S3 — "새로 알았어요"를 고른 팁).
 - **데이터**: 진입·필터 변경 시 `GET /review-items?skillId=&status=&cursor=`. 목록 끝 80% 스크롤 시 `nextCursor`로 다음 페이지. `⋮` 메뉴 → `PATCH /review-items/{reviewItemId}` `{status, version}`.
 - **메뉴 항목**: ACTIVE → "일시중지", "보관", "수정", "러버덕으로 설명하기" / SUSPENDED → "다시 사용", "보관", "수정", "러버덕으로 설명하기" / ARCHIVED → 메뉴 없음(보관은 되돌리지 않는다, `04` §4.5). "러버덕으로 설명하기"(S3, `rubber_duck` flag, AI 가능할 때만) → `/rubber-duck/new?targetType=REVIEW_ITEM&targetId={reviewItemId}`.
 - **상태**: Loading — 행 skeleton 6개. Empty — 필터별 `review.items.empty.{status}` + "카드 직접 추가"(ACTIVE일 때만). Error·Offline — 공통. 페이지 추가 로드 실패 — 목록 끝에 "다시 불러오기" 행.
@@ -1252,7 +1532,8 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 #### SCR-CHALLENGE-DETAIL
 
 - **목적**: 문제 내용을 확인하고 풀이를 시작한다. AI 생성 중인 문제의 진행 상태를 보여준다(FR-09). **진입**: SCR-TRAINING-LIST, SCR-TODAY CHALLENGE task(`?taskId=`), 문제 만들기 직후. **Sprint**: S3.
-- **레이아웃**: 앱 바(제목) → 메타 줄(`L{n} 라벨 · 약 {m}분 · skill 이름들`, `AI` 배지) → "상황"(scenario) → "문제"(prompt) → "제약"(constraints 목록) → 하단 고정 primary "풀기 시작". 이어 풀 attempt가 있으면 primary "이어서 풀기", 보조 "새로 풀기".
+- **레이아웃**: 앱 바(제목) → 메타 줄(`L{n} 라벨 · 약 {m}분 · skill 이름들`, `AI` 배지, **`timeLimitMinutes`가 있으면 `training.detail.timeLimit` 칩**) → "상황"(scenario) → "문제"(prompt) → "제약"(constraints 목록) → 하단 고정 primary "풀기 시작". 이어 풀 attempt가 있으면 primary "이어서 풀기", 보조 "새로 풀기".
+- **시간 제한 (S3)**: `ChallengeView.timeLimitMinutes`(`05` §10.1)가 있으면 메타 줄에 "시간 제한 {n}분"을 보이고 하단 primary 위에 `training.detail.timeLimit.note`를 한 줄 둔다 — **서버가 시간을 강제하지 않고** 화면이 경과 시간을 보여 줄 뿐이며, 넘겨도 실패가 아니다. `null`이면 칩과 안내를 모두 숨긴다.
 - **데이터**: 진입 `GET /challenges/{challengeId}`. `generationStatus ∈ {PENDING, RUNNING}`이면 §3.3 Async polling(같은 API). "풀기 시작" → `POST /challenges/{challengeId}/attempts` → `201 AttemptView` → `/training/attempts/{id}?taskId=`(있으면 유지). 버튼은 `ChallengeView.activeAttemptId`로 정한다: null → "풀기 시작"만. 값이 있으면 `GET /challenge-attempts/{activeAttemptId}`로 상태를 읽어 `STARTED`/`SUBMITTED` → "이어서 풀기"만(→ `/training/attempts/{activeAttemptId}`), `EVALUATED` → "결과 보기"(보조) + "새로 풀기"(primary). "풀기 시작"이 `409 INVALID_STATE_TRANSITION`이면 challenge를 다시 조회해 `activeAttemptId`로 이동한다.
 - **상태**
   - Loading: 제목·본문 skeleton.
@@ -1265,6 +1546,8 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 | key | 문구 |
 |---|---|
+| `training.detail.timeLimit` | 시간 제한 {minutes}분 |
+| `training.detail.timeLimit.note` | 시간을 재 드려요. 넘겨도 괜찮고 기록에 불이익은 없어요. |
 | `training.detail.scenario` | 상황 |
 | `training.detail.prompt` | 문제 |
 | `training.detail.constraints` | 제약 |
@@ -1290,6 +1573,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 ┌────────────────────────────────┐
 │ ← 설정 로더 예외 처리 개선    ⋮ │
 │ L2 작은 변형 · 약 15분           │
+│ 시간 제한 20분 · 지난 시간 06:12 │  timeLimitMinutes 가 있을 때
 │ ▾ 문제                           │
 │ 파일에서 설정값을 읽는 유틸리티가 │
 │ 모든 예외를 삼키고 null을 반환…   │
@@ -1367,6 +1651,16 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
   - `FULL_EXAMPLE`이고 제출이 0회면 제목 `training.hint.giveUp.title`, 확인 버튼 `training.hint.giveUp.confirm`으로 바꾸고 `giveUp=true`를 함께 보낸다.
 
+- **경과 시간 (S3)** — challenge의 `timeLimitMinutes`(`05` §10.1)가 있을 때만
+  - 헤더 메타 줄 아래에 `training.attempt.timeLimit`(시간 제한)과 `training.attempt.elapsed`(지난 시간 `mm:ss`)를 한 줄로 보인다. `timeLimitMinutes`가 `null`이면 **줄 전체를 숨긴다** — 시간 제한이 없는 문제에 시계를 붙이지 않는다.
+  - 기준 시각은 `AttemptView.startedAt`이고 1초마다 갱신한다. 새로고침하거나 다른 화면에 다녀와도 `startedAt`으로 다시 계산하므로 값이 이어진다(기기에 따로 저장하지 않는다).
+  - **제한을 넘겨도 막지 않는다.** 넘으면 숫자만 `color.warning`으로 바꾸고 아래에 `training.attempt.overTime`을 한 줄 둔다. 제출을 막거나 경고 대화상자를 띄우지 않고, "시간 초과"라는 상태도 만들지 않는다(`05` §10.1 — 서버는 시간을 강제하지 않고 outcome 계산에도 쓰지 않는다).
+  - 제출할 때 지금까지의 경과 초를 `elapsedSeconds`(0~86400, 내림)로 함께 보낸다. 다시 제출하면 서버가 마지막 값으로 덮어쓴다(`05` §10.9). 타이머를 못 구한 경우(값이 없음)에는 `elapsedSeconds`를 보내지 않는다.
+  - attempt가 `SUBMITTED`·`EVALUATED`·`ABANDONED`이면 타이머를 멈추고, `AttemptView.elapsedSeconds`가 있으면 그 값을 `training.attempt.tookTime`으로 한 줄 보인다.
+  - `MediaQuery.disableAnimations`에서도 1초 갱신은 유지한다(애니메이션이 아니라 값이다). 스크린 리더는 이 줄을 live region으로 읽지 **않는다** — 매초 읽히면 방해가 된다(A-6).
+
+- **지시어 안내 (S3)**: self-explanation을 저장한 뒤 `AttemptView.vagueReferenceCount`가 1 이상이면 "① 내 설명" 접힘 영역 안, 저장한 설명 아래에 보조 한 줄 `rubberDuck.vague.count`를 둔다(SCR-RUBBER-DUCK과 같은 문구·같은 규칙, `06` §9.6). 오류 색을 쓰지 않고 저장·제출을 막지 않는다. `selfExplanation`이 없거나 건너뛰었으면 값이 `null`이라 줄을 숨긴다.
+
 - **레이아웃 ④ 평가 대기 (polling)**
 
 ```text
@@ -1424,7 +1718,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | 진입 | `GET /challenge-attempts/{attemptId}` → `GET /challenges/{challengeId}` |
 | 설명 저장 / 건너뛰기 | `POST /challenge-attempts/{attemptId}/self-explanation` `{text}` / `{skipped: true}` |
 | 힌트 단계 버튼 | `POST /challenge-attempts/{attemptId}/hints` `{requestedLevel, acknowledgeEvidenceImpact?, giveUp?}` (동기) |
-| 제출 | `POST /challenge-attempts/{attemptId}/submissions` `{answerText, code, language}` → `202` |
+| 제출 | `POST /challenge-attempts/{attemptId}/submissions` `{answerText, code, language, elapsedSeconds}` → `202` (`elapsedSeconds`는 시간 제한이 있는 문제에서만 보낸다) |
 | 평가 대기 | `GET /challenge-attempts/{attemptId}` 2초 polling, 최신 submission `evaluationStatus ∈ {COMPLETED, FAILED}`이면 중지 |
 | 평가 완료 직후 | `GET /challenges/{challengeId}` 재조회(rubric·expectedConcepts가 이제 포함됨) |
 | 평가 실패 "다시 평가" | `POST /challenge-attempts/{attemptId}/submissions/{submissionNo}/retry` → polling 재시작 |
@@ -1439,6 +1733,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
   - 평가 `FAILED`: 결과 자리에 `failureCode` 문구 + "다시 평가"(`retryable=true`일 때). 최신 제출이 `FAILED`인 동안 새 제출 영역은 잠근다(서버 409). `AI_BUDGET_EXCEEDED`면 "다시 평가" 비활성 + 사유.
   - attempt `ABANDONED`: 읽기 전용, 상단 `training.attempt.abandoned`.
   - AI unavailable: 제출 버튼 비활성 + `training.detail.aiSubmitNote`. 4~6단계 힌트 비활성, 1~3단계 사용 가능.
+  - **재현 잠금 (S4)**: 이 challenge의 재현 과제가 열려 있으면(`409 AI_ASSIST_LOCKED_FOR_REDO`, RE-5·HL-9) 힌트 버튼 **전 단계**와 "러버덕으로 설명하기"를 비활성으로 두고 그 아래 `today.redo.lockedElsewhere` 1줄 + "Today로 가기"를 보인다(§5.1). 자기설명·제출·평가는 그대로 된다 — 잠기는 것은 AI 도움뿐이다. 잠금 여부는 미리 알 수 없으므로 첫 409를 받은 뒤 이 상태로 바꾼다.
   - Budget warning: 제출 버튼·4단계 이상 힌트 아래 `ai.budgetWarning.note`.
   - Offline: 공통. 입력은 계속 가능, 전송 버튼 비활성.
 - **행동·검증**
@@ -1499,6 +1794,10 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `training.eval.toEvidence` | 증거로 남기기 |
 | `training.eval.explainWithDuck` | 러버덕으로 설명하기 |
 | `training.eval.history` | 이전 제출 ({count}) |
+| `training.attempt.timeLimit` | 시간 제한 {minutes}분 |
+| `training.attempt.elapsed` | 지난 시간 {time} |
+| `training.attempt.overTime` | 제한 시간을 넘었어요. 그대로 이어서 풀어도 괜찮아요. |
+| `training.attempt.tookTime` | 이 풀이에 {time} 걸렸어요. |
 | `training.attempt.menu.abandon` | 그만두기 |
 | `training.attempt.abandon.confirm` | 이 풀이를 그만둘까요? 지금까지의 설명과 힌트 기록은 남아요. |
 | `training.attempt.abandoned` | 그만둔 풀이예요. |
@@ -1850,6 +2149,45 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 ### 3.9 Plan · Goal
 
+#### SCR-RUBBER-DUCK-LIST
+
+경로 `/rubber-duck/history`. **끝난 설명으로 돌아가는 유일한 길이다** (`05` §9.11). 세션이 끝나면 대화가 화면에서 사라져 "내가 무엇을 설명하지 못했나"의 근거를 다시 볼 수 없었다(2026-09-29 전수조사 2번). 설명이 이 도구의 축인데 그 근거가 UI에 없었다. **진입**: SCR-MORE "내 기록". **Sprint**: S3.
+
+- 레이아웃: 안내 한 줄 → 세션 카드 목록(최근 순) → 다음 페이지가 있으면 "더 보기" 버튼.
+- 한 줄: 대상 문구(없으면 skill 이름) · 시작 날짜 · `{n}번 주고받음` · 정리가 있으면 `빈틈 {n}개`. 탭 → `/rubber-duck/{sessionId}`.
+- **목록에 설명 원문을 싣지 않는다.** 마스킹본이라도 늘어놓을 이유가 없다 — 원문은 상세에서만 읽는다.
+- 상태: Loading — skeleton. Empty — `duckHistoryEmpty`. Error·Offline — 공통.
+- 라우트는 `/rubber-duck/:sessionId`보다 **먼저** 선언한다. 뒤에 두면 리터럴 경로가 파라미터로 먹힌다.
+
+---
+
+#### SCR-READING-LIST
+
+경로 `/readings`. **읽었던 코드로 돌아가는 길이다** (`05` §19.14). 완료한 reading은 다음 제안에서 빠지므로(`06` §5.3), 목록이 없으면 커밋까지 고정해 둔 자료가 한 번 쓰고 사라졌다(2026-09-29 전수조사 3번). **진입**: SCR-MORE "내 기록". **Sprint**: S3.
+
+- 레이아웃: 안내 한 줄 → 읽기 카드 목록(마지막으로 받은 plan-day 순).
+- 한 줄: 제목 · `{날짜}에 받음` · 출처. 끝낸 것은 `끝냄` 배지, 은퇴한 자료는 `은퇴한 자료` 배지.
+- **끝낸 것도 목록에 남는다.** 다시 읽는 것이 이 화면의 목적이다.
+- 탭하면 `kind`에 따라 간다 — `LESSON`은 노트 화면(`/lessons/{key}`), 나머지는 읽기 화면(`/today/read/{key}`).
+- 상태: Loading — skeleton. Empty — `readingHistoryEmpty`. Error·Offline — 공통.
+
+---
+
+#### SCR-BUILDABLE
+
+경로 `/plan/buildable`. **"오늘까지 배운 것으로 사이드 프로젝트를 어디까지 만들 수 있나"에 답한다** (`05` §7.10, `06` §11.4, ADR-060). milestone은 과목 순서가 아니라 만드는 순서(`19` §3.4)인데, 지금까지 그 순서는 날짜 막대와 제목으로만 보였다. **진입**: SCR-TODAY 아래 한 줄, SCR-PLAN 헤더 "지금 만들 수 있는 것 보기". **Sprint**: S3.
+
+- **레이아웃**: 요약 한 줄(`buildableSummary`) → 세는 기준 한 줄(`buildableIntro`) → 단계 카드 목록(만드는 순서 = `sortOrder` ASC).
+- 단계 카드: `{n}단계` + 제목 + 상태 배지 → 이 단계에서 무엇을 만드는지(계획 템플릿의 milestone 설명) → `{met}/{total}개 준비됨` → 모자란 skill 목록 → **지금 만들 차례인 카드에만** "오늘 할 일 보기".
+- **지금 만들 차례인 카드만 색을 쓴다.** 다 칠하면 어디부터 볼지 알 수 없다.
+- 모자란 skill 한 줄: 이름 + **부족한 축만** `{축} {지금}/{목표}`. 탭하면 `/skills/{skillId}`. 채워진 축까지 늘어놓으면 무엇이 남았는지가 묻힌다. 목록은 최대 5개고, 더 있으면 `buildableGapMore`.
+- **세는 것은 근거 레벨뿐이다.** 자기평가로 올라간 계획 레벨은 빼고 본다 — 그래서 SCR-DASHBOARD 타임라인의 "지금 단계"와 어긋날 수 있고, `buildableIntro`가 그 차이를 먼저 말한다(ADR-060).
+- 상태: Loading — skeleton. Empty — 활성 plan이 없으면(`404 PLAN_NOT_FOUND`) `buildableEmpty`. Error·Offline — 공통.
+- SCR-TODAY의 진입은 **카드가 아니라 한 줄**이다. 오늘 할 일과 같은 무게로 보이면 무엇부터 할지 알 수 없다. 아직 안 왔거나 실패하면 그 줄은 스스로 사라진다.
+- 화면을 드나드는 이동은 모두 `context.go`다. `push`는 이 라우터에서 주소를 바꾸지 않는다(SCR-SELF-ASSESSMENT와 같다).
+
+---
+
 #### SCR-PLAN
 
 - **목적**: 활성 계획의 milestone 타임라인과 마감 위험을 보고, 진행 상태·메모·순서를 바로 고친다(FR-04, FR-05). **진입**: 하단 탭·rail Plan, 온보딩 5단계 "계획 자세히". **Sprint**: S1 (budget 카드 S2).
@@ -1859,8 +2197,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 ┌────────────────────────────────┐
 │ 계획                   버전 기록 │
 │ Java 백엔드 성장 계획 · v3        │
-│ 완료 목표 2027년 4월 1일           │
-│ 중간 점검 2027년 1월 5일  [목표 수정]│
+│ 목표일 2027년 4월 1일  [목표 수정] │
 │ ┌────────────────────────────┐ │  replanRecommended=true
 │ │ ⓘ 목표 날짜가 바뀌었어요.       │ │
 │ │   계획을 다시 맞춰 보세요.      │ │
@@ -1868,8 +2205,8 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ └────────────────────────────┘ │
 │ ┌────────────────────────────┐ │  S2
 │ │ 마감 위험 [빠듯함]              │ │
-│ │ 1월 5일까지 가능  약 82시간     │ │
-│ │ 필수 목표에 필요  약 98시간     │ │
+│ │ 4월 1일까지 가능  약 200시간    │ │
+│ │ 필수 목표에 필요  약 240시간    │ │
 │ │ 필요 ÷ 가능 120%                │ │
 │ │ 최근 실제 완료율 70% 반영        │ │
 │ └────────────────────────────┘ │
@@ -1896,8 +2233,8 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 └────────────────────────────────┘
 ```
 
-- **타임라인**: 모바일은 milestone 카드 목록에 "오늘" 구분선을 날짜 위치에 끼워 넣는다. Tablet·Desktop은 목록 위에 가로 막대 타임라인(월 눈금, milestone 구간 막대 + 제목 라벨, 오늘 세로선, 목표일·중간 점검일 표시)을 추가한다. 막대의 priority는 막대 안 텍스트 라벨(`필수`/`권장`/`나중`)로 표시한다.
-- **budget 카드 표시 규칙(S2)**: 분은 시간 단위로 반올림(`약 {h}시간`). `ratioBp=null`이면 "필요 ÷ 가능" 줄 대신 `plan.budget.noTime`. 완료율 줄은 `completionRateBp`를 쓴다. 기준일은 사용자가 등록한 중간 점검일(오늘 이후일 때) 또는 학습 완료 목표일이다(`horizonDate`). risk ≥ HIGH면 카드 아래 `plan.budget.tight` + "계획 조정"(보조 버튼), risk = LOW면 `plan.budget.roomy` + "계획 조정"(보조 텍스트 버튼), MEDIUM이면 "계획 조정" 텍스트 버튼만 둔다. 문구는 안내일 뿐이고, 실제 제안 여부는 SCR-REPLAN 미리보기가 정한다(`06` §4.4).
+- **타임라인**: 모바일은 milestone 카드 목록에 "오늘" 구분선을 날짜 위치에 끼워 넣는다. Tablet·Desktop은 목록 위에 가로 막대 타임라인(월 눈금, milestone 구간 막대 + 제목 라벨, 오늘 세로선, 목표일 표시 하나)을 추가한다. 날짜 표시는 목표일 하나뿐이다 — 마지막 milestone "설명과 정리"가 그 앞에서 끝난다. 막대의 priority는 막대 안 텍스트 라벨(`필수`/`권장`/`나중`)로 표시한다.
+- **budget 카드 표시 규칙(S2)**: 분은 시간 단위로 반올림(`약 {h}시간`). `ratioBp=null`이면 "필요 ÷ 가능" 줄 대신 `plan.budget.noTime`. 완료율 줄은 `completionRateBp`를 쓴다. 기준일은 사용자가 등록한 목표일이다(`horizonDate` = `targetCompletionDate`, `06` §3.1). risk ≥ HIGH면 카드 아래 `plan.budget.tight` + "계획 조정"(보조 버튼), risk = LOW면 `plan.budget.roomy` + "계획 조정"(보조 텍스트 버튼), MEDIUM이면 "계획 조정" 텍스트 버튼만 둔다. 문구는 안내일 뿐이고, 실제 제안 여부는 SCR-REPLAN 미리보기가 정한다(`06` §4.4).
 - **컴포넌트**: `PlanHeader`, `ReplanRecommendedBanner`, `BudgetRiskCard`, `PlanTimelineBar`(≥ 600), `MilestoneCard`(`MilestoneStatusDropdown`, `SortButtons`, `DescriptionEditor`), `TodayDivider`.
 - **데이터**
 
@@ -1917,8 +2254,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `plan.title` | 계획 |
 | `plan.versions` | 버전 기록 |
 | `plan.header` | {title} · v{version} |
-| `plan.goal.completion` | 완료 목표 {date} |
-| `plan.goal.checkpoint` | 중간 점검 {date} |
+| `plan.goal.completion` | 목표일 {date} |
 | `plan.goal.edit` | 목표 수정 |
 | `plan.replanRecommended` | 목표 날짜가 바뀌었어요. 계획을 다시 맞춰 보세요. |
 | `plan.replan.button` | 계획 조정 |
@@ -1942,7 +2278,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 #### SCR-REPLAN
 
-- **목적**: milestone 추가·삭제·기간·우선순위·기술 구성을 바꿔 새 계획 버전을 만든다. S2부터는 저장 전에 마감 위험과 제안을 미리 보고 적용할 제안을 고른다 — 사용자가 등록한 학습 목표일까지 **빠듯하면 필수 위주로 줄이는 안**(defer·목표 낮춤), **여유가 있으면 깊이를 더하는 안**(미뤄 둔 항목 복원·목표 올림)이다. 두 종류는 동시에 나오지 않는다(FR-04, FR-05, AC-03, AC-30). **진입**: SCR-PLAN "계획 구조 바꾸기"·"계획 조정", SCR-LEARNING-GOAL 저장 후(`?from=goal`). **Sprint**: S1(편집 → 저장), S2(편집 → 미리보기 → 저장).
+- **목적**: milestone 추가·삭제·기간·우선순위·기술 구성을 바꿔 새 계획 버전을 만든다. S2부터는 저장 전에 마감 위험과 제안을 미리 보고 적용할 제안을 고른다 — 사용자가 등록한 목표일까지 **빠듯하면 필수 위주로 줄이는 안**(defer·목표 낮춤), **여유가 있으면 깊이를 더하는 안**(미뤄 둔 항목 복원·목표 올림)이다. 두 종류는 동시에 나오지 않는다(FR-04, FR-05, AC-03, AC-30). **진입**: SCR-PLAN "계획 구조 바꾸기"·"계획 조정", SCR-LEARNING-GOAL 저장 후(`?from=goal`). **Sprint**: S1(편집 → 저장), S2(편집 → 미리보기 → 저장).
 - **레이아웃 ① 편집**
 
 ```text
@@ -2102,9 +2438,9 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 #### SCR-LEARNING-GOAL
 
-- **목적**: 학습 목표일(학습 완료 목표일·중간 점검일)과 집중 기술을 등록·수정한다(FR-03). **학습 목표일은 사용자가 여기서 직접 정하는 값**이고, DevPilot은 이 날짜로 남은 시간을 역산해 빠듯하면 필수 위주로, 여유 있으면 깊이 있게 안내한다(FR-05). **진입**: SCR-SETTINGS "목표"(주 진입점), SCR-PLAN "목표 수정". **Sprint**: S1.
-- **레이아웃**: 학습 트랙(읽기 전용 "Java 백엔드") → 학습 완료 목표일(필수, 날짜 선택기) → 중간 점검일(선택, "없음" 스위치 — 필수 항목을 먼저 끝내 둘 날짜) → 집중 기술(칩 목록 + "기술 선택", 최대 10) → 안내 `goal.help` → primary "저장".
-- **데이터**: 진입 `GET /learning-goal`. 저장 `PUT /learning-goal` `{targetRole, checkpointDate, targetCompletionDate, focusSkillCodes, version}`.
+- **목적**: 학습 목표(무엇을·언제까지 — 학습 트랙과 목표일)와 집중 기술을 등록·수정한다(FR-03). **목표일은 사용자가 여기서 직접 정하는 날짜 하나**이고, DevPilot은 이 날짜로 남은 시간을 역산해 빠듯하면 필수 위주로, 여유 있으면 깊이 있게 안내한다(FR-05). **진입**: SCR-SETTINGS "목표"(주 진입점), SCR-PLAN "목표 수정". **Sprint**: S1.
+- **레이아웃**: 학습 트랙(**읽기 전용** — 온보딩에서 고른 트랙 이름, 라벨 `onboarding.goal.role`, 아래에 `onboarding.goal.track.locked`) → 목표일(필수, 라벨 `onboarding.goal.completion`, SCR-ONBOARDING 1단계와 같은 빠른 선택 칩 `onboarding.goal.quick.*`과 날짜 선택기) → 집중 기술(칩 목록 + "기술 선택", 최대 10) → 안내 `goal.help` → primary "저장".
+- **데이터**: 진입 `GET /learning-goal`. 저장 `PUT /learning-goal` `{targetRole, targetCompletionDate, focusSkillCodes, version}`.
 - **상태**: Loading — 폼 skeleton. Error — `404 LEARNING_GOAL_NOT_FOUND`는 `ErrorView`(온보딩 이후 정상 흐름에서는 발생하지 않고, PUT은 목표를 새로 만들지 않는다). `409 CONCURRENT_MODIFICATION`은 최신 목표로 폼을 다시 채운다. 그 외 공통·§5. Offline — 공통.
 - **행동·검증**: §3.2. 저장 성공 시 날짜가 바뀌었으면 대화상자 `goal.saved.datesChanged`("지금 조정" → `/plan/replan?from=goal`, "나중에" → `/plan`). 날짜가 그대로면 토스트 후 뒤로.
 - **문구**
@@ -2113,7 +2449,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 |---|---|
 | `goal.title` | 목표 |
 | `goal.focus` | 집중 기술 (최대 10개) |
-| `goal.help` | 이 날짜로 남은 시간을 거꾸로 계산해요. 빠듯하면 필수 위주로, 여유가 있으면 더 깊이 안내해요. 날짜를 바꿔도 계획은 자동으로 바뀌지 않아요. 저장 후 계획 조정을 권해 드려요. |
+| `goal.help` | 목표일까지 남은 시간을 거꾸로 계산해요. 빠듯하면 필수 위주로, 여유가 있으면 더 깊이 안내해요. 날짜를 바꿔도 계획은 자동으로 바뀌지 않아요. 저장 후 계획 조정을 권해 드려요. |
 | `goal.save` | 저장 |
 | `goal.saved` | 목표를 저장했어요. |
 | `goal.saved.datesChanged.title` | 목표 날짜가 바뀌었어요 |
@@ -2168,12 +2504,91 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 - **행동**: 필터 기본값 = 필수만 + 목표 미달만 꺼짐. 카테고리 펼침 상태는 `localStorage` `devpilot.skills.expanded`(try/catch).
 - **문구**: `skill.tree.title` = "기술", `skill.tree.onlyGap` = "목표 미달만", `skill.tree.categorySummary` = "{priority} {total}개 중 목표 도달 {reached}개", `skill.tree.selfAssessed` = "자기평가", `skill.tree.deferred` = "미룸", `skill.tree.emptyFilter` = "조건에 맞는 기술이 없어요."
 
+#### SCR-LESSON-LIST
+
+`/lessons`. 개념 노트 전부와 그 사용자의 진행(`GET /api/v1/lessons`, `05` §21.9).
+
+기술 트리에는 어느 기술에 노트가 붙었는지 표시가 없고 노트가 붙은 기술은 전체의 일부다 — **앱을 열었을 때 "오늘 뭘 열지"가 한 화면에 보이게** 하는 것이 이 화면의 목적이다. 며칠에 걸쳐 혼자 쓸 때 "어제 어디까지 했지"를 여기서 답한다.
+
+- 목적지다: rail(Notes), 모바일은 SCR-MORE "노트 보기". 하단 탭·rail을 그대로 두는 보통 화면이다
+- 서버가 준 순서를 그대로 쓴다 — 화면은 정렬하지 않는다. 상태가 바뀌는 자리에만 제목을 끼운다: "이어서 하기"(`IN_PROGRESS`) → "아직 안 연 것"(`NOT_STARTED`) → "한 바퀴 돈 것"(`DONE`)
+- 줄마다: 제목, 한 줄 요약, 진행 막대와 `N/M 단위`. 누르면 SCR-LESSON으로 간다
+- 노트가 하나도 없으면 빈 상태 문구만 보인다
+- 페이지 나누기 없음. AI를 부르지 않는다
+
+#### SCR-LESSON
+
+경로 `/lessons/:lessonKey`. **가르치는 화면이다.** 지금까지 제품에는 이 자리가 없었고 문제·복습 카드·러버덕이 모두 "이미 안다"를 전제했다(`01` §4 *Teach before test*).
+
+노트 하나는 **학습 단위** 3~6개다. 단위 하나가 5~15분짜리 한 바퀴이고, 화면은 그 한 바퀴를 **한 걸음씩** 보여 준다. 한 화면에 다 펼치지 않는다 — 답을 먼저 보게 되고, 평일 60분에 어디까지 했는지도 흐려진다.
+
+**단위 한 바퀴 (걸음마다 화면 하나)**
+
+| # | 걸음 | 보이는 것 | 다음으로 가는 조건 |
+|---|---|---|---|
+| 0 | 왜 배우나 | 노트의 `whyItMatters`, `oneLine`, 단위 목록(제목·분). **노트를 열면 처음 한 번만** | "시작" |
+| 1 | 설명 | 단위의 `explain`(마크다운) | "예제 보기" |
+| 2 | 예제 | `example.code`(코드 블록 — 복사 가능), `output`, `note` | "해 보기" |
+| 3 | 예측 | `predict.question` + `code`. 선택형이면 버튼, 아니면 한 줄 입력 | 답을 내면 바로 채점 → 정답·해설 |
+| 4 | 빈칸 | `complete.question` + 빈칸이 있는 코드. 빈칸마다 입력칸 | 답을 내면 바로 채점 → 정답·해설 |
+| 5 | 문제 | `problem.prompt`, `deliverables`(번호 목록), `starterCode`가 채워진 답안칸 | "냈어요" |
+| 6 | 견주기 | `modelAnswer`(코드 블록), `selfChecks` 체크박스, 내가 쓴 답(화면에만 있다 — 서버로 보내지 않는다) | "마쳤어요"를 누르면 도움 단계와 체크 개수를 보낸다 |
+| 7 | 다음 걸음 | 노트의 `inProject`, 다음 단위 또는 "오늘은 여기까지" | — |
+
+- **화면의 기준점**: 노트 첫 화면 맨 위의 "왜 배우나"는 `primaryContainer` 상자에 담는다. 흰 바탕에 글만 이어지면 어디부터 읽을지 정하지 못한다(2026-09-30 실사용 — "회색 화면에 글자"). 단위 목록은 카드로 하나씩 끊고, 마친 단위는 글자 대신 `success` 색 체크 아이콘으로 표시한다. 색은 §10.2 토큰만 쓴다(A-2 대비 기준).
+- **진행 표시**: 첫 화면에는 `lesson.unitProgress`("{done} / {total} 단위 마침")와 진행 막대를, 단위를 걷는 화면에는 머리줄 아래에 같은 막대를 둔다. 숫자만 있으면 진도가 보이지 않는다.
+- **"이미 안다 → 문제부터"**: 0·1·2에서 항상 보이는 버튼. 누르면 5로 건너뛴다. 도움 없이 풀면 그 단위는 끝이다(`06` R-0 1번).
+- **"이 단위는 알아요 → 건너뛰기"**: 0·1·2에서 위 버튼 아래 함께 보인다. 누르면 걸음을 더 걷지 않고 그 단위를 바로 마친다 — `POST …/finish`를 `helpLevel = NONE`, `selfChecksMet` 없이 부르고 7번(다음 걸음)으로 간다. 문제까지 푸는 위 버튼과 다르다.
+  - 필요한 이유: `lessonMaxKnowledge`가 4인 트랙(연동·입문)은 **이미 아는 분야에도 노트를 먼저 낸다**(ADR-057). 아는 단위를 10초에 지나갈 수 없으면 노트가 지루한 관문이 된다.
+  - `UNIT_SOLVED`는 복습 일정의 입력이고 레벨의 증거가 아니므로(`04` §6), 눌러도 레벨은 오르지 않는다. 같은 단위는 나중에 다시 풀 수 있다(dedupe 하지 않는다).
+- **막혔을 때**(5번 화면): `힌트 보기`(1개씩, 콘텐츠의 `hints`) → `오리에게 설명하기`(러버덕) → `모범 답안 보기`. 이 순서대로 버튼이 하나씩 열린다. 옆에 안내 한 줄: "15분 넘게 막히면 도움을 쓰세요."
+- **도움 단계는 앱이 센다.** 무엇을 열었는지가 `POST …/finish`의 `helpLevel`이다(`05` §21.7). 서버가 추적하지 않는다. 모범 답안은 `GET …/answer`로 가져온다.
+- **`prerequisiteUnits`**: 5번 화면의 도움 목록 맨 위에 "먼저 볼 개념"으로 둔다. 아직 만들지 않은 단위를 가리키면 그 줄은 보이지 않는다.
+- 3·4의 채점은 **즉시**다(AI 없음). 틀려도 다음으로 간다 — 해설을 보여 주고 그 단위를 복습 대상으로 둔다.
+- 6번의 체크박스는 채점이 아니라 **스스로 견주기**다. 레벨을 올리지 않는다(`01` 원칙 4).
+
+**들어오는 길**: SCR-SKILL-DETAIL의 "개념 익히기", SCR-TODAY 과제 카드의 "먼저 개념 익히기"(마친 과제에는 없다), SCR-RUBBER-DUCK ④의 "그래서 답이 뭔가요". 세 자리 모두 `GET /skills/{skillId}/lesson`(`05` §21.3)으로 노트를 찾고, **없으면 버튼을 그리지 않는다**.
+
+**중간에 나가기**: 걸음은 로컬에 기억한다(어느 단위 몇 번째 걸음인지). 서버에 남는 것은 6번을 마친 단위뿐이다.
+
+**접근성**: 걸음이 바뀌면 새 제목에 포커스를 준다(A-4). 코드 블록은 가로 스크롤(A-9, §2.4). 즉시 채점 결과는 live region.
+
+**빈 상태**: 그 skill에 노트가 없으면 이 화면으로 오지 않는다 — 진입점이 보이지 않는다.
+
+
 #### SCR-SKILL-DETAIL
 
-- **목적**: 한 기술의 축별 레벨이 왜 그 값인지 근거 이력과 함께 보고, 관련 학습으로 이동한다(FR-06, AC-09). **진입**: SCR-SKILL-TREE 행, SCR-REQUIREMENT-DETAIL 요구사항. **Sprint**: S1(레벨), S3(이력).
-- **레이아웃**: 헤더(기술 이름, 카테고리, priority, 설명) → 축 표(`축 | 증거 레벨 | 계획용 레벨 | 목표`, 레벨은 숫자 + `SkillLevel` 라벨) → 자기평가 줄(`self_assessed_level`, `self_assessment_active=false`면 `skill.detail.selfInactive`) → 버튼 행 "복습 카드"(`/review/items?skillId=`), "문제 풀기"(`/training?skillId=`, S3), "개념 설명하기"(S3, `rubber_duck` flag, AI 가능할 때 — `/rubber-duck/new?targetType=CONCEPT&conceptKey={skill.code}&skillCode={skill.code}`, 러버덕 `CONCEPT` 대상) → "레벨 변경 기록"(S3) 목록: `{날짜} · {축} {from} → {to}` + 규칙 문구 + `근거 기록 {n}개`(펼치면 `evidenceEvents`의 유형·날짜 목록. S6부터 `CHALLENGE_EVALUATED`·`COACH_FINDING_CLOSED`·`COACH_REVIEW_COMPLETED` 행에 "증거 초안 만들기" → `POST /evidence/drafts` `{sourceLearningEventId}` → `/evidence/{id}`).
-- **데이터**: `GET /skills/tree?role=JAVA_BACKEND`·`GET /skills/me`(캐시 재사용), S3 `GET /skills/{skillId}/history?cursor=` + 페이지네이션.
-- **상태**: Loading — 표 skeleton. 이력 Empty — `skill.detail.historyEmpty`. Error·Offline — 공통(이력만 실패하면 이력 영역만 인라인 오류).
+- **목적**: 한 기술의 축별 레벨이 왜 그 값인지 근거 이력과 함께 보고, **반복 고리(학습 단계)에서 어디까지 왔는지** 확인하고, 관련 학습으로 이동한다(FR-06, AC-09). **진입**: SCR-SKILL-TREE 행, SCR-REQUIREMENT-DETAIL 항목. **Sprint**: S1(레벨), S3(이력·학습 단계).
+- **레이아웃**: 헤더(기술 이름, 카테고리, priority, 설명, **`whyItMatters` 한 줄**) → **학습 단계 6칸**(S3) → 축 표(`축 | 증거 레벨 | 계획용 레벨 | 목표`, 레벨은 숫자 + `SkillLevel` 라벨) → 자기평가 줄(`self_assessed_level`, `self_assessment_active=false`면 `skill.detail.selfInactive`) → 버튼 행 "복습 카드"(`/review/items?skillId=`), "문제 풀기"(`/training?skillId=`, S3), "개념 설명하기"(S3, `rubber_duck` flag, AI 가능할 때 — `/rubber-duck/new?targetType=CONCEPT&conceptKey={skill.code}&skillCode={skill.code}`, 러버덕 `CONCEPT` 대상) → "레벨 변경 기록"(S3) 목록: `{날짜} · {축} {from} → {to}` + 규칙 문구 + `근거 기록 {n}개`(펼치면 `evidenceEvents`의 유형·날짜 목록. S6부터 `CHALLENGE_EVALUATED`·`COACH_FINDING_CLOSED`·`COACH_REVIEW_COMPLETED` 행에 "증거 초안 만들기" → `POST /evidence/drafts` `{sourceLearningEventId}` → `/evidence/{id}`).
+
+```text
+┌────────────────────────────────┐
+│ ← Spring Transaction     [필수] │
+│ Spring · 선언적 트랜잭션 경계    │
+│ 왜 중요한가 — 경계를 모르면 어디서│  whyItMatters (있을 때)
+│ 데이터가 어긋나는지 설명할 수 없다│
+│ ────────────────────────────── │
+│ 학습 단계  4 / 6                 │
+│ ┌──┬──┬──┬──┬──┬──┐           │
+│ │■ │■ │■ │■ │□ │□ │           │
+│ └──┴──┴──┴──┴──┴──┘           │
+│ 만들기 개념 코드 설명 복습 재현   │
+│ 다음: 복습 — 이 기술의 복습 카드에│  첫 미완료 단계 1줄
+│ 한 번 답하면 채워져요.            │
+│ ▸ 단계별로 보기                  │
+└────────────────────────────────┘
+```
+
+- **학습 단계 6칸 (S3)**
+  - `SkillDetailView.learningStages`(`05` §6.4)를 그대로 그린다. **항상 6칸이고 순서는 응답 순서**(`LearningStage` 선언 순서: 만들기 → 개념 읽기 → 코드 읽기 → 설명하기 → 복습 → AI 없이 재현)다. 클라이언트가 정렬하거나 채워 넣지 않는다.
+  - 칸 상태는 **완료 / 진행 / 미시작** 셋이다. `completed = true`면 **완료**(채운 칸 + 아래 `completedAt`의 날짜를 tooltip·semantics로). `completed = false`인 칸 중 **가장 앞의 한 칸**이 **진행**(테두리만 있는 칸 + 아래 "다음" 줄), 그 뒤는 **미시작**(빈 칸)이다. 6칸이 모두 완료면 진행 칸이 없고 `skill.detail.stage.allDone`을 한 줄 보인다.
+  - **순서는 표시 순서이고 선행 조건이 아니다**(`06` §5.11 ST-2). 앞 칸이 비어 있어도 뒤 칸이 완료일 수 있으므로, "진행"은 잠금이 아니라 **다음에 하면 좋은 한 가지**를 가리키는 표시다. 잠금 아이콘을 쓰지 않는다.
+  - 칸 아래에 단계 라벨(§3.1 `LearningStage`)을 항상 텍스트로 둔다(A-3). 폭 360에서 6칸이 좁으므로 `textScaler > 1.3`이면 칸을 2줄(3+3)로 접는다(A-10).
+  - "단계별로 보기"를 펼치면 6행 목록으로 바꿔 `단계 · 상태 · 채운 날짜`를 보여주고, 미완료 단계에는 그 단계를 채우는 방법 한 줄(`skill.detail.stage.how.<STAGE>`)과 갈 곳을 둔다 — 만들기·재현은 Today에서 나오는 과제라 버튼 없이 안내만, 개념 읽기·코드 읽기도 안내만, 설명하기는 "개념 설명하기"(러버덕), 복습은 "복습 카드"다.
+  - **저장하지 않는 파생 값이다**(ADR-042) — 이 화면에서 단계를 직접 체크하거나 되돌릴 수 없다. 관련 학습을 하면 다음 조회에서 채워진다는 것을 `skill.detail.stage.note`로 알린다.
+- **`whyItMatters` 줄**: `SkillDetailView.whyItMatters`를 헤더 설명 아래 한 줄로 둔다. `null`이면 숨긴다. SCR-TODAY 과제 카드의 같은 이름 줄과 같은 콘텐츠 값이다(`05` §6.4·§8.1).
+- **데이터**: `GET /skills/{skillId}`(S3 — `whyItMatters`·`learningStages` 포함), `GET /skills/tree?role={트랙}`·`GET /skills/me`(캐시 재사용, 축 표·목표), S3 `GET /skills/{skillId}/history?cursor=` + 페이지네이션. S3 이전 빌드는 `GET /skills/{skillId}`를 부르지 않고 단계 영역과 `whyItMatters`를 숨긴다.
+- **상태**: Loading — 표 skeleton + 단계 6칸 skeleton. 이력 Empty — `skill.detail.historyEmpty`. 단계 6칸은 Empty가 없다(전부 미완료여도 6칸을 그대로 보인다). Error·Offline — 공통(이력만 실패하면 이력 영역만, 단계 조회만 실패하면 단계 영역만 인라인 오류 + "다시 시도"). `404 RESOURCE_NOT_FOUND` → SCR-NOT-FOUND. AI — 이 화면은 AI를 쓰지 않는다. 배너는 두지 않고 "개념 설명하기"만 막는다(§6.5).
 - **규칙 문구** (`skill.rule.<rule_code>`, `06` §7.2~7.4)
 
 | rule_code | 문구 |
@@ -2204,6 +2619,28 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `DIAG_PASSED` | 실력 확인 문제를 통과했어요 |
 | (그 외) | 규칙 {code} |
 
+- **학습 단계 문구**
+
+| key | 문구 |
+|---|---|
+| `skill.detail.whyItMatters` | 왜 중요한가 |
+| `skill.detail.stage.title` | 학습 단계 |
+| `skill.detail.stage.count` | {done} / 6 |
+| `skill.detail.stage.state.completed` | 완료 |
+| `skill.detail.stage.state.current` | 진행 |
+| `skill.detail.stage.state.todo` | 미시작 |
+| `skill.detail.stage.next` | 다음: {stage} |
+| `skill.detail.stage.allDone` | 여섯 단계를 한 바퀴 돌았어요. |
+| `skill.detail.stage.expand` | 단계별로 보기 |
+| `skill.detail.stage.completedAt` | {date}에 채웠어요 |
+| `skill.detail.stage.note` | 단계는 따로 체크하지 않아요. 과제·러버덕·복습 기록이 쌓이면 채워져요. |
+| `skill.detail.stage.how.BUILD` | 이 기술의 문제 풀이나 프로젝트 과제를 하나 마치면 채워져요. |
+| `skill.detail.stage.how.READ_CONCEPT` | 이 기술의 개념 읽기 과제를 마치면 채워져요. |
+| `skill.detail.stage.how.READ_CODE` | 이 기술의 코드 읽기 과제를 마치면 채워져요. |
+| `skill.detail.stage.how.EXPLAIN` | 러버덕으로 설명하거나, 설명하기 과제에서 '다른 사람에게 설명했어요'를 고르면 채워져요. |
+| `skill.detail.stage.how.REVIEW` | 이 기술의 복습 카드에 한 번 답하면 채워져요. |
+| `skill.detail.stage.how.REDO` | 재현 과제를 AI 도움 없이 마치면 채워져요. |
+
 - **문구**: `skill.detail.axis` = "축", `skill.detail.evidence` = "증거 레벨", `skill.detail.planning` = "계획용 레벨", `skill.detail.target` = "목표", `skill.detail.self` = "자기평가 {level}", `skill.detail.selfInactive` = "최근 기록을 반영해 자기평가는 더 이상 쓰지 않아요", `skill.detail.reviewCards` = "복습 카드", `skill.detail.practice` = "문제 풀기", `skill.detail.explain` = "개념 설명하기", `skill.detail.history` = "레벨 변경 기록", `skill.detail.historyItem` = "{axis} {from} → {to}", `skill.detail.evidenceCount` = "근거 기록 {count}개", `skill.detail.historyEmpty` = "아직 레벨 변경 기록이 없어요. 복습과 문제 풀이를 하면 여기에 쌓여요.", `skill.detail.makeDraft` = "증거 초안 만들기"
 
 ### 3.11 Dashboard · Weekly
@@ -2227,7 +2664,13 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ │ 진행 중 · 약 15분 · 복습 6장 남음 │ │
 │ └────────────────────────────┘ │
 │ 이번 주 (10월 12일 월요일부터)      │
-│ 4회 · 3시간 10분                   │
+│ 이번 주에 만든 것                   │  ← 시간보다 먼저
+│ • [문제 풀이] 트랜잭션 전파 수정하기 │
+│ • [프로젝트 과제] 주문 취소 흐름     │
+│ • [AI 없이 재현] 설정 로더 다시 만들기│
+│ 끝낸 과제 7개 · 적은 기록 2개        │
+│ 공부한 시간 3시간 10분 (4회)         │
+│ 이어서 학습한 날 5일                 │  streakDays ≥ 1일 때만
 │ ── S5 ─────────────────────────  │
 │ 마감 위험 (최근 기록 8개)           │
 │ 매우 빠듯함 ┤                       │
@@ -2235,20 +2678,31 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ 보통       ┤ ●──●──●──●──┘        │
 │ 여유       ┤                       │
 │ 지금 [빠듯함] · 필요 ÷ 가능 120%     │
-│ 계획 v3                            │
-│ ━[Java 기본기]━┃━[Spring·JPA]━━━    │
-│        오늘 10/13      기준일 1/5   │
-│ 분야별 수준 (평균 / 목표)            │
-│ Java     ■■■■□□□  2.1 / 3.4        │
-│ Spring   ■■□□□□□  1.2 / 3.8        │
+│ 지금 단계                           │
+│ [2/9단계] 회원과 인증                │
+│ ━━━━━━━┃─────────────────────      │
+│ 다음: 상품과 CRUD                    │
+│ 얼마나 왔나 (지금 / 목표)            │
+│ Java     6개  ■■■■□□□  2.1 / 3.4   │
+│ Spring   4개  ■■□□□□□  1.2 / 3.8   │
 │ 자주 놓치는 관점 (최근 28일)         │
 │ 1 자원 수명 · 2 동시성 · 3 관측성     │
 │ 주간 리뷰 보기 >                     │
 └────────────────────────────────┘
 ```
 
-- **차트 규칙**: `fl_chart` 사용. 위험 추세는 `risk.trend`(최대 8점, `snapshotDate` ASC)를 계단형 선(단색 `color.textPrimary`)으로 그리고 y축은 4단계 텍스트 라벨이다. milestone 타임라인은 `milestoneTimeline.milestones` 구간 막대 + 막대 안 제목·priority 텍스트, 오늘(`todayMarker`) 세로선, `horizonDate` 표시다. 분야별 수준은 `skillCategories`의 `avgPlanningLevelMilli`·`avgTargetLevelMilli`를 `milli / 1000` 소수 1자리로 보여주는 가로 막대(채움 = planning, 숫자 = 목표)다. 모든 차트는 같은 내용을 문장으로 함께 제공하고 `Semantics(label:)`에 넣는다.
-- **데이터**: 진입·화면 복귀 시 `GET /dashboard` 1회. S5 이전에는 `risk`, `milestoneTimeline`이 `null`, `skillCategories`, `weakThinkingAxes`가 `[]`이며 해당 섹션을 숨긴다.
+- **이번 주 요약 (S3)**: `weeklySummary`(`05` §13.1)를 응답의 필드 순서대로 그린다 — **`builtThisWeek`(만든 것) → `completedTasks`(끝낸 것) → `notesWritten`(적은 것) → `studyMinutes`(시간)**. 결과물을 공부 시간보다 **앞에** 두는 것이 이 화면의 규칙이다. 시간은 노력이지 결과가 아니다.
+  - `builtThisWeek`는 이번 주에 마친 문제 풀이·프로젝트 과제·재현 과제 최대 5개다. 행마다 `TaskType` 배지 + 제목 + `planDate`를 보이고, 목록을 누르면 아무 데도 가지 않는다(과제 상세 화면이 없다 — 읽는 목록이다).
+  - `builtThisWeek`가 비면 목록 대신 `dashboard.built.none` 한 줄을 둔다. "아직 없어요"라는 사실만 쓰고 재촉하지 않는다(§9).
+  - `completedTasks`·`notesWritten`은 한 줄에 함께, `studyMinutes`는 `weekCompletedSessions`와 함께 그 아래 한 줄이다. `studyMinutes`는 `weekStudyMinutes`와 같은 값이라 두 번 표시하지 않는다.
+  - 기준은 **이번 주 월요일부터 오늘까지**다(`05` §13.1). 머리줄에 `dashboard.week`로 그 날짜를 밝힌다.
+- **연속 학습 일수 (S3)**: `streakDays`를 이번 주 요약 마지막 줄에 사실로 한 줄 둔다(`dashboard.streak`). **U-3의 예외이고 조건이 붙는다.**
+  - `streakDays = 0`이면 **줄 자체를 숨긴다.** "0일", "끊겼어요", "며칠째 쉬고 있어요"를 쓰지 않는다.
+  - 목표 일수·연속 기록 표시(불꽃·배지·게이지)·최고 기록·비교를 두지 않는다. 숫자 하나와 라벨뿐이다.
+  - 재촉 문구("오늘도 이어 가세요")를 붙이지 않는다. 오늘 아직 완료가 없어도 어제까지의 수를 그대로 보인다(`05` §13.1 계산).
+  - 이 줄은 SCR-DASHBOARD에만 둔다. SCR-TODAY·SCR-REVIEW-\*·SCR-PLAN에는 두지 않는다 — 매일 보는 화면에 연속 숫자를 두면 압박이 된다.
+- **차트 규칙**: `fl_chart` 사용. 위험 추세는 `risk.trend`(최대 8점, `snapshotDate` ASC)를 계단형 선(단색 `color.textPrimary`)으로 그리고 y축은 4단계 텍스트 라벨이다. **지금 단계**는 차트가 아니라 카드 한 장이다 — `milestoneTimeline.milestones`에서 `current = true`인 것 하나를 `[n/전체단계]` 배지와 제목으로 보이고, 그 아래 진행 막대와 `다음: {다음 단계 제목}` 한 줄을 둔다. **어느 단계인지와 다음이 무엇인지**만 답하면 되는 자리라 구간 막대·날짜 축을 두지 않는다. `current`가 하나도 없으면(전부 마침) 카드 대신 한 줄을 둔다. `milestoneTimeline`이 null이면(활성 계획이나 학습 목표 없음) 구역 자체를 숨긴다. **얼마나 왔나**는 `skillCategories`의 `avgPlanningLevelMilli`·`avgTargetLevelMilli`를 `milli / 1000` 소수 1자리로 보여주는 가로 막대다 — 줄마다 `카테고리 이름 · skill 수 · 지금 / 목표`와 막대(채움 = planning ÷ target)다. 목록이 비면 구역을 숨긴다. 모든 차트는 같은 내용을 문장으로 함께 제공하고 `Semantics(label:)`에 넣는다.
+- **데이터**: 진입·화면 복귀 시 `GET /dashboard` 1회. S3 이전 빌드는 `streakDays = 0`, `weeklySummary = null`로 보고 두 영역을 숨긴다. S5 이전에는 `risk`, `milestoneTimeline`이 `null`, `skillCategories`, `weakThinkingAxes`가 `[]`이며 해당 섹션을 숨긴다.
 - **상태**
   - Loading: 섹션별 skeleton.
   - `todaySummary.generated=false`: 오늘 카드에 `dashboard.today.none` + "Today로".
@@ -2256,8 +2710,8 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
   - `risk=null`, `milestoneTimeline=null`: 해당 섹션 숨김. `weakThinkingAxes=[]`: `dashboard.weakAxes.none`.
   - `replanRecommended=true`: 상단 안내(레이아웃 참고) → `/plan/replan?from=goal`.
   - Error·Offline: 공통. AI 상태는 표시하지 않는다(AI 진입 화면이 아니다).
-- **표시 금지**: 연속 학습일, 쉰 날 수, 목표 대비 부족 퍼센트(U-3).
-- **문구**: `dashboard.title` = "진행 현황", `dashboard.replanRecommended` = "목표 날짜가 바뀌었어요.", `dashboard.today` = "오늘", `dashboard.today.none` = "아직 오늘 계획을 만들지 않았어요.", `dashboard.today.reviewLeft` = "복습 {count}장 남음", `dashboard.week` = "이번 주 ({date} 월요일부터)", `dashboard.week.summary` = "{sessions}회 · {duration}", `dashboard.risk` = "마감 위험 (최근 기록 {count}개)", `dashboard.risk.now` = "지금 {risk} · 필요 ÷ 가능 {percent}%", `dashboard.plan` = "계획 v{version}", `dashboard.plan.today` = "오늘 {date}", `dashboard.plan.horizon` = "기준일 {date}", `dashboard.skills` = "분야별 수준 (평균 / 목표)", `dashboard.skills.value` = "{planning} / {target}", `dashboard.weakAxes` = "자주 놓치는 관점 (최근 28일)", `dashboard.weakAxes.none` = "관찰 기록이 더 쌓이면 보여 드려요.", `dashboard.weeklyLink` = "주간 리뷰 보기"
+- **표시 금지**: 쉰 날 수, "놓친" 과제 수, 목표 대비 부족 퍼센트, 연속 기록이 끊겼다는 표시(U-3). 연속 학습 일수는 위 조건을 지킬 때만 사실로 보인다.
+- **문구**: `dashboard.title` = "진행 현황", `dashboard.replanRecommended` = "목표 날짜가 바뀌었어요.", `dashboard.today` = "오늘", `dashboard.today.none` = "아직 오늘 계획을 만들지 않았어요.", `dashboard.today.reviewLeft` = "복습 {count}장 남음", `dashboard.week` = "이번 주 ({date} 월요일부터)", `dashboard.built` = "이번 주에 만든 것", `dashboard.built.none` = "이번 주에 마친 과제가 아직 없어요.", `dashboard.week.tasks` = "끝낸 과제 {tasks}개 · 적은 기록 {notes}개", `dashboard.week.summary` = "공부한 시간 {duration} ({sessions}회)", `dashboard.streak` = "이어서 학습한 날 {days}일", `dashboard.risk` = "마감 위험 (최근 기록 {count}개)", `dashboard.risk.now` = "지금 {risk} · 필요 ÷ 가능 {percent}%", `dashboard.plan` = "계획 v{version}", `dashboard.plan.today` = "오늘 {date}", `dashboard.plan.horizon` = "목표일 {date}", `dashboard.skills` = "분야별 수준 (평균 / 목표)", `dashboard.skills.value` = "{planning} / {target}", `dashboard.weakAxes` = "자주 놓치는 관점 (최근 28일)", `dashboard.weakAxes.none` = "관찰 기록이 더 쌓이면 보여 드려요.", `dashboard.weeklyLink` = "주간 리뷰 보기"
 
 #### SCR-WEEKLY-LIST
 
@@ -2306,38 +2760,52 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 - **행동·검증**: §3.2. "승인" 활성 조건: 제목·상황·행동·결과가 비어 있지 않음. 승인 확인 대화상자 `evidence.accept.confirm`. 거절 확인 대화상자 `evidence.reject.confirm`. 입력 중 이탈 → §6.8.
 - **문구**: `evidence.detail.titleNew` = "증거 작성", `evidence.detail.title` = "증거", `evidence.detail.showAiDraft` = "AI 초안 보기", `evidence.detail.aiDraftNote` = "AI가 만든 원본이에요. 편집해도 원본은 바뀌지 않아요.", `evidence.field.title` = "제목", `evidence.field.skill` = "관련 기술 (선택)", `evidence.field.problem` = "상황·문제", `evidence.field.problem.hint` = "어떤 상황에서 어떤 문제가 있었나요?", `evidence.field.analysis` = "분석", `evidence.field.analysis.hint` = "원인을 어떻게 찾고 무엇을 판단했나요?", `evidence.field.action` = "행동", `evidence.field.action.hint` = "무엇을 바꿨나요? 왜 그 방법을 골랐나요?", `evidence.field.result` = "결과", `evidence.field.result.hint` = "무엇이 나아졌나요? 확인한 방법은?", `evidence.field.links` = "참고 링크 (커밋, PR 등)", `evidence.field.topics` = "설명 주제", `evidence.save` = "저장", `evidence.accept` = "승인", `evidence.reject` = "거절", `evidence.accept.validation.incomplete` = "제목, 상황·문제, 행동, 결과를 채우면 승인할 수 있어요", `evidence.accept.confirm` = "승인하면 내보내기에 포함되고 되돌릴 수 없어요. 승인 후에도 내용은 고칠 수 있어요.", `evidence.reject.confirm` = "이 후보를 거절할까요?", `evidence.detail.rejected` = "거절한 증거예요.", `evidence.detail.drafting` = "AI가 초안을 쓰고 있어요.", `evidence.detail.retryDraft` = "다시 만들기", `evidence.detail.writeManually` = "직접 작성으로 계속", `evidence.accepted` = "승인했어요.", `evidence.restore` = "후보로 되돌리기"
 
-### 3.13 요구 역량 비교 (Requirement Radar)
+### 3.13 로드맵 비교 (Roadmap compare)
 
 #### SCR-REQUIREMENTS-LIST
 
-- **목적**: 분석한 요구사항 문서 목록을 보고 새 요구사항 목록을 분석한다(FR-19). 요구사항 목록은 사용자가 목표로 삼은 기술 요구사항이다(예: 팀의 기술 스택 문서, 프로젝트 명세, 학습 로드맵). **진입**: rail Radar, More > 요구 역량 비교. **Sprint**: S7.
-- **레이아웃**: 앱 바 "요구 역량 비교" → primary "요구사항 분석하기" → 목록 행: 제목, 분석일, 상태(분석 중/완료/실패), 완료 시 `요구사항 {requirementCount}개`. 행 스와이프·메뉴 "삭제".
+- **목적**: 비교한 로드맵 목록을 보고 새 로드맵·기술 목록을 붙여넣어 비교한다(FR-19). 붙여넣는 것은 공개된 학습 로드맵이나 기술 목록이다. 항목마다 지금 레벨 기준으로 준비됨·도전·나중에로 나눈다. **진입**: rail Radar, More > 로드맵 비교. **Sprint**: S7.
+- **레이아웃**: 앱 바 "로드맵 비교" → primary "로드맵 비교하기" → 목록 행: 제목, 분석일, 상태(분석 중/완료/실패), 완료 시 `항목 {requirementCount}개`. 행 스와이프·메뉴 "삭제".
 - **데이터**: `GET /requirement-docs?cursor=` + 페이지네이션. 삭제 → 확인 대화상자 → `DELETE /requirement-docs/{requirementDocId}`.
-- **상태**: Loading — 행 skeleton. Empty — `radar.list.empty` + "요구사항 분석하기". AI unavailable — 배너, 분석 버튼 비활성. Budget warning — 버튼 아래 경고. Error·Offline — 공통.
-- **문구**: `radar.list.title` = "요구 역량 비교", `radar.list.new` = "요구사항 분석하기", `radar.list.counts` = "요구사항 {count}개", `radar.list.delete` = "삭제", `radar.list.delete.confirm` = "이 요구사항 문서와 분석 결과를 삭제할까요?", `radar.list.empty` = "분석한 요구사항 목록이 없어요. 목표로 삼은 기술 요구사항을 붙여넣으면 항목별 준비 상태를 정리해 드려요."
+- **상태**: Loading — 행 skeleton. Empty — `radar.list.empty` + "로드맵 비교하기". AI unavailable — 배너, 분석 버튼 비활성. Budget warning — 버튼 아래 경고. Error·Offline — 공통.
+- **문구**: `radar.list.title` = "로드맵 비교", `radar.list.new` = "로드맵 비교하기", `radar.list.counts` = "항목 {count}개", `radar.list.delete` = "삭제", `radar.list.delete.confirm` = "이 로드맵과 비교 결과를 삭제할까요?", `radar.list.empty` = "비교한 로드맵이 없어요. 공개 학습 로드맵이나 기술 목록을 붙여넣으면 항목별 준비 상태를 정리해 드려요."
 
 #### SCR-REQUIREMENT-NEW
 
-- **목적**: 기술 요구사항 목록을 붙여넣어 분석을 요청한다(FR-19). **진입**: SCR-REQUIREMENTS-LIST. **Sprint**: S7.
-- **레이아웃**: 제목(필수) → 출처 링크(선택, 안내 `radar.new.urlNote`) → 요구사항 본문(여러 줄, 크기 `{kb}KB / 20KB`) → 안내 `radar.new.retention` → primary "분석 요청".
+- **목적**: 공개 학습 로드맵이나 기술 목록을 붙여넣어 비교를 요청한다(FR-19). **진입**: SCR-REQUIREMENTS-LIST. **Sprint**: S7.
+- **레이아웃**: 제목(필수) → 출처 링크(선택, 안내 `radar.new.urlNote`) → 로드맵 본문(여러 줄, 크기 `{kb}KB / 20KB`) → 안내 `radar.new.retention` → primary "비교 요청".
 - **데이터**: `POST /requirement-docs` `{title, sourceUrl, sourceText}` → `202 {id}` → `/radar/{id}`.
 - **상태**: 전송 중 — 버튼 로딩. AI unavailable — 배너 + 버튼 비활성. Error — `413`은 본문 필드 아래 `radar.new.validation.tooLarge`, 그 외 §5. Offline — 공통.
 - **행동·검증**: §3.2(본문 UTF-8 20000 bytes 이하, 링크 http/https). 입력 중 이탈 → §6.8.
-- **문구**: `radar.new.title` = "요구사항 분석", `radar.new.docTitle` = "제목 (예: 팀 기술 스택)", `radar.new.url` = "출처 링크 (선택)", `radar.new.urlNote` = "링크는 기록용이에요. DevPilot은 링크의 내용을 가져오지 않아요.", `radar.new.sourceText` = "요구사항 본문", `radar.new.sourceText.hint` = "필요한 기술과 권장 기술이 적힌 목록을 붙여넣어 주세요. 기술 스택 문서, 프로젝트 명세, 학습 로드맵 등.", `radar.new.retention` = "본문은 180일 뒤 자동으로 지워지고 분석 결과는 남아요.", `radar.new.submit` = "분석 요청", `radar.new.validation.tooLarge` = "본문이 너무 길어요. 필요한 기술과 권장 기술 위주로 줄여 주세요."
+- **문구**: `radar.new.title` = "로드맵 붙여넣기", `radar.new.docTitle` = "제목 (예: 백엔드 개발자 로드맵)", `radar.new.url` = "출처 링크 (선택)", `radar.new.urlNote` = "링크는 기록용이에요. DevPilot은 링크의 내용을 가져오지 않아요.", `radar.new.sourceText` = "로드맵 본문", `radar.new.sourceText.hint` = "공개 학습 로드맵이나 기술 목록을 붙여넣어 주세요. 필수와 선택이 나뉘어 있으면 그대로 두세요.", `radar.new.retention` = "본문은 180일 뒤 자동으로 지워지고 비교 결과는 남아요.", `radar.new.submit` = "비교 요청", `radar.new.validation.tooLarge` = "본문이 너무 길어요. 기술 항목 위주로 줄여 주세요."
 
 #### SCR-REQUIREMENT-DETAIL
 
-- **목적**: 요구사항별 준비 상태와 연결된 증거를 보고 보완할 기술로 이동한다. **확률·점수·퍼센트는 표시하지 않는다**(FR-19, AC-22). **진입**: SCR-REQUIREMENTS-LIST, SCR-REQUIREMENT-NEW 요청 직후. **Sprint**: S7.
-- **레이아웃**: 헤더(제목, 분석일, 링크가 있으면 `출처 링크 ↗`) → 요약 줄: 필수·권장별 `fitCounts`(`준비됨 {n} · 도전 {n} · 나중에 {n} · 분류 불가 {n}`) → "필수" 섹션 → "권장" 섹션. 요구사항 행: `rawText`, 매칭 기술 이름(탭 → `/skills/{skillId}`) 또는 `radar.detail.noSkill`, `RequirementFitBadge`, 연결된 증거 링크(→ `/evidence/{id}`). 본문 purge 후에는 헤더에 `radar.detail.purged`.
+- **목적**: 로드맵 항목별 준비 상태와 연결된 증거를 보고 보완할 기술로 이동한다. **확률·점수·퍼센트는 표시하지 않는다**(FR-19, AC-22). **진입**: SCR-REQUIREMENTS-LIST, SCR-REQUIREMENT-NEW 요청 직후. **Sprint**: S7.
+- **레이아웃**: 헤더(제목, 분석일, 링크가 있으면 `출처 링크 ↗`) → 요약 줄: 필수·권장별 `fitCounts`(`준비됨 {n} · 도전 {n} · 나중에 {n} · 분류 불가 {n}`) → "필수" 섹션 → "권장" 섹션. 항목 행: `rawText`, 매칭 기술 이름(탭 → `/skills/{skillId}`) 또는 `radar.detail.noSkill`, `RequirementFitBadge`, 연결된 증거 링크(→ `/evidence/{id}`). 본문 purge 후에는 헤더에 `radar.detail.purged`.
 - **데이터**: `GET /requirement-docs/{requirementDocId}`. `analysisStatus ∈ {PENDING, RUNNING}`이면 2초 polling, 최대 3분. `FAILED`면 `failureCode` 문구 + "다시 요청"(입력 화면으로 이동해 제목·링크를 채움. purge 전이면 본문도 `sourceText`로 채운다).
-- **상태**: Loading — skeleton. Async pending — `AsyncStatusIndicator` + `radar.detail.analyzing`. Empty — 요구사항 0개 → `radar.detail.noRequirements`. Error·Offline — 공통.
-- **문구**: `radar.detail.summary` = "준비됨 {ready} · 도전 {stretch} · 나중에 {later} · 분류 불가 {unknown}", `radar.detail.required` = "필수", `radar.detail.preferred` = "권장", `radar.detail.noSkill` = "기술 목록에 없는 요구사항", `radar.detail.evidence` = "연결된 증거", `radar.detail.source` = "출처 링크", `radar.detail.analyzing` = "요구사항을 정리하고 있어요.", `radar.detail.purged` = "요구사항 본문은 보관 기간이 지나 삭제됐어요.", `radar.detail.noRequirements` = "요구사항을 찾지 못했어요. 기술 요구사항이 적힌 본문으로 다시 요청해 주세요.", `radar.detail.retry` = "다시 요청", `radar.detail.fitHelp` = "준비됨·도전·나중에는 지금 기술 레벨과 증거로 나눈 분류예요. 점수나 달성 가능성을 뜻하지 않아요."
+- **상태**: Loading — skeleton. Async pending — `AsyncStatusIndicator` + `radar.detail.analyzing`. Empty — 항목 0개 → `radar.detail.noRequirements`. Error·Offline — 공통.
+- **문구**: `radar.detail.summary` = "준비됨 {ready} · 도전 {stretch} · 나중에 {later} · 분류 불가 {unknown}", `radar.detail.required` = "필수", `radar.detail.preferred` = "권장", `radar.detail.noSkill` = "기술 목록에 없는 항목", `radar.detail.evidence` = "연결된 증거", `radar.detail.source` = "출처 링크", `radar.detail.analyzing` = "로드맵 항목을 정리하고 있어요.", `radar.detail.purged` = "로드맵 본문은 보관 기간이 지나 삭제됐어요.", `radar.detail.noRequirements` = "기술 항목을 찾지 못했어요. 기술 항목이 적힌 로드맵으로 다시 요청해 주세요.", `radar.detail.retry` = "다시 요청", `radar.detail.fitHelp` = "준비됨·도전·나중에는 지금 기술 레벨과 증거로 나눈 분류예요. 점수나 달성 가능성을 뜻하지 않아요."
 
 ### 3.14 Settings · 계정
 
+#### SCR-SELF-ASSESSMENT
+
+경로 `/settings/self-assessment`. **온보딩에서 한 번 적고 끝이던 자기평가를 나중에 고친다** (`05` §6.5). 그러지 못하면 "Spring을 2로 적었는데 사실 1이었다"를 깨달은 사람이 진도 전체를 초기화해야 한다(2026-09-30 실사용에서 확인). **진입**: SCR-SETTINGS "지금 수준 다시 고르기". **Sprint**: S3.
+
+- 레이아웃: 안내 한 줄(`selfAssessmentLead`) → 14개 카테고리 × 5칩(0~4, SCR-ONBOARDING 3단계와 **같은 위젯** `SelfAssessmentChips`) → "저장" → 안내 한 줄(`selfAssessmentNote`).
+- 시작값은 `GET /skills/me`의 category별 `selfAssessedLevel` 최댓값이다. 전파 규칙상 한 category의 skill은 같은 값이지만 진단으로 일부가 달라질 수 있어 최댓값을 쓴다(`06` §7.4).
+- **바꾼 칸만 보낸다.** `PUT /skills/me/self-assessment`의 `assessments`에 값이 달라진 category만 담는다 — 열네 칸을 다 보내면 손대지 않은 값을 실수로 덮어쓴다(`05` §6.5).
+- 아무것도 고치지 않았으면 "저장"이 꺼져 있다.
+- 저장 성공 → 토스트 `selfAssessmentSaved`, `GET /skills/me` 재조회.
+- `selfAssessmentNote`로 **기록이 주장을 이긴다**는 것을 알린다 — 진단에서 틀린 분야는 값을 다시 적어도 그 기록을 따른다(`06` §7.5, `05` §4.3).
+- 진입은 `context.go`다(SCR-SETTINGS의 "학습 목표"와 같은 방식). SCR-SETTINGS는 나갈 때 저장하지 않은 편집을 확인하는 `onExit`이 있어, `push`로 쌓으면 그 확인과 얽힌다.
+
+---
+
 #### SCR-SETTINGS
 
-- **목적**: 프로필·**학습 목표일**·학습 시간·하루 경계를 고치고, AI 사용량을 확인하고, 캘린더 구독·앱 설치·데이터 내려받기·계정 삭제·로그아웃을 한다(FR-03, FR-20, FR-22, FR-23, FR-24). 학습 목표일은 사용자가 여기("학습 목표" → SCR-LEARNING-GOAL)에서 직접 등록하고 바꾼다. **진입**: rail Settings, More > 설정. **Sprint**: S1(프로필·학습 목표·시간), S2(설치 안내), S3(AI 사용량), S5(캘린더), S6(데이터·삭제).
+- **목적**: 프로필·**학습 목표(학습 트랙·목표일)**·학습 시간·하루 경계를 고치고, AI 사용량을 확인하고, 캘린더 구독·앱 설치·데이터 내려받기·계정 삭제·로그아웃을 한다(FR-03, FR-20, FR-22, FR-23, FR-24). 목표일은 사용자가 여기("학습 목표" → SCR-LEARNING-GOAL)에서 직접 등록하고 바꾼다. **진입**: rail Settings, More > 설정. **Sprint**: S1(프로필·학습 목표·시간), S2(설치 안내), S3(AI 사용량), S5(캘린더), S6(데이터·삭제).
 - **레이아웃**
 
 ```text
@@ -2346,7 +2814,9 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ 프로필                            │
 │ 표시 이름 [mt                   ] │
 │ 학습 목표                       >  │
-│ 완료 2027년 4월 1일 · 점검 1월 5일  │  사용자가 등록한 값 (예시)
+│ 목표일 2027년 4월 1일              │  사용자가 등록한 값 (예시)
+│ 지금 수준 다시 고르기            >  │
+│ 온보딩에서 고른 분야별 수준을 고쳐요  │
 │ 학습 시간                          │
 │ 평일 [45분 ▾]    주말 [240분 ▾]    │
 │ 하루 시작 시각 [새벽 4시 ▾]         │
@@ -2373,6 +2843,8 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ ─────────────────────────────  │
 │ 내 데이터                             │
 │ 내 데이터 내려받기 (JSON)              │
+│ 학습 진도 초기화                   >   │
+│ 계정은 그대로 두고 처음부터 다시 시작해요│
 │ 계정 삭제                          >   │
 │ ─────────────────────────────  │
 │ 로그아웃                               │
@@ -2430,8 +2902,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `settings.profile` | 프로필 |
 | `settings.displayName` | 표시 이름 |
 | `settings.goal` | 학습 목표 |
-| `settings.goal.summary` | 완료 {completion} · 점검 {checkpoint} |
-| `settings.goal.summaryNoCheckpoint` | 완료 {completion} |
+| `settings.goal.summary` | 목표일 {date} |
 | `settings.study` | 학습 시간 |
 | `settings.weekday` | 평일 |
 | `settings.weekend` | 주말 |
@@ -2472,6 +2943,71 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `settings.logout` | 로그아웃 |
 | `settings.version` | 버전 {version} ({sha}) |
 
+#### SCR-ACCOUNT-RESET
+
+- **목적**: 계정은 그대로 두고 **학습 진도만** 온보딩 이전으로 되돌린다(ADR-056, BL-SEC-19). 계정 삭제(SCR-ACCOUNT-DELETE)와 다른 화면이다 — 저쪽은 계정을 잃고, 이쪽은 다시 시작한다. **진입**: SCR-SETTINGS "학습 진도 초기화". **Sprint**: S3.
+- **레이아웃** (`/settings/reset`)
+
+```text
+┌────────────────────────────────┐
+│ ←  학습 진도 초기화               │
+│ 계정은 그대로 두고 처음부터 다시   │
+│ 시작해요. 되돌릴 수 없어요.        │
+│ ────────────────────────────── │
+│ 지워지는 것                       │
+│ · 학습 목표와 계획                 │
+│ · 오늘 계획·과제·세션 기록         │
+│ · 기술 레벨과 변경 이력            │
+│ · 복습 카드와 답변                 │
+│ · 문제 풀이 기록과 러버덕 대화     │
+│ 남는 것                           │
+│ · 계정과 로그인                    │
+│ · 개념 노트·문제·용어 (콘텐츠)     │
+│ · 사이드 프로젝트와 그 기록        │
+│ ────────────────────────────── │
+│ ☐ 사이드 프로젝트 기록도 함께 지우기│
+│                                │
+│ 확인을 위해 초기화합니다 를 입력하세요│
+│ ┌────────────────────────────┐ │
+│ │                            │ │
+│ └────────────────────────────┘ │
+│ ┌────────────────────────────┐ │
+│ │        초기화하기            │ │  입력이 정확할 때만 활성
+│ └────────────────────────────┘ │
+└────────────────────────────────┘
+```
+
+- **규칙**
+  - **무엇이 지워지고 무엇이 남는지 먼저 보인다.** 확인 입력은 그다음이다 — 되돌릴 수 없는 일에서 "예/아니오"만 묻지 않는다(§3.2 계정 삭제와 같은 방식).
+  - 확인 입력이 앞뒤 공백을 지운 뒤 정확히 `초기화합니다`일 때만 "초기화하기"가 활성된다. 다른 값이면 오류 문구를 띄우지 않고 버튼만 꺼 둔다.
+  - 체크박스를 켜면 `includeProjects: true`로 보내고, "남는 것"의 사이드 프로젝트 줄이 "지워지는 것"으로 옮겨 간다 — **보낼 값과 화면이 어긋나지 않게** 한다.
+  - 요청 중에는 버튼을 비활성한다(§6.6). 같은 행동을 재시도하면 같은 IK를 쓴다.
+- **데이터**: "초기화하기" → `POST /me/reset` `{confirmation, includeProjects}` (IK) → 200 `ProgressResetResponse`.
+- **성공 뒤**: `meProvider`를 무효화하고 온보딩 첫 단계(`/onboarding/goal`)로 보낸다. 토스트 `settings.reset.done`. 온보딩 draft가 남아 있으면 지운다 — 지난 입력이 새 시작에 끼어들면 안 된다.
+- **상태**: Loading — 버튼 spinner. Error — 토스트(§5.1) + 버튼 복구. Offline — 버튼 비활성. AI — 해당 없음.
+- **문구**
+
+| key | 문구 |
+|---|---|
+| `settings.reset` | 학습 진도 초기화 |
+| `settings.reset.desc` | 계정은 그대로 두고 처음부터 다시 시작해요 |
+| `settings.reset.title` | 학습 진도 초기화 |
+| `settings.reset.lead` | 계정은 그대로 두고 처음부터 다시 시작해요. 되돌릴 수 없어요. |
+| `settings.reset.removedTitle` | 지워지는 것 |
+| `settings.reset.removed.plan` | 학습 목표와 계획 |
+| `settings.reset.removed.today` | 오늘 계획·과제·세션 기록 |
+| `settings.reset.removed.skill` | 기술 레벨과 변경 이력 |
+| `settings.reset.removed.review` | 복습 카드와 답변 |
+| `settings.reset.removed.training` | 문제 풀이 기록과 러버덕 대화 |
+| `settings.reset.keptTitle` | 남는 것 |
+| `settings.reset.kept.account` | 계정과 로그인 |
+| `settings.reset.kept.content` | 개념 노트·문제·용어 |
+| `settings.reset.kept.projects` | 사이드 프로젝트와 그 기록 |
+| `settings.reset.includeProjects` | 사이드 프로젝트 기록도 함께 지우기 |
+| `settings.reset.confirmLabel` | 확인을 위해 초기화합니다 를 입력하세요 |
+| `settings.reset.button` | 초기화하기 |
+| `settings.reset.done` | 처음부터 다시 시작해요. |
+
 #### SCR-ACCOUNT-DELETE
 
 - **목적**: 삭제 범위를 알리고, 최근 재로그인과 확인 문구 입력 후 계정 삭제를 요청한다(FR-23, AC-15). **진입**: SCR-SETTINGS "계정 삭제", 재로그인 후 복귀(`?reauth=1`). **Sprint**: S6.
@@ -2484,7 +3020,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ 지워지는 것                        │
 │ • 목표, 계획, 기술 레벨, 학습 기록   │
 │ • 복습 카드, 문제 풀이, 코드 리뷰    │
-│ • 증거, 주간 리뷰, 요구 역량 비교    │
+│ • 증거, 주간 리뷰, 로드맵 비교       │
 │ 알아 둘 것                          │
 │ • 요청 후 몇 분 안에 지워져요.        │
 │ • 백업에 남은 데이터는 보관 기간     │
@@ -2509,16 +3045,61 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 - **재로그인 판정**: 현재 access token의 JWT payload(base64 디코드, 서명 검증 없음)에서 `authTime` = `amr[].timestamp` 최댓값(`amr`이 없을 때만 `iat`)을 구한다(서버와 같은 기준, `05-api-spec.md` §3.4). `authTime`이 지금으로부터 4분 30초 이내면 "확인됐어요" + 남은 시간 카운트다운(5분 − 30초 여유). 0이 되면 다시 "GitHub로 다시 로그인"을 보여준다.
 - **상태**: 삭제 중 — 버튼 로딩, 화면 잠금. Error — `403 RECENT_LOGIN_REQUIRED` → 확인 표시를 지우고 인라인 `account.delete.reauthAgain`. 그 외 §5. Offline — 공통.
 - **행동·검증**: "계정 삭제" 활성 조건 = 재로그인 확인 유효 + 입력값이 정확히 `삭제합니다` + 온라인. 추가 확인 대화상자는 없다(두 단계 확인으로 충분).
-- **문구**: `account.delete.title` = "계정 삭제", `account.delete.headline` = "삭제하면 되돌릴 수 없어요", `account.delete.what` = "지워지는 것", `account.delete.what.items` = "목표, 계획, 기술 레벨, 학습 기록\n복습 카드, 문제 풀이, 코드 리뷰\n증거, 주간 리뷰, 요구 역량 비교", `account.delete.notes` = "알아 둘 것", `account.delete.notes.items` = "요청 후 몇 분 안에 지워져요.\n백업에 남은 데이터는 보관 기간(최대 6개월)이 지나면 사라져요.\nGitHub 로그인 연결 정보는 운영자가 따로 삭제해요.", `account.delete.exportFirst` = "내 데이터 먼저 내려받기", `account.delete.step1` = "1. 본인 확인", `account.delete.reauth` = "GitHub로 다시 로그인", `account.delete.reauthOk` = "확인됐어요 · {remaining} 안에 삭제하세요", `account.delete.reauthAgain` = "본인 확인 시간이 지났어요. 다시 로그인해 주세요.", `account.delete.step2` = "2. 확인 문구 입력", `account.delete.typeHint` = "'삭제합니다'를 입력하세요", `account.delete.phrase` = "삭제합니다", `account.delete.button` = "계정 삭제"
+- **문구**: `account.delete.title` = "계정 삭제", `account.delete.headline` = "삭제하면 되돌릴 수 없어요", `account.delete.what` = "지워지는 것", `account.delete.what.items` = "목표, 계획, 기술 레벨, 학습 기록\n복습 카드, 문제 풀이, 코드 리뷰\n증거, 주간 리뷰, 로드맵 비교", `account.delete.notes` = "알아 둘 것", `account.delete.notes.items` = "요청 후 몇 분 안에 지워져요.\n백업에 남은 데이터는 보관 기간(최대 6개월)이 지나면 사라져요.\nGitHub 로그인 연결 정보는 운영자가 따로 삭제해요.", `account.delete.exportFirst` = "내 데이터 먼저 내려받기", `account.delete.step1` = "1. 본인 확인", `account.delete.reauth` = "GitHub로 다시 로그인", `account.delete.reauthOk` = "확인됐어요 · {remaining} 안에 삭제하세요", `account.delete.reauthAgain` = "본인 확인 시간이 지났어요. 다시 로그인해 주세요.", `account.delete.step2` = "2. 확인 문구 입력", `account.delete.typeHint` = "'삭제합니다'를 입력하세요", `account.delete.phrase` = "삭제합니다", `account.delete.button` = "계정 삭제"
 
 ### 3.15 기타
 
 #### SCR-MORE
 
-- **목적**: 모바일에서 하단 탭에 없는 목적지로 이동한다. **진입**: 하단 탭 More(폭 < 600만). **Sprint**: S2.
-- **레이아웃**: `ListTile` 목록(아이콘 + 라벨 + `>`), flag가 켜진 항목만: 사이드 프로젝트(`/projects`), 문제 풀이(`/training`), 코드 리뷰(`/coach`), 기술(`/skills`), 진행 현황(`/dashboard`), 주간 리뷰(`/weekly`), 증거(`/evidence`), 요구 역량 비교(`/radar`), 설정(`/settings`). AI 상태가 `DISABLED`/`BALANCE_EXHAUSTED`/`BUDGET_WARNING`이면 목록 위에 §6.5 배너.
+- **목적**: 모바일에서 하단 탭에 없는 목적지로 이동한다. **진입**: 하단 탭 More(폭 < 600만). **Sprint**: S2 (그룹·설명은 S3, BL-CLI-49).
+- **레이아웃**: **세 묶음**으로 나눈 `ListTile` 목록이다. 각 줄은 아이콘 + 라벨 + **한 줄 설명** + `>`이고, flag가 켜진 항목만 보인다. AI 상태가 `DISABLED`/`BALANCE_EXHAUSTED`/`BUDGET_WARNING`이면 목록 위에 §6.5 배너.
+
+```text
+┌────────────────────────────────┐
+│ 더보기                          │
+│ 배우기                           │  more.group.learn
+│ 📖 개념 노트                  > │
+│    개념을 처음 배울 때 읽는 글    │
+│ 💡 오늘의 팁                  > │
+│    3분짜리 실무 증상 하나         │
+│ 🔤 용어 사전                  > │
+│    말이 헷갈릴 때 찾는 곳         │
+│ 🏋 문제 풀이                  > │
+│    직접 풀어 보는 문제            │
+│ 내 기록                          │  more.group.record
+│ 🌳 기술                       > │
+│    내 기술이 어디까지 왔는지      │
+│ 💻 사이드 프로젝트            > │
+│    내가 만든 것과 그때 내린 결정  │
+│ 📊 진행 현황                  > │
+│    이번 주에 무엇을 했는지        │
+│ 설정                             │  more.group.settings
+│ ⚙ 설정                        > │
+│    시간·알림·계정                 │
+└────────────────────────────────┘
+```
+
+  - **묶음은 "무엇을 하러 가는가"로 나눈다** — 기능 이름만 늘어놓으면 처음 쓰는 사람은 어디부터 열어야 할지 알 수 없다(BL-CLI-49). 설명은 그 화면이 **무엇을 위한 곳인지** 한 줄로 말하고, 기능을 나열하지 않는다.
+  - 아직 만들지 않은 목적지(코드 리뷰 `/coach`, 주간 리뷰 `/weekly`, 증거 `/evidence`, 로드맵 비교 `/radar`)는 flag가 켜지면 각각 배우기·내 기록 묶음에 같은 형식으로 붙인다.
 - **데이터**: `meProvider`(캐시). **상태**: 없음.
-- **문구**: `more.title` = "더보기", `more.projects` = "사이드 프로젝트", `more.training` = "문제 풀이", `more.coach` = "코드 리뷰", `more.skills` = "기술", `more.dashboard` = "진행 현황", `more.weekly` = "주간 리뷰", `more.evidence` = "증거", `more.radar` = "요구 역량 비교", `more.settings` = "설정"
+- **문구**
+
+| key | 문구 |
+|---|---|
+| `more.title` | 더보기 |
+| `more.group.learn` | 배우기 |
+| `more.group.record` | 내 기록 |
+| `more.group.settings` | 설정 |
+| `more.diagnostics` / `.desc` | 지금 수준 확인 / 분야마다 한 문제, 풀면 그 분야의 시작 수준이 정해져요 — **진단의 다른 입구는 모두 한 번 닫히면 열리지 않으므로 여기가 항상 열려 있는 문이다** |
+| `more.lessons` / `.desc` | 개념 노트 / 개념을 처음 배울 때 읽는 글 |
+| `more.tips` / `.desc` | 오늘의 팁 / 3분짜리 실무 증상 하나 |
+| `more.terms` / `.desc` | 용어 사전 / 말이 헷갈릴 때 찾는 곳 |
+| `more.training` / `.desc` | 문제 풀이 / 직접 풀어 보는 문제 |
+| `more.skills` / `.desc` | 기술 / 내 기술이 어디까지 왔는지 |
+| `more.projects` / `.desc` | 사이드 프로젝트 / 내가 만든 것과 그때 내린 결정 |
+| `more.dashboard` / `.desc` | 진행 현황 / 이번 주에 무엇을 했는지 |
+| `more.settings` / `.desc` | 설정 / 시간·알림·계정 |
+| `more.coach` / `more.weekly` / `more.evidence` / `more.radar` | 코드 리뷰 / 주간 리뷰 / 증거 / 로드맵 비교 |
 
 #### SCR-NOT-FOUND
 
@@ -2526,9 +3107,9 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 - **레이아웃**: 아이콘(`search_off`) + `notFound.title` + `notFound.body` + primary "Today로"(S1은 "Plan으로").
 - **문구**: `notFound.title` = "페이지를 찾을 수 없어요", `notFound.body` = "주소가 바뀌었거나 삭제된 항목이에요.", `notFound.home` = "Today로"
 
-### 3.16 러버덕 · 코드 읽기 · 사이드 프로젝트 (v3)
+### 3.16 러버덕 · 코드 읽기 · 사이드 프로젝트 · 프로젝트 기록
 
-핵심 루프(`01` §5)의 "설명한다"·"읽는다"·"만든다"를 맡는 화면이다. 러버덕(SCR-RUBBER-DUCK)이 중심이고, 코드 읽기와 사이드 프로젝트는 러버덕으로 이어진다.
+핵심 루프(`01` §5)의 "설명한다"·"읽는다"·"만든다"를 맡는 화면이다. 러버덕(SCR-RUBBER-DUCK)이 중심이고, 코드 읽기와 사이드 프로젝트는 러버덕으로 이어진다. 프로젝트에서 내린 결정과 겪은 장애는 SCR-PROJECT-DETAIL에 기록으로 남는다(FR-29).
 
 #### SCR-RUBBER-DUCK
 
@@ -2608,6 +3189,10 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
   - 남은 턴: 앱 바 `턴 {turnCount} / {maxTurns}`와 입력칸 아래 `rubberDuck.remaining`(= 응답의 `remainingTurns`). 압박 문구를 쓰지 않는다(§9).
   - "보내기" → `POST …/turns` `{explanation}`(IK, 동기 ≤ 20초). 보내는 동안 내 말풍선을 먼저 붙이고 그 아래 `ThinkingIndicator` + `rubberDuck.thinking`. 성공하면 질문 말풍선을 붙이고 입력칸을 비운다. 실패하면 내 말풍선을 지우고 **입력칸에 설명을 그대로 둔다**(턴이 저장되지 않음, `05` §9.7) + 아래 상태 표의 처리.
   - 입력 보관: 작성 중 설명은 `localStorage` `devpilot.rubberduck.draft.<sessionId>`에 1초 debounce로 저장(try/catch)하고 전송 성공 시 지운다.
+  - **지시어 안내 (S3)**: 턴 응답의 `vagueReferenceCount`가 1 이상이면 방금 보낸 **내 말풍선 아래**에 보조 한 줄 `rubberDuck.vague.count`("'그거·이렇게' 같은 말을 {count}번 썼어요")를 둔다. 0이면 아무것도 보이지 않는다. 서버가 마스킹본에서 센 결정적 값이고 **저장하지 않는다**(`06` §9.6, `05` §9.7) — 화면도 이전 턴의 값을 누적하거나 기억하지 않고 그 턴 옆에만 둔다.
+    - 오류·경고 색을 쓰지 않는다. 숫자 하나와 사실만 쓰고 "고치세요"라고 하지 않는다(U-3, §9). 점수·레벨·복습에 영향이 없다는 것은 정리 화면의 빈틈 항목에서 설명한다.
+    - `vagueReferencePer100Words`는 화면에 쓰지 않는다 — 한 턴에서는 비율이 요동쳐 오해를 준다. 비율로 판단하는 곳은 서버의 정리 단계뿐이다(`06` §9.6 VR-8).
+    - 스크린 리더는 이 줄을 말풍선의 보조 설명으로 읽고 live region으로 따로 알리지 않는다(새 AI 질문만 알린다).
 
 - **Hint Ladder로 넘어가는 안내** (응답 `suggestHint = true` — RD-3, 2턴 연속 "모르겠다"류)
 
@@ -2660,17 +3245,22 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ ┌────────────────────────────┐ │
 │ │    Today로 돌아가 완료하기      │ │  taskId 있을 때
 │ └────────────────────────────┘ │
+│ ┌────────────────────────────┐ │
+│ │     그래서 답이 뭔가요          │ │  skill에 노트가 있을 때
+│ └────────────────────────────┘ │
 │ 복습하러 가기                      │
 └────────────────────────────────┘
 ```
 
   - gap 카드: "무엇을 몰랐나"(`whatWasMissed`) · "왜 중요한가"(`whyItMatters`) · "복습 질문"(`reviewQuestion`) · "복습 카드 보기"(`reviewItemId`가 있으면 → `/review/items?skillId={skill.id}`). gap이 0개면 카드 대신 `rubberDuck.summary.noGaps`. AI가 만든 문장이므로 영역 제목 옆에 `AiBadge`를 둔다(U-4).
+  - **"용어" 빈틈 (S3)**: 지시어를 많이 쓰면 서버가 빈틈 목록에 `용어 — 지시어 대신 용어로 바꿔 말해 보기` 1건을 더한다(`06` §9.6 VR-9, 한 세션에 최대 1건). 이 항목은 **AI가 낸 것이 아니므로 `AiBadge`를 붙이지 않고**, `reviewItemId`가 없으므로 "복습 카드 보기"도 없다(VR-10 — 복습 카드를 만들지 않는다). 카드 아래에 `rubberDuck.summary.vagueNote`를 한 줄 두어 표현 습관을 센 것이고 레벨·복습에 영향이 없다는 것을 밝힌다. 다른 gap과 같은 카드 모양을 쓰되 이 두 가지만 다르다.
   - "잘 설명한 것"(`confirmed`)은 글머리표 목록이다. 채점 기호(✓)를 쓰지 않는다.
   - 복습 카드 안내: `createdReviewItemCount > 0` → `rubberDuck.summary.cardsCreated`. `reviewItemId`가 있는 gap 수가 `createdReviewItemCount`보다 크면 그 차이만큼 `rubberDuck.summary.cardsPulled`(이미 있던 같은 개념 카드의 due를 당김, `05` §9.8).
   - 증거 안내: gap 0개 + `turnCount ≥ 3` + skill 있음 → `rubberDuck.summary.evidence`(RD-5). skill이 `null`이면 → `rubberDuck.summary.noSkill`(RD-7).
   - `summarySkippedReason`이 있으면(정리 AI 실패·차단): gap·잘한 것·한 줄 정리 영역 대신 `rubberDuck.summary.skipped` + 사유 한 줄 `asyncFailure.<CODE>`(§5.2). **다시 정리하는 버튼은 없다**(`05` §9.8). 대화는 "대화 다시 보기"로 남아 있다. `CODE_READING`이면 이 경우에도 세션이 `COMPLETED`라 과제 완료 조건(RC-1)을 만족한다.
   - `status = ABANDONED`(턴 0개로 끝냄, 그만두기, 하루 이상 방치): 결과 대신 `rubberDuck.abandoned` + 대화 기록(있으면) 읽기 전용.
   - 버튼(primary 하나): `taskId`가 있으면 "Today로 돌아가 완료하기"(→ `/today?complete={taskId}` — `CODE_READING`은 이 경로로 완료 기록에 들어간다), 없으면 "닫기"(→ 뒤로, 히스토리가 없으면 `/today`). gap이 있으면 보조 "복습하러 가기"(→ `/review`).
+  - **"그래서 답이 뭔가요"**: `skill`에 노트가 있으면(`GET /skills/{skillId}/lesson` 200, `05` §21.3) SCR-LESSON으로 가는 보조 버튼을 둔다. 러버덕은 끝까지 답을 말하지 않고(NA-4) 빈틈 카드에 담기는 것도 "답이 다뤄야 할 것"이지 답이 아니다 — 답까지 가는 길이 없으면 **답을 모른 채로 끝난다**. 노트가 없는 skill이면 버튼 자체가 없다(누를 곳이 있는데 404가 나는 것보다 낫다).
   - 정리 응답을 받으면 기기의 진행 중 세션 기록을 지우고, `targetType = CODE_READING`이면 `devpilot.rubberduck.task.<taskId>` = `sessionId`를 저장한다(§3.5 `READ_CODE` 완료 확인).
 
 - **컴포넌트**: `RubberDuckTargetCard`(유형 라벨 + 제목 + 요약, 접기/펼치기), `ChatBubble`(나 / 질문 두 변형, 질문은 `AiBadge`), `ThinkingIndicator`, `ExplanationField`(여러 줄, 글자 수, private key 즉시 검사), `RemainingTurnsText`, `StuckHintCallout`, `RubberDuckSummaryView`(`GapCard`, `ConfirmedList`, `OverallNote`), `AiUnavailableBanner`, `BudgetWarningNote`, `RubberDuckMenu`(그만두기).
@@ -2705,6 +3295,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
   - Error (정리): `complete`는 AI 실패를 HTTP 오류로 주지 않는다 — `200` + `summarySkippedReason`으로 ④에 표시한다. `409 INVALID_STATE_TRANSITION`(이미 정리·중단됨)은 `GET`으로 다시 읽어 ④로 간다.
   - **AI 불가** (`aiStatus ∈ {DISABLED, BALANCE_EXHAUSTED}` 또는 `503 AI_UNAVAILABLE`): 상단 `AiUnavailableBanner`. ① 시작 전이면 "설명 보내기" 비활성 + 버튼 아래 `ai.disabledReason`/`ai.balanceExhaustedReason`(§6.5)과 `rubberDuck.aiOff`. 진입 화면의 러버덕 버튼도 같은 조건으로 미리 막고 같은 사유를 보인다. ② 대화 중이면 "보내기" 비활성, **"정리하고 끝내기"는 그대로 둔다** — 서버가 AI 없이 정리 실패 경로로 세션을 끝내고 대화는 남는다(`05` §9.8 4단계). 지난 세션 조회는 언제나 된다(`17` §3.10).
+  - **재현 잠금 (S4)**: 대상이 `CHALLENGE`·`PROJECT_WORK`이고 그 대상의 재현 과제가 열려 있으면 시작 요청이 `409 AI_ASSIST_LOCKED_FOR_REDO`다(RE-5). ① 시작 전 화면에서 "설명 보내기"를 비활성으로 바꾸고 아래 `today.redo.lockedElsewhere` 1줄 + "Today로 가기"를 보인다(§5.1). 이미 시작한 세션은 영향을 받지 않는다(잠금은 **시작**에만 걸린다).
   - Budget warning: "보내기" 아래 `ai.budgetWarning.note`.
   - Offline: 공통. 입력은 계속 가능, 보내기·정리 버튼 비활성.
 - **행동·검증**
@@ -2734,6 +3325,8 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `rubberDuck.thinking` | AI가 질문을 고르고 있어요 (최대 20초) |
 | `rubberDuck.turns` | 턴 {turnCount} / {maxTurns} |
 | `rubberDuck.remaining` | {count}번 더 답할 수 있어요. |
+| `rubberDuck.vague.count` | '그거·이렇게' 같은 말을 {count}번 썼어요. |
+| `rubberDuck.summary.vagueNote` | 표현 습관을 센 것이라 레벨이나 복습에는 영향이 없어요. |
 | `rubberDuck.resend` | 다시 보내기 |
 | `rubberDuck.stuck.title` | 두 번 연속 막혔어요. |
 | `rubberDuck.stuck.hint` | 힌트를 한 단계 받아 볼까요? |
@@ -2837,11 +3430,12 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | "읽었으면 설명하기" | `/rubber-duck/new?targetType=CODE_READING&targetId={taskId}&skillCode={skills[0].code}&taskId={taskId}` + `extra`(저장소 이름, 파일 이름, 줄 범위, `question`) |
 | "여기까지 기록" | Today와 같은 `CompleteSessionSheet`(`today.partial.title`) → 세션 complete(0분이면 abandon) → `PATCH /today/tasks/{taskId}` `{status: DEFERRED, version}`. RC-1 조건이 없는 전이다 |
 
-  - 과제 완료는 이 화면에서 하지 않는다. 러버덕 정리 화면의 "Today로 돌아가 완료하기"로 간다(RC-1 — 읽었다는 체크만으로는 완료가 아니다).
+  - 과제 완료는 이 화면에서 하지 않는다. 러버덕 정리 화면의 "Today로 돌아가 완료하기"로 간다(RC-1 — 읽었다는 체크만으로는 완료가 아니다). 완료 시트에서 이 읽기의 평가(도움 됐어요 · 어려웠어요 · 지루했어요)를 **골라도 되고 안 골라도 된다**(SCR-TODAY 완료 시트, `readingFeedback`). 평가는 사람이 하는 소스 점검(`19` §8.5)의 입력이다.
 - **상태**
   - Loading: 헤더·단계 블록 skeleton.
   - Empty: 해당 없음.
-  - Error: `404 RESOURCE_NOT_FOUND`(콘텐츠에서 은퇴한 reading) → 전체 영역 `readCode.retired` + "Today로"(과제는 "여기까지 기록" 또는 Today에서 건너뛰기로 정리). `400 VALIDATION_FAILED`(key 형식) → SCR-NOT-FOUND. 그 외 공통.
+  - 은퇴한 단위(`retired = true`, `19` §8.2): 안내 ①~③은 그대로 보이고(좌표는 `pinnedCommit` 기준이라 여전히 맞다) 제목 아래에 `readCode.retired`를 둔다. 설명·완료도 그대로 할 수 있다. 새로 제안되지는 않는다.
+  - Error: `404 RESOURCE_NOT_FOUND`(콘텐츠에 없는 key) → SCR-NOT-FOUND. `400 VALIDATION_FAILED`(key 형식) → SCR-NOT-FOUND. 그 외 공통.
   - `taskId`가 없거나 UUID가 아님: 읽기 안내는 그대로 보이고 "읽었으면 설명하기"·"여기까지 기록"을 숨긴 뒤 `readCode.noTask`.
   - **AI 불가**: 읽기 안내(①~③)는 모두 동작한다(`17` §3.10). 상단 `AiUnavailableBanner`, "읽었으면 설명하기" 비활성 + 버튼 아래 `ai.disabledReason`/`ai.balanceExhaustedReason`과 `readCode.aiOff`.
   - Budget warning: 버튼 아래 `ai.budgetWarning.note`.
@@ -2871,7 +3465,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `readCode.readOnly.badge` | 읽기만 · 복사 금지 |
 | `readCode.readOnly.note` | 라이선스가 명시되지 않은 저장소예요. 읽기만 하고 코드를 가져다 쓰지 마세요. |
 | `readCode.noCodeNote` | 코드는 DevPilot이 아니라 내 컴퓨터에서 봐요. |
-| `readCode.retired` | 더 이상 제공하지 않는 읽기 과제예요. Today에서 과제를 정리해 주세요. |
+| `readCode.retired` | 더 이상 새로 제안하지 않는 읽기예요. 이 과제는 그대로 읽고 설명할 수 있어요. |
 | `readCode.noTask` | Today의 코드 읽기 과제에서 열면 설명하고 완료할 수 있어요. |
 | `readCode.aiOff` | 설명(러버덕)은 AI가 필요해 지금은 할 수 없어요. 읽기는 계속할 수 있어요. |
 
@@ -2884,8 +3478,9 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 ┌────────────────────────────────┐
 │ 사이드 프로젝트                    │
 │ 배운 것을 적용하는 내 프로젝트예요.  │
-│ Today 프로젝트 과제는 가장 최근에    │
-│ 고친 '진행 중' 프로젝트로 나와요.    │
+│ Today 프로젝트 과제는 '지금 만드는   │
+│ 것' 중 가장 최근에 고친 '진행 중'    │
+│ 프로젝트로 나와요.                  │
 │ ┌────────────────────────────┐ │
 │ │ 주문 시스템          [진행 중] │ │
 │ │ Today 과제 대상                │ │
@@ -2913,6 +3508,10 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 ```text
 ┌────────────────────────────────┐
 │ 프로젝트 수정                      │
+│ 종류                               │
+│ [지금 만드는 것✓][지난 경험]        │
+│ 지난 경험은 Today 과제로 나오지     │
+│ 않고 기록만 남겨요.                 │
 │ 이름 *                            │
 │ [주문 시스템                    ] │
 │ 설명 (선택)                 34/1000│
@@ -2931,15 +3530,17 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 └────────────────────────────────┘
 ```
 
-- **목록 규칙**: 서버 정렬(`updatedAt` DESC, `id` DESC)을 그대로 쓴다. 목록에서 첫 번째 `ACTIVE` 프로젝트에 `projects.todayTarget` 라벨을 붙인다(SP-3 — planner가 쓰는 프로젝트. `ACTIVE`가 여러 개여도 하나만 쓴다). `ACTIVE`가 하나도 없으면 목록 위에 `projects.noActive`(프로젝트 과제가 제안되지 않음)를 둔다. 상태 라벨은 §3.1 `SideProjectStatus`.
+- **목록 규칙**: 서버 정렬(`updatedAt` DESC, `id` DESC)을 그대로 쓴다. 목록에서 **`kind = SIDE`이면서** `ACTIVE`인 첫 번째 프로젝트에 `projects.todayTarget` 라벨을 붙인다(SP-3, I-23 — planner가 쓰는 프로젝트. 여러 개여도 하나만 쓴다). 그런 프로젝트가 하나도 없으면 목록 위에 `projects.noActive`(프로젝트 과제가 제안되지 않음)를 둔다. 상태 라벨은 §3.1 `SideProjectStatus`.
+- **프로젝트 종류 (S3)**: 카드 제목 줄에 `kind = PAST_WORK`일 때만 `enum.SideProjectKind.PAST_WORK`("지난 경험") 라벨을 붙인다. `SIDE`는 기본값이라 라벨을 붙이지 않는다(라벨이 둘이면 목록이 시끄러워진다). 등록·수정 시트 맨 위 세그먼트로 고르고, **나중에 바꿀 수 있다**(`PATCH`, `05` §19.5). `PAST_WORK`로 바꾸면 다음 계획부터 Today 프로젝트 과제 대상에서 빠지고, 이미 만든 과제와 기록은 그대로 남는다 — 저장 후 토스트 `projects.kindChanged`.
 - **`repoUrl`**: 링크 텍스트는 scheme을 뺀 주소, 탭하면 새 탭으로 연다(사용자 브라우저가 여는 것, 서버는 요청하지 않는다). 입력 시트에는 `projects.repoUrl.note`를 항상 둔다(FR-26, `07` §5.5).
-- **컴포넌트**: `ProjectCard`(이름, 상태 배지, Today 대상 라벨, 설명 2줄 말줄임, 스택, 저장소 링크, 수정일, `⋮` 메뉴, 러버덕 버튼), `ProjectEditSheet`, `StatusSegmented`, `DeleteProjectDialog`, `EmptyState`.
+- **컴포넌트**: `ProjectCard`(이름, 상태 배지, Today 대상 라벨, 설명 2줄 말줄임, 스택, 저장소 링크, 수정일, 기록 수, `⋮` 메뉴, 러버덕 버튼), `ProjectEditSheet`, `StatusSegmented`, `DeleteProjectDialog`, `EmptyState`.
+- **기록으로 가기 (S3)**: 카드 전체를 누르면 SCR-PROJECT-DETAIL(`/projects/{sideProjectId}`)로 간다. 카드 아래에 `projects.noteCount`를 보인다 — 수는 목록 응답에 없으므로 상세 화면에 들어간 적이 있으면 캐시한 값을, 없으면 라벨을 생략한다(목록 API를 늘리지 않는다). `⋮` 메뉴와 러버덕 버튼은 카드 탭보다 우선한다.
 - **데이터**
 
 | 시점 | API |
 |---|---|
 | 진입·화면 복귀 | `GET /side-projects?cursor=` (status 필터 없이 전체, 스크롤 페이지네이션) |
-| "프로젝트 추가" → "저장" | `POST /side-projects` `{name, description, repoUrl, stack}` (IK) → `201 SideProjectView` → 목록 맨 위에 추가 |
+| "프로젝트 추가" → "저장" | `POST /side-projects` `{name, description, repoUrl, stack, kind}` (IK) → `201 SideProjectView` → 목록 맨 위에 추가. `kind`를 고르지 않으면 보내지 않는다(서버 기본값 `SIDE`) |
 | `⋮` "수정" → "저장" | `PATCH /side-projects/{sideProjectId}` — 바뀐 필드만 + `version`. 지운 선택 필드는 빈 문자열 `""`로 보낸다(서버가 `null`로 저장). `name`은 지울 수 없다 |
 | `⋮` "잠시 멈춤"·"진행 중으로"·"완료로" | `PATCH /side-projects/{sideProjectId}` `{status, version}` |
 | `⋮` "삭제" | 대화상자 → `DELETE /side-projects/{sideProjectId}` → `204` → 목록에서 제거 |
@@ -2962,9 +3563,9 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | key | 문구 |
 |---|---|
 | `projects.title` | 사이드 프로젝트 |
-| `projects.subtitle` | 배운 것을 적용하는 내 프로젝트예요. Today 프로젝트 과제는 가장 최근에 고친 '진행 중' 프로젝트로 나와요. |
+| `projects.subtitle` | 배운 것을 적용하는 내 프로젝트예요. Today 프로젝트 과제는 '지금 만드는 것' 중 가장 최근에 고친 '진행 중' 프로젝트로 나와요. |
 | `projects.todayTarget` | Today 과제 대상 |
-| `projects.noActive` | 진행 중인 프로젝트가 없어서 Today가 프로젝트 과제를 제안하지 않아요. |
+| `projects.noActive` | '지금 만드는 것'으로 진행 중인 프로젝트가 없어서 Today가 프로젝트 과제를 제안하지 않아요. |
 | `projects.updatedAt` | {date} 수정 |
 | `projects.add` | 프로젝트 추가 |
 | `projects.explain` | 이 프로젝트 작업 설명하기 |
@@ -2975,6 +3576,11 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `projects.menu.delete` | 삭제 |
 | `projects.edit.titleNew` | 프로젝트 추가 |
 | `projects.edit.title` | 프로젝트 수정 |
+| `projects.field.kind` | 종류 |
+| `enum.SideProjectKind.SIDE` | 지금 만드는 것 |
+| `enum.SideProjectKind.PAST_WORK` | 지난 경험 |
+| `projects.kind.help` | 지난 경험은 Today 과제로 나오지 않고 기록만 남겨요. |
+| `projects.kindChanged` | 다음 계획부터 반영돼요. 이미 만든 과제와 기록은 그대로예요. |
 | `projects.field.name` | 이름 |
 | `projects.field.description` | 설명 (선택) |
 | `projects.field.repoUrl` | 저장소 주소 (선택) |
@@ -2987,14 +3593,419 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `projects.created` | 프로젝트를 추가했어요. |
 | `projects.statusChanged` | 다음 Today 계획부터 반영돼요. 이미 만든 과제는 그대로예요. |
 | `projects.delete.title` | 이 프로젝트를 삭제할까요? |
-| `projects.delete.body` | 이 프로젝트로 만든 Today 과제와 코드 리뷰는 남고 연결만 끊겨요. 지난 러버덕 대화도 남아요. 삭제는 되돌릴 수 없어요. |
+| `projects.delete.body` | 이 프로젝트로 만든 Today 과제와 코드 리뷰는 남고 연결만 끊겨요. 지난 러버덕 대화도 남아요. **이 프로젝트의 결정·장애 기록은 함께 지워져요.** 삭제는 되돌릴 수 없어요. |
 | `projects.delete.lastActive` | 진행 중인 프로젝트가 없으면 Today가 프로젝트 과제를 제안하지 않아요. |
 | `projects.delete.confirm` | 삭제 |
 | `projects.deleted` | 프로젝트를 삭제했어요. |
+| `projects.noteCount` | 기록 {count}개 |
+| `projects.openDetail` | 기록 보기 |
 | `projects.empty` | 사이드 프로젝트가 없어요. 프로젝트가 있어야 Today가 배운 것을 적용하는 과제를 제안해요. |
 | `projects.empty.start` | 주문 시스템으로 시작 |
 | `projects.secretBlocked` | 개인 키(private key)로 보이는 내용이 있어 저장할 수 없어요. 해당 부분을 지워 주세요. |
 | `projects.reloaded` | 다른 곳에서 바뀌어 최신 내용으로 다시 불러왔어요. |
+
+#### SCR-PROJECT-DETAIL
+
+- **목적**: 프로젝트 하나의 요약(종류 포함)과 **결정·장애 기록**을 보고, 기록을 Markdown으로 내려받거나 러버덕으로 설명한다(FR-29, PN-1~PN-4, AC-33). 프로젝트를 만들면서 내린 결정과 겪은 장애를 그 자리에서 남기고, 나중에 설명의 재료로 쓴다. **진입**: SCR-PROJECTS 카드 탭, SCR-TODAY `PROJECT_TASK` 카드의 "이 프로젝트 기록". **Sprint**: S3.
+- **레이아웃** (`/projects/{sideProjectId}`)
+
+```text
+┌────────────────────────────────┐
+│ ← 주문 시스템        [진행 중] ⋮ │  ⋮ = Markdown으로 내려받기
+│ 지금 만드는 것                   │  kind
+│ 회원가입 · 상품 · 주문 · 취소까지 │
+│ 직접 만드는 학습용 백엔드        │
+│ Spring Boot, PostgreSQL          │
+│ github.com/example/order-service↗│
+│ [수정] [이 프로젝트 작업 설명하기]│
+│ ────────────────────────────── │
+│ 기록 3개                        │
+│ [전체✓] [결정] [장애]            │
+│ ┌────────────────────────────┐ │
+│ │ [장애] 10월 11일             │ │
+│ │ 재고가 음수로 내려갔다        │ │
+│ │ 동시에 주문 두 건이 들어오면… │ │  incidentSymptom 2줄
+│ │ DATABASE.TRANSACTION       ⋮ │ │  ⋮ = 수정 / 이 기록 설명하기 / 삭제
+│ └────────────────────────────┘ │
+│ ┌────────────────────────────┐ │
+│ │ [결정] 10월 9일              │ │
+│ │ 주문 번호를 시퀀스 기반으로   │ │
+│ │ yyyyMMdd + 일련번호 형식을…  │ │  decisionChoice 2줄
+│ │ DATABASE.INDEX             ⋮ │ │
+│ └────────────────────────────┘ │
+│ ┌──────────────┬─────────────┐ │
+│ │ + 결정 기록   │ + 장애 기록  │ │
+│ └──────────────┴─────────────┘ │
+└────────────────────────────────┘
+```
+
+- **규칙**
+  - 상단은 `GET /side-projects/{sideProjectId}`의 요약이다. "수정"은 SCR-PROJECTS의 `ProjectEditSheet`를 그대로 연다(종류·이름·설명·저장소 주소·스택·상태). 삭제는 여기에 두지 않는다(목록에서 한다).
+  - **프로젝트 종류**: 상태 배지 아래 `SideProjectKind` 라벨을 한 줄로 항상 보인다(§3.1 — `SIDE` "지금 만드는 것" / `PAST_WORK` "지난 경험"). 목록 카드와 달리 여기서는 두 값 모두 보인다. `PAST_WORK`이면 그 아래에 `projectNotes.pastWork.note`를 덧붙여 Today 과제로 나오지 않는다는 것을 알린다(I-23). 종류는 이 화면에서 "수정"으로 바꾼다.
+  - **Markdown으로 내려받기**: 앱 바 `⋮` 메뉴 `projectNotes.export`. `GET /side-projects/{sideProjectId}/notes/export`(`05` §19.13)를 불러 `text/markdown`을 파일로 저장한다 — 파일명은 응답의 `Content-Disposition`(`notes-{sideProjectId}-{yyyyMMdd}.md`)을 그대로 쓴다. 저장 후 토스트 `projectNotes.export.done`과 "복사" 액션(본문을 클립보드로, SCR-EVIDENCE-LIST의 Markdown 내보내기와 같은 방식).
+    - 기록이 0개여도 메뉴는 활성이다(서버가 제목만 있는 문서를 준다). 다만 0개면 먼저 토스트 `projectNotes.export.empty`를 보이고 내려받지 않는다 — 빈 파일을 만들지 않는다.
+    - 내려받는 본문은 **저장된 마스킹본**이다. 메뉴 아래(또는 첫 내려받기 전 확인 없이 토스트로) 안내를 붙이지 않고, 대신 기록 작성 화면의 안내(SCR-PROJECT-NOTE-EDIT)가 이 역할을 한다.
+    - Offline이면 메뉴 항목을 비활성한다(내려받기는 네트워크가 필요하다).
+  - **기록에서 "러버덕으로 설명하기"**: 기록 카드 `⋮` 메뉴에 `projectNotes.menu.explain`을 둔다(S3, `rubber_duck` flag, AI 가능할 때만). → `/rubber-duck/new?targetType=PROJECT_WORK&targetId={sideProjectId}` + `skillCode`(기록의 `skillCode`가 있을 때만) + `extra`(기록 제목과 본문 첫 항목 — 시작 전 화면의 대상 카드에 쓴다, §3.16).
+    - **대상은 기록이 아니라 프로젝트다** — `RubberDuckTargetType`에 기록 유형이 없고 새로 만들지도 않는다(`05` §9.5). 기록은 "무엇을 설명할지"를 고르는 입력일 뿐이라 서버로 가지 않는다.
+    - AI를 쓸 수 없으면 메뉴 항목을 비활성하고 그 아래 사유 1줄(§6.5). 재현 잠금(`409 AI_ASSIST_LOCKED_FOR_REDO`)은 시작 요청에서만 알 수 있으므로 SCR-RUBBER-DUCK 시작 전 화면이 처리한다(§3.16).
+  - 기록 목록은 `GET /side-projects/{sideProjectId}/notes?noteType=&cursor=`다. 서버 정렬(`occurredOn` DESC, `id` DESC)을 그대로 쓰고 스크롤 페이지네이션한다. 필터 칩 3개(전체·결정·장애)는 `noteType` query가 된다.
+  - 카드는 유형 배지 + `occurredOn` + `title` + 본문 첫 항목 2줄 말줄임(`DECISION`은 `decisionChoice`, `INCIDENT`는 `incidentSymptom`) + skill 칩(있을 때)이다. 카드를 누르면 SCR-PROJECT-NOTE-EDIT(수정)로 간다.
+  - 기록 카드 `⋮` 메뉴: "수정"(→ 편집 화면), "러버덕으로 설명하기"(위), "삭제"(확인 대화상자 → `DELETE …/notes/{noteId}` → 204 → 목록에서 제거).
+  - 하단 버튼 둘은 각각 `/projects/{id}/notes/new?noteType=DECISION`·`…=INCIDENT`로 간다. **유형은 여기서 정해지고 이후 바뀌지 않는다**(PN-2).
+  - 데스크톱(≥ 1024)은 왼쪽 열(35%)에 프로젝트 요약을 고정하고 오른쪽 열(65%)에 기록 목록을 둔다.
+- **상태**
+  - Loading: 요약 skeleton + 카드 skeleton 2개.
+  - Empty: `projectNotes.empty` + 버튼 둘. 첫 기록을 권하는 한 줄 설명을 함께 둔다.
+  - Error: 공통. `404 RESOURCE_NOT_FOUND`(다른 곳에서 프로젝트 삭제) → SCR-NOT-FOUND. 내려받기 실패는 토스트만(§5.1) — 화면 상태를 바꾸지 않는다.
+  - AI unavailable: 이 화면은 AI를 쓰지 않는다(내려받기도 AI를 쓰지 않는다). 배너를 두지 않고 "이 프로젝트 작업 설명하기"와 기록 메뉴의 "러버덕으로 설명하기"만 비활성 + 사유 1줄(§6.5).
+- **문구**
+
+| key | 문구 |
+|---|---|
+| `projectNotes.title` | 기록 |
+| `projectNotes.count` | 기록 {count}개 |
+| `projectNotes.filter.all` | 전체 |
+| `projectNotes.filter.decision` | 결정 |
+| `projectNotes.filter.incident` | 장애 |
+| `projectNotes.add.decision` | + 결정 기록 |
+| `projectNotes.add.incident` | + 장애 기록 |
+| `projectNotes.empty` | 아직 기록이 없어요. 무엇을 왜 골랐는지, 무엇이 어떻게 깨졌는지 지금 적어 두면 나중에 설명할 거리가 돼요. |
+| `projectNotes.pastWork.note` | 지난 경험이라 Today 과제로는 나오지 않아요. 기록과 설명하기는 그대로 쓸 수 있어요. |
+| `projectNotes.export` | Markdown으로 내려받기 |
+| `projectNotes.export.done` | 파일로 저장했어요. |
+| `projectNotes.export.copy` | 복사 |
+| `projectNotes.export.empty` | 내려받을 기록이 아직 없어요. |
+| `projectNotes.menu.edit` | 수정 |
+| `projectNotes.menu.explain` | 러버덕으로 설명하기 |
+| `projectNotes.menu.delete` | 삭제 |
+| `projectNotes.delete.title` | 이 기록을 지울까요? |
+| `projectNotes.delete.body` | 되돌릴 수 없어요. |
+| `projectNotes.deleted` | 기록을 지웠어요. |
+
+#### SCR-PROJECT-NOTE-EDIT
+
+- **목적**: 결정 기록 또는 장애 기록 하나를 쓰고 고친다(FR-29, PN-1~PN-4). **진입**: SCR-PROJECT-DETAIL의 "+ 결정 기록"·"+ 장애 기록"(생성)과 기록 카드 탭(수정). **Sprint**: S3.
+- **레이아웃 (장애 기록 생성)** (`/projects/{sideProjectId}/notes/new?noteType=INCIDENT`)
+
+```text
+┌────────────────────────────────┐
+│ ✕  장애 기록                [저장]│
+│ 제목 *                     12/200│
+│ [재고가 음수로 내려갔다       ] │
+│ 일어난 날 *                      │
+│ [ 2026년 10월 11일        📅 ] │
+│ 관련 기술 (선택)                 │
+│ [ DATABASE.TRANSACTION    ▾ ] │
+│ ────────────────────────────── │
+│ 무엇이 잘못됐나요? *       88/4000│
+│ [동시에 주문 두 건이 들어오면 ] │
+│ [재고가 음수가 됐다.          ] │
+│ 어떻게 찾았나요? *               │
+│ [주문 목록에서 수량이 -1인 것을] │
+│ 어떻게 고쳤나요? *               │
+│ [재고 차감을 비관적 락으로 감쌌다]│
+│ 다시 안 생기게 하려면? *          │
+│ [동시 주문 테스트를 추가했다   ] │
+│ 회사 소스·고객 정보는 적지 마세요.│
+│ 상황과 판단만 적어요.             │
+│ 비밀값은 저장 전에 가려요.        │
+└────────────────────────────────┘
+```
+
+- **규칙**
+  - 유형은 `noteType` query(생성) 또는 조회한 기록(수정)에서 오고 **화면에서 바꿀 수 없다**. 앱 바 제목이 유형이다. 수정 화면에는 유형을 바꾸는 입력이 없다(PN-2, `05` §19.11).
+  - 본문 입력은 유형에 따라 다르다. 결정 기록은 `decisionChoice`("무엇을 골랐나요?")·`decisionOptions`("어떤 선택지가 있었나요?")·`decisionRationale`("왜 그것을 골랐나요?") 셋, 장애 기록은 `incidentSymptom`·`incidentDetection`·`incidentFix`·`incidentPrevention` 넷이다. **전부 필수**이고 각 1~4000자(§3.2). 유형에 맞지 않는 항목은 화면에 없다.
+  - `occurredOn`은 필수이고 기본값은 오늘(plan-day)이다. 날짜 선택기는 오늘 이하만 연다.
+  - 관련 기술은 선택이다. `GET /skills/tree`의 활성 skill을 검색해 고르고, 지우면 연결이 끊긴다(`skillCode: ""`). 아래에 `projectNote.skill.help`("고르면 나중에 이 기술의 학습 기록을 만들 때 함께 보여요.")를 둔다.
+  - 저장: 생성은 `POST /side-projects/{id}/notes`(IK) → 201 → 상세로 돌아가 목록 맨 위 갱신. 수정은 `PATCH …/notes/{noteId}`(바뀐 필드 + `version`) → 200. `409 CONCURRENT_MODIFICATION`이면 최신 값을 다시 읽어 폼을 채우고 토스트(`projectNote.reloaded`), 입력은 유지한다.
+  - "저장"은 필수 입력이 모두 찼고 변경이 있을 때만 활성이다. 입력 중 이탈은 §6.8.
+  - **무엇을 적지 않는지 먼저 알린다.** 본문 입력 영역 아래(저장 버튼 위)에 `projectNote.scopeNote` = **"회사 소스·고객 정보는 적지 마세요. 상황과 판단만 적어요."** 를 **항상** 둔다. 마스킹 안내(`projectNote.maskingNote`)보다 위에 두고 접지 않는다 — 마스킹은 실수를 줄이는 장치이고, 이 안내는 애초에 무엇을 쓸지를 정한다. `PAST_WORK` 프로젝트의 기록도 같은 안내를 받는다(오히려 이쪽이 더 필요하다).
+  - `422 SECRET_DETECTED_BLOCKED` → 폼 하단 인라인 `projectNote.secretBlocked`. 400 `VALIDATION_FAILED`의 `errors[]`는 필드별 인라인(`VALUE_REQUIRED`는 `validation.required`).
+- **컴포넌트**: `NoteTypeHeader`, `DatePickerField`, `SkillPickerField`, `LongTextField`(글자 수 카운터), `UnsavedChangesGuard`.
+- **문구**
+
+| key | 문구 |
+|---|---|
+| `projectNote.title.decision` | 결정 기록 |
+| `projectNote.title.incident` | 장애 기록 |
+| `projectNote.field.title` | 제목 |
+| `projectNote.field.occurredOn` | 일어난 날 |
+| `projectNote.field.skill` | 관련 기술 (선택) |
+| `projectNote.skill.help` | 고르면 나중에 이 기술의 학습 기록을 만들 때 함께 보여요. |
+| `projectNote.decision.choice` | 무엇을 골랐나요? |
+| `projectNote.decision.options` | 어떤 선택지가 있었나요? |
+| `projectNote.decision.rationale` | 왜 그것을 골랐나요? |
+| `projectNote.incident.symptom` | 무엇이 잘못됐나요? |
+| `projectNote.incident.detection` | 어떻게 찾았나요? |
+| `projectNote.incident.fix` | 어떻게 고쳤나요? |
+| `projectNote.incident.prevention` | 다시 안 생기게 하려면? |
+| `projectNote.scopeNote` | 회사 소스·고객 정보는 적지 마세요. 상황과 판단만 적어요. |
+| `projectNote.maskingNote` | 비밀값은 저장 전에 가려요. |
+| `projectNote.save` | 저장 |
+| `projectNote.saved` | 기록을 저장했어요. |
+| `projectNote.secretBlocked` | 개인 키(private key)로 보이는 내용이 있어 저장할 수 없어요. 해당 부분을 지워 주세요. |
+| `projectNote.reloaded` | 다른 곳에서 바뀌어 최신 내용으로 다시 불러왔어요. |
+
+### 3.17 오늘의 팁 · 용어 사전
+
+짧게 읽는 것(팁)과 말을 고르는 것(용어)을 맡는 화면이다. 본문은 모두 **콘텐츠**이고 DB에 없다(ADR-041, `19` §3.9~§3.10). 네 화면 모두 **AI를 호출하지 않는다** — `05` §20의 endpoint는 registry를 읽고 사용자별 상태(`user_daily_tip`, 복습 카드)만 쓴다. 그래서 AI 불가 배너를 두지 않고, AI 상태와 상관없이 그대로 쓸 수 있다(§6.5). 모든 사용자가 같은 팁·용어 목록을 본다(소유 리소스가 아니다, `05` §20.4·§20.5).
+
+#### SCR-TIP-DETAIL
+
+- **목적**: 팁 하나를 **증상 → 원인 → 예제 → 확인할 곳 → 5분 실험** 순서로 읽고, 읽은 뒤 "알고 있었어요 / 새로 알았어요 / 직접 해 볼래요" 중 하나를 고른다(BL-TIP-01~05, `06` §5.12). **진입**: SCR-TODAY 오늘의 팁 카드 "자세히"(`?from=today`), SCR-TIPS 목록 행. **Sprint**: S3 (`tips` flag).
+- **레이아웃** (`/tips/{tipKey}`)
+
+```text
+┌────────────────────────────────┐
+│ ← 오늘의 팁                      │
+│ [로그] [실무] · 약 3분            │  series · level · estimatedMinutes
+│ 로그 레벨은 언제 무엇을 쓰나      │  title
+│ ────────────────────────────── │
+│ 이런 걸 보게 돼요                 │  symptom
+│ 장애가 났는데 로그에는 INFO 한   │
+│ 줄만 남아 있고, 평소에는 DEBUG가 │
+│ 초당 수천 줄씩 쌓인다.            │
+│ 왜 그런가요                       │  cause
+│ 레벨은 "얼마나 자세한가"가 아니라 │
+│ "누가 언제 보는가"로 나눈다. …    │
+│ ▾ 예제                            │  example (있을 때, 기본 접힘)
+│ 어디를 보면 되나요                │  whereToLook
+│ 기본 레벨 설정과, 예외를 잡는     │
+│ 자리에서 어떤 레벨로 남기는지     │
+│ 두 곳을 본다.                     │
+│ 5분 실험                          │  experiment (있을 때)
+│ 레벨을 한 단계 올리고 같은 요청을 │
+│ 한 번 보내 어떤 줄이 사라지는지   │
+│ 본다.                             │
+│ 공식 문서 ↗                       │  sourceUrl (있을 때)
+│ 관련 기술: Spring Boot 로깅 >     │  skills[] → /skills/{id}
+│ ────────────────────────────── │
+│ 읽고 나서                         │
+│ [알고 있었어요][새로 알았어요]     │
+│ [직접 해 볼래요]                  │
+└────────────────────────────────┘
+```
+
+- **규칙**
+  - 다섯 영역의 **순서는 고정이다**(증상 → 원인 → 예제 → 확인할 곳 → 5분 실험). 증상을 먼저 두는 이유는 "이걸 본 적 있다"에서 시작해야 원인을 읽을 이유가 생기기 때문이다.
+  - `example`은 코드라 기본 접힘이다(U-7). 펼치면 monospace로 보이고 가로 스크롤을 허용한다(A-11). `null`이면 영역 전체를 숨긴다.
+  - `experiment`가 `null`이면 "5분 실험" 영역을 숨긴다. `sourceUrl`이 `null`이면 링크를 숨긴다. 콘텐츠 규칙상 **둘 중 하나는 반드시 있다**(`19` §3.9 CV-91).
+  - `sourceUrl`은 호스트명 + `↗`로 보이고 새 탭으로 연다(사용자 브라우저가 여는 것이고 서버는 그 주소를 가져오지 않는다 — SCR-PROJECTS `repoUrl`과 같은 원칙).
+  - `skills[]`는 칩으로 보이고 누르면 `/skills/{skillId}`로 간다. 빈 배열이면 줄을 숨긴다.
+  - `series`·`level` 배지는 §3.1 라벨을 쓴다. 색으로만 구분하지 않는다(A-3).
+- **읽고 나서 고르기**
+  - 칩 3개는 `TipFeedback` 라벨이다. 하나를 누르면 `POST /tips/{tipKey}/feedback` `{feedback}`(IK)을 보내고, 성공하면 고른 칩만 선택 상태로 두고 나머지를 비활성한다.
+  - **한 번 고르면 바꿀 수 없다.** 서버가 덮어쓰지 않고 현재 값을 200으로 돌려주므로(`05` §20.3) 이미 값이 있으면 화면도 그 값을 선택 상태로 열고 칩을 모두 비활성한다. 아래에 `tip.feedback.locked`를 한 줄 둔다.
+  - 고른 뒤 결과 안내: `LEARNED` → 토스트 `tip.feedback.learned` + "복습하러 가기"(→ `/review`), `WILL_TRY` → 토스트 `tip.feedback.willTry`(다음 날 Today에 "직접 해 보기"로 올라온다), `KNEW_IT` → 토스트 `tip.feedback.knewIt`(다시 제안하지 않는다).
+  - 아직 받아 본 적 없는 팁은 고를 수 없다(서버 404, `05` §20.3 2단계). 그런 팁의 상세에서는 칩 대신 `tip.feedback.notShownYet`을 보인다.
+- **데이터**
+
+| 시점 | API |
+|---|---|
+| 진입 | `GET /tips/{tipKey}` — 본문 전체(`DailyTipView`)와 현재 `feedback` (`05` §20.4a) |
+| 칩 선택 | `POST /tips/{tipKey}/feedback` `{feedback}` (IK) → 201(처음) / 200(이미 있음) `DailyTipView` |
+
+  - 지난 팁도 본문을 그대로 연다(`05` §20.4a). 다만 **아직 받아 본 적 없는 팁은 고를 수 없다** — 그런 팁은 `shownOn`이 `null`이라 칩 대신 `tip.feedback.notShownYet`을 보인다.
+- **상태**
+  - Loading: 제목 + 본문 skeleton.
+  - Empty: 해당 없음.
+  - Error: `404 RESOURCE_NOT_FOUND`(없는 `tipKey`) → SCR-NOT-FOUND. `400 VALIDATION_FAILED`(`Pattern` — 경로 형식이 틀림) → SCR-NOT-FOUND. 그 외 공통. 오늘 더 보여 줄 팁이 없을 때(`GET /tips/today` 404)는 SCR-TODAY 카드 자리를 비우는 것으로 끝나고, `tip.detail.none`은 목적지 없이 직접 들어온 경우에만 쓴다.
+  - 칩 선택 실패: 토스트(§5.1) + 칩을 원래대로 되돌린다. `404`면 `tip.feedback.notShownYet`으로 바꾼다.
+  - AI: 해당 없다(이 화면은 AI를 쓰지 않는다). Offline: 공통 — 읽기는 메모리의 값으로 되고 칩은 비활성.
+- **행동·검증**: 칩은 한 번에 하나만 선택된다. 전송 중에는 세 칩 모두 비활성. 뒤로 가면 SCR-TODAY가 팁 카드를 다시 읽어 라벨을 갱신한다. `?from=today`이고 히스토리가 없으면 `←`는 `/today`로 간다.
+- **문구**
+
+| key | 문구 |
+|---|---|
+| `tip.detail.title` | 오늘의 팁 |
+| `tip.detail.symptom` | 이런 걸 보게 돼요 |
+| `tip.detail.cause` | 왜 그런가요 |
+| `tip.detail.example` | 예제 |
+| `tip.detail.whereToLook` | 어디를 보면 되나요 |
+| `tip.detail.experiment` | 5분 실험 |
+| `tip.detail.source` | 공식 문서 |
+| `tip.detail.skills` | 관련 기술 |
+| `tip.detail.feedback.title` | 읽고 나서 |
+| `tip.feedback.locked` | 고른 답은 바꾸지 않아요. |
+| `tip.feedback.learned` | 복습 카드를 만들었어요. 내일부터 복습에 나와요. |
+| `tip.feedback.willTry` | 내일 Today에 '직접 해 보기'로 올려 둘게요. |
+| `tip.feedback.knewIt` | 이 팁은 다시 보여 주지 않을게요. |
+| `tip.feedback.notShownYet` | 아직 받아 본 팁이 아니라 여기서는 고를 수 없어요. |
+| `tip.detail.none` | 오늘 보여 드릴 팁이 없어요. |
+
+#### SCR-TIPS
+
+- **목적**: 지금까지의 팁을 시리즈·난이도로 훑는다. 짧은 시간이 났을 때 하나씩 읽는 자리다(BL-TIP-01~05). **진입**: SCR-MORE "오늘의 팁", SCR-TIP-DETAIL "목록으로". **Sprint**: S3 (`tips` flag).
+- **레이아웃**
+
+```text
+┌────────────────────────────────┐
+│ ← 팁                             │
+│ [시리즈: 전체 ▾] [난이도: 전체 ▾] │
+│ ┌────────────────────────────┐ │
+│ │ [로그] 로그 레벨은 언제 무엇을 │ │
+│ │ 쓰나                  약 3분 │ │
+│ │ 장애가 났는데 로그에는 INFO   │ │  symptom 2줄
+│ │ 한 줄만 남아 있고…            │ │
+│ │ 새로 알았어요                 │ │  feedback (있을 때)
+│ └────────────────────────────┘ │
+│ …                                │
+│ ┌────────────────────────────┐ │
+│ │        더 보기               │ │  nextCursor 가 있을 때
+│ └────────────────────────────┘ │
+└────────────────────────────────┘
+```
+
+- **규칙**
+  - 행은 `TipSummaryView`다: `series` 배지 + `title` + `약 {estimatedMinutes}` + `symptom` **2줄 말줄임** + 이미 고른 `feedback` 라벨(없으면 줄 생략).
+  - 필터는 둘이다 — **시리즈**(`TipSeries` 7개 + "전체")와 **난이도**(`TipLevel` 2개 + "전체"). 고르면 쿼리(`?series=&level=`)와 요청 파라미터에 함께 반영하고, 바꾸면 cursor를 버리고 첫 페이지부터 다시 읽는다.
+  - 정렬은 서버 정렬(`tipKey` ASC)을 그대로 쓴다. 클라이언트가 다시 정렬하지 않는다.
+  - **"더 보기"는 버튼이다.** 스크롤 자동 로드가 아니라 목록 끝의 `nextCursor` 버튼으로 다음 페이지를 읽는다 — 짧게 읽는 목록이라 끝이 있는 편이 낫다. (스크롤 자동 로드를 쓰는 목록과 다르다는 뜻이고, 나머지 cursor 규칙은 §6.6과 같다.)
+  - 행을 누르면 SCR-TIP-DETAIL로 간다. 지난 팁도 본문이 그대로 열린다(`05` §20.4a). 오늘의 팁 행에는 `tips.list.todayBadge` 배지를 붙인다.
+  - 은퇴한 팁은 목록에 없다(`retired = false`만, `05` §20.4). 이미 본 팁은 목록에 남는다.
+- **데이터**: 진입·필터 변경 `GET /tips?series=&level=&limit=&cursor=` → `CursorPage<TipSummaryView>`. 오늘의 팁 배지를 위해 진입 시 `GET /tips/today`를 한 번 더 읽는다(404면 배지 없이 목록만 보인다).
+- **상태**: Loading — 행 skeleton 4개. Empty — `tips.list.empty`(필터 결과 0건이면 `tips.list.emptyFilter` + "필터 지우기"). Error — 공통. 페이지 추가 로드 실패 → 목록 끝 "다시 불러오기" 행. `400 INVALID_CURSOR` → §5.1대로 첫 페이지부터 다시. Offline — 공통. AI — 해당 없음.
+- **문구**
+
+| key | 문구 |
+|---|---|
+| `tips.list.title` | 팁 |
+| `tips.list.filter.series` | 시리즈: {name} |
+| `tips.list.filter.level` | 난이도: {name} |
+| `tips.list.filter.all` | 전체 |
+| `tips.list.filter.clear` | 필터 지우기 |
+| `tips.list.more` | 더 보기 |
+| `tips.list.todayBadge` | 오늘의 팁 |
+| `tips.list.empty` | 아직 팁이 없어요. |
+| `tips.list.emptyFilter` | 조건에 맞는 팁이 없어요. |
+
+#### SCR-TERMS
+
+- **목적**: 말이 헷갈릴 때 용어를 찾는다 — **대표 표기·영어·다른 표기 어느 쪽으로도** 찾을 수 있다(BL-TRM-01~04, FR-11). **진입**: SCR-REVIEW-HOME "용어 찾기", SCR-MORE "용어 사전", SCR-TERM-DETAIL "헷갈리는 짝". **Sprint**: S3 (`terms` flag).
+- **레이아웃**
+
+```text
+┌────────────────────────────────┐
+│ ← 용어                           │
+│ ┌────────────────────────────┐ │
+│ │ 🔍 칼럼                      │ │  q (대표 표기·영어·다른 표기)
+│ └────────────────────────────┘ │
+│ [기술: 전체 ▾]                   │
+│ ┌────────────────────────────┐ │
+│ │ 컬럼  column        [기본]   │ │  representative · english · level
+│ │ 테이블에서 같은 뜻과 타입을   │ │  definition 2줄
+│ │ 가진 값들이 세로로 모인 자리다│ │
+│ │ 복습 카드 있음               │ │  cardCreated = true 일 때
+│ └────────────────────────────┘ │
+│ …                                │
+│ ┌────────────────────────────┐ │
+│ │        더 보기               │ │
+│ └────────────────────────────┘ │
+├────────────────────────────────┤
+│  Today   Review   Plan   More  │
+└────────────────────────────────┘
+```
+
+- **규칙**
+  - 검색은 `q`(0~100자, §3.2)다. 입력을 **400ms debounce**하고 앞뒤 공백을 지워 보낸다. 서버가 `representative`·`english`·`aliases[]`를 부분 일치·대소문자 무시로 찾으므로(`05` §20.5) 화면은 **"칼럼"으로 찾아도 "컬럼"이 나온다**는 것을 검색칸 아래 `terms.search.help`로 알린다.
+  - 행은 `TermSummaryView`다: `representative`(굵게) + `english` + `level` 배지 + `definition` 2줄 말줄임 + `cardCreated = true`면 `terms.list.hasCard` 한 줄.
+  - 찾은 말이 대표 표기가 아닐 때(예: "칼럼"으로 찾음) 행은 **대표 표기로 보인다** — 저장소가 한 표기만 쓰기 때문이다(`19` §3.10). 어떤 말로 찾았는지는 강조하지 않는다.
+  - 기술 필터는 `skillId`(칩 → `SkillPicker`)다. 검색어와 AND로 걸린다. 둘 다 비면 전체 목록이다.
+  - `q`·`skillId`는 쿼리 파라미터로 유지해 뒤로가기·새로고침에도 남는다.
+  - 정렬은 서버 정렬(`termKey` ASC)을 그대로 쓴다. "더 보기" 버튼은 SCR-TIPS와 같다. 은퇴한 용어는 검색되지 않는다(`05` §20.5).
+  - 행을 누르면 `/terms/{termKey}`로 간다.
+- **데이터**: 진입·검색어·필터 변경 `GET /terms?q=&skillId=&limit=&cursor=` → `CursorPage<TermSummaryView>`.
+- **상태**: Loading — 행 skeleton 5개(검색 중에는 기존 목록을 유지하고 앱 바 아래 2px 진행 막대, §3.3). Empty — 검색어가 있으면 `terms.list.emptyQuery`(+ "검색어 지우기"), 없으면 `terms.list.empty`. Error·Offline — 공통. AI — 해당 없음.
+- **행동·검증**: 검색칸은 한 줄 입력이라 Enter로 즉시 검색한다(A-7). IME 조합 중에는 무시한다(A-13). `✕`로 검색어를 지우면 전체 목록으로 돌아간다.
+- **문구**
+
+| key | 문구 |
+|---|---|
+| `terms.list.title` | 용어 |
+| `terms.search.hint` | 용어를 찾아보세요 |
+| `terms.search.help` | 영어나 다른 표기로 찾아도 대표 표기로 보여 드려요. |
+| `terms.search.clear` | 검색어 지우기 |
+| `terms.list.filter.skill` | 기술: {name} |
+| `terms.list.hasCard` | 복습 카드 있음 |
+| `terms.list.more` | 더 보기 |
+| `terms.list.empty` | 아직 등록된 용어가 없어요. |
+| `terms.list.emptyQuery` | '{query}'로 찾은 용어가 없어요. |
+
+#### SCR-TERM-DETAIL
+
+- **목적**: 용어 하나의 **대표 표기·영어·다른 표기·정의·실무 예문·헷갈리는 짝**을 보고, 원하면 복습 카드로 만든다(BL-TRM-01~04, FR-11). **진입**: SCR-TERMS 행, 다른 용어의 "헷갈리는 짝". **Sprint**: S3 (`terms` flag).
+- **레이아웃** (`/terms/{termKey}`)
+
+```text
+┌────────────────────────────────┐
+│ ← 용어                           │
+│ 컬럼                      [기본] │  representative · level
+│ column                           │  english
+│ 이렇게도 불러요: 열, 칼럼         │  aliases (있을 때)
+│ ────────────────────────────── │
+│ 뜻                               │
+│ 테이블에서 같은 뜻과 타입을 가진 │
+│ 값들이 세로로 모인 자리다.        │
+│ 이렇게 써요                       │
+│ 주문 테이블에 상태 컬럼을 하나    │
+│ 더했다.                           │
+│ 헷갈리는 짝                       │  confusableWith (있을 때)
+│ ┌────────────────────────────┐ │
+│ │ 필드  field               > │ │
+│ └────────────────────────────┘ │
+│ 관련 기술: 데이터 모델링 >        │
+│ 공식 문서 ↗                       │
+│ ────────────────────────────── │
+│ ┌────────────────────────────┐ │
+│ │      복습 카드 만들기         │ │
+│ └────────────────────────────┘ │
+│ 앞뒤 두 장을 만들어요. 표기를 보고│
+│ 뜻, 뜻을 보고 표기를 떠올려요.    │
+└────────────────────────────────┘
+```
+
+- **규칙**
+  - **대표 표기가 제목이다.** `aliases`는 "이렇게도 불러요" 한 줄로 내리고 제목과 같은 크기로 쓰지 않는다 — 어떤 표기를 쓸지 정해 주는 것이 이 화면의 일이다(`19` §3.10).
+  - `aliases`가 비면 그 줄을 숨긴다. `confusableWith`가 비면 그 영역을 숨긴다.
+  - "헷갈리는 짝" 행은 `TermRefView`(대표 표기 + 영어)이고 누르면 그 용어의 상세로 간다(같은 화면을 새 라우트로 쌓는다). 뒤로가기로 돌아온다.
+  - `skills[]`는 칩 → `/skills/{skillId}`. `sourceUrl`은 호스트명 + `↗`(새 탭, 서버는 가져오지 않는다).
+  - 은퇴한 용어도 이 화면으로는 열린다(`05` §20.6). 그때는 제목 아래 `term.detail.retired`를 한 줄 둔다.
+- **복습 카드 만들기**
+  - primary "복습 카드 만들기" → `POST /terms/{termKey}/card`(IK, body 없음). 버튼 아래에 `term.card.help`로 **앞뒤 두 장**이 생긴다는 것을 미리 알린다(`05` §20.7).
+  - 응답의 `cards[]`를 버튼 자리 아래 목록으로 보인다(`conceptKey`로 방향을 구분해 `term.card.forward`("표기 → 뜻") / `term.card.reverse`("뜻 → 표기") 라벨 + `다음 복습 {date}`). `createdCount > 0`이면 토스트 `term.card.created`, `0`이면 `term.card.already`.
+  - 이미 두 장이 있으면(진입 시 `TermView.cards`가 2건) 버튼을 "복습 카드 보기"(→ `/review/items?skillId={skills[0].id}`)로 바꾼다. 한 장만 있으면 버튼은 그대로 두고(나머지 한 장을 만든다) 아래에 있는 카드를 보인다.
+  - `createdCount = 0`이고 `cards`가 비면(활성 기술이 없는 용어) 버튼을 비활성하고 `term.card.noSkill`을 보인다.
+  - 만든 카드는 **복습 화면에서 다른 카드와 똑같이 나온다**. 출처 라벨은 `TERM` "용어 사전"이다(§3.6 SCR-REVIEW-ITEMS).
+- **데이터**
+
+| 시점 | API |
+|---|---|
+| 진입 | `GET /terms/{termKey}` → `TermView`(`confusableWith` 펼침, 이 사용자의 `cards` 포함) |
+| "복습 카드 만들기" | `POST /terms/{termKey}/card` (IK, body 없음) → 201(새로 만듦) / 200(이미 있음) `TermCardResponse` |
+
+- **상태**: Loading — 제목·본문 skeleton. Empty — 해당 없음. Error — `400 VALIDATION_FAILED`(`Pattern`)·`404 RESOURCE_NOT_FOUND` → SCR-NOT-FOUND. 카드 만들기 실패는 토스트(§5.1) + 버튼 복구. Offline — 공통(버튼 비활성). AI — 해당 없음.
+- **행동·검증**: 버튼은 요청 중 비활성(§6.6 중복 탭 방지). 같은 행동을 재시도하면 같은 IK를 쓴다.
+- **문구**
+
+| key | 문구 |
+|---|---|
+| `term.detail.title` | 용어 |
+| `term.detail.aliases` | 이렇게도 불러요 |
+| `term.detail.definition` | 뜻 |
+| `term.detail.example` | 이렇게 써요 |
+| `term.detail.confusable` | 헷갈리는 짝 |
+| `term.detail.skills` | 관련 기술 |
+| `term.detail.source` | 공식 문서 |
+| `term.detail.retired` | 지금은 이 표기 대신 다른 말을 써요. |
+| `term.card.button` | 복습 카드 만들기 |
+| `term.card.help` | 앞뒤 두 장을 만들어요. 표기를 보고 뜻, 뜻을 보고 표기를 떠올려요. |
+| `term.card.forward` | 표기 → 뜻 |
+| `term.card.reverse` | 뜻 → 표기 |
+| `term.card.created` | 복습 카드를 만들었어요. 내일부터 복습에 나와요. |
+| `term.card.already` | 이미 만들어 둔 카드가 있어요. |
+| `term.card.view` | 복습 카드 보기 |
+| `term.card.noSkill` | 이 용어에 연결된 기술이 없어 카드를 만들 수 없어요. |
 
 ---
 
@@ -3010,7 +4021,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | 2 | 이메일 입력 → "로그인" | SCR-LOGIN | `POST /api/v1/dev/token {email}` | allowlist 확인 → 서명 토큰 발급 (`supabase` 모드면 GitHub OAuth) |
 | 3 | — | SCR-AUTH-CALLBACK | `GET /me` | JIT: allowlist 통과 → `app_user` INSERT(기본값). 실패 시 403 → SCR-NOT-ALLOWED |
 | 4 | — | → `/onboarding/goal` | `onboardingCompleted=false` | — |
-| 5 | 목표(학습 완료 목표일·중간 점검일) 입력 → 다음 | 1단계 | draft 저장 | — |
+| 5 | 표시 이름·학습 트랙·목표일 입력 → 다음 | 1단계 | draft 저장 | — |
 | 6 | 시간 입력 → 다음 | 2단계 | draft 저장 | — |
 | 7 | "짧은 진단으로 시작"(기본) 그대로 → 다음 | 3단계 | draft 저장(`runDiagnostic=true`) | — |
 | 8 | 이름 "주문 시스템" 그대로 → "계획 만들기" | 4단계 | `POST /onboarding` (IK) `{…, runDiagnostic: true, selfAssessments: [], sideProject: {name: "주문 시스템", description}}` | 한 트랜잭션: learning_goal, `user_skill_state`(진단 모드 — `self_assessed_level` 모두 null), plan v1(ACTIVE, 9개 milestone)·plan_skill_target, seed review_item 복사(하루 5장 분산), `side_project`(ACTIVE), `onboarding_completed_at`, 오늘 snapshot → 커밋 후 `suggestedDiagnostics`(카테고리당 1개, 최대 5개) |
@@ -3021,7 +4032,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | 13 | — | 생성 후 레이아웃 | 응답 표시 | — |
 
 분기:
-- 3단계에서 "진단 건너뛰고 직접 고르기": 7에서 13개 카테고리 수준을 고르고 8에 `runDiagnostic: false, selfAssessments: [13개]`를 보낸다([서버] 카테고리 값을 `self_assessed_level`에 전파). 5단계에는 진단 카드가 없고 primary는 "그대로 시작"이다. 자기평가 3 이상인 분야는 Today에서 진단 카드로 제안된다(§4.6).
+- 3단계에서 "진단 건너뛰고 직접 고르기": 7에서 14개 카테고리 수준을 고르고 8에 `runDiagnostic: false, selfAssessments: [14개]`를 보낸다([서버] 카테고리 값을 `self_assessed_level`에 전파). 5단계에는 진단 카드가 없고 primary는 "그대로 시작"이다. 자기평가 1 이상인 분야는 Today에서 진단 카드로 제안된다(§4.6, ADR-058 — 0은 확인할 주장이 없어 빠진다).
 - 4단계에서 "건너뛰기" → 대화상자 "건너뛰고 계획 만들기" → 8을 `sideProject: null`로 보낸다([서버] `side_project` 없음 → planner가 `PROJECT_TASK`를 제안하지 않음, SP-1). 5단계에 `onboarding.plan.noProject`.
 - `diagnostics` flag가 꺼진 빌드(S1~S2): 3단계는 자기평가만 있다(위 첫 분기와 같음).
 
@@ -3044,6 +4055,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 - 5 성공 후 6이 실패하면: `GET /today` → 새 `version`으로 6을 1회 재시도 → 그래도 실패하면 토스트 `common.error.retry` 버튼으로 6만 다시 시도한다(세션 완료는 반복하지 않는다).
 - "여기까지 기록": 5와 같되(0분이면 `…/abandon`) 6의 status는 `DEFERRED`.
+- 6이 `422 SECRET_DETECTED_BLOCKED`(`explainedNote`)이면 **재시도하지 않는다** — 같은 본문은 다시 보내도 막힌다. 완료 시트를 닫지 않고 메모 아래 인라인 `projects.secretBlocked`를 보이고 입력을 그대로 둔다(§3.5 설명 기록). 5는 이미 끝났고 같은 Idempotency-Key로 다시 보내므로 메모를 고쳐 다시 제출해도 세션이 두 번 기록되지 않는다.
 - `READ_CODE`의 6이 `409 INVALID_STATE_TRANSITION`이면(RC-1 — 이 task의 러버덕이 `COMPLETED`가 아님) 재시도하지 않고 토스트 `today.readCode.needDuck` + SCR-READ-CODE로 안내한다. task는 `IN_PROGRESS`로 남고, 러버덕을 마친 뒤 Today "완료"는 진행 중 세션이 없으면 5를 건너뛰고 6만 보낸다. 클라이언트는 러버덕 `COMPLETED`를 확인했을 때만 "완료"를 보이므로(§3.5) 드문 경우다.
 - "오늘은 건너뛰기"(PLANNED): `PATCH … {status: SKIPPED}` → 토스트 "되돌리기"(→ `PLANNED`).
 - `mainTask = null`(후보 없음): 1~7 대신 복습 줄과 "계획 조정"만 보인다(§3.5).
@@ -3188,16 +4200,16 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 - AI 불가이거나 `evidenceSourceEventId`가 null이면: `/evidence/new`(제목·기술 채움) → `POST /evidence` (IK) → 3부터 같다.
 
-### 4.11 요구 역량 비교 (Requirement Radar)
+### 4.11 로드맵 비교 (Roadmap compare)
 
 | # | 사용자 | API | [서버] |
 |---|---|---|---|
-| 1 | Radar → "요구사항 분석하기" | SCR-REQUIREMENT-NEW | — |
-| 2 | 제목·출처 링크(기록용)·요구사항 본문 붙여넣기 → "분석 요청" | `POST /requirement-docs` (IK) → `202 {id}` | requirement_doc PENDING. **sourceUrl fetch 없음** → 비동기 `REQUIREMENT_EXTRACT` → requirement_item(rawText, type, skill 매칭) → `RequirementFitClassifier`가 fit·증거 연결(`06` §13) → COMPLETED |
+| 1 | Radar → "로드맵 비교하기" | SCR-REQUIREMENT-NEW | — |
+| 2 | 제목·출처 링크(기록용)·공개 로드맵이나 기술 목록 본문 붙여넣기 → "비교 요청" | `POST /requirement-docs` (IK) → `202 {id}` | requirement_doc PENDING. **sourceUrl fetch 없음** → 비동기 `REQUIREMENT_EXTRACT` → requirement_item(rawText, type, skill 매칭) → `RequirementFitClassifier`가 fit·증거 연결(`06` §13) → COMPLETED |
 | 3 | 기다림 | `GET /requirement-docs/{id}` polling ≤ 3분 | — |
 | 4 | 필수·권장별 준비됨/도전/나중에 확인 | — | — |
-| 5 | "도전" 요구사항의 기술 탭 → 기술 상세 → "문제 풀기" 또는 Plan에서 조정 | `/skills/{skillId}` | — |
-| 6 | (선택) 요구사항 문서 삭제 | `DELETE /requirement-docs/{id}` | cascade 삭제 |
+| 5 | "도전" 항목의 기술 탭 → 기술 상세 → "문제 풀기" 또는 Plan에서 조정 | `/skills/{skillId}` | — |
+| 6 | (선택) 비교한 로드맵 삭제 | `DELETE /requirement-docs/{id}` | cascade 삭제 |
 
 ### 4.12 캘린더 구독 설정
 
@@ -3251,8 +4263,8 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | 5 | 설명 작성 → "설명 보내기" | ① → ② | `POST /rubber-duck` `{targetType: CODE_READING, targetId: taskId, skillCode}` (IK) → `POST /rubber-duck/{id}/turns` `{explanation}` (IK) | 세션 `IN_PROGRESS`(`learning_session_id` = 1의 세션) → `SecretMasker` → 예산 확인 → `RUBBER_DUCK`(가드 CodeLeak·Language·NoAnswer) → turn 1 저장 |
 | 6 | 질문에 답 → "보내기" (2~4번) | ② | `POST …/turns` (IK) | turn n 저장. 2턴 연속 "모르겠다"면 `suggestHint=true` → 이 대상은 정리로 안내 |
 | 7 | "정리하고 끝내기"(또는 5턴 도달 → "정리하기") | ③ | `POST /rubber-duck/{id}/complete` (IK) | `RUBBER_DUCK_SUMMARY` → `summary_json`, `COMPLETED`. gap마다 복습 카드(`source_type = RUBBER_DUCK`, `EXPLAIN`, 첫 due 다음 plan-day — 같은 개념 카드가 있으면 due만 당김). skill이 있으면 `RUBBER_DUCK_COMPLETED` |
-| 8 | 정리 확인 | ④ | 서버가 `READ_CODE` 과제를 `COMPLETED`로 바꾼다(`05` §9.8) | Today로 돌아오면 과제가 "완료" |
-| 9 | "Today로 돌아가 완료하기" → 시간·회고 → "완료 기록" | SCR-TODAY 완료 시트 | `POST /learning-sessions/{id}/complete` (IK) → `PATCH /today/tasks/{taskId}` `{status: COMPLETED}` | RC-1 확인: 이 task를 대상으로 한 `COMPLETED` 러버덕 있음 → task `COMPLETED` |
+| 8 | 정리 확인 | ④ | — | 세션 `COMPLETED` → RC-1 조건 충족. 과제 상태는 그대로(`05` §9.8) |
+| 9 | "Today로 돌아가 완료하기" → 시간·회고·(선택) 읽기 평가 → "완료 기록" | SCR-TODAY 완료 시트 | `POST /learning-sessions/{id}/complete` (IK) → `PATCH /today/tasks/{taskId}` `{status: COMPLETED, readingFeedback?}` | RC-1 확인: 이 task를 대상으로 한 `COMPLETED` 러버덕 있음 → task `COMPLETED`, 평가를 골랐으면 `reading_feedback` 저장 |
 
 분기:
 - AI 불가(`DISABLED`·`BALANCE_EXHAUSTED`): planner가 새 `READ_CODE`를 내지 않는다. 이미 있는 task는 1~3까지 되고 4의 버튼이 막힌다 → "여기까지 기록"(`DEFERRED`) 또는 Today "오늘은 건너뛰기".
@@ -3263,14 +4275,14 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 ### 4.16 v3 핵심 루프 하루 — 읽는다 → 설명한다 → 만든다 → 반복한다
 
-전제(예시): 사용자는 온보딩에서 학습 완료 목표일을 등록했고(예: 2027-04-01), 사이드 프로젝트 "주문 시스템"을 만들었다. 짧은 진단으로 Spring MVC REST API의 planning KNOWLEDGE가 3이 됐고 이 기술을 집중 기술로 골랐다(`projectNeed`). 현재 milestone은 "기반 다지기"이고 petclinic은 아직 받아 두지 않았다. 과제 유형은 planner가 정한다(`06` §5.3) — 아래는 그 규칙대로 나온 하루의 예다.
+전제(예시): 사용자는 온보딩에서 목표일을 등록했고(예: 2027-04-01), 사이드 프로젝트 "주문 시스템"을 만들었다. 짧은 진단으로 Spring MVC REST API의 planning KNOWLEDGE가 3이 됐고 이 기술을 집중 기술로 골랐다(`projectNeed`). 현재 milestone은 "기반 다지기"이고 petclinic은 아직 받아 두지 않았다. 과제 유형은 planner가 정한다(`06` §5.3) — 아래는 그 규칙대로 나온 하루의 예다.
 
 | 시점 | 사용자 | 화면 | DevPilot이 하는 일 |
 |---|---|---|---|
 | 아침 ① (2분) | Today 열기 → 45분·보통 → "오늘 계획 만들기" | SCR-TODAY | Spring MVC REST API가 1순위. 풀 challenge가 없고 KNOWLEDGE ≥ 1이며 reading이 있어 **`READ_CODE`**: "Spring PetClinic 읽기 — OwnerController.java 48~122줄", 약 15분. 이유 "Spring PetClinic에서 같은 문제를 어떻게 풀었는지 먼저 봅니다", "기반 다지기 milestone 핵심 항목". 복습 6장 줄 |
 | 아침 ② 읽는다 (15분) | "시작" → `cloneHint` 복사 → 터미널에서 clone·checkout → 로컬 IDE에서 petclinic `OwnerController.java` 48~122줄을 읽으며 볼 지점 3개 확인 | SCR-READ-CODE, 내 IDE | 무엇을·왜·어디를 읽는지만 안내한다. 코드는 사용자 컴퓨터에만 있다 |
 | 아침 ③ 설명한다 (10분) | "읽었으면 설명하기" → "이 컨트롤러는 조회만 해서 Service가 필요 없다"고 설명 → AI "조회만 한다고 하셨는데, 폼 제출을 처리하는 메서드는 어디에 규칙을 두고 있나요?" → 답 → AI "그 저장이 실패하면 어디까지 되돌려지나요?" → "잘 모르겠어요" → … 4턴 → "정리하고 끝내기" | SCR-RUBBER-DUCK | AI는 정답·"맞아요"를 말하지 않고 되묻기만 한다(RD-1). 정리: 막힌 곳 1개(조회·저장의 트랜잭션 경계) → **복습 카드 1장**(내일 due), 잘 설명한 것 1개 |
-| 아침 ④ | "Today로 돌아가 완료하기" → 25분 기록 | SCR-TODAY | 설명을 마쳤으므로 `READ_CODE` 완료(RC-1) |
+| 아침 ④ | "Today로 돌아가 완료하기" → 25분 기록, 읽기 평가 "도움 됐어요"(선택) | SCR-TODAY | 설명을 마쳤으므로 `READ_CODE` 완료(RC-1). 평가는 과제에 저장만 한다 |
 | 출근길 (5분) | 복습 6장 | SCR-REVIEW-SESSION | 교차 학습 순서로 출제 — 같은 기술 카드가 3장 연속 나오지 않는다(RV-INTERLEAVE) |
 | 저녁 ① 만든다 | "하나 더 하기" → 40분·보통 | SCR-TODAY | 아침에 완료한 reading은 후보에서 빠지고(`06` §5.3), KNOWLEDGE ≥ 2 + `projectNeed` + 컨디션 보통 + `ACTIVE` 프로젝트가 있어 **`PROJECT_TASK`**: "주문 시스템에 Spring MVC REST API 적용하기"(SP-2) |
 | 저녁 ② (30분) | "시작" → 내 IDE에서 주문 시스템에 petclinic과 같은 계층 구조로 상품 조회 API를 만든다 | 내 IDE | — |
@@ -3278,6 +4290,8 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | 다음 날 아침 반복한다 (5분) | 복습 | SCR-REVIEW-SESSION | 어제 러버덕에서 막힌 "조회만 하는 메서드에 트랜잭션을 여는 이유를 설명해 보세요" 카드가 다른 기술 카드 사이에 섞여 나온다(교차 학습). "다시"를 누르면 더 짧은 간격으로 또 나온다 |
 | 주말 (선택) | 주문 시스템 코드를 붙여넣고 코드 리뷰 요청(사이드 프로젝트 "주문 시스템" 선택) | SCR-COACH-NEW | (S4 이후) 먼저 스스로 우려점을 쓰고 질문을 받는다(FR-12) |
 
+- 하루에 한 번, Today 아래쪽에 **오늘의 팁** 카드가 한 장 붙는다(S3, §3.5). 읽고 "새로 알았어요"를 고르면 내일 복습 카드로 나오고, "직접 해 볼래요"를 고르면 다음 날 Today에 "직접 해 보기" 한 줄로 올라온다(`06` §5.12). 팁은 과제가 아니라서 이 표의 시간에 들어가지 않는다.
+- 과제 카드에 **시작 전 확인 목록**이 붙어 있으면 "시작" 전에 세 줄을 읽고, 완료 시트에서 **끝내기 전 확인**을 한 번 더 본다(§3.5). 확인 목록은 저장하지 않는 콘텐츠이고 완료를 막지 않는다.
 - 이 하루가 쌓인 결과물은 **주문 시스템**이고, 러버덕에서 설명해 본 기록과 복습 카드가 내가 무엇을 왜 만들었는지 설명할 수 있는 학습 기록이 된다(`01` §5 "증거가 된다").
 - AI가 멈춘 날에는 `READ_CODE`가 제안되지 않고, 복습·계획·Today(READING·EXPLAIN·PROJECT_TASK)는 그대로 돈다.
 
@@ -3287,7 +4301,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 | # | 사용자 | 화면 | API | [서버] |
 |---|---|---|---|---|
-| 1 | 설정 > 학습 목표에서 학습 완료 목표일을 3개월 앞당김 → 저장 → "지금 조정" | SCR-SETTINGS → SCR-LEARNING-GOAL | `PUT /learning-goal` | goal 저장, `replan_recommended = true`(자동 replan 없음) |
+| 1 | 설정 > 학습 목표에서 목표일을 3개월 앞당김 → 저장 → "지금 조정" | SCR-SETTINGS → SCR-LEARNING-GOAL | `PUT /learning-goal` | goal 저장, `replan_recommended = true`(자동 replan 없음) |
 | 2 | 권장 milestone(템플릿 7~9: 구조 정리·배포와 운영·설명과 정리) 기간을 줄이고 이유 입력 → "변경 미리보기" | SCR-REPLAN ①→② | `POST …/replan/preview` (IK 없음) | risk **HIGH** → 축소 제안: MUST 목표 1단계 낮춤(3 미만으로는 제안 안 함) → SHOULD 기술 defer(중요도 낮은 것부터). 제안은 skill 목표 단위다(`06` §4.4) |
 | 3 | 제안 몇 개 체크 → "선택 반영해 다시 계산" → "새 버전으로 저장" | SCR-REPLAN ② | preview → `POST …/replan` `{acceptedDeferrals, acceptedTargetReductions}` (IK) | 새 plan version, snapshot |
 | 4 | 다음 날 Today | SCR-TODAY | `POST /today/generate` | risk ≥ HIGH면 MUST 가중·LATER 제외, 이유 "마감 위험이 높아 필수 항목 우선" |
@@ -3303,6 +4317,41 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 - 제안은 저장하지 않고 자동 적용하지 않는다. 사용자가 체크한 것만 저장된다(FR-05).
 - 필요 ÷ 가능이 70%~80%이거나 위험이 보통이면 어느 쪽 제안도 없다(`replan.preview.noSuggestions`).
+
+### 4.18 재현 과제 — 며칠 뒤 AI 없이 혼자 다시 만들기 (S4)
+
+전제: 4일 전(예시) 사용자가 challenge "트랜잭션 전파 수정하기"를 힌트 2단계를 보고 풀어 `COMPLETED`했다. 오늘은 그 창(3~7일) 안이다(`06` §5.10 RE-2).
+
+| # | 사용자 | 화면 | API | [서버] |
+|---|---|---|---|---|
+| 1 | Today 생성 | SCR-TODAY | `POST /today/generate` (IK) | 그 skill의 재현 후보가 있어 제안 0번이 `REDO`. modifier `REDO_DUE` ×1.30으로 그 skill이 1위 → main task `REDO`(`redoSourceTaskId` 고정), 이유 `REDO_WITHOUT_AI` |
+| 2 | 카드에서 잠금 줄을 읽고 "시작" | SCR-TODAY | `PATCH /today/tasks/{taskId}` `{status: IN_PROGRESS}` → `POST /learning-sessions` (IK) | task `IN_PROGRESS` |
+| 3 | 원본 문제를 다시 열어 힌트를 누름 | SCR-TRAINING-ATTEMPT | `POST /challenge-attempts/{id}/hints` | **409 `AI_ASSIST_LOCKED_FOR_REDO`**(HL-9). `hint_disclosure`·이벤트·AI 호출 0. 화면은 이유와 "Today로 가기" |
+| 4 | 러버덕으로 설명해 보려 함 | SCR-RUBBER-DUCK 시작 전 | `POST /rubber-duck` `{targetType: CHALLENGE, targetId}` (IK) | **409 `AI_ASSIST_LOCKED_FOR_REDO`**(RE-5). 세션 0개 |
+| 5 | 내 IDE에서 처음부터 다시 구현 (35분) | 내 IDE | — | — |
+| 6a | "완료" → 시간 입력 → **"네, 혼자 했어요"** → "완료 기록" | SCR-TODAY 완료 시트 | `POST /learning-sessions/{id}/complete` (IK) → `PATCH /today/tasks/{taskId}` `{status: COMPLETED, redoWithoutAi: true}` | `redo_without_ai = true`, `REDO_COMPLETED{withoutAi: true}` → §7.2 **독립 구현 증거** 1개. 복습 카드 없음 |
+| 6b | (대신) **"아니요, 도움을 받았어요"** | SCR-TODAY 완료 시트 | 같은 요청, `redoWithoutAi: false` | `REDO_COMPLETED{withoutAi: false}`(레벨 증거 아님) + 복습 카드 1장(`REDO:{sourceTaskId}`, 내일 due). 토스트 + "복습하러 가기" |
+| 7 | 다음 Today | SCR-TODAY | `POST /today/generate` | 6a면 그 원본은 끝났다(RE-3). 6b면 시도 1회로 세고, 그 완료일에서 다시 3~7일 뒤 창이 열린다(최대 `max-attempts` 2회) |
+
+분기:
+- 3·4의 잠금은 **그 대상만**이다. 다른 challenge의 힌트, 복습 카드·코드 읽기·개념 러버덕은 그대로 된다.
+- "오늘은 건너뛰기"(`SKIPPED`)도 시도 1회로 센다. "여기까지 기록"(`DEFERRED`)은 세지 않고 다음 날 다시 제안된다.
+- 답을 고르지 않으면 "완료 기록"이 비활성이다. 서버도 `400 VALUE_REQUIRED`로 막는다(RE-6).
+- AI가 멈춘 날에도 재현 과제는 그대로 제안·수행·완료된다(RE-8 — AI를 부르지 않는다).
+
+### 4.19 프로젝트 기록 — 결정과 장애를 그 자리에서 (S3)
+
+| # | 사용자 | 화면 | API | [서버] |
+|---|---|---|---|---|
+| 1 | `PROJECT_TASK`를 하다 재고가 음수가 되는 것을 발견 | 내 IDE | — | — |
+| 2 | Today 카드의 "이 프로젝트 기록" | SCR-TODAY → SCR-PROJECT-DETAIL | `GET /side-projects/{id}`, `GET …/notes` | 기록 목록 |
+| 3 | "+ 장애 기록" → 제목·날짜·관련 기술 → 네 항목 작성 → "저장" | SCR-PROJECT-NOTE-EDIT | `POST …/notes` (IK) | 마스킹 → INSERT. 학습 이벤트·레벨 변화 없음(PN-3) |
+| 4 | 며칠 뒤 왜 그렇게 정했는지 기록 | SCR-PROJECT-DETAIL → SCR-PROJECT-NOTE-EDIT | `POST …/notes` `{noteType: DECISION, …}` | 〃 |
+| 5 | (S5) 주간 리뷰 | SCR-WEEKLY-DETAIL | `GET /weekly-reviews/{weekStartDate}` | `metrics_json.projectNoteCount`에 그 주의 기록 수 |
+| 6 | (S6) 학습 기록 초안 만들기 | SCR-EVIDENCE-DETAIL | `POST /evidence/drafts` `{sourceProjectNoteId}` (IK) | 그 기록의 마스킹본을 입력으로 STAR 초안 생성. 기록의 skill이 evidence skill이 된다 |
+
+- 유형은 3·4에서 정해지고 이후 바꿀 수 없다(PN-2). 잘못 골랐으면 지우고 다시 만든다.
+- 프로젝트를 지우면 그 기록도 함께 사라진다. 삭제 확인 대화상자가 이를 알린다(SCR-PROJECTS).
 
 ---
 
@@ -3342,6 +4391,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | 409 | `EVALUATION_IN_PROGRESS` | 이전 제출을 평가하고 있어요. | 인라인: 제출 버튼 잠금 + polling 시작 | 결과 기다리기 |
 | 409 | `AI_TASK_NOT_RETRYABLE` | 다시 시도할 수 없는 상태예요. | 토스트 + 리소스 재조회 | 없음 |
 | 409 | `REVIEW_ALREADY_CLOSED` | 이미 마친 리뷰예요. | 토스트 + 재조회 → 읽기 전용 | 없음 |
+| 409 | `AI_ASSIST_LOCKED_FOR_REDO` | 지금은 이 과제를 AI 없이 혼자 다시 만드는 중이에요. 재현 과제를 마치면 다시 쓸 수 있어요. | 대화상자(`today.redo.lockedElsewhere`) + "Today로 가기"(→ `/today`). SCR-TRAINING-ATTEMPT는 힌트 버튼을, SCR-RUBBER-DUCK 시작 전 화면은 "설명 보내기"를 비활성으로 바꾸고 그 아래 같은 문구 1줄 | "Today로 가기" / 확인 |
 | 409 | `INVALID_STATE_TRANSITION` | 지금 상태에서는 할 수 없는 작업이에요. | 토스트 + 해당 리소스 재조회. 복습 답변이면 카드 건너뛰기(§3.6), attempt 시작이면 기존 attempt 열기(§3.7) | 새 상태 확인 |
 | 409 | `CONCURRENT_MODIFICATION` | 다른 곳에서 먼저 바뀌었어요. 최신 내용으로 다시 불러왔어요. | 상태 변경(PATCH status): 재조회 후 1회 자동 재시도, 실패 시 토스트 / 긴 입력 편집(replan, weekly reflection, evidence): 대화상자로 최신 내용 불러오기 또는 덮어쓰기 선택 | 확인 후 다시 편집 |
 | 409 | `IDEMPOTENCY_IN_PROGRESS` | (표시 안 함) | 흐름 분기: API 계층이 1초 뒤 같은 키로 재시도(최대 5회, `05-api-spec.md` §1.7). 5회 모두 같으면 토스트 `error.IDEMPOTENCY_IN_PROGRESS` = "요청을 처리하고 있어요. 잠시 후 확인해 주세요." | 잠시 후 새로고침 |
@@ -3362,7 +4412,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 ### 5.2 비동기 작업 `failureCode` (`AsyncFailureCode`)
 
-challenge 생성, 제출 평가, coach 분석, evidence 초안, 요구사항 분석의 `FAILED` 상태와 러버덕 정리 실패(`summarySkippedReason`, SCR-RUBBER-DUCK ④)에 표시한다. 문구 key `asyncFailure.<CODE>`.
+challenge 생성, 제출 평가, coach 분석, evidence 초안, 로드맵 비교 분석의 `FAILED` 상태와 러버덕 정리 실패(`summarySkippedReason`, SCR-RUBBER-DUCK ④)에 표시한다. 문구 key `asyncFailure.<CODE>`.
 
 | failureCode | 문구 | 재시도 버튼 |
 |---|---|---|
@@ -3376,7 +4426,7 @@ challenge 생성, 제출 평가, coach 분석, evidence 초안, 요구사항 분
 | `INTERRUPTED` | 서버가 다시 시작되어 작업이 중단됐어요. | 표시 |
 | `INTERNAL_ERROR` | 문제가 생겨 완료하지 못했어요. | 표시 |
 
-재시도 API: 제출 평가 `POST …/submissions/{submissionNo}/retry`, coach `POST /coach/reviews/{reviewId}/retry`. 러버덕 정리는 재시도가 없어 재시도 버튼을 숨긴다(대화는 남는다). challenge 생성·evidence 초안·요구사항 분석은 retry API가 없으므로 "다시 만들기/다시 요청"(새 요청)으로 처리한다. 재시도 버튼은 리소스의 `retryable=true`일 때만 보인다.
+재시도 API: 제출 평가 `POST …/submissions/{submissionNo}/retry`, coach `POST /coach/reviews/{reviewId}/retry`. 러버덕 정리는 재시도가 없어 재시도 버튼을 숨긴다(대화는 남는다). challenge 생성·evidence 초안·로드맵 비교 분석은 retry API가 없으므로 "다시 만들기/다시 요청"(새 요청)으로 처리한다. 재시도 버튼은 리소스의 `retryable=true`일 때만 보인다.
 
 ---
 
@@ -3481,7 +4531,9 @@ challenge 생성, 제출 평가, coach 분석, evidence 초안, 요구사항 분
 | `BudgetWarningNote` | `aiStatus == BUDGET_WARNING` | AI 실행 버튼 바로 아래 한 줄, 아이콘 `info` + `color.warning` 텍스트 | `ai.budgetWarning.note` = "이번 달 AI 사용량이 예산의 80%를 넘었어요." |
 | AI 버튼 비활성 사유 | `aiAvailable == false` | 버튼 아래 `bodySmall` | `DISABLED` → `ai.disabledReason` = "AI를 쓸 수 없어 잠시 막아 두었어요." / `BALANCE_EXHAUSTED` → `ai.balanceExhaustedReason` = "AI 잔액이 떨어져 잠시 막아 두었어요." |
 
-- 배너 표시 화면: SCR-RUBBER-DUCK, SCR-READ-CODE, SCR-TRAINING-LIST, SCR-CHALLENGE-DETAIL, SCR-TRAINING-ATTEMPT, SCR-COACH-LIST, SCR-COACH-NEW, SCR-COACH-DETAIL(마치기 전), SCR-EVIDENCE-DETAIL(초안 생성 중·실패), SCR-REQUIREMENTS-LIST, SCR-REQUIREMENT-NEW, SCR-MORE. **SCR-TODAY, SCR-REVIEW-\*, SCR-PLAN, SCR-PROJECTS에는 표시하지 않는다**(AI 없이 동작하는 화면). 러버덕 진입 버튼만 있는 화면(SCR-TODAY, SCR-REVIEW-SESSION, SCR-REVIEW-ITEMS, SCR-SKILL-DETAIL, SCR-PROJECTS)은 배너 없이 그 버튼만 막고 버튼 아래 사유 1줄(`ai.disabledReason`/`ai.balanceExhaustedReason`)을 보인다.
+- 배너 표시 화면: SCR-RUBBER-DUCK, SCR-READ-CODE, SCR-TRAINING-LIST, SCR-CHALLENGE-DETAIL, SCR-TRAINING-ATTEMPT, SCR-COACH-LIST, SCR-COACH-NEW, SCR-COACH-DETAIL(마치기 전), SCR-EVIDENCE-DETAIL(초안 생성 중·실패), SCR-REQUIREMENTS-LIST, SCR-REQUIREMENT-NEW, SCR-MORE. **SCR-TODAY, SCR-REVIEW-\*, SCR-PLAN, SCR-PROJECTS, SCR-PROJECT-DETAIL, SCR-PROJECT-NOTE-EDIT, SCR-TIPS, SCR-TIP-DETAIL, SCR-TERMS, SCR-TERM-DETAIL에는 표시하지 않는다**(AI 없이 동작하는 화면). 러버덕 진입 버튼만 있는 화면(SCR-TODAY, SCR-REVIEW-SESSION, SCR-REVIEW-ITEMS, SCR-SKILL-DETAIL, SCR-PROJECTS, SCR-PROJECT-DETAIL)은 배너 없이 그 버튼만 막고 버튼 아래 사유 1줄(`ai.disabledReason`/`ai.balanceExhaustedReason`)을 보인다.
+- **배너를 띄우는 기준은 "그 화면이 AI를 쓰는가"다.** Today·복습·계획 화면은 AI가 꺼져 있어도 **하던 일을 그대로 끝낼 수 있으므로** 배너를 띄우지 않는다 — 쓰지도 않는 기능이 멈췄다는 배너는 "지금 아무것도 못 한다"로 읽힌다. 서버도 이 세 기능에서 AI를 호출하지 않는다(`05` §8 Today 모듈, §11 복습의 AI 채점은 선택, §7 Plan 모듈). AI가 꺼져 있을 때 이 화면들이 달라지는 부분은 **배너가 아니라 그 자리에서** 알린다 — Today는 `CHALLENGE`·`READ_CODE` 과제가 새로 제안되지 않고(`06` §5.3), 복습은 AI 채점 스위치가 꺼지며, 러버덕 진입 버튼은 버튼 아래 사유 1줄로 막힌다. 오늘의 팁·용어 화면도 AI를 쓰지 않으므로 같은 기준으로 배너가 없다(§3.17).
+- **재현 잠금은 AI 불가와 다르다.** `409 AI_ASSIST_LOCKED_FOR_REDO`(RE-5)는 AI가 멈춘 것이 아니라 **지금 그 대상만** 잠긴 것이므로 배너를 쓰지 않고 해당 버튼 아래 `today.redo.lockedElsewhere` 1줄과 "Today로 가기"를 보인다(§5.1).
 - `aiStatus`는 `meProvider` 갱신 시점(§2.4)에 바뀐다. AI 관련 429/503 응답을 받으면 즉시 갱신한다.
 
 ### 6.6 API 계층 (`lib/core/api/`)
@@ -3508,7 +4560,7 @@ challenge 생성, 제출 평가, coach 분석, evidence 초안, 요구사항 분
 
 ### 6.8 이탈 확인 (`UnsavedChangesGuard`)
 
-- 대상: SCR-ONBOARDING ①~④, SCR-RUBBER-DUCK(작성 중 설명), SCR-PROJECTS(편집 시트), SCR-REVIEW-ITEM-EDIT, SCR-TRAINING-ATTEMPT(작성 중 설명·답안), SCR-COACH-NEW, SCR-COACH-DETAIL(작성 중 답변), SCR-REPLAN, SCR-LEARNING-GOAL, SCR-WEEKLY-DETAIL(회고), SCR-EVIDENCE-DETAIL, SCR-REQUIREMENT-NEW, SCR-SETTINGS.
+- 대상: SCR-ONBOARDING ①~④, SCR-RUBBER-DUCK(작성 중 설명), SCR-PROJECTS(편집 시트), SCR-PROJECT-NOTE-EDIT, SCR-REVIEW-ITEM-EDIT, SCR-TRAINING-ATTEMPT(작성 중 설명·답안), SCR-COACH-NEW, SCR-COACH-DETAIL(작성 중 답변), SCR-REPLAN, SCR-LEARNING-GOAL, SCR-WEEKLY-DETAIL(회고), SCR-EVIDENCE-DETAIL, SCR-REQUIREMENT-NEW, SCR-SETTINGS.
 - 앱 안 이동(go_router `onExit`, `PopScope`): 대화상자 `common.unsaved.title` = "저장하지 않은 내용이 있어요", `common.unsaved.body` = "나가면 입력한 내용이 사라져요.", 버튼 "계속 작성" / "나가기".
 - 브라우저 탭 닫기·새로고침: dirty 상태일 때 `beforeunload` 기본 확인을 켠다.
 
@@ -3527,8 +4579,8 @@ challenge 생성, 제출 평가, coach 분석, evidence 초안, 요구사항 분
 | A-7 | 키보드 | 모든 기능을 Tab·Enter·Space·Esc로 사용. 한 줄 입력은 Enter 제출, 여러 줄 입력은 `Ctrl/Cmd+Enter` 제출. Esc는 대화상자·시트 닫기 | 수동 |
 | A-8 | 복습 단축키(데스크톱) | 텍스트 입력 포커스가 없을 때 `Space` 답 확인, `H` 힌트, `1` 다시 · `2` 어려움 · `3` 알맞음 · `4` 쉬움, `E` AI 채점 스위치. 평가 버튼에 숫자를 표시한다(§3.6) | widget test(키 이벤트) |
 | A-9 | 코드 입력 | `Tab`은 공백 4칸 입력. `Esc`를 누른 다음 `Tab`은 포커스 이동(포커스 갇힘 방지). 입력칸 아래 안내 `common.codeField.tabHint` = "Esc 후 Tab으로 다음 항목으로 이동" | 수동 |
-| A-10 | 글자 크기 | 브라우저·OS 글자 크기 200%에서 잘림·겹침 없음. `textScaler > 1.3` 또는 폭 < 360이면 복습 평가 버튼을 2×2 격자로 바꾼다 | golden test(textScale 2.0) |
-| A-11 | 폭 | 360px에서 모든 SCR 가로 스크롤 없음. 코드 뷰어와 SCR-READ-CODE의 `cloneHint` 상자만 내부 가로 스크롤 허용 | golden test(360×640) |
+| A-10 | 글자 크기 | 브라우저·OS 글자 크기 200%에서 잘림·겹침 없음. `textScaler > 1.3` 또는 폭 < 360이면 복습 평가 버튼을 2×2 격자로, SCR-SKILL-DETAIL 학습 단계 6칸을 3+3 두 줄로 바꾼다 | golden test(textScale 2.0) |
+| A-11 | 폭 | 360px에서 모든 SCR 가로 스크롤 없음. 코드 뷰어, SCR-READ-CODE의 `cloneHint` 상자, SCR-TIP-DETAIL의 `example` 상자만 내부 가로 스크롤 허용 | golden test(360×640) |
 | A-12 | 움직임 | `MediaQuery.disableAnimations`면 skeleton shimmer·페이지 전환 애니메이션 끔 | 수동 |
 | A-13 | 한국어 입력 | 조합 중 Backspace·커서 이동·붙여넣기, 코드 붙여넣기 시 탭·공백 유지(스파이크 SP-1, `11` §4). IME 조합 중에는 Enter 제출·단축키를 무시한다(`TextEditingValue.composing` 확인) | 스파이크 SP-1 체크리스트 |
 | A-14 | 문서 언어 | `web/index.html`에 `<html lang="ko">` | 빌드 확인 |
@@ -3588,7 +4640,9 @@ challenge 생성, 제출 평가, coach 분석, evidence 초안, 요구사항 분
 | 해요체, 한 문구 최대 2문장, 한 문장 40자 안팎 | "학습 계획이 성공적으로 생성되었습니다." → "계획을 만들었어요." |
 | 평가 대신 관찰과 제안 | "틀렸습니다." → "이 부분은 다시 보면 좋아요." |
 | 결과 라벨은 사실만, 감정 수식 금지 | "아쉽게도 실패했어요 😢" → "다시 도전" |
-| 죄책감·압박 표현 금지: 연속 N일, N일째 쉬고 있어요, 아직도, 벌써, 꼭·반드시(강요), 느낌표 남용 | "3일째 공부를 안 했어요!" → (표시하지 않음) / "다시 시작해도 괜찮아요. 오늘은 가볍게 시작해요." |
+| 죄책감·압박 표현 금지: N일째 쉬고 있어요, 연속 기록이 끊겼어요, 아직도, 벌써, 꼭·반드시(강요), 느낌표 남용 | "3일째 공부를 안 했어요!" → (표시하지 않음) / "다시 시작해도 괜찮아요. 오늘은 가볍게 시작해요." |
+| 연속 학습 일수는 사실 한 줄로만. 목표 일수·불꽃·"이어 가세요"를 붙이지 않는다(U-3, §3.11) | "🔥 5일 연속! 내일도 이어 가세요" → "이어서 학습한 날 5일" |
+| 결과물을 시간보다 먼저 쓴다 | "이번 주 3시간 10분 공부했어요" → "이번 주에 만든 것 3개 · 공부한 시간 3시간 10분" |
 | `BUG`는 분명하게, `LEARNING_POINT`는 틀리지 않았음을 먼저 | "버그일 수도 있을 것 같아요" → "실제 오류 가능성이 높아요" / "틀린 것은 아니에요. 더 나은 선택을 알아 두면 좋아요" |
 | AI 출처를 밝히고 단정하지 않는다 | "이 코드는 안전하지 않습니다." → [AI 판단] "입력값이 그대로 쿼리에 들어가 위험할 수 있어요." |
 | 위험은 사실 + 다음 행동. 겁주기 금지 | "이대로면 목표일을 못 지켜요." → "마감 위험 빠듯함 · 필수 목표에 필요 약 98시간, 가능 약 82시간 · 계획 조정" |

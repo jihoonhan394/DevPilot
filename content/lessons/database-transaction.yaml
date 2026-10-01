@@ -1,0 +1,447 @@
+# DevPilot 개념 노트 — 트랜잭션과 격리 수준
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 기준 버전: PostgreSQL 16 (AGENTS.md §0). PG 17 전용 문법은 쓰지 않는다
+# - 2단계(DB와 트랜잭션)에서 쓴다. DATABASE.SQL_BASICS 노트를 먼저 본 것으로 전제한다
+lessons:
+  - key: LESSON.DATABASE.TRANSACTION.001
+    skillCode: DATABASE.TRANSACTION
+    title: 한 단위로 끝내거나 없던 일로 만들거나 (트랜잭션)
+    whyItMatters: |-
+      주문을 넣고 재고를 줄이는 두 일 사이에서 서버가 죽으면, 주문은 있는데 재고는 그대로다.
+      이런 어긋남은 나중에 데이터를 고치는 일로 이어지고 원인은 끝내 못 찾는다.
+      트랜잭션은 "둘 다 되거나 둘 다 안 되거나"를 DB가 보장하게 만드는 장치다.
+      동시에 같은 재고를 건드릴 때 무슨 일이 생기는지도 여기서 갈린다.
+    oneLine: 트랜잭션은 여러 개의 변경을 하나의 단위로 묶어, 전부 반영되거나 전부 없던 일이 되게 한다.
+    units:
+      - key: LESSON.DATABASE.TRANSACTION.001.U1
+        title: 경계를 정하고 전부 아니면 전무로
+        minutes: 10
+        core: true
+        explain: |-
+          PostgreSQL 문서는 트랜잭션을 **"여러 단계를 하나의 전부 아니면 전무 연산으로 묶는 것"**
+          이라고 설명한다. 중간 상태는 다른 세션에게 보이지 않고,
+          중간에 실패하면 **어느 단계도 반영되지 않는다.**
+
+          보장하는 것을 네 글자로 ACID라 한다.
+
+          | 글자 | 뜻 |
+          |---|---|
+          | **원자성** (Atomicity) | 전부 되거나 전부 안 되거나 |
+          | **일관성** (Consistency) | 제약 조건을 깨뜨린 채로 끝나지 않는다 |
+          | **격리성** (Isolation) | 동시에 도는 것끼리 서로 간섭하지 않는다 |
+          | **지속성** (Durability) | 커밋했으면 죽었다 살아나도 남아 있다 |
+
+          실무에서 정하는 것은 **경계**다. `BEGIN`부터 `COMMIT`까지 어디를 묶을지.
+          너무 좁으면 어긋남이 생기고, 너무 넓으면 그동안 잠금이 걸려 다른 요청이 기다린다.
+          기준은 **"함께 틀어지면 안 되는 것끼리"** 묶는 것이다.
+        example:
+          language: sql
+          code: |-
+            BEGIN;
+
+            INSERT INTO orders (id, member_id, total_amount, status)
+            VALUES (1001, 1, 78000, 'PLACED');
+
+            UPDATE stocks
+            SET available = available - 2
+            WHERE product_code = 'KB-01' AND available >= 2;
+
+            -- 재고가 모자라 한 줄도 안 바뀌었다면 여기서 되돌린다
+            -- ROLLBACK;
+
+            COMMIT;
+
+            -- 되돌린 경우 주문도 남지 않는다
+            SELECT count(*) FROM orders WHERE id = 1001;
+          output: |-
+            BEGIN
+            INSERT 0 1
+            UPDATE 1
+            COMMIT
+
+            -- ROLLBACK 했을 경우
+             count
+            -------
+                 0
+          note: |-
+            - `BEGIN` ~ `COMMIT` 사이가 경계다. 그 안의 두 변경이 한 덩어리다
+            - `UPDATE`에 `available >= 2`를 넣어 **모자라면 0건**이 되게 했다
+            - `ROLLBACK`하면 `INSERT`까지 함께 사라진다 — 주문만 남는 일이 없다
+            - 다른 세션은 `COMMIT` 전까지 이 주문을 보지 못한다
+        predict:
+          question: '`UPDATE`가 0건이었는데 그대로 `COMMIT`하면 어떻게 되나?'
+          choices:
+            - 주문은 들어가고 재고는 그대로여서 데이터가 어긋난다
+            - 0건이므로 COMMIT이 실패한다
+            - 주문도 함께 취소된다
+            - 다음 요청에서 자동으로 맞춰진다
+          answer: 주문은 들어가고 재고는 그대로여서 데이터가 어긋난다
+          explanation: |-
+            **0건 갱신은 오류가 아니다.** DB는 조건에 맞는 줄이 없었다고만 알려 줄 뿐이다.
+            바꾼 줄 수를 확인하고 0이면 되돌리는 것은 **애플리케이션의 몫**이다.
+            트랜잭션은 "같이 묶어 준다"까지고, "언제 되돌릴지"는 우리가 정한다.
+        complete:
+          question: 두 변경을 한 단위로 묶고 실패 시 되돌리도록 빈칸을 채우세요.
+          code: |-
+            ___;
+
+            UPDATE accounts SET balance = balance - 10000 WHERE id = 1;
+            UPDATE accounts SET balance = balance + 10000 WHERE id = 2;
+
+            -- 잔액이 음수가 되면
+            ___;
+          answers:
+            - [BEGIN, "BEGIN TRANSACTION", START TRANSACTION]
+            - [ROLLBACK]
+          explanation: |-
+            `BEGIN`으로 경계를 열고 `ROLLBACK`으로 통째로 되돌린다.
+            돈이 한쪽에서 빠지고 다른 쪽에 안 들어가는 일이 없어야 하므로
+            **두 `UPDATE`는 반드시 같은 경계 안**에 있어야 한다.
+        problem:
+          prompt: |-
+            주문 시스템의 "주문 취소" 처리를 트랜잭션으로 설계하세요.
+            취소하면 세 가지가 일어난다 — 주문 상태를 CANCELLED로 바꾸고,
+            재고를 되돌리고, 쓴 쿠폰을 사용 취소한다.
+
+            - 세 가지를 한 경계에 묶을지, 나눌지 정하고 이유를 적으세요
+            - 각 단계가 실패할 수 있는 경우를 하나씩 적고, 그때 무엇을 되돌려야 하는지 적으세요
+            - SQL로 전체 흐름을 쓰고, 되돌려야 하는 자리를 주석으로 표시하세요
+          deliverables:
+            - 경계를 어떻게 잡았는지와 그 이유
+            - 단계별 실패 경우와 그때 되돌릴 범위
+            - 전체 SQL과 되돌리는 자리 표시
+          hints:
+            - 함께 틀어지면 안 되는 것끼리 묶는 것이 기준입니다. 셋 중 따로 가도 되는 것이 있나요?
+            - 갱신된 줄 수가 0일 때를 각 단계마다 생각해 보세요.
+            - 취소된 주문인데 재고가 안 돌아왔다면 사용자는 무엇을 잃나요?
+          modelAnswer: |-
+            세 가지를 **한 경계**에 묶는다. 주문만 취소되고 재고가 안 돌아오면
+            그 재고는 영영 잠긴 채로 남고, 쿠폰만 살아나면 사용자가 이득을 본다.
+            셋은 함께 틀어지면 안 되는 것들이다.
+
+            ```sql
+            BEGIN;
+
+            UPDATE orders SET status = 'CANCELLED'
+            WHERE id = 1001 AND status = 'PLACED';
+            -- 0건이면 이미 취소됐거나 배송된 주문이다 → ROLLBACK
+
+            UPDATE stocks SET available = available + 2
+            WHERE product_code = 'KB-01';
+            -- 0건이면 없는 상품 코드다 → ROLLBACK
+
+            UPDATE coupons SET used = false
+            WHERE code = 'WELCOME10' AND used = true;
+            -- 쿠폰을 안 썼으면 0건인데, 이것은 정상이다 → 되돌리지 않는다
+
+            COMMIT;
+            ```
+
+            | 단계 | 실패 경우 | 되돌릴 범위 |
+            |---|---|---|
+            | 주문 상태 | 이미 취소·배송됨 (0건) | 전체 |
+            | 재고 | 없는 상품 코드 (0건) | 전체 |
+            | 쿠폰 | 원래 안 썼음 (0건) | 되돌리지 않는다 — 실패가 아니다 |
+
+            세 번째가 요점이다. **0건이 전부 실패는 아니다.**
+            무엇이 실패인지는 도메인이 정한다.
+          selfChecks:
+            - 세 변경을 한 경계에 묶었는가
+            - 각 단계의 0건이 실패인지 아닌지 구분했는가
+            - 상태 조건을 UPDATE의 WHERE에 넣어 두 번 취소를 막았는가
+            - 되돌릴 범위를 단계마다 정했는가
+      - key: LESSON.DATABASE.TRANSACTION.001.U2
+        title: 동시에 돌 때 생기는 이상 현상
+        minutes: 12
+        core: true
+        explain: |-
+          트랜잭션이 혼자 돌면 아무 문제가 없다. 문제는 **동시에 돌 때** 생긴다.
+          표준은 일어날 수 있는 어긋남에 이름을 붙이고, 격리 수준으로 어디까지 막을지 정한다.
+
+          | 이상 현상 | 무슨 일 |
+          |---|---|
+          | **더티 읽기** | 아직 커밋 안 된 남의 변경을 읽는다 |
+          | **반복 불가 읽기** | 같은 줄을 두 번 읽었는데 값이 달라진다 |
+          | **팬텀 읽기** | 같은 조건으로 두 번 읽었는데 줄 수가 달라진다 |
+
+          | 격리 수준 | 더티 | 반복 불가 | 팬텀 |
+          |---|---|---|---|
+          | READ COMMITTED | 막음 | 생김 | 생김 |
+          | REPEATABLE READ | 막음 | 막음 | 막음 (PG) |
+          | SERIALIZABLE | 막음 | 막음 | 막음 |
+
+          PostgreSQL의 기본은 **READ COMMITTED**다. 그리고 PostgreSQL은
+          **더티 읽기를 아예 구현하지 않는다** — `READ UNCOMMITTED`를 지정해도
+          `READ COMMITTED`처럼 동작한다. 표준 표와 실제가 다른 대표적인 자리다.
+        example:
+          language: sql
+          code: |-
+            -- 세션 A                          -- 세션 B
+            BEGIN;
+            SELECT available FROM stocks
+             WHERE product_code = 'KB-01';
+            -- 3
+
+                                               BEGIN;
+                                               UPDATE stocks SET available = 1
+                                                WHERE product_code = 'KB-01';
+                                               -- 아직 COMMIT 안 함
+
+            SELECT available FROM stocks
+             WHERE product_code = 'KB-01';
+            -- 3  (더티 읽기가 없다)
+
+                                               COMMIT;
+
+            SELECT available FROM stocks
+             WHERE product_code = 'KB-01';
+            -- 1  (반복 불가 읽기)
+            COMMIT;
+          output: |-
+            세션 A의 세 번의 SELECT 결과
+             available
+            -----------
+                     3     -- 처음
+                     3     -- B가 바꿨지만 아직 커밋 전
+                     1     -- B가 커밋한 뒤
+          note: |-
+            - 커밋 안 된 값(1)을 중간에 읽지 않았다 — 더티 읽기가 막혀 있다
+            - 그런데 같은 트랜잭션 안에서 **같은 질의의 답이 3에서 1로 바뀌었다**
+            - 이것이 반복 불가 읽기이고, READ COMMITTED에서는 정상 동작이다
+            - 읽은 값으로 판단해 쓰는 코드는 여기서 어긋난다
+        predict:
+          question: 세션 A를 `REPEATABLE READ`로 시작하면 세 번째 SELECT 결과는?
+          choices:
+            - "3 — 트랜잭션이 시작한 시점의 모습을 계속 본다"
+            - "1 — 커밋된 값을 본다"
+            - 오류가 난다
+            - 세션 B가 커밋할 때까지 기다린다
+          answer: "3 — 트랜잭션이 시작한 시점의 모습을 계속 본다"
+          explanation: |-
+            `REPEATABLE READ`는 트랜잭션이 시작할 때의 **스냅숏**을 끝까지 본다.
+            그래서 같은 질의는 늘 같은 답을 준다.
+            대신 그 값을 근거로 쓰기를 시도하면 충돌로 실패할 수 있어,
+            **재시도할 준비**가 되어 있어야 한다.
+        complete:
+          question: 트랜잭션 하나만 격리 수준을 올리도록 빈칸을 채우세요.
+          code: |-
+            BEGIN ___ LEVEL REPEATABLE READ;
+
+            SELECT sum(total_amount) FROM orders WHERE member_id = 1;
+            -- 집계 도중 다른 세션이 주문을 넣어도 ___ 달라지지 않는다
+
+            COMMIT;
+          answers:
+            - [ISOLATION]
+            - [결과, 합계]
+          explanation: |-
+            `BEGIN ISOLATION LEVEL ...` 로 그 트랜잭션에만 수준을 정한다.
+            집계처럼 **여러 줄을 한 시점의 모습으로 봐야 하는 일**에 맞는 수준이다.
+        problem:
+          prompt: |-
+            주문 시스템에서 이상 현상이 실제로 일어나는 자리를 찾아 재현하세요.
+
+            - 재고 3개인 상품에 두 사람이 동시에 2개씩 주문한다고 하자
+            - `SELECT`로 재고를 읽고, 충분하면 `UPDATE`로 빼는 코드가 있다
+            - 두 세션이 어떤 순서로 실행되면 **재고가 음수가 되는지** 단계별로 적으세요
+            - 격리 수준을 올리는 방법과 올리지 않고 막는 방법, **두 가지**를 제시하세요
+          deliverables:
+            - 재고가 음수가 되는 실행 순서 (세션별 단계 표)
+            - 격리 수준으로 막는 방법과 그때 생기는 일
+            - 격리 수준을 올리지 않고 막는 방법
+          hints:
+            - 두 세션이 모두 읽기를 먼저 끝낸 상태를 그려 보세요.
+            - 읽은 값으로 판단하고 나서 쓰기까지 사이에 무슨 일이 일어날 수 있나요?
+            - 판단과 쓰기를 한 문장으로 합칠 수 있다면 사이가 없어집니다.
+          modelAnswer: |-
+            | 시각 | 세션 A | 세션 B | 재고 |
+            |---|---|---|---|
+            | 1 | `SELECT available` → 3 | | 3 |
+            | 2 | | `SELECT available` → 3 | 3 |
+            | 3 | 3 >= 2 이므로 진행 | | 3 |
+            | 4 | `UPDATE ... available - 2` | | 1 |
+            | 5 | | 3 >= 2 이므로 진행 | 1 |
+            | 6 | | `UPDATE ... available - 2` | **-1** |
+
+            **읽은 값으로 판단하고 쓰기까지 사이에 틈이 있다.** 그 틈에서 어긋난다.
+
+            방법 1 — `REPEATABLE READ`로 올린다. 그러면 세션 B의 `UPDATE`가
+            충돌로 실패하므로 **애플리케이션이 재시도**해야 한다.
+
+            방법 2 — 판단과 쓰기를 한 문장으로 합친다. 이쪽이 더 간단하다.
+
+            ```sql
+            UPDATE stocks SET available = available - 2
+            WHERE product_code = 'KB-01' AND available >= 2;
+            -- 0건이면 재고가 모자란 것이다
+            ```
+
+            조건과 갱신이 한 문장이므로 틈이 없다.
+            DB가 그 줄에 잠금을 잡고 검사와 갱신을 함께 끝낸다.
+          selfChecks:
+            - 음수가 되는 순서를 단계별로 적었는가
+            - 읽기와 쓰기 사이의 틈이 원인임을 짚었는가
+            - 격리 수준을 올리면 재시도가 필요해진다는 것을 적었는가
+            - 한 문장으로 합치는 방법을 실제 SQL로 썼는가
+      - key: LESSON.DATABASE.TRANSACTION.001.U3
+        title: 읽기는 쓰기를 막지 않는다 (MVCC)
+        minutes: 10
+        core: false
+        explain: |-
+          PostgreSQL 문서가 MVCC의 요점을 한 줄로 말한다 —
+          **"읽기는 쓰기를 막지 않고, 쓰기는 읽기를 막지 않는다."**
+
+          방법은 간단하다. 줄을 고칠 때 **제자리에서 바꾸지 않고 새 판을 만든다.**
+          각 트랜잭션은 자기 시점에 보이는 판을 읽으므로, 쓰는 쪽을 기다릴 필요가 없다.
+
+          그래서 조회 성능이 잠금 때문에 무너지는 일이 드물다.
+          대신 두 가지를 알아야 한다.
+
+          - **옛 판이 쌓인다.** 정리(VACUUM)가 돌아야 공간이 돌아온다
+          - **쓰기끼리는 여전히 막는다.** 같은 줄을 고치려는 둘 중 하나는 기다린다
+
+          읽은 값으로 판단해 쓸 거라면 읽을 때부터 잠가야 한다.
+          그것이 `SELECT ... FOR UPDATE`다 — 그 줄을 고치려는 다른 세션이 기다리게 된다.
+        example:
+          language: sql
+          code: |-
+            -- 세션 A                                -- 세션 B
+            BEGIN;
+            SELECT available FROM stocks
+             WHERE product_code = 'KB-01'
+             FOR UPDATE;          -- 잠근다
+            -- 3
+
+                                                     BEGIN;
+                                                     SELECT available FROM stocks
+                                                      WHERE product_code = 'KB-01';
+                                                     -- 3  (잠금 없는 읽기는 안 막힌다)
+
+                                                     SELECT available FROM stocks
+                                                      WHERE product_code = 'KB-01'
+                                                      FOR UPDATE;
+                                                     -- 기다린다...
+
+            UPDATE stocks SET available = 1
+             WHERE product_code = 'KB-01';
+            COMMIT;
+                                                     -- 1  (깨어나 최신 값을 본다)
+          output: |-
+            세션 B의 두 SELECT
+             available
+            -----------
+                     3     -- 잠금 없는 읽기: 기다리지 않는다
+                     1     -- FOR UPDATE: A의 COMMIT을 기다렸다가 최신 값
+          note: |-
+            - 잠금 없는 `SELECT`는 A가 잠갔어도 **기다리지 않는다** — MVCC다
+            - `FOR UPDATE`는 같은 줄을 노리는 다른 `FOR UPDATE`를 기다리게 한다
+            - 깨어난 뒤 B가 보는 값은 3이 아니라 **1**이다. 다시 읽어 준다
+            - 잠금은 `COMMIT`이나 `ROLLBACK`까지 유지된다 — 경계가 길면 그만큼 기다린다
+        predict:
+          question: 세션 A가 `FOR UPDATE` 없이 그냥 SELECT만 했다면 세션 B의 `FOR UPDATE`는?
+          choices:
+            - 기다리지 않고 바로 3을 돌려준다
+            - 그대로 기다린다
+            - 오류가 난다
+            - 0을 돌려준다
+          answer: 기다리지 않고 바로 3을 돌려준다
+          explanation: |-
+            잠금 없는 읽기는 **잠금을 잡지 않는다.** 그래서 막을 것도 없다.
+            잠그려면 잠그겠다고 말해야 한다 — 읽었다는 사실만으로는 아무도 못 막는다.
+            "읽고 판단해서 쓰는" 흐름이 위험한 이유가 이것이다.
+        complete:
+          question: 읽은 값으로 판단해 쓸 줄을 미리 잠그도록 빈칸을 채우세요.
+          code: |-
+            BEGIN;
+
+            SELECT available FROM stocks
+             WHERE product_code = 'KB-01'
+             FOR ___;
+
+            -- 애플리케이션에서 판단한 뒤
+            UPDATE stocks SET available = available - 2
+             WHERE product_code = 'KB-01';
+
+            ___;
+          answers:
+            - [UPDATE]
+            - [COMMIT]
+          explanation: |-
+            `FOR UPDATE`로 잠그면 판단과 쓰기 사이에 다른 세션이 끼어들지 못한다.
+            잠금은 `COMMIT`까지이므로, 그 사이에 **외부 호출 같은 느린 일을 넣으면 안 된다.**
+        problem:
+          prompt: |-
+            선착순 쿠폰 발급을 설계하세요. 쿠폰은 100장이고 동시에 수천 명이 누른다.
+
+            - 잠금 없이 "읽고 판단해서 쓰기"로 만들면 무엇이 잘못되는지 적으세요
+            - `FOR UPDATE`로 막는 방법과, 한 문장으로 합쳐 막는 방법을 각각 쓰세요
+            - 두 방법의 **기다리는 시간**이 어떻게 다른지 설명하세요
+            - 트랜잭션 경계 안에 절대 넣지 말아야 할 것 하나를 짚으세요
+          deliverables:
+            - 잠금 없이 만들었을 때의 문제
+            - FOR UPDATE 방식과 한 문장 방식의 SQL
+            - 두 방식의 대기 시간 차이
+            - 경계 안에 넣지 말아야 할 것과 그 이유
+          hints:
+            - 100장인데 101장이 나가는 순서를 먼저 그려 보세요.
+            - 잠그는 구간이 길수록 뒤에 선 사람들이 오래 기다립니다.
+            - 알림 발송이나 외부 결제 호출이 경계 안에 있으면 어떻게 될까요?
+          modelAnswer: |-
+            잠금 없이 만들면 **여러 세션이 같은 잔여 수량을 읽고** 각자 발급해
+            100장을 넘겨 나간다. 앞 단위의 재고 음수와 같은 구조다.
+
+            ```sql
+            -- 방법 1: FOR UPDATE
+            BEGIN;
+            SELECT remaining FROM coupon_stocks WHERE id = 1 FOR UPDATE;
+            -- 애플리케이션이 판단
+            UPDATE coupon_stocks SET remaining = remaining - 1 WHERE id = 1;
+            INSERT INTO issued_coupons (member_id, coupon_id) VALUES (1, 1);
+            COMMIT;
+
+            -- 방법 2: 한 문장으로
+            UPDATE coupon_stocks SET remaining = remaining - 1
+            WHERE id = 1 AND remaining > 0;
+            -- 0건이면 다 나간 것이다
+            ```
+
+            방법 1은 잠금을 `SELECT`부터 `COMMIT`까지 쥐고 있어
+            그 사이의 모든 일(다른 조회, 계산)만큼 뒤가 기다린다.
+            방법 2는 **한 문장 동안만** 잠그므로 훨씬 짧다.
+            다만 발급 기록까지 함께 넣어야 하면 경계가 필요하므로,
+            한 문장으로 수량을 줄여 성공한 경우에만 기록을 넣는다.
+
+            경계 안에 **외부 호출**(알림 발송, 결제 API)을 넣으면 안 된다.
+            상대가 느려지면 그 시간만큼 잠금을 쥐고 있게 되어,
+            줄 하나 때문에 서비스 전체가 멈춘다.
+          selfChecks:
+            - 101장이 나가는 순서를 단계별로 적었는가
+            - 두 방법을 모두 SQL로 썼는가
+            - 잠금을 쥐고 있는 구간의 길이로 대기 시간을 설명했는가
+            - 외부 호출을 경계 밖으로 빼야 하는 이유를 적었는가
+    commonMistakes:
+      - 갱신된 줄 수를 확인하지 않는다. 0건은 오류가 아니라서 어긋난 채로 커밋된다 (U1)
+      - 읽고 판단한 뒤 쓴다. 그 사이에 다른 세션이 끼어들어 재고가 음수가 된다 (U2)
+      - 트랜잭션 경계 안에 외부 호출을 넣는다. 상대가 느려지면 잠금을 쥔 채 서비스가 멈춘다 (U3)
+    inProject: |-
+      주문 시스템에서 경계를 잡을 자리는 셋이다 — 주문 생성(주문 + 재고 + 쿠폰),
+      주문 취소(상태 + 재고 + 쿠폰), 결제 확정(주문 상태 + 결제 기록).
+      재고 차감은 조건과 갱신을 한 문장으로 합쳐 틈을 없애고,
+      알림 발송과 결제 API 호출은 커밋 뒤로 뺀다.
+    sources:
+      - title: PostgreSQL 16 — Transactions
+        url: https://www.postgresql.org/docs/16/tutorial-transactions.html
+        versionScope: PostgreSQL 16
+      - title: PostgreSQL 16 — Transaction Isolation
+        url: https://www.postgresql.org/docs/16/transaction-iso.html
+        versionScope: PostgreSQL 16
+      - title: PostgreSQL 16 — Introduction to MVCC
+        url: https://www.postgresql.org/docs/16/mvcc-intro.html
+        versionScope: PostgreSQL 16
+      - title: PostgreSQL 16 — Explicit Locking
+        url: https://www.postgresql.org/docs/16/explicit-locking.html
+        versionScope: PostgreSQL 16
+    verifiedAt: 2026-09-24

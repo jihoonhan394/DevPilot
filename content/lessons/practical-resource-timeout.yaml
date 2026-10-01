@@ -1,0 +1,464 @@
+# DevPilot 개념 노트 — 자원 관리와 타임아웃
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 3단계(테스트)에서 쓴다. JAVA.EXCEPTION.TRY_WITH_RESOURCES 노트를 먼저 본 것으로 전제한다
+# - 앞 노트(트랜잭션 경계, 동시성)에서 나온 문제를 한 자리에 모은다
+lessons:
+  - key: LESSON.PRACTICAL_ENGINEERING.RESOURCE_TIMEOUT.001
+    skillCode: PRACTICAL_ENGINEERING.RESOURCE_TIMEOUT
+    title: 한정된 것을 붙잡지 않기 (자원과 타임아웃)
+    whyItMatters: |-
+      서버가 멈추는 방식은 대개 하나다 — **한정된 자원을 누군가 오래 붙잡고 있는 것.**
+      DB 커넥션, 요청 스레드, 파일 핸들은 수가 정해져 있고,
+      하나가 느려지면 그 뒤가 전부 줄을 선다.
+      게다가 이런 장애는 **평소에는 멀쩡하다가 상대가 느려진 날** 갑자기 난다.
+      타임아웃이 없으면 그날 서비스 전체가 함께 멈춘다.
+    oneLine: 한정 자원은 반드시 돌려주고, 바깥을 기다리는 모든 호출에는 상한을 둔다.
+    units:
+      - key: LESSON.PRACTICAL_ENGINEERING.RESOURCE_TIMEOUT.001.U1
+        title: 무엇이 한정돼 있나
+        minutes: 12
+        core: true
+        explain: |-
+          코드에서 잘 안 보이지만 **개수가 정해진 것**들이 있다.
+
+          | 자원 | 기본 한도 | 마르면 |
+          |---|---|---|
+          | DB 커넥션 | 풀 크기(예: 10) | 조회가 전부 대기 |
+          | 요청 스레드 | 서버 설정(예: 200) | 새 요청을 못 받는다 |
+          | 파일 핸들·소켓 | OS 한도 | `Too many open files` |
+          | 스레드 풀 자리 | 지정한 크기 | 작업이 큐에 쌓인다 |
+
+          **수가 적은 쪽이 먼저 마른다.** 요청 스레드가 200이어도
+          커넥션이 10이면 11번째 요청부터 기다린다.
+
+          마르는 원인은 둘뿐이다.
+
+          1. **안 돌려준다** — 닫지 않은 연결, 끝나지 않는 스레드
+          2. **너무 오래 쥔다** — 경계 안의 외부 호출, 긴 트랜잭션
+
+          앞 노트들에서 각각 본 것이다. 1번은 `try-with-resources`,
+          2번은 "경계 안에는 DB 작업만"이다. 여기서 둘을 한 문제로 본다 —
+          **자원을 쥔 시간 × 쥔 횟수**가 한도를 넘으면 마른다.
+        example:
+          language: java
+          code: |-
+            // 커넥션 풀 10, 결제 호출 평소 0.3초 / 느릴 때 9초
+            @Transactional
+            public void place(OrderRequest request) {
+                orderRepository.save(...);          // 커넥션을 쥔다
+                paymentClient.charge(...);          // 그 상태로 9초 기다린다
+            }
+          output: |-
+            평소 (결제 0.3초)
+            초당 20건 × 0.3초 = 동시 6건  →  풀 10으로 충분
+
+            결제사가 느려진 날 (9초)
+            초당 20건 × 9초 = 동시 180건  →  풀 10이 즉시 마른다
+            → 주문뿐 아니라 조회 API까지 커넥션을 못 얻어 전부 멈춘다
+          note: |-
+            - 코드는 그대로인데 **상대가 느려진 것만으로** 장애가 난다
+            - 동시에 필요한 수 = **초당 요청 × 한 건이 쥐는 시간**. 이 곱이 전부다
+            - 주문만 죽는 것이 아니라 **같은 풀을 쓰는 조회까지** 죽는다
+            - 풀을 20으로 늘려도 180건 앞에서는 똑같이 마른다. 시간을 줄여야 한다
+        predict:
+          question: 커넥션 풀을 10에서 50으로 늘리면 위 상황이 해결되나?
+          choices:
+            - 아니다 — 동시 180건이 필요하므로 여전히 마른다
+            - 해결된다
+            - 절반만 해결된다
+            - DB가 더 빨라진다
+          answer: 아니다 — 동시 180건이 필요하므로 여전히 마른다
+          explanation: |-
+            풀을 늘리는 것은 **쥐는 시간이 그대로일 때** 버티는 폭만 넓힌다.
+            근본은 9초 동안 커넥션을 쥐고 있다는 사실이고,
+            그것을 안 고치면 부하가 조금만 더 늘어도 같은 일이 난다.
+            게다가 DB 쪽 연결 수 한도에도 걸린다.
+        complete:
+          question: 동시에 필요한 자원 수를 구하는 식을 채우세요.
+          code: |-
+            동시 필요 수 = 초당 요청 수 × 한 건이 자원을 ___ 시간
+
+            20건/초 × 9초 = ___ 건
+          answers:
+            - [쥐는, 점유하는]
+            - ["180"]
+          explanation: |-
+            이 곱이 풀 크기를 넘으면 마른다.
+            **줄이는 방법은 둘** — 쥐는 시간을 줄이거나(경계 밖으로 빼기),
+            초당 요청을 줄이는 것(앞단에서 제한). 풀을 키우는 것은 셋째다.
+        problem:
+          prompt: |-
+            주문 API의 자원 사용을 계산해 위험한 자리를 찾으세요.
+
+            ```text
+            요청 스레드 200, DB 커넥션 풀 10
+            POST /orders  — DB 3회(각 5ms) + 결제 호출(평소 300ms) + 알림(평소 100ms)
+            GET  /orders  — DB 1회(20ms)
+            평소 POST 초당 20건, GET 초당 200건
+            ```
+
+            - 현재 구조에서 **POST 한 건이 커넥션을 쥐는 시간**을 계산하세요
+              (결제와 알림이 트랜잭션 경계 안에 있다고 가정)
+            - 결제사가 9초로 느려졌을 때 **필요한 커넥션 수**를 계산하세요
+            - GET 요청까지 함께 죽는 이유를 설명하세요
+            - 고치는 방법을 **효과가 큰 순서로 세 가지** 적으세요
+          deliverables:
+            - POST 한 건의 점유 시간과 계산 과정
+            - 느려졌을 때 필요한 커넥션 수
+            - GET까지 죽는 이유
+            - 고치는 방법 세 가지와 순서의 근거
+          hints:
+            - 경계 안의 모든 시간이 점유 시간입니다.
+            - 같은 풀을 나눠 쓰면 한쪽이 마르면 다른 쪽도 못 얻습니다.
+            - 풀을 키우는 것은 근본 대책이 아닙니다.
+          modelAnswer: |-
+            **POST 한 건의 점유 시간**
+            DB 3회 × 5ms = 15ms, 결제 300ms, 알림 100ms → 경계 안 총 **415ms**.
+            동시 필요 = 20건/초 × 0.415초 = **8.3건**. 풀 10으로 아슬아슬하다.
+
+            **결제사가 9초가 되면**
+            15ms + 9000ms + 100ms ≈ 9.1초 → 20 × 9.1 = **182건 필요**.
+            풀 10이므로 즉시 마른다.
+
+            **GET까지 죽는 이유** — 같은 커넥션 풀을 나눠 쓰기 때문이다.
+            POST가 10개를 전부 붙잡고 있으면 GET은 20ms짜리 질의 하나를 하려 해도
+            커넥션을 못 얻어 대기하다 타임아웃된다.
+            **가장 싼 요청이 가장 비싼 요청 때문에 죽는다.**
+
+            **고치는 순서**
+            **① 결제와 알림을 경계 밖으로** — 점유 시간이 415ms에서 15ms로,
+            느려져도 15ms 그대로다. 동시 필요 0.3건. 근본 해결이다.
+            **② 결제 호출에 타임아웃** — 9초를 2초로 막으면 최악이 제한된다.
+            ①을 했어도 요청 스레드를 붙잡는 시간은 남으므로 함께 필요하다.
+            **③ 풀 크기 조정** — ①②를 하고도 부족할 때만. 순서를 바꾸면 원인이 숨는다.
+          selfChecks:
+            - 점유 시간을 경계 안 전체로 계산했는가
+            - 동시 필요 수를 곱으로 구했는가
+            - 같은 풀을 공유해 GET까지 죽는다는 것을 짚었는가
+            - 풀 키우기를 마지막에 두었는가
+      - key: LESSON.PRACTICAL_ENGINEERING.RESOURCE_TIMEOUT.001.U2
+        title: 기다리는 모든 곳에 상한을 둔다
+        minutes: 12
+        core: true
+        explain: |-
+          **타임아웃이 없는 호출은 무한정 기다린다.**
+          상대가 응답을 안 주고 연결도 안 끊으면 우리 스레드는 영원히 묶인다.
+
+          외부 호출에는 보통 **두 가지 상한**이 따로 있다.
+
+          | 상한 | 무엇을 막나 |
+          |---|---|
+          | **연결 타임아웃** | 상대에 접속되기까지 |
+          | **읽기 타임아웃** | 접속된 뒤 응답을 기다리기까지 |
+
+          둘 다 설정해야 한다. 연결만 두면 접속된 뒤 응답이 안 와도 안 끊긴다.
+
+          값은 **상대의 실제 응답 시간에서 정한다.** 감으로 정하지 않는다.
+
+          ```text
+          P99가 0.8초 → 타임아웃 2초쯤 (P99의 2~3배)
+          ```
+
+          너무 짧으면 **정상 응답을 우리가 먼저 끊고**, 재시도가 나가 중복이 생긴다.
+          너무 길면 없는 것과 같다.
+
+          그리고 DB에도 있다 — 커넥션을 **얻기까지** 기다리는 상한과
+          질의 자체의 상한이다. 앞의 것이 없으면 풀이 말랐을 때 요청이 쌓이기만 한다.
+        example:
+          language: java
+          code: |-
+            @Bean
+            RestClient paymentClient(RestClient.Builder builder) {
+                ClientHttpRequestFactorySettings settings =
+                        ClientHttpRequestFactorySettings.defaults()
+                                .withConnectTimeout(Duration.ofSeconds(1))   // 접속까지
+                                .withReadTimeout(Duration.ofSeconds(2));     // 응답까지
+                return builder
+                        .requestFactory(ClientHttpRequestFactoryBuilder.detect().build(settings))
+                        .baseUrl(paymentBaseUrl)
+                        .build();
+            }
+          output: |-
+            application.yml — DB 쪽 상한
+
+            spring:
+              datasource:
+                hikari:
+                  connection-timeout: 3000     # 커넥션을 얻기까지 (ms)
+                  validation-timeout: 1000
+              jpa:
+                properties:
+                  jakarta.persistence.query.timeout: 5000   # 질의 하나의 상한 (ms)
+
+            상한이 없을 때 / 있을 때
+
+            없음  결제사가 멈추면 스레드가 무한 대기 → 200개가 전부 묶인다
+            있음  2초 뒤 예외 → 스레드가 돌아온다. 실패는 나지만 서비스는 산다
+          note: |-
+            - 연결과 읽기를 **따로** 두었다. 하나만 두면 절반만 막힌다
+            - DB에도 두 층이다 — 커넥션을 얻기까지, 질의 자체
+            - 상한이 있으면 **실패는 나지만 서비스는 산다.** 그것이 목표다
+            - 값은 전부 설정 파일에 있다. 코드에 박으면 환경마다 못 바꾼다
+        predict:
+          question: 읽기 타임아웃만 두고 연결 타임아웃을 안 두면?
+          choices:
+            - 상대 서버에 접속되지 않는 상황에서 오래 묶일 수 있다
+            - 완전히 안전하다
+            - 읽기 타임아웃이 대신 걸린다
+            - 차이가 없다
+          answer: 상대 서버에 접속되지 않는 상황에서 오래 묶일 수 있다
+          explanation: |-
+            읽기 타임아웃은 **접속이 된 뒤부터** 센다.
+            상대가 방화벽에 막혀 접속 자체가 안 되면 OS 기본값까지 기다리는데,
+            그게 수십 초일 수 있다. **두 층을 다 막아야** 최악이 정해진다.
+        complete:
+          question: 외부 호출에 두 가지 상한을 두세요.
+          code: |-
+            ClientHttpRequestFactorySettings.defaults()
+                    .with___Timeout(Duration.ofSeconds(1))    // 접속까지
+                    .with___Timeout(Duration.ofSeconds(2))    // 응답까지
+          answers:
+            - [Connect]
+            - [Read]
+          explanation: |-
+            접속까지와 응답까지를 각각 막는다.
+            값은 상대의 실제 응답 분포(P99)에서 정하고, 감으로 정하지 않는다.
+        problem:
+          prompt: |-
+            주문 시스템의 모든 대기 지점에 상한을 설계하세요.
+
+            ```text
+            대기 지점 4곳
+            ① 결제 API 호출        — P99 0.8초, SLA 15초
+            ② 알림 API 호출        — P99 0.3초, 실패해도 주문은 유효
+            ③ DB 커넥션 획득       — 풀 10
+            ④ 무거운 집계 질의     — 평소 1.2초, 월말 4초
+            ```
+
+            - 넷에 각각 상한을 정하고 **그 값을 고른 근거**를 적으세요
+            - 너무 짧게 잡았을 때와 너무 길게 잡았을 때의 문제를 각각 하나씩 적으세요
+            - 상한에 걸렸을 때 **무엇을 할지**를 넷에 각각 정하세요
+              (재시도 / 실패 / 기본값 / 나중에)
+            - 상한 값을 **어디에 둘지**와 그 이유를 적으세요
+          deliverables:
+            - 네 지점의 상한과 근거
+            - 너무 짧을 때 / 너무 길 때의 문제
+            - 걸렸을 때의 동작 네 가지
+            - 값을 두는 자리와 이유
+          hints:
+            - P99의 몇 배로 잡을지 정하고 그 이유를 대세요.
+            - 실패해도 되는 호출과 안 되는 호출은 상한 뒤 동작이 다릅니다.
+            - 월말에만 느려지는 질의는 평소 기준으로 잡으면 월말에 전부 실패합니다.
+          modelAnswer: |-
+            | 지점 | 상한 | 근거 |
+            |---|---|---|
+            | ① 결제 | **2초** | P99 0.8초의 2.5배. SLA 15초보다 훨씬 짧게 잡아 우리가 먼저 판단한다 |
+            | ② 알림 | **1초** | P99 0.3초의 3배. 실패해도 되므로 짧게 잡는다 |
+            | ③ 커넥션 획득 | **3초** | 풀이 말랐을 때 요청이 쌓이지 않게. 사용자 대기 한계 |
+            | ④ 집계 질의 | **10초** | 월말 4초의 2.5배. 평소 기준(1.2초)으로 잡으면 월말에 전부 실패 |
+
+            **너무 짧으면** 정상 응답을 우리가 먼저 끊고, 재시도가 나가
+            **중복 결제** 같은 것이 생긴다.
+            **너무 길면** 상한이 없는 것과 같아 스레드가 묶이고 서비스가 함께 멈춘다.
+
+            | 지점 | 걸렸을 때 |
+            |---|---|
+            | ① 결제 | 결과를 **모르는 상태**로 두고 조회로 확정 (실패로 단정하지 않는다) |
+            | ② 알림 | 기록만 남기고 **진행**. 나중에 재시도 |
+            | ③ 커넥션 | 즉시 실패 → 503. 쌓아 두지 않는다 |
+            | ④ 집계 | 실패 + 알림. 사람이 본다 |
+
+            값은 **설정 파일(`application-{프로필}.yml`)** 에 둔다.
+            운영과 개발의 상대가 다르고, 상대가 느려지면 **배포 없이 조정**할 수 있어야 한다.
+            그리고 왜 그 값인지는 **커밋 본문에 잰 근거와 함께** 남긴다 —
+            숫자만 있으면 다음 사람이 못 바꾼다.
+          selfChecks:
+            - 네 값의 근거를 실제 응답 분포에서 댔는가
+            - 월말처럼 느려지는 경우를 반영했는가
+            - 걸렸을 때의 동작을 지점마다 다르게 정했는가
+            - 값을 설정에 두고 근거를 기록에 남기기로 했는가
+      - key: LESSON.PRACTICAL_ENGINEERING.RESOURCE_TIMEOUT.001.U3
+        title: 마르는 것을 미리 보기
+        minutes: 12
+        core: true
+        explain: |-
+          자원이 마르는 장애는 **터지고 나서 원인을 찾기가 특히 어렵다.**
+          증상이 "전부 느림"이라 어디가 시작인지 안 보이기 때문이다.
+
+          그래서 두 가지를 미리 해 둔다.
+
+          **하나, 남겨 둔다.** 마르기 전에 징후가 나온다.
+
+          | 볼 것 | 위험 신호 |
+          |---|---|
+          | 커넥션 대기 시간 | 0에 가깝다가 올라가기 시작 |
+          | 활성 커넥션 수 | 풀 크기에 붙어 있다 |
+          | 외부 호출 P99 | 평소의 몇 배 |
+          | 스레드 풀 큐 길이 | 0이 아닌 상태가 이어짐 |
+
+          **둘, 시험해 둔다.** 상대가 느려진 상황을 **일부러 만들어** 본다.
+          가짜 서버가 5초 뒤에 응답하게 해 두고, 그때 우리 서비스가
+          **어떻게 죽는지 또는 견디는지** 확인한다.
+
+          이것이 없으면 타임아웃 설정이 맞는지 **운영에서 처음 알게 된다.**
+
+          그리고 확인할 것이 하나 더 있다 — **자원을 정말 돌려주는가.**
+          예외가 났을 때, 타임아웃이 났을 때도 닫히는지는
+          `try-with-resources`를 썼다면 자동이지만, 손으로 관리하면 새기 쉽다.
+        example:
+          language: java
+          code: |-
+            @Test
+            void shouldNotExhaustPoolWhenPaymentIsSlow() {
+                // 결제가 5초 걸리는 상황을 만든다
+                when(paymentClient.charge(anyLong(), anyInt()))
+                        .thenAnswer(invocation -> {
+                            Thread.sleep(5_000);
+                            return "OK";
+                        });
+
+                // 동시에 20건을 보낸다 (풀은 10)
+                List<CompletableFuture<Void>> calls = IntStream.range(0, 20)
+                        .mapToObj(i -> CompletableFuture.runAsync(
+                                () -> service.place(request(), MEMBER_ID), executor))
+                        .toList();
+
+                // 조회는 그동안에도 살아 있어야 한다
+                assertThatCode(() -> queryService.find(ORDER_ID, MEMBER_ID))
+                        .doesNotThrowAnyException();
+
+                CompletableFuture.allOf(calls.toArray(CompletableFuture[]::new))
+                        .orTimeout(30, TimeUnit.SECONDS).join();
+            }
+          output: |-
+            [결제가 경계 안에 있을 때]
+            queryService.find → CannotGetJdbcConnectionException
+                                (커넥션 획득 3초 초과)
+            → 테스트 빨강. 조회까지 죽는다는 것이 드러난다
+
+            [결제를 경계 밖으로 뺀 뒤]
+            queryService.find → 정상
+            → 테스트 초록. 주문은 느려도 조회는 산다
+          note: |-
+            - **느린 상대를 흉내 내는 것**만으로 구조 문제가 드러난다
+            - 단언이 "조회가 살아 있는가"다 — 마르는 장애의 핵심 증상이다
+            - 고치기 전에는 빨강, 고친 뒤 초록. **회귀 테스트**가 된다
+            - 이 테스트가 있으면 나중에 누가 경계 안에 호출을 넣어도 잡힌다
+        predict:
+          question: 이 테스트를 두지 않으면 타임아웃 설정이 맞는지 언제 알게 되나?
+          choices:
+            - 상대가 실제로 느려진 날, 운영에서 처음 알게 된다
+            - 배포할 때
+            - 코드 리뷰에서
+            - 컴파일 때
+          answer: 상대가 실제로 느려진 날, 운영에서 처음 알게 된다
+          explanation: |-
+            타임아웃과 풀 크기는 **평소에는 아무 차이를 안 만든다.**
+            차이가 드러나는 것은 상대가 느려진 날 한 번뿐이고,
+            그날은 시험하기 가장 나쁜 날이다.
+            **미리 흉내 내 보는 것**이 유일하게 싼 방법이다.
+        complete:
+          question: 느린 상대를 흉내 내는 테스트를 완성하세요.
+          code: |-
+            when(paymentClient.charge(anyLong(), anyInt()))
+                    .thenAnswer(invocation -> {
+                        Thread.___(5_000);       // 5초 걸리는 상대
+                        return "OK";
+                    });
+
+            // 그동안 조회가 살아 있는지 단언한다
+            assertThatCode(() -> queryService.find(ORDER_ID, MEMBER_ID))
+                    .___();
+          answers:
+            - [sleep]
+            - [doesNotThrowAnyException]
+          explanation: |-
+            느린 응답을 흉내 내고, **관계없는 조회가 살아 있는지**를 단언한다.
+            자원이 마르면 관계없는 요청부터 죽으므로 그것이 가장 빠른 신호다.
+        problem:
+          prompt: |-
+            자원 고갈을 **미리 잡는 장치**를 설계하세요.
+
+            - 남길 지표를 **네 가지** 고르고, 각각 **어떤 값이 되면 위험한지** 적으세요
+            - 그중 **알림을 걸 것 두 가지**를 고르고 임계값을 정하세요
+              (너무 민감하면 무시하게 되는 것도 고려하세요)
+            - 느린 상대를 흉내 내는 테스트를 **하나** 설계하세요
+              (무엇을 느리게 하고, 무엇이 살아 있어야 하는지)
+            - 자원이 **돌려지는지** 확인하는 테스트도 하나 설계하세요
+              (예외가 났을 때도 닫히는지)
+          deliverables:
+            - 지표 네 가지와 위험 값
+            - 알림 둘과 임계값, 민감도 고려
+            - 느린 상대 테스트 설계
+            - 자원 반납 테스트 설계
+          hints:
+            - 마르기 직전의 징후는 "대기 시간이 0이 아니게 되는 것"입니다.
+            - 알림이 자주 울리면 사람들이 끕니다. 임계값은 그것을 고려해 정합니다.
+            - 반납 확인은 같은 동작을 여러 번 하고 남은 수를 보면 됩니다.
+          modelAnswer: |-
+            | 지표 | 위험한 값 |
+            |---|---|
+            | 커넥션 획득 대기 시간 | P99가 0에서 **100ms 이상**으로 올라감 |
+            | 활성 커넥션 수 | 풀 크기의 **80% 이상이 1분 이상** 유지 |
+            | 결제 호출 P99 | 평소의 **3배 이상** |
+            | 요청 스레드 사용률 | **70% 이상** 유지 |
+
+            **알림은 앞의 둘**에 건다. 자원 고갈에 가장 가깝고 오탐이 적다.
+            임계값은 **활성 커넥션 80%가 1분 이상**, **획득 대기 P99 100ms가 5분 이상**.
+            "1분 이상", "5분 이상"을 넣은 이유는 순간적인 튐으로 울리면
+            **사람들이 알림을 끄기 때문**이다. 한 번 꺼진 알림은 다시 안 켜진다.
+
+            **느린 상대 테스트**
+            결제 클라이언트가 5초 걸리게 하고 동시에 20건을 보낸 뒤,
+            **관계없는 조회 API가 정상 응답하는지** 단언한다.
+            경계 안에 외부 호출이 들어오면 이 테스트가 빨강이 된다.
+
+            **자원 반납 테스트**
+            ```java
+            @Test
+            void shouldReleaseConnectionEvenWhenPaymentFails() {
+                when(paymentClient.charge(anyLong(), anyInt()))
+                        .thenThrow(new PaymentFailedException("boom"));
+
+                for (int i = 0; i < 50; i++) {                 // 풀 크기보다 많이
+                    assertThatThrownBy(() -> service.place(request(), MEMBER_ID))
+                            .isInstanceOf(PaymentFailedException.class);
+                }
+                assertThat(dataSource.getHikariPoolMXBean().getActiveConnections())
+                        .isZero();                              // 전부 돌아왔다
+            }
+            ```
+            **실패가 50번 나도 활성 커넥션이 0**이어야 한다.
+            하나라도 새면 여기서 드러난다 — 풀 크기보다 많이 반복하는 것이 요점이다.
+          selfChecks:
+            - 지표마다 위험한 값을 숫자로 적었는가
+            - 알림 임계값에 지속 시간을 넣었는가
+            - 느린 상대 테스트가 관계없는 요청을 단언하는가
+            - 반납 테스트가 풀 크기보다 많이 반복하는가
+    commonMistakes:
+      - 자원이 마르면 풀 크기부터 늘린다. 쥐는 시간이 그대로면 부하가 조금만 늘어도 또 마른다 (U1)
+      - 읽기 타임아웃만 둔다. 접속 자체가 안 되는 상황에서 수십 초 묶인다 (U2)
+      - 타임아웃 값을 감으로 정한다. 짧으면 정상 응답을 끊고 길면 없는 것과 같다 (U2)
+    inProject: |-
+      주문 시스템에서 할 일은 셋이다 — **경계 안에 DB 작업만 두고**,
+      결제·알림 호출에 연결·읽기 타임아웃을 설정에서 주고,
+      느린 상대를 흉내 내는 테스트로 조회가 살아 있는지 확인한다.
+      상한 값은 `application-{프로필}.yml`에 두어 배포 없이 조정할 수 있게 하고,
+      왜 그 값인지는 잰 근거와 함께 커밋 본문에 남긴다.
+    sources:
+      - title: Spring Boot — Calling REST Services (RestClient 타임아웃)
+        url: https://docs.spring.io/spring-boot/reference/io/rest-client.html
+        versionScope: Spring Boot 3.x+
+      - title: Spring Boot — SQL Databases (커넥션 풀)
+        url: https://docs.spring.io/spring-boot/reference/data/sql.html
+        versionScope: Spring Boot 3.x+
+      - title: The Java Tutorials — The try-with-resources Statement
+        url: https://docs.oracle.com/javase/tutorial/essential/exceptions/tryResourceClose.html
+        versionScope: Java SE
+      - title: PostgreSQL 16 — Connections and Authentication
+        url: https://www.postgresql.org/docs/16/runtime-config-connection.html
+        versionScope: PostgreSQL 16
+    verifiedAt: 2026-09-25

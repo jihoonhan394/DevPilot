@@ -116,8 +116,6 @@ void main() {
       'dayStartHour': 4,
       'weekdayStudyMinutes': 45,
       'weekendStudyMinutes': 240,
-      'experienceProfile': 'WORKING_DEVELOPER',
-      'experienceStartDate': '2020-02-01',
       'onboardingCompleted': true,
       'onboardingCompletedAt': '2026-09-30T12:10:44Z',
       'today': '2026-11-20',

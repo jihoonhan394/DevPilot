@@ -156,7 +156,7 @@ void main() {
 
     await tapKey(tester, 'shell.nav.more');
     expect(locationOf(tester), '/more');
-    await tapKey(tester, 'more.projects');
+    await tapKeyInList(tester, 'more.projects');
 
     expect(locationOf(tester), '/projects');
     expect(find.text('주문 시스템'), findsOneWidget);

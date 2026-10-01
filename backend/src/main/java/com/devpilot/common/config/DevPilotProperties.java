@@ -5,15 +5,19 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
@@ -31,12 +35,56 @@ public record DevPilotProperties(
         @Valid @NotNull Security security,
         @Valid @NotNull Web web,
         @Valid @NotNull Time time,
+        @NotNull Map<String, @Valid @NotNull TrackDefaults> tracks,
         @Valid @NotNull Planner planner,
         @Valid @NotNull Budget budget,
+        @Valid @NotNull Review review,
         @Valid @NotNull Skill skill,
+        @Valid @NotNull SideProject sideProject,
         @Valid @NotNull Privacy privacy,
         @Valid @NotNull Content content,
-        @Valid @NotNull Ai ai) {
+        @Valid @NotNull Ai ai,
+        @Valid @NotNull Rubberduck rubberduck,
+        @Valid @NotNull Tips tips,
+        @Valid @NotNull Training training,
+        @Valid @NotNull Coach coach) {
+
+    /**
+     * training 설정 (docs/03 §9 {@code training}). coverage 경계는 docs/06 §8.1이고 기동 시 bp 정수로 바뀐다(N-6).
+     */
+    public record Training(
+            @Positive int maxSubmissionsPerAttempt,
+            @NotNull BigDecimal correctCoverage,
+            @NotNull BigDecimal partialCoverage) {
+
+        public Training {
+            int correct = requireBasisPoints(correctCoverage, "training.correct-coverage");
+            int partial = requireBasisPoints(partialCoverage, "training.partial-coverage");
+            if (partial > correct) {
+                throw new IllegalArgumentException(
+                        "devpilot.training.partial-coverage must not exceed correct-coverage");
+            }
+        }
+
+        /** CORRECT 경계 bp (docs/06 §8.1). */
+        public int correctCoverageBp() {
+            return FixedPointMath.toBasisPoints(correctCoverage);
+        }
+
+        /** PARTIAL 경계 bp (docs/06 §8.1). */
+        public int partialCoverageBp() {
+            return FixedPointMath.toBasisPoints(partialCoverage);
+        }
+    }
+
+    /**
+     * coach 입력 한도와 finding 수 상한 (docs/03 §9 {@code coach}). {@code maxFindings}는 {@code
+     * FindingCountGuard}가 쓴다(docs/17 §6.5).
+     */
+    public record Coach(
+            @Positive int maxContentBytes,
+            @Positive int maxContentLines,
+            @Positive int maxFindings) {}
 
     /** 인증 방식 (docs/03 §4.2). */
     public enum AuthMode {
@@ -51,7 +99,8 @@ public record DevPilotProperties(
             List<String> allowedSubjects,
             @Positive int maxRequestBodyBytes,
             @NotNull Duration accountDeletionMaxTokenAge,
-            @Nullable String logHashKey) {
+            @Nullable String logHashKey,
+            @Valid @NotNull RateLimit rateLimit) {
 
         public Security {
             allowedEmails = normalize(allowedEmails, true);
@@ -69,6 +118,18 @@ public record DevPilotProperties(
                     .toList();
         }
     }
+
+    /**
+     * 요청 한도 (docs/07 §12.3, BL-SEC-11). 캘린더 피드 두 값은 피드 endpoint가 생기는 S5에 쓰고, 지금은 바인딩·검증만 한다.
+     *
+     * @param requestsPerMinute JWT {@code sub}당 (용량 = 이 값, 초당 보충 = 이 값 / 60)
+     * @param devTokenPerHourPerIp {@code POST /api/v1/dev/token} IP당 (docs/05 §1.4.5)
+     */
+    public record RateLimit(
+            @Positive int requestsPerMinute,
+            @Positive int calendarFeedPerHour,
+            @Positive int calendarInvalidTokenPerHourPerIp,
+            @Positive int devTokenPerHourPerIp) {}
 
     /** devtoken 모드 설정. {@code privateKeyPem}이 비면 기동 시 키를 만든다(prod는 필수). */
     public record Devtoken(
@@ -91,19 +152,23 @@ public record DevPilotProperties(
     public record Time(@NotNull ZoneId defaultZone, @Min(0) @Max(6) int defaultDayStartHour) {}
 
     /**
-     * planner 설정 (docs/06 §5). 규칙 클래스는 S2에 붙고, S1은 바인딩·검증만 한다: 가중치 합 = 10_000bp, 모든 소수 값이 bp/micro
-     * 정수로 떨어진다.
+     * planner 설정 (docs/06 §5). 가중치 합 = 10_000bp, 모든 소수 값이 bp/micro 정수로 떨어진다. 규칙 클래스용 정수 변환은 각 모듈의
+     * {@code *RuleSettings}가 한다.
      */
     public record Planner(
             @Valid @NotNull Weights weights,
             @Valid @NotNull Modifiers modifiers,
+            @Valid @NotNull Redo redo,
             @Positive int lowEnergyLongTaskMinutes,
             @NotNull BigDecimal minPrerequisiteReadiness,
             @NotNull BigDecimal overrunTolerance,
             @Positive int minMainTaskMinutes,
             @Positive int minAvailableMinutes,
+            @Positive int extraTaskMinMinutes,
+            @Min(0) @Max(5) int maxExtraTasks,
             @Positive int challengeRepeatExclusionDays,
             @Positive int comebackInactiveDays,
+            @Positive int studyThreadMaxConsecutiveDays,
             @NotNull BigDecimal reviewMinutesPerCard,
             @NotNull BigDecimal reviewMaxShare,
             @NotNull BigDecimal defaultPracticalImportance,
@@ -136,14 +201,32 @@ public record DevPilotProperties(
         }
     }
 
-    /** planner factor 가중치. 합이 정확히 1.0(10_000bp)이어야 한다 (docs/03 §9 끝). */
+    /** 재현 과제 설정 (docs/06 §5.10 RE-2·RE-3). */
+    public record Redo(
+            @Positive int minDaysAfter, @Positive int maxDaysAfter, @Positive int maxAttempts) {
+
+        public Redo {
+            if (minDaysAfter > maxDaysAfter) {
+                throw new IllegalArgumentException(
+                        "devpilot.planner.redo.min-days-after must not exceed max-days-after");
+            }
+        }
+    }
+
+    /**
+     * planner factor 가중치. 앞의 여섯은 합이 정확히 1.0(10_000bp)이어야 한다 (docs/03 §9 끝).
+     *
+     * @param stageGap 학습 단계 보너스 (docs/06 §5.4·§5.11). <b>합 검사에 넣지 않는다</b> — 정규화된 가중합에 얹는 tiebreak라
+     *     여기 들어가면 나머지 여섯의 비중이 달라진다
+     */
     public record Weights(
             @NotNull BigDecimal practicalImportance,
             @NotNull BigDecimal skillGap,
             @NotNull BigDecimal reviewUrgency,
             @NotNull BigDecimal milestoneUrgency,
             @NotNull BigDecimal projectNeed,
-            @NotNull BigDecimal prerequisiteReadiness) {
+            @NotNull BigDecimal prerequisiteReadiness,
+            @NotNull BigDecimal stageGap) {
 
         public Weights {
             long sum =
@@ -167,20 +250,22 @@ public record DevPilotProperties(
             @NotNull BigDecimal riskHighShould,
             @NotNull BigDecimal lowEnergyDeepTask,
             @NotNull BigDecimal highEnergyHardTask,
-            @NotNull BigDecimal fatigueOneDay,
-            @NotNull BigDecimal fatigueTwoDays,
             @NotNull BigDecimal continuationBonus,
-            @NotNull BigDecimal comebackHardTask) {
+            @NotNull BigDecimal comebackHardTask,
+            @NotNull BigDecimal monotonyThreeDays,
+            @NotNull BigDecimal monotonyFiveDays,
+            @NotNull BigDecimal redoDue) {
 
         public Modifiers {
             requireBasisPoints(riskHighMust, "modifiers.risk-high-must");
             requireBasisPoints(riskHighShould, "modifiers.risk-high-should");
             requireBasisPoints(lowEnergyDeepTask, "modifiers.low-energy-deep-task");
             requireBasisPoints(highEnergyHardTask, "modifiers.high-energy-hard-task");
-            requireBasisPoints(fatigueOneDay, "modifiers.fatigue-one-day");
-            requireBasisPoints(fatigueTwoDays, "modifiers.fatigue-two-days");
             requireBasisPoints(continuationBonus, "modifiers.continuation-bonus");
             requireBasisPoints(comebackHardTask, "modifiers.comeback-hard-task");
+            requireBasisPoints(monotonyThreeDays, "modifiers.monotony-three-days");
+            requireBasisPoints(monotonyFiveDays, "modifiers.monotony-five-days");
+            requireBasisPoints(redoDue, "modifiers.redo-due");
         }
     }
 
@@ -192,7 +277,8 @@ public record DevPilotProperties(
             @NotNull BigDecimal completionMinRate,
             @Valid @NotNull AxisCost axisCost,
             @NotNull BigDecimal reviewOverhead,
-            @Valid @NotNull RiskThresholds riskThresholds) {
+            @Valid @NotNull RiskThresholds riskThresholds,
+            @Positive int replanRecommendAfterDays) {
 
         public Budget {
             requireBasisPoints(completionDefaultRate, "budget.completion-default-rate");
@@ -234,12 +320,72 @@ public record DevPilotProperties(
         }
     }
 
-    /** skill 규칙 설정 (docs/06 §7). S1은 {@code selfAssessmentCap}(planning level)만 쓴다. */
+    /** 복습 간격을 늘리는 방식 (docs/06 §6.2 HARD 행). */
+    public enum HardStrategy {
+        MULTIPLY,
+        FIXED_2
+    }
+
+    /**
+     * 복습 설정 (docs/06 §6). 배율은 bp 정수로 떨어져야 하고, 간격 경계는 {@code minIntervalDays ≤ maxIntervalDays}다.
+     *
+     * @param variantAfterFailures {@code REVIEW_VARIANT}(Later)용. 바인딩만 한다
+     */
+    public record Review(
+            @Positive int maxPerDay,
+            @Positive int comebackMaxPerDay,
+            @Positive int minIntervalDays,
+            @Positive @Max(365) int maxIntervalDays,
+            @NotNull HardStrategy hardStrategy,
+            @NotNull BigDecimal hardMultiplier,
+            @NotNull BigDecimal goodMultiplier,
+            @NotNull BigDecimal easyMultiplier,
+            @Positive int goodMinDays,
+            @Positive int easyMinDays,
+            @Positive int variantAfterFailures,
+            @Positive int suspendAfterFailures,
+            @Positive int lessonHelpedFirstDueDays,
+            @Positive int lessonSolvedAloneFirstDueDays) {
+
+        public Review {
+            requireBasisPoints(hardMultiplier, "review.hard-multiplier");
+            requireBasisPoints(goodMultiplier, "review.good-multiplier");
+            requireBasisPoints(easyMultiplier, "review.easy-multiplier");
+            if (lessonHelpedFirstDueDays > lessonSolvedAloneFirstDueDays) {
+                throw new IllegalArgumentException(
+                        "devpilot.review.lesson-helped-first-due-days must not exceed"
+                                + " lesson-solved-alone-first-due-days");
+            }
+            if (minIntervalDays > maxIntervalDays) {
+                throw new IllegalArgumentException(
+                        "devpilot.review.min-interval-days must not exceed max-interval-days");
+            }
+        }
+    }
+
+    /**
+     * skill 규칙 설정 (docs/06 §7).
+     *
+     * @param measurableAxes 지금 근거를 쌓을 수 있는 축의 이름 (docs/06 §7.6). 값이 {@code SkillAxis}에 있는지는 skill
+     *     모듈이 기동 시 확인한다 — common은 도메인 모듈을 알지 못한다(docs/03 §2.2)
+     */
     public record Skill(
             @Positive int ruleWindowDays,
             @NotNull Duration axisChangeCooldown,
             @Min(0) @Max(5) int selfAssessmentCap,
-            @Min(0) @Max(5) int diagnosticMaxLevel) {}
+            @Min(0) @Max(5) int diagnosticMaxLevel,
+            @NotEmpty Set<@NotBlank String> measurableAxes) {}
+
+    /**
+     * 사이드 프로젝트 기본값 (ADR-050). 온보딩에서 만들 것을 정하지 않은 사람에게 주는 프로젝트다.
+     *
+     * <p>개념 노트의 {@code inProject}가 전부 주문 시스템 기준으로 쓰여 있으므로(docs/19 §3.14) 기본값도 그것에 맞춘다. 사용자가 이름과 설명을
+     * 언제든 고칠 수 있다(docs/05 §19.5).
+     */
+    public record SideProject(
+            @NotBlank @Size(max = 100) String defaultName,
+            @NotBlank @Size(max = 1000) String defaultDescription,
+            @NotBlank @Size(max = 300) String defaultStack) {}
 
     /** 보존 기간 (docs/04 §8). */
     public record Privacy(
@@ -253,18 +399,31 @@ public record DevPilotProperties(
             boolean seedOnStartup, boolean seedChallenges, @NotBlank String location) {}
 
     /**
-     * AI 설정 중 S1이 쓰는 부분 (BL-AIP-16, BL-CNT-01). 나머지 키(operations, pricing, guards …)는 S3에 추가한다.
-     * {@code provider}는 소문자 문자열이다(docs/04 §3).
+     * AI 설정 (docs/03 §9, docs/17 §2·§8, BL-AIP-02). {@code provider}는 소문자 문자열이다(docs/04 §3). 소수 값은
+     * 기동 시 bp·micro 정수로 바뀌어야 하고(N-6), {@code model}은 {@code pricing.models}에 단가가 있어야 한다 — 없으면 기동
+     * 실패다. operation 이름 → 설정 변환과 11개 operation이 모두 있는지는 {@code integration.ai}가 기동 시 확인한다({@code
+     * common}은 {@code AiOperation}을 모른다).
+     *
+     * @param operations operation 이름({@code COACH_REVIEW} …) → 호출 설정
+     * @param prompts prompt id({@code coach.review} …) → 활성 버전({@code v1})
      */
     public record Ai(
             @NotNull @Pattern(regexp = "deepseek|anthropic|fake|disabled") String provider,
             @NotBlank String model,
+            @Valid @NotNull Deepseek deepseek,
             @NotNull BigDecimal monthlyBudgetUsd,
             @NotNull BigDecimal budgetWarningRatio,
             @NotNull BigDecimal minBalanceUsd,
+            @NotBlank String balanceCheckCron,
             @Positive int dailyCallLimitPerUser,
             @Positive int maxConcurrentPerUser,
-            List<String> trustedSourceHosts) {
+            @Valid @NotNull Async async,
+            @NotNull Map<String, @Valid AiOperationSettings> operations,
+            List<String> trustedSourceHosts,
+            @NotBlank String curatedSourcesLocation,
+            @Valid @NotNull Pricing pricing,
+            @Valid @NotNull Guards guards,
+            @NotNull Map<String, String> prompts) {
 
         public Ai {
             requireMicros(monthlyBudgetUsd, "ai.monthly-budget-usd");
@@ -280,13 +439,164 @@ public record DevPilotProperties(
                                     .map(host -> host.trim().toLowerCase(Locale.ROOT))
                                     .filter(host -> !host.isEmpty())
                                     .toList();
+            operations = operations == null ? Map.of() : Map.copyOf(operations);
+            prompts = prompts == null ? Map.of() : Map.copyOf(prompts);
+            if (pricing != null && !pricing.models().containsKey(model)) {
+                throw new IllegalArgumentException(
+                        "devpilot.ai.pricing.models has no price for model " + model);
+            }
         }
 
         /** 월 예산 micro USD. */
         public long monthlyBudgetMicroUsd() {
             return FixedPointMath.toMicros(monthlyBudgetUsd);
         }
+
+        /** 잔액 하한 micro USD (docs/17 §8.7). */
+        public long minBalanceMicroUsd() {
+            return FixedPointMath.toMicros(minBalanceUsd);
+        }
+
+        /** 경고 비율 bp (docs/17 §8.5, 기본 8000). */
+        public int budgetWarningBp() {
+            return FixedPointMath.toBasisPoints(budgetWarningRatio);
+        }
     }
+
+    /**
+     * DeepSeek 호출 설정 (docs/17 §2.1).
+     *
+     * @param apiKey 비어 있으면 {@code provider = deepseek}로 기동할 수 없다(BL-AIP-15)
+     * @param retryAfterDefault 전송 오류 재시도 전 대기, {@code Retry-After}가 없을 때 (docs/17 §5.2)
+     */
+    public record Deepseek(
+            @NotBlank String baseUrl,
+            @Nullable String apiKey,
+            boolean store,
+            @NotNull Duration retryAfterDefault) {}
+
+    /** 비동기 AI 실행기와 고아 작업 정리 (docs/03 §3.1 {@code AsyncConfig}, §5.3). */
+    public record Async(
+            @Positive int corePoolSize,
+            @Positive int maxPoolSize,
+            @Min(0) int queueCapacity,
+            @NotNull Duration orphanTimeout) {
+
+        public Async {
+            if (maxPoolSize < corePoolSize) {
+                throw new IllegalArgumentException(
+                        "devpilot.ai.async.max-pool-size must be >= core-pool-size");
+            }
+        }
+    }
+
+    /** AI 호출 방식 (docs/03 §9 {@code mode}). */
+    public enum AiMode {
+        SYNC,
+        ASYNC
+    }
+
+    /**
+     * operation 하나의 호출 설정 (docs/03 §9 {@code operations}). {@code thinking = false}면 {@code
+     * reasoningEffort}는 무시하고 {@code ai_call_log.effort = 'off'}다.
+     *
+     * @param reasoningEffort {@code low} | {@code high} | {@code max}. thinking이 켜져 있으면 필수
+     * @param timeout 재시도를 포함한 전체 마감 시간이자 read timeout (docs/17 §5.2)
+     * @param maxRetries 네트워크 오류와 가드 위반 재시도를 합한 횟수 (SYNC 0, ASYNC 1)
+     */
+    public record AiOperationSettings(
+            @NotNull AiMode mode,
+            boolean thinking,
+            @Nullable String reasoningEffort,
+            @Positive int maxTokens,
+            @NotNull Duration timeout,
+            @Min(0) int maxRetries,
+            @Positive int inputTokenBudget) {
+
+        private static final List<String> EFFORTS = List.of("low", "high", "max");
+
+        public AiOperationSettings {
+            if (thinking && (reasoningEffort == null || !EFFORTS.contains(reasoningEffort))) {
+                throw new IllegalArgumentException(
+                        "reasoning-effort must be low|high|max when thinking is on");
+            }
+            if (timeout != null && (timeout.isNegative() || timeout.isZero())) {
+                throw new IllegalArgumentException("operation timeout must be positive");
+            }
+        }
+
+        /** {@code ai_call_log.effort}: thinking off면 {@code off}. */
+        public String effort() {
+            return thinking && reasoningEffort != null ? reasoningEffort : "off";
+        }
+    }
+
+    /**
+     * 모델 단가 (docs/17 §8.4). 결정 F: 피크 시간 판정 없이 {@code peakMultiplier}를 항상 곱한다.
+     *
+     * @param models 모델 ID → USD per 1M tokens
+     */
+    public record Pricing(@Positive int peakMultiplier, Map<String, @Valid ModelPrice> models) {
+
+        public Pricing {
+            models = models == null ? Map.of() : Map.copyOf(models);
+        }
+    }
+
+    /** 모델 하나의 단가. 세 값 모두 micro 정수로 바뀌어야 한다(N-6). */
+    public record ModelPrice(
+            @NotNull BigDecimal input, @NotNull BigDecimal cacheHit, @NotNull BigDecimal output) {
+
+        public ModelPrice {
+            requireMicros(input, "ai.pricing.models.*.input");
+            requireMicros(cacheHit, "ai.pricing.models.*.cache-hit");
+            requireMicros(output, "ai.pricing.models.*.output");
+        }
+    }
+
+    /**
+     * 출력 가드 임계값 (docs/17 §6.7·§6.8).
+     *
+     * @param noAnswerPhrases {@code NoAnswerGuard} NA-2 정답 단정 표현
+     */
+    public record Guards(
+            @Positive int languageMinLetters,
+            @Positive int languageHangulWeight,
+            @Min(0) @Max(10_000) int languageMinRatioBp,
+            List<String> noAnswerPhrases) {
+
+        public Guards {
+            noAnswerPhrases = noAnswerPhrases == null ? List.of() : List.copyOf(noAnswerPhrases);
+        }
+    }
+
+    /**
+     * 러버덕 규칙 설정 (docs/03 §9 {@code rubberduck}, docs/06 §9.5).
+     *
+     * @param dontKnowMaxChars RD-3: 공백을 뺀 길이가 이 값 미만일 때만 "모르겠다" 문구를 본다
+     * @param staleAfter {@code StaleRubberDuckJob} 기준 ({@code started_at < now − staleAfter})
+     * @param evidenceCoverageBp RD-5 설명 증거의 고정 coverage (docs/06 §7.2)
+     */
+    public record Rubberduck(
+            @Positive int maxTurns,
+            @Positive int stuckTurnsBeforeHint,
+            @Positive int dontKnowMaxChars,
+            List<String> dontKnowPhrases,
+            @NotNull Duration staleAfter,
+            @Positive int maxExplanationChars,
+            @Min(0) @Max(10_000) int evidenceCoverageBp) {
+
+        public Rubberduck {
+            dontKnowPhrases = dontKnowPhrases == null ? List.of() : List.copyOf(dontKnowPhrases);
+        }
+    }
+
+    /**
+     * 오늘의 팁 설정 (docs/03 §9 {@code tips}).
+     *
+     * @param experimentMinutes TIP-6 실험 후보에 붙는 시간. <b>planner에 들어가지 않는</b> 표시용 값이다
+     */
+    public record Tips(@Positive int experimentMinutes) {}
 
     private static int requireBasisPoints(BigDecimal value, String name) {
         Objects.requireNonNull(value, name);

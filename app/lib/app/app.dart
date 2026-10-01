@@ -19,6 +19,9 @@ class DevPilotApp extends ConsumerWidget {
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       routerConfig: ref.watch(routerProvider),
+      // No SelectionArea here: MaterialApp.builder sits above the Navigator, and SelectionArea
+      // needs an Overlay ancestor. Screen content gets it from ScreenBody, dialogs and sheets from
+      // their own wrappers (docs/02 §2.4).
       builder: (context, child) => SessionGate(child: child ?? const SizedBox.shrink()),
     );
   }

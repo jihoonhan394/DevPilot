@@ -10,8 +10,8 @@ import java.util.TreeSet;
 import java.util.regex.Pattern;
 
 /**
- * CV-10 ~ CV-17, CV-19 (skill tree, docs/19 §4.1). CV-18은 role target 뒤에 {@link RoleTargetChecks}가
- * 한다.
+ * CV-10 ~ CV-17, CV-19, CV-88 (skill tree, docs/19 §4.1). CV-18은 role target 뒤에 {@link
+ * RoleTargetChecks}가 한다.
  */
 final class SkillTreeChecks {
 
@@ -24,6 +24,7 @@ final class SkillTreeChecks {
                     "category",
                     "parent",
                     "description",
+                    "whyItMatters",
                     "minutesPerLevelStep",
                     "prerequisites");
     private static final Set<String> SKILL_REQUIRED =
@@ -34,6 +35,8 @@ final class SkillTreeChecks {
     private static final int NON_ROOT_MIN_STEP = 60;
     private static final int MAX_STEP = 2000;
     private static final int DEFAULT_STEP = 120;
+    private static final int MIN_WHY = 20;
+    private static final int MAX_WHY = 200;
 
     private SkillTreeChecks() {}
 
@@ -119,6 +122,7 @@ final class SkillTreeChecks {
         if (!RawYaml.strLenOk(skill.get("description"), 10, 300)) {
             context.error("CV-14", where, "description length 10..300");
         }
+        checkWhyItMatters(context, where, skill, parent != null);
         checkStep(context, where, skill, parent != null);
         checkPrerequisites(context, where, code, skill);
     }
@@ -147,6 +151,30 @@ final class SkillTreeChecks {
         }
         if (!skill.containsKey("prerequisites")) {
             context.error("CV-16", where, "non-root skill requires prerequisites (may be [])");
+        }
+    }
+
+    /**
+     * CV-88: {@code whyItMatters}가 있으면 20~200자 한 문장이고 root skill에는 없다(docs/19 §3.2·§7.5).
+     *
+     * <p>CV-89(어느 트랙에서든 MUST인 non-root skill에는 반드시 있다)는 role target을 다 읽어야 알 수 있어 {@link
+     * RoleTargetChecks}가 마지막에 본다.
+     */
+    private static void checkWhyItMatters(
+            ValidationContext context, String where, Map<String, Object> skill, boolean nonRoot) {
+        if (!skill.containsKey("whyItMatters")) {
+            return;
+        }
+        if (!nonRoot) {
+            context.error("CV-88", where, "root skill must not have whyItMatters");
+            return;
+        }
+        if (!RawYaml.strLenOk(skill.get("whyItMatters"), MIN_WHY, MAX_WHY)) {
+            context.error("CV-88", where, "whyItMatters length " + MIN_WHY + ".." + MAX_WHY);
+            return;
+        }
+        if (skill.get("code") instanceof String code) {
+            context.skillsWithWhyItMatters.add(code);
         }
     }
 

@@ -1,11 +1,17 @@
 package com.devpilot.testsupport;
 
+import com.devpilot.integration.ai.api.AiBalance;
+import com.devpilot.integration.ai.budget.AiBalanceMonitor;
+import com.devpilot.integration.ai.fake.FakeAiProvider;
+import com.devpilot.review.application.SeedCardAssignmentService;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
@@ -23,6 +29,10 @@ public abstract class ApiTestSupport {
     @Autowired protected TestJwksServer jwksServer;
     @Autowired protected JsonMapper jsonMapper;
     @Autowired protected JdbcTemplate jdbc;
+    @Autowired protected SeedCardAssignmentService seedCardAssignmentService;
+
+    @Autowired protected ObjectProvider<FakeAiProvider> fakeAiProviders;
+    @Autowired protected AiBalanceMonitor aiBalanceMonitor;
 
     protected TestApi api;
 
@@ -30,6 +40,17 @@ public abstract class ApiTestSupport {
     void setUpApi() {
         clock.setInstant(TestClockConfig.DEFAULT_INSTANT);
         api = new TestApi(mockMvc, jwksServer, clock, jsonMapper);
+        FakeAiProvider fake = fakeAiProviders.getIfAvailable();
+        if (fake != null) {
+            fake.reset();
+        }
+        // 잔액 소진 상태는 context 전체가 공유한다 — 테스트마다 정상으로 되돌린다
+        aiBalanceMonitor.apply(AiBalance.of(true, new BigDecimal("100.00")));
+    }
+
+    /** test profile의 fake provider ({@code devpilot.ai.provider = fake}). */
+    protected FakeAiProvider fakeAi() {
+        return fakeAiProviders.getObject();
     }
 
     /** 사용자 행 id ({@code app_user.id}). 아직 없으면 null. */
@@ -52,6 +73,107 @@ public abstract class ApiTestSupport {
         TestUser user = TestUser.owner();
         api.onboard(user);
         return user;
+    }
+
+    /**
+     * 복습 카드가 <b>미리</b> 있어야 하는 테스트용 (ADR-055).
+     *
+     * <p>온보딩은 더 이상 seed 카드를 깔지 않는다 — 그 skill을 처음 배울 때 배정된다. 복습 자체를 시험하는 테스트는 "이미 여러 skill을 배운 사람"이
+     * 출발점이므로, 계획에 있는 skill마다 실제 배정 경로를 직접 부른다.
+     *
+     * @return 배정한 카드 수
+     */
+    protected int assignSeedCardsAsIfStudied(TestUser user) {
+        UUID userId = userId(user);
+        List<UUID> skillIds =
+                jdbc
+                        .queryForList(
+                                "select skill_id::text from devpilot.user_skill_state"
+                                        + " where user_id = ?::uuid",
+                                String.class,
+                                userId.toString())
+                        .stream()
+                        .map(UUID::fromString)
+                        .toList();
+        return seedCardAssignmentService.assignForSkills(userId, skillIds);
+    }
+
+    /**
+     * 모든 개념 노트를 다 뗀 상태로 만든다 (docs/06 §5.3 1번, §5.13 TH-5).
+     *
+     * <p>노트에 안 푼 단위가 남아 있으면 제안이 <b>개념 익히기</b>에서 멈춘다 — 가르치고 나서 시험하기 때문이다. 그다음 분기(CHALLENGE ·
+     * READ_CODE · 개념 읽기)를 보려는 테스트는 먼저 이것을 부른다.
+     */
+    protected void finishAllLessonUnits(TestUser user) throws Exception {
+        JsonNode lessons = api.body(api.get(user, "/api/v1/lessons"));
+        for (JsonNode summary : lessons.path("lessons")) {
+            String lessonKey = summary.path("lessonKey").asString();
+            JsonNode lesson = api.body(api.get(user, "/api/v1/lessons/{key}", lessonKey));
+            for (JsonNode unit : lesson.path("units")) {
+                if (unit.path("progress").path("solved").asBoolean(false)) {
+                    continue;
+                }
+                Map<String, Object> request = new LinkedHashMap<>();
+                request.put("helpLevel", "NONE");
+                request.put("selfChecksMet", null);
+                api.postWithKey(
+                        user,
+                        UUID.randomUUID().toString(),
+                        "/api/v1/lessons/{lessonKey}/units/{unitKey}/finish",
+                        request,
+                        lessonKey,
+                        unit.path("unitKey").asString());
+            }
+        }
+    }
+
+    /**
+     * {@code READ_CODE} 제안을 보려면 {@code docs/06} §5.3 1번(CHALLENGE)이 비어 있어야 한다. seed PRACTICE
+     * challenge를 한 번씩 시작했다가 중단해 "최근 14 plan-day 안에 시도" 제외 조건에 걸리게 한다.
+     */
+    protected void skipSeedPracticeChallenges(TestUser user) throws Exception {
+        List<String> challengeIds =
+                jdbc.queryForList(
+                        "select id::text from devpilot.challenge"
+                                + " where purpose = 'PRACTICE' and status = 'VALIDATED'"
+                                + " and owner_user_id is null",
+                        String.class);
+        for (String challengeId : challengeIds) {
+            String attemptId =
+                    api.body(
+                                    api.post(
+                                            user,
+                                            "/api/v1/challenges/{challengeId}/attempts",
+                                            null,
+                                            challengeId))
+                            .path("id")
+                            .asString();
+            api.post(user, "/api/v1/challenge-attempts/{attemptId}/abandon", null, attemptId);
+        }
+    }
+
+    /**
+     * {@code READ_CODE} 과제의 완료 조건(RC-1)을 만든다: 그 과제를 대상으로 러버덕 세션을 시작해 턴 1개를 내고 정리까지 마친다. 다른 과제 유형이면
+     * 아무것도 하지 않는다.
+     */
+    protected void satisfyCodeReadingCondition(TestUser user, JsonNode task) throws Exception {
+        if (!"READ_CODE".equals(task.path("taskType").asString())) {
+            return;
+        }
+        Map<String, Object> start = new LinkedHashMap<>();
+        start.put("targetType", "CODE_READING");
+        start.put("targetId", task.path("id").asString());
+        String sessionId =
+                api.body(api.post(user, "/api/v1/rubber-duck", start))
+                        .path("session")
+                        .path("id")
+                        .asString();
+        api.post(
+                user,
+                "/api/v1/rubber-duck/{sessionId}/turns",
+                Map.of("explanation", "이 코드에서 트랜잭션 경계는 서비스 메서드에서 시작한다고 읽었습니다."),
+                sessionId);
+        api.post(user, "/api/v1/rubber-duck/{sessionId}/complete", null, sessionId);
     }
 
     protected JsonNode activePlan(TestUser user) throws Exception {

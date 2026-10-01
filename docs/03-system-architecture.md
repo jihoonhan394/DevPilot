@@ -1,6 +1,6 @@
 # 03. System Architecture
 
-> Status: Accepted (v2) · Last updated: 2026-09-18 · Related: ADR-002, ADR-005, ADR-011, ADR-012, ADR-014, ADR-019
+> Status: Accepted (v2) · Last updated: 2026-09-20 · Related: ADR-002, ADR-005, ADR-011, ADR-012, ADR-014, ADR-019, ADR-040
 >
 > 이 문서는 **모듈 경계, 패키지와 핵심 클래스 이름, 요청 처리 순서, 트랜잭션/비동기 규칙, 설정값 전체 목록**을 정의한다. 여기 적힌 이름은 구현에서 그대로 쓴다. 이름을 바꿀 때는 이 문서도 함께 수정한다.
 
@@ -62,22 +62,22 @@ Base package: `com.devpilot`
 |---|---|---|
 | `common` | 오류 처리, 보안 설정, 웹 필터, 시간, 설정 바인딩, JPA 기반 클래스, idempotency, 비동기 실행기 | `idempotency_record` |
 | `user` | 사용자 식별·프로비저닝, 프로필, 계정 삭제, 캘린더 피드 (export는 `account`) | `app_user` |
-| `goal` | 학습 목표(학습 완료 목표일·중간 점검일), 집중 skill | `learning_goal`, `learning_goal_focus_skill` |
+| `goal` | 학습 목표(학습 트랙·목표일), 집중 skill | `learning_goal`, `learning_goal_focus_skill` |
 | `skill` | skill catalog 조회, 사용자 skill state, **skill 레벨 갱신 규칙** | `skill`, `skill_prerequisite`, `role_skill_target`, `user_skill_state`, `skill_state_change` |
 | `learning` | 학습 세션, **학습 이벤트 기록**, **Hint Ladder** | `learning_session`, `learning_event`, `hint_disclosure` |
 | `plan` | 계획·milestone·버전, 계획별 skill 목표, **study budget, deadline risk**, replan, 진행 스냅샷 | `learning_plan`, `plan_milestone`, `milestone_skill`, `plan_skill_target`, `plan_progress_snapshot` |
-| `review` | 복습 항목·응답, **복습 스케줄 규칙** | `review_item`, `review_answer` |
-| `today` | 일일 계획, **planner scoring**, task 상태 | `daily_plan`, `learning_task` |
+| `review` | 복습 항목·응답, **복습 스케줄 규칙**, **용어 사전 조회와 용어 복습 카드 만들기** | `review_item`, `review_answer` |
+| `today` | 일일 계획, **planner scoring**, task 상태, **재현 과제**(제안·완료·AI 잠금 판정), **오늘의 팁**(선택·읽은 뒤 표시), **과제 체크리스트** | `daily_plan`, `learning_task`, `user_daily_tip` |
 | `training` | challenge 생성·검증·조회, attempt, 제출·평가, outcome 계산, 진단 challenge | `challenge`, `challenge_skill`, `challenge_attempt`, `challenge_submission` |
 | `coach` | 코드 리뷰 요청, 분석, finding 응답, thinking pattern 기록, 원문 purge | `coach_review`, `coach_finding`, `thinking_pattern_observation` |
 | `evidence` | evidence 후보·승인·export, 주간 리뷰 | `evidence_candidate`, `weekly_review` |
-| `radar` | 요구 역량 비교: 요구사항 문서 분석, 요구사항 항목 매칭 | `requirement_doc`, `requirement_item` |
+| `radar` | 로드맵 비교: 붙여넣은 로드맵·기술 목록(요구사항 문서) 분석, 항목 매칭 | `requirement_doc`, `requirement_item` |
 | `onboarding` | 온보딩 일괄 처리 (user, goal, plan, skill 조합) | (없음) |
 | `dashboard` | 읽기 전용 집계 | (없음) |
 | `account` | 사용자 데이터 export (전 모듈 읽기 집계) | (없음) |
-| `project` | 사이드 프로젝트 등록·조회 (학습이 적용될 대상) | `side_project` |
+| `project` | 사이드 프로젝트 등록·조회 (학습이 적용될 대상), **프로젝트 결정·장애 기록** | `side_project`, `side_project_note` |
 | `rubberduck` | **러버덕 대화**(설명 → AI 질문), 정리, gap → 복습 카드. 여러 모듈의 대상을 읽으므로 독립 모듈로 둔다(순환 방지) | `rubber_duck_session`, `rubber_duck_turn` |
-| `content` | seed YAML 적재·검증 | (seed 대상 테이블에 upsert) |
+| `content` | seed YAML 적재·검증, 콘텐츠 레지스트리 등록(코드 읽기·팁·용어·체크리스트) | (seed 대상 테이블에 upsert) |
 | `integration.ai` | AI port, 공급자 구현, 프롬프트 로딩, 출력 가드, 비용 로그, 예산 가드, secret masking | `ai_call_log` |
 
 ### 2.2 모듈 의존 규칙
@@ -89,21 +89,21 @@ Base package: `com.devpilot`
 | `common` | (없음) |
 | `integration.ai` | `common` |
 | `user` | `common`, `integration.ai` (`AiStatus`·사용량 조회) |
-| `learning` | `common`, `integration.ai` |
+| `learning` | `common`, `integration.ai`. 재현 잠금(HL-9)은 `learning.application.RedoLockProvider` port로 받는다(구현은 `today`) |
 | `skill` | `common`, `learning` |
 | `goal` | `common`, `skill` |
-| `plan` | `common`, `goal`, `skill` |
-| `review` | `common`, `skill`, `learning`, `goal` (horizon), `plan` (skill priority), `integration.ai` |
+| `plan` | `common`, `goal`, `skill`, `learning` (`LearningEventRecorder` — replan의 `PLAN_REPLANNED` 이벤트, §3.2 `ReplanEventRecorder`), `integration.ai` (`SecretMasker` — replan·milestone 자유 텍스트) |
+| `review` | `common`, `skill`, `learning`, `goal` (horizon), `plan` (skill priority), `integration.ai`. `TermRegistry`는 review 모듈이 갖고 content 모듈이 기동 시 등록한다 |
 | `training` | `common`, `skill`, `learning`, `review`, `integration.ai` |
-| `today` | `common`, `plan`, `skill`, `review`, `learning`, `training`, `goal` (focus skill → `projectNeed`, `06` §5.4), `project` (PROJECT_TASK 대상), `integration.ai` (`AiStatus`). `CuratedReadingRegistry`는 today 모듈이 갖고 content 모듈이 기동 시 등록한다(`SeedCardRegistry`와 같은 방식) |
+| `today` | `common`, `plan`, `skill`, `review`, `learning`, `training`, `goal` (focus skill → `projectNeed`, `06` §5.4), `project` (PROJECT_TASK 대상), `integration.ai` (`AiStatus`). `CuratedReadingRegistry`(코드 읽기)·`ConceptReadingRegistry`(개념 읽기, `19` §3.13)·`LessonRegistry`(개념 노트, `19` §3.14)·`DailyTipRegistry`·`TaskChecklistRegistry`는 today 모듈이 갖고 content 모듈이 기동 시 등록한다(`SeedCardRegistry`와 같은 방식) |
 | `coach` | `common`, `skill`, `learning`, `review`, `project`(리뷰 대상 프로젝트), `integration.ai` |
-| `evidence` | `common`, `skill`, `learning`, `coach`, `training`, `review`, `plan` (지표 입력), `integration.ai` |
+| `evidence` | `common`, `skill`, `learning`, `coach`, `training`, `review`, `plan` (지표 입력), `project` (프로젝트 기록 — `projectNoteCount` 지표와 증거 초안 입력, `06` §12·`05` §14.5), `integration.ai` |
 | `radar` | `common`, `skill`, `evidence`, `goal` (target role), `plan` (활성 plan의 `plan_skill_target`, `06` §13), `integration.ai` |
 | `onboarding` | `common`, `user`, `goal`, `plan`, `skill`, `review` (seed 카드 배정), `training`, `project` (첫 사이드 프로젝트 생성) |
-| `dashboard` | `common`, `user`, `plan`, `skill`, `review`, `today`, `learning`, `coach`, `evidence` (`MetricsCalculator` — 약한 thinking 축), `integration.ai` |
-| `project` | `common` |
+| `dashboard` | `common`, `user`, `goal` (타임라인의 `horizonDate` = 학습 목표일), `plan`, `skill`, `review`, `today`, `learning`, `coach`, `evidence` (`MetricsCalculator` — 약한 thinking 축), `integration.ai` |
+| `project` | `common`, `skill`(기록에 붙이는 선택 skill 검증), `integration.ai` (`SecretMasker` — 사이드 프로젝트 `name`·`description`·`stack`과 기록의 모든 텍스트 항목) |
 | `rubberduck` | `common`, `integration.ai`, `skill`(대상 skill), `learning`(학습 세션 id, `RUBBER_DUCK_COMPLETED` 기록, `hintDisclosed` 조회), `review`(gap → 복습 카드, `REVIEW_ITEM` 대상), `training`(`CHALLENGE` 대상), `today`(`CODE_READING` 대상 task·RC-1 완료, reading 조회), `project`(`PROJECT_WORK` 대상). **다른 모듈은 rubberduck에 의존하지 않는다**(account 모듈의 export 집계만 예외) |
-| `content` | `common`, `skill`, `plan`, `review`, `training`, `today` (`CuratedReadingRegistry` 등록) |
+| `content` | `common`, `skill`, `plan`, `review` (`TermRegistry` 등록), `training`, `today` (`CuratedReadingRegistry`·`ConceptReadingRegistry`·`LessonRegistry`·`DailyTipRegistry`·`TaskChecklistRegistry` 등록) |
 | `account` | `common`, `user`, `goal`, `plan`, `skill`, `learning`, `review`, `today`, `training`, `coach`, `evidence`, `radar`, `project`, `rubberduck` (데이터 export 전용 집계) |
 
 이 표는 순환이 없음을 확인했다(위상 정렬, 의존 대상이 앞: common → integration.ai → user → learning → skill → goal → plan → review → training → project → today → coach → evidence → radar → onboarding → dashboard → rubberduck → content → account). 여러 모듈이 같이 쓰는 순수 규칙(`ComebackModePolicy`: today·review, `RubricScorer`: training·review)은 둘 다 의존할 수 있는 `learning.domain`에 둔다(§3.2).
@@ -114,6 +114,8 @@ Base package: `com.devpilot`
 |---|---|---|
 | `common.time.UserTimeSettingsProvider` | `user` | 사용자 timezone, dayStartHour |
 | `integration.ai.api.AiPendingJobCounter` | `coach`, `training`, `review`, `evidence`, `radar` | 사용자의 PENDING/RUNNING 비동기 AI 작업 수 |
+| `today.application.CodeReadingCompletionProvider` | `rubberduck` | 그 `READ_CODE` 과제를 대상으로 한 `COMPLETED` 러버덕 세션이 있는지 (RC-1, `06` §9.5) |
+| `learning.application.RedoLockProvider` | `today` (`RedoLockService`) | 열려 있는 재현 과제가 그 대상의 AI 지원을 막는지 — `challengeLocked(userId, challengeId)`, `sideProjectLocked(userId, sideProjectId)` (RE-5·HL-9, `06` §5.10·§9.1). `learning`(`HintService`)과 `rubberduck`(`RubberDuckService`)이 같은 port를 쓴다 |
 | `plan.application.StudyHistoryProvider` | `today` | plan-day별 `available_minutes`(daily_plan)와 COMPLETED 세션 `actual_minutes` 합계 (`06` §3.3 completion rate) |
 | `evidence.application.RequirementCoverageProvider` | `radar` | 최근 분석한 요구사항 문서 5개의 REQUIRED 요구사항 수와 READY 수 (`06` §12 `requirementCoverageBp`) |
 | `common.job.RetentionCleanupTarget` | `integration.ai`(`log.AiCallLogRetentionService`), `radar`(`application.RequirementDocPurgeService`) | 보존 기간이 지난 소유 데이터의 삭제·purge 실행과 건수. `dailySummary(day)`(기본 구현 빈 map)로 일일 요약 항목도 같이 제공한다 (§6, §8) |
@@ -148,6 +150,7 @@ com.devpilot.<module>
 | 클래스 | 역할 |
 |---|---|
 | `common.config.DevPilotProperties` | `devpilot.*` 설정 루트 (`@ConfigurationProperties`, record) — §9 |
+| `common.config.TrackDefaults` | 학습 트랙 기본값 record (`maxTaskDifficulty`, `readCodeMinKnowledge`, `challengeMinKnowledge`). `DevPilotProperties.tracks`는 `Map<String, TrackDefaults>`이고 키는 `TargetRole` 이름이다. **기동 시 `TargetRole` 값마다 항목이 있는지 검사하고 없으면 기동 실패**(`common`은 `goal`을 의존하지 않으므로 검사는 `goal.application`의 `@PostConstruct`에서 한다) |
 | `common.time.ClockConfig` | `Clock` bean (UTC). 테스트에서 `MutableClock`으로 교체 |
 | `common.time.PlanDayCalculator` | `planDate(Instant, ZoneId, dayStartHour)`, `planDayStart(LocalDate, ZoneId, dayStartHour)` |
 | `common.time.UserTimeSettingsProvider` | interface: 사용자 id → `(ZoneId, dayStartHour)`. `user` 모듈이 구현. 요청 밖(비동기 task, job, 예산 가드)에서 사용 |
@@ -188,21 +191,21 @@ com.devpilot.<module>
 |---|---|---|---|---|
 | `user` | `MeController`, `AccountController`, `CalendarFeedController`, `DevTokenController`(`auth-mode=devtoken`일 때만 bean) | `UserProvisioningService`(implements `AuthenticatedUserResolver`, `UserTimeSettingsProvider`), `ProfileService`, `AccountDeletionService`, `CalendarTokenService`, `DevTokenService`(allowlist 검사 → JWT 서명, §4.2) | `AppUser`, `UserStatus`, `UserRole` | `AppUserRepository`, `AccountDeletionJob`, `IcsFeedWriter` |
 | `goal` | `LearningGoalController` | `LearningGoalService`, `LearningGoalQueryService` | `LearningGoal`, `LearningGoalFocusSkill`, `TargetRole` | `LearningGoalRepository` |
-| `skill` | `SkillController` | `SkillCatalogQueryService`, `UserSkillStateQueryService`, `SkillStateUpdater`(이벤트 구독) | `Skill`, `RoleSkillTarget`, `UserSkillState`, `SkillStateChange`, **`SkillLevelRules`**, **`PlanningLevelPolicy`** | repositories |
-| `learning` | `LearningSessionController` | `LearningSessionService`, `LearningEventRecorder`, `LearningEventQueryService`(사용자·skill의 최근 N일 이벤트 — `skill`이 사용), `HintService` | `LearningSession`, `LearningEvent`, `LearningEventType`, `HintDisclosure`, `HintLevel`, **`HintLadderPolicy`**, **`ComebackModePolicy`**(세션 이력만 입력, today·review가 사용), **`RubricScorer`**(rubric coverage, training·review가 사용), event record `LearningEventRecorded` | repositories |
-| `plan` | `PlanController` | `PlanQueryService`, `PlanCommandService`, `ReplanService`, `StudyBudgetService`, `PlanTemplateRegistry`(메모리 보관, `content`가 기동 시 등록) | `LearningPlan`, `PlanMilestone`, `PlanSkillTarget`, `PlanProgressSnapshot`, `PlanTemplate`(record), **`StudyBudgetCalculator`**, **`DeadlineRiskEvaluator`**, **`ReplanSuggestionPolicy`**, **`PlanTemplatePlacement`** | repositories, `ProgressSnapshotJob` |
-| `review` | `ReviewController`, `ReviewItemController` | `ReviewService`, `ReviewItemService`(Later: implements `OrphanAsyncTaskSweeper` — review variant), `ReviewQueryService`(다른 모듈 공개), `SeedCardAssignmentService`(`assignForNewUser`, `backfillAll`), `SeedCardRegistry`(메모리 보관, `content`가 기동 시 등록) | `ReviewItem`, `ReviewAnswer`, `SeedCard`(record), **`FinalRatingPolicy`**, `ReviewSchedulingStrategy`, **`RuleBasedV1Scheduler`**, **`DueReviewSelector`** | repositories, `ReviewVariantTask`(async, Later) |
-| `today` | `TodayController`, `ReadingController`(`GET /readings/{key}`) | `TodayPlanService`, `TodayQueryService`, `ReadingQueryService`, `CuratedReadingRegistry`(메모리 보관, `content`가 기동 시 등록) | `DailyPlan`, `LearningTask`, **`PlannerScoring`**, **`TaskProposalPolicy`**, **`TimeAllocator`**, **`ReasonTemplates`** (`ComebackModePolicy`는 `learning.domain`) | repositories |
-| `training` | `ChallengeController`, `ChallengeAttemptController` | `ChallengeGenerationService`, `ChallengeValidationService`, `AttemptService`, `SubmissionService`, `ChallengeQueryService`(today가 사용), `TrainingAsyncTaskSweeper`(implements `OrphanAsyncTaskSweeper` — challenge 생성·submission 평가) | `Challenge`, `ChallengeAttempt`, `ChallengeSubmission`, **`AttemptOutcomeCalculator`** (`RubricScorer`는 `learning.domain`) | repositories, `ChallengeGenerationTask`, `SubmissionEvaluationTask` (async) |
+| `skill` | `SkillController` | `SkillCatalogQueryService`, `UserSkillStateQueryService`, `SkillStateUpdater`(이벤트 구독), `LearningStageQueryService`(학습 이벤트 → 단계 판정), `SkillDetailQueryService`(`05` §6.4), `WhyItMattersRegistry`(기술 트리의 한 문장 — `content`가 기동 시 등록, `19` §3.2) | `Skill`, `RoleSkillTarget`, `UserSkillState`, `SkillStateChange`, **`SkillLevelRules`**, **`PlanningLevelPolicy`**, **`LearningStageEvaluator`**(`06` §5.11, 순수 — 학습 이벤트만 입력) | repositories |
+| `learning` | `LearningSessionController` | `LearningSessionService`, `LearningEventRecorder`, `LearningEventQueryService`(사용자·skill의 최근 N일 이벤트 — `skill`이 사용), `HintService`, `RedoLockProvider`(port, `today`가 구현 — HL-9) | `LearningSession`, `LearningEvent`, `LearningEventType`, `HintDisclosure`, `HintLevel`, **`HintLadderPolicy`**, **`ComebackModePolicy`**(세션 이력만 입력, today·review가 사용), **`RubricScorer`**(rubric coverage, training·review가 사용), event record `LearningEventRecorded` | repositories |
+| `plan` | `PlanController` | `PlanQueryService`, `PlanCommandService`, `ReplanService`, `StudyBudgetService`, `PlanTemplateRegistry`(메모리 보관, `content`가 기동 시 등록), 보조: `StudyBudgetInputs`(budget·risk 입력 수집 — 목표일, 학습 가능 시간, `StudyHistoryProvider`, planning level), `ReplanInputs`(replan이 쓰는 바깥 입력 — skill catalog, target role, `SecretMasker`), `ReplanEventRecorder`(`PLAN_REPLANNED` 이벤트 + 감사 로그, `plan → learning` 의존이 여기서만 쓰인다) | `LearningPlan`, `PlanMilestone`, `PlanSkillTarget`, `PlanProgressSnapshot`, `PlanTemplate`(record), **`StudyBudgetCalculator`**, **`DeadlineRiskEvaluator`**, **`ReplanSuggestionPolicy`**, **`PlanTemplatePlacement`** | repositories, `ProgressSnapshotJob` |
+| `review` | `ReviewController`, `ReviewItemController`, `TermController`(`GET /terms`, `GET /terms/{termKey}`, `POST /terms/{termKey}/card`) | `ReviewService`, `ReviewItemService`(Later: implements `OrphanAsyncTaskSweeper` — review variant), `ReviewQueryService`(다른 모듈 공개), `SeedCardAssignmentService`(`assignForNewUser`, `backfillAll`), `SeedCardRegistry`·`TermRegistry`(메모리 보관, `content`가 기동 시 등록), `TermQueryService`(검색·상세·용어 카드 만들기), 보조: `DueReviewInputs`(due 선정이 쓰는 바깥 입력 — plan의 skill 우선순위, 복귀 모드), `ReviewAnswerRecorder`(`review_answer` + `REVIEW_ANSWERED`·`LEECH_DETECTED`), `ReviewSchedulingSupport`(설정·horizon을 채워 `RuleBasedV1Scheduler`에 넘긴다) | `ReviewItem`, `ReviewAnswer`, `SeedCard`(record), **`FinalRatingPolicy`**, `ReviewSchedulingStrategy`, **`RuleBasedV1Scheduler`**, **`DueReviewSelector`** | repositories, `ReviewVariantTask`(async, Later) |
+| `today` | `TodayController`, `ReadingController`(`GET /readings/{key}`), `LessonController`(`/lessons*`, `05` §21), `TipController`(`GET /tips/today`, `GET /tips`, `POST /tips/{tipKey}/feedback`) | `TodayPlanService`, `TodayQueryService`, `ReadingQueryService`(코드 읽기·개념 읽기 한 endpoint, `05` §19.7), `LessonQueryService`(노트 조회·채점·기록, `05` §21), `CuratedReadingRegistry`·`ConceptReadingRegistry`·`LessonRegistry`·`DailyTipRegistry`·`TaskChecklistRegistry`(메모리 보관, `content`가 기동 시 등록), `DailyTipService`(선택·읽은 뒤 처리, `06` §5.12), `TaskChecklistQueryService`, `CodeReadingCompletionProvider`(port, RC-1), `RedoLockService`(implements `learning.application.RedoLockProvider` — RE-5), 보조: `PlannerInputCollector`(Today 규칙 입력 수집 — planning level, 집중 skill, leech, 최근 복습 실패, 어제·그제 main, `ACTIVE` 사이드 프로젝트) | `DailyPlan`, `LearningTask`, **`PlannerScoring`**, **`TaskProposalPolicy`**, **`RedoTaskPolicy`**(RE-1~RE-8, `06` §5.10), **`TimeAllocator`**, **`ReasonTemplates`**, **`DailyTipSelector`**(`06` §5.12), **`UnitAnswerMatcher`**(예측·빈칸 문자열 채점, `19` §3.14 — 순수 규칙) (`ComebackModePolicy`는 `learning.domain`, `LearningStageEvaluator`는 `skill.domain`) | repositories |
+| `training` | `ChallengeController`, `ChallengeAttemptController` | `ChallengeGenerationService`, `ChallengeValidationService`, `AttemptService`, `SubmissionService`, `ChallengeQueryService`(today가 사용), `TrainingAsyncTaskSweeper`(implements `OrphanAsyncTaskSweeper` — challenge 생성·submission 평가), 보조: `SubmissionIntakeGuard`(저장 전 순서 — 마스킹 → 예산, `07` §5), `SubmissionRecorder`(제출 행 저장 + `CHALLENGE_SUBMITTED`), `SubmissionOutcomeRecorder`(평가 뒤 `CHALLENGE_EVALUATED`·진단 이벤트·복습 카드) | `Challenge`, `ChallengeAttempt`, `ChallengeSubmission`, **`AttemptOutcomeCalculator`** (`RubricScorer`는 `learning.domain`) | repositories, `ChallengeGenerationTask`, `SubmissionEvaluationTask` (async) |
 | `coach` | `CoachReviewController` | `CoachReviewService`(implements `OrphanAsyncTaskSweeper`), `CoachFindingService`, `ThinkingPatternRecorder` | `CoachReview`, `CoachFinding`, `ThinkingPatternObservation`, **`DiscoveredByResolver`** | repositories, `CoachAnalysisTask`(async), `CoachContentPurgeJob` |
-| `evidence` | `EvidenceController`, `WeeklyReviewController` | `EvidenceService`(implements `OrphanAsyncTaskSweeper`), `EvidenceExportService`, `WeeklyReviewService` | `EvidenceCandidate`, `WeeklyReview`, **`MetricsCalculator`** | repositories, `WeeklyReviewJob`, `EvidenceDraftTask` |
+| `evidence` | `EvidenceController`, `WeeklyReviewController` | `EvidenceService`(implements `OrphanAsyncTaskSweeper`), `EvidenceExportService`, `WeeklyReviewService`, `LearningMetricsQueryService`(지표 입력 모으기 — `dashboard`가 `notesWritten`을 이 경로로 읽는다) | `EvidenceCandidate`, `WeeklyReview`, **`MetricsCalculator`** | repositories, `WeeklyReviewJob`, `EvidenceDraftTask` |
 | `radar` | `RequirementRadarController` | `RequirementAnalysisService`(implements `OrphanAsyncTaskSweeper`), `RequirementDocPurgeService`(implements `RetentionCleanupTarget` — `source_text` 180일 purge) | `RequirementDoc`, `RequirementItem`, **`RequirementFitClassifier`** | repositories, `RequirementAnalysisTask` |
-| `onboarding` | `OnboardingController` | `OnboardingService`, `DiagnosticSuggestionService` | `SelfAssessmentPropagation` | — |
-| `dashboard` | `DashboardController` | `DashboardQueryService` | — | — |
+| `onboarding` | `OnboardingController` | `OnboardingService`, `DiagnosticSuggestionService`, 보조: `OnboardingSkillSetup`(자기평가 전파 → 초기 skill state), `OnboardingPlanSetup`(plan v1, seed 카드 배정, 오늘 snapshot) | `SelfAssessmentPropagation` | — |
+| `dashboard` | `DashboardController` | `DashboardQueryService`, 보조: `DashboardProgressAssembler`(어디쯤 왔나 — 타임라인·카테고리), `DashboardActivityAssembler`(무엇을 했나 — 오늘·연속·이번 주) | `StreakCalculator`(연속 학습 일수, `05` §13.1) | — |
 | `account` | `AccountExportController` (`GET /me/export`) | `AccountExportService` | — | — |
-| `project` | `SideProjectController` | `SideProjectService`, `SideProjectQueryService`(today·coach·rubberduck이 사용) | `SideProject`, `SideProjectStatus` | `SideProjectRepository` |
-| `rubberduck` | `RubberDuckController` | `RubberDuckService`(턴·정리·gap 카드·이벤트, `05` §9.5~§9.10) | `RubberDuckSession`, `RubberDuckTurn`, `RubberDuckTargetType`, `RubberDuckStatus`, **`RubberDuckPolicy`**(RD-1~RD-7 — 턴 상한, RD-3 "모르겠다" 판정, RD-5 증거 조건, `06` §9.5) | repositories, `StaleRubberDuckJob` |
-| `content` | — | `ContentSeeder`(ApplicationRunner: 검증 → upsert → `PlanTemplateRegistry`·`SeedCardRegistry`·`CuratedReadingRegistry` 등록 → `SeedCardAssignmentService.backfillAll()`), `ContentValidator` | seed record 타입 | `YamlContentReader` |
+| `project` | `SideProjectController`, `SideProjectNoteController`(`/side-projects/{id}/notes*`) | `SideProjectService`, `SideProjectQueryService`(today·coach·rubberduck이 사용), `SideProjectNoteService`, `SideProjectNoteQueryService`(`evidence`가 사용 — 지표·증거 초안), `SideProjectNoteExporter`(기록 → Markdown, `05` §19.13) | `SideProject`, `SideProjectStatus`, `SideProjectNote`, `SideProjectNoteType` | `SideProjectRepository`, `SideProjectNoteRepository` |
+| `rubberduck` | `RubberDuckController` | `RubberDuckService`(시작·턴·정리·중단, `05` §9.5~§9.10), `RubberDuckQueryService`(조회·응답 조립), 보조 component(대상 확인, AI 입력 구성, 정리 반영) | `RubberDuckSession`, `RubberDuckTurn`, `RubberDuckTargetType`, `RubberDuckStatus`, **`RubberDuckPolicy`**(RD-1~RD-7 — 턴 상한, RD-3 "모르겠다" 판정, RD-5 증거 조건, `06` §9.5), **`VagueReferenceCounter`**(지시어 세기 VR-1~VR-10, `06` §9.6 — 순수·결정적, 저장하지 않는다) | repositories, `StaleRubberDuckJob` |
+| `content` | — | `ContentSeeder`(ApplicationRunner: 검증 → upsert → registry 등록 → `SeedCardAssignmentService.backfillAll()`), `ContentValidator`, 보조: `ContentRegistration`(검증을 마친 콘텐츠를 registry에 등록), `ContentRegistries`(받을 registry 묶음 — `PlanTemplateRegistry`·`SeedCardRegistry`·`CuratedReadingRegistry`·`ConceptReadingRegistry`·`LessonRegistry`·`DailyTipRegistry`·`ChecklistRegistry`·`TermRegistry`) | seed record 타입 | `YamlContentReader` |
 
 ### 3.3 integration.ai
 
@@ -217,7 +220,7 @@ com.devpilot.<module>
 | `integration.ai.api.AiUsageSnapshot`, `AiBudgetDecision`, `AiConcurrencyReservation` | 도메인 모듈에 노출되는 불변 record: 사용량 요약(`GET /me`), 예산 판정, 동시 실행 예약(`17` §8) |
 | `integration.ai.api.output` (패키지) | operation 출력 record 11종(`CoachReviewOutput` 등 9종 + 러버덕 `RubberDuckTurnOutput`·`RubberDuckSummaryOutput`, `17` §4). 도메인 모듈은 이 record만 받는다 |
 | `integration.ai.deepseek.DeepSeekAiProvider` | Spring `RestClient`로 `POST /responses` 호출(`instructions`, `input`, `text.format json_schema`, `max_output_tokens`, `thinking`, `reasoning_effort`, `store:false`), 응답 `output[]`에서 `type=message`의 `output_text` 추출, 종료 상태·HTTP 오류 → `AiCallStatus` 매핑, `Retry-After` 대기(`17` §5) |
-| `integration.ai.deepseek.DeepSeekBalanceClient` | `GET /user/balance` 조회 (`AiBalanceCheckJob`, 402 처리) |
+| `AiProvider.checkBalance()` (`DeepSeekAiProvider` 구현) | `GET /user/balance` 조회 (`AiBalanceCheckJob`). 별도 client 클래스를 두지 않고 provider가 같은 base URL·인증 헤더로 조회한다. fake는 `setBalance` hook 값, disabled는 `unsupported`(job no-op) |
 | `integration.ai.fake.FakeAiProvider` | fixture 기반 응답 (`local`, `test`, `demo`). `@ConditionalOnProperty(devpilot.ai.provider=fake)` |
 | `integration.ai.disabled.DisabledAiProvider` | 항상 `AI_UNAVAILABLE` |
 | `integration.ai.prompt.PromptRegistry` | `classpath:prompts/<id>/<version>/` 로딩, 활성 버전 선택, 템플릿 치환 |
@@ -416,7 +419,7 @@ IdempotencyService.execute(userId, key, method, path, requestHash, action):
 | `RetentionCleanupJob` | common | `0 30 18 * * *` | `idempotency_record` 만료 삭제(직접) + `RetentionCleanupTarget` 구현 호출: `ai_call_log` 180일 초과 삭제(`integration.ai`), `requirement_doc.source_text` 180일 purge(`radar`). 대상 모듈을 직접 의존하지 않는다 (§2.2) |
 | `AccountDeletionJob` | user | `0 */5 * * * *` | `DELETION_REQUESTED` 사용자 삭제 (cascade) + 감사 로그 |
 | `OrphanAsyncTaskJob` | common | 기동 시 1회 + `0 */10 * * * *` | `OrphanAsyncTaskSweeper` 구현 호출: 10분 넘게 갱신되지 않은 `PENDING`/`RUNNING` 작업(coach review, challenge 생성, submission 평가, review variant, evidence 초안, 요구사항 분석) → `FAILED(INTERRUPTED)`. 대상 모듈을 직접 의존하지 않는다 (§2.2) |
-| `AiBalanceCheckJob` | integration.ai | `0 15 * * * *` (매시 15분, `balance-check-cron`) | `provider=deepseek`일 때만. `GET /user/balance` → 잔액 < `min-balance-usd`이면 `AiBalanceMonitor`를 `BALANCE_EXHAUSTED`로, 이상이면 해제. 상태가 바뀔 때 감사 이벤트 `AI_BALANCE_LOW`/`AI_BALANCE_RESTORED` + WARN/INFO. 조회 실패는 상태를 바꾸지 않는다 (S3) |
+| `AiBalanceCheckJob` | integration.ai | `0 15 * * * *` (매시 15분, `balance-check-cron`) | `provider=deepseek`일 때만. `GET /user/balance` → 잔액 < `min-balance-usd`이면 `AiBalanceMonitor`를 `BALANCE_EXHAUSTED`로, 이상이면 해제. 소진으로 바뀔 때 감사 이벤트 `AI_BALANCE_LOW` + ERROR 로그, 해제될 때 INFO 로그만(감사 이벤트 없음, `17` §8.7). 조회 실패는 상태를 바꾸지 않는다 (S3) |
 | `StaleRubberDuckJob` | rubberduck | `0 25 * * * *` (매시 25분) | `status = IN_PROGRESS`이고 `started_at < now − devpilot.rubberduck.stale-after`(24h)인 러버덕 세션 → `ABANDONED`, `completed_at = now`. 정리 AI를 부르지 않고 복습 카드·학습 이벤트도 만들지 않는다(`05` §9.5). 부분 인덱스 `idx_rubber_duck_session_in_progress`를 쓴다 |
 
 - `@EnableScheduling`을 쓰고 단일 인스턴스를 전제로 한다. 인스턴스를 늘리면 분산 락을 도입한다(현재 범위 밖).
@@ -489,22 +492,40 @@ devpilot:
   time:
     default-zone: Asia/Seoul
     default-day-start-hour: 4
+  tracks:                                  # 학습 트랙 기본값. 키는 TargetRole 값 (04 §3). 누락되면 기동 실패
+    JAVA_BACKEND:         { max-task-difficulty: 5, read-code-min-knowledge: 1, basic-tips-first: false }  # 06 §5.3, RC-3
+    JAVA_BACKEND_STARTER: { max-task-difficulty: 3, read-code-min-knowledge: 2, basic-tips-first: true }   # 입문 트랙: 쉬운 기본값, 기초 팁 먼저
+    INTEGRATION_ENGINEER: { max-task-difficulty: 4, read-code-min-knowledge: 1, basic-tips-first: false }  # 연동·구축 트랙 (06 §5.3)
+  tips:                                    # 06 §5.12 오늘의 팁
+    experiment-minutes: 25                 # WILL_TRY를 고른 팁이 Today 실험 후보로 붙을 때의 길이
   planner:
-    weights: { practical-importance: 0.25, skill-gap: 0.20, review-urgency: 0.20, milestone-urgency: 0.15, project-need: 0.10, prerequisite-readiness: 0.10 }
+    weights:
+      # 아래 6개는 합이 1.0인 정규화된 가중합이다 (06 §5.4).
+      { practical-importance: 0.25, skill-gap: 0.20, review-urgency: 0.20, milestone-urgency: 0.15, project-need: 0.10, prerequisite-readiness: 0.10,
+      # stage-gap은 그 합 밖에서 더하는 보너스다 — 넣으면 나머지 여섯의 비중이 달라진다 (06 §5.4 근거, §5.11).
+        stage-gap: 0.005 }
     modifiers:
       risk-high-must: 1.20
       risk-high-should: 0.80
       low-energy-deep-task: 0.70
       high-energy-hard-task: 1.10
-      fatigue-one-day: 0.80
-      fatigue-two-days: 0.60
       continuation-bonus: 1.15
       comeback-hard-task: 0.70             # 06 §5.5 COMEBACK_HARD_TASK (7_000bp)
+      monotony-three-days: 0.70            # 06 §5.5 MONOTONY_THREE_DAYS — 같은 과제 유형 3일 연속 (7_000bp)
+      monotony-five-days: 0.40             # 06 §5.5 MONOTONY_FIVE_DAYS — 5일 연속 (4_000bp)
+      redo-due: 1.30                       # 06 §5.5 REDO_DUE (13_000bp)
+    study-thread-max-consecutive-days: 7   # 06 §5.13 TH-4 한 skill을 이어 갈 수 있는 최대 plan-day
+    redo:                                  # 06 §5.10 재현 과제
+      min-days-after: 3                    # RE-2 창 시작 (원본 완료·지난 재현 이후 일수, 경계 포함)
+      max-days-after: 7                    # RE-2 창 끝 (경계 포함). min <= max가 아니면 기동 실패
+      max-attempts: 2                      # RE-3 한 원본에 허용하는 재현 시도 수
     low-energy-long-task-minutes: 30
     min-prerequisite-readiness: 0.5
     overrun-tolerance: 1.10
     min-main-task-minutes: 10
     min-available-minutes: 5
+    extra-task-min-minutes: 15             # 06 §5.6 추가 과제를 만드는 최소 잔여 예산 (EXPLAIN 15분)
+    max-extra-tasks: 3                     # 06 §5.6 하루 추가 과제 상한 (main 1 + 추가 3, U-3)
     challenge-repeat-exclusion-days: 14
     comeback-inactive-days: 3
     review-minutes-per-card: 1.5
@@ -525,6 +546,7 @@ devpilot:
     axis-cost: { knowledge: 0.5, implementation: 1.0, explanation: 0.4, debugging: 0.8 }
     review-overhead: 1.15
     risk-thresholds: { low-max: 0.80, medium-max: 1.00, high-max: 1.25 }
+    replan-recommend-after-days: 7        # 스냅샷이 연속 이 날 수만큼 risk ≥ HIGH면 replan 권고 (ADR-046)
     # 소수 설정값은 기동 시 bp(×10000)/micro(×1000000) 정수로 변환. 정수가 아니면 기동 실패 (06 §1 N-6)
   review:
     max-per-day: 20
@@ -539,6 +561,8 @@ devpilot:
     easy-min-days: 4
     variant-after-failures: 2
     suspend-after-failures: 4
+  tips:
+    experiment-minutes: 25                  # 06 §5.12 TIP-6 실험 후보의 표시 시간. planner에 들어가지 않는다
   rubberduck:
     max-turns: 5                            # 06 §9.5 RD-4
     stuck-turns-before-hint: 2             # RD-3
@@ -546,12 +570,14 @@ devpilot:
     dont-know-phrases: ["모르겠", "모름", "잘 모르", "생각 안", "idk", "no idea", "don't know", "dont know"]   # 06 §9.5
     stale-after: 24h                       # StaleRubberDuckJob (§6)
     max-explanation-chars: 2000
+    vague-reference-warn-per-100: 3        # 06 §9.6 지시어 비율이 이 값 이상이면 정리에 "용어" 빈틈 1건
     evidence-coverage-bp: 7000             # 06 §7.2 러버덕 설명 증거의 고정 coverage (E2·E3용, E4 미만)
   skill:
     rule-window-days: 60
     axis-change-cooldown: 24h
     self-assessment-cap: 3
     diagnostic-max-level: 3                # 06 §7.4 min(claimedLevel, 3)
+    measurable-axes: [KNOWLEDGE, IMPLEMENTATION, EXPLANATION]   # 06 §7.6 지금 근거를 쌓을 수 있는 축 (coach가 들어오면 DEBUGGING 추가)
   radar:
     default-target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }   # 06 §13 target 없을 때
   training:
@@ -592,7 +618,7 @@ devpilot:
       REQUIREMENT_EXTRACT:     { mode: ASYNC, thinking: false, max-tokens: 8000,  timeout: 120s, max-retries: 1, input-token-budget: 8000 }
       RUBBER_DUCK:             { mode: SYNC,  thinking: false, max-tokens: 1500,  timeout: 20s,  max-retries: 0, input-token-budget: 6000 }
       RUBBER_DUCK_SUMMARY:     { mode: SYNC,  thinking: true,  reasoning-effort: low, max-tokens: 4000, timeout: 30s, max-retries: 0, input-token-budget: 8000 }
-    trusted-source-hosts: [docs.spring.io, spring.io, docs.oracle.com, openjdk.org, www.postgresql.org, owasp.org, cheatsheetseries.owasp.org, www.kisa.or.kr, supabase.com, dart.dev, docs.flutter.dev, api.flutter.dev, pmd.github.io, spotbugs.readthedocs.io, checkstyle.org, junit.org, hibernate.org, docs.jboss.org, developer.mozilla.org, www.rfc-editor.org]
+    trusted-source-hosts: [docs.spring.io, spring.io, docs.oracle.com, openjdk.org, www.postgresql.org, owasp.org, cheatsheetseries.owasp.org, www.kisa.or.kr, supabase.com, dart.dev, docs.flutter.dev, api.flutter.dev, pmd.github.io, spotbugs.readthedocs.io, checkstyle.org, junit.org, hibernate.org, docs.jboss.org, developer.mozilla.org, www.rfc-editor.org, git-scm.com, spec.openapis.org, docs.gradle.org, man7.org, docs.docker.com, docs.github.com, kubernetes.io, docs.aws.amazon.com]
     curated-sources-location: classpath:content/curated-sources.yaml
     pricing:                                             # USD per 1M tokens, 2026-09-18 확인 (17-ai-integration.md §8.4)
       peak-multiplier: 2                                 # 결정 F: 피크 시간대 판정 없이 항상 곱한다 (보수 계산)

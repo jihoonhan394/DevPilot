@@ -1,0 +1,139 @@
+# Seed challenges — PRACTICAL_ENGINEERING (PRACTICE)
+# Spec: docs/19-content-spec.md §3.6 (schema), §6 (난이도), §7 (rubric·hint 작성 가이드)
+# 기준: Java 25 / Spring Boot 4.1. 리뷰 의견은 사람이 아니라 코드와 동작을 가리킨다 (19 §7.1)
+challenges:
+  - seedKey: PRACTICE.PRACTICAL_ENGINEERING.CODE_REVIEW.L1.001
+    purpose: PRACTICE
+    skills:
+      - PRACTICAL_ENGINEERING.CODE_REVIEW
+    difficulty: 1
+    estimatedMinutes: 15
+    isTransfer: false
+    title: 받은 리뷰 의견 세 개를 코드에 반영하기
+    scenario: |-
+      처음 올린 PR에 의견이 세 개 달렸습니다. 코드는 이렇습니다.
+      ```java
+      public Coupon findCoupon(String code) {
+          try {
+              return couponRepository.findByCode(code);
+          } catch (DataAccessException e) {
+              return null;
+          }
+      }
+      ```
+      달린 의견은 이렇습니다.
+      1. 조회가 실패했을 때 null을 돌려주면 호출한 쪽은 쿠폰이 없는 것과 조회가 실패한 것을 구분할 수
+         없습니다. 어떻게 나눌 수 있을까요?
+      2. 이 메서드에 대한 테스트가 없습니다. 최소한 없는 코드일 때의 동작은 고정해 두면 좋겠습니다.
+      3. 변수 이름 code 보다 couponCode 가 읽기 좋을 것 같습니다. 취향입니다.
+    prompt: |-
+      1. 세 의견을 각각 지금 고칠지, 다음 작업으로 미룰지, 고치지 않을지 정하고 한 줄 이유를 적으세요.
+      2. 지금 고치기로 한 것을 반영한 코드를 작성하세요.
+      3. 고치지 않거나 미루기로 한 의견에 남길 답글을 한 줄씩 적으세요.
+      4. 이 반영을 커밋 몇 개로 나눌지 정하고 이유를 설명하세요.
+    constraints:
+      - 메서드 이름과 호출부 시그니처는 유지한다
+      - 리뷰 의견을 모두 무시하거나 모두 그대로 따르는 답은 쓰지 않는다
+    expectedConcepts:
+      - 의견을 위험도로 나누기
+      - 없음과 실패를 구분하는 반환
+      - 동작을 고정하는 테스트
+      - 반영하지 않을 때의 응답
+    rubric:
+      - id: R1
+        criterion: 세 의견을 위험도에 따라 나누고 각각의 처리 방침을 근거와 함께 정한다
+        weightBp: 3000
+        axis: EXPLANATION
+      - id: R2
+        criterion: 조회 실패를 삼키지 않고 없음과 실패를 구분하도록 코드를 고친다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 미루거나 반영하지 않는 의견에 이유가 담긴 답글을 남긴다
+        weightBp: 2000
+        axis: EXPLANATION
+      - id: R4
+        criterion: 커밋을 나누는 기준을 정하고 그 이유를 적는다
+        weightBp: 1500
+        axis: IMPLEMENTATION
+    commonMistakes:
+      - 세 의견을 같은 무게로 보고 순서 없이 한꺼번에 고침
+      - 취향 의견까지 같은 커밋에 섞어 무엇이 바뀌었는지 가려짐
+      - 답글 없이 조용히 무시해 리뷰어가 다시 같은 의견을 달게 함
+      - 예외를 감싸기만 하고 원인을 잃어버림
+    transferTargets:
+      - JAVA.EXCEPTION
+    hints:
+      QUESTION_ONLY: 지금 이 메서드가 null을 돌려줬을 때, 부른 쪽은 쿠폰이 없어서인지 데이터베이스가 말썽이어서인지 알 수 있을까요?
+      CONCEPT_HINT: 세 의견 가운데 동작이 틀릴 수 있는 것과 읽기 좋아지는 것을 나누는 기준을 떠올려 보세요.
+      DIRECTION: 의견마다 그대로 두면 무엇이 잘못될 수 있는지 한 줄씩 적고, 그 심각도 순서대로 처리 방침을 정한 다음 코드를 고쳐 보세요.
+
+  - seedKey: PRACTICE.PRACTICAL_ENGINEERING.CODE_REVIEW.L2.001
+    purpose: PRACTICE
+    skills:
+      - PRACTICAL_ENGINEERING.CODE_REVIEW
+    difficulty: 2
+    estimatedMinutes: 25
+    isTransfer: false
+    title: 동료의 PR에 남길 리뷰 의견 쓰기
+    scenario: |-
+      동료가 올린 PR입니다. 포인트를 차감하는 기능이고, 테스트는 함께 올라오지 않았습니다.
+      ```java
+      @Transactional
+      public void usePoint(long userId, int amount) {
+          Point point = pointRepository.findByUserId(userId);
+          if (point.getBalance() > amount) {
+              point.setBalance(point.getBalance() - amount);
+              pointRepository.save(point);
+              log.info("포인트 사용 userId={} amount={} 잔액={}", userId, amount, point.getBalance());
+          } else {
+              log.warn("잔액 부족");
+          }
+      }
+      ```
+      팀 규칙은 이렇습니다. 잔액이 모자라면 호출한 쪽이 알 수 있어야 하고, 금액을 다루는 변경에는 테스트를
+      함께 올린다.
+    prompt: |-
+      1. 이 PR에 남길 의견을 위험한 것부터 순서대로 세 개 이상 쓰세요. 각 의견은 코드의 어느 자리인지,
+         거기서 관찰한 사실, 그대로 두면 생기는 결과, 제안을 담습니다.
+      2. 각 의견이 고쳐야 통과인지 참고인지 표시하세요.
+      3. 그 순서로 정한 이유를 설명하세요.
+      4. 의견 하나를 골라, 같은 내용을 상대를 탓하는 문장으로 썼을 때와 비교해 무엇이 달라지는지 적으세요.
+    constraints:
+      - 전체를 다시 짜라는 의견은 쓰지 않는다
+      - 의견은 사람이 아니라 코드와 동작을 가리켜 쓴다
+      - 팀 규칙에 없는 개인 취향은 취향임을 밝혀 적는다
+    expectedConcepts:
+      - 위험도 순서로 의견 정렬
+      - 사실과 영향과 제안을 갖춘 의견
+      - 막는 의견과 참고 의견의 구분
+      - 경계 조건 지적
+      - 테스트 없이 올라온 변경
+    rubric:
+      - id: R1
+        criterion: 잔액이 같을 때 차감되지 않고 호출한 쪽도 모르는 문제를 가장 위험한 의견으로 짚는다
+        weightBp: 3000
+        axis: DEBUGGING
+      - id: R2
+        criterion: 각 의견에 관찰한 사실과 그대로 둘 때의 결과, 제안을 함께 적는다
+        weightBp: 3000
+        axis: EXPLANATION
+      - id: R3
+        criterion: 고쳐야 하는 의견과 참고 의견을 구분해 표시한다
+        weightBp: 2000
+        axis: IMPLEMENTATION
+      - id: R4
+        criterion: 순서를 그렇게 정한 기준을 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+    commonMistakes:
+      - 읽기 편한 이름이나 줄 바꿈부터 지적하고 동작 문제를 뒤에 둠
+      - 의견마다 무엇을 어떻게 고치면 되는지 없이 질문만 남김
+      - 고쳐야 하는 의견과 취향을 섞어 작성자가 우선순위를 알 수 없게 함
+      - 잔액 부족을 알리지 않는 문제를 로그 문구 문제로만 지적함
+    transferTargets:
+      - TESTING.UNIT_TEST_DESIGN
+    hints:
+      QUESTION_ONLY: 잔액과 요청 금액이 정확히 같을 때 이 코드는 무엇을 하고, 부른 쪽은 그 결과를 어떻게 알게 될까요?
+      CONCEPT_HINT: 경계값에서의 동작, 조용히 지나가는 실패, 그리고 금액을 다루는 변경에 필요한 근거를 떠올려 보세요.
+      DIRECTION: 의견 후보를 모두 적은 뒤 그대로 두면 생기는 결과를 한 줄씩 붙이고, 결과가 무거운 것부터 다시 늘어놓아 세 개만 남겨 보세요.

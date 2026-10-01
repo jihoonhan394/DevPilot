@@ -6,18 +6,34 @@ files:
     - skill-tree/test.yaml
   roleTargets:
     - role-targets/test.yaml
+    - role-targets/test-starter.yaml
+    - role-targets/test-integration.yaml
   planTemplates:
     - plan-templates/test.yaml
+    - plan-templates/test-starter.yaml
+    - plan-templates/test-integration.yaml
   reviewCards:
     - review-cards/test.yaml
   challenges:
     - challenges/test.yaml
+  lessons:
+    - lessons/test.yaml
+  checklists:
+    - checklists/test.yaml
+  tips:
+    - tips/test.yaml
+  terms:
+    - terms/test.yaml
   curatedSources: curated-sources.yaml
   curatedRepos: curated-repos.yaml
-diagnosticCategories: [JAVA]
+  conceptReadings: concept-readings.yaml
+diagnosticCategories: [JAVA, SPRING]
 retired:
   skillCodes: []
   challengeSeedKeys: []
   conceptKeys: []
   curatedSourceIds: []
-  readingKeys: []
+  # 코드 읽기(READ.*)와 개념 읽기(DOC.*)가 한 목록을 같이 쓴다 (19 §3.1, CV-120)
+  readingKeys: [READ.TESTREPO.LEGACY_CONTROLLER.001, DOC.TESTJAVA.LEGACY.001]
+  tipKeys: []
+  termKeys: [TERM.TESTING.OLD_WORD]

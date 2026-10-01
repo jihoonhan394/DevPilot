@@ -1,0 +1,631 @@
+# DevPilot 개념 노트 — 프로젝트 처음 만들기
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 기준 버전: Java 25 / Spring Boot 4.1 / Gradle 9 / PostgreSQL 16 (AGENTS.md §0)
+# - 0단계(환경과 첫 API)의 맨 앞이다. 앞 노트를 전제하지 않는다
+lessons:
+  - key: LESSON.DEVOPS.PROJECT_BOOTSTRAP.001
+    skillCode: DEVOPS.PROJECT_BOOTSTRAP
+    title: 빈 폴더에서 첫 기동까지 (프로젝트 만들기)
+    whyItMatters: |-
+      남이 만들어 준 프로젝트만 고쳐 왔다면, 무엇이 어디서 켜지는지 모른 채로 고치게 된다.
+      의존성 하나를 지워도 되는지, 설정을 어디에 적어야 하는지 판단할 근거가 없다.
+      한 번 처음부터 만들어 보면 그 뒤로는 남의 프로젝트도 **어디를 먼저 볼지** 알게 된다.
+      이 노트의 결과물이 앞으로 모든 과제를 올릴 자리가 된다.
+    oneLine: 스프링 부트 프로젝트는 빌드 파일 하나와 시작 클래스 하나가 전부이고, 나머지는 필요할 때 더하는 것이다.
+    units:
+      - key: LESSON.DEVOPS.PROJECT_BOOTSTRAP.001.U1
+        title: 최소한 무엇이 있어야 도는가
+        minutes: 12
+        core: true
+        explain: |-
+          내려받은 프로젝트는 파일이 수십 개라 어디부터 볼지 막막하다. 그런데
+          **도는 데 꼭 필요한 것은 셋뿐**이다.
+
+          | 파일 | 하는 일 |
+          |---|---|
+          | `build.gradle.kts` | 무엇을 쓸지, 어떻게 빌드할지 |
+          | `src/main/java/.../Application.java` | 여기서 켠다 |
+          | `src/main/resources/application.yml` | 환경마다 다른 값 |
+
+          나머지는 전부 **필요해져서 생긴 것**이다.
+
+          시작 클래스에 붙는 `@SpringBootApplication` 하나가 세 가지를 켠다 —
+          설정 클래스로 쓰고, 자동 설정을 켜고, **그 클래스가 있는 패키지 아래를 훑어**
+          `@Component`·`@Service`·`@RestController`를 찾는다.
+
+          그래서 위치가 중요하다. 시작 클래스는 **맨 위 패키지**에 둔다.
+          아래에 두면 형제 패키지가 훑기 범위 밖으로 빠져 "빈을 못 찾는다"가 난다.
+        example:
+          language: text
+          code: |-
+            order-service/
+            ├── build.gradle.kts
+            ├── settings.gradle.kts
+            ├── gradlew
+            └── src/main/
+                ├── java/com/example/order/
+                │   └── OrderServiceApplication.java      ← 맨 위 패키지
+                └── resources/
+                    └── application.yml
+
+            // OrderServiceApplication.java
+            package com.example.order;
+
+            @SpringBootApplication
+            public class OrderServiceApplication {
+                public static void main(String[] args) {
+                    SpringApplication.run(OrderServiceApplication.class, args);
+                }
+            }
+          output: |-
+            ./gradlew bootRun
+
+            Starting OrderServiceApplication using Java 25
+            Tomcat started on port 8080 (http)
+            Started OrderServiceApplication in 1.284 seconds
+          note: |-
+            - 파일이 넷뿐인데 서버가 뜬다. 나머지는 나중에 필요해서 생기는 것이다
+            - `com.example.order`가 맨 위 패키지다 — 그 아래 전부가 훑기 범위다
+            - `Tomcat started on port 8080` — 서버를 따로 설치하지 않았는데 떴다(내장 서버)
+            - 기동 시간이 찍힌다. 이 줄이 안 나오면 아직 켜지지 않은 것이다
+        predict:
+          question: 시작 클래스를 `com.example.order.config` 패키지로 옮기면 어떻게 되나?
+          choices:
+            - com.example.order 아래의 다른 패키지를 못 찾아 빈이 없다고 실패한다
+            - 그대로 잘 뜬다
+            - 포트가 바뀐다
+            - 컴파일 오류가 난다
+          answer: com.example.order 아래의 다른 패키지를 못 찾아 빈이 없다고 실패한다
+          explanation: |-
+            훑는 범위는 **시작 클래스가 있는 패키지와 그 아래**다.
+            `config` 안으로 옮기면 `com.example.order.web`이나 `...service`가 범위 밖이 된다.
+            "왜 내 컨트롤러가 등록이 안 되지?"의 첫 번째 원인이 이것이다.
+        complete:
+          question: 시작 클래스를 완성하세요.
+          code: |-
+            package com.example.order;
+
+            @___
+            public class OrderServiceApplication {
+
+                public static void main(String[] args) {
+                    SpringApplication.___(OrderServiceApplication.class, args);
+                }
+            }
+          answers:
+            - [SpringBootApplication]
+            - [run]
+          explanation: |-
+            `@SpringBootApplication` 하나가 설정·자동 설정·훑기 셋을 켠다.
+            `SpringApplication.run(...)`이 실제로 컨테이너를 띄우고 내장 서버를 시작한다.
+        problem:
+          prompt: |-
+            빈 폴더에서 주문 시스템 프로젝트를 만들어 기동까지 가세요.
+
+            - 프로젝트 이름은 `order-service`, 맨 위 패키지는 `com.example.order`
+            - 시작 클래스 하나와 `GET /health`를 돌려주는 컨트롤러 하나를 만든다
+            - `./gradlew bootRun`으로 띄우고 브라우저나 curl로 눌러 확인한다
+            - 만든 파일 목록과, **각 파일이 왜 필요한지** 한 줄씩 적으세요
+
+            컨트롤러를 `com.example.web` 패키지(맨 위 패키지 **밖**)에 두면 어떻게 되는지도
+            직접 해 보고 결과를 적으세요.
+          deliverables:
+            - 만든 파일 목록과 각각이 필요한 이유
+            - 기동 로그와 GET /health 응답
+            - 컨트롤러를 범위 밖에 두었을 때의 결과
+          hints:
+            - 프로젝트 뼈대는 손으로 만들어도 되고 만들어 주는 도구를 써도 됩니다.
+            - 컨트롤러가 등록되려면 훑는 범위 안에 있어야 합니다.
+            - 범위 밖에 두면 오류가 아니라 404가 날 수도 있습니다. 왜 그럴지 생각해 보세요.
+          modelAnswer: |-
+            | 파일 | 왜 필요한가 |
+            |---|---|
+            | `settings.gradle.kts` | 이 폴더가 하나의 프로젝트임을 알린다 |
+            | `build.gradle.kts` | 무엇을 쓸지와 빌드 방법 |
+            | `gradlew` | 남의 컴퓨터에서도 같은 Gradle로 돌게 한다 |
+            | `OrderServiceApplication.java` | 켜는 자리이자 훑기의 시작점 |
+            | `HealthController.java` | 눌러서 확인할 끝점 |
+            | `application.yml` | 포트 같은 환경 값 |
+
+            ```java
+            package com.example.order.web;
+
+            @RestController
+            public class HealthController {
+
+                @GetMapping("/health")
+                public Map<String, String> health() {
+                    return Map.of("status", "UP");
+                }
+            }
+            ```
+
+            ```text
+            $ curl localhost:8080/health
+            {"status":"UP"}
+            ```
+
+            `com.example.web`에 두면 **기동은 성공하는데 `/health`가 404**다.
+            컨트롤러 클래스가 아예 빈으로 등록되지 않아 그런 경로가 있는 줄도 모르는 것이다.
+            오류가 안 나므로 더 헷갈린다 — 기동 로그만 보고 "잘 떴네" 하고 넘어가게 된다.
+          selfChecks:
+            - 빈 폴더에서 시작해 직접 만들었는가
+            - 각 파일이 왜 필요한지 말할 수 있는가
+            - 기동 로그에서 포트와 기동 완료 줄을 확인했는가
+            - 범위 밖에 두었을 때 404가 나는 것을 직접 봤는가
+      - key: LESSON.DEVOPS.PROJECT_BOOTSTRAP.001.U2
+        title: 무엇을 넣고 무엇을 넣지 않을까 (의존성)
+        minutes: 12
+        core: true
+        explain: |-
+          `build.gradle.kts`에서 가장 자주 손대는 곳은 의존성이다.
+          여기서 **무엇을 넣느냐가 그 프로젝트가 무엇인지**를 정한다.
+
+          스프링 부트는 낱개 라이브러리가 아니라 **묶음(starter)** 으로 넣는다.
+          `spring-boot-starter-web` 하나가 웹 서버·JSON 변환·요청 매핑을 함께 가져온다.
+
+          버전을 안 적는 것이 눈에 띌 것이다. 부트의 의존성 관리가
+          **묶음마다 서로 맞는 버전을 이미 정해 두었기** 때문이다.
+          직접 버전을 적으면 그 조합이 깨질 수 있다.
+
+          적는 자리도 뜻이 있다.
+
+          | 자리 | 언제 쓰이나 |
+          |---|---|
+          | `implementation` | 빌드와 실행 모두 |
+          | `runtimeOnly` | 실행할 때만 (DB 드라이버) |
+          | `testImplementation` | 테스트할 때만 |
+
+          기준은 하나다 — **지금 필요한 것만 넣는다.** 나중에 쓸지도 몰라서 넣은 묶음은
+          기동 시간을 늘리고, 자동 설정이 예상 못 한 것을 켜 놓는다.
+        example:
+          language: kotlin
+          code: |-
+            plugins {
+                java
+                id("org.springframework.boot") version "4.1.0"
+                id("io.spring.dependency-management") version "1.1.7"
+            }
+
+            java {
+                toolchain { languageVersion = JavaLanguageVersion.of(25) }
+            }
+
+            repositories { mavenCentral() }
+
+            dependencies {
+                implementation("org.springframework.boot:spring-boot-starter-web")
+                implementation("org.springframework.boot:spring-boot-starter-validation")
+                runtimeOnly("org.postgresql:postgresql")
+                testImplementation("org.springframework.boot:spring-boot-starter-test")
+            }
+
+            tasks.test { useJUnitPlatform() }
+          output: |-
+            ./gradlew dependencies --configuration runtimeClasspath
+
+            +--- org.springframework.boot:spring-boot-starter-web -> 4.1.0
+            |    +--- org.springframework.boot:spring-boot-starter-tomcat
+            |    +--- org.springframework.boot:spring-boot-starter-json
+            |    \--- org.springframework:spring-webmvc
+            \--- org.postgresql:postgresql -> 42.7.x
+          note: |-
+            - 적은 것은 네 줄인데 실제로 들어온 것은 훨씬 많다 — 묶음이 딸고 온다
+            - 버전을 안 적었는데 `-> 4.1.0`으로 정해졌다. 의존성 관리가 채운 것이다
+            - DB 드라이버는 `runtimeOnly`다. 우리 코드가 드라이버 클래스를 직접 부르지 않는다
+            - `dependencies` 태스크가 **실제로 무엇이 들어왔는지** 보여 준다. 짐작하지 않는다
+        predict:
+          question: '`spring-boot-starter-web`을 빼고 기동하면 어떻게 되나?'
+          choices:
+            - 웹 서버가 안 뜨고 실행 직후 그냥 종료된다
+            - 컴파일 오류가 난다
+            - 8080 포트로 뜨지만 요청이 404다
+            - 아무 차이 없다
+          answer: 웹 서버가 안 뜨고 실행 직후 그냥 종료된다
+          explanation: |-
+            부트는 **클래스패스에 있는 것을 보고** 무엇을 켤지 정한다.
+            웹 묶음이 없으면 내장 서버를 켤 이유가 없으니 할 일을 마치고 끝난다.
+            "왜 바로 종료되지?"의 첫 번째 확인 지점이 여기다.
+        complete:
+          question: DB 드라이버와 테스트 묶음을 알맞은 자리에 넣으세요.
+          code: |-
+            dependencies {
+                implementation("org.springframework.boot:spring-boot-starter-web")
+                ___("org.postgresql:postgresql")
+                ___("org.springframework.boot:spring-boot-starter-test")
+            }
+          answers:
+            - [runtimeOnly]
+            - [testImplementation]
+          explanation: |-
+            드라이버는 우리 코드가 직접 부르지 않고 실행할 때만 필요하므로 `runtimeOnly`다.
+            테스트 묶음을 `implementation`에 넣으면 **운영 산출물에 테스트 라이브러리가 딸려 간다.**
+        problem:
+          prompt: |-
+            주문 시스템의 `build.gradle.kts`를 작성하세요.
+
+            - 웹 API를 만들고, 요청 값을 검사하고, PostgreSQL에 붙이고, 테스트를 쓴다
+            - 각 의존성을 **어느 자리**(implementation / runtimeOnly / testImplementation)에
+              넣을지 정하고 이유를 적으세요
+            - `./gradlew dependencies`로 실제로 무엇이 들어왔는지 확인하고,
+              **직접 적지 않았는데 들어온 것** 세 개를 골라 왜 왔는지 적으세요
+            - 버전을 직접 적지 않은 이유도 한 줄로 적으세요
+          deliverables:
+            - build.gradle.kts 전체
+            - 의존성별 자리와 그 이유
+            - 직접 적지 않았는데 들어온 것 세 개와 그 출처
+          hints:
+            - 우리 코드가 그 라이브러리의 클래스를 직접 부르는지 물어보세요.
+            - dependencies 태스크의 트리에서 들여쓰기가 곧 "누가 딸고 왔나"입니다.
+            - 버전을 직접 적으면 부트가 맞춰 둔 조합이 깨질 수 있습니다.
+          modelAnswer: |-
+            ```kotlin
+            dependencies {
+                implementation("org.springframework.boot:spring-boot-starter-web")
+                implementation("org.springframework.boot:spring-boot-starter-validation")
+                implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+                runtimeOnly("org.postgresql:postgresql")
+                testImplementation("org.springframework.boot:spring-boot-starter-test")
+            }
+            ```
+
+            | 의존성 | 자리 | 이유 |
+            |---|---|---|
+            | web · validation · data-jpa | `implementation` | 우리 코드가 그 애너테이션과 타입을 직접 쓴다 |
+            | postgresql | `runtimeOnly` | 드라이버는 실행할 때만 필요하다 |
+            | starter-test | `testImplementation` | 운영 산출물에 들어가면 안 된다 |
+
+            직접 적지 않았는데 들어온 것 예 —
+            **`spring-boot-starter-tomcat`**(web이 딸고 왔다, 내장 서버),
+            **`jackson-databind`**(web의 json 묶음, JSON 변환),
+            **`hibernate-core`**(data-jpa가 딸고 왔다, JPA 구현체).
+
+            버전을 안 적는 이유는 **부트가 묶음끼리 맞는 조합을 이미 정해 뒀기** 때문이다.
+            하나만 직접 올리면 다른 것과 어긋나 기동 때 `NoSuchMethodError` 같은 것이 난다.
+          selfChecks:
+            - 각 의존성의 자리를 이유와 함께 정했는가
+            - dependencies 태스크를 실제로 돌려 봤는가
+            - 딸려 온 것의 출처를 트리에서 짚었는가
+            - 지금 필요 없는 묶음을 넣지 않았는가
+      - key: LESSON.DEVOPS.PROJECT_BOOTSTRAP.001.U3
+        title: 설정을 밖에 두고 환경마다 바꾸기
+        minutes: 12
+        core: true
+        explain: |-
+          포트, DB 주소, 로그 수준 — 이런 값을 코드에 적으면
+          **환경이 바뀔 때마다 코드를 고쳐 다시 빌드해야** 한다.
+
+          그래서 `src/main/resources/application.yml`에 둔다.
+          부트가 기동할 때 이 파일을 읽어 값을 채운다.
+
+          환경이 여럿이면 **프로필**로 나눈다.
+
+          ```text
+          application.yml            공통
+          application-local.yml      내 컴퓨터
+          application-prod.yml       서버
+          ```
+
+          `--spring.profiles.active=local` 로 고르면 공통 위에 그 파일이 덮인다.
+
+          그리고 **비밀은 파일에 적지 않는다.** 비밀번호와 API 키는
+          환경변수로 받는다. `${DB_PASSWORD}` 라고 적어 두면 기동할 때 환경에서 읽는다.
+          파일에 적으면 저장소에 그대로 올라가고, 한 번 올라간 것은 기록에 남는다.
+        example:
+          language: yaml
+          code: |-
+            # application.yml — 공통
+            spring:
+              application:
+                name: order-service
+            server:
+              port: 8080
+
+            ---
+            # application-local.yml — 내 컴퓨터
+            spring:
+              datasource:
+                url: jdbc:postgresql://localhost:5432/orderdb
+                username: order
+                password: ${DB_PASSWORD}      # 파일에 적지 않는다
+            logging:
+              level:
+                org.hibernate.SQL: debug      # 나가는 질의를 본다
+          output: |-
+            $ DB_PASSWORD=... ./gradlew bootRun --args='--spring.profiles.active=local'
+
+            The following 1 profile is active: "local"
+            Tomcat started on port 8080 (http)
+            HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@...
+            Started OrderServiceApplication in 2.104 seconds
+
+            $ ./gradlew bootRun            # 프로필 없이
+            No active profile set, falling back to 1 default profile: "default"
+            (DB 설정이 없어 datasource를 만들지 못하면 기동이 실패한다)
+          note: |-
+            - 기동 로그 첫 줄이 **어느 프로필이 켜졌는지** 알려 준다. 먼저 볼 줄이다
+            - `${DB_PASSWORD}`는 환경변수에서 온다 — 파일에는 이름만 남는다
+            - `HikariPool-1 - Added connection` 이 나오면 DB에 실제로 붙은 것이다
+            - 프로필 없이 띄우면 local 설정이 안 덮여 DB 설정이 비어 있다
+        predict:
+          question: '`application.yml`과 `application-local.yml`에 `server.port`가 둘 다 있으면 어느 쪽이 이기나?'
+          choices:
+            - application-local.yml — 프로필 파일이 공통을 덮는다
+            - application.yml — 공통이 우선이다
+            - 기동이 실패한다
+            - 둘 다 무시된다
+          answer: application-local.yml — 프로필 파일이 공통을 덮는다
+          explanation: |-
+            **더 구체적인 것이 이긴다.** 공통 위에 프로필이 덮이고,
+            그 위에 명령줄 인자(`--server.port=9090`)와 환경변수가 다시 덮는다.
+            "설정을 바꿨는데 반영이 안 된다"면 **더 우선순위 높은 곳에 같은 값**이 있는지 본다.
+        complete:
+          question: 비밀을 파일에 적지 않고 환경에서 받도록 채우세요.
+          code: |-
+            spring:
+              datasource:
+                url: jdbc:postgresql://localhost:5432/orderdb
+                username: order
+                password: ___{DB_PASSWORD}
+            # 기동: DB_PASSWORD=... ./gradlew bootRun --args='--spring.profiles.___=local'
+          answers:
+            - ["$"]
+            - [active]
+          explanation: |-
+            `${이름}`은 환경변수나 다른 설정에서 값을 가져온다.
+            `spring.profiles.active`로 어느 프로필을 켤지 고른다.
+            파일에는 **이름만** 남으므로 저장소에 올라가도 안전하다.
+        problem:
+          prompt: |-
+            주문 시스템의 설정을 세 환경으로 나누세요.
+
+            - 공통: 애플리케이션 이름, 기본 포트
+            - `local`: 내 컴퓨터 DB, 질의 로그 켜기
+            - `prod`: 서버 DB, 질의 로그 끄기, 포트 다르게
+
+            - 세 파일을 작성하고, **비밀에 해당하는 값**을 골라 환경변수로 빼세요
+            - 같은 키가 여러 곳에 있을 때 무엇이 이기는지 표로 정리하세요
+            - 설정을 바꿨는데 반영이 안 될 때 **확인하는 순서**를 적으세요
+          deliverables:
+            - 세 설정 파일
+            - 비밀로 분류한 값과 그 이유
+            - 우선순위 표와 확인 순서
+          hints:
+            - 새면 곤란한 값이 무엇인지 먼저 고르세요.
+            - 명령줄과 환경변수도 설정을 덮을 수 있습니다.
+            - 기동 로그에 어느 프로필이 켜졌는지 나옵니다.
+          modelAnswer: |-
+            ```yaml
+            # application.yml
+            spring:
+              application: { name: order-service }
+            server: { port: 8080 }
+
+            # application-local.yml
+            spring:
+              datasource:
+                url: jdbc:postgresql://localhost:5432/orderdb
+                username: order
+                password: ${DB_PASSWORD}
+            logging: { level: { org.hibernate.SQL: debug } }
+
+            # application-prod.yml
+            server: { port: 18080 }
+            spring:
+              datasource:
+                url: ${DB_URL}
+                username: ${DB_USERNAME}
+                password: ${DB_PASSWORD}
+            logging: { level: { org.hibernate.SQL: warn } }
+            ```
+
+            비밀은 **비밀번호, 서버 DB 주소, 계정 이름**이다.
+            주소와 계정도 그 자체로 공격에 쓰일 수 있으므로 운영에서는 밖에 둔다.
+
+            | 우선순위 | 어디 |
+            |---|---|
+            | 1 (가장 셈) | 명령줄 인자 `--server.port=9090` |
+            | 2 | 환경변수 |
+            | 3 | `application-{프로필}.yml` |
+            | 4 | `application.yml` |
+
+            반영이 안 될 때 확인 순서 —
+            **① 기동 로그의 활성 프로필 줄 → ② 더 센 곳에 같은 키가 있는지 →
+            ③ 키 이름의 철자와 들여쓰기 → ④ 재빌드 없이 옛 산출물을 돌리고 있지 않은지.**
+          selfChecks:
+            - 비밀을 파일에 적지 않고 환경변수로 뺐는가
+            - 세 파일의 역할이 겹치지 않게 나눴는가
+            - 우선순위를 직접 실험해 확인했는가
+            - 확인 순서가 로그에서 시작하는가
+      - key: LESSON.DEVOPS.PROJECT_BOOTSTRAP.001.U4
+        title: DB를 붙이고 표를 만들어 첫 저장까지
+        minutes: 15
+        core: true
+        explain: |-
+          마지막 조각이다. 여기까지 오면 **만들기 과제를 올릴 자리**가 완성된다.
+
+          붙이는 데 필요한 것은 셋이다.
+
+          1. **드라이버** — `runtimeOnly("org.postgresql:postgresql")`
+          2. **연결 설정** — `spring.datasource.url` · `username` · `password`
+          3. **표** — 표가 없으면 저장할 곳이 없다
+
+          3번을 손으로 만들지 않는다. **번호 붙은 SQL 파일**로 남긴다.
+          그래야 다른 컴퓨터와 서버에서도 같은 구조가 만들어진다.
+
+          그리고 설정 하나를 처음부터 박아 둔다.
+
+          ```yaml
+          spring.jpa.hibernate.ddl-auto: validate   # 확인만 한다. 고치지 않는다
+          ```
+
+          자동 변경을 켜 두면 편하지만, **엔티티에서 필드를 지웠을 때 칸과 데이터가
+          함께 사라질 수 있다.** 처음부터 `validate`로 두면 그 습관이 안 생긴다.
+
+          기동에 성공했다는 것은 **연결됐고 표가 코드와 맞는다**는 뜻이다.
+        example:
+          language: yaml
+          code: |-
+            # application-local.yml
+            spring:
+              datasource:
+                url: jdbc:postgresql://localhost:5432/orderdb
+                username: order
+                password: ${DB_PASSWORD}
+              jpa:
+                hibernate:
+                  ddl-auto: validate
+              flyway:
+                enabled: true
+
+            # src/main/resources/db/migration/V1__create_products.sql
+            # CREATE TABLE products (
+            #     id    BIGSERIAL PRIMARY KEY,
+            #     code  VARCHAR(50)  NOT NULL UNIQUE,
+            #     name  VARCHAR(200) NOT NULL,
+            #     price INTEGER      NOT NULL
+            # );
+          output: |-
+            $ DB_PASSWORD=... ./gradlew bootRun --args='--spring.profiles.active=local'
+
+            Flyway: Migrating schema "public" to version "1 - create products"
+            Flyway: Successfully applied 1 migration
+            HikariPool-1 - Added connection
+            Started OrderServiceApplication in 2.641 seconds
+
+            $ psql -d orderdb -c "\d products"
+            Column |  Type   | Nullable
+            -------+---------+----------
+            id     | bigint  | not null
+            code   | varchar | not null
+            name   | varchar | not null
+            price  | integer | not null
+          note: |-
+            - `Migrating schema`가 먼저 돌고 그다음에 기동이 끝난다 — 순서가 정해져 있다
+            - 두 번째 기동에는 이 줄이 안 나온다. 이미 적용한 것은 다시 안 돈다
+            - `ddl-auto: validate`라 엔티티와 표가 어긋나면 **기동이 멈춘다**
+            - `psql`로 직접 확인했다. 로그만 믿지 않고 눈으로 본다
+        predict:
+          question: 엔티티에 `description` 필드를 추가하고 마이그레이션을 안 쓰면 기동은?
+          choices:
+            - 실패한다 — validate가 표에 없는 칸을 찾아 멈춘다
+            - 성공하고 칸이 자동으로 생긴다
+            - 성공하지만 그 필드만 무시된다
+            - 컴파일 오류가 난다
+          answer: 실패한다 — validate가 표에 없는 칸을 찾아 멈춘다
+          explanation: |-
+            `Schema-validation: missing column [description] in table [products]` 로 멈춘다.
+            **운영에 나가기 전에 잡히는 것**이라 이것이 원하는 동작이다.
+            `update`로 두면 조용히 칸을 만들어 주는데, 지울 때도 조용히 지운다.
+        complete:
+          question: DB를 붙이고 스키마를 코드와 맞추는 설정을 완성하세요.
+          code: |-
+            spring:
+              datasource:
+                url: jdbc:___://localhost:5432/orderdb
+              jpa:
+                hibernate:
+                  ddl-auto: ___        # 확인만 한다
+          answers:
+            - [postgresql]
+            - [validate]
+          explanation: |-
+            연결 문자열은 `jdbc:postgresql://호스트:포트/DB이름` 이다.
+            `validate`는 엔티티가 요구하는 표와 칸이 실제로 있는지 기동 때 확인하고
+            없으면 멈춘다. 고치지는 않는다.
+        problem:
+          prompt: |-
+            U1에서 만든 프로젝트에 DB를 붙여 **첫 저장과 조회**까지 가세요.
+
+            - PostgreSQL에 붙이고 `products` 표를 마이그레이션 파일로 만든다
+            - 상품 하나를 저장하고 `GET /products/{code}`로 꺼내 본다
+            - `ddl-auto`는 `validate`로 둔다
+            - 일부러 엔티티에 필드를 하나 더해 **기동이 실패하는 것**을 확인하고,
+              마이그레이션을 더해 다시 통과시키세요
+
+            마지막으로, 이 프로젝트를 **다른 컴퓨터에서 받아 기동**하려면
+            무엇이 더 필요한지 적으세요.
+          deliverables:
+            - 설정, 마이그레이션 파일, 엔티티와 조회 코드
+            - 저장·조회가 동작하는 실행 결과
+            - 일부러 실패시킨 기동 로그와 고친 뒤의 로그
+            - 다른 컴퓨터에서 기동하는 데 필요한 것
+          hints:
+            - 표가 없으면 저장할 곳이 없습니다. 무엇이 먼저 돌아야 할까요?
+            - 실패 로그가 어느 표의 어느 칸인지 정확히 알려 줍니다.
+            - 내 컴퓨터에만 있는 것이 무엇인지 생각해 보세요.
+          modelAnswer: |-
+            ```java
+            @Entity
+            @Table(name = "products")
+            public class Product {
+                @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+                private Long id;
+                @Column(nullable = false, unique = true)
+                private String code;
+                private String name;
+                private int price;
+            }
+
+            @RestController
+            class ProductController {
+                @GetMapping("/products/{code}")
+                ProductResponse find(@PathVariable String code) {
+                    return repository.findByCode(code)
+                            .map(ProductResponse::from)
+                            .orElseThrow(() -> new ProductNotFoundException(code));
+                }
+            }
+            ```
+
+            일부러 `description` 필드를 더하면 —
+
+            ```text
+            Schema-validation: missing column [description] in table [products]
+            APPLICATION FAILED TO START
+            ```
+
+            `V2__add_description_to_products.sql`에 `ALTER TABLE products ADD COLUMN
+            description VARCHAR(500);`를 더하면 다시 통과한다.
+
+            다른 컴퓨터에서 기동하려면 **① Java 25 ② 붙을 수 있는 PostgreSQL 16
+            ③ `DB_PASSWORD` 환경변수** 가 필요하다. 나머지(Gradle, 의존성, 표 구조)는
+            저장소 안에 있다 — `gradlew`가 Gradle을 받아 오고, 마이그레이션이 표를 만든다.
+            **내 컴퓨터에만 있는 것을 줄여 둔 결과**다.
+          selfChecks:
+            - 표를 손으로 만들지 않고 마이그레이션 파일로 만들었는가
+            - ddl-auto를 validate로 두었는가
+            - 일부러 실패시켜 보고 메시지를 읽었는가
+            - 다른 컴퓨터에 필요한 것을 세 가지 안으로 줄였는가
+    commonMistakes:
+      - 시작 클래스를 아래 패키지에 둔다. 형제 패키지가 훑기 범위 밖이라 오류 없이 404가 난다 (U1)
+      - 나중에 쓸지 몰라 의존성 묶음을 미리 넣는다. 자동 설정이 예상 못 한 것을 켠다 (U2)
+      - 비밀번호를 설정 파일에 적는다. 저장소에 올라가고 기록에서 지워지지 않는다 (U3)
+    inProject: |-
+      이 노트의 결과물이 주문 시스템 그 자체다. 여기서 만든 `order-service`에
+      앞으로의 모든 과제가 쌓인다 — 0단계의 첫 조회 API, 1단계의 CRUD와 검증,
+      2단계의 트랜잭션과 인덱스가 전부 이 프로젝트 위에서 돈다.
+      그래서 처음에 `validate`와 마이그레이션을 박아 두는 것이 나중을 아낀다.
+    sources:
+      - title: Spring Boot — Developing Your First Spring Boot Application
+        url: https://docs.spring.io/spring-boot/tutorial/first-application/index.html
+        versionScope: Spring Boot 3.x+
+      - title: Spring Boot — Structuring Your Code
+        url: https://docs.spring.io/spring-boot/reference/using/structuring-your-code.html
+        versionScope: Spring Boot 3.x+
+      - title: Spring Boot — Externalized Configuration
+        url: https://docs.spring.io/spring-boot/reference/features/external-config.html
+        versionScope: Spring Boot 3.x+
+      - title: Spring Boot — SQL Databases
+        url: https://docs.spring.io/spring-boot/reference/data/sql.html
+        versionScope: Spring Boot 3.x+
+      - title: Gradle — Declaring Dependencies
+        url: https://docs.gradle.org/current/userguide/declaring_dependencies.html
+        versionScope: Gradle 8.x+
+    readMore:
+      - title: Spring Initializr
+        url: https://start.spring.io/
+    verifiedAt: 2026-09-25

@@ -2,20 +2,19 @@ import 'package:devpilot_app/app/routes.dart';
 import 'package:devpilot_app/core/l10n/display_format.dart';
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/time/local_date.dart';
-import 'package:devpilot_app/core/widgets/badges.dart';
 import 'package:devpilot_app/features/plan/data/learning_goal_models.dart';
 import 'package:devpilot_app/features/plan/data/plan_models.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-/// `PlanHeader`: title · version, the user's goal dates and "목표 수정" (docs/02 SCR-PLAN).
+/// `PlanHeader`: title · version, the user's target date and "목표 수정" (docs/02 SCR-PLAN).
 class PlanHeader extends StatelessWidget {
   const PlanHeader({super.key, required this.plan, required this.goal});
 
   final PlanView plan;
 
-  /// Null when `GET /learning-goal` failed: the date lines are hidden.
+  /// Null when `GET /learning-goal` failed: the date line is hidden.
   final LearningGoalView? goal;
 
   @override
@@ -23,22 +22,14 @@ class PlanHeader extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final textTheme = Theme.of(context).textTheme;
     final goalView = goal;
-    final risk = plan.latestSnapshot?.riskLevel;
-    final checkpoint = LocalDate.tryParse(goalView?.checkpointDate);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Wrap(
-          spacing: AppSpacing.sm,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Text(
-              l10n.planHeader(plan.title, plan.planVersion),
-              key: const Key('plan.header'),
-              style: textTheme.titleMedium,
-            ),
-            if (risk != null) RiskBadge(risk: risk),
-          ],
+        // The current risk is on the budget card below.
+        Text(
+          l10n.planHeader(plan.title, plan.planVersion),
+          key: const Key('plan.header'),
+          style: textTheme.titleMedium,
         ),
         if (goalView != null) ...[
           const SizedBox(height: AppSpacing.xs),
@@ -46,8 +37,8 @@ class PlanHeader extends StatelessWidget {
             l10n.planGoalCompletion(
               formatLongDate(LocalDate.parse(goalView.targetCompletionDate), l10n),
             ),
+            key: const Key('plan.targetDate'),
           ),
-          if (checkpoint != null) Text(l10n.planGoalCheckpoint(formatLongDate(checkpoint, l10n))),
         ],
         Align(
           alignment: Alignment.centerRight,

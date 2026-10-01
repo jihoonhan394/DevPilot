@@ -1,0 +1,81 @@
+# source: 06 §4.4, rows: 4
+# vector 1·2(축소), 3·4(확장). docs/06 §4.4는 skill별 필요 시간만 적으므로, 그 시간이 docs/06 §4.2 공식으로 정확히 나오도록
+# target·planning·minutesPerLevelStep을 골랐다. 각 항목 뒤 주석의 분이 그 계산값이다(축별 비용 K 5000, I 10000, E 4000, D 8000,
+# review overhead 11500). target·planning은 K|I|E|D.
+vectors:
+  - id: V01
+    effective: 5000
+    items:
+      - { code: V1.M1, priority: MUST, importanceBp: 5000, deferred: false, target: "3|5|3|3", planning: "3|3|3|3", step: 435 }    # 1001, I 5→4면 501
+      - { code: V1.M2, priority: MUST, importanceBp: 6000, deferred: false, target: "3|5|3|3", planning: "3|3|3|3", step: 435 }    # 1001, I 5→4면 501
+      - { code: V1.M3, priority: MUST, importanceBp: 9500, deferred: false, target: "0|0|0|4", planning: "0|0|0|0", step: 1059 }   # 3898
+      - { code: V1.A, priority: SHOULD, importanceBp: 4000, deferred: false, target: "0|1|0|0", planning: "0|0|0|0", step: 417 }   # 480
+      - { code: V1.B, priority: SHOULD, importanceBp: 4000, deferred: false, target: "0|1|0|0", planning: "0|0|0|0", step: 782 }   # 900
+      - { code: V1.C, priority: SHOULD, importanceBp: 7000, deferred: false, target: "1|0|0|0", planning: "0|0|0|0", step: 521 }   # 300
+    expected:
+      risk: HIGH
+      ratioBp: 11800
+      requiredMust: 5900
+      requiredShould: 1680
+      reductions:
+        - { code: V1.M1, axis: IMPLEMENTATION, currentTarget: 5, newTarget: 4, planningLevel: 3, savedMinutes: 500 }
+        - { code: V1.M2, axis: IMPLEMENTATION, currentTarget: 5, newTarget: 4, planningLevel: 3, savedMinutes: 500 }
+      defers: [V1.B, V1.A, V1.C]
+      expansions: []
+      after: { requiredMust: 4900, requiredShould: 0, ratioBp: 9800, risk: MEDIUM }
+  - id: V02
+    effective: 5000
+    items:
+      - { code: V2.M1, priority: MUST, importanceBp: 5000, deferred: false, target: "3|5|3|3", planning: "3|3|3|3", step: 435 }    # 1001
+      - { code: V2.M2, priority: MUST, importanceBp: 6000, deferred: false, target: "3|5|3|3", planning: "3|3|3|3", step: 435 }    # 1001
+      - { code: V2.M3, priority: MUST, importanceBp: 9500, deferred: false, target: "0|0|0|4", planning: "0|0|0|0", step: 1059 }   # 3898
+      - { code: V2.A, priority: SHOULD, importanceBp: 4000, deferred: false, target: "0|1|0|0", planning: "0|0|0|0", step: 69 }    # 80
+      - { code: V2.B, priority: SHOULD, importanceBp: 4000, deferred: false, target: "0|1|0|0", planning: "0|0|0|0", step: 104 }   # 120
+    expected:
+      risk: HIGH
+      ratioBp: 11800
+      requiredMust: 5900
+      requiredShould: 200
+      reductions:
+        - { code: V2.M1, axis: IMPLEMENTATION, currentTarget: 5, newTarget: 4, planningLevel: 3, savedMinutes: 500 }
+        - { code: V2.M2, axis: IMPLEMENTATION, currentTarget: 5, newTarget: 4, planningLevel: 3, savedMinutes: 500 }
+      defers: [V2.B]
+      expansions: []
+      after: { requiredMust: 4900, requiredShould: 80, ratioBp: 9800, risk: MEDIUM }
+  - id: V03
+    effective: 5000
+    items:
+      - { code: V3.T1, priority: MUST, importanceBp: 9000, deferred: false, target: "3|2|3|3", planning: "3|1|3|3", step: 435 }    # 501, I 2→3면 1001 (+500)
+      - { code: V3.T2, priority: MUST, importanceBp: 8500, deferred: false, target: "3|2|3|3", planning: "3|1|3|3", step: 348 }    # 401, I 2→3면 801 (+400)
+      - { code: V3.F, priority: MUST, importanceBp: 5000, deferred: false, target: "0|4|0|0", planning: "0|0|0|0", step: 543 }     # 2498
+      - { code: V3.X, priority: SHOULD, importanceBp: 8000, deferred: true, target: "0|1|0|0", planning: "0|0|0|0", step: 521 }    # 600
+      - { code: V3.Y, priority: LATER, importanceBp: 6500, deferred: true, target: "0|1|0|0", planning: "0|0|0|0", step: 782 }     # 900
+      - { code: V3.Z, priority: SHOULD, importanceBp: 6500, deferred: true, target: "0|1|0|0", planning: "0|0|0|0", step: 1304 }   # 1500
+    expected:
+      risk: LOW
+      ratioBp: 6800
+      requiredMust: 3400
+      requiredShould: 0
+      reductions: []
+      defers: []
+      expansions:
+        - { kind: RESTORE_DEFERRED, code: V3.X, priority: SHOULD, addedMinutes: 600 }
+        - { kind: RAISE_TARGET, code: V3.T1, priority: MUST, axis: IMPLEMENTATION, currentTarget: 2, newTarget: 3, addedMinutes: 500 }
+      after: { requiredMust: 3900, requiredShould: 600, ratioBp: 7800, risk: LOW }
+  - id: V04
+    effective: 2000
+    items:
+      - { code: V4.P, priority: MUST, importanceBp: 9000, deferred: false, target: "5|5|5|5", planning: "4|5|5|5", step: 100 }     # 58, 올릴 축 없음
+      - { code: V4.Q, priority: MUST, importanceBp: 8000, deferred: false, target: "3|2|3|3", planning: "3|1|3|3", step: 261 }     # 301, I 2→3면 601 (+300)
+      - { code: V4.R, priority: MUST, importanceBp: 7000, deferred: false, target: "3|2|3|3", planning: "3|1|3|3", step: 261 }     # 301 (+300)
+      - { code: V4.F, priority: MUST, importanceBp: 5000, deferred: false, target: "0|1|0|0", planning: "0|0|0|0", step: 556 }     # 640
+    expected:
+      risk: LOW
+      ratioBp: 6500
+      requiredMust: 1300
+      requiredShould: 0
+      reductions: []
+      defers: []
+      expansions:
+        - { kind: RAISE_TARGET, code: V4.Q, priority: MUST, axis: IMPLEMENTATION, currentTarget: 2, newTarget: 3, addedMinutes: 300 }
+      after: { requiredMust: 1600, requiredShould: 0, ratioBp: 8000, risk: LOW }

@@ -1,0 +1,8 @@
+{
+  "description": "연결 오류",
+  "attempts": [
+    {
+      "simulate": "CONNECTION_ERROR"
+    }
+  ]
+}

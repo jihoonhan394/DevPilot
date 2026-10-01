@@ -1,0 +1,9 @@
+{
+  "description": "공급자 429",
+  "attempts": [
+    {
+      "simulate": "RATE_LIMITED",
+      "retryAfterSeconds": 7
+    }
+  ]
+}

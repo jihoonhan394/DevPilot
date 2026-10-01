@@ -1,4 +1,5 @@
 import 'package:devpilot_app/core/api/api_enums.dart';
+import 'package:devpilot_app/core/api/learning_enums.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 
 // Screen labels of API enums (docs/02 §3.1 "enum 라벨"). `unknown` shows `enum.unknown`.
@@ -55,16 +56,9 @@ extension TargetAdjustmentLabel on TargetAdjustment {
 extension TargetRoleLabel on TargetRole {
   String label(AppLocalizations l10n) => switch (this) {
     TargetRole.javaBackend => l10n.enumTargetRoleJavaBackend,
+    TargetRole.javaBackendStarter => l10n.enumTargetRoleJavaBackendStarter,
+    TargetRole.integrationEngineer => l10n.enumTargetRoleIntegrationEngineer,
     TargetRole.unknown => l10n.enumUnknown,
-  };
-}
-
-extension ExperienceProfileLabel on ExperienceProfile {
-  String label(AppLocalizations l10n) => switch (this) {
-    ExperienceProfile.workingDeveloper => l10n.enumExperienceProfileWorkingDeveloper,
-    ExperienceProfile.developerStarter => l10n.enumExperienceProfileDeveloperStarter,
-    ExperienceProfile.other => l10n.enumExperienceProfileOther,
-    ExperienceProfile.unknown => l10n.enumUnknown,
   };
 }
 
@@ -99,10 +93,78 @@ extension SkillCategoryLabel on SkillCategory {
     SkillCategory.testing => l10n.enumSkillCategoryTesting,
     SkillCategory.devops => l10n.enumSkillCategoryDevops,
     SkillCategory.security => l10n.enumSkillCategorySecurity,
+    SkillCategory.integration => l10n.enumSkillCategoryIntegration,
     SkillCategory.practicalEngineering => l10n.enumSkillCategoryPracticalEngineering,
     SkillCategory.systemDesign => l10n.enumSkillCategorySystemDesign,
     SkillCategory.explanation => l10n.enumSkillCategoryExplanation,
     SkillCategory.unknown => l10n.enumUnknown,
+  };
+}
+
+extension EnergyLevelLabel on EnergyLevel {
+  String label(AppLocalizations l10n) => switch (this) {
+    EnergyLevel.low => l10n.enumEnergyLevelLow,
+    EnergyLevel.normal => l10n.enumEnergyLevelNormal,
+    EnergyLevel.high => l10n.enumEnergyLevelHigh,
+    EnergyLevel.unknown => l10n.enumUnknown,
+  };
+}
+
+extension TaskTypeLabel on TaskType {
+  String label(AppLocalizations l10n) => switch (this) {
+    TaskType.recall => l10n.enumTaskTypeRecall,
+    TaskType.review => l10n.enumTaskTypeReview,
+    TaskType.challenge => l10n.enumTaskTypeChallenge,
+    TaskType.projectTask => l10n.enumTaskTypeProjectTask,
+    TaskType.coachReview => l10n.enumTaskTypeCoachReview,
+    TaskType.reading => l10n.enumTaskTypeReading,
+    TaskType.readCode => l10n.enumTaskTypeReadCode,
+    TaskType.explain => l10n.enumTaskTypeExplain,
+    TaskType.redo => l10n.enumTaskTypeRedo,
+    TaskType.unknown => l10n.enumUnknown,
+  };
+}
+
+extension TaskStatusLabel on TaskStatus {
+  String label(AppLocalizations l10n) => switch (this) {
+    TaskStatus.planned => l10n.enumTaskStatusPlanned,
+    TaskStatus.inProgress => l10n.enumTaskStatusInProgress,
+    TaskStatus.completed => l10n.enumTaskStatusCompleted,
+    TaskStatus.skipped => l10n.enumTaskStatusSkipped,
+    TaskStatus.deferred => l10n.enumTaskStatusDeferred,
+    TaskStatus.unknown => l10n.enumUnknown,
+  };
+}
+
+extension ReadingFeedbackLabel on ReadingFeedback {
+  String label(AppLocalizations l10n) => switch (this) {
+    ReadingFeedback.helpful => l10n.enumReadingFeedbackHelpful,
+    ReadingFeedback.tooHard => l10n.enumReadingFeedbackTooHard,
+    ReadingFeedback.boring => l10n.enumReadingFeedbackBoring,
+    ReadingFeedback.unknown => l10n.enumUnknown,
+  };
+}
+
+extension LearningEventTypeLabel on LearningEventType {
+  String label(AppLocalizations l10n) => switch (this) {
+    LearningEventType.sessionStarted => l10n.enumLearningEventSessionStarted,
+    LearningEventType.sessionCompleted => l10n.enumLearningEventSessionCompleted,
+    LearningEventType.selfExplanationSubmitted => l10n.enumLearningEventExplanationSubmitted,
+    LearningEventType.selfExplanationSkipped => l10n.enumLearningEventExplanationSkipped,
+    LearningEventType.hintDisclosed => l10n.enumLearningEventHintDisclosed,
+    LearningEventType.challengeStarted => l10n.enumLearningEventChallengeStarted,
+    LearningEventType.challengeSubmitted => l10n.enumLearningEventChallengeSubmitted,
+    LearningEventType.challengeEvaluated => l10n.enumLearningEventChallengeEvaluated,
+    LearningEventType.reviewAnswered => l10n.enumLearningEventReviewAnswered,
+    LearningEventType.leechDetected => l10n.enumLearningEventLeechDetected,
+    LearningEventType.rubberDuckCompleted => l10n.enumLearningEventRubberDuckCompleted,
+    LearningEventType.coachReviewCompleted => l10n.enumLearningEventCoachReviewCompleted,
+    LearningEventType.coachFindingClosed => l10n.enumLearningEventCoachFindingClosed,
+    LearningEventType.diagnosticPassed => l10n.enumLearningEventDiagnosticPassed,
+    LearningEventType.diagnosticFailed => l10n.enumLearningEventDiagnosticFailed,
+    LearningEventType.evidenceAccepted => l10n.enumLearningEventEvidenceAccepted,
+    LearningEventType.planReplanned => l10n.enumLearningEventPlanReplanned,
+    LearningEventType.unknown => l10n.enumUnknown,
   };
 }
 
@@ -116,3 +178,64 @@ String skillLevelLabel(int level, AppLocalizations l10n) => switch (level) {
   5 => l10n.enumSkillLevel5,
   _ => l10n.enumUnknown,
 };
+
+extension TipSeriesLabel on TipSeries {
+  String label(AppLocalizations l10n) => switch (this) {
+    TipSeries.errorReading => l10n.enumTipSeriesErrorReading,
+    TipSeries.resource => l10n.enumTipSeriesResource,
+    TipSeries.logging => l10n.enumTipSeriesLogging,
+    TipSeries.httpIntegration => l10n.enumTipSeriesHttpIntegration,
+    TipSeries.database => l10n.enumTipSeriesDatabase,
+    TipSeries.operations => l10n.enumTipSeriesOperations,
+    TipSeries.convention => l10n.enumTipSeriesConvention,
+    TipSeries.unknown => l10n.enumUnknown,
+  };
+}
+
+extension TipLevelLabel on TipLevel {
+  String label(AppLocalizations l10n) => switch (this) {
+    TipLevel.basic => l10n.enumTipLevelBasic,
+    TipLevel.practical => l10n.enumTipLevelPractical,
+    TipLevel.unknown => l10n.enumUnknown,
+  };
+}
+
+extension TipFeedbackLabel on TipFeedback {
+  String label(AppLocalizations l10n) => switch (this) {
+    TipFeedback.knewIt => l10n.enumTipFeedbackKnewIt,
+    TipFeedback.learned => l10n.enumTipFeedbackLearned,
+    TipFeedback.willTry => l10n.enumTipFeedbackWillTry,
+    TipFeedback.unknown => l10n.enumUnknown,
+  };
+}
+
+extension LearningStageLabel on LearningStage {
+  String label(AppLocalizations l10n) => switch (this) {
+    LearningStage.build => l10n.enumLearningStageBuild,
+    LearningStage.readConcept => l10n.enumLearningStageReadConcept,
+    LearningStage.readCode => l10n.enumLearningStageReadCode,
+    LearningStage.explain => l10n.enumLearningStageExplain,
+    LearningStage.review => l10n.enumLearningStageReview,
+    LearningStage.redo => l10n.enumLearningStageRedo,
+    LearningStage.unknown => l10n.enumUnknown,
+  };
+
+  /// 그 칸을 채우는 방법 한 줄 (docs/02 SCR-SKILL-DETAIL). 미완료 칸에만 보인다.
+  String how(AppLocalizations l10n) => switch (this) {
+    LearningStage.build => l10n.skillDetailStageHowBuild,
+    LearningStage.readConcept => l10n.skillDetailStageHowReadConcept,
+    LearningStage.readCode => l10n.skillDetailStageHowReadCode,
+    LearningStage.explain => l10n.skillDetailStageHowExplain,
+    LearningStage.review => l10n.skillDetailStageHowReview,
+    LearningStage.redo => l10n.skillDetailStageHowRedo,
+    LearningStage.unknown => l10n.enumUnknown,
+  };
+}
+
+extension SideProjectKindLabel on SideProjectKind {
+  String label(AppLocalizations l10n) => switch (this) {
+    SideProjectKind.side => l10n.enumSideProjectKindSide,
+    SideProjectKind.pastWork => l10n.enumSideProjectKindPastWork,
+    SideProjectKind.unknown => l10n.enumUnknown,
+  };
+}

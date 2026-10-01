@@ -357,9 +357,14 @@ final class ChallengeChecks {
             String where,
             Map<String, Object> challenge,
             List<?> skills) {
+        // ADR-058: 진단은 주장한 수준을 재므로 1~3 사다리를 둔다. 자기평가 상한이 3이라 4·5는 쓰지 않는다.
         Object difficulty = challenge.get("difficulty");
-        if (!(RawYaml.isInt(difficulty) && RawYaml.longValue(difficulty) == 3)) {
-            context.error("CV-59", where, "DIAGNOSTIC difficulty must be 3");
+        boolean onLadder =
+                RawYaml.isInt(difficulty)
+                        && RawYaml.longValue(difficulty) >= 1
+                        && RawYaml.longValue(difficulty) <= 3;
+        if (!onLadder) {
+            context.error("CV-59", where, "DIAGNOSTIC difficulty must be 1, 2 or 3");
         }
         Object minutes = challenge.get("estimatedMinutes");
         if (RawYaml.isInt(minutes) && RawYaml.longValue(minutes) > 15) {
@@ -386,8 +391,12 @@ final class ChallengeChecks {
             context.error("CV-59", where, "DIAGNOSTIC skills must share one category");
         }
         for (Object skill : skills) {
-            Map<String, Object> target = context.targets.get(String.valueOf(skill));
-            if (target != null && !isDiagnosticReady(target)) {
+            // 어느 한 트랙에서라도 MUST·importance >= 0.70이면 된다 (CV-59). 트랙이 하나이던 때에는
+            // JAVA_BACKEND만 봐서, 그 트랙에서만 MUST인 category를 진단할 수 없었다.
+            List<Map<String, Object>> trackTargets =
+                    context.targetsBySkill.getOrDefault(String.valueOf(skill), List.of());
+            if (!trackTargets.isEmpty()
+                    && trackTargets.stream().noneMatch(ChallengeChecks::isDiagnosticReady)) {
                 context.error(
                         "CV-59",
                         where,

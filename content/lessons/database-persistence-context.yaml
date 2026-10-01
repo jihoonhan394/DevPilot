@@ -1,0 +1,873 @@
+# DevPilot 개념 노트 — 영속성 컨텍스트와 지연 로딩
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 기준 버전: Hibernate 7 / Spring Boot 4.1 / PostgreSQL 16 (AGENTS.md §0)
+# - 2단계(DB와 트랜잭션)에서 쓴다. DATABASE.JPA 노트를 먼저 본 것으로 전제한다
+lessons:
+  - key: LESSON.DATABASE.JPA.PERSISTENCE_CONTEXT.001
+    skillCode: DATABASE.JPA.PERSISTENCE_CONTEXT
+    title: JPA가 객체를 들고 있는 방 (영속성 컨텍스트)
+    whyItMatters: |-
+      `save`를 안 불렀는데 값이 바뀌어 있고, 같은 걸 두 번 조회했는데 질의는 한 번만 나간다.
+      이 두 가지를 모르면 JPA는 예측할 수 없는 도구가 된다.
+      주문 상태를 바꾸는 코드가 언제 실제로 DB에 닿는지, 화면에 넘긴 객체가
+      왜 갑자기 예외를 던지는지가 전부 이 방에서 설명된다.
+    oneLine: 영속성 컨텍스트는 트랜잭션 동안 엔티티를 들고 있으면서 변경을 추적하고 질의를 줄이는 작업 공간이다.
+    units:
+      - key: LESSON.DATABASE.JPA.PERSISTENCE_CONTEXT.001.U1
+        title: 같은 것은 같은 객체 (1차 캐시)
+        minutes: 10
+        core: true
+        explain: |-
+          `EntityManager`는 트랜잭션 동안 다룬 엔티티를 **자기 방에 보관한다.**
+          이 방을 영속성 컨텍스트라 하고, 안에 든 것을 **영속 상태**라 한다.
+
+          보관하는 열쇠는 **식별자**다. 그래서 같은 식별자로 두 번 찾으면
+          두 번째는 질의를 보내지 않고 방에서 꺼내 준다.
+
+          | 상태 | 뜻 |
+          |---|---|
+          | **비영속** (new) | 방에 없고 DB에도 없다. `new Order(...)` 직후 |
+          | **영속** (managed) | 방에 있다. 변경이 추적된다 |
+          | **준영속** (detached) | 방에서 나왔다. 더는 추적되지 않는다 |
+          | **삭제** (removed) | 지우기로 표시됐다 |
+
+          여기서 따라오는 결과가 하나 있다 — **같은 트랜잭션 안에서 같은 식별자면
+          `==` 비교가 참이다.** 방에 하나만 있으니 같은 객체를 돌려주기 때문이다.
+        example:
+          language: java
+          code: |-
+            @Transactional
+            public void sameInstance(long orderId) {
+                Order first = entityManager.find(Order.class, orderId);    // SELECT 나간다
+                Order second = entityManager.find(Order.class, orderId);   // 방에서 꺼낸다
+
+                System.out.println(first == second);
+                System.out.println(first.equals(second));
+
+                entityManager.detach(first);                               // 방에서 뺀다
+                Order third = entityManager.find(Order.class, orderId);    // 다시 SELECT
+                System.out.println(first == third);
+            }
+          output: |-
+            Hibernate: select o1_0.id, o1_0.status, ... from orders o1_0 where o1_0.id=?
+            true
+            true
+            Hibernate: select o1_0.id, o1_0.status, ... from orders o1_0 where o1_0.id=?
+            false
+          note: |-
+            - `SELECT`가 **두 번이 아니라 한 번** 나갔다 — 두 번째는 방에서 꺼냈다
+            - `first == second`가 `true`다. 복사본이 아니라 같은 객체다
+            - `detach` 뒤에는 방에 없으므로 질의가 다시 나가고, 이번엔 **다른 객체**다
+            - 이 방은 트랜잭션이 끝나면 통째로 사라진다
+        predict:
+          question: 두 `find` 사이에 다른 세션이 그 주문의 상태를 바꾸고 커밋했다면 `second`는?
+          choices:
+            - 방에 있던 옛 값 그대로다 — 질의를 보내지 않는다
+            - 바뀐 새 값이다
+            - 예외가 난다
+            - null이 된다
+          answer: 방에 있던 옛 값 그대로다 — 질의를 보내지 않는다
+          explanation: |-
+            1차 캐시는 **DB를 다시 보지 않는다.** 방에 있으면 그것을 준다.
+            그래서 긴 트랜잭션 안에서 최신 값이 필요하면
+            `refresh`로 다시 읽거나, 애초에 경계를 짧게 잡아야 한다.
+            "캐시가 있다"는 말은 "오래된 값을 볼 수 있다"는 말이기도 하다.
+        complete:
+          question: 방에 들여놓고, 방에서 빼고, 방을 비우는 메서드를 채우세요.
+          code: |-
+            Order order = new Order(1L, "PLACED");
+            entityManager.___(order);      // 비영속 → 영속
+
+            entityManager.___(order);      // 영속 → 준영속
+
+            entityManager.clear();          // 방을 통째로 비운다
+          answers:
+            - [persist]
+            - [detach]
+          explanation: |-
+            `persist`가 방에 들여놓고, `detach`가 그 하나를 빼고, `clear`가 전부 비운다.
+            방에서 나간 객체는 **더 이상 변경이 추적되지 않는다** — 다음 단위의 핵심이다.
+        problem:
+          prompt: |-
+            아래 테스트가 왜 실패하는지 설명하고 고치세요.
+
+            ```java
+            @Test
+            @Transactional
+            void shouldSeeUpdatedStatus() {
+                Order order = orderRepository.findById(1L).orElseThrow();
+                jdbcTemplate.update("update orders set status = 'PAID' where id = 1");
+
+                Order reloaded = orderRepository.findById(1L).orElseThrow();
+                assertThat(reloaded.getStatus()).isEqualTo("PAID");   // 실패한다
+            }
+            ```
+
+            - 왜 실패하는지 영속성 컨텍스트로 설명하세요
+            - **두 가지** 방법으로 고치세요
+            - 이 상황이 운영 코드에서 언제 문제가 되는지 예를 하나 드세요
+          deliverables:
+            - 실패하는 이유
+            - 고치는 방법 두 가지의 코드
+            - 운영 코드에서 문제가 되는 예 하나
+          hints:
+            - 두 번째 조회가 실제로 DB를 봤는지 생각해 보세요.
+            - JPA를 거치지 않은 변경을 JPA가 알 수 있을까요?
+            - 방을 비우거나, 그 하나만 다시 읽는 방법이 있습니다.
+          modelAnswer: |-
+            첫 `findById`가 주문을 **방에 들여놓았다.** 그 뒤의 `jdbcTemplate` 갱신은
+            JPA를 거치지 않았으므로 방 안의 객체는 그대로다.
+            두 번째 `findById`는 질의를 보내지 않고 **방에 있던 옛 객체**를 돌려준다.
+
+            ```java
+            // 방법 1: 방을 비운다
+            entityManager.clear();
+            Order reloaded = orderRepository.findById(1L).orElseThrow();
+
+            // 방법 2: 그 하나만 다시 읽는다
+            entityManager.refresh(order);
+            assertThat(order.getStatus()).isEqualTo("PAID");
+            ```
+
+            운영에서는 **네이티브 질의로 일괄 갱신한 뒤 같은 트랜잭션에서 조회할 때**
+            이 일이 생긴다. 예를 들어 만료된 쿠폰을 한 문장으로 일괄 처리하고
+            바로 그 쿠폰을 조회하면, 방에 남아 있던 옛 상태가 나온다.
+            일괄 갱신 뒤에는 방을 비우는 것이 정석이다.
+          selfChecks:
+            - 두 번째 조회가 질의를 보내지 않았다는 것을 짚었는가
+            - 두 가지 방법을 모두 코드로 썼는가
+            - JPA를 거치지 않은 변경이 원인임을 설명했는가
+            - 운영에서 같은 일이 생기는 예를 들었는가
+      - key: LESSON.DATABASE.JPA.PERSISTENCE_CONTEXT.001.U2
+        title: save를 안 불러도 바뀐다 (변경 감지)
+        minutes: 12
+        core: true
+        explain: |-
+          방에 들어올 때 JPA는 **그 시점의 값을 따로 복사해 둔다**(스냅숏).
+          그리고 flush할 때 지금 값과 스냅숏을 견주어, 달라진 필드가 있으면
+          `UPDATE`를 만들어 보낸다. 이것을 **변경 감지**(dirty checking)라 한다.
+
+          그래서 이런 코드가 실제로 DB를 바꾼다.
+
+          ```java
+          @Transactional
+          public void cancel(long orderId) {
+              Order order = orderRepository.findById(orderId).orElseThrow();
+              order.cancel();          // save를 부르지 않는다
+          }
+          ```
+
+          **단, 영속 상태일 때만이다.** 방에서 나온 객체(준영속)는 아무리 고쳐도
+          그대로다. 세터를 호출했는데 DB가 안 바뀌면 거의 늘 이 경우다.
+
+          `flush`는 방의 변경을 DB로 내보내는 일이고, 보통 **커밋 직전**에 일어난다.
+          질의를 보내기 직전에도 일어난다 — 방금 바꾼 것이 질의 결과에 반영돼야 하기 때문이다.
+        example:
+          language: java
+          code: |-
+            @Transactional
+            public void changeStatus(long orderId) {
+                Order order = orderRepository.findById(orderId).orElseThrow();
+                order.setStatus("PAID");           // save 없음
+                System.out.println("바꿨다");
+                // 여기서는 아직 UPDATE가 안 나갔다
+            }                                       // 커밋 직전에 flush → UPDATE
+
+            @Transactional
+            public void detachedDoesNothing(long orderId) {
+                Order order = orderRepository.findById(orderId).orElseThrow();
+                entityManager.detach(order);       // 방에서 뺀다
+                order.setStatus("PAID");           // 추적되지 않는다
+            }                                       // UPDATE가 나가지 않는다
+          output: |-
+            [changeStatus]
+            Hibernate: select o1_0.id, o1_0.status, ... from orders o1_0 where o1_0.id=?
+            바꿨다
+            Hibernate: update orders set status=? where id=?
+
+            [detachedDoesNothing]
+            Hibernate: select o1_0.id, o1_0.status, ... from orders o1_0 where o1_0.id=?
+            (UPDATE 없음)
+          note: |-
+            - `UPDATE`가 `바꿨다` **다음에** 찍혔다 — 세터 시점이 아니라 flush 시점이다
+            - `save`를 부르지 않았는데 나갔다. 방이 알아서 견주어 본 것이다
+            - `detach` 뒤의 세터는 아무 일도 하지 않는다. 로그에 `UPDATE`가 없다
+            - 그래서 "세터를 불렀는데 안 바뀐다"면 먼저 **영속 상태인지** 본다
+        predict:
+          question: '`changeStatus`에서 상태를 원래 값과 똑같은 값으로 세팅하면 UPDATE가 나가나?'
+          choices:
+            - 나가지 않는다 — 스냅숏과 달라진 것이 없다
+            - 나간다 — 세터를 불렀으므로
+            - 예외가 난다
+            - SELECT가 한 번 더 나간다
+          answer: 나가지 않는다 — 스냅숏과 달라진 것이 없다
+          explanation: |-
+            변경 감지는 **세터 호출**이 아니라 **값의 차이**를 본다.
+            들어올 때의 복사본과 견주어 달라진 것이 없으면 보낼 `UPDATE`도 없다.
+            이것이 "세터를 불렀으니 저장됐겠지"라는 짐작이 위험한 이유다.
+        complete:
+          question: 준영속 객체의 변경을 반영하려면 어떻게 하는지 빈칸을 채우세요.
+          code: |-
+            Order detached = orderRepository.findById(1L).orElseThrow();
+            entityManager.detach(detached);
+            detached.setStatus("PAID");
+
+            Order managed = entityManager.___(detached);   // 방에 다시 들인다
+            // 돌아온 managed 가 영속 상태다. ___ 는 여전히 준영속이다
+          answers:
+            - [merge]
+            - [detached]
+          explanation: |-
+            `merge`는 준영속 객체의 값을 **방 안의 객체로 옮겨 붙이고 그것을 돌려준다.**
+            넘긴 객체 자체가 영속이 되는 것이 아니다 —
+            이후 작업은 **돌려받은 객체**로 해야 한다. 여기서 실수가 자주 난다.
+        problem:
+          prompt: |-
+            주문 상태 변경 코드 세 가지 중 **DB가 실제로 바뀌는 것**을 고르고,
+            나머지는 왜 안 바뀌는지 설명하세요.
+
+            ```java
+            // A
+            @Transactional
+            void a(long id) { orderRepository.findById(id).orElseThrow().setStatus("PAID"); }
+
+            // B  (@Transactional 없음)
+            void b(long id) { orderRepository.findById(id).orElseThrow().setStatus("PAID"); }
+
+            // C
+            @Transactional
+            void c(Order fromRequest) { fromRequest.setStatus("PAID"); }
+            ```
+
+            - 셋 중 바뀌는 것과 안 바뀌는 것을 가르고 각각의 이유를 적으세요
+            - 안 바뀌는 둘을 각각 고치세요
+            - 이 셋을 구분하는 기준 한 줄을 적으세요
+          deliverables:
+            - 셋의 결과와 이유
+            - 안 바뀌는 둘을 고친 코드
+            - 구분 기준 한 줄
+          hints:
+            - 방이 언제 열리고 언제 닫히는지 먼저 그려 보세요.
+            - 요청 본문으로 받은 객체는 방을 거친 적이 있을까요?
+            - 기준은 하나입니다. 그 객체가 지금 방 안에 있는가.
+          modelAnswer: |-
+            | | 결과 | 이유 |
+            |---|---|---|
+            | A | **바뀐다** | 트랜잭션 안에서 조회해 영속 상태다 |
+            | B | 안 바뀐다 | 트랜잭션이 없어 조회 직후 방이 닫힌다 — 준영속이다 |
+            | C | 안 바뀐다 | 요청으로 받은 객체는 방에 들어온 적이 없다 — 비영속이다 |
+
+            ```java
+            // B: 경계를 연다
+            @Transactional
+            void b(long id) { orderRepository.findById(id).orElseThrow().setStatus("PAID"); }
+
+            // C: 방 안의 객체를 찾아서 고친다
+            @Transactional
+            void c(Order fromRequest) {
+                Order order = orderRepository.findById(fromRequest.getId()).orElseThrow();
+                order.setStatus("PAID");
+            }
+            ```
+
+            C를 `merge`로 고칠 수도 있지만, 요청 객체의 **모든 필드가 덮어써지므로**
+            보내지 않은 필드가 `null`로 날아갈 수 있다.
+            식별자로 다시 찾아 필요한 것만 고치는 쪽이 안전하다.
+
+            구분 기준은 한 줄이다 — **지금 이 객체가 방 안에 있는가.**
+          selfChecks:
+            - 셋을 정확히 갈랐는가
+            - 준영속과 비영속의 차이를 구분해 설명했는가
+            - C를 merge가 아니라 다시 찾는 방식으로 고쳤고 그 이유를 아는가
+            - 구분 기준을 한 줄로 말할 수 있는가
+      - key: LESSON.DATABASE.JPA.PERSISTENCE_CONTEXT.001.U3
+        title: 경계 밖으로 나간 객체
+        minutes: 10
+        core: true
+        explain: |-
+          트랜잭션이 끝나면 방이 닫힌다. 그 안에 있던 엔티티는 전부 **준영속**이 된다.
+          여기서 두 가지 사고가 난다.
+
+          **하나, 변경이 반영되지 않는다.** 앞 단위에서 본 것이다.
+
+          **둘, 아직 안 읽은 연관을 건드리면 예외가 난다.**
+          지연 로딩은 "쓸 때 읽는다"인데, 쓰려는 시점에 방이 닫혀 있으면
+          읽어 올 방법이 없어 `LazyInitializationException`이 난다.
+
+          그래서 정석은 **엔티티를 경계 밖으로 내보내지 않는 것**이다.
+          서비스 안에서 필요한 값만 뽑아 DTO로 바꿔 돌려준다.
+
+          이렇게 하면 화면이 엔티티 구조에 묶이지 않고,
+          응답에 나가면 안 되는 필드가 딸려 나가는 일도 막는다.
+          엔티티를 그대로 응답으로 쓰면 **DB 스키마가 곧 API 규격**이 된다.
+        example:
+          language: java
+          code: |-
+            // 나쁜 예 — 엔티티를 그대로 내보낸다
+            @GetMapping("/orders/{id}")
+            Order bad(@PathVariable long id) {
+                return orderService.find(id);      // 경계 밖. lines는 아직 안 읽혔다
+            }
+
+            // 좋은 예 — 경계 안에서 필요한 값만 뽑는다
+            @Transactional(readOnly = true)
+            public OrderResponse find(long id) {
+                Order order = orderRepository.findById(id).orElseThrow();
+                return new OrderResponse(
+                        order.getId(),
+                        order.getStatus(),
+                        order.getLines().size());   // 경계 안에서 읽는다
+            }
+          output: |-
+            [나쁜 예] GET /orders/1001
+            org.hibernate.LazyInitializationException:
+              could not initialize proxy [Order.lines] - no Session
+
+            [좋은 예] GET /orders/1001
+            {"id":1001,"status":"PLACED","lineCount":2}
+          note: |-
+            - 나쁜 예는 **JSON으로 바꾸는 시점**에 터진다. 컨트롤러가 아니라 직렬화 중이다
+            - 그때는 이미 트랜잭션이 끝나 방이 닫혀 있다
+            - 좋은 예는 경계 안에서 `getLines()`를 읽어 값으로 바꿔 두었다
+            - 응답에 나가는 필드를 우리가 고른다 — 엔티티가 늘어도 응답은 안 바뀐다
+        predict:
+          question: 나쁜 예에서 `Order.lines`를 `EAGER`로 바꾸면 예외가 사라지나?
+          choices:
+            - 예외는 사라지지만 모든 조회에서 lines를 함께 읽어 느려진다
+            - 예외가 그대로 난다
+            - 컴파일 오류가 난다
+            - lines가 비어서 나온다
+          answer: 예외는 사라지지만 모든 조회에서 lines를 함께 읽어 느려진다
+          explanation: |-
+            `EAGER`는 **언제나** 함께 읽는다. 목록에 쓰든 상세에 쓰든 가리지 않는다.
+            예외 하나를 없애려고 전체 조회를 느리게 만드는 것이라,
+            정석은 `LAZY`를 두고 **경계 안에서 필요한 것만** 읽는 쪽이다.
+            다음 노트에서 그 방법을 다룬다.
+        complete:
+          question: 엔티티 대신 DTO로 돌려주도록 빈칸을 채우세요.
+          code: |-
+            @Transactional(___ = true)
+            public OrderResponse find(long id) {
+                Order order = orderRepository.findById(id).orElseThrow();
+                return OrderResponse.___(order);   // 경계 안에서 값으로 바꾼다
+            }
+          answers:
+            - [readOnly]
+            - [from, of]
+          explanation: |-
+            조회만 하는 경계에는 `readOnly = true`를 붙인다.
+            그리고 경계 안에서 엔티티를 응답 타입으로 바꿔 둔다 —
+            밖으로 나가는 것은 값이지 방에서 나온 객체가 아니다.
+        problem:
+          prompt: |-
+            아래 컨트롤러는 운영에서 두 가지로 터진다.
+
+            ```java
+            @GetMapping("/members/{id}")
+            Member find(@PathVariable long id) {
+                return memberRepository.findById(id).orElseThrow();
+            }
+            ```
+
+            `Member`에는 `passwordHash` 필드와 `List<Order> orders`(LAZY)가 있다.
+
+            - 두 가지 문제를 각각 지적하세요 (하나는 예외, 하나는 보안입니다)
+            - DTO를 만들어 고치세요
+            - 엔티티를 그대로 응답으로 쓰면 **앞으로** 어떤 일이 더 생기는지 하나 적으세요
+          deliverables:
+            - 두 가지 문제와 각각이 언제 드러나는지
+            - DTO와 고친 컨트롤러 코드
+            - 앞으로 생길 문제 하나
+          hints:
+            - LAZY 연관을 JSON으로 바꾸려 하면 어디서 무슨 일이 일어날까요?
+            - 엔티티의 모든 필드가 응답에 나간다면 그중 나가면 안 되는 것은 없나요?
+            - 나중에 엔티티에 필드를 하나 더하면 응답은 어떻게 되나요?
+          modelAnswer: |-
+            문제는 **① `orders`를 직렬화하다 `LazyInitializationException`
+            ② `passwordHash`가 응답에 그대로 나간다** 이다.
+            ①은 실행하자마자 드러나지만 **②는 아무도 모르게 나간다** — 이쪽이 더 위험하다.
+
+            ```java
+            public record MemberResponse(long id, String email, String nickname) {
+                public static MemberResponse from(Member member) {
+                    return new MemberResponse(member.getId(), member.getEmail(), member.getNickname());
+                }
+            }
+
+            @GetMapping("/members/{id}")
+            MemberResponse find(@PathVariable long id) {
+                return memberService.find(id);   // 서비스가 경계 안에서 DTO로 바꾼다
+            }
+            ```
+
+            앞으로 생길 일은 **엔티티에 필드를 더할 때마다 응답이 말없이 바뀌는 것**이다.
+            내부 관리용 컬럼을 하나 추가했을 뿐인데 API 규격이 달라지고,
+            앱이 모르는 필드를 받게 된다. DTO가 있으면 응답은 우리가 정한 것만 나간다.
+          selfChecks:
+            - 두 문제를 모두 짚었는가
+            - 보안 쪽 문제가 조용히 일어난다는 것을 알았는가
+            - DTO 변환을 경계 안에서 하는가
+            - 엔티티 변경이 응답에 새지 않게 됐는가
+    commonMistakes:
+      - 세터를 불렀는데 DB가 안 바뀐다. 그 객체가 준영속이거나 비영속인 경우다 (U2)
+      - 엔티티를 그대로 응답으로 내보낸다. 지연 로딩 예외가 나거나 비밀 필드가 샌다 (U3)
+      - '`merge`가 넘긴 객체를 영속으로 만든다고 여긴다. 영속인 것은 돌려받은 객체다 (U2)'
+    inProject: |-
+      주문 시스템의 서비스 계층이 이 노트의 자리다. 경계 안에서 엔티티를 찾아 고치고,
+      나갈 때는 `OrderResponse` 같은 값으로 바꿔 내보낸다.
+      상태 변경은 `save`를 부르지 않고 도메인 메서드(`order.cancel()`)로 하고,
+      일괄 갱신을 네이티브 질의로 했다면 그 뒤에 방을 비운다.
+    sources:
+      - title: Spring Framework — JPA (Data Access)
+        url: https://docs.spring.io/spring-framework/reference/data-access/orm/jpa.html
+        versionScope: Spring Framework 6.x+
+      - title: Spring Framework — Transaction Management
+        url: https://docs.spring.io/spring-framework/reference/data-access/transaction.html
+        versionScope: Spring Framework 6.x+
+      - title: Hibernate ORM Documentation
+        url: https://hibernate.org/orm/documentation/
+        versionScope: Hibernate ORM
+    verifiedAt: 2026-09-24
+
+  - key: LESSON.DATABASE.JPA.FETCH_STRATEGY.001
+    skillCode: DATABASE.JPA.FETCH_STRATEGY
+    title: 목록 한 번에 질의 101번 (지연 로딩과 N+1)
+    whyItMatters: |-
+      주문 20건을 조회했는데 질의가 21번 나가고, 100건이면 101번 나간다.
+      개발 장비의 데이터 10건으로는 절대 안 보이고, 운영에서 갑자기 느려진다.
+      이것이 JPA로 만든 서비스가 느려지는 가장 흔한 이유이고,
+      원인을 알면 고치는 것은 한 줄이다.
+    oneLine: 연관을 하나씩 따로 읽어 질의가 건수만큼 늘어나는 것이 N+1이고, 필요한 것을 함께 읽어 막는다.
+    units:
+      - key: LESSON.DATABASE.JPA.FETCH_STRATEGY.001.U1
+        title: 언제 가져올까 (LAZY와 EAGER)
+        minutes: 10
+        core: true
+        explain: |-
+          연관된 것을 **언제 읽을지** 정하는 설정이다.
+
+          | | 언제 읽나 | 문제 |
+          |---|---|---|
+          | `LAZY` | 실제로 쓸 때 | 쓸 때 방이 닫혀 있으면 예외 |
+          | `EAGER` | 엔티티를 읽을 때 늘 | 안 쓸 때도 읽어 느리다 |
+
+          JPA의 기본값은 관계 종류에 따라 다르다 —
+          `@OneToMany`·`@ManyToMany`는 `LAZY`, `@ManyToOne`·`@OneToOne`은 **`EAGER`** 다.
+
+          그런데 실무의 정석은 **전부 `LAZY`로 두는 것**이다.
+          `EAGER`는 "이 엔티티를 읽는 모든 곳"에 영향을 주는데,
+          그 모든 곳이 그 연관을 쓰는 것은 아니기 때문이다.
+          목록 화면에서 쓰지도 않는 회원 정보를 매번 함께 읽을 이유가 없다.
+
+          그래서 `@ManyToOne(fetch = FetchType.LAZY)` 를 **명시적으로 적는다.**
+          기본값에 맡기지 않는다.
+        example:
+          language: java
+          code: |-
+            @Entity
+            public class Order {
+
+                @Id
+                private Long id;
+
+                @ManyToOne(fetch = FetchType.LAZY)      // 기본값 EAGER를 덮어쓴다
+                private Member member;
+
+                @OneToMany(mappedBy = "order")           // 기본이 LAZY다
+                private List<OrderLine> lines = new ArrayList<>();
+            }
+
+            @Transactional(readOnly = true)
+            public void lazyLoading(long orderId) {
+                Order order = orderRepository.findById(orderId).orElseThrow();
+                System.out.println("주문만 읽었다");
+                System.out.println(order.getMember().getNickname());   // 여기서 읽는다
+            }
+          output: |-
+            Hibernate: select o1_0.id, o1_0.member_id, o1_0.status from orders o1_0 where o1_0.id=?
+            주문만 읽었다
+            Hibernate: select m1_0.id, m1_0.nickname from members m1_0 where m1_0.id=?
+            지훈
+          note: |-
+            - 첫 질의에 `member` 컬럼이 아니라 `member_id`만 있다 — 아직 안 읽었다
+            - `주문만 읽었다` 뒤에 회원 질의가 나갔다. **쓸 때 읽은 것**이다
+            - `getMember()`만 부르고 안 쓰면 질의가 안 나간다. 프록시만 돌려준다
+            - `EAGER`였다면 첫 질의가 조인으로 나가고, 안 써도 읽었을 것이다
+        predict:
+          question: '`order.getMember()` 까지만 하고 `getNickname()`을 부르지 않으면 질의는 몇 번 나가나?'
+          choices:
+            - 한 번 — 프록시만 돌려주고 실제로 읽지 않는다
+            - 두 번 — getMember에서 이미 읽는다
+            - 세 번
+            - 예외가 난다
+          answer: 한 번 — 프록시만 돌려주고 실제로 읽지 않는다
+          explanation: |-
+            `LAZY` 연관은 **껍데기(프록시)** 를 먼저 준다.
+            그 안의 값을 실제로 건드릴 때 비로소 질의가 나간다.
+            그래서 식별자만 필요할 때는 `getMember().getId()`가 질의를 일으키지 않는다 —
+            식별자는 껍데기가 이미 알고 있기 때문이다.
+        complete:
+          question: 두 연관을 모두 지연 로딩으로 두도록 빈칸을 채우세요.
+          code: |-
+            @ManyToOne(fetch = FetchType.___)
+            private Member member;
+
+            @OneToMany(mappedBy = "order", fetch = FetchType.___)
+            private List<OrderLine> lines = new ArrayList<>();
+          answers:
+            - [LAZY]
+            - [LAZY]
+          explanation: |-
+            `@ManyToOne`은 기본이 `EAGER`라 반드시 적어 줘야 하고,
+            `@OneToMany`는 기본이 `LAZY`지만 **적어 두면 읽는 사람이 헷갈리지 않는다.**
+            기본값에 기대지 않는 것이 정석이다.
+        problem:
+          prompt: |-
+            주문 시스템의 엔티티 연관을 점검하세요.
+
+            ```java
+            @ManyToOne private Member member;                    // Order
+            @ManyToOne private Product product;                  // OrderLine
+            @OneToMany(mappedBy = "order") private List<OrderLine> lines;
+            @OneToOne private Payment payment;                   // Order
+            ```
+
+            - 각 연관의 **실제 기본 전략**이 무엇인지 적으세요
+            - 주문 목록 화면(주문 번호·상태·금액만 보여 줌)을 조회할 때
+              위 설정으로 **몇 개의 표를 읽게 되는지** 따져 보세요
+            - 전부 `LAZY`로 고치고, 그래도 남는 문제가 무엇인지 적으세요
+          deliverables:
+            - 연관별 실제 기본 전략
+            - 목록 조회 시 읽게 되는 표와 그 이유
+            - 고친 코드와 그래도 남는 문제
+          hints:
+            - ToOne과 ToMany의 기본값이 다릅니다.
+            - EAGER 연관이 또 다른 EAGER 연관을 갖고 있으면 어떻게 될까요?
+            - LAZY로 바꾸면 질의가 줄지만, 목록에서 연관을 쓰기 시작하면 무슨 일이 생길까요?
+          modelAnswer: |-
+            | 연관 | 기본 전략 |
+            |---|---|
+            | `Order.member` (`@ManyToOne`) | **EAGER** |
+            | `OrderLine.product` (`@ManyToOne`) | **EAGER** |
+            | `Order.lines` (`@OneToMany`) | LAZY |
+            | `Order.payment` (`@OneToOne`) | **EAGER** |
+
+            목록 조회에서 주문 번호·상태·금액만 쓰는데도
+            `orders`·`members`·`payments` **세 표**를 읽는다.
+            `@ManyToOne`과 `@OneToOne`이 `EAGER`라 조인이나 추가 질의가 딸려 나가기 때문이다.
+
+            ```java
+            @ManyToOne(fetch = FetchType.LAZY) private Member member;
+            @ManyToOne(fetch = FetchType.LAZY) private Product product;
+            @OneToMany(mappedBy = "order", fetch = FetchType.LAZY) private List<OrderLine> lines;
+            @OneToOne(fetch = FetchType.LAZY) private Payment payment;
+            ```
+
+            남는 문제는 **상세 화면처럼 연관을 실제로 쓰는 곳**이다.
+            거기서는 `LAZY`가 건수만큼 질의를 내보낸다 — 그것이 다음 단위의 N+1이다.
+            `LAZY`는 문제를 없앤 것이 아니라 **필요한 곳에서만 다루게** 옮긴 것이다.
+          selfChecks:
+            - ToOne 연관의 기본값이 EAGER라는 것을 반영했는가
+            - 목록 조회에서 읽는 표를 실제로 세어 봤는가
+            - 전부 LAZY로 바꿨는가
+            - LAZY가 문제를 없앤 것이 아니라 옮긴 것임을 이해했는가
+      - key: LESSON.DATABASE.JPA.FETCH_STRATEGY.001.U2
+        title: 질의가 건수만큼 늘어나는 자리 (N+1)
+        minutes: 12
+        core: true
+        explain: |-
+          `LAZY`로 두고 목록에서 연관을 쓰면 이렇게 된다.
+
+          ```java
+          List<Order> orders = orderRepository.findAll();      // 질의 1번
+          for (Order order : orders) {
+              order.getMember().getNickname();                  // 건당 1번씩
+          }
+          ```
+
+          주문이 N건이면 질의가 **1 + N번** 나간다. 이것이 **N+1 문제**다.
+
+          무서운 것은 **개발 장비에서 안 보인다**는 점이다.
+          데이터 10건이면 질의 11번이 1밀리초 만에 끝난다.
+          운영에서 500건이 되면 501번이 되고, 각 질의의 왕복 시간이 쌓여 화면이 멈춘다.
+
+          찾는 방법은 정해져 있다 — **질의 로그를 켜고 건수를 세는 것**이다.
+          목록 조회 한 번에 질의가 몇 번 나가는지 눈으로 본다.
+          한 번이어야 할 자리에 스무 번이 찍혀 있으면 그것이 N+1이다.
+        example:
+          language: java
+          code: |-
+            // application.yml
+            // logging.level.org.hibernate.SQL: debug
+
+            @Transactional(readOnly = true)
+            public List<OrderResponse> listBad() {
+                return orderRepository.findAll().stream()          // 질의 1번
+                        .map(order -> new OrderResponse(
+                                order.getId(),
+                                order.getMember().getNickname(),   // 건당 1번
+                                order.getStatus()))
+                        .toList();
+            }
+          output: |-
+            Hibernate: select o1_0.id, o1_0.member_id, o1_0.status from orders o1_0
+            Hibernate: select m1_0.id, m1_0.nickname from members m1_0 where m1_0.id=?
+            Hibernate: select m1_0.id, m1_0.nickname from members m1_0 where m1_0.id=?
+            Hibernate: select m1_0.id, m1_0.nickname from members m1_0 where m1_0.id=?
+            ... (주문 건수만큼 반복)
+
+            주문 3건 → 질의 4번
+            주문 500건 → 질의 501번
+          note: |-
+            - 첫 질의 하나 뒤에 **똑같이 생긴 질의가 건수만큼** 반복된다
+            - 회원이 같아도 방에 없으면 또 나간다 — 서로 다른 회원이면 전부 나간다
+            - 개발 데이터 3건으로는 "질의 4번"이라 아무도 이상하게 여기지 않는다
+            - `logging.level.org.hibernate.SQL: debug` 없이는 이것이 아예 안 보인다
+        predict:
+          question: 주문 500건이 모두 **같은 회원**의 주문이라면 질의는 몇 번 나가나?
+          choices:
+            - 2번 — 회원은 1차 캐시에서 꺼낸다
+            - 501번 — 건당 한 번씩이다
+            - 500번
+            - 1번
+          answer: 2번 — 회원은 1차 캐시에서 꺼낸다
+          explanation: |-
+            같은 식별자면 방에 이미 있으므로 두 번째부터는 질의가 안 나간다.
+            그래서 **테스트 데이터가 한 회원에 몰려 있으면 N+1이 안 보인다.**
+            성능 문제를 재현할 때는 데이터의 분포까지 운영과 비슷하게 만들어야 한다.
+        complete:
+          question: 질의 로그를 켜서 N+1을 눈으로 확인하세요.
+          code: |-
+            # application.yml
+            logging:
+              level:
+                org.hibernate.___: debug     # 나가는 SQL을 찍는다
+
+            # 목록 조회를 한 번 호출하고 찍힌 질의 수를 ___
+          answers:
+            - [SQL, sql]
+            - [센다, 세어 본다]
+          explanation: |-
+            추측하지 않고 **찍힌 질의 수를 센다.**
+            목록 조회 한 번에 질의가 건수에 비례해 늘어난다면 N+1이다.
+            운영에서는 이 로그를 끄되, 개발에서는 켜 두는 것이 정석이다.
+        problem:
+          prompt: |-
+            주문 상세 화면을 만드는 코드에서 N+1이 **두 겹**으로 일어난다.
+
+            ```java
+            @Transactional(readOnly = true)
+            public List<OrderDetail> details(long memberId) {
+                return orderRepository.findAllByMemberId(memberId).stream()
+                        .map(order -> new OrderDetail(
+                                order.getId(),
+                                order.getLines().stream()
+                                        .map(line -> line.getProduct().getName())
+                                        .toList()))
+                        .toList();
+            }
+            ```
+
+            - 주문 10건, 주문당 줄 3개일 때 **질의가 몇 번** 나가는지 계산 과정을 적으세요
+            - 두 겹이 각각 어디에서 생기는지 짚으세요
+            - 고치기 전에 이 문제를 **테스트로 잡는 방법**을 제안하세요
+          deliverables:
+            - 질의 횟수 계산 과정
+            - 두 겹이 생기는 자리
+            - 테스트로 잡는 방법
+          hints:
+            - 바깥 반복문과 안쪽 반복문이 각각 무엇을 읽는지 나눠 보세요.
+            - 주문마다 줄 목록을 읽고, 줄마다 상품을 읽습니다.
+            - 질의 횟수를 세는 도구가 있다면 테스트에서 단언할 수 있습니다.
+          modelAnswer: |-
+            | 단계 | 질의 수 |
+            |---|---|
+            | 주문 목록 | 1 |
+            | 주문마다 `lines` | 10 |
+            | 줄마다 `product` | 10 × 3 = 30 |
+            | **합계** | **41** |
+
+            두 겹은 **`order.getLines()`**(주문당 한 번)와
+            **`line.getProduct()`**(줄당 한 번)에서 생긴다.
+            상품이 겹치면 1차 캐시 덕에 줄지만, 다양하면 30번이 그대로 나간다.
+
+            테스트로 잡는 방법은 **질의 수를 세어 단언하는 것**이다.
+            Hibernate의 통계 기능을 켜고 실행 전후의 질의 수를 비교한다.
+
+            ```java
+            @Test
+            @Transactional
+            void shouldNotIssueMoreThanTwoQueries() {
+                Statistics statistics = entityManagerFactory
+                        .unwrap(SessionFactory.class).getStatistics();
+                statistics.setStatisticsEnabled(true);
+                statistics.clear();
+
+                orderService.details(1L);
+
+                assertThat(statistics.getPrepareStatementCount()).isLessThanOrEqualTo(2);
+            }
+            ```
+
+            이 테스트가 있으면 **나중에 누가 연관을 하나 더 읽어도** 빌드가 깨져 알려 준다.
+            고치는 것보다 다시 생기지 않게 막는 것이 중요하다.
+          selfChecks:
+            - 질의 횟수를 단계별로 계산했는가
+            - 두 겹이 생기는 자리를 각각 짚었는가
+            - 1차 캐시 때문에 줄어들 수 있다는 것을 고려했는가
+            - 질의 수를 단언하는 테스트를 제안했는가
+      - key: LESSON.DATABASE.JPA.FETCH_STRATEGY.001.U3
+        title: 함께 읽는 세 가지 방법과 고르는 기준
+        minutes: 12
+        core: true
+        explain: |-
+          N+1을 막는 방법은 셋이고, **쓰는 자리가 다르다.**
+
+          | 방법 | 어떻게 | 언제 |
+          |---|---|---|
+          | **fetch join** | 질의에 `join fetch`를 적는다 | 그 질의에서만 함께 필요할 때 |
+          | **엔티티 그래프** | 어디까지 읽을지 이름으로 지정한다 | 같은 조합을 여러 곳에서 쓸 때 |
+          | **배치 크기** | 한 번에 N건씩 모아 `IN`으로 읽는다 | 컬렉션이 여럿이거나 페이지가 필요할 때 |
+
+          fetch join에는 함정이 있다. **컬렉션을 fetch join하면 줄이 곱해진다.**
+          주문 10건에 줄 3개씩이면 결과가 30줄이 되어 주문이 중복된다.
+          그래서 `distinct`가 필요하고, 더 중요하게는 **페이지 처리를 DB가 못 한다** —
+          Hibernate가 전부 읽어 메모리에서 자르므로 건수가 많으면 위험하다.
+
+          그래서 기준은 이렇다. **`ToOne`은 fetch join, 컬렉션은 배치 크기.**
+          페이지가 필요하면 무조건 배치 크기다.
+        example:
+          language: java
+          code: |-
+            // 1) ToOne — fetch join
+            @Query("select o from Order o join fetch o.member where o.memberId = :memberId")
+            List<Order> findAllWithMember(@Param("memberId") long memberId);
+
+            // 2) 엔티티 그래프 — 같은 조합을 여러 곳에서
+            @EntityGraph(attributePaths = {"member", "payment"})
+            List<Order> findAllByStatus(String status);
+
+            // 3) 컬렉션 — 배치 크기 (application.yml)
+            // spring.jpa.properties.hibernate.default_batch_fetch_size: 100
+          output: |-
+            [1] 질의 1번
+            select o1_0.id, m1_0.id, m1_0.nickname, o1_0.status
+              from orders o1_0 join members m1_0 on m1_0.id = o1_0.member_id
+             where o1_0.member_id = ?
+
+            [3] 주문 10건의 lines — 질의 2번 (1 + 1)
+            select o1_0.id, o1_0.status from orders o1_0
+            select l1_0.order_id, l1_0.id, l1_0.quantity from order_lines l1_0
+             where l1_0.order_id in (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          note: |-
+            - fetch join은 **조인 한 번**으로 끝난다. `ToOne`에 가장 잘 맞는다
+            - 엔티티 그래프는 질의를 새로 쓰지 않고 **읽을 범위만** 지정한다
+            - 배치 크기는 11번을 2번으로 줄인다 — `IN`으로 모아 읽기 때문이다
+            - 배치 크기는 설정 한 줄이라 **모든 컬렉션에 한꺼번에** 적용된다
+        predict:
+          question: 컬렉션을 `join fetch`하면서 `Pageable`로 페이지 처리를 하면?
+          choices:
+            - Hibernate가 전부 읽어 메모리에서 자른다. 건수가 많으면 위험하다
+            - DB가 정상적으로 잘라 준다
+            - 컴파일 오류가 난다
+            - 페이지가 무시되고 첫 줄만 나온다
+          answer: Hibernate가 전부 읽어 메모리에서 자른다. 건수가 많으면 위험하다
+          explanation: |-
+            컬렉션을 조인하면 줄이 곱해져 **DB의 `LIMIT`이 원하는 단위와 어긋난다.**
+            그래서 Hibernate는 전부 읽고 메모리에서 자르는데, 경고 로그만 남기고 동작은 한다.
+            개발에서는 멀쩡하다가 운영에서 메모리가 터지는 전형적인 자리다.
+            **페이지가 필요하면 컬렉션은 배치 크기로 읽는다.**
+        complete:
+          question: ToOne 연관을 한 질의로 함께 읽도록 빈칸을 채우세요.
+          code: |-
+            @Query("select o from Order o ___ ___ o.member where o.status = :status")
+            List<Order> findAllWithMember(@Param("status") String status);
+          answers:
+            - [join]
+            - [fetch]
+          explanation: |-
+            `join fetch`는 연관까지 **한 질의로 함께 읽어 온다.**
+            그냥 `join`은 조인만 하고 연관은 여전히 지연 상태라 N+1이 그대로 남는다 —
+            `fetch`가 있고 없고의 차이가 크다.
+        problem:
+          prompt: |-
+            앞 단위의 질의 41번짜리 코드를 고치세요.
+
+            ```java
+            orderRepository.findAllByMemberId(memberId)   // 주문 10건
+                → order.getLines()                        // 주문당 1번
+                → line.getProduct()                       // 줄당 1번
+            ```
+
+            - 세 방법 중 어느 것을 어디에 쓸지 정하고 **이유**를 적으세요
+            - 고친 코드를 쓰고, 질의가 몇 번으로 줄었는지 계산하세요
+            - 이 화면에 페이지 처리가 붙는다면 무엇이 달라지는지 적으세요
+          deliverables:
+            - 연관별로 고른 방법과 이유
+            - 고친 코드와 줄어든 질의 수
+            - 페이지 처리가 붙을 때의 변화
+          hints:
+            - 컬렉션과 ToOne에 맞는 방법이 다릅니다.
+            - lines는 컬렉션이고 product는 ToOne입니다.
+            - 페이지가 붙으면 컬렉션에 쓸 수 없게 되는 방법이 하나 있습니다.
+          modelAnswer: |-
+            | 연관 | 방법 | 이유 |
+            |---|---|---|
+            | `order.lines` | 배치 크기 | 컬렉션이고 페이지가 붙을 수 있다 |
+            | `line.product` | 배치 크기 또는 fetch join | `ToOne`이지만 줄 질의에 묶여 있다 |
+
+            ```yaml
+            spring:
+              jpa:
+                properties:
+                  hibernate:
+                    default_batch_fetch_size: 100
+            ```
+
+            ```java
+            @Transactional(readOnly = true)
+            public List<OrderDetail> details(long memberId) {
+                return orderRepository.findAllByMemberId(memberId).stream()
+                        .map(order -> new OrderDetail(
+                                order.getId(),
+                                order.getLines().stream()
+                                        .map(line -> line.getProduct().getName())
+                                        .toList()))
+                        .toList();
+            }
+            ```
+
+            **코드는 그대로 두고 설정 한 줄로 41번이 3번이 된다** —
+            주문 1번, 줄을 `IN`으로 1번, 상품을 `IN`으로 1번.
+
+            페이지 처리가 붙으면 `lines`에 `join fetch`를 쓸 수 없게 된다.
+            줄이 곱해져 `LIMIT`이 어긋나고 Hibernate가 전부 읽기 때문이다.
+            배치 크기는 페이지와 함께 써도 안전하므로 이 선택이 그대로 유지된다.
+          selfChecks:
+            - 컬렉션과 ToOne에 다른 방법을 골랐는가
+            - 고친 뒤 질의 수를 실제로 세어 봤는가
+            - 페이지가 붙을 때 fetch join이 위험해지는 이유를 아는가
+            - 코드를 안 고치고 설정으로 해결되는 부분을 알아봤는가
+    commonMistakes:
+      - '`LazyInitializationException`을 `EAGER`로 막는다. 안 쓰는 곳에서도 읽어 전체가 느려진다 (U1)'
+      - 개발 데이터 10건으로 확인하고 넘어간다. N+1은 건수가 늘어야 드러난다 (U2)
+      - 컬렉션을 fetch join하면서 페이지 처리를 한다. 전부 읽어 메모리에서 자른다 (U3)
+    inProject: |-
+      주문 시스템에서 먼저 할 일은 `@ManyToOne`과 `@OneToOne`에 `LAZY`를 명시하고
+      `default_batch_fetch_size`를 설정에 넣는 것이다. 이 둘만으로 대부분의 N+1이 사라진다.
+      목록 조회에는 질의 수를 단언하는 테스트를 붙여 두어, 나중에 연관을 하나 더 읽어도
+      빌드가 알려 주게 한다. 개발 환경에서는 질의 로그를 켜 둔다.
+    sources:
+      - title: Spring Data JPA — JPA Repositories
+        url: https://docs.spring.io/spring-data/jpa/reference/jpa.html
+        versionScope: Spring Data JPA 3.x+
+      - title: Spring Framework — JPA (Data Access)
+        url: https://docs.spring.io/spring-framework/reference/data-access/orm/jpa.html
+        versionScope: Spring Framework 6.x+
+      - title: Hibernate ORM Documentation
+        url: https://hibernate.org/orm/documentation/
+        versionScope: Hibernate ORM
+    verifiedAt: 2026-09-24

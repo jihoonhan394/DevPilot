@@ -1,0 +1,347 @@
+# Seed review cards — INTEGRATION
+# Spec: docs/19-content-spec.md §3.5 (schema), §7.4 (작성 가이드)
+# 기준: RFC 9110 / RFC 6749 · 6750 / RFC 9421 / RFC 4180 / OpenAPI 3.1.1 / PostgreSQL 16
+cards:
+  # ----------------------------------------------- INTEGRATION.API_CONTRACT
+  - conceptKey: INTEGRATION.API_CONTRACT.ERROR_RESPONSE_IN_SPEC
+    skill: INTEGRATION.API_CONTRACT
+    reviewType: EXPLAIN
+    prompt: >-
+      API 명세에 성공 응답만 적고 오류 응답을 적지 않으면 연동 상대는 무엇을 못 하게 되나요? 오류 응답을
+      명세에 적을 때 무엇을 정해 줘야 상대가 코드로 분기할 수 있나요?
+    expectedAnswer: >-
+      상대는 오류가 났을 때 어떤 상태 코드가 오는지, 본문이 어떤 모양인지 모르므로 실패 처리를 추측으로
+      구현하고 대개 문구를 문자열로 비교하게 된다. 명세에는 상태 코드마다 본문 스키마를 적고, 오류를
+      구분하는 값(코드 필드)과 그 값의 목록을 함께 적는다. 문구는 바뀔 수 있으므로 분기 기준이 되면 안 된다.
+      공통 오류 형식은 한 곳에 정의해 두고 각 응답에서 참조한다.
+    rubric:
+      - id: R1
+        criterion: 오류 응답이 없으면 상대가 실패 처리를 추측으로 구현한다
+      - id: R2
+        criterion: 상태 코드별 본문 스키마를 명세에 적는다
+      - id: R3
+        criterion: 문구가 아니라 코드 값으로 분기하게 한다
+  - conceptKey: INTEGRATION.API_CONTRACT.BREAKING_CHANGE
+    skill: INTEGRATION.API_CONTRACT
+    reviewType: RECALL
+    prompt: >-
+      이미 연동 중인 API를 바꿀 때, 상대 구현을 깨뜨리는 변경과 깨뜨리지 않는 변경을 각각 두 가지씩
+      드세요. 깨뜨리는 변경을 꼭 해야 할 때는 어떻게 하나요?
+    expectedAnswer: >-
+      깨뜨리는 변경은 필드 삭제, 필드 이름 변경, 타입 변경, 선택 항목을 필수로 바꾸기, 기존 상태 코드나
+      오류 코드 값의 의미 변경이다. 깨뜨리지 않는 변경은 선택 응답 필드 추가, 새 끝점 추가, 새 선택 요청
+      항목 추가(기본값 있음)다. 꼭 해야 하면 새 버전 경로를 열어 두 버전을 함께 운영하고, 상대가 옮길
+      기간과 옛 버전 종료 시점을 명세와 함께 알린다.
+    rubric:
+      - id: R1
+        criterion: 필드 삭제 · 이름 변경 · 타입 변경 · 선택에서 필수로 변경이 깨뜨리는 변경이다
+      - id: R2
+        criterion: 선택 필드 추가는 깨뜨리지 않는다
+      - id: R3
+        criterion: 불가피하면 버전을 나누고 전환 기간을 알린다
+  - conceptKey: INTEGRATION.API_CONTRACT.SHARED_COMPONENT
+    skill: INTEGRATION.API_CONTRACT
+    reviewType: CHOICE
+    prompt: |-
+      끝점 12개가 같은 오류 본문과 같은 주소 스키마를 씁니다. OpenAPI 문서에서 가장 나은 방법은?
+      A) 끝점마다 같은 스키마를 그대로 복사해 적는다
+      B) 공용 스키마를 한 곳에 정의하고 각 응답에서 참조한다
+      C) 스키마를 적지 않고 예시 본문만 붙인다
+      D) 오류 본문은 문서에서 빼고 담당자에게 구두로 알린다
+    expectedAnswer: >-
+      B) 공용 스키마를 한 곳에 정의하고 참조하면 항목 정의가 한 벌만 남아 고칠 때 빠지는 곳이 생기지 않고,
+      상대도 같은 타입 하나로 받아 처리할 수 있다. 복사해 두면 열두 곳 중 한 곳만 고쳐지는 일이 생긴다.
+    rubric:
+      - id: R1
+        criterion: 공용 스키마를 한 곳에 정의하고 참조한다
+      - id: R2
+        criterion: 복사하면 일부만 고쳐지는 불일치가 생긴다
+  # --------------------------------------------- INTEGRATION.INTERFACE_SPEC
+  - conceptKey: INTEGRATION.INTERFACE_SPEC.FIELD_DEFINITION
+    skill: INTEGRATION.INTERFACE_SPEC
+    reviewType: RECALL
+    prompt: >-
+      인터페이스 명세서의 항목 정의에서 이름과 타입만 적으면 반드시 질문이 돌아옵니다. 한 항목을 정의할 때
+      함께 적어야 하는 것을 다섯 가지 드세요.
+    expectedAnswer: >-
+      필수 여부와 값이 없을 때의 표현(빈 문자열인지 항목 자체를 빼는지), 길이나 자릿수 제한, 허용되는
+      값의 목록과 그 의미(코드값), 시각 · 날짜의 형식과 시간대, 수량 · 금액의 단위와 소수 자릿수다.
+      여기에 예시 값 한 줄을 붙이면 대부분의 문의가 사라진다.
+    rubric:
+      - id: R1
+        criterion: 필수 여부와 값 없음의 표현
+      - id: R2
+        criterion: 길이 · 자릿수 제한과 허용 값 목록
+      - id: R3
+        criterion: 시각 형식과 시간대, 단위
+  - conceptKey: INTEGRATION.INTERFACE_SPEC.REQUIREMENT_LEVEL
+    skill: INTEGRATION.INTERFACE_SPEC
+    reviewType: EXPLAIN
+    prompt: >-
+      명세서에 "가능하면 재시도한다"라고 적으면 무엇이 문제인가요? 요구 수준을 어떻게 나눠 적어야
+      상대가 구현 범위를 스스로 판단할 수 있나요?
+    expectedAnswer: >-
+      읽는 사람마다 구현 여부가 갈리고, 하지 않아도 규칙을 어긴 것이 아니게 되어 나중에 책임이 흐려진다.
+      요구는 반드시 해야 하는 것, 권장하는 것, 선택인 것으로 나누어 정해진 낱말로 적고 그 낱말의 뜻을
+      문서 앞에 한 번 정의한다. 권장을 따르지 않기로 하면 그 이유를 남기게 한다. 이 구분은 RFC 2119의
+      요구 수준 표기를 그대로 빌려 쓰면 된다.
+    rubric:
+      - id: R1
+        criterion: 모호한 표현은 구현 범위가 사람마다 갈린다
+      - id: R2
+        criterion: 필수 · 권장 · 선택을 정해진 낱말로 구분한다
+      - id: R3
+        criterion: 낱말의 뜻을 문서에서 한 번 정의한다
+  - conceptKey: INTEGRATION.INTERFACE_SPEC.REPROCESSING
+    skill: INTEGRATION.INTERFACE_SPEC
+    reviewType: EXPLAIN
+    prompt: >-
+      인터페이스 명세서의 재처리 절차에 무엇이 들어가야 운영 중에 전화를 받지 않게 되나요? 세 가지를
+      들고 각각 왜 필요한지 설명하세요.
+    expectedAnswer: >-
+      첫째, 재처리 대상을 고르는 기준(어떤 오류 코드가 재처리 대상이고 어떤 것이 사람 확인 대상인지).
+      둘째, 재처리 방법과 한도(누가 무엇으로 다시 보내는지, 몇 번까지 자동으로 다시 보내는지, 간격은
+      어떻게 늘리는지). 셋째, 같은 건이 두 번 처리되지 않게 하는 식별자와 중복 수신 시의 응답 규약이다.
+      이 셋이 없으면 장애마다 사람이 판단해야 하고 중복 반영 사고가 난다.
+    rubric:
+      - id: R1
+        criterion: 재처리 대상과 사람 확인 대상을 나누는 기준
+      - id: R2
+        criterion: 재시도 횟수 · 간격 같은 한도
+      - id: R3
+        criterion: 중복을 막는 식별자와 중복 수신 시 응답 규약
+  # ------------------------------------------------ INTEGRATION.CLIENT_AUTH
+  - conceptKey: INTEGRATION.CLIENT_AUTH.TOKEN_EXPIRY
+    skill: INTEGRATION.CLIENT_AUTH
+    reviewType: EXPLAIN
+    prompt: >-
+      OAuth2 client credentials로 받은 토큰이 만료되면 연동 호출은 어떤 응답을 받나요? 클라이언트는
+      만료를 어떻게 다뤄야 새벽에 연동이 통째로 멈추지 않나요?
+    expectedAnswer: >-
+      만료된 토큰으로 호출하면 자원 서버는 401과 함께 인증 요구 헤더에 invalid_token을 담아 돌려준다.
+      클라이언트는 토큰을 메모리에 캐시하되 응답에 들어 있는 수명 값을 기준으로 만료 전에 미리 새로
+      받고(여유 시간을 둔다), 그래도 401이 오면 한 번은 새 토큰으로 재시도한다. 401을 그대로 실패로
+      기록하고 끝내거나, 매 요청마다 토큰을 새로 받는 방식은 둘 다 피한다.
+    rubric:
+      - id: R1
+        criterion: 만료 시 401과 invalid_token 계열 오류를 받는다
+      - id: R2
+        criterion: 수명 값을 기준으로 만료 전에 미리 갱신한다
+      - id: R3
+        criterion: 401을 받으면 새 토큰으로 한 번 재시도한다
+  - conceptKey: INTEGRATION.CLIENT_AUTH.TOKEN_CACHE_BUG
+    skill: INTEGRATION.CLIENT_AUTH
+    reviewType: BUG_SPOT
+    prompt: |-
+      연동 대상이 "토큰 발급 요청이 너무 많다"고 연락해 왔습니다. 문제와 수정 방법은?
+      ```java
+      public OrderResponse send(OrderRequest request) {
+          TokenResponse token = authClient.issueToken(clientId, clientSecret);
+          log.info("issued token={} for {}", token.accessToken(), clientId);
+          return apiClient.postOrder(token.accessToken(), request);
+      }
+      ```
+    expectedAnswer: >-
+      호출마다 토큰을 새로 발급받고 있다. client credentials 토큰은 수명이 있으므로 한 번 받아 두고
+      만료 전까지 재사용해야 한다. 만료 시각(응답의 수명 값 기준, 여유 시간을 뺀 값)을 함께 보관하고
+      만료가 가까우면 새로 받는 구조로 바꾼다. 또한 토큰을 로그에 그대로 남기고 있는데, 토큰은 자격
+      증명이므로 로그에 값을 찍지 않는다.
+    rubric:
+      - id: R1
+        criterion: 호출마다 토큰을 새로 발급받는다
+      - id: R2
+        criterion: 만료 시각과 함께 캐시해 재사용한다
+      - id: R3
+        criterion: 토큰 값을 로그에 남기지 않는다
+  - conceptKey: INTEGRATION.CLIENT_AUTH.CREDENTIAL_ROTATION
+    skill: INTEGRATION.CLIENT_AUTH
+    reviewType: RECALL
+    prompt: >-
+      연동에 쓰는 API 키를 서비스를 멈추지 않고 교체하려면 어떤 순서로 하나요? 키가 유출되었을 때는
+      무엇이 달라지나요?
+    expectedAnswer: >-
+      새 키를 먼저 발급해 옛 키와 함께 유효하게 두고, 클라이언트 설정을 새 키로 바꿔 배포한 뒤, 옛 키로
+      들어오는 호출이 없는지 확인하고 옛 키를 폐기한다. 즉 발급 · 전환 · 확인 · 폐기 순서이며 두 키가
+      함께 유효한 기간이 있어야 무중단이 된다. 유출된 경우에는 이 순서를 지키지 않고 옛 키를 즉시
+      폐기한 뒤 새 키로 복구하고, 유출 경로와 그동안의 호출 기록을 확인한다.
+    rubric:
+      - id: R1
+        criterion: 두 키가 함께 유효한 기간을 둔다
+      - id: R2
+        criterion: 발급 · 전환 · 확인 · 폐기 순서로 진행한다
+      - id: R3
+        criterion: 유출 시에는 즉시 폐기를 먼저 한다
+  # ---------------------------------------------------- INTEGRATION.WEBHOOK
+  - conceptKey: INTEGRATION.WEBHOOK.DUPLICATE_DELIVERY
+    skill: INTEGRATION.WEBHOOK
+    reviewType: EXPLAIN
+    prompt: >-
+      같은 webhook 이벤트가 두 번 들어오는 일은 왜 생기나요? 두 번 들어와도 결과가 한 번과 같으려면
+      수신 쪽에서 무엇을 해야 하나요?
+    expectedAnswer: >-
+      발신 쪽은 응답을 받지 못하면 실패로 보고 다시 보낸다. 수신 처리가 끝난 뒤 응답만 유실되어도
+      재시도가 오므로 중복 수신은 정상 동작의 일부다. 수신 쪽은 이벤트마다 오는 고유 식별자를 저장하고
+      이미 처리한 식별자면 다시 처리하지 않고 성공 응답을 돌려준다. 식별자 저장과 본 처리를 같은
+      트랜잭션으로 묶고, 식별자 컬럼에 유일 제약을 두어 동시에 들어온 중복도 막는다.
+    rubric:
+      - id: R1
+        criterion: 응답 유실로도 재시도가 오므로 중복은 정상 동작이다
+      - id: R2
+        criterion: 이벤트 고유 식별자를 저장해 이미 처리한 건을 걸러낸다
+      - id: R3
+        criterion: 유일 제약과 같은 트랜잭션으로 동시 중복까지 막는다
+  - conceptKey: INTEGRATION.WEBHOOK.SIGNATURE_VERIFICATION
+    skill: INTEGRATION.WEBHOOK
+    reviewType: RECALL
+    prompt: >-
+      webhook 수신 끝점에서 서명을 검증할 때 지켜야 할 것을 세 가지 드세요. 검증에 실패한 요청은
+      어떻게 응답하나요?
+    expectedAnswer: >-
+      첫째, 서명은 파싱하거나 다시 직렬화한 객체가 아니라 받은 본문 그대로(원본 바이트)로 계산해
+      비교한다. 둘째, 서명이 덮는 대상에 시각 값을 포함시키고 허용 시간 범위를 벗어난 요청은 거절해
+      같은 요청을 다시 보내는 공격을 막는다. 셋째, 비교는 길이와 내용이 같은지 상수 시간으로 비교하고
+      비밀값은 설정 밖으로 노출하지 않는다. 실패한 요청은 본문을 처리하지 않고 401 또는 400으로
+      거절하며, 실패 이유의 상세는 응답에 적지 않는다.
+    rubric:
+      - id: R1
+        criterion: 받은 본문 원본으로 서명을 계산해 비교한다
+      - id: R2
+        criterion: 시각을 서명 대상에 넣고 허용 범위를 검사한다
+      - id: R3
+        criterion: 실패 시 처리하지 않고 거절하며 상세를 노출하지 않는다
+  - conceptKey: INTEGRATION.WEBHOOK.ACK_BEFORE_WORK
+    skill: INTEGRATION.WEBHOOK
+    reviewType: BUG_SPOT
+    prompt: |-
+      webhook 수신 뒤 발신 쪽 재시도가 몰려 같은 이벤트가 여러 번 처리됩니다. 문제와 수정 방법은?
+      ```java
+      @PostMapping("/webhooks/orders")
+      ResponseEntity<Void> receive(@RequestBody OrderEvent event) {
+          settlementService.reconcile(event);   // 외부 API 호출 포함, 평균 40초
+          reportService.sendDailyMail(event);
+          return ResponseEntity.ok().build();
+      }
+      ```
+    expectedAnswer: >-
+      무거운 처리를 끝낸 뒤에 응답하므로 발신 쪽 타임아웃이 먼저 나고, 발신 쪽은 실패로 보고 같은
+      이벤트를 다시 보낸다. 수신 끝점은 서명 검증과 중복 확인, 이벤트 저장까지만 하고 바로 성공 응답을
+      돌려준 다음, 실제 처리는 저장된 이벤트를 읽어 비동기로 수행한다. 이때도 이벤트 식별자로 중복
+      처리를 막아야 한다.
+    rubric:
+      - id: R1
+        criterion: 처리 시간이 길어 발신 쪽 타임아웃과 재시도를 부른다
+      - id: R2
+        criterion: 저장까지만 하고 즉시 응답한 뒤 비동기로 처리한다
+      - id: R3
+        criterion: 비동기 처리에서도 식별자로 중복을 막는다
+  # ------------------------------------------------ INTEGRATION.LEGACY_DATA
+  - conceptKey: INTEGRATION.LEGACY_DATA.CSV_QUOTING
+    skill: INTEGRATION.LEGACY_DATA
+    reviewType: RECALL
+    prompt: >-
+      CSV 파일을 쉼표로 잘라 읽었더니 어떤 행만 컬럼 수가 더 많습니다. 표준 CSV에서 값 안에 쉼표,
+      따옴표, 줄바꿈이 있을 때 어떻게 적히나요?
+    expectedAnswer: >-
+      값 안에 쉼표나 줄바꿈, 따옴표가 있으면 그 값을 큰따옴표로 감싸고, 값 안의 큰따옴표는 큰따옴표를
+      하나 더 붙여 표시한다. 그래서 줄 단위로 자르고 쉼표로 나누는 방식으로는 읽을 수 없고, 따옴표
+      상태를 보는 파서를 써야 한다. 주소나 비고 같은 자유 입력 컬럼에서 이 문제가 자주 나온다.
+    rubric:
+      - id: R1
+        criterion: 특수 문자가 있는 값은 큰따옴표로 감싼다
+      - id: R2
+        criterion: 값 안의 따옴표는 따옴표를 두 번 적어 표시한다
+      - id: R3
+        criterion: 단순 문자열 분할 대신 파서를 쓴다
+  - conceptKey: INTEGRATION.LEGACY_DATA.ENCODING_BOUNDARY
+    skill: INTEGRATION.LEGACY_DATA
+    reviewType: EXPLAIN
+    prompt: >-
+      레거시에서 받은 파일을 적재했더니 한글이 물음표와 깨진 글자로 들어갔습니다. 어느 지점들을 의심해야
+      하고, 깨진 값이 이미 저장된 뒤에는 왜 되돌리기 어려운가요?
+    expectedAnswer: >-
+      파일을 읽을 때 지정한 문자 집합, 애플리케이션과 DB 사이의 클라이언트 인코딩, 서버(데이터베이스)
+      인코딩 세 지점을 순서대로 확인한다. 파일의 실제 인코딩과 읽을 때 가정한 인코딩이 다르면 그 시점에
+      이미 다른 글자가 되고, 이후 단계는 그 잘못된 글자를 그대로 옮긴다. 대응되는 글자가 없어 대체
+      문자로 바뀌면 원래 값의 정보가 사라지므로 되돌릴 수 없다. 그래서 적재 전에 표본을 열어 인코딩을
+      확인하고, 변환할 수 없는 값은 적재하지 말고 따로 남긴다.
+    rubric:
+      - id: R1
+        criterion: 파일 읽기 · 클라이언트 인코딩 · 서버 인코딩 세 지점을 확인한다
+      - id: R2
+        criterion: 대체 문자로 바뀌면 원래 값이 사라져 되돌릴 수 없다
+      - id: R3
+        criterion: 적재 전에 인코딩을 확인하고 변환 불가 건은 따로 남긴다
+  - conceptKey: INTEGRATION.LEGACY_DATA.REJECT_QUARANTINE
+    skill: INTEGRATION.LEGACY_DATA
+    reviewType: EXPLAIN
+    prompt: >-
+      10만 건을 표준 모델로 변환하는데 300건이 코드값 매핑에 실패했습니다. 전체를 실패시키는 것과 실패
+      건을 건너뛰고 로그만 남기는 것은 각각 무엇이 문제인가요? 어떻게 하는 편이 나은가요?
+    expectedAnswer: >-
+      전체 실패는 정상 99,700건까지 늦추고 재실행 부담만 키운다. 그냥 건너뛰면 빠진 건을 아무도 세지
+      않아 몇 달 뒤 숫자가 맞지 않을 때 원인을 찾을 수 없다. 실패 건은 원본 값과 실패 사유, 파일 이름과
+      줄 번호를 함께 격리 테이블에 남기고, 정상 건은 적재한 뒤 처리 건수와 실패 건수를 결과로 보고한다.
+      격리된 건은 매핑 규칙을 고친 뒤 그 건만 다시 처리한다.
+    rubric:
+      - id: R1
+        criterion: 전체 실패는 정상 데이터까지 막는다
+      - id: R2
+        criterion: 조용히 건너뛰면 결손을 나중에 찾을 수 없다
+      - id: R3
+        criterion: 원본 값과 사유를 남겨 격리하고 건수를 보고한다
+  # ------------------------------------------------- INTEGRATION.BATCH_SYNC
+  - conceptKey: INTEGRATION.BATCH_SYNC.CURSOR_BOUNDARY
+    skill: INTEGRATION.BATCH_SYNC
+    reviewType: EXPLAIN
+    prompt: >-
+      변경 시각 컬럼을 커서로 써서 마지막 실행 시각보다 큰 행만 가져옵니다. 이 방식이 행을 빠뜨리는
+      경우는 언제이고, 어떻게 막나요?
+    expectedAnswer: >-
+      행의 변경 시각은 트랜잭션이 값을 정하는 시점에 찍히지만 커밋은 그보다 늦다. 배치가 도는 순간에
+      아직 커밋되지 않은 트랜잭션은 조회에 잡히지 않고, 그 행이 나중에 커밋되면 시각이 이미 커서보다
+      앞서 있어 다음 실행에서도 빠진다. 커서를 조금 뒤로 물려 겹치는 구간을 다시 읽거나, 변경 시각이
+      아니라 단조 증가하는 변경 순번을 쓴다. 겹쳐 읽는 만큼 같은 행이 다시 오므로 적재는 멱등(같은 키
+      기준 upsert)이어야 한다.
+    rubric:
+      - id: R1
+        criterion: 시각을 정하는 시점과 커밋 시점이 달라 행이 빠진다
+      - id: R2
+        criterion: 겹치는 구간을 다시 읽거나 변경 순번을 쓴다
+      - id: R3
+        criterion: 겹쳐 읽으므로 적재가 멱등이어야 한다
+  - conceptKey: INTEGRATION.BATCH_SYNC.RERUN_SAFETY
+    skill: INTEGRATION.BATCH_SYNC
+    reviewType: RECALL
+    prompt: >-
+      중간에 실패한 동기화 배치를 그대로 다시 돌려도 안전하려면 무엇이 갖춰져 있어야 하나요? 세 가지를
+      드세요.
+    expectedAnswer: >-
+      첫째, 원본에서 행을 식별하는 업무 키가 있고 대상 테이블에 그 키로 유일 제약이 있어야 한다.
+      둘째, 적재가 키 기준 upsert여서 이미 있으면 갱신되고 없으면 삽입되어야 한다. 셋째, 실행 단위의
+      진행 상태(어디까지 처리했는지, 성공 · 실패 건수)를 남겨 재실행 범위를 정할 수 있어야 한다.
+      대상 테이블을 먼저 지우고 다시 넣는 방식은 실패하면 데이터가 비어 있는 상태로 남으므로 피한다.
+    rubric:
+      - id: R1
+        criterion: 업무 키와 그 키의 유일 제약이 있다
+      - id: R2
+        criterion: 키 기준 upsert로 적재한다
+      - id: R3
+        criterion: 실행 단위의 진행 상태와 건수를 남긴다
+  - conceptKey: INTEGRATION.BATCH_SYNC.FULL_VS_INCREMENTAL
+    skill: INTEGRATION.BATCH_SYNC
+    reviewType: CHOICE
+    prompt: |-
+      매일 증분 동기화를 돌리는 연동입니다. 전체 재적재를 함께 준비해 둬야 하는 가장 큰 이유는?
+      A) 증분이 전체보다 느려지는 날이 있어서
+      B) 매핑 규칙이 바뀌거나 증분이 놓친 구간이 생겼을 때 기준 상태를 복원해야 해서
+      C) 전체 적재가 인덱스를 자동으로 다시 만들어 주어서
+      D) 증분 동기화에는 커서가 필요 없어서
+    expectedAnswer: >-
+      B) 증분은 그동안 놓친 구간을 스스로 메우지 못하고, 변환 규칙이 바뀌면 과거 적재분까지 다시 만들어야
+      한다. 그래서 언제든 원본 기준으로 맞출 수 있는 전체 재적재 경로를 함께 준비하고 실행 시간과 영향
+      범위를 미리 재 둔다.
+    rubric:
+      - id: R1
+        criterion: 증분은 놓친 구간과 규칙 변경을 스스로 못 메운다
+      - id: R2
+        criterion: 전체 재적재 경로를 미리 준비해 둔다

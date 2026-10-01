@@ -16,22 +16,26 @@ void main() {
   const today = LocalDate(2026, 9, 19);
 
   group('OnboardingRules', () {
-    const draft = OnboardingDraft(
-      experienceProfile: ExperienceProfile.developerStarter,
-      targetCompletionDate: '2027-03-19',
-      checkpointDate: '2026-12-19',
-    );
+    const draft = OnboardingDraft(targetCompletionDate: '2027-03-19');
 
-    test('shouldEnableGoalStepOnlyWithProfileNameAndValidDates', () {
+    test('shouldEnableGoalStepOnlyWithNameAndValidTargetDate', () {
       expect(OnboardingRules.canLeaveGoalStep(draft, 'MT', today), isTrue);
       expect(OnboardingRules.canLeaveGoalStep(draft, ' ', today), isFalse);
       expect(
-        OnboardingRules.canLeaveGoalStep(draft.copyWith(experienceProfile: null), 'MT', today),
+        OnboardingRules.canLeaveGoalStep(const OnboardingDraft(), 'MT', today),
         isFalse,
       );
       expect(
         OnboardingRules.canLeaveGoalStep(
-          draft.copyWith(checkpointDate: '2027-03-20'),
+          draft.copyWith(targetCompletionDate: today.toIso()),
+          'MT',
+          today,
+        ),
+        isFalse,
+      );
+      expect(
+        OnboardingRules.canLeaveGoalStep(
+          draft.copyWith(targetCompletionDate: today.addYears(3).addDays(1).toIso()),
           'MT',
           today,
         ),
@@ -39,20 +43,22 @@ void main() {
       );
     });
 
-    test('shouldDisableThreeMonthsBeforeChipWhenItWouldBeInThePast', () {
+    test('shouldOfferThreeMonthsSixMonthsAndOneYear', () {
       expect(
-        OnboardingRules.checkpointThreeMonthsBefore(const LocalDate(2027, 3, 19), today),
-        const LocalDate(2026, 12, 19),
-      );
-      expect(
-        OnboardingRules.checkpointThreeMonthsBefore(const LocalDate(2026, 11, 1), today),
-        isNull,
+        OnboardingRules.quickTargetMonths.map((months) {
+          return OnboardingRules.completionAfterMonths(today, months);
+        }),
+        const [LocalDate(2026, 12, 19), LocalDate(2027, 3, 19), LocalDate(2027, 9, 19)],
       );
     });
 
     test('shouldBuildDiagnosticRequestWithEmptySelfAssessments', () {
       final request = OnboardingRules.buildRequest(
-        draft: draft.copyWith(selfAssessmentLevels: {SkillCategory.java: 3}),
+        // 진단 모드를 명시한다 — 기본값이 무엇이든 이 테스트의 주장은 같아야 한다.
+        draft: draft.copyWith(
+          runDiagnostic: true,
+          selfAssessmentLevels: {SkillCategory.java: 3},
+        ),
         displayName: ' MT ',
         timezone: 'Asia/Seoul',
         projectName: '주문 시스템',

@@ -1,0 +1,18 @@
+{
+  "description": "코드 블록을 섞어 답한다 — CodeLeakGuard 가 잡아야 한다",
+  "attempts": [
+    {
+      "finishReason": "completed",
+      "output": {
+        "explanation": "이렇게 쓰면 됩니다.\n\n```java\npublic class Example {\n    void run() {\n        System.out.println(\"done\");\n    }\n}\n```",
+        "analogy": null
+      },
+      "usage": {
+        "inputTokens": 900,
+        "cachedTokens": 0,
+        "outputTokens": 120,
+        "reasoningTokens": 0
+      }
+    }
+  ]
+}

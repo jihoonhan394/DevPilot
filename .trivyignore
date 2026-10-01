@@ -1,0 +1,3 @@
+# Trivy 예외 목록 (docs/07 §11.2). 예외는 이 파일에만 둔다.
+# 항목마다 바로 위 줄에 "# <영향 없는 이유>" 주석을 쓰고, 항목 줄은 "<CVE ID> exp:<YYYY-MM-DD>" 형식이다.
+# 만료일은 추가일로부터 최대 30일. 만료된 항목이나 exp: 가 없는 항목은 CI security job(trivyignore expiry)이 실패시킨다.

@@ -1,0 +1,241 @@
+# Seed challenges — 코어 도메인의 빈 자리 (PRACTICE)
+# Spec: docs/19-content-spec.md §3.6 (schema), §6 (난이도), §7 (rubric·hint 작성 가이드)
+# 기준: Java 25 / Spring Boot 4.1 / PostgreSQL 16
+#
+# 연동 트랙 1단계(코어 도메인)의 관문 skill 중 연습문제가 없던 넷을 채운다. 노트는 있는데 문제가 없으면
+# 개념을 배운 뒤 구현 축 근거를 만들 자리가 없다(docs/06 §7.2 I1~I3).
+challenges:
+  - seedKey: PRACTICE.PRACTICAL_ENGINEERING.REQUIREMENTS.L2.001
+    purpose: PRACTICE
+    skills:
+      - PRACTICAL_ENGINEERING.REQUIREMENTS
+    difficulty: 2
+    estimatedMinutes: 30
+    isTransfer: false
+    title: 한 줄짜리 요청을 입력·출력·예외·완료 조건으로 다시 적기
+    scenario: |-
+      주문 시스템에 이런 요청이 들어왔습니다.
+      "주문 취소 기능 좀 넣어주세요. 배송 전이면 취소되게요."
+      이대로 만들면 만든 뒤에 "이건 왜 안 되냐"가 반드시 나옵니다. 지금 정해져 있지 않은 것이
+      여럿이고, 그중 몇 개는 코드를 쓰기 전에 물어야 답이 나옵니다.
+    prompt: |-
+      1. 이 요청을 입력, 출력, 예외, 완료 조건 네 가지로 다시 적으세요.
+      2. 지금 정보만으로는 정할 수 없어 **요청한 사람에게 물어야 하는 것** 3가지를 쓰고, 왜 스스로
+         정하면 안 되는지 각각 한 줄로 설명하세요.
+      3. 반대로 **물어보지 않고 스스로 정해도 되는 것** 1가지를 고르고 그 근거를 설명하세요.
+    constraints:
+      - 화면 설계나 코드는 쓰지 않는다
+      - 완료 조건은 사람이 눈으로 확인할 수 있는 문장으로 적는다
+    expectedConcepts:
+      - 입력과 출력의 경계
+      - 예외 흐름
+      - 완료 조건
+      - 결정과 질문의 구분
+      - 상태 전이 조건
+    rubric:
+      - id: R1
+        criterion: 입력·출력·예외·완료 조건 네 가지를 모두 채우고, 완료 조건을 확인 가능한 문장으로 적는다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 물어야 하는 것 3가지를 고르고, 스스로 정하면 안 되는 이유를 각각 설명한다
+        weightBp: 3000
+        axis: EXPLANATION
+      - id: R3
+        criterion: 스스로 정해도 되는 것을 고르고 그 경계를 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+      - id: R4
+        criterion: 배송 상태 판정 시점이나 동시 요청처럼 나중에 문제가 될 자리를 하나 이상 짚는다
+        weightBp: 1500
+        axis: DEBUGGING
+    commonMistakes:
+      - 정해지지 않은 것을 임의로 정하고 질문으로 남기지 않음
+      - 완료 조건을 "잘 동작한다"처럼 확인할 수 없는 문장으로 적음
+      - 예외를 오류 메시지 문구로만 적고 어떤 상태에서 생기는지 적지 않음
+    transferTargets:
+      - PRACTICAL_ENGINEERING.NULL_BOUNDARY
+    hints:
+      QUESTION_ONLY: "\"배송 전\"은 누가 언제 판단하나요? 그 판단이 바뀌는 사이에 취소 요청이 들어오면 어떤 결과가 맞나요?"
+      CONCEPT_HINT: 요구사항은 상태 전이로 적으면 빈틈이 드러납니다. 어떤 상태에서 어떤 상태로 가는지, 그 전이가 막히는 상태는 무엇인지로 나눠 보세요.
+      DIRECTION: 주문 상태 목록을 먼저 적고 각 상태에서 취소 요청이 오면 어떻게 되는지 표로 채워 보세요. 칸이 비는 자리가 물어야 할 것입니다.
+
+  - seedKey: PRACTICE.SPRING.BOOT_CONFIG.L2.001
+    purpose: PRACTICE
+    skills:
+      - SPRING.BOOT_CONFIG
+    difficulty: 2
+    estimatedMinutes: 30
+    isTransfer: false
+    title: 환경마다 다른 값을 설정으로 빼고 기동 때 확인하기
+    scenario: |-
+      주문 시스템에 외부 결제사 연동을 붙였습니다. 지금은 이렇게 들어가 있습니다.
+      ```java
+      @Service
+      public class PaymentClient {
+          private static final String BASE_URL = "https://sandbox.pay.example.com";
+          private static final int TIMEOUT_SECONDS = 3;
+      }
+      ```
+      운영에서는 주소도 제한 시간도 다릅니다. 지난주에는 sandbox 주소가 그대로 올라가 결제가 전부
+      실패했는데, 기동은 정상이었고 첫 결제 요청이 올 때까지 아무도 몰랐습니다.
+    prompt: |-
+      1. 두 값을 `application.yml`과 타입 안전한 설정 클래스로 옮기는 코드를 쓰세요.
+      2. 환경별 값을 나누는 방법을 고르고 그 이유를 설명하세요.
+      3. **잘못된 값으로 기동되지 않게** 막는 방법을 적고, 왜 첫 요청이 아니라 기동 시점에 막아야
+         하는지 설명하세요.
+    constraints:
+      - Spring Boot 4.1 기준으로 답한다
+      - 실제 주소나 키 값은 적지 않는다
+    expectedConcepts:
+      - "@ConfigurationProperties"
+      - profile별 설정 분리
+      - 기동 시 검증
+      - 환경 변수 주입
+      - 빠른 실패
+    rubric:
+      - id: R1
+        criterion: 설정 클래스와 yml로 값을 옮기고 바인딩이 되는 형태로 쓴다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 환경별로 값을 나누는 방법을 고르고 그 선택의 근거를 설명한다
+        weightBp: 2500
+        axis: EXPLANATION
+      - id: R3
+        criterion: 빠진 값이나 잘못된 값이면 기동이 실패하도록 검증을 걸고 그 방법을 쓴다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R4
+        criterion: 기동 시점에 막는 것과 첫 요청에서 드러나는 것의 차이를 설명한다
+        weightBp: 1500
+        axis: EXPLANATION
+    commonMistakes:
+      - "@Value로 흩어 놓고 어떤 값이 필요한지 한곳에서 볼 수 없게 함"
+      - 설정은 뺐지만 검증을 걸지 않아 빈 값으로도 기동됨
+      - 운영 값을 저장소에 함께 커밋함
+    transferTargets:
+      - SECURITY.SECRET_MANAGEMENT
+    hints:
+      QUESTION_ONLY: 이 값이 비어 있거나 틀렸다는 것을 가장 이른 시점에 알 수 있는 곳은 어디인가요?
+      CONCEPT_HINT: Spring Boot는 설정 클래스에 붙인 제약을 기동 시점에 검사하고, 어긋나면 컨텍스트를 띄우지 않습니다. 잘못된 상태로 살아 있는 것보다 안 뜨는 편이 낫다는 생각입니다.
+      DIRECTION: 설정 클래스를 만들고 필드에 제약을 건 뒤, 값을 일부러 비우고 기동해 보세요. 실패 메시지가 무엇을 가리키는지 확인하면 검증이 걸렸는지 알 수 있습니다.
+
+  - seedKey: PRACTICE.JAVA.MODERN_SYNTAX.L2.001
+    purpose: PRACTICE
+    skills:
+      - JAVA.MODERN_SYNTAX
+    difficulty: 2
+    estimatedMinutes: 25
+    isTransfer: false
+    title: 주문 상태 분기를 record와 sealed로 다시 쓰기
+    scenario: |-
+      주문 결과를 이렇게 돌려주고 있습니다.
+      ```java
+      public class OrderResult {
+          private String kind;          // "OK", "REJECTED", "RETRY"
+          private String orderId;
+          private String reason;
+          private Integer retryAfterSeconds;
+      }
+      ```
+      호출하는 쪽은 `if ("OK".equals(result.getKind()))`로 갈라지고, 어떤 분기에서 어떤 필드가
+      채워지는지는 주석에만 적혀 있습니다. 새 종류를 하나 넣었더니 그것을 처리하지 않은 자리가
+      두 군데 남아 운영에서 드러났습니다.
+    prompt: |-
+      1. 이 결과 타입을 sealed interface와 record로 다시 쓰세요.
+      2. 호출하는 쪽의 분기를 패턴 매칭 switch로 바꾸세요.
+      3. **새 종류를 하나 더 넣었을 때** 무엇이 달라지는지 설명하세요.
+    constraints:
+      - Java 25 기준으로 답한다
+      - 종류는 셋 그대로 두고 필요하면 필드만 조정한다
+    expectedConcepts:
+      - sealed interface
+      - record
+      - 패턴 매칭 switch
+      - 컴파일 시점 전수 검사
+      - 상태별 필드 분리
+    rubric:
+      - id: R1
+        criterion: 세 종류를 각각 record로 나누고 그 종류에 필요한 필드만 남긴 sealed 계층을 만든다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 호출부를 default 없는 패턴 매칭 switch로 바꾼다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 새 종류를 넣으면 컴파일이 실패해 빠뜨린 자리가 드러난다는 것을 설명한다
+        weightBp: 2500
+        axis: EXPLANATION
+      - id: R4
+        criterion: default를 두면 그 검사가 사라진다는 것을 짚는다
+        weightBp: 1500
+        axis: DEBUGGING
+    commonMistakes:
+      - record로 바꾸면서 모든 필드를 한 타입에 그대로 남겨 둠
+      - switch에 default를 두어 전수 검사를 잃음
+      - sealed로 막지 않아 외부에서 구현을 늘릴 수 있게 둠
+    transferTargets:
+      - JAVA.OOP
+    hints:
+      QUESTION_ONLY: 세 종류가 각각 실제로 쓰는 필드는 무엇인가요? 한 타입에 모아 두면 어떤 필드가 언제 비는지 누가 아나요?
+      CONCEPT_HINT: 종류가 정해져 있고 더 늘지 않는다면 그 사실을 타입으로 적을 수 있습니다. 그러면 빠뜨린 분기를 사람이 아니라 컴파일러가 찾습니다.
+      DIRECTION: 종류마다 record를 하나씩 만들고 공통 상위를 sealed로 막은 뒤, 호출부 switch에서 default를 지워 보세요. 무엇이 컴파일되지 않는지가 답입니다.
+
+  - seedKey: PRACTICE.WEB_HTTP.HTTP_BASICS.L2.001
+    purpose: PRACTICE
+    skills:
+      - WEB_HTTP.HTTP_BASICS
+    difficulty: 2
+    estimatedMinutes: 25
+    isTransfer: false
+    title: 주문 API가 돌려주는 상태 코드 고르기
+    scenario: |-
+      주문 API가 무슨 일이 있어도 200을 돌려주고, 본문에 이렇게 담고 있습니다.
+      ```json
+      {"success": false, "message": "재고가 부족합니다"}
+      ```
+      연동하는 쪽에서 불만이 왔습니다. 재시도해도 되는 실패인지 아닌지 본문 문구로 판단하고
+      있는데, 문구가 바뀔 때마다 그쪽 코드가 깨진다는 것입니다.
+    prompt: |-
+      1. 아래 네 가지에 각각 맞는 상태 코드를 고르고 이유를 쓰세요.
+         (가) 주문 생성 성공  (나) 요청 본문의 수량이 0  (다) 남의 주문을 조회  (라) 재고 부족
+      2. (다)를 403이 아니라 404로 돌려주는 선택의 근거를 설명하세요.
+      3. 연동하는 쪽이 **재시도해도 되는지**를 문구가 아니라 무엇으로 판단하게 할지 적으세요.
+    constraints:
+      - 상태 코드는 표준에 있는 것만 쓴다
+      - 본문 형식은 자유롭게 정하되 이유를 적는다
+    expectedConcepts:
+      - 2xx와 4xx의 경계
+      - 404와 403의 차이
+      - 409의 쓰임
+      - 재시도 가능한 오류
+      - 기계가 읽는 오류 코드
+    rubric:
+      - id: R1
+        criterion: 네 경우에 맞는 상태 코드를 고르고 각각의 근거를 댄다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 남의 자원을 404로 감추는 선택의 이유를 설명한다
+        weightBp: 2500
+        axis: EXPLANATION
+      - id: R3
+        criterion: 문구가 아니라 고정된 오류 코드로 판단하게 하는 응답 형태를 제안한다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R4
+        criterion: 200으로 실패를 알리면 중간 장비나 클라이언트가 무엇을 잘못 판단하는지 짚는다
+        weightBp: 1500
+        axis: DEBUGGING
+    commonMistakes:
+      - 모든 실패를 400 하나로 묶음
+      - 남의 자원 조회를 403으로 돌려주어 존재 여부를 알려 줌
+      - 오류 구분을 사람이 읽는 문구에만 담음
+    transferTargets:
+      - WEB_HTTP.REST_API_DESIGN
+    hints:
+      QUESTION_ONLY: 같은 요청을 그대로 다시 보내면 결과가 달라질 수 있는 실패는 넷 중 어느 것인가요?
+      CONCEPT_HINT: 상태 코드는 "누구 잘못인가"와 "다시 보내도 되는가"를 먼저 나눕니다. 본문은 그 뒤에 자세한 이유를 담는 자리입니다.
+      DIRECTION: 네 경우를 먼저 "요청이 잘못됨 / 상태가 맞지 않음 / 없음"으로 나눈 뒤 그 분류에 맞는 코드를 고르세요. 그다음 재시도 여부를 본문의 고정 코드로 옮겨 보세요.

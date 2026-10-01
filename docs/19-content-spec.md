@@ -1,6 +1,6 @@
 # 19. Content Spec (Seed 콘텐츠)
 
-> Status: Accepted (v3) · Last updated: 2026-09-18 · Related: DEC-14, `03-system-architecture.md` §2.2·§9, `04-domain-model-and-db.md` §3·§5·§9, `05-api-spec.md` §4.2, `06-learning-engine-rules.md` §4·§5·§6.3·§7·§8·§9·§10·§11, `17-ai-integration.md` §6, `database/schema.sql`
+> Status: Accepted (v3) · Last updated: 2026-09-20 · Related: DEC-14, DEC-27, DEC-28, DEC-30, ADR-039, ADR-040, ADR-041, `03-system-architecture.md` §2.2·§9, `04-domain-model-and-db.md` §3·§5·§9, `05-api-spec.md` §4.2, `06-learning-engine-rules.md` §4·§5·§6.3·§7·§8·§9·§10·§11, `17-ai-integration.md` §6, `database/schema.sql`
 >
 > 저장소 `content/`의 **seed 파일 형식, 검증 규칙(CV-xx), 적재·은퇴 규칙, plan template 날짜 배치 알고리즘, 작성 가이드, 현재 인벤토리**를 정의한다. 초기 파일은 문서 세트의 `repo-seed/content/`에 있다.
 
@@ -19,8 +19,13 @@ DevPilot의 결정적 규칙은 seed 값이 없으면 동작하지 않는다. se
 | seed challenge | task 제안 (`06` §5.3, AI 사용 가능할 때), coverage 판정 (`06` §8.1), hint 1~3단계 (`06` §9.1 HL-6), 진단 (`06` §7.4) |
 | curated source | `VerificationGuard`의 `CURATED_SOURCE` 근거 ID (`06` §10) |
 | curated repo · reading | `READ_CODE` task 제안과 estimatedMinutes (`06` §5.3), 러버덕 시작 질문 (`06` §9.5 RD-2) |
+| tip | 오늘의 팁 선택 (`06` §5.12), `LEARNED` 복습 카드 (`06` §5.12 TIP-5) |
+| term | 용어 검색·용어 복습 카드 (`05` §20), 표기 통일 검사 (CV-104) |
+| checklist | 과제 카드의 시작 전·끝내기 전 확인 목록 (`05` §8.1) |
 
-이 문서가 정하는 것: 파일 스키마와 DB 매핑(§3 — `curated-repos.yaml`은 §3.8), 검증 규칙(§4), 날짜 배치(§5), 난이도(§6), 작성 가이드(§7), 버전·은퇴와 줄 번호 관리(§8 — pinnedCommit은 §8.4), 자기평가 전파 계약(§9), 우선순위 조정(§10), 체크리스트(§11), 인벤토리(§12), 기준 문서 반영 기록(§13).
+이 문서가 정하는 것: 파일 스키마와 DB 매핑(§3 — `curated-repos.yaml`은 §3.8, 팁·용어·체크리스트는 §3.9~§3.11, 적재 순서는 §3.12, `concept-readings.yaml`은 §3.13), 검증 규칙(§4), 날짜 배치(§5), 난이도(§6), 작성 가이드(§7 — 문제 세 종류는 §7.7), 버전·은퇴와 줄 번호 관리(§8 — pinnedCommit은 §8.4), 소스 점검(§8.5), 자기평가 전파 계약(§9), 우선순위 조정(§10), 체크리스트(§11), 인벤토리(§12), 기준 문서 반영 기록(§13).
+
+**팁·용어·관례는 콘텐츠다** — 코드 읽기(`curated-repos.yaml`)와 같이 DB 테이블을 만들지 않는다(ADR-041). 사용자별 상태만 DB에 둔다(`user_daily_tip`, 용어 복습 카드 `review_item`). 내용이 자주 바뀌고, 사용자마다 달라지는 것은 "받았는가·어떻게 답했는가"뿐이기 때문이다.
 
 ---
 
@@ -32,17 +37,27 @@ content/
 ├── skill-tree/
 │   └── java-backend.yaml            # skill 88개 (root 13 + non-root 75)
 ├── role-targets/
-│   └── java-backend.yaml            # JAVA_BACKEND role target 75개
+│   ├── java-backend.yaml            # JAVA_BACKEND role target 75개
+│   └── java-backend-starter.yaml    # JAVA_BACKEND_STARTER role target 75개 (같은 skill, 다른 priority·목표)
 ├── plan-templates/
-│   └── java-backend.yaml            # JAVA_BACKEND_DEFAULT milestone 9개
+│   ├── java-backend.yaml            # JAVA_BACKEND_DEFAULT milestone 9개
+│   └── java-backend-starter.yaml    # JAVA_BACKEND_STARTER_DEFAULT milestone 6개
 ├── review-cards/
 │   ├── java.yaml  spring.yaml  database.yaml  web-http.yaml  testing.yaml
 │   └── security.yaml  practical-engineering.yaml  devops.yaml  network-cs.yaml  explanation.yaml
 ├── challenges/
 │   ├── java.yaml  spring.yaml  database.yaml  testing-security.yaml   # PRACTICE 18개
 │   └── diagnostic.yaml                                                # DIAGNOSTIC 5개
-├── curated-sources.yaml             # curated source 10개
-├── curated-repos.yaml               # READ_CODE 저장소 3개 + reading 13개 (§3.8)
+├── curated-sources.yaml             # curated source 19개
+├── curated-repos.yaml               # READ_CODE 저장소 9개 + 코드 읽기 41개(활성 36, 은퇴 5) (§3.8)
+├── concept-readings.yaml            # READING 개념 읽기 14개 (§3.13). 코드가 아니라 공식 문서다
+├── tips/                            # 오늘의 팁 (§3.9). 파일은 TipSeries 묶음별로 나눈다
+│   └── logging.yaml  error-reading.yaml  resource.yaml  http-integration.yaml
+│       database.yaml  operations.yaml  convention.yaml
+├── terms/                           # 용어 사전 (§3.10). 파일은 주제별로 나눈다
+│   └── database.yaml  spring.yaml  web-http.yaml  java.yaml  operations.yaml
+├── checklists/                      # 과제 체크리스트 (관례) (§3.11)
+│   └── api.yaml  database.yaml  testing.yaml  operations.yaml
 └── tools/
     └── validate_content.py          # 구현 전 기준 검증기 (§4.3). 런타임에 복사하지 않는다
 ```
@@ -53,7 +68,7 @@ content/
 | 런타임 위치 | `devpilot.content.location` (기본 `classpath:content/`), curated source는 `devpilot.ai.curated-sources-location` (`03` §9) |
 | 읽는 파일 | `YamlContentReader`는 `catalog.yaml`의 `files`에 나열된 파일만 나열 순서대로 읽는다. 디렉터리 스캔을 하지 않는다 |
 | 모듈 | `content` 모듈(`ContentSeeder`, `ContentValidator`, `YamlContentReader`)이 읽고 검증한다. 의존 대상은 `common`, `skill`, `plan`, `review`, `training`뿐이다(`03` §2.2). curated source 파일은 `integration.ai`가 직접 읽고, `ContentValidator`는 같은 파일을 검증만 한다 |
-| 저장 여부 | skill, role target, challenge는 DB에 upsert한다. plan template, review card, curated repo/reading은 공용 테이블이 없다(§3.4, §3.5, §3.8) |
+| 저장 여부 | skill, role target, challenge는 DB에 upsert한다. plan template, review card, curated repo/reading, 개념 읽기, tip, term, checklist는 공용 테이블이 없다(§3.4, §3.5, §3.8, §3.9~§3.11, §3.13) |
 
 ---
 
@@ -82,13 +97,23 @@ content/
 | `files.reviewCards` | string[] | Y | 1개 이상 | review card 파일 |
 | `files.challenges` | string[] | Y | 1개 이상 | challenge 파일 |
 | `files.curatedSources` | string | Y | | curated source 파일 |
-| `files.curatedRepos` | string | Y | | curated repo/reading 파일 (§3.8) |
+| `files.curatedRepos` | string | Y | | curated repo/코드 읽기 파일 (§3.8) |
+| `files.conceptReadings` | string | **N** (기본 `concept-readings.yaml`) | | 개념 읽기 파일 (§3.13). 생략하면 기본 경로를 읽는다 — `CatalogChecks`의 파일 키 집합이 고정이라 **`ConceptReadingRegistry`를 구현하는 변경에서 키를 추가한다**(그 전에 적으면 CV-03으로 기동이 실패한다) |
+| `files.lessons` | string[] | **N** (기본 없음) | 0개 이상 | 개념 노트 파일 (§3.14). 생략하면 노트가 없는 것으로 본다 — `CatalogChecks`의 파일 키 집합이 고정이라 **`LessonRegistry`를 구현하는 변경에서 키를 추가한다**(그 전에 적으면 CV-03으로 기동이 실패한다) |
+| `files.tips` | string[] | Y | 1개 이상 | 오늘의 팁 파일 (§3.9) |
+| `files.terms` | string[] | Y | 1개 이상 | 용어 사전 파일 (§3.10) |
+| `files.checklists` | string[] | Y | 1개 이상 | 과제 체크리스트 파일 (§3.11) |
 | `diagnosticCategories` | SkillCategory[] | Y | enum 값 | DIAGNOSTIC challenge가 반드시 있어야 하는 카테고리 (§9, CV-59) |
 | `retired.skillCodes` | string[] | Y | 빈 목록 허용 | 은퇴한 skill code. 재사용 금지 (§8.3) |
 | `retired.challengeSeedKeys` | string[] | Y | | 은퇴한 challenge seedKey |
 | `retired.conceptKeys` | string[] | Y | | 은퇴한 review card conceptKey |
 | `retired.curatedSourceIds` | string[] | Y | | 은퇴한 curated source ID |
-| `retired.readingKeys` | string[] | Y | | 은퇴한 reading key (§3.8). 재사용 금지 |
+| `retired.readingKeys` | string[] | Y | | 은퇴한 reading key (§3.8, §3.13). **코드 읽기(`READ.*`)와 개념 읽기(`DOC.*`)가 한 목록을 같이 쓴다** — 둘 다 `learning_task.reading_key` 한 칸에 들어가고 `GET /readings/{key}`가 둘 다 돌려주기 때문이다(`05` §19.7). 재사용 금지. 은퇴한 정의는 각 파일에 `retired: true`로 남는다(§8.2) |
+| `retired.tipKeys` | string[] | Y | | 은퇴한 tip key (§3.9). 재사용 금지. 은퇴한 팁의 정의는 파일에 `retired: true`로 남는다 — `user_daily_tip.tip_key`가 가리키기 때문이다(§8.2) |
+| `retired.lessonKeys` | string[] | **N** (기본 빈 목록) | | 은퇴한 개념 노트 key (§3.14). 재사용 금지. 은퇴한 노트의 정의는 파일에 `retired: true`로 남는다 — 학습 이벤트의 payload가 `lessonKey`·`unitKey`를 가리키기 때문이다(§8.2) |
+| `retired.termKeys` | string[] | Y | | 은퇴한 term key (§3.10). 재사용 금지. 은퇴한 용어의 정의는 파일에 `retired: true`로 남는다 — 용어 복습 카드의 `concept_key = TERM:{key}`가 가리키기 때문이다(§8.2) |
+
+체크리스트에는 은퇴 목록이 없다. 사용자 데이터가 `CHK.*` 키를 저장하지 않고(과제 카드를 그릴 때만 붙는다) 파일에서 빼면 그대로 사라지기 때문이다(§8.2).
 
 ### 3.2 `skill-tree/*.yaml`
 
@@ -101,6 +126,7 @@ content/
 | `category` | SkillCategory | Y | 13개 enum (`04` §3) | `skill.category` |
 | `parent` | string | root: 없음, non-root: Y | 존재하는 code, 같은 category, `code == parent + "." + SEGMENT` | `skill.parent_id` (code → id) |
 | `description` | string | Y | 10~300자, 1~2문장 | `skill.description` (READING task 설명에도 쓰임, `06` §5.3) |
+| `whyItMatters` | string | non-root 중 **어느 트랙에서든 MUST**인 skill: Y, 그 밖: 선택 | 20~200자, 한 문장. root는 가질 수 없다 (CV-88·CV-89) | 저장하지 않는다. `ContentSeeder`가 `WhyItMattersRegistry`에 등록하고 `GET /skills/{skillId}`·Today 과제 카드가 한 줄로 보인다 (`05` §6·§8.1) |
 | `minutesPerLevelStep` | int | non-root: Y, root: 선택(기본 120) | non-root **60**~2000 (§7.5 작성 규칙을 CV-15가 강제), root 10~2000 | `skill.minutes_per_level_step` |
 | `prerequisites` | string[] | non-root: Y(빈 목록 허용), root: 금지 | 존재하는 non-root code, 자기 자신·중복 금지, 순환 금지 | `skill_prerequisite(skill_id, prerequisite_skill_id)` |
 | — | | | | `skill.catalog_version = catalogVersion`, `skill.active = true` |
@@ -115,15 +141,18 @@ skills:
     category: SPRING
     parent: SPRING
     description: '@Transactional의 적용 범위, 기본 롤백 규칙, 트랜잭션 경계 설계를 이해한다.'
+    whyItMatters: 경계를 잘못 잡으면 절반만 저장된 주문처럼 되돌릴 수 없는 데이터가 남는다.
     minutesPerLevelStep: 150
     prerequisites: [SPRING.AOP_PROXY, DATABASE.TRANSACTION]
 ```
+
+`whyItMatters`는 **왜 이걸 지금 배우는지**를 한 문장으로 답한다. 개념 노트(§3.14)에도 같은 이름의 필드가 있지만 **다른 값이다** — 노트 것은 그 노트를 왜 읽는지고, 이것은 그 기술을 왜 하는지다. 과제 카드 맨 위에 그대로 붙으므로(`05` §8.1) "중요하다", "많이 쓰인다" 같은 빈 문장을 쓰지 않고 **모르면 무엇이 잘못되는지**를 쓴다. 작성 규칙은 §7.5.
 
 ### 3.3 `role-targets/*.yaml`
 
 | 필드 | 타입 | 필수 | 제약 | DB 매핑 |
 |---|---|---|---|---|
-| `targetRole` | TargetRole | Y | `JAVA_BACKEND` | `role_skill_target.target_role` |
+| `targetRole` | TargetRole | Y | `TargetRole` 값. **학습 트랙마다 파일 1개** (`JAVA_BACKEND`, `JAVA_BACKEND_STARTER`, `INTEGRATION_ENGINEER`) | `role_skill_target.target_role` |
 | `targets[].skill` | string | Y | 존재하는 non-root code, 역할당 non-root skill마다 정확히 1개 | `role_skill_target.skill_id` (키: `(target_role, skill_id)`) |
 | `targets[].priority` | Priority | Y | `MUST`/`SHOULD`/`LATER` | `role_skill_target.priority` |
 | `targets[].importance` | decimal | Y | 0.00~1.00, 소수 둘째 자리까지 | `role_skill_target.practical_importance` numeric(3,2) |
@@ -142,6 +171,19 @@ targets:
     target: { knowledge: 4, implementation: 4, explanation: 4, debugging: 3 }
 ```
 
+**학습 트랙과 role target** — skill 카탈로그(§3.2)는 트랙과 무관하게 하나다. 트랙이 바꾸는 것은 이 파일뿐이다. 그래서 **모든 트랙 파일이 같은 non-root skill 목록을 갖고**(CV-21 — 하나당 정확히 1개), `priority`·`importance`·축별 `target`만 다르다. 입문 트랙(`JAVA_BACKEND_STARTER`)은 같은 75개 skill에 대해 MUST를 14개 안팎으로 줄이고 나머지를 SHOULD·LATER로 두며, 축별 목표는 같은 skill의 기본 트랙 값 **이하**로 둔다. `importance`는 그 트랙 기준으로 다시 매긴다(기본 트랙 값을 복사하지 않는다).
+
+연동 트랙(`INTEGRATION_ENGINEER`)은 입문 트랙과 달리 기본 트랙의 **낮은 수준판이 아니라 다른 구성**이다. MUST를 **기본기 70% / 연동 20% / 배포·운영 10%** 비율로 고르고, 필수 목표 합계(`06` §4.2 `requiredMinutes` 합)가 **180~220시간**이 되게 맞춘다(`06` §5.3 트랙 기본값 표). 상·하위 관계가 아니므로 CV-26(입문 트랙과 기본 트랙의 축별 비교)의 대상이 아니다.
+
+```yaml
+targetRole: JAVA_BACKEND_STARTER
+targets:
+  - skill: SPRING.TRANSACTION
+    priority: SHOULD                 # 기본 트랙에서는 MUST
+    importance: 0.60
+    target: { knowledge: 3, implementation: 2, explanation: 2, debugging: 1 }
+```
+
 ### 3.4 `plan-templates/*.yaml`
 
 DB 테이블이 없다. `ContentSeeder`가 검증한 템플릿을 plan 모듈 application 계층의 템플릿 보관 컴포넌트에 메모리로 등록하고(§13 O-2), plan 생성 시 아래처럼 사용한다.
@@ -149,7 +191,7 @@ DB 테이블이 없다. `ContentSeeder`가 검증한 템플릿을 plan 모듈 ap
 | 필드 | 타입 | 필수 | 제약 | 사용처 |
 |---|---|---|---|---|
 | `templateKey` | string | Y | `^[A-Z][A-Z0-9_]{2,59}$` | 식별·로그 |
-| `targetRole` | TargetRole | Y | 역할당 템플릿 정확히 1개 | 학습 목표의 `target_role`(학습 트랙)로 선택 |
+| `targetRole` | TargetRole | Y | **트랙당 템플릿 정확히 1개**(CV-30) | 학습 목표의 `target_role`(학습 트랙)로 선택 |
 | `planTitle` | string | Y | 1~200자 | `learning_plan.title` |
 | `placement.minMilestoneDays` | int | Y | 1~28 | §5 배치 알고리즘 |
 | `milestones[].key` | string | Y | `^[A-Z][A-Z0-9_]{2,59}$`, 템플릿 안 유일 | 저장하지 않음 (템플릿 추적용) |
@@ -157,7 +199,7 @@ DB 테이블이 없다. `ContentSeeder`가 검증한 템플릿을 plan 모듈 ap
 | `milestones[].description` | string | N | 1~2000자 | `plan_milestone.description` |
 | `milestones[].priority` | Priority | Y | enum | `plan_milestone.priority` |
 | `milestones[].weightBp` | int | Y | 100~10000, 템플릿 전체 합 = 10000 | §5 기간 배분 |
-| `milestones[].phase` | enum | Y | `PREPARATION` \| `CONSOLIDATION`. PREPARATION이 모두 앞에 오고, 단계마다 1개 이상 | §5 창(window) 선택 |
+| `milestones[].phase` | enum | Y | `PREPARATION` \| `CONSOLIDATION`. PREPARATION이 모두 앞에 오고, 단계마다 1개 이상 | §5 배치 순서(창은 하나이고 `CONSOLIDATION`이 목표일 바로 앞에 온다) |
 | `milestones[].skillCodes` | string[] | Y | 1~24개, role target이 있는 skill, 한 skill은 템플릿 전체에서 최대 1개 milestone, 모든 MUST skill은 반드시 포함 | `milestone_skill` |
 | — | | | | `plan_milestone.start_date`/`end_date` = §5, `status = PLANNED`, `sort_order` = milestone index |
 
@@ -204,6 +246,7 @@ cards:
 | `skills` | string[] | Y | 1~3개, role target이 있는 non-root code, 중복 금지 | `challenge_skill` |
 | `difficulty` | int | Y | 1~5 (§6) | `difficulty` |
 | `estimatedMinutes` | int | Y | 5~180 | `estimated_minutes` |
+| `timeLimitMinutes` | int | N (기본 없음) | 있으면 1~120이고 `estimatedMinutes` 이하 (CV-62). **시간 제한 구현 문제**에만 쓴다 (§7.7) | `time_limit_minutes` (null 허용, `04` §10.1) |
 | `isTransfer` | bool | Y | true면 difficulty ≥ 3 | `is_transfer` |
 | `title` | string | Y | 1~200자 | `title` |
 | `scenario` | string | Y | 20~3000자, 코드 포함 가능 | `scenario` |
@@ -217,7 +260,7 @@ cards:
 | — | | | | `owner_user_id = null`, `origin = SEED`, `status = VALIDATED`, `generation_status = COMPLETED`, `ai_call_id = null`, `prompt_version = null` |
 
 - Hint 공개 시 `hint_disclosure.content_origin = SEED` (`06` §9.1 HL-6).
-- migration 순서상 `challenge`는 V4, `challenge_skill`은 V5다(`04` §10). **challenge seed 적재는 V5가 적용된 S3부터** 한다. 적재 여부는 설정 `devpilot.content.seed-challenges`(`03` §9)로 정한다: S2 배포는 `false`(challenge 파일을 읽고 §4 검증은 하되 §3.9 6번 upsert를 건너뜀 — `challenge_skill` 테이블이 없어도 기동), S3(V5 적용)부터 `true`(기본값). S1은 skill·role target·template, S2는 review card를 적재한다.
+- migration 순서상 `challenge`는 V4, `challenge_skill`은 V5다(`04` §10). **challenge seed 적재는 V5가 적용된 S3부터** 한다. 적재 여부는 설정 `devpilot.content.seed-challenges`(`03` §9)로 정한다: S2 배포는 `false`(challenge 파일을 읽고 §4 검증은 하되 §3.12 6번 upsert를 건너뜀 — `challenge_skill` 테이블이 없어도 기동), S3(V5 적용)부터 `true`(기본값). S1은 skill·role target·template, S2는 review card를 적재한다.
 
 ### 3.7 `curated-sources.yaml`
 
@@ -266,6 +309,7 @@ cards:
 | `estimatedMinutes` | int | Y | 5~60 | `learning_task.estimated_minutes`에 **그대로** 들어간다 |
 | `question` | string | Y | **40~300자.** 답을 유도하지 않는 열린 질문 | 러버덕 세션의 시작점 (RD-2) |
 | `lookFor` | string[] | Y | 1~5개, 항목 5~200자 | 무엇을 눈여겨볼지. 정답이 아니라 관점이다 |
+| `retired` | bool | N (기본 false) | `true`면 key가 `retired.readingKeys`에 있어야 한다(CV-83) | 은퇴한 단위. planner가 제안하지 않지만(`06` §5.3) `GET /readings/{key}`는 계속 돌려준다 — 지난 과제·러버덕 세션이 가리키는 단위를 잃지 않게(§8.2) |
 
 ```yaml
 repos:
@@ -299,11 +343,157 @@ readings:
 | 경로·줄 번호 | **추측하지 않는다.** `pinnedCommit`으로 체크아웃한 사본에서 파일을 열어 범위를 눈으로 확인하고 적는다. 범위는 의미 단위(클래스 선언~메서드 끝)로 끊는다 |
 | 범위 크기 | 한 과제가 `estimatedMinutes` 안에 끝나야 한다. 대략 40~90줄이 적당하고, 120줄을 넘으면 두 reading으로 쪼갠다 |
 | 질문 | 답이 이미 들어 있는 질문("왜 EAGER가 N+1을 일으킬까요?")을 쓰지 않는다. 사용자가 코드를 보고 스스로 판단할 여지를 남긴다. 40자 미만은 CV-86 오류다 |
-| 저장소당 개수 | 3~5개. 벗어나면 CV-87 WARN |
+| 저장소당 개수 | 3~8개. 벗어나면 CV-87 WARN. 한 저장소를 여러 주제로 읽는 경우(`petclinic`처럼 구조·테스트·설정·CI를 나눠 읽는다)가 있어 상한을 8로 둔다 |
 | 라이선스 | `license`가 `UNSPECIFIED`인 저장소는 **경로·줄 번호·질문만** 적는다. 코드를 이 파일이나 문서에 옮겨 적지 않는다 |
-| 커버되지 않는 것 | 인증/로그인, 동시성·재고 차감, 대용량 조회 튜닝은 세 저장소로 덮이지 않는다. 읽기가 아니라 **직접 구현**과 기존 challenge 콘텐츠로 채운다(plan template의 milestone 2·6이 "읽기 없음"인 이유) |
+| 커버되지 않는 것 | 조회 튜닝(인덱스·실행 계획), 오류 응답 설계(ProblemDetail), REST API 설계, Git 협업, EXPLANATION 카테고리는 **코드 읽기**로 덮을 만한 저장소가 없다. 2026-09-21 점검에서 이 자리를 **개념 읽기**(`concept-readings.yaml`, §3.13)로 채웠다 — `READING` 과제가 읽을 공식 문서를 직접 가리킨다. 나머지는 읽기가 아니라 **직접 구현**과 기존 challenge 콘텐츠로 채운다(milestone 6이 측정을 근거로 삼는 이유). 빈 곳을 채울 저장소·단위는 소스 점검(§8.5)에서 찾는다 |
+| 저장소·단위 교체 | 추가·교체·은퇴는 소스 점검(§8.5)에서 사용자와 정한 뒤에만 한다 |
 
-### 3.9 적재 순서 (`ContentSeeder`, 한 트랜잭션)
+### 3.9 `tips/*.yaml` (오늘의 팁)
+
+최상위 키 `tips` (목록). **DB 테이블이 없다.** curated repo·reading과 같이 `ContentSeeder`가 검증한 뒤 메모리에 등록하고, `06` §5.12가 skill code로 찾아 쓴다. 사용자별로 남는 것은 `user_daily_tip` 한 행뿐이다(ADR-041).
+
+| 필드 | 타입 | 필수 | 제약 | 용도 |
+|---|---|---|---|---|
+| `key` | string | Y | `^TIP\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\.[0-9]{3}$` (`TIP.<시리즈>.<주제>.<번호>`), ≤ 120자, 전체 유일 | `user_daily_tip.tip_key`, 선택 정렬 키 (`06` §5.12) |
+| `series` | TipSeries | Y | enum 7개 (`04` §3). `key`의 두 번째 세그먼트와 같아야 한다 | 목록 필터 |
+| `level` | TipLevel | Y | `BASIC` \| `PRACTICAL` | 묶음 안 정렬 (`06` §5.12, `basicTipsFirst`) |
+| `skillCodes` | string[] | Y | 1~4개, 중복 금지, role target이 있는 non-root code | 묶음 매칭, `LEARNED` 카드의 `skill_id` (`06` §5.12 TIP-5) |
+| `title` | string | Y | 5~80자, 한 줄 | 카드 제목 |
+| `symptom` | string | Y | 20~500자. 실제로 보게 되는 로그·오류·화면 한 토막 | 카드 2줄 미리보기 (`02` SCR-TODAY) |
+| `cause` | string | Y | 40~800자, 3~5문장 | 왜 그런가 |
+| `example` | string | N | 있으면 20~800자, 코드 **15줄 이하** | 예제 |
+| `whereToLook` | string | Y | 20~400자 | 어디를 보면 되는가 |
+| `experiment` | string | N | 있으면 20~500자. 5분 안에 재현하는 방법 | 5분 실험 |
+| `sourceUrl` | string | `experiment`가 없으면 **Y** | https, 호스트가 trusted host allowlist(정확 일치 또는 하위 도메인, `06` §10) | 공식 문서. **서버는 fetch하지 않는다** |
+| `estimatedMinutes` | int | Y | 1~10 | 카드 표시 |
+| `retired` | bool | N (기본 false) | `true`면 key가 `retired.tipKeys`에 있어야 한다 (CV-95) | 은퇴한 팁. 선택되지 않지만 조회는 된다(§8.2) |
+
+```yaml
+tips:
+  - key: TIP.LOGGING.LEVELS.001
+    series: LOGGING
+    level: PRACTICAL
+    skillCodes: [PRACTICAL_ENGINEERING.LOGGING]
+    title: 로그 레벨은 언제 무엇을 쓰나
+    symptom: |-
+      장애가 났는데 로그에는 INFO 한 줄만 남아 있고, 평소에는 DEBUG가 초당 수천 줄씩 쌓인다.
+    cause: |-
+      레벨은 "얼마나 자세한가"가 아니라 "누가 언제 보는가"로 나눈다. ...
+    whereToLook: |-
+      기본 레벨 설정과, 예외를 잡는 자리에서 어떤 레벨로 남기는지 두 곳을 본다.
+    experiment: |-
+      레벨을 한 단계 올리고 같은 요청을 한 번 보내 어떤 줄이 사라지는지 본다.
+    sourceUrl: https://docs.spring.io/spring-boot/reference/features/logging.html
+    estimatedMinutes: 3
+    retired: false
+```
+
+**작성 규칙**
+
+| 항목 | 규칙 |
+|---|---|
+| 한 팁 한 증상 | `symptom`이 두 개면 팁을 둘로 나눈다. 제목은 그 증상 하나를 가리킨다 |
+| 근거 | `sourceUrl`과 `experiment` 중 **하나 이상**이 반드시 있다(CV-91). 둘 다 없으면 확인할 길이 없는 이야기가 된다. `sourceUrl`은 브라우저로 열어 그 내용이 실제로 있는지 확인한 뒤 적는다(§7.6 2번과 같은 절차) |
+| 코드 | `example`은 15줄 이하이고, 정답 코드를 그대로 주지 않는다. 증상을 보여 주는 최소한만 쓴다 |
+| 관례 팁 | 관례(convention)는 **별도 파일 형식을 만들지 않는다.** `series: CONVENTION`으로 이 파일에 쓴다 |
+| 표기 | 용어는 `terms/*.yaml`의 `representative` 표기를 쓴다(CV-104가 검사한다) |
+| 난이도 | `BASIC`은 시작한 사람이 그날 바로 쓸 수 있는 것, `PRACTICAL`은 한 번 겪어 본 사람이 원인을 알게 되는 것 |
+| 분량 | 한 팁은 `estimatedMinutes` 안에 읽힌다. 3분을 넘기면 두 팁으로 쪼갠다 |
+
+### 3.10 `terms/*.yaml` (용어 사전)
+
+최상위 키 `terms` (목록). DB 테이블이 없다(§3.9와 같다). 사용자별로 남는 것은 만들기를 고른 **용어 복습 카드**뿐이다.
+
+| 필드 | 타입 | 필수 | 제약 | 용도 |
+|---|---|---|---|---|
+| `key` | string | Y | `^TERM\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*$`, ≤ 120자, 전체 유일 | 복습 카드의 `concept_key` 접두사 (`TERM:{key}`) |
+| `representative` | string | Y | 1~40자. **대표 표기 하나**, 모든 용어에서 유일 | 저장소 전체가 쓰는 표기 (CV-104) |
+| `english` | string | Y | 1~60자 | 표시·검색 |
+| `aliases` | string[] | N (기본 `[]`) | 0~5개, 각 1~40자. `representative`와 중복 금지, 다른 용어의 `representative`·`aliases`와 겹칠 수 없다 | "이렇게도 부른다" 검색 |
+| `definition` | string | Y | 20~300자, **한 문장** | 정의 |
+| `example` | string | Y | 20~300자, 한 줄 | 실무 예문 |
+| `confusableWith` | string[] | N (기본 `[]`) | 0~3개, 존재하는 `key`, 자기 자신 금지 | 헷갈리는 짝 |
+| `skillCodes` | string[] | Y | 1~4개, 중복 금지, role target이 있는 non-root code | 검색 필터, 복습 카드 `skill_id` |
+| `level` | TipLevel | Y | `BASIC` \| `PRACTICAL` | 표시 |
+| `sourceUrl` | string | Y | https, trusted host allowlist | 근거. **서버는 fetch하지 않는다** |
+| `retired` | bool | N (기본 false) | `true`면 key가 `retired.termKeys`에 있어야 한다 (CV-105) | 은퇴한 용어. 검색되지 않지만 조회는 된다(§8.2) |
+
+```yaml
+terms:
+  - key: TERM.DATABASE.COLUMN
+    representative: 컬럼
+    english: column
+    aliases: [열, 칼럼]
+    definition: |-
+      테이블에서 같은 뜻과 타입을 가진 값들이 세로로 모인 자리다.
+    example: |-
+      주문 테이블에 상태 컬럼을 하나 더했다.
+    confusableWith: [TERM.DATABASE.FIELD]
+    skillCodes: [DATABASE.MODELING]
+    level: BASIC
+    sourceUrl: https://www.postgresql.org/docs/16/ddl-basics.html
+    retired: false
+```
+
+**용어 복습 카드의 콘텐츠 계약** — `POST /terms/{termKey}/card`(`05` §20)는 **양방향 2장**을 만든다. 카드 본문은 이 파일에서 그대로 온다.
+
+| 방향 | `concept_key` | `prompt` | `expected_answer` |
+|---|---|---|---|
+| 표기 → 뜻 | `TERM:{key}` | `representative`(+ `english`) | `definition` + `example` |
+| 뜻 → 표기 | `TERM:{key}:REVERSE` | `definition` | `representative` (+ `aliases`) |
+
+두 장 모두 `review_type = RECALL`, `origin = MANUAL`, `source_type = TERM`, `skill_id` = `skillCodes`의 **첫 활성 skill**(파일에 적힌 순서. 활성 skill이 없으면 카드를 만들지 않는다), `rubric_json`은 항목 **1개**(`[{"id":"R1","criterion":"대표 표기와 뜻을 짝지어 말한다"}]`), 첫 due는 `06` §6.3 "수동 생성" 행이다. 자세한 형식은 `05` §20.7이다. **그래서 `definition`은 그 자체로 문제가 되어야 한다** — 대표 표기를 정의 안에 쓰면 역방향 카드의 답이 문제에 들어간다.
+
+**작성 규칙**
+
+| 항목 | 규칙 |
+|---|---|
+| 대표 표기 | 한 용어에 표기 **하나**. "컬럼/칼럼"처럼 흔들리는 말은 `representative`를 정하고 나머지를 `aliases`로 내린다. 저장소의 다른 콘텐츠도 그 표기를 쓴다(CV-104 WARN) |
+| 정의 | 한 문장. 같은 말로 돌려 말하지 않는다("인덱스는 index다" 금지). 영어 원문이 더 분명하면 `english`에 맡기고 한국어 정의는 뜻을 쓴다 |
+| 예문 | 실제로 쓰는 문장 한 줄. 정의를 다시 쓰지 않는다 |
+| 헷갈리는 짝 | 실제로 같이 쓰이며 헷갈리는 것만 넣는다. 반대말 사전을 만들지 않는다 |
+| 근거 | `sourceUrl` 필수. 공식 문서에 그 뜻이 그대로 있는 것만 등록한다(§7.6 2번) |
+
+### 3.11 `checklists/*.yaml` (과제 체크리스트, 관례)
+
+최상위 키 `checklists` (목록). DB 테이블이 없다. 과제 카드를 만들 때 붙고 저장하지 않는다.
+
+| 필드 | 타입 | 필수 | 제약 | 용도 |
+|---|---|---|---|---|
+| `key` | string | Y | `^CHK\.[A-Z][A-Z0-9_]*(\.[A-Z][A-Z0-9_]*){1,2}$`, ≤ 120자, 전체 유일 | 식별·정렬 |
+| `taskTypes` | TaskType[] | Y | 1~8개, 중복 금지, `TaskType` 값 (`04` §3) | 어떤 과제에 붙는가 |
+| `skillCodes` | string[] | Y | 1~4개, 중복 금지, role target이 있는 non-root code | 어떤 skill에 붙는가 |
+| `before` | string[] | Y | 3~5개, 각 10~120자, **질문형**(`?` 없이 "…했나"로 끝난다) | 시작 전 확인 |
+| `after` | string[] | Y | 3~5개, 각 10~120자, 질문형 | 끝내기 전 확인 |
+
+```yaml
+checklists:
+  - key: CHK.API.DESIGN
+    taskTypes: [CHALLENGE, PROJECT_TASK]
+    skillCodes: [WEB_HTTP.REST_API_DESIGN]
+    before:
+      - URL은 복수 명사·소문자·하이픈으로 정했나
+      - 이 동작에 맞는 메서드를 골랐나
+      - 성공 상태 코드를 먼저 정했나
+    after:
+      - 오류 응답 형식을 맞췄나
+      - 같은 요청을 두 번 보내도 결과가 같은가
+      - 목록 응답에 페이지 기준을 넣었나
+```
+
+**붙이는 규칙 (결정적)** — 과제의 `taskType`이 `taskTypes`에 있고 과제의 `skill_id`가 `skillCodes`에 있는 체크리스트를 `key` ASC로 **하나만** 붙인다. 맞는 것이 없으면 붙이지 않는다(`05` §8.1). `skill_id`가 없는 과제에는 붙지 않는다.
+
+**작성 규칙**
+
+| 항목 | 규칙 |
+|---|---|
+| 질문형 | "…했나"로 끝내는 확인 질문으로 쓴다. 지시문("…해라")이 아니다 |
+| 개수 | `before`·`after` 각 3~5개. 더 늘리면 읽지 않는다 |
+| 관례만 | 그 문제의 해답이 아니라 **어디서나 통하는 관례**를 쓴다. 특정 challenge의 정답을 흘리지 않는다 |
+| 겹침 | 같은 `(taskType, skill)` 조합을 노린 체크리스트는 **하나만** 둔다. 여럿이면 `key` ASC 첫 번째만 붙으므로 나머지는 보이지 않는다(CV-113 WARN) |
+| 표기 | 용어는 `terms/*.yaml`의 `representative` 표기를 쓴다(CV-104) |
+
+### 3.12 적재 순서 (`ContentSeeder`, 한 트랜잭션)
 
 ```text
 0. devpilot.content.seed-on-startup = false 이면 종료
@@ -320,9 +510,170 @@ readings:
    - 구조 필드(skills, difficulty, purpose, isTransfer, expectedConcepts, rubric 항목의 id·weightBp·axis와 항목 수·순서) 중 하나라도 DB와 다르면 기동 실패 (SD-02, §8.1, `04` §9)
    - 텍스트 필드(title, scenario, prompt, constraints, commonMistakes, hints, rubric criterion 문구)와 비구조 필드(estimatedMinutes, transferTargets)는 갱신
    - YAML에 없는 seed challenge → status = RETIRED, status_updated_at = now. YAML에 다시 나타난 RETIRED → VALIDATED
-7. plan template, review card, curated repo·reading 목록을 메모리에 등록
+7. plan template, review card, curated repo·reading, tip, term, checklist, skill의 `whyItMatters` 목록을 메모리에 등록
 8. 새 seed card를 기존 온보딩 완료 사용자에게 추가 (`06` §6.3 "신규 seed 카드" 행). 이미 있는 concept_key는 건너뜀
 ```
+
+7번의 "curated repo·reading"에는 **개념 읽기(§3.13)도 포함**된다. `ConceptReadingRegistry`에 등록한다.
+
+### 3.13 `concept-readings.yaml`
+
+최상위 키는 `conceptReadings` 하나다. **`READING` 과제(`06` §5.3)가 "무엇을 읽어야 하는지"를 여기서 가져온다.** 지금까지 `READING`은 skill 이름과 설명만으로 만들어져 "공식 문서를 읽고 핵심 3가지를 스스로 적어 보세요"라고만 했고 **그 공식 문서가 무엇인지 가리키는 수단이 없었다.** 이 파일이 그 자리를 채운다.
+
+**DB 테이블이 없다.** `curated-repos.yaml`과 같이 `ContentSeeder`가 검증한 뒤 `ConceptReadingRegistry`(today 모듈, `03` §3.2)에 등록하고, planner가 skill code로 찾아 쓴다. **서버는 `url`을 fetch하지 않는다**(`07` §5.5) — 사람이 브라우저로 열어 확인한 날짜를 `verifiedAt`에 남긴다.
+
+**코드 읽기와의 차이**
+
+| | 코드 읽기 (`curated-repos.yaml` §3.8) | 개념 읽기 (이 파일) |
+|---|---|---|
+| 과제 | `READ_CODE` | `READING` |
+| 읽는 것 | 저장소의 파일 1개·줄 범위 1개 | 공식 문서 페이지 1개 |
+| 어디서 | 사용자가 clone한 로컬 사본, IDE | 브라우저(새 탭) |
+| 나오는 조건 | planning KNOWLEDGE ≥ `readCodeMinKnowledge`(RC-3) | planning KNOWLEDGE < 2 |
+| 완료 조건 | 러버덕 세션 1개(RC-1) | 없다(사용자가 완료를 누른다) |
+| key | `READ.*` | `DOC.*` |
+
+**key는 한 namespace다.** 둘 다 `learning_task.reading_key` 한 칸에 들어가고 `GET /readings/{key}`가 둘 다 돌려준다(`05` §19.7). 그래서 두 파일을 통틀어 key가 겹치면 안 되고(CV-120), 은퇴 목록도 `retired.readingKeys` 하나를 같이 쓴다(§3.1).
+
+`conceptReadings[]`
+
+| 필드 | 타입 | 필수 | 제약 | 용도 |
+|---|---|---|---|---|
+| `key` | string | Y | `^DOC\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\.[0-9]{3}$`(`DOC.<주제>.<단위>.<번호>`), ≤ 100자, **코드 읽기 key를 포함해 전체 유일**, `retired.readingKeys`에 없음 | 완료 이력 키, 제안 정렬 키(`06` §5.3) |
+| `title` | string | Y | 1~200자. **그 문서의 제목을 그대로** 쓴다(번역하거나 줄이지 않는다) | 과제 카드에 보이는 자료 제목 |
+| `url` | string | Y | https. 호스트가 trusted host allowlist(`03` §9, `06` §10)에 있어야 한다. 서버는 요청하지 않는다 | "자료 열기"(새 탭) |
+| `publisher` | string | Y | 1~100자 | 누가 낸 문서인지 (화면 표시) |
+| `versionScope` | string | Y | 1~100자. 버전 없는 문서는 `버전 없음 (YYYY-MM-DD 기준 내용)` | 버전이 어긋난 문서를 찾는 근거 (§8.5) |
+| `skillCodes` | string[] | Y | 1~4개, 중복 금지, role target이 있는 skill | planner 후보 매칭(`06` §5.3) |
+| `estimatedMinutes` | int | Y | 5~60 | `learning_task.estimated_minutes`에 **그대로** 들어간다 |
+| `whyRead` | string | Y | **40~400자.** 이 skill에서 **무엇을 할 수 있게 되는지**로 쓴다 | 과제 카드의 "왜 이걸 읽나" 한 문단 |
+| `checkPoints` | string[] | Y | **정확히 3개**, 항목 10~200자, 중복 금지 | 읽고 스스로 답할 것 3가지 (`06` §5.3 "핵심 3가지") |
+| `verifiedAt` | date | Y | ISO 날짜. 사람이 문서를 **열어 본** 날 | 링크·버전 점검 주기 (§8.5) |
+| `retired` | bool | N (기본 false) | `true`면 key가 `retired.readingKeys`에 있어야 한다(CV-120) | 은퇴한 단위. planner가 제안하지 않지만 `GET /readings/{key}`는 계속 돌려준다(§8.2) |
+
+```yaml
+conceptReadings:
+  - key: DOC.GIT.BRANCHING.001
+    title: Pro Git — 3.2 Git Branching, Basic Branching and Merging
+    url: https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging
+    publisher: Git
+    versionScope: Pro Git 2nd Edition (버전 없음, 2026-09-21 기준 내용)
+    skillCodes: [DEVOPS.GIT]
+    estimatedMinutes: 25
+    whyRead: |-
+      브랜치를 복사본이 아니라 커밋을 가리키는 이름으로 이해하게 된다. fast-forward와 그렇지 않은 merge가
+      언제 갈라지는지, 충돌 표시가 무엇을 뜻하는지 알면 merge를 피하지 않고 쓸 수 있다.
+    checkPoints:
+      - fast-forward merge와 그렇지 않은 merge가 갈리는 조건을 적어 보세요
+      - 충돌 표시의 위쪽과 아래쪽이 각각 어느 브랜치의 내용인지 적어 보세요
+      - 작업 도중에 급한 수정을 끼워 넣어야 할 때 어떤 순서로 브랜치를 옮길지 적어 보세요
+    verifiedAt: 2026-09-21
+    retired: false
+```
+
+**작성 규칙**
+
+| 항목 | 규칙 |
+|---|---|
+| 문서 고르기 | **그 기술을 만든 곳의 공식 문서·표준 문서**만 쓴다(§7.6 H-1과 같은 기준). 개인 블로그, 강의 사이트, 질의응답 사이트, 요약 사이트, **번역본**은 쓰지 않는다 — 원문 URL을 쓴다 |
+| 버전 | DevPilot이 가르치는 스택에 맞춘다: PostgreSQL **16**, Spring Boot **4.1** / Spring Framework **7**, Java SE **25**. 옛 버전 경로(`/docs/13/`, `/spring-boot/3.x/`)를 링크하지 않는다 |
+| 호스트 | `url` 호스트가 allowlist에 없으면 문서를 억지로 바꾸지 말고 **호스트를 먼저 늘린다**(§7.6 H-1~H-5, `03` §9 + `06` §10을 같은 변경에서 고친다) |
+| 확인 | 링크를 **직접 열어** 제목과 절 번호가 맞는지 보고 `verifiedAt`에 그날을 적는다. 죽은 링크·추측 URL 금지 |
+| 범위 | 한 항목은 문서 **한 페이지(또는 절 하나)**다. 책 전체, 챕터 전체를 가리키지 않는다. `estimatedMinutes` 안에 끝나야 한다 |
+| `whyRead` | 목차를 옮겨 적지 않는다. "이걸 읽으면 이 skill에서 무엇을 할 수 있게 되는가"로 쓴다 |
+| `checkPoints` | 문서를 덮고 답할 수 있는 것 3개다. 마지막 하나는 **자기 코드·자기 프로젝트에 옮겨 보는 것**으로 둔다. 답을 문항 안에 적지 않는다 |
+| skill당 개수 | **1~2개.** 같은 skill에 3개를 넘기지 않는다 — `READING`은 후보 중 하나만 나오고, 많아지면 소스 점검에서 관리가 어렵다 |
+| 은퇴 | 지우지 않고 `retired: true` + `retired.readingKeys`(§8.2) |
+
+---
+
+### 3.14 `lessons/*.yaml` (개념 노트와 학습 단위)
+
+최상위 키는 `lessons` 하나다. **"가르친 적 없는 것은 묻지 않는다"**(`01` §4)를 위한 콘텐츠다. 지금까지 제품에는 가르치는 단계가 없었고 문제·복습 카드·러버덕이 모두 "이미 안다"를 전제했다.
+
+**노트 1개 = skill 1개.** 노트는 **학습 단위** 3~6개로 이뤄지고, 단위 하나가 5~15분짜리 한 바퀴다.
+
+```text
+왜 배우나 → 설명 → 예제 → 출력 예측 → 빈칸 채우기 → 백지 문제 → (막히면 도움) → 모범 답안과 견주기
+```
+
+**어디서 오나** — 설명과 예제는 **공식 문서를 읽고 직접 쓴다**(`sources` 필수, 실제로 연 문서만 적는다). 무엇을 먼저 가르칠지(순서·범위)는 교재 목차를 참고한다. **남의 책 본문을 옮기지 않는다.** 버전은 우리 것에 맞춘다(Spring Boot 4.1 / Spring Framework 7, Java 25, PostgreSQL 16).
+
+**DB 테이블이 없다.** `ContentSeeder`가 검증한 뒤 `LessonRegistry`(today 모듈, `03` §3.2)에 등록하고, 조회 API와 planner가 skill code로 찾아 쓴다. 서버는 어떤 URL도 fetch하지 않는다.
+
+**개념 읽기(§3.13)와의 차이**
+
+| | 개념 읽기 `DOC.*` | 개념 노트 `LESSON.*` |
+|---|---|---|
+| 본문 | 없다. 공식 문서 링크 | **앱 안에 있다.** 한국어 설명·예제 |
+| 연습 | 없다(읽고 스스로 답할 3가지) | 예측·빈칸·문제·모범 답안·변형 문제 |
+| 채점 | 없다 | 예측·빈칸은 서버가 즉시(AI 없음), 문제는 모범 답안과 자기 비교 |
+| 쓰임 | 노트가 없는 skill의 대체 | 노트가 있으면 이쪽이 먼저다 |
+
+`lessons[]`
+
+| 필드 | 타입 | 필수 | 제약 | 용도 |
+|---|---|---|---|---|
+| `key` | string | Y | `^LESSON\.[A-Z][A-Z0-9_]*(\.[A-Z][A-Z0-9_]*)*\.[0-9]{3}$`, ≤ 120자, 전체 유일 | 진행·복습 기록이 가리키는 불변 키 |
+| `skillCode` | string | Y | role target이 있는 skill 1개. **skill당 노트 1개** | planner·skill 화면 매칭 |
+| `title` | string | Y | 1~100자 | 화면 제목 |
+| `whyItMatters` | string | Y | 40~400자. **모르면 무슨 일이 생기나 + 내 프로젝트 어디에 쓰이나** | 단위를 시작하기 전 두 줄 |
+| `oneLine` | string | Y | 10~200자. 용어는 업계 표기 + 영어 병기 | 한 줄 정의 |
+| `units` | object[] | Y | **3~6개**, `key` 유일 | 아래 표 |
+| `commonMistakes` | string[] | N | 0~3개, 항목 20~300자. 증상(에러 메시지)을 포함한다 | 노트 끝의 "자주 하는 실수" |
+| `inProject` | string | Y | 40~400자. 주문 시스템의 **어디에** 쓰는지 | 마지막 화면의 조언 |
+| `sources` | object[] | Y | **1개 이상.** `{title, url, versionScope}`. `url` 호스트는 trusted host allowlist(`03` §9) | 근거. 화면의 "원문" 링크 |
+| `readMore` | object[] | N | 0~3개. `{title, url}`. 호스트 allowlist | 다른 사람의 다른 설명 |
+| `verifiedAt` | date | Y | ISO 날짜. 사람이 `sources`를 **열어 본** 날 | 링크·버전 점검 (§8.5) |
+| `retired` | bool | N (기본 false) | `true`면 key가 `retired.lessonKeys`에 있어야 한다 | 은퇴 (§8.2) |
+
+`units[]`
+
+| 필드 | 타입 | 필수 | 제약 | 용도 |
+|---|---|---|---|---|
+| `key` | string | Y | `^<노트 key>\.U[0-9]{1,2}$`, 전체 유일 | 진행·복습 기록의 키 |
+| `title` | string | Y | 1~60자. 할 수 있게 되는 것으로 쓴다 | 단위 제목 |
+| `minutes` | int | Y | 3~20 | 남은 시간에 몇 개를 할지 정한다 |
+| `core` | bool | Y | 기한이 촉박하면 `true`만 한다 | `06` TH-6 |
+| `explain` | string | Y | 100~800자. 비유 → 정확한 말 순서. 마크다운 | 설명 |
+| `example` | object | Y | `{language, code, output?, note?}`. `code`는 **30줄 이내**, `note`는 줄별 설명(마크다운, ≤ 600자) | 가장 작은 동작하는 예제 |
+| `predict` | object | Y | `{question, code?, choices?, answer, explanation}` — `choices`가 있으면 2~4개 중 하나, 없으면 한 줄 정확 일치 | 예제를 조금 바꾼 결과 맞히기 |
+| `complete` | object | Y | `{question, code, answers, explanation}` — `code`에 빈칸 `___`이 1~2개, `answers`는 빈칸 순서대로 **허용 표기 목록**(각 1개 이상) | 빈칸 채우기 |
+| `problem` | object | Y | `{prompt, deliverables, starterCode?, hints, modelAnswer, selfChecks}` | 백지 문제 |
+| `prerequisiteUnits` | string[] | N | 0~4개. 다른 단위 key(아직 없는 key도 허용) | 막혔을 때 "먼저 볼 개념". 아직 없는 key는 다음에 만들 목록이다 |
+| `variants` | object[] | N | 0~2개. `problem`과 같은 모양 | 복습 때 낼 변형 문제. 없으면 원 문제를 다시 낸다 |
+
+`problem`
+
+| 필드 | 타입 | 필수 | 제약 |
+|---|---|---|---|
+| `prompt` | string | Y | 40~800자. 예제의 **복사가 아니라 변형**이다. 가능하면 주문 시스템(상품·주문) 상황으로 |
+| `deliverables` | string[] | Y | 2~4개. 무엇을 내야 하는지 번호로 읽히게 |
+| `starterCode` | string | N | 20줄 이내. 빈 화면을 피한다 |
+| `hints` | string[] | Y | **2~3개.** 앞에서 뒤로 갈수록 구체적이다. **답을 그대로 적지 않는다** |
+| `modelAnswer` | string | Y | 마크다운. 코드와 **왜 그렇게 했는지** 한두 줄 |
+| `selfChecks` | string[] | Y | 2~4개. 모범 답안과 견줘 스스로 체크할 것. "~했는가" 형태 |
+
+**채점 (AI를 쓰지 않는다)**
+
+| 대상 | 방법 |
+|---|---|
+| `predict` | `choices`가 있으면 고른 값이 `answer`와 같은지. 없으면 한 줄 비교 |
+| `complete` | 빈칸 순서대로 각 칸의 답이 그 칸의 `answers` 중 하나와 같은지 |
+| 비교 규칙 | 앞뒤 공백을 버리고 **연속 공백을 하나로** 줄인 뒤 **대소문자를 구분해** 비교한다. 다르게 쓸 수 있는 표기는 `answers`에 모두 적는다 |
+| `problem` | **서버가 코드를 실행하지 않는다.** 낸 뒤 `modelAnswer`와 `selfChecks`를 보여 주고 사용자가 스스로 견준다. 이 결과는 **복습 일정에만** 쓰고 레벨에는 쓰지 않는다(`01` 원칙 4) |
+
+**작성 가이드**
+
+| 항목 | 기준 |
+|---|---|
+| 한 단위 | 한 가지만 가르친다. 두 가지가 들어가면 단위를 나눈다 |
+| `explain` | 강의가 아니다. 예제를 읽기 위해 필요한 만큼만 쓴다 |
+| `example` | **돌아가는 가장 작은 것**. 실제로 확인한 결과만 `output`에 적는다 |
+| `predict` | 예제를 한 군데만 바꾼다. 바꾼 곳을 문항에 밝힌다 |
+| `problem` | 예제를 그대로 다시 쓰게 하지 않는다. 같은 규칙을 다른 자리에 쓰게 한다 |
+| `hints` | 1번은 "어디를 보라", 2번은 "무엇이 문제인가", 3번은 "어떤 도구를 쓰나". 답은 마지막까지 말하지 않는다 |
+| 순서 | 앞 단위에서 배운 것만 쓴다. 필요하면 `prerequisiteUnits`로 잇는다 |
 
 ---
 
@@ -355,6 +706,8 @@ Severity `ERROR`는 기동 실패와 CI 실패, `WARN`은 로그만 남긴다. J
 | CV-17 | ERROR | prerequisite 그래프에 순환이 없다(DFS, 오류 메시지에 순환 경로 출력) |
 | CV-18 | ERROR | prerequisite로 쓰인 skill의 `target.implementation ≥ 2`. (readiness는 planning IMPLEMENTATION ≥ 2로 판정하므로 `06` §5.4, 그보다 낮은 target은 증거로 영원히 준비 상태가 되지 않는다) |
 | CV-19 | ERROR | root skill은 prerequisite를 갖지 않고, prerequisite로 참조되지 않는다 |
+| CV-88 | ERROR | `whyItMatters`가 있으면 20~200자 한 문장이고, **root skill에는 없다** |
+| CV-89 | ERROR | **어느 role target 파일에서든 `priority = MUST`인 non-root skill은 `whyItMatters`가 있어야 한다.** 트랙마다 MUST 집합이 다르므로 한 트랙에서만 MUST여도 필요하다 |
 
 **Role target**
 
@@ -364,13 +717,15 @@ Severity `ERROR`는 기동 실패와 CI 실패, `WARN`은 로그만 남긴다. J
 | CV-21 | ERROR | 역할마다 non-root skill 하나당 target이 정확히 1개(누락·중복 금지) |
 | CV-22 | ERROR | `priority` ∈ Priority. `importance`는 0.00~1.00이고 소수 둘째 자리까지 |
 | CV-23 | ERROR | 네 축 target이 정수 0~5이고 합이 1 이상 |
-| CV-24 | WARN | DEC-14 기본값과 다르다: ALGORITHM 카테고리가 SHOULD가 아니거나 EXPLANATION 카테고리가 MUST가 아니다 (§10.1에 따라 의도적으로 바꾼 경우 경고를 허용) |
+| CV-24 | WARN | DEC-14 기본값과 다르다: ALGORITHM 카테고리가 SHOULD가 아니거나 EXPLANATION 카테고리가 MUST가 아니다 (§10.1에 따라 의도적으로 바꾼 경우 경고를 허용). **모든 학습 트랙에 적용한다** — 입문 트랙에서도 EXPLANATION은 MUST다(설명이 러버덕 루프의 중심이다) |
+| CV-25 | ERROR | 모든 role target 파일이 **같은 non-root skill 집합**을 덮는다(트랙마다 CV-21을 만족하므로 집합이 같아야 한다). 트랙 하나에만 있는 skill code가 있으면 실패 |
+| CV-26 | WARN | 상위 트랙(`JAVA_BACKEND`)과 같은 skill을 비교해 입문 트랙(`JAVA_BACKEND_STARTER`)의 축별 target이 더 크다 (§10.4 A). **이 두 트랙만 비교한다** — `INTEGRATION_ENGINEER`는 낮은 수준판이 아니라 다른 구성이라 대상이 아니다 (§3.3) |
 
 **Plan template**
 
 | ID | Sev | 규칙 |
 |---|---|---|
-| CV-30 | ERROR | `templateKey` 패턴, `targetRole` enum, `planTitle` 1~200자. TargetRole마다 템플릿이 정확히 1개 |
+| CV-30 | ERROR | `templateKey` 패턴, `targetRole` enum, `planTitle` 1~200자. **`TargetRole` 값마다 템플릿이 정확히 1개**(값이 늘면 템플릿도 늘어야 한다) |
 | CV-31 | ERROR | milestone 1~24개. `key` 패턴·유일, `title` 1~200자, `description` 1~2000자(있을 때) |
 | CV-32 | ERROR | `weightBp` 정수 100~10000, 템플릿 전체 합 = 10000 |
 | CV-33 | ERROR | `phase` enum. PREPARATION이 모두 CONSOLIDATION보다 앞. 두 단계 모두 1개 이상 |
@@ -407,9 +762,10 @@ Severity `ERROR`는 기동 실패와 CI 실패, `WARN`은 로그만 남긴다. J
 | CV-56 | ERROR | hint에 백틱(`` ` ``)이 없고, §4.2 코드 줄 판정에 걸리는 줄이 0개 |
 | CV-57 | ERROR | `QUESTION_ONLY`가 `?`로 끝나고, `expectedConcepts` 항목을 대소문자 무시 부분 문자열로 포함하지 않는다 |
 | CV-58 | ERROR | `transferTargets`가 role target이 있는 skill이고 `skills`와 겹치지 않는다. `isTransfer = true`면 difficulty ≥ 3 |
-| CV-59 | ERROR | DIAGNOSTIC은 difficulty 3, estimatedMinutes ≤ 15, isTransfer false, skills가 한 category이고 모두 role target priority `MUST`·importance ≥ 0.70. `diagnosticCategories`의 각 category에 DIAGNOSTIC이 1개 이상 |
+| CV-59 | ERROR | DIAGNOSTIC은 difficulty **1~3**(ADR-058 — 주장한 수준을 재므로 사다리를 둔다. 자기평가 상한이 3이라 4·5는 쓰지 않는다), estimatedMinutes ≤ 15, isTransfer false, skills가 한 category이고 모두 **어느 한 트랙에서라도** role target priority `MUST`·importance ≥ 0.70. `diagnosticCategories`의 각 category에 DIAGNOSTIC이 1개 이상. **트랙이 하나이던 때에는 `JAVA_BACKEND`만 봤는데, 트랙이 늘면서 그 트랙에서만 MUST인 category(예: `INTEGRATION`)를 진단할 수 없었다** — 진단은 시작 수준을 정하는 것이라 그 사람이 공부할 트랙 기준으로 본다 |
 | CV-60 | WARN | PRACTICE estimatedMinutes가 난이도별 상한 초과: L1 20, L2 30, L3 40, L4 60, L5 90 (§6) |
-| CV-61 | ERROR | 템플릿 배치 smoke test: 고정 입력 4개(목표일 = 오늘, 10일, 중간 점검일 있는 31일, 211일)에서 §5 결과가 모두 `today ≤ start ≤ end ≤ targetCompletionDate` |
+| CV-61 | ERROR | 템플릿 배치 smoke test: 고정 입력 4개(창 길이 1일(목표일 = 오늘), 10일, 31일, 211일)에서 §5 결과가 모두 `today ≤ start ≤ end ≤ targetCompletionDate` |
+| CV-62 | ERROR | `timeLimitMinutes`가 있으면 정수 1~120이고 `estimatedMinutes` 이하다. `purpose = DIAGNOSTIC`에는 쓰지 않는다(진단은 15분 이하 고정이다, CV-59) |
 
 **Curated source**
 
@@ -426,11 +782,66 @@ Severity `ERROR`는 기동 실패와 CI 실패, `WARN`은 로그만 남긴다. J
 | CV-80 | ERROR | `curated-repos.yaml`의 최상위 키가 정확히 `repos`, `readings`이고 둘 다 비어 있지 않은 목록이다 |
 | CV-81 | ERROR | `repos[].key`가 `^[a-z][a-z0-9-]{1,29}$`이고 파일 안에서 **유일**하다. `url`이 https다. `subPath`가 상대 경로이고 `..` 세그먼트·선행 `/`가 없다. `name` 1~200, `license` 1~50, `stack` 1~200, `why` 10~500, `cloneHint` 10~500자 |
 | CV-82 | ERROR | `repos[].pinnedCommit`이 40자 소문자 hex SHA이거나 null(필드 생략 포함)이다. **null이면 WARN**을 함께 낸다 — 줄 번호가 고정되어 있지 않다는 뜻이다 (§8.4) |
-| CV-83 | ERROR | `readings[].key`가 `^READ\.<REPO>\.<TOPIC>\.NNN$` 패턴·≤ 100자이고 파일 전체에서 **중복이 없으며** `retired.readingKeys`에 없다 |
+| CV-83 | ERROR | `readings[].key`가 `^READ\.<REPO>\.<TOPIC>\.NNN$` 패턴·≤ 100자이고 파일 전체에서 **중복이 없다**. `retired: true`가 아닌 reading의 key는 `retired.readingKeys`에 없고, `retired: true`인 reading의 key는 `retired.readingKeys`에 **있다**. `retired.readingKeys`의 모든 key는 `retired: true` reading으로 남아 있다(은퇴 단위도 조회된다, §8.2) |
 | CV-84 | ERROR | `readings[].repo`가 `repos[].key`에 **실재**한다 |
 | CV-85 | ERROR | `readings[].path`가 1~300자 상대 POSIX 경로이고 `..` 세그먼트·선행 `/`·`\`가 **없다**. `lines`가 정수 2개 `[시작, 끝]`이고 **둘 다 양수, 시작 ≤ 끝(오름차순)**이다 |
 | CV-86 | ERROR | `readings[].skillCodes`가 1~4개·중복 없음이고 **모두 role target이 있는 skill로 실재**한다. `estimatedMinutes` 5~60. `question` **40~300자**. `lookFor` 1~5개, 항목 5~200자 |
-| CV-87 | WARN | 한 저장소의 reading 수가 3~5개 범위를 벗어난다 |
+| CV-87 | WARN | 한 저장소의 `retired: true`가 아닌 reading 수가 **3~8개** 범위를 벗어난다. 은퇴하지 않은 reading이 0개인 저장소는 WARN 대상이 아니다(은퇴 단위를 위해서만 남은 저장소) |
+
+**Tip (§3.9)**
+
+| ID | Sev | 규칙 |
+|---|---|---|
+| CV-90 | ERROR | `tips[].key`가 `^TIP\.<SERIES>\.<TOPIC>\.NNN$` 패턴·≤ 120자이고 모든 팁 파일에서 **유일**하다. `series`가 `TipSeries` 값이고 `key`의 두 번째 세그먼트와 같다. `level`이 `TipLevel` 값이다 |
+| CV-91 | ERROR | **`sourceUrl`과 `experiment` 중 하나 이상이 있다.** 둘 다 없으면 실패한다 |
+| CV-92 | ERROR | `sourceUrl`이 있으면 https이고 호스트가 trusted host allowlist(정확 일치 또는 하위 도메인, `06` §10)에 있다 |
+| CV-93 | ERROR | `skillCodes` 1~4개·중복 없음이고 **모두 role target이 있는 non-root skill로 실재**한다 |
+| CV-94 | ERROR | `title` 5~80, `symptom` 20~500, `cause` 40~800, `whereToLook` 20~400자. `example`이 있으면 20~800자이고 fenced code block 안의 코드가 **15줄 이하**다. `experiment`가 있으면 20~500자. `estimatedMinutes` 1~10 |
+| CV-95 | ERROR | `retired: true`인 팁의 key는 `retired.tipKeys`에 **있고**, `retired: true`가 아닌 팁의 key는 `retired.tipKeys`에 **없다**. `retired.tipKeys`의 모든 key는 `retired: true` 팁으로 파일에 남아 있다(은퇴한 팁도 조회된다, §8.2) |
+| CV-96 | WARN | 한 `TipSeries`의 은퇴하지 않은 팁이 0개다(그 시리즈 필터가 빈 목록을 돌려준다) |
+
+**Term (§3.10)**
+
+| ID | Sev | 규칙 |
+|---|---|---|
+| CV-100 | ERROR | `terms[].key`가 `^TERM\.<GROUP>\.<NAME>$` 패턴·≤ 120자이고 모든 용어 파일에서 **유일**하다. `level`이 `TipLevel` 값이다 |
+| CV-101 | ERROR | `representative` 1~40자이고 **모든 용어에서 유일**하다. `english` 1~60자. `aliases` 0~5개(각 1~40자)이고 `representative`와 중복되지 않으며, 다른 용어의 `representative`·`aliases`와도 겹치지 않는다 |
+| CV-102 | ERROR | `definition` 20~300자 **한 문장**(문장 끝 부호가 하나다), `example` 20~300자 한 줄. `sourceUrl`이 있고 https이며 호스트가 trusted host allowlist에 있다 |
+| CV-103 | ERROR | `confusableWith` 0~3개이고 모두 **존재하는 `key`**이며 자기 자신이 아니다. `skillCodes` 1~4개·중복 없음이고 모두 role target이 있는 non-root skill로 실재한다 |
+| CV-104 | WARN | **표기 통일**: `aliases`에 있는 표기가 저장소의 다른 콘텐츠 본문(skill tree·role target을 뺀 `content/**/*.yaml`의 문자열 값)에 나타난다. 그 자리에 `representative`를 쓰라는 경고다 (예: "칼럼" → "컬럼"). 보고 위치는 파일·키 경로다 |
+| CV-105 | ERROR | `retired: true`인 용어의 key는 `retired.termKeys`에 **있고**, 아닌 용어의 key는 **없다**. `retired.termKeys`의 모든 key는 `retired: true` 용어로 파일에 남아 있다(§8.2). 은퇴한 용어는 다른 용어의 `confusableWith` 대상이 될 수 없다 |
+| CV-106 | ERROR | `definition`에 그 용어의 `representative`나 `aliases` 표기가 들어 있지 않다. 들어 있으면 역방향 복습 카드(`TERM:{key}:REVERSE`)의 답이 문제에 그대로 나온다 (§3.10) |
+
+**Checklist (§3.11)**
+
+| ID | Sev | 규칙 |
+|---|---|---|
+| CV-110 | ERROR | `checklists[].key`가 `^CHK\.<A>\.<B>(\.<C>)?$` 패턴·≤ 120자이고 모든 체크리스트 파일에서 **유일**하다 |
+| CV-111 | ERROR | `taskTypes` 1~8개·중복 없음이고 모두 `TaskType` 값이다. `skillCodes` 1~4개·중복 없음이고 모두 role target이 있는 non-root skill로 실재한다 |
+| CV-112 | ERROR | `before`·`after`가 각각 3~5개이고 항목이 10~120자다 |
+| CV-113 | WARN | 같은 `(taskType, skillCode)` 조합에 맞는 체크리스트가 2개 이상이다. `key` ASC 첫 번째만 붙으므로 나머지는 화면에 나오지 않는다(§3.11) |
+
+**개념 읽기 (§3.13)**
+
+| ID | Sev | 규칙 |
+|---|---|---|
+| CV-120 | ERROR | `conceptReadings[].key`가 `^DOC\.<TOPIC>\.<UNIT>\.NNN$` 패턴·≤ 100자이고 **`curated-repos.yaml`의 `readings[].key`를 포함해 전체에서 중복이 없다**(두 파일이 한 key namespace를 쓴다, §3.13). `retired: true`인 항목의 key는 `retired.readingKeys`에 **있고**, 아닌 항목의 key는 **없다**. `retired.readingKeys`의 모든 key는 두 파일 중 하나에 `retired: true`로 남아 있다(CV-83과 같은 검사) |
+| CV-121 | ERROR | `url`이 https이고 호스트가 trusted host allowlist(정확 일치 또는 하위 도메인, `06` §10)에 있다. **서버는 URL을 fetch하지 않는다** — 호스트 문자열만 본다 |
+| CV-122 | ERROR | `title` 1~200, `publisher` 1~100, `versionScope` 1~100자. `verifiedAt`이 ISO 날짜다 |
+| CV-123 | ERROR | `skillCodes` 1~4개·중복 없음이고 **모두 role target이 있는 skill로 실재**한다. `estimatedMinutes` 5~60 |
+| CV-124 | ERROR | `whyRead` **40~400자**. `checkPoints`가 **정확히 3개**이고 항목이 10~200자이며 중복이 없다 (`06` §5.3 "핵심 3가지") |
+| CV-125 | WARN | role target priority가 `MUST`인 skill 중 **은퇴하지 않은 코드 읽기(§3.8)도 개념 읽기(§3.13)도 없는 skill**이 있다(기본 트랙 `JAVA_BACKEND` 기준 — CV-48과 같다). 그 skill의 `READING` 과제는 자료 없이 제안된다(`06` §5.3). 소스 점검 입력 I-1 ③과 같은 목록이다(§8.5) |
+| CV-126 | ERROR | `lessons/*.yaml`(§3.14)의 `key`가 형식에 맞고 전체 유일하며 `retired.lessonKeys`와 어긋나지 않는다. `skillCode`는 role target이 있는 skill이고 **skill당 노트가 1개**다 |
+| CV-127 | ERROR | 노트의 `units`가 3~6개이고 단위 `key`가 `<노트 key>.U<n>` 형식·전체 유일이다. 길이 제한(`explain` 100~800, `example.code` 30줄, `title` 60자 등)을 지킨다 |
+| CV-128 | ERROR | 단위마다 `example`·`predict`·`complete`·`problem`이 모두 있다. `complete.code`의 빈칸(`___`) 개수와 `answers` 개수가 같고, 각 빈칸의 허용 표기가 1개 이상이다 |
+| CV-129 | ERROR | `predict.choices`가 있으면 2~4개이고 `answer`가 그중 하나다. 없으면 `answer`가 비어 있지 않다 |
+| CV-130 | ERROR | `problem.hints`가 2~3개, `deliverables`가 2~4개, `selfChecks`가 2~4개다. `variants`는 0~2개이고 있으면 `problem`과 같은 필수 필드를 갖는다 |
+| CV-131 | ERROR | `sources`가 1개 이상이고 각 `url`이 https이며 호스트가 trusted host allowlist에 있다(**정확 일치 또는 하위 도메인** — CV-121·CV-71과 같은 규칙이다). `readMore`의 `url`도 같다. `verifiedAt`이 미래가 아니다 |
+| CV-132 | ERROR | `prerequisiteUnits`의 항목이 단위 key 형식이다. **아직 없는 key도 허용한다**(다음에 만들 목록) — 다만 자기 자신과 같은 단위를 가리키지 않는다 |
+| CV-133 | WARN | `problem.hints`나 `deliverables`에 `modelAnswer`의 코드 줄이 **그대로** 들어 있다. 답을 미리 보여 주는 것이다 |
+| CV-134 | WARN | `problem.prompt`가 `example.code`와 **80% 이상 같다**. 예제를 그대로 다시 쓰게 하는 문제다(§3.14 작성 가이드) |
+| CV-135 | — | **쓰지 않는다.** 한때 "노트와 개념 읽기가 같은 skill에 둘 다 있으면 경고"였는데 CV-125(MUST skill에는 읽을 것이 있어야 한다)와 정면으로 부딪혔다. 둘 다 있는 것이 정상이다 — 노트가 가르치고 개념 읽기는 더 깊이 읽을거리다. 번호는 혼동을 막으려고 비워 둔다 |
+| CV-136 | WARN | 두 학습 트랙(`INTEGRATION_ENGINEER`·`JAVA_BACKEND_STARTER`)의 **첫 milestone MUST skill 중 노트가 없는 skill**이 있다. 그 skill은 아직 "가르치는 단계" 없이 문제부터 나온다. **노트를 하나라도 쓰기 시작한 catalog에서만 본다** — 노트가 아예 없으면 "전부 없다"가 되어 알려 주는 바가 없다 |
 
 **Seeder (DB 비교, `ContentSeeder`에서만 검사)**
 
@@ -472,10 +883,15 @@ Java 구현 전에는 이 스크립트가 기준이다. Java `ContentValidator`�
 | 종료 코드 | 0: ERROR 없음(WARN 허용), 1: ERROR 1개 이상, 2: 사용법·IO 오류 |
 | `--report` | §12 인벤토리 표와 budget 점검 표 출력 |
 | `--placement-vectors` | §5.4 test vector 표 출력 |
-| 구현 범위 | CV-01~CV-87 전부(CV-15 non-root 하한 60, CV-80~CV-87 curated repo 포함). SD-xx는 DB가 필요하므로 제외 |
+| 구현 범위 | CV-01~CV-136 전부(CV-15 non-root 하한 60, CV-25·CV-26 학습 트랙, CV-62 시간 제한, CV-80~CV-87 curated repo, CV-88·CV-89 `whyItMatters`, CV-90~CV-96 팁, CV-100~CV-106 용어, CV-110~CV-113 체크리스트, CV-120~CV-125 개념 읽기, CV-126~CV-136(CV-135 제외) 개념 노트 포함). SD-xx는 DB가 필요하므로 제외 |
+| `files.conceptReadings` | 아직 `catalog.yaml`에 없다(§3.1). 검증기는 catalog에 키가 있으면 그 경로를, 없으면 기본 경로 `concept-readings.yaml`을 읽고 CV-04의 "나열된 파일"로도 센다. **`ConceptReadingRegistry`를 구현할 때 Java `CatalogChecks`의 파일 키 집합에 `conceptReadings`를 더하고 catalog에 적는다** — 그때까지 두 검증기는 이 한 가지에서 갈린다 |
 | CI | content 검증 step에서 `python content/tools/validate_content.py`를 실행하고 종료 코드 1이면 실패 |
 
 2026-09-18 실행 결과 (catalogVersion 3): `skills=88 roleTargets=75 templates=1 cards=82 challenges=23 curatedSources=10 curatedRepos=3 readings=13 catalogVersion=3` / `result: PASS (errors=0, warnings=0)`. 결함을 넣은 복사본으로 검증기 자체를 확인했다.
+
+2026-09-19 실행 결과 (catalogVersion 5, 첫 소스 점검 반영 — §8.5 점검 기록): `skills=88 roleTargets=75 templates=1 cards=82 challenges=23 curatedSources=19 curatedRepos=9 readings=41 catalogVersion=5` / `result: PASS (errors=0, warnings=0)`. `readings`는 은퇴 단위 5개를 포함한다. 저장소별 활성 단위(`petclinic` 8개, `modular-monolith` 7개)는 CV-87의 3~8 범위 안이다.
+
+2026-09-21 실행 결과 (개념 읽기 신설 — §8.5 두 번째 점검): `… curatedRepos=9 readings=41 conceptReadings=14 catalogVersion=6` / 개념 읽기 관련 **ERROR 0, WARN 0**(CV-120~CV-125). 출력에 `conceptReadings` 수를 더했다. 같은 변경에서 CV-87 구현의 범위가 문서(`3~8`)와 달리 `3~5`로 들어가 있던 것을 고쳤다 — `petclinic` 8개·`modular-monolith` 7개에 잘못 붙던 WARN 2건이 사라진다.
 
 | 넣은 결함 | 보고된 규칙 |
 |---|---|
@@ -495,6 +911,27 @@ Java 구현 전에는 이 스크립트가 기준이다. Java `ContentValidator`�
 | reading `question`을 7자로 줄임 | CV-86 |
 | reading key 중복 | CV-83 |
 | `pinnedCommit: null` | CV-82 (WARN) |
+| `retired: true` reading의 key를 `retired.readingKeys`에서 뺌 (2026-09-19) | CV-83 (1건) |
+| `retired.readingKeys`에 있는 key의 reading을 파일에서 지움 (2026-09-19) | CV-83 (1건, 위치 `catalog.yaml#retired.readingKeys`) |
+| `retired.readingKeys`에 있는 key의 reading에서 `retired: true`를 뺌 (2026-09-19) | CV-83 (1건) + 그 저장소 활성 수에 따른 CV-87 WARN |
+| 한 저장소의 활성 reading을 2개로 줄임 (2026-09-19) | CV-87 (WARN). 활성 0개인 `restbucks`는 WARN 없음 |
+| `role-targets/java-backend-starter.yaml`을 `files.roleTargets`에서 뺌 (2026-09-20) | CV-04(파일이 나열되지 않음) + CV-21(그 트랙의 target 0개) |
+| 입문 트랙 role target에서 skill 1개를 지움 (2026-09-20) | CV-21 (누락) + CV-25 (트랙 간 skill 집합 불일치) |
+| 입문 트랙 plan template을 빼거나 MUST skill 1개를 milestone에서 뺌 (2026-09-20) | CV-30 (트랙당 템플릿 1개) / CV-36 |
+| 입문 트랙의 한 skill 축 target을 기본 트랙보다 크게 (2026-09-20) | CV-26 (WARN) |
+| MUST skill 1개에서 `whyItMatters`를 뺌 | CV-89 |
+| `sourceUrl`과 `experiment`가 둘 다 없는 팁 | CV-91 |
+| 팁 `sourceUrl`의 호스트를 `blog.example.com`으로 바꿈 | CV-92 |
+| 두 용어가 같은 `representative`("컬럼") | CV-101 |
+| 용어 `confusableWith`에 없는 key | CV-103 |
+| 팁 본문에 `aliases`의 "칼럼"을 씀 | CV-104 (WARN) |
+| `before` 항목을 2개로 줄임 | CV-112 |
+| 같은 `(CHALLENGE, WEB_HTTP.REST_API_DESIGN)`에 체크리스트 2개 | CV-113 (WARN) |
+| `timeLimitMinutes`를 `estimatedMinutes`보다 크게 | CV-62 |
+| 개념 읽기 key를 `READ.PETCLINIC.CONTROLLER_SLICE.001`로 바꿈 (2026-09-21) | CV-120 (2건: 패턴 위반 + 코드 읽기와 key 중복) |
+| 개념 읽기 `url`의 호스트를 `blog.example.com`으로 바꿈 (2026-09-21) | CV-121 |
+| 개념 읽기 `checkPoints`를 2개로 줄임 (2026-09-21) | CV-124 |
+| 개념 읽기 `estimatedMinutes`를 90으로 올림 (2026-09-21) | CV-123 |
 
 ---
 
@@ -507,27 +944,21 @@ Java 구현 전에는 이 스크립트가 기준이다. Java `ContentValidator`�
 | 입력 | 값 |
 |---|---|
 | `today` | 요청 시점의 plan-day (`06` §2) |
-| `checkpointDate` | 학습 목표(`learning_goal`), nullable — 중간 점검일 |
-| `targetCompletionDate` | 학습 목표(`learning_goal`), not null — 학습 목표일 |
+| `targetCompletionDate` | 학습 목표(`learning_goal`), not null — 목표일 |
 | `milestones` | 템플릿 순서 그대로 (`weightBp`, `phase`) |
 | `minDays` | `placement.minMilestoneDays` |
 
 - 전제: `today ≤ targetCompletionDate`. 아니면 배치를 호출하지 않고 `400 VALIDATION_FAILED`(field `targetCompletionDate`)로 거절한다.
-- `checkpointDate ≤ targetCompletionDate`는 DB CHECK가 보장한다.
 
 ### 5.2 창(window) 결정
 
 ```text
-if checkpointDate != null && today < checkpointDate:
-    # 06 §3.1 horizonDate = checkpointDate 와 같은 조건
-    PREPARATION milestones → allocate([today, checkpointDate − 1], weights = 해당 milestone들의 weightBp)
-    CONSOLIDATION milestones → allocate([checkpointDate, targetCompletionDate], weights = 해당 milestone들의 weightBp)
-else:
-    # 중간 점검일 없음, 또는 이미 정리 단계
-    모든 milestone (단계 무관, 템플릿 순서) → allocate([today, targetCompletionDate], weights = 전체 weightBp)
+# 창은 하나다. 06 §3.1 horizonDate = targetCompletionDate 와 같은 끝
+모든 milestone (템플릿 순서) → allocate([today, targetCompletionDate], weights = 전체 weightBp)
 ```
 
-단계 안에서는 그 단계 weight 합을 분모로 쓴다(전체 합 10000이 아니다).
+- 템플릿 순서는 CV-33이 보장한다: `PREPARATION` milestone이 모두 앞에, `CONSOLIDATION`("설명과 정리")이 맨 뒤에 온다. 그래서 한 창 안에서 앞부분은 만드는 milestone, 목표일 바로 앞은 설명과 정리 milestone이 된다.
+- 분모는 템플릿 전체 weight 합(현재 10000)이다. `phase`는 배치 순서만 정하고 창을 나누지 않는다.
 
 ### 5.3 `allocate(windowStart, windowEnd, w[0..n−1], minDays)`
 
@@ -560,28 +991,29 @@ else:
 성질 (테스트로 확인):
 - 모든 milestone에 대해 `windowStart ≤ start ≤ end ≤ windowEnd`.
 - SEQUENTIAL: 빈 날·겹침 없이 창 전체를 덮고, 각 길이 ≥ `minDays`.
-- COMPRESSED: `start`가 단조 증가하고 각 길이 = `min(minDays, D)`. 짧은 기간(현재 템플릿은 단일 창이면 9 × 7 = 63일 미만, PREPARATION 창이면 8 × 7 = 56일 미만)이나 중간 점검일까지 남은 기간이 짧으면 이 모드가 된다. `D < minDays`면 모든 milestone이 창 전체를 공유한다.
+- COMPRESSED: `start`가 단조 증가하고 각 길이 = `min(minDays, D)`. 목표일까지 남은 기간이 짧으면(현재 템플릿은 9 × 7 = 63일 미만) 이 모드가 된다. 구간이 겹칠 수 있고, `slack`이 크면 구간 사이에 빈 날이 생길 수도 있다(V6). `D < minDays`면 모든 milestone이 창 전체를 공유한다.
+- 두 모드의 경계: `D = n × minDays`(현재 63일)는 SEQUENTIAL이고 모든 milestone이 정확히 `minDays`일이다(V8). 하루 짧은 62일은 COMPRESSED다(V6).
 - 곱셈은 `Math.multiplyExact` (`06` §1 N-7).
 
 ### 5.4 Test vectors
 
-템플릿 `JAVA_BACKEND_DEFAULT` (PREPARATION weightBp: 1200, 1200, 1500, 1500, 1200, 1100, 700, 800 / CONSOLIDATION 800, `minDays` 7). `python content/tools/validate_content.py --placement-vectors`로 재생성한다. 날짜는 알고리즘 검증용 **예시 입력**이다(사용자의 학습 목표일과 무관).
+템플릿 `JAVA_BACKEND_DEFAULT` (weightBp 템플릿 순서: 1200, 1200, 1500, 1500, 1200, 1100, 700, 800 (PREPARATION 8개) / 800 (CONSOLIDATION 1개), W = 10000, n = 9, `minDays` 7). 모든 vector는 창 하나 `[today, targetCompletionDate]`다. `python content/tools/validate_content.py --placement-vectors`로 재생성한다. 날짜는 알고리즘 검증용 **예시 입력**이다(사용자의 목표일과 무관).
 
-**V1** today 2026-10-01, checkpointDate 2027-03-01, target 2027-04-30 (PREPARATION D=151, n=8 → SEQUENTIAL, extra 95, W 9200, base = 12, 12, 15, 15, 12, 11, 7, 8 → Σbase 92, left 3 → rem 4500인 #3·#4, rem 3600 중 index가 가장 작은 #1에 +1)
+**V1** today 2026-10-01, target 2027-04-30 (D=212 ≥ 63 → SEQUENTIAL, extra 149, base = 17, 17, 22, 22, 17, 16, 10, 11, 11 → Σbase 143, left 6 → rem 9200인 #8·#9, rem 8800인 #1·#2·#5, 그다음 rem 4300인 #7에 +1. rem 3900인 #6과 3500인 #3·#4는 +1 없음)
 
 | milestone | start | end | 일수 |
 |---|---|---|---|
-| FOUNDATION_SETUP | 2026-10-01 | 2026-10-20 | 20 |
-| MEMBER_AND_AUTH | 2026-10-21 | 2026-11-08 | 19 |
-| CATALOG_AND_CRUD | 2026-11-09 | 2026-12-01 | 23 |
-| ORDER_CREATION | 2026-12-02 | 2026-12-24 | 23 |
-| CANCEL_AND_REFUND | 2026-12-25 | 2027-01-12 | 19 |
-| QUERY_PERFORMANCE | 2027-01-13 | 2027-01-30 | 18 |
-| STRUCTURE_CLEANUP | 2027-01-31 | 2027-02-13 | 14 |
-| DEPLOY_AND_OPERATE | 2027-02-14 | 2027-02-28 | 15 |
-| EXPLAIN_AND_CONSOLIDATE | 2027-03-01 | 2027-04-30 | 61 |
+| FOUNDATION_SETUP | 2026-10-01 | 2026-10-25 | 25 |
+| MEMBER_AND_AUTH | 2026-10-26 | 2026-11-19 | 25 |
+| CATALOG_AND_CRUD | 2026-11-20 | 2026-12-18 | 29 |
+| ORDER_CREATION | 2026-12-19 | 2027-01-16 | 29 |
+| CANCEL_AND_REFUND | 2027-01-17 | 2027-02-10 | 25 |
+| QUERY_PERFORMANCE | 2027-02-11 | 2027-03-05 | 23 |
+| STRUCTURE_CLEANUP | 2027-03-06 | 2027-03-23 | 18 |
+| DEPLOY_AND_OPERATE | 2027-03-24 | 2027-04-11 | 19 |
+| EXPLAIN_AND_CONSOLIDATE | 2027-04-12 | 2027-04-30 | 19 |
 
-**V2** today 2026-10-01, checkpointDate null, target 2027-03-31 (단일 창 D=182, n=9 SEQUENTIAL)
+**V2** today 2026-10-01, target 2027-03-31 (D=182 → SEQUENTIAL, extra 119, base = 14, 14, 17, 17, 14, 13, 8, 9, 9 → Σbase 115, left 4 → rem 8500인 #3·#4, rem 5200인 #8·#9에 +1)
 
 | milestone | start | end | 일수 |
 |---|---|---|---|
@@ -595,7 +1027,7 @@ else:
 | DEPLOY_AND_OPERATE | 2027-02-26 | 2027-03-14 | 17 |
 | EXPLAIN_AND_CONSOLIDATE | 2027-03-15 | 2027-03-31 | 17 |
 
-**V3** today 2026-10-01, checkpointDate null, target 2026-10-20 (D=20 < 9 × 7 = 63 → COMPRESSED, span 7, slack 13, C = 0, 1200, 2400, 3900, 5400, 6600, 7700, 8400, 9200)
+**V3** today 2026-10-01, target 2026-10-20 (D=20 < 9 × 7 = 63 → COMPRESSED, span 7, slack 13, C = 0, 1200, 2400, 3900, 5400, 6600, 7700, 8400, 9200, C[n−1] = 9200 → offset = 0, 1, 3, 5, 7, 9, 10, 11, 13)
 
 | milestone | start | end |
 |---|---|---|
@@ -609,9 +1041,9 @@ else:
 | DEPLOY_AND_OPERATE | 2026-10-12 | 2026-10-18 |
 | EXPLAIN_AND_CONSOLIDATE | 2026-10-14 | 2026-10-20 |
 
-**V4** today 2026-10-01, null, target 2026-10-05 (D=5 < minDays → 9개 모두 2026-10-01 ~ 2026-10-05)
+**V4** today 2026-10-01, target 2026-10-05 (D=5 < minDays → COMPRESSED, span 5, slack 0 → 9개 모두 2026-10-01 ~ 2026-10-05)
 
-**V5** today 2026-10-01, checkpointDate 2026-09-20(이미 지남), target 2026-12-31 (단일 창 D=92 SEQUENTIAL)
+**V5** today 2026-10-01, target 2026-12-31 (D=92 → SEQUENTIAL, extra 29, base = 3, 3, 4, 4, 3, 3, 2, 2, 2 → Σbase 26, left 3 → rem 4800인 #1·#2·#5에 +1)
 
 | milestone | start | end | 일수 |
 |---|---|---|---|
@@ -625,21 +1057,35 @@ else:
 | DEPLOY_AND_OPERATE | 2026-12-14 | 2026-12-22 | 9 |
 | EXPLAIN_AND_CONSOLIDATE | 2026-12-23 | 2026-12-31 | 9 |
 
-**V6** today 2026-10-01, checkpointDate 2026-10-11, target 2026-11-30 (PREPARATION D=10 < 8 × 7 → COMPRESSED span 7 slack 3, CONSOLIDATION D=51)
+**V6** today 2026-10-01, target 2026-12-01 (D=62 < 63 → COMPRESSED 경계 바로 아래, span 7, slack 55, offset = floorDiv(C[i] × 55, 9200) = 0, 7, 14, 23, 32, 39, 46, 50, 55. 구간 사이에 빈 날이 생긴다: 10-22~10-23, 10-31~11-01)
 
 | milestone | start | end |
 |---|---|---|
 | FOUNDATION_SETUP | 2026-10-01 | 2026-10-07 |
-| MEMBER_AND_AUTH | 2026-10-01 | 2026-10-07 |
-| CATALOG_AND_CRUD | 2026-10-01 | 2026-10-07 |
-| ORDER_CREATION | 2026-10-02 | 2026-10-08 |
-| CANCEL_AND_REFUND | 2026-10-02 | 2026-10-08 |
-| QUERY_PERFORMANCE | 2026-10-03 | 2026-10-09 |
-| STRUCTURE_CLEANUP | 2026-10-03 | 2026-10-09 |
-| DEPLOY_AND_OPERATE | 2026-10-04 | 2026-10-10 |
-| EXPLAIN_AND_CONSOLIDATE | 2026-10-11 | 2026-11-30 |
+| MEMBER_AND_AUTH | 2026-10-08 | 2026-10-14 |
+| CATALOG_AND_CRUD | 2026-10-15 | 2026-10-21 |
+| ORDER_CREATION | 2026-10-24 | 2026-10-30 |
+| CANCEL_AND_REFUND | 2026-11-02 | 2026-11-08 |
+| QUERY_PERFORMANCE | 2026-11-09 | 2026-11-15 |
+| STRUCTURE_CLEANUP | 2026-11-16 | 2026-11-22 |
+| DEPLOY_AND_OPERATE | 2026-11-20 | 2026-11-26 |
+| EXPLAIN_AND_CONSOLIDATE | 2026-11-25 | 2026-12-01 |
 
-**V7** today 2026-10-01, null, target 2026-10-01 (D=1 → 9개 모두 2026-10-01 하루)
+**V7** today 2026-10-01, target 2026-10-01 (D=1 → COMPRESSED, span 1, slack 0 → 9개 모두 2026-10-01 하루)
+
+**V8** today 2026-10-01, target 2026-12-02 (D=63 = 9 × 7 → SEQUENTIAL 경계, extra 0, base·rem·left 모두 0 → 9개 모두 7일, 빈 날·겹침 없음)
+
+| milestone | start | end | 일수 |
+|---|---|---|---|
+| FOUNDATION_SETUP | 2026-10-01 | 2026-10-07 | 7 |
+| MEMBER_AND_AUTH | 2026-10-08 | 2026-10-14 | 7 |
+| CATALOG_AND_CRUD | 2026-10-15 | 2026-10-21 | 7 |
+| ORDER_CREATION | 2026-10-22 | 2026-10-28 | 7 |
+| CANCEL_AND_REFUND | 2026-10-29 | 2026-11-04 | 7 |
+| QUERY_PERFORMANCE | 2026-11-05 | 2026-11-11 | 7 |
+| STRUCTURE_CLEANUP | 2026-11-12 | 2026-11-18 | 7 |
+| DEPLOY_AND_OPERATE | 2026-11-19 | 2026-11-25 | 7 |
+| EXPLAIN_AND_CONSOLIDATE | 2026-11-26 | 2026-12-02 | 7 |
 
 ---
 
@@ -720,6 +1166,7 @@ Planner는 `d = clamp(planning IMPLEMENTATION + 1, 1, 5)`로 난이도를 정하
 | 항목 | 규칙 |
 |---|---|
 | `description` (non-root) | READING task 설명(`{description} + "공식 문서를 읽고 핵심 3가지를 스스로 적어 보세요."`)과 EXPLAIN task 설명(`{description} + "5문장 이내로 설명하고 예시를 하나 드세요."`)에 그대로 들어가고(`06` §5.3), 두 task에서 무엇을 공부할지 알려주는 유일한 문장이다. AI가 꺼져 있으면 CHALLENGE 대신 이 task가 나오므로 **학습 지시문**으로 쓴다: "무엇을 할 수 있어야 하는가" + 찾아볼 핵심 용어 2~4개, 1~2문장, "~한다"로 끝낸다. 설명 대상이 모호한 "~의 개념" 같은 문장은 금지 |
+| `whyItMatters` | **모르면 무엇이 잘못되는지**를 한 문장으로 쓴다. 과제 카드 맨 위에 그대로 붙는다(`05` §8.1). "중요하다", "실무에서 많이 쓴다", "기본이다" 같은 빈 문장을 쓰지 않는다. 20~200자(CV-88). 어느 트랙에서든 MUST인 skill에는 반드시 있다(CV-89). 좋은 예: "경계를 잘못 잡으면 절반만 저장된 주문처럼 되돌릴 수 없는 데이터가 남는다." 나쁜 예: "트랜잭션은 백엔드의 기본이다." |
 | `minutesPerLevelStep` | implementation 축 1레벨을 올리는 데 드는 집중 학습 분(복습 overhead 제외). 좁은 개념 60, 일반 90, 넓거나 실습 비중 큰 개념 120~150. 60 미만은 쓰지 않는다 |
 | MUST target | 대부분 3~4, explanation 3~4, debugging 2~3. 핵심 skill(트랜잭션, 예외, N+1 등)은 (4,4,4,3) |
 | SHOULD·LATER | SHOULD 3 중심, LATER 2 중심. SYSTEM_DESIGN은 SHOULD/LATER |
@@ -728,12 +1175,42 @@ Planner는 `d = clamp(planning IMPLEMENTATION + 1, 1, 5)`로 난이도를 정하
 | prerequisite | 직접 필요한 것만 1~2개. prerequisite의 implementation target은 2 이상(CV-18). 긴 사슬(4단계 이상)을 만들지 않는다 |
 | budget 점검 | 변경 후 `--report`의 budget 표를 확인한다. 기준: planning 2·26주는 MEDIUM, planning 3·12주는 LOW, planning 1·39주는 HIGH 이하 (§12.2) |
 
-### 7.6 Curated source 등록 절차
+### 7.6 Curated source 등록 절차와 신뢰 호스트 추가 기준
 
-1. 호스트가 trusted host allowlist에 있는 공식 문서만 쓴다(`06` §10).
+1. 호스트가 trusted host allowlist에 있는 공식 문서만 쓴다(`06` §10). **같은 allowlist를 팁(CV-92)·용어(CV-102)의 `sourceUrl`도 쓴다.**
 2. 작성자가 URL을 브라우저로 열어 **claim 문장이 문서에 직접 있는지** 확인한다. 추론·요약 확장 금지.
 3. `versionScope`에 문서 버전을 쓴다. 버전 없는 문서는 `버전 없음 (YYYY-MM-DD 기준 내용)`.
 4. `verifiedAt`을 확인한 날로 쓴다. Java·Spring·PostgreSQL 메이저 버전이 바뀌면 전체를 다시 확인한다.
+
+**신뢰 호스트(`devpilot.ai.trusted-source-hosts`)를 늘릴 때** — 쓰려는 공식 문서의 호스트가 목록에 없으면 콘텐츠를 억지로 다른 문서로 바꾸지 말고 목록을 먼저 늘린다. 목록은 `03` §9에 있고 `06` §10이 쓴다. 아래 기준을 **모두** 만족해야 한다.
+
+| 기준 | 내용 |
+|---|---|
+| H-1 | **그 기술을 만든 곳이 직접 내는 문서**다: 언어·런타임·프레임워크·DB·표준의 공식 문서, 명세(RFC·JLS·JEP), 또는 그에 준하는 표준 기관 문서. 개인 블로그, 강의 사이트, 질의응답 사이트, 요약 사이트, 번역본은 넣지 않는다 |
+| H-2 | 버전이 드러난다. 문서에 대상 버전이 적혀 있거나 URL에 버전 경로가 있어 `versionScope`를 쓸 수 있다 |
+| H-3 | 링크가 오래간다. 문서 구조가 자주 갈리지 않고, 같은 내용을 가리키는 안정된 경로가 있다 |
+| H-4 | 호스트 단위로 넣는다. **경로 단위로 나누지 않는다** — guard는 호스트 문자열만 본다(`06` §10, 서버는 URL을 fetch하지 않는다) |
+| H-5 | 하위 도메인이 자동으로 함께 허용된다는 것을 확인한다. 하위 도메인 전체를 믿을 수 없는 호스트(사용자 콘텐츠가 섞이는 곳)는 넣지 않는다 |
+
+절차: 기준을 적어 사용자와 합의한다 → `03` §9의 `devpilot.ai.trusted-source-hosts`에 호스트를 더한다 → `06` §10 allowlist 문단을 같이 고친다 → 그 호스트를 쓰는 콘텐츠를 같은 PR에 넣고 `validate_content.py`를 통과시킨다(CV-71·CV-92·CV-102) → `catalogVersion` +1. **콘텐츠 PR에서 호스트만 조용히 늘리지 않는다.**
+
+### 7.7 문제 세 종류 (심화 설명 / 시간 제한 구현 / 요구사항 정리)
+
+같은 `challenge` 형식으로 쓰는 **세 가지 작성 패턴**이다. 새 enum도 새 테이블도 만들지 않는다 — `purpose`는 그대로 `PRACTICE`이고, 시간 제한만 `timeLimitMinutes` 필드로 붙는다(§3.6). 패턴을 나누는 것은 **무엇을 묻고 rubric을 어떻게 쓰는가**다.
+
+| 패턴 | 무엇을 묻나 | `prompt`에 넣는 것 | rubric 구성 | 시간 제한 |
+|---|---|---|---|---|
+| **심화 설명** | 코드를 고치는 대신 **왜 그렇게 되는지**를 끝까지 설명하게 한다. 이미 동작하는 코드나 로그를 주고 그 아래 무엇이 일어나는지 묻는다 | ① 관찰된 사실을 설명하라 ② 왜 그런지 원리로 설명하라 ③ 다른 선택지였다면 무엇이 달라지는지 비교하라 | EXPLANATION 항목이 **weight 합의 절반 이상**. 구현 항목은 0~1개(있어도 "어디를 고칠지 지목한다" 수준) | 없음 |
+| **시간 제한 구현** | 정해진 시간 안에 **돌아가는 것**을 만들게 한다. 완벽함이 아니라 끝내는 것을 본다 | ① 이 시간 안에 이것까지 동작하게 만들어라 ② 시간이 모자라면 무엇을 먼저 버릴지 한 줄로 적어라 | IMPLEMENTATION 항목이 절반 이상, EXPLANATION 1개(버린 것과 그 이유). 항목은 **관찰 가능한 동작**으로 쓴다 | `timeLimitMinutes` **필수**. `estimatedMinutes` 이하로 두고, 제한 안에 끝낼 수 있는 범위만 요구한다 |
+| **요구사항 정리** | 흐릿한 요구를 받아 **빠진 것·모순·정해야 할 것**을 찾아 정리하게 한다. 코드를 쓰지 않는다 | ① 이 요구에서 빠진 정보를 목록으로 적어라 ② 서로 어긋나는 대목을 짚어라 ③ 네가 정할 기본값과 그 이유를 적어라 | EXPLANATION + DEBUGGING 중심. 각 항목은 "무엇을 하나 짚었는가"로 나눈다. 정답 목록을 rubric에 그대로 쓰지 말고 **짚어야 할 성격**으로 쓴다 | 없음 |
+
+작성 규칙(세 패턴 공통):
+
+- `scenario`는 관찰 가능한 사실로 쓴다(§7.1). 요구사항 정리 패턴의 `scenario`는 **일부러 흐릿하게** 쓰되, 흐릿함이 오타나 누락처럼 보이지 않게 "이렇게 전달받았다"는 맥락을 준다.
+- 난이도(§6)는 그대로 적용한다. 심화 설명은 보통 L3~L4, 시간 제한 구현은 L2~L3, 요구사항 정리는 L3다.
+- rubric 규칙(§7.2)은 그대로다: EXPLANATION 1개 이상, 단일 항목 ≤ 6000bp, 합 10000.
+- 시간 제한 문제에서 `timeLimitMinutes`는 **채점 기준이 아니다.** 경과 시간(`challenge_attempt.elapsed_seconds`, `05` §10.9)은 기록만 하고 `06` §8의 판정에 들어가지 않는다. rubric에 "시간 안에 끝냈다" 같은 항목을 넣지 않는다.
+- 세 패턴 모두 `hints` 3단계를 그대로 쓴다(§7.3). 시간 제한 문제라고 해서 hint를 생략하지 않는다.
 
 ---
 
@@ -746,14 +1223,19 @@ Planner는 `d = clamp(planning IMPLEMENTATION + 1, 1, 5)`로 난이도를 정하
 | 변경 | 버전 | 반영 |
 |---|---|---|
 | skill 추가·문구·step·prerequisite 수정 | +1 | 다음 기동 upsert. 기존 plan의 required minutes는 skill 행을 읽으므로 즉시 달라진다 |
+| skill `whyItMatters` 추가·수정 | +1 | 저장하지 않으므로 다음 기동의 메모리 등록으로 바로 반영된다(§3.12 7번) |
 | role target 수정 | +1 | `role_skill_target` 갱신. **기존 plan의 `plan_skill_target`은 바뀌지 않는다.** 새로 추가된 skill만 다음 replan에서 기본값으로 추가된다 (§10.2) |
 | plan template 수정 | +1 | 새로 만드는 plan부터 |
-| review card 추가 | +1 | 새 사용자 + 기존 사용자에게 추가 (§3.9 8번) |
+| review card 추가 | +1 | 새 사용자 + 기존 사용자에게 추가 (§3.12 8번) |
 | review card 문구 수정 | +1 | 새 사용자만 (기존 `review_item`은 사용자 소유) |
 | challenge 텍스트 수정 (title, scenario, prompt, constraints, commonMistakes, hints, rubric criterion 문구, estimatedMinutes, transferTargets) | +1 | 다음 기동 upsert |
 | challenge 구조 필드 변경 (skills·difficulty·purpose·isTransfer·expectedConcepts, rubric 항목의 id·weightBp·axis) | +1 | 허용 안 함(SD-02) → 새 seedKey(`...L{n}.{NNN+1}`) 추가 + 기존 seedKey 은퇴 |
 | curated source 추가·수정 | +1 | 다음 기동부터 guard 적용 |
 | curated repo·reading 추가·수정, `pinnedCommit` 갱신 | +1 | 다음 기동부터 `READ_CODE` 제안에 반영. 이미 COMPLETED한 reading은 다시 제안되지 않는다(`06` §5.3) |
+| 개념 읽기 추가·수정 (§3.13) | +1 | 다음 기동부터 `READING` 제안에 반영. 이미 COMPLETED한 개념 읽기는 다시 제안되지 않는다(`06` §5.3). 과제는 생성 시점의 `reading_key`를 들고 있으므로 지난 과제가 가리키는 자료는 바뀌지 않는다 |
+| tip 추가·수정 | +1 | 다음 기동부터 오늘의 팁 선택에 반영(`06` §5.12). 이미 받은 팁(`user_daily_tip`)은 문구를 고쳐도 다시 제안되지 않는다 |
+| term 추가·수정 | +1 | 다음 기동부터 검색·상세에 반영. 이미 만든 용어 복습 카드는 사용자 소유라 바뀌지 않는다(review card와 같다) |
+| checklist 추가·수정 | +1 | 다음 기동부터 과제 카드에 반영. 저장하지 않으므로 지난 과제에도 새 목록이 붙는다 |
 | `tools/` 수정 | 없음 | 런타임 비대상 |
 
 - ContentSeeder는 `catalogVersion ≥ dbVersion`일 때만 적재한다(`04` §9). 같은 버전 재기동은 같은 결과로 upsert되어 무해하다. 더 낮은 버전(이전 이미지로 롤백)은 적재를 건너뛴다.
@@ -769,11 +1251,15 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 | challenge | challenge 파일에서 제거 + `retired.challengeSeedKeys` | `status = RETIRED` | attempt·submission 유지. RETIRED는 목록·task 제안에서 제외 |
 | review card | 카드 파일에서 제거 + `retired.conceptKeys` | 없음 | 기존 `review_item` 유지. 새 사용자에게 복사하지 않음 |
 | curated source | 파일에서 제거 + `retired.curatedSourceIds` | 없음 | 저장된 finding 유지. 이후 AI 출력의 해당 ID는 `DOWNGRADED_UNKNOWN_CURATED` |
-| reading | `curated-repos.yaml`에서 제거 + `retired.readingKeys` | 없음 | 완료한 `READ_CODE` task와 러버덕 세션은 그대로 남는다. 새로 제안되지 않는다 |
+| reading (코드 읽기) | `curated-repos.yaml`에서 **지우지 않고** `retired: true`로 표시 + `retired.readingKeys`에 추가. 그 저장소 항목(`repos[]`)도 남긴다(CV-84) | 없음 | 완료한 `READ_CODE` task와 러버덕 세션은 그대로 남고, `GET /readings/{key}`가 은퇴한 단위를 계속 돌려준다(`retired = true`, `05` §19.7). 새로 제안되지 않는다(`06` §5.3). 좌표는 `pinnedCommit` 기준이라 은퇴 뒤에도 같은 코드를 가리킨다 |
+| 개념 읽기 | `concept-readings.yaml`에서 **지우지 않고** `retired: true` + `retired.readingKeys`에 추가 (CV-120). 코드 읽기와 **같은 은퇴 목록**을 쓴다 | 없음 | 완료한 `READING` task는 그대로 남고 `GET /readings/{key}`가 계속 돌려준다(`kind = CONCEPT`, `retired = true`). 새로 제안되지 않는다. 링크가 죽었거나 버전이 어긋나 은퇴시킨 경우에도 지난 과제가 무엇을 가리켰는지는 남는다 |
+| tip | 파일에서 **지우지 않고** `retired: true` + `retired.tipKeys`에 추가 (CV-95) | 없음 | `user_daily_tip` 행과 `TIP:{key}` 복습 카드는 그대로 남고 상세 조회도 계속 된다. 오늘의 팁으로 새로 선택되지 않는다(`06` §5.12 TIP-1) |
+| term | 파일에서 **지우지 않고** `retired: true` + `retired.termKeys`에 추가 (CV-105) | 없음 | `TERM:{key}`·`TERM:{key}:REVERSE` 복습 카드는 그대로 남고 상세 조회도 계속 된다. 검색 결과와 다른 용어의 `confusableWith`에서는 빠진다 |
+| checklist | 파일에서 **제거**한다. 은퇴 목록이 없다 | 없음 | 없다 — 과제 카드를 그릴 때만 붙고 저장되지 않는다(§3.11) |
 
 ### 8.3 식별자 재사용 금지
 
-- `retired.*`에 있는 식별자는 활성 콘텐츠에서 다시 쓸 수 없다(CV-11, CV-40, CV-50, CV-70, CV-83).
+- `retired.*`에 있는 식별자는 활성 콘텐츠에서 다시 쓸 수 없다(CV-11, CV-40, CV-50, CV-70, CV-83, CV-95, CV-105).
 - 같은 의미로 되살릴 때만 `retired`에서 빼고 원래 항목을 복원한다.
 - 의미가 달라지면 새 식별자를 만든다. 예: 카드 질문의 핵심 개념이 바뀌면 `..._V2` conceptKey.
 
@@ -787,7 +1273,7 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 | LN-2 | `cloneHint`는 **그 커밋을 체크아웃하게** 쓴다. `--depth 1`은 특정 커밋을 못 집으므로 `git clone … && git checkout <sha>` 형태로 적는다 |
 | LN-3 | `pinnedCommit`을 올리면 **그 저장소의 모든 reading의 `path`와 `lines`를 다시 확인한다.** 바뀐 것만 고치는 것이 아니라 전부 눈으로 본다. 이건 자동화할 수 없고 콘텐츠 작업이다 |
 | LN-4 | `pinnedCommit`을 못 구했으면 `null`로 두되, 이는 임시 상태다. CV-82가 WARN을 내고, WARN이 남아 있는 동안은 줄 번호를 신뢰할 수 없다고 본다 |
-| LN-5 | 저장소가 사라지거나 재작성되면 해당 reading들을 §8.3대로 은퇴시키고(`retired.readingKeys`) 대체 reading을 새 key로 만든다. **같은 key의 `lines`만 고쳐서 다른 코드를 가리키게 하지 않는다** |
+| LN-5 | 저장소가 사라지거나 재작성되면 해당 reading들을 §8.2대로 은퇴시키고(`retired: true` + `retired.readingKeys`) 대체 reading을 새 key로 만든다. **같은 key의 `lines`만 고쳐서 다른 코드를 가리키게 하지 않는다** |
 
 갱신 절차 (콘텐츠 작업):
 
@@ -803,13 +1289,120 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 5. catalogVersion +1 (§8.1), validate_content.py 실행, §11 체크리스트
 ```
 
-2026-09-18 확인한 커밋:
+확인한 커밋 (2026-09-19 첫 소스 점검 기준, §8.5 점검 기록):
 
-| repo | pinnedCommit | 확인 |
+| repo | pinnedCommit | 기준 | 라이선스 | 확인 |
+|---|---|---|---|---|
+| `modulith` | `e9e003a6363e2793a0e5eebe320cb02816ed1e0c` | 2026-09-18 main | Apache-2.0 | reading 4개. 2026-09-19에 그 커밋의 파일로 path·lines를 다시 확인 |
+| `petclinic` | `818c4136ea971c21674525f9053de0d9c7ad8cfe` | main (2026-09-19에도 HEAD) | Apache-2.0 | 기존 reading 4개 + 새 4개. 고정 커밋을 올리지 않았다 |
+| `restbucks` | `ad97ad03c367a69ff1de70c660be2731cbe7bc3d` | 2026-09-18 main | UNSPECIFIED | reading 5개 모두 **은퇴**(2026-09-19). 좌표는 그대로 남고 조회만 된다. 라이선스 명시가 없어 코드를 옮겨 적지 않았다 |
+| `modular-monolith` | `2933f5f14481615e214ee7c35166b957cac4c6cc` | main HEAD | Apache-2.0 (LICENSE) | reading 7개 |
+| `jdk25` | `7b65d74bcbd7c3a0b4c1f5c5bd85e64aa2e51b4a` | 태그 `jdk-25.0.4.1+1` | GPL-2.0 + Classpath Exception | reading 5개. 파일 5개가 Temurin 25.0.4.1+1 설치본의 `lib/src.zip`과 같고, `jdk-25.0.4+1` 태그와도 같다 |
+| `spring-framework` | `82a6b40b9366ec181ededdad282b307ee5381a52` | 태그 `v7.0.9` (backend `gradle.lockfile`의 spring-tx·spring-aop) | Apache-2.0 | reading 3개. 파일 3개가 Maven Central sources jar와 같다 |
+| `hikaricp` | `80c46aee46a000af61d700a2bd144c9a3ff777af` | 태그 `HikariCP-7.0.2` (backend `gradle.lockfile`) | Apache-2.0 | reading 3개. 파일 3개가 Maven Central sources jar와 같다 |
+| `security-samples` | `2e3f349b9a33b1b4e3d212398ef14d6383c447db` | main HEAD | Apache-2.0 (LICENSE 파일 없음, 파일별 헤더) | reading 3개 |
+| `webgoat` | `872d6149d4ef29e4929c2f4eda279f7fbedc52e8` | main HEAD | GPL-2.0-or-later | reading 3개. 코드를 옮겨 적지 않았다 |
+
+모든 reading의 path·lines는 그 커밋의 파일을 받아 범위의 첫 줄과 끝 줄을 눈으로 확인했다(LN-1). JDK·Spring Framework·HikariCP는 IDE에서 의존성 소스(src.zip, sources jar)를 열어도 같은 줄이 보이므로 `cloneHint`가 IDE를 먼저 안내하고 clone은 대안으로 적는다(clone 명령도 그 커밋을 checkout한다, LN-2).
+
+### 8.5 소스 점검 (읽기 자료의 주기적 수동 점검)
+
+`READ_CODE`가 가리키는 저장소(`repos[]`)와 읽기 단위(`readings[]`), 그리고 `READING`이 가리키는 **개념 읽기**(`concept-readings.yaml`, §3.13)가 지금의 사용자에게 맞는지 사람이 다시 본다. **같은 점검에서 팁(`tips/*.yaml`)과 용어(`terms/*.yaml`)의 `sourceUrl`도 함께 연다** — 링크가 살아 있는지, 그 문장이 아직 문서에 있는지, 대상 버전이 지금 스택과 맞는지를 보고 어긋난 것은 고치거나 은퇴시킨다(§8.2). **자동으로 도는 것은 없다** — 스케줄 job도, 서버의 저장소·코드 조회도 없다(`07` §5.5). 콘텐츠 작업자(에이전트)가 입력을 모아 제안을 만들고, 무엇을 반영할지는 사용자가 정한다.
+
+**언제**
+
+| 시점 | 이유 |
+|---|---|
+| **S3 구현 시작 직전 (첫 점검)** | `READ_CODE`는 S3에서 처음 제안된다(`BL-TDY-16`). 첫 제안 전에 그때의 저장소 3개·단위 13개를 한 번 검토한다(`11` §3.5, `16` R-15). 2026-09-19에 했다(아래 점검 기록) |
+| 단계 회고마다 (`11` §2.2, `16` §4 S-8) | 쓰면서 쌓인 평가와 빈틈을 반영한다 |
+| 사용자가 요청할 때 | 예: 특정 기술의 읽을거리가 부족하다고 느낄 때 |
+
+**입력**
+
+| # | 입력 | 얻는 방법 |
 |---|---|---|
-| `modulith` | `e9e003a6363e2793a0e5eebe320cb02816ed1e0c` | reading 4개의 path·lines를 체크아웃 사본에서 확인 |
-| `petclinic` | `818c4136ea971c21674525f9053de0d9c7ad8cfe` | reading 4개 확인 |
-| `restbucks` | `ad97ad03c367a69ff1de70c660be2731cbe7bc3d` | reading 5개 확인. 라이선스 명시가 없어 **코드를 옮겨 적지 않았다** |
+| I-1 | 빈틈 목록 (DevPilot 데이터) | 사용자가 내려받은 `GET /me/export` JSON(`05` §3.3)에서 뽑는다. ① 레벨이 낮은 skill — `skillStates[]`의 증거 레벨이 활성 plan `skillTargets[]`의 목표보다 크게 낮은 MUST·SHOULD skill ② 복습에서 막히는 skill — `reviewAnswers[]`에서 최종 등급 `AGAIN`이 반복되는 카드의 skill, 러버덕 gap 카드(`reviewItems[]`의 `sourceType = RUBBER_DUCK`)가 있는 skill ③ 읽을 것이 없는 skill — role target이 있는 skill 중 은퇴하지 않은 어떤 **코드 읽기**(`curated-repos.yaml`)·**개념 읽기**(`concept-readings.yaml`)의 `skillCodes`에도 없는 skill. `validate_content.py`의 **CV-125 WARN**이 MUST에 대해 같은 목록을 뽑아 준다 |
+| I-2 | 완료한 `READ_CODE` 평가 | 같은 export의 `dailyPlans[].tasks[]` 중 `taskType = READ_CODE`인 행의 `readingKey`·`readingFeedback`(`HELPFUL`·`TOO_HARD`·`BORING`·null, `04` §3)을 단위·저장소별로 센다 |
+| I-3 | 현재 저장소의 라이선스·유지 상태 | 사람이 브라우저로 저장소 페이지를 열어 본다: 라이선스 파일, 보관(archived) 여부, 마지막 커밋 시기, Spring Boot·Java 버전 |
+
+평가 읽는 법(판단은 사람이 한다): `TOO_HARD`가 많은 단위는 범위를 줄이거나 앞에 둘 쉬운 단위를 찾는다. `BORING`이 많은 단위는 질문(`question`)을 바꾸거나 교체 후보로 둔다. `HELPFUL`이 많은 저장소는 같은 저장소에서 단위를 더 찾을 후보다. 평가는 이 점검의 입력일 뿐이고 레벨·planner 규칙의 입력이 아니다(`06` §5.3).
+
+**후보 기준**
+
+| 기준 | 내용 |
+|---|---|
+| 라이선스 | OSI 승인 라이선스. **Apache-2.0·MIT를 우선**한다. 라이선스가 없는 저장소(`UNSPECIFIED`, 예: 2026-09-19에 교체한 `restbucks`)가 **먼저 교체 대상**이다. 그 밖의 OSI 라이선스(예: GPL 계열)는 읽기만 하고 코드를 옮겨 적지 않는다(§3.8 라이선스 규칙과 같은 취급) |
+| 유지 | 활발히 유지된다: 보관(archived) 상태가 아니고 최근 커밋이 있다 |
+| 스택 | Spring Boot·Java 버전이 DevPilot이 가르치는 스택(Spring Boot 4, Java 25 — `18` §1.1)과 가깝다 |
+| 크기 | 다룰 만하다: 한 단위를 `estimatedMinutes`(5~60분) 안에 읽을 수 있고, 저장소 구조를 짧은 `why`로 설명할 수 있다 |
+| 테스트 | 테스트 코드가 있다 |
+| 도메인 | 설명 없이 이해되는 업무(주문·결제·회원 등)라 읽기 쉽다 |
+
+**큰 실제 프로젝트의 부분 읽기**는 허용한다. 저장소 전체를 읽지 않고 한 주제에 맞는 파일 하나·범위 하나만 단위로 삼는다(RC-2). 예:
+
+- 커넥션 풀 라이브러리의 커넥션 대여·반납 — 자원 수명(`JAVA.EXCEPTION.TRY_WITH_RESOURCES`, `PRACTICAL_ENGINEERING.RESOURCE_TIMEOUT`)
+- 프레임워크의 트랜잭션 프록시 코드(예: Spring Framework의 트랜잭션 인터셉터) — `SPRING.TRANSACTION`, `SPRING.AOP_PROXY`
+- JDK 동시성 클래스(예: `java.util.concurrent`) — `JAVA.CONCURRENCY`
+
+단위는 지금의 `readings[]` 형식 그대로 적는다: 저장소의 **`pinnedCommit` + `path` + `lines` + 열린 질문(`question`)**, 그리고 `skillCodes`·`estimatedMinutes`·`lookFor`. 큰 저장소는 `subPath`를 그 모듈로 두고, `cloneHint`는 부분 clone(예: `git clone --filter=blob:none …`)을 써도 되지만 반드시 그 커밋을 checkout한다(LN-2).
+
+**출력과 반영**
+
+1. 점검 결과는 저장소·단위별 **제안 목록**이다: 추가 / 교체 / 은퇴 / 유지. 제안마다 근거(I-1~I-3 중 무엇)를 붙인다.
+2. 사용자와 함께 검토해 받아들일 제안만 고른다. 고르지 않은 제안은 반영하지 않는다.
+3. 받아들인 제안을 콘텐츠 PR 하나로 `content/curated-repos.yaml`에 반영한다:
+   - 새 저장소·갱신한 저장소는 `pinnedCommit`을 고정하고 `cloneHint`가 그 커밋을 checkout하게 쓴다(LN-2)
+   - 그 커밋으로 체크아웃한 사본에서 해당 저장소의 **모든** `path`·`lines`를 눈으로 다시 확인한다(§8.4 LN-1·LN-3)
+   - 은퇴는 §8.2대로 한다(`retired: true` + `retired.readingKeys`). 은퇴한 단위는 지난 과제를 위해 계속 조회된다
+   - `python content/tools/validate_content.py` 통과, `catalogVersion` +1(§8.1), §11 체크리스트
+4. 점검 날짜, 입력 요약, 결정(받아들인 것과 받아들이지 않은 것)을 PR 설명에 적고, §8.4의 "확인한 커밋" 표를 갱신한다. 같은 내용을 아래 **점검 기록**에 한 항목으로 남긴다.
+
+**점검 기록**
+
+2026-10-01 — 링크·버전 점검 (catalogVersion 67 → 68)
+
+| 항목 | 내용 |
+|---|---|
+| 대상 | `terms/*.yaml`의 `sourceUrl` 24건과, 그 과정에서 드러난 **콘텐츠 전체의 버전 표기** |
+| 용어 링크 | `TERM.DATABASE.N_PLUS_ONE`·`TERM.DATABASE.PERSISTENCE_CONTEXT` → Hibernate **User Guide 본문**(`docs.hibernate.org/orm/7.0/userguide/…`). 앞의 것은 살아 있지만 링크 모음이라 뜻이 적힌 자리가 아니었다(§7.6 2번). `TERM.TESTING.ASSERTION` → `junit.org/junit5/…`가 **301**로 `docs.junit.org/current/…`에 넘긴다. 새 주소로 바꿨다 |
+| **Java 21 → 25** | 콘텐츠의 Oracle 문서 링크 **17건이 `javase/21`을 가리키고 있었다.** 프로젝트는 Java 25다(AGENTS.md §0). `javase/25`에 같은 페이지가 있는 것을 확인하고 전부 옮겼다 |
+| **JUnit 5 → 6** | `testRuntimeClasspath`가 실제로 푸는 것은 **JUnit Jupiter 6.0.3**이다. "JUnit 5"라고 적힌 문제 조건 3건을 고치고, skill 표시 이름 `JUnit 5·AssertJ` → `JUnit·AssertJ`로 바꿔 버전을 이름에서 뺐다 |
+| 확인한 방법 | 링크를 실제로 열어 내용을 봤다. 신뢰 호스트 판정은 접미사 비교라(`validate_content.py:216`) `docs.junit.org`·`docs.hibernate.org`는 이미 허용 범위 안이다 — allowlist를 건드릴 필요가 없었다 |
+| 남은 것 | PostgreSQL 16·Spring·RFC 9110·OWASP·Docker·git-scm 링크는 호스트와 경로 형태로만 확인했다. 다음 점검에서 연다 |
+
+2026-09-19 — 첫 점검 (S3 구현 시작 전, catalogVersion 4 → 5)
+
+| 항목 | 내용 |
+|---|---|
+| 입력 I-1 (빈틈) | 실사용 전이라 export가 없어 ③ "읽을 단위가 없는 skill"만 썼다. 점검 전 MUST 43개 중 reading이 있는 skill 17개, role target 75개 중 20개. 비어 있던 영역: 인증·세션, 보안(OWASP), 컬렉션·스트림·자원 해제, 트랜잭션·프록시 내부, 커넥션 풀 타임아웃, CI·Docker, 설정·로깅·null 처리 |
+| 입력 I-2 (평가) | 완료한 `READ_CODE`가 없다(S3 전) |
+| 입력 I-3 (저장소 상태) | 후보 저장소마다 라이선스 파일, 보관 여부, 마지막 커밋, Spring Boot·Java 버전, 테스트 유무를 확인했다. `restbucks`는 라이선스 명시가 없다 |
+| 결정 A (교체) | `restbucks` → `modular-monolith`(sivaprasadreddy/spring-modular-monolith, Apache-2.0, Boot 4.1, Java 25, 모듈 catalog·orders·inventory·users·notifications·config, Testcontainers·ArchitectureTests·ModularityTests·`compose.yml`·GitHub Actions 있음). reading 7개: 장바구니→주문 흐름, 재고 차감, 모듈 API 경계, 보안 설정, 구조 테스트, Testcontainers 설정, compose와 CI. `restbucks` reading 5개는 은퇴(`retired: true` + `retired.readingKeys`), 저장소 항목은 지난 과제 조회를 위해 남긴다 |
+| 결정 B (보안) | `security-samples`(spring-projects/spring-security-samples, Apache-2.0 — LICENSE 파일 없이 파일별 헤더): JWT 로그인(토큰 발급 + resource server), 메서드 보안, 세션 수 제한 3개. `webgoat`(WebGoat/WebGoat, GPL-2.0-or-later, Boot 4.1.1): SQL 인젝션(이어 붙인 조회 vs 바인딩), 반사형 XSS, 기능 수준 접근 제어 3개. cloneHint는 커밋 하나만 얕게 받고 lessons 폴더만 꺼낸다 |
+| 결정 C (큰 코드의 부분 읽기) | IDE에서 clone 없이 연다. `jdk25`(openjdk/jdk25u 태그 `jdk-25.0.4.1+1` — 사용자 JDK가 Temurin 25.0.4.1+1): HashMap put·resize/treeify, ArrayList grow, Collectors.groupingBy, Files.lines의 onClose 5개. `spring-framework`(v7.0.9 = backend lockfile): TransactionAspectSupport.invokeWithinTransaction, JdkDynamicAopProxy.invoke, CglibAopProxy의 DynamicAdvisedInterceptor 3개. `hikaricp`(7.0.2 = backend lockfile): HikariPool.getConnection, ProxyConnection.close, ConcurrentBag borrow/requite 3개(대기 타임아웃과 반납이 실제로 일어나는 곳이라 두 주제를 이어서 읽도록 셋으로 나눴다) |
+| 결정 D (petclinic 추가) | 고정 커밋 유지(main이 그대로). reading 4개: OwnerControllerTests의 검색 테스트, ClinicServiceTests의 제약 테스트, `maven-build.yml`(CI와 `docker-compose.yml`을 함께 따라감), `application.properties`와 프로필 파일 |
+| 개념 읽기 (curated source) | 9개 추가, 1개 재확인: SQL(PostgreSQL 16 외부 조인, WHERE와 HAVING), 인덱스(PostgreSQL 16 인덱스 쓰기 비용, 복합 인덱스 재확인), HTTP(RFC 9110 안전·멱등 메서드, MDN 상태 코드 분류), 로깅(Spring Boot 4.1 Logging), null 처리(`Optional`·`Objects` Java SE 25 API, JEP 358) |
+| 받아들이지 않음 | buckpal — 라이선스 없음. eventuate-tram 예제 — 라이선스가 분명하지 않고 인프라 부담이 크다. ddd-example-ecommerce — 2023년 이후 갱신이 없다. dddsample — 다음 점검 후보로 보류. OWASP WrongSecrets — 선택 항목이라 이번에는 건너뜀. Pro Git(`DEVOPS.GIT` 개념 읽기) — 그때는 호스트 `git-scm.com`이 `devpilot.ai.trusted-source-hosts`에 없어 CV-71을 통과하지 못했다(**그 뒤 `git-scm.com`이 허용 목록에 들어갔고, 2026-09-21 점검에서 Pro Git 2개를 넣었다**) |
+| 결과 | 저장소 9개(활성 reading이 있는 저장소 8개), reading 41개(활성 36개, 은퇴 5개, 활성 합계 547분). reading이 있는 skill: MUST **17 → 34**/43, role target 전체 20 → 43/75. reading이 없는 MUST는 `DATABASE.SQL_BASICS`, `DATABASE.INDEX`, `SPRING.EXCEPTION_HANDLING`, `WEB_HTTP.REST_API_DESIGN`, `DEVOPS.GIT`, EXPLANATION 4개 — 앞의 셋은 개념 읽기(curated source)로 보완한다 |
+| 검증 | `python content/tools/validate_content.py` → ERROR 0, WARN 0. 저장소별 활성 단위(`petclinic` 8개, `modular-monolith` 7개)는 CV-87의 3~8 범위 안이다. 다음 점검에서 평가(`TOO_HARD`·`BORING`)를 보고 줄일 단위를 고른다 |
+| 다음 점검 후보 | 오류 응답(`modular-monolith`의 `OrdersExceptionHandler` — 예외 메시지를 그대로 보여 주는 500 처리), REST API 설계를 보여 줄 공개 예제, dddsample |
+
+2026-09-21 — 두 번째 점검 (개념 읽기 신설)
+
+| 항목 | 내용 |
+|---|---|
+| 계기 | 사용자가 `READING` 과제를 받았는데 화면에 제목·설명뿐이고 **"공식 문서"가 무엇인지 어디에도 없었다.** `READ_CODE`는 `reading_key`로 파일·줄까지 주는데 `READING`은 자료를 나를 수단 자체가 없었다. `READING`은 planning KNOWLEDGE < 2일 때 나오므로 입문자가 가장 많이 만나는 유형이다 |
+| 입력 I-1 (빈틈) | 실사용 전이라 export가 없어 ③ "읽을 것이 없는 skill"만 썼다. 2026-09-19 점검이 남긴 목록 그대로 — `DATABASE.SQL_BASICS`, `DATABASE.INDEX`, `SPRING.EXCEPTION_HANDLING`, `WEB_HTTP.REST_API_DESIGN`, `DEVOPS.GIT`, EXPLANATION 4개(`PROJECT_STORY`·`TECH_DECISION`·`TROUBLESHOOTING_STORY`·`LEARNING_RETROSPECTIVE`). 기술 트리·role target을 다시 대조해 같은 9개임을 확인했다 |
+| 입력 I-2 (평가) | 완료한 `READ_CODE`가 없다(실사용 전) |
+| 입력 I-3 (문서 상태) | 후보 URL 14개를 브라우저로 **직접 열어** 제목·절 번호·대상 버전을 확인했다(`verifiedAt: 2026-09-21`). 죽은 링크·버전이 어긋난 문서는 없었다 |
+| 결정 A (수단) | 새 필드를 만들지 않고 **`learning_task.reading_key`를 재사용**한다. `READING` 과제도 key를 가질 수 있게 CHECK를 다시 만들고(`04` §10.1 13번), `GET /readings/{key}`가 `kind: CODE | CONCEPT` 두 종류를 돌려준다(`05` §19.7) |
+| 결정 B (콘텐츠) | `content/concept-readings.yaml` 신설(§3.13), 개념 읽기 **14개**. DB(PostgreSQL 16 공식 문서 4), Spring/오류 형식(Spring Framework 7 참조 문서 1 + RFC 9457), REST(RFC 9110 §15, RFC 8288), Git(Pro Git 3.2·3.6), EXPLANATION(OpenJDK JEP 2·444·358·12 — "설명하는 법"을 다룬 공식 문서가 없어 **OpenJDK가 자기 결정을 남기는 방식**을 본보기로 삼았다) |
+| 결정 C (선택 규칙) | `READING` 분기에 코드 읽기와 같은 결정적 선택 규칙을 넣었다(`06` §5.3): 그 skill의 후보 중 `key` ASC 첫 번째, 완료한 것과 최근 14 plan-day 안에 제안된 것은 제외, **후보가 없으면 지금처럼 자료 없이 제안한다**(회귀 없음) |
+| 신뢰 호스트 | **추가하지 않았다.** 14개가 모두 이미 허용된 호스트다(`www.postgresql.org`, `docs.spring.io`, `www.rfc-editor.org`, `git-scm.com`, `openjdk.org`). `git-scm.com`은 2026-09-19 점검 이후 이미 목록에 들어와 있었고 §8.5의 "받아들이지 않음" 문장만 낡아 있어 함께 고쳤다 |
+| 받아들이지 않음 | `EXPLANATION.PROJECT_STORY`·`LEARNING_RETROSPECTIVE`에 맞는 "설명·회고 쓰는 법" 문서 — 공식 문서·표준 문서가 아니어서 §7.6 H-1을 통과하지 못한다(블로그·강의 사이트·요약 사이트). 호스트를 늘리지 않고 JEP로 대신했다. 번역본(Pro Git 한국어판) — H-1이 번역본을 막는다. 원문을 쓴다 |
+| 결과 | 개념 읽기 14개(활성 14, 은퇴 0, 합계 **310분**), 9개 skill을 덮는다. **role target이 있는 MUST skill 43개가 모두 코드 읽기 또는 개념 읽기를 갖게 됐다**(CV-125 WARN 0). `JAVA.CONCURRENCY.VIRTUAL_THREAD`(SHOULD)도 JEP 444로 함께 덮인다 |
+| 검증 | `python content/tools/validate_content.py` → 개념 읽기 관련 ERROR·WARN 0. 결함을 넣은 복사본으로 CV-120·CV-121·CV-123·CV-124가 실제로 걸리는 것을 확인했다(§4.3 표) |
+| 다음 점검 후보 | `DEVOPS.GIT`의 **PR 리뷰 흐름** — Pro Git 3.2·3.6은 브랜치·merge·rebase까지만 덮는다. GitHub 공식 문서(`docs.github.com`)를 쓰려면 §7.6 H-1~H-5로 호스트를 먼저 늘려야 한다. `INTEGRATION` 카테고리(연동 트랙 신설) — 코드 읽기도 개념 읽기도 없다 |
 
 ---
 
@@ -868,9 +1461,22 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 
 사용자가 자기 plan에서 skill target을 조정하는 경로는 replan이다(구조 변경 = 새 version, `06` §11.1). `06` §11.2 7번이 정의하는 조정은 defer(`DEFERRED`), target 축소(`TARGET_REDUCED`), defer 해제(`USER_EDITED`), 새 seed skill 자동 추가(`ROLE_DEFAULT`)다. target 상향은 확장 제안(`06` §4.4 6단계)을 받아들이는 `acceptedTargetRaises`로만 한다. **priority 변경과 그 밖의 target 상향은 MVP 범위 밖(Later)** 이다. 필요하면 운영자가 content YAML의 role target을 바꾸고(§10.1) 새 plan을 만든다(§13 O-4).
 
-### 10.4 다른 학습 트랙을 추가할 때 (콘텐츠 작업)
+### 10.4 학습 트랙을 추가할 때 (콘텐츠 작업)
 
-`target_role`은 사용자별 컬럼이고 `TargetRole` CHECK에 값을 더하면 구조 변경 없이 늘어난다. 다만 **지금의 skill 카탈로그 88개는 Java 백엔드 전용**이라(JVM·JPA·Spring이 절반) 새 학습 트랙을 더하려면 migration과 seed 외에 **skill tree·role target·plan template·review card·challenge·curated repo를 그 트랙용으로 새로 쓰는 콘텐츠 작업**이 따른다. 절차는 `04-domain-model-and-db.md` §3(enum 값 추가 + migration) → `role_skill_target` seed → 이 문서의 §3.2~§3.8 파일 추가 순이고, CV-21(역할마다 non-root skill 하나당 target 1개)·CV-30(역할마다 template 1개)·CV-36(모든 MUST skill이 milestone에 있음)이 누락을 잡는다.
+`target_role`은 사용자별 컬럼이고 `TargetRole` CHECK에 값을 더하면 구조 변경 없이 늘어난다. 새 트랙은 두 종류다.
+
+**A. 같은 스택의 다른 수준·다른 구성** (예: `JAVA_BACKEND` → `JAVA_BACKEND_STARTER`(낮은 수준), `INTEGRATION_ENGINEER`(같은 수준·다른 구성)) — skill 카탈로그·복습 카드·challenge·curated repo·팁·용어·체크리스트를 **그대로 공유**한다. 새로 쓰는 것은 둘뿐이다.
+
+| 파일 | 내용 |
+|---|---|
+| `content/role-targets/<track>.yaml` | 기존 non-root skill **전부**에 target 1개씩(CV-21). `priority`로 필수 범위를 정하고(입문 트랙은 MUST 14개 안팎, 연동 트랙은 기본기 70% / 연동 20% / 배포·운영 10% 비율로 필수 합계 180~220시간), 축별 목표는 낮은 수준 트랙일 때만 상위 트랙 값 이하로 두고(CV-26), `importance`는 그 트랙 기준으로 다시 매긴다(§3.3) |
+| `content/plan-templates/<track>.yaml` | 그 트랙의 MUST skill 전부를 담는 milestone 구성(CV-35·CV-36). `weightBp` 합 10000, PREPARATION이 앞·CONSOLIDATION이 마지막(CV-33). 입문 트랙은 6개(PREPARATION 5 + CONSOLIDATION 1) |
+
+절차: `04` §3에 enum 값 추가 → `V{n}`으로 `learning_goal`·`role_skill_target`의 `target_role` CHECK 재생성 → `03` §9 `devpilot.tracks.<트랙>` 항목 추가(`max-task-difficulty`·`read-code-min-knowledge`·`basic-tips-first`, `06` §5.3. 누락이면 기동 실패) → 위 두 파일 추가 + `catalog.yaml`의 `files.roleTargets`·`files.planTemplates`에 등록 + `catalogVersion` +1 → `02` 온보딩 1단계 선택지와 l10n.
+
+**B. 다른 스택** (예: 프런트엔드) — 지금의 skill 카탈로그 88개는 Java 백엔드 전용이라(JVM·JPA·Spring이 절반) **skill tree·role target·plan template·review card·challenge·curated repo를 모두 새로 쓰는** 콘텐츠 작업이 따른다. 현재 계획 밖이다(`01` §7 Later).
+
+두 경우 모두 CV-21(트랙마다 non-root skill 하나당 target 1개)·CV-30(트랙마다 template 1개)·CV-36(그 트랙의 모든 MUST skill이 milestone에 있음)이 누락을 잡는다. **학습 트랙 변경은 지원하지 않는다**(`05` §5.2) — 사용자가 트랙을 바꾸려면 계정을 새로 만든다.
 
 ---
 
@@ -893,61 +1499,71 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 - [ ] reading `question`이 답을 유도하지 않는 열린 질문이고 40자 이상이다 (CV-86)
 - [ ] `pinnedCommit`을 올렸다면 그 저장소의 **모든** reading을 다시 확인했다 (§8.4 LN-3)
 - [ ] 라이선스가 `UNSPECIFIED`인 저장소의 코드를 문서·콘텐츠에 옮겨 적지 않았다
+- [ ] 저장소·reading의 추가·교체·은퇴는 소스 점검(§8.5)에서 사용자가 고른 것만 반영했고, 은퇴한 reading은 지우지 않고 `retired: true`로 남겼다(§8.2)
+- [ ] 개념 읽기(§3.13)를 추가·수정했다면 `url`을 **브라우저로 직접 열어** 제목·절 번호·대상 버전을 확인하고 `verifiedAt`을 그날로 적었다. 옛 버전 문서·번역본을 링크하지 않았다
+- [ ] 개념 읽기 key가 코드 읽기 key와 겹치지 않는다 (CV-120 — 둘은 한 namespace다)
+- [ ] `whyRead`가 목차 요약이 아니라 "이 skill에서 무엇을 할 수 있게 되는가"이고, `checkPoints` 3개 중 마지막이 자기 코드·프로젝트로 옮겨 보는 것이다 (§3.13)
+- [ ] 학습 트랙을 추가·수정했다면 role target과 plan template을 **같은 PR에서** 고쳤고, 그 트랙의 MUST skill이 모두 milestone에 있으며(CV-36), 입문 트랙의 축별 목표가 상위 트랙 값을 넘지 않는다(§10.4 A)
+- [ ] 어느 트랙에서든 MUST인 skill에 `whyItMatters`가 있고, "모르면 무엇이 잘못되는지"를 쓴 한 문장이다 (CV-89, §7.5)
+- [ ] 팁마다 `sourceUrl` 또는 `experiment`가 있고(CV-91), `sourceUrl`은 브라우저로 열어 내용을 확인했다
+- [ ] 용어의 `representative`가 유일하고, 새로 쓴 콘텐츠가 `aliases` 표기 대신 `representative`를 쓴다 (CV-101·CV-104)
+- [ ] 체크리스트 항목이 질문형이고 특정 문제의 정답을 흘리지 않으며, 같은 `(taskType, skill)` 조합에 하나만 있다 (CV-113)
+- [ ] `timeLimitMinutes`를 붙였다면 시간 제한 구현 문제이고(§7.7), rubric에 "시간 안에 끝냈다" 항목이 없다
+- [ ] 신뢰 호스트를 새로 썼다면 `03` §9와 `06` §10을 같은 PR에서 고쳤고 §7.6 H-1~H-5를 만족한다
 
 ---
 
-## 12. 콘텐츠 인벤토리 (catalogVersion 3)
+## 12. 콘텐츠 인벤토리 (catalogVersion 68)
 
 ### 12.1 카테고리별 수량
 
-`--report` 출력(2026-09-18, catalogVersion 3). skills는 root 포함. challenge는 첫 번째 skill의 category로 센다. skill tree·role target·review card·challenge는 catalogVersion 2에서 바뀌지 않았고, **plan template과 curated repo/reading이 바뀌었다.**
+`--report` 출력(2026-10-01, catalogVersion 68). skills는 root 포함. challenge는 첫 번째 skill의 category로 센다. **이 표는 `python content/tools/validate_content.py --report`의 출력을 그대로 옮긴 것이다** — 손으로 고치지 말고 다시 돌려 붙인다.
 
 | category | skills | MUST | SHOULD | LATER | cards | PRACTICE | DIAGNOSTIC |
 |---|---|---|---|---|---|---|---|
-| JAVA | 12 | 6 | 5 | 0 | 15 | 5 | 1 |
-| SPRING | 12 | 9 | 2 | 0 | 13 | 4 | 1 |
-| DATABASE | 11 | 8 | 2 | 0 | 16 | 4 | 1 |
-| WEB_HTTP | 6 | 3 | 2 | 0 | 8 | 0 | 1 |
-| NETWORK | 4 | 0 | 2 | 1 | 3 | 0 | 0 |
+| JAVA | 12 | 6 | 5 | 0 | 15 | 10 | 3 |
+| SPRING | 12 | 9 | 2 | 0 | 13 | 10 | 3 |
+| DATABASE | 11 | 8 | 2 | 0 | 16 | 7 | 3 |
+| WEB_HTTP | 6 | 3 | 2 | 0 | 8 | 3 | 3 |
+| NETWORK | 4 | 0 | 2 | 1 | 3 | 1 | 0 |
 | CS | 4 | 0 | 3 | 0 | 2 | 0 | 0 |
 | ALGORITHM | 5 | 0 | 4 | 0 | 0 | 0 | 0 |
-| TESTING | 6 | 4 | 1 | 0 | 7 | 2 | 1 |
-| DEVOPS | 7 | 3 | 3 | 0 | 4 | 0 | 0 |
-| SECURITY | 6 | 4 | 1 | 0 | 6 | 3 | 0 |
-| PRACTICAL_ENGINEERING | 6 | 2 | 3 | 0 | 4 | 0 | 0 |
+| TESTING | 7 | 4 | 2 | 0 | 7 | 6 | 3 |
+| DEVOPS | 13 | 3 | 6 | 3 | 12 | 9 | 3 |
+| SECURITY | 6 | 4 | 1 | 0 | 6 | 3 | 3 |
+| INTEGRATION | 10 | 0 | 4 | 5 | 18 | 11 | 3 |
+| PRACTICAL_ENGINEERING | 8 | 2 | 5 | 0 | 7 | 3 | 3 |
 | SYSTEM_DESIGN | 4 | 0 | 1 | 2 | 0 | 0 | 0 |
-| EXPLANATION | 5 | 4 | 0 | 0 | 4 | 0 | 0 |
-| **합계** | **88** | **43** | **29** | **3** | **82** | **18** | **5** |
+| EXPLANATION | 5 | 4 | 0 | 0 | 4 | 0 | 3 |
+| **합계** | **107** | **43** | **39** | **11** | **111** | **63** | **30** |
+
+**DIAGNOSTIC 0인 네 category**(NETWORK · CS · ALGORITHM · SYSTEM_DESIGN)는 콘텐츠가 빠진 것이 아니다. 어느 트랙에서도 MUST(importance ≥ 0.70)인 skill이 없어 **CV-59가 진단을 허용하지 않는다** — 재지 않기로 한 자리다. 나머지 10개 category는 L1·L2·L3 사다리가 모두 있다(ADR-058·059).
 
 | 항목 | 값 |
 |---|---|
-| skill | root 13, non-root 75 (3단계 skill 8개) |
-| review card 유형 | RECALL 41, EXPLAIN 22, BUG_SPOT 16, CHOICE 3 |
-| PRACTICE 난이도 | L1 2, L2 8, L3 6, L4 2 (isTransfer 2: `PRACTICE.SPRING.TRANSACTION.L4.001`, `PRACTICE.SECURITY.AUTHN_AUTHZ.L4.001`) |
-| plan template | `JAVA_BACKEND_DEFAULT`: milestone **9개** — PREPARATION 8 (weight 9200), CONSOLIDATION 1 (800). priority는 1~6 MUST / 7~9 SHOULD. 75개 non-root skill 전부가 정확히 한 milestone에 들어간다 (CV-35·CV-36) |
-| curated source | 10 (Oracle 2, Spring 4, PostgreSQL 2, OWASP 2) |
-| curated repo | **3** (`modulith`, `petclinic`, `restbucks`) — 셋 다 `pinnedCommit` 있음 (§8.4) |
-| reading | **13** (modulith 4, petclinic 4, restbucks 5), 합계 198분, 서로 다른 skill **20개**를 덮는다 |
-| 온보딩 카드 분산 | 82장 ÷ 하루 5장 = 17 plan-day (`06` §6.3) |
+| skill | root 14, non-root 93 |
+| review card 유형 | RECALL 52, EXPLAIN 35, BUG_SPOT 19, CHOICE 5 |
+| PRACTICE 난이도 | L1 11, L2 32, L3 18, L4 2 |
+| curated source | 19 |
 
 plan template milestone (2026-09-18 재작성 — "과목 순서"에서 "주문 시스템을 만드는 순서"로):
 
 | # | milestone | priority | phase | weightBp | skills | 읽기 |
 |---|---|---|---|---|---|---|
-| 1 | 기반 다지기 | MUST | PREPARATION | 1200 | 12 | `petclinic` 구조·테스트 |
-| 2 | 회원과 인증 | MUST | PREPARATION | 1200 | 9 | 없음 (직접 구현) |
-| 3 | 상품과 CRUD | MUST | PREPARATION | 1500 | 13 | `petclinic` Owner/Pet/Visit |
-| 4 | 주문 생성 | MUST | PREPARATION | 1500 | 7 | `restbucks` Order |
-| 5 | 취소와 환불 | MUST | PREPARATION | 1200 | 5 | `restbucks` payment |
-| 6 | 조회 성능 | MUST | PREPARATION | 1100 | 5 | 없음 (직접 측정) |
-| 7 | 구조 정리 | SHOULD | PREPARATION | 700 | 3 | `modulith` 전체 |
-| 8 | 배포와 운영 | SHOULD | PREPARATION | 800 | 6 | 없음 |
+| 1 | 기반 다지기 | MUST | PREPARATION | 1200 | 12 | `petclinic` 구조·테스트·설정, `modular-monolith` 모듈 API |
+| 2 | 회원과 인증 | MUST | PREPARATION | 1200 | 9 | `security-samples` 로그인·세션, `webgoat` 취약 코드, `modular-monolith` 보안 설정 |
+| 3 | 상품과 CRUD | MUST | PREPARATION | 1500 | 13 | `petclinic` Owner/Pet/Visit, `jdk25` 컬렉션 |
+| 4 | 주문 생성 | MUST | PREPARATION | 1500 | 7 | `modular-monolith` 재고 차감, `spring-framework` 트랜잭션·프록시, `modulith` 이벤트 |
+| 5 | 취소와 환불 | MUST | PREPARATION | 1200 | 5 | `hikaricp` 커넥션 대여·반납, `jdk25` 자원 해제, `modular-monolith` Testcontainers |
+| 6 | 조회 성능 | MUST | PREPARATION | 1100 | 5 | 직접 측정이 중심 (`petclinic` 로딩 설정, `jdk25` groupingBy) |
+| 7 | 구조 정리 | SHOULD | PREPARATION | 700 | 3 | `modulith` 전체, `modular-monolith` 구조 테스트 |
+| 8 | 배포와 운영 | SHOULD | PREPARATION | 800 | 6 | `petclinic`·`modular-monolith` CI·compose, `hikaricp` 타임아웃 |
 | 9 | 설명과 정리 | SHOULD | CONSOLIDATION | 800 | 15 | — |
 
 - 모든 MUST skill에 seed card가 1장 이상 있다(CV-48 WARN 0).
-- ALGORITHM, SYSTEM_DESIGN에는 seed card·challenge가 없다. 이 skill들의 task 제안은 READING/EXPLAIN으로 대체된다(`06` §5.3).
+- ALGORITHM, SYSTEM_DESIGN, CS에는 seed challenge가 없다. 이 skill들의 task 제안은 READING/EXPLAIN으로 대체된다(`06` §5.3). 세 category 모두 어느 트랙에서도 MUST가 아니다.
 - milestone priority(잘라내는 순서)와 skill priority(role target)는 **다른 축**이다. SHOULD milestone 8에도 MUST skill(`DEVOPS.DOCKER`, `DEVOPS.CI_GITHUB_ACTIONS`, `PRACTICAL_ENGINEERING.LOGGING`)이 들어 있다. risk 계산은 `plan_skill_target.priority`를 쓰므로(`06` §4.1) 모순이 아니다. 1~6을 MUST로 둔 것은 기한이 촉박할 때 7~9부터 잘라내기 위해서다.
-- reading이 덮는 skill은 20개(non-root 75개 중)다. 나머지 skill의 task 제안은 READ_CODE 후보가 비어 READING/PROJECT_TASK/EXPLAIN으로 내려간다(`06` §5.3). 인증·동시성·조회 튜닝은 읽을 공개 예제가 마땅치 않아 의도적으로 비워 둔 영역이다(§3.8 "커버되지 않는 것").
+- 활성 코드 읽기가 덮는 skill은 43개(non-root 75개 중, MUST 34/43)다. 나머지 skill의 task 제안은 READ_CODE 후보가 비어 READING/PROJECT_TASK/EXPLAIN으로 내려간다(`06` §5.3). 조회 튜닝(인덱스·실행 계획), 오류 응답, REST API 설계, Git, EXPLANATION은 코드 읽기가 없는 영역이고(§3.8 "커버되지 않는 것") **2026-09-21부터 개념 읽기가 그 자리를 덮는다**(§12.4).
 
 ### 12.2 Budget 점검 (`06` §3·§4)
 
@@ -955,14 +1571,14 @@ plan template milestone (2026-09-18 재작성 — "과목 순서"에서 "주문 
 
 | planning | required MUST | required SHOULD | 12주 (effective 5,922) | 26주 (12,831) | 39주 (19,246) |
 |---|---|---|---|---|---|
-| 0 | 33,483 | 19,119 | CRITICAL | CRITICAL | CRITICAL |
-| 1 | 22,997 | 11,296 | CRITICAL | CRITICAL | HIGH |
-| 2 | 12,501 | 4,959 | CRITICAL | MEDIUM (9742bp) | LOW |
+| 0 | 33,483 | 24,048 | CRITICAL | CRITICAL | CRITICAL |
+| 1 | 22,997 | 14,082 | CRITICAL | CRITICAL | HIGH |
+| 2 | 12,501 | 5,797 | CRITICAL | MEDIUM | LOW |
 | 3 | 3,277 | 0 | LOW | LOW | LOW |
 
 해석: 자기평가 2(도움받아 가능) 수준의 사용자가 6개월을 잡으면 MEDIUM, 3개월이면 CRITICAL이 나와 SHOULD defer와 MUST 축소 제안(`06` §4.4)이 동작한다. 4주 사용 후 실제 학습 기록으로 step 값을 조정한다.
 
-### 12.3 Curated source 목록 (2026-09-17 확인)
+### 12.3 Curated source 목록 (2026-09-17 확인, 2026-09-19 추가)
 
 | id | 문서 |
 |---|---|
@@ -973,9 +1589,45 @@ plan template milestone (2026-09-18 재작성 — "과목 순서"에서 "주문 
 | `CS-SPRING-TX-REQUIRES-NEW` | Spring Framework 7.0 Transaction Propagation |
 | `CS-SPRING-MVC-PROBLEM-DETAIL` | Spring Framework 7.0 Error Responses |
 | `CS-POSTGRESQL-TRANSACTION-ISOLATION` | PostgreSQL 16 §13.2 |
-| `CS-POSTGRESQL-MULTICOLUMN-INDEX` | PostgreSQL 16 §11.3 |
+| `CS-POSTGRESQL-MULTICOLUMN-INDEX` | PostgreSQL 16 §11.3 (2026-09-19 재확인) |
 | `CS-OWASP-SQL-INJECTION-PREVENTION` | OWASP SQL Injection Prevention Cheat Sheet |
 | `CS-OWASP-LOGGING-SENSITIVE-DATA` | OWASP Logging Cheat Sheet |
+| `CS-POSTGRESQL-OUTER-JOIN` | PostgreSQL 16 §7.2 Joined Tables (`DATABASE.SQL_BASICS`) |
+| `CS-POSTGRESQL-WHERE-VS-HAVING` | PostgreSQL 16 §2.7 Aggregate Functions (`DATABASE.SQL_BASICS`) |
+| `CS-POSTGRESQL-INDEX-WRITE-COST` | PostgreSQL 16 §11.1 Indexes Introduction (`DATABASE.INDEX`) |
+| `CS-RFC9110-SAFE-IDEMPOTENT-METHODS` | RFC 9110 §9.2.1·§9.2.2 (`WEB_HTTP.HTTP_BASICS`) |
+| `CS-MDN-HTTP-STATUS-CLASSES` | MDN HTTP response status codes (`WEB_HTTP.HTTP_BASICS`) |
+| `CS-SPRING-BOOT-LOGGING-DEFAULTS` | Spring Boot 4.1 Logging (`PRACTICAL_ENGINEERING.LOGGING`) |
+| `CS-JAVA-OPTIONAL-RETURN-TYPE` | `java.util.Optional` Java SE 25 API (`PRACTICAL_ENGINEERING.NULL_BOUNDARY`) |
+| `CS-JAVA-OBJECTS-REQUIRE-NON-NULL` | `java.util.Objects` Java SE 25 API (`PRACTICAL_ENGINEERING.NULL_BOUNDARY`) |
+| `CS-OPENJDK-JEP358-HELPFUL-NPE` | JEP 358 Helpful NullPointerExceptions (`PRACTICAL_ENGINEERING.NULL_BOUNDARY`) |
+
+`curated-sources.yaml`은 **AI 출력의 근거 ID 목록**(`VerificationGuard`, §3.7)이고 사용자에게 보여 주는 읽기 자료가 아니다. `READING` 과제가 여는 자료는 §12.4다.
+
+### 12.4 개념 읽기 목록 (2026-09-21 확인)
+
+`concept-readings.yaml`(§3.13). 14개 전부 `verifiedAt: 2026-09-21`이고 호스트는 모두 기존 allowlist 안이다.
+
+| key | skill | 문서 | 분 |
+|---|---|---|---|
+| `DOC.SQL.JOIN.001` | `DATABASE.SQL_BASICS` | PostgreSQL 16 §7.2 Table Expressions | 25 |
+| `DOC.SQL.AGGREGATE.001` | `DATABASE.SQL_BASICS` | PostgreSQL 16 §2.7 Aggregate Functions | 20 |
+| `DOC.INDEX.INTRO.001` | `DATABASE.INDEX` | PostgreSQL 16 §11.1 Introduction (Indexes) | 15 |
+| `DOC.INDEX.MULTICOLUMN.001` | `DATABASE.INDEX` | PostgreSQL 16 §11.3 Multicolumn Indexes | 20 |
+| `DOC.SPRING.ERROR_RESPONSE.001` | `SPRING.EXCEPTION_HANDLING` | Spring Framework 7.0 Error Responses (Spring MVC) | 25 |
+| `DOC.HTTP.PROBLEM_DETAILS.001` | `SPRING.EXCEPTION_HANDLING`, `WEB_HTTP.REST_API_DESIGN` | RFC 9457 Problem Details for HTTP APIs | 25 |
+| `DOC.REST.STATUS_CODES.001` | `WEB_HTTP.REST_API_DESIGN` | RFC 9110 §15 Status Codes | 30 |
+| `DOC.REST.WEB_LINKING.001` | `WEB_HTTP.REST_API_DESIGN` | RFC 8288 Web Linking | 20 |
+| `DOC.GIT.BRANCHING.001` | `DEVOPS.GIT` | Pro Git §3.2 Basic Branching and Merging | 25 |
+| `DOC.GIT.REBASING.001` | `DEVOPS.GIT` | Pro Git §3.6 Rebasing | 25 |
+| `DOC.EXPLAIN.PROPOSAL_TEMPLATE.001` | `EXPLANATION.PROJECT_STORY` | JEP 2 JEP Template | 15 |
+| `DOC.EXPLAIN.ALTERNATIVES.001` | `EXPLANATION.TECH_DECISION`, `JAVA.CONCURRENCY.VIRTUAL_THREAD` | JEP 444 Virtual Threads | 30 |
+| `DOC.EXPLAIN.ROOT_CAUSE.001` | `EXPLANATION.TROUBLESHOOTING_STORY` | JEP 358 Helpful NullPointerExceptions | 20 |
+| `DOC.EXPLAIN.FEEDBACK_LOOP.001` | `EXPLANATION.LEARNING_RETROSPECTIVE` | JEP 12 Preview Features | 15 |
+
+- EXPLANATION 4개는 **"설명하는 법"을 다룬 공식 문서가 없어서** OpenJDK가 자기 결정을 남기는 방식(JEP)을 본보기로 읽는다. 규칙이 아니라 틀이다 — `whyRead`에 그렇게 적었다.
+- `JEP 358`은 `curated-sources.yaml`의 `CS-OPENJDK-JEP358-HELPFUL-NPE`와 같은 문서지만 **쓰임이 다르다**: 그쪽은 AI 출력의 근거 ID이고, 이쪽은 사용자가 여는 읽기 자료다.
+- `DEVOPS.GIT`의 PR 리뷰 흐름은 아직 비어 있다(§8.5 다음 점검 후보).
 
 ---
 
@@ -989,7 +1641,7 @@ plan template milestone (2026-09-18 재작성 — "과목 순서"에서 "주문 
 | O-2 | `plan.application.PlanTemplateRegistry`(ContentSeeder가 기동 시 등록), `plan.domain.PlanTemplatePlacement`(§5 알고리즘), `plan.domain.PlanTemplate`(record) | `03-system-architecture.md` §3.2 |
 | O-3 | seed challenge 구조 필드 변경은 기동 실패, 텍스트 필드만 갱신 (SD-02와 같음) | `04-domain-model-and-db.md` §2, §9 |
 | O-4 | replan 시 이전 plan에 없는 role target skill은 기본값으로 자동 추가. priority 변경·target 상향은 Later | `06-learning-engine-rules.md` §11.2 |
-| O-5 | 현재 규칙 유지: 단계와 무관하게 모든 MUST는 중간 점검일까지의 budget에 포함 | `06-learning-engine-rules.md` §4.1 |
+| O-5 | milestone 단계(`phase`)와 무관하게 모든 MUST는 목표일까지의 budget에 포함 | `06-learning-engine-rules.md` §4.1 |
 | O-6 | `skill.active=false`인 skill은 budget, planner 후보, due 선택에서 제외 | `06-learning-engine-rules.md` §4.1, §5.2, §6.5 |
 | O-7 | DB 버전 = `max(skill.catalog_version)`(없으면 0), 작으면 seed 건너뜀 | `04-domain-model-and-db.md` §9 |
 | O-8 | conceptKey 패턴은 seed·수동 카드에만 적용, 시스템 생성 키는 예외 | `04-domain-model-and-db.md` §7 I-06 |

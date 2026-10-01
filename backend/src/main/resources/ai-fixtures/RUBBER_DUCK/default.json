@@ -1,0 +1,18 @@
+{
+  "description": "되묻는 질문 1개 (local·demo)",
+  "attempts": [
+    {
+      "finishReason": "completed",
+      "output": {
+        "question": "폼 제출을 처리하는 메서드는 어디에 규칙을 두고 있나요?",
+        "targetsGap": "쓰기 요청의 규칙 위치를 설명하지 않음"
+      },
+      "usage": {
+        "inputTokens": 2400,
+        "cachedTokens": 0,
+        "outputTokens": 180,
+        "reasoningTokens": 0
+      }
+    }
+  ]
+}

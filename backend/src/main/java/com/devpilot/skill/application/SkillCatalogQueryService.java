@@ -8,11 +8,17 @@ import com.devpilot.skill.domain.TargetRole;
 import com.devpilot.skill.infrastructure.RoleSkillTargetRepository;
 import com.devpilot.skill.infrastructure.SkillPrerequisiteRepository;
 import com.devpilot.skill.infrastructure.SkillRepository;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.function.Function;
@@ -122,6 +128,76 @@ public class SkillCatalogQueryService {
                                 CATALOG_ORDER))
                 .map(target -> toRoleSkillTargetView(target, active.get(target.getId().skillId())))
                 .toList();
+    }
+
+    /**
+     * 활성 non-root skill의 계산용 정보 (id → 정보). 비활성 skill은 map에 없다 — 규칙은 비활성 skill을 계산에서 뺀다(docs/06
+     * §4.1, §5.2).
+     */
+    public Map<UUID, SkillInfo> activeSkillDetails() {
+        Map<UUID, Skill> active =
+                skillRepository.findByActiveTrue().stream()
+                        .filter(skill -> skill.getParentId() != null)
+                        .collect(Collectors.toMap(Skill::getId, Function.identity()));
+        Map<UUID, List<UUID>> prerequisites = new HashMap<>();
+        for (SkillPrerequisite prerequisite : prerequisiteRepository.findAll()) {
+            UUID required = prerequisite.getId().prerequisiteSkillId();
+            if (active.containsKey(required)) {
+                prerequisites
+                        .computeIfAbsent(prerequisite.getId().skillId(), id -> new ArrayList<>())
+                        .add(required);
+            }
+        }
+        Map<UUID, SkillInfo> details = new HashMap<>();
+        for (Skill skill : active.values()) {
+            String description = skill.getDescription();
+            details.put(
+                    skill.getId(),
+                    new SkillInfo(
+                            skill.getId(),
+                            skill.getCode(),
+                            skill.getName(),
+                            skill.getCategory(),
+                            description == null ? "" : description,
+                            skill.getMinutesPerLevelStep(),
+                            prerequisites.getOrDefault(skill.getId(), List.of())));
+        }
+        return details;
+    }
+
+    /**
+     * 그 skill과 그 아래 모든 하위 skill의 id (docs/05 §6.1 트리).
+     *
+     * <p>문제·복습 카드는 말단 skill에만 붙는다. 그래서 `JAVA` 같은 상위 skill로 거르면 언제나 0건이었다 — 사용자가 보는 화면은 트리이므로 상위를
+     * 골랐을 때 아래 것이 같이 나와야 한다.
+     *
+     * <p>없거나 비활성인 id면 **빈 집합**이다. 호출자는 그것을 "결과 없음"으로 다룬다(오류가 아니다).
+     */
+    public Set<UUID> selfAndDescendantIds(UUID skillId) {
+        Map<UUID, List<UUID>> childrenByParent = new HashMap<>();
+        Set<UUID> activeIds = new HashSet<>();
+        for (Skill skill : skillRepository.findByActiveTrue()) {
+            activeIds.add(skill.getId());
+            if (skill.getParentId() != null) {
+                childrenByParent
+                        .computeIfAbsent(skill.getParentId(), parent -> new ArrayList<>())
+                        .add(skill.getId());
+            }
+        }
+        if (!activeIds.contains(skillId)) {
+            return Set.of();
+        }
+        Set<UUID> collected = new LinkedHashSet<>();
+        Deque<UUID> pending = new ArrayDeque<>();
+        pending.add(skillId);
+        while (!pending.isEmpty()) {
+            UUID current = pending.removeFirst();
+            // 트리가 순환이어도 멈춘다 — 이미 담은 것은 다시 내려가지 않는다
+            if (collected.add(current)) {
+                pending.addAll(childrenByParent.getOrDefault(current, List.of()));
+            }
+        }
+        return collected;
     }
 
     /** 활성 skill 전체 (catalog 순서). */

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "devpilot/ai/REQUIREMENT_EXTRACT.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "requirements"
+  ],
+  "properties": {
+    "requirements": {
+      "type": "array",
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "rawText",
+          "requirementType",
+          "suggestedSkillCode"
+        ],
+        "properties": {
+          "rawText": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "requirementType": {
+            "type": "string",
+            "enum": [
+              "REQUIRED",
+              "PREFERRED"
+            ]
+          },
+          "suggestedSkillCode": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/skillCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "skillCode": {
+      "type": "string",
+      "maxLength": 100,
+      "pattern": "^[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)+$"
+    }
+  }
+}
