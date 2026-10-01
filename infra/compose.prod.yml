@@ -57,7 +57,7 @@ services:
 
   caddy:
     # 멀티아치 index digest 고정 (docs/07 §11.5). Dependabot docker-compose가 갱신한다
-    image: caddy:2.11.4-alpine@sha256:de23def33b17fb5d1290b0f6c2add1d70780e52341896c00a4c8a2a2fe9d355e
+    image: caddy:2.11.4-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
     restart: unless-stopped
     ports:
       # 호스트 loopback에만 publish한다. Docker publish는 firewalld를 우회하므로 127.0.0.1: 접두사가 필수다 (docs/10 §3.2)
