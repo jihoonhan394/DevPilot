@@ -13,7 +13,7 @@
 # JVM 메모리 옵션은 이미지에 넣지 않고 compose.prod.yml의 JAVA_TOOL_OPTIONS(-Xmx1g)로 준다.
 
 # base image는 멀티아치 index digest로 고정한다 (docs/07 §11.5, docs/10 §7.4). Dependabot docker가 digest를 갱신한다
-FROM eclipse-temurin:25-jre@sha256:bb036ed6cfdc57e3da7c22634d15f1b840d2caf76183861c80e81ca4b5104abb
+FROM eclipse-temurin:25-jre@sha256:8da0490fa9a3c26867012019565948eef0ee69438f5c75ac28146967bae984b5
 
 RUN groupadd --system --gid 10001 app \
     && useradd --system --uid 10001 --gid app --home-dir /app --no-create-home --shell /usr/sbin/nologin app \
