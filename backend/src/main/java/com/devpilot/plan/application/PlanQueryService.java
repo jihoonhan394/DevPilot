@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -200,8 +201,27 @@ public class PlanQueryService implements ReplanRecommendationProvider, PlanSkill
                 .toList();
     }
 
+    /**
+     * 활성 plan이 있는 사용자 (온보딩을 마친 사용자). {@code ProgressSnapshotJob}과 seed 카드 backfill(BL-MEM-08)이 대상
+     * 사용자를 고를 때 쓴다.
+     */
+    public List<UUID> userIdsWithActivePlan() {
+        return learningPlanRepository.findUserIdsWithActivePlan();
+    }
+
+    /** 활성 plan 요약. 없으면 empty (온보딩 응답 {@code activePlan}을 스냅샷 반영 후 다시 만들 때 쓴다). */
+    public Optional<PlanSummaryView> findActiveSummary(UUID userId) {
+        return learningPlanRepository
+                .findByUserIdAndStatus(userId, PlanStatus.ACTIVE)
+                .map(plan -> toSummaries(List.of(plan)).get(0));
+    }
+
     static NotFoundException planNotFound() {
         return new NotFoundException(ErrorCode.PLAN_NOT_FOUND, "plan not found");
+    }
+
+    static NotFoundException goalNotFound() {
+        return new NotFoundException(ErrorCode.LEARNING_GOAL_NOT_FOUND, "learning goal not found");
     }
 
     static MilestoneView toMilestoneView(PlanMilestone milestone, Map<UUID, SkillRef> skills) {
@@ -246,7 +266,7 @@ public class PlanQueryService implements ReplanRecommendationProvider, PlanSkill
                 target.getAdjustment());
     }
 
-    private static SnapshotView toSnapshotView(PlanProgressSnapshot snapshot) {
+    static SnapshotView toSnapshotView(PlanProgressSnapshot snapshot) {
         return new SnapshotView(
                 snapshot.getSnapshotDate(),
                 snapshot.getHorizonDate(),

@@ -23,6 +23,7 @@ final class ProjectFormValues {
     required this.repoUrl,
     required this.stack,
     required this.status,
+    required this.kind,
   });
 
   /// A new project, optionally prefilled ("주문 시스템으로 시작").
@@ -34,6 +35,7 @@ final class ProjectFormValues {
         repoUrl: '',
         stack: '',
         status: SideProjectStatus.active,
+        kind: SideProjectKind.side,
       );
 
   factory ProjectFormValues.edit(SideProjectView project) => ProjectFormValues(
@@ -43,6 +45,7 @@ final class ProjectFormValues {
     repoUrl: project.repoUrl ?? '',
     stack: project.stack ?? '',
     status: project.status,
+    kind: project.kind,
   );
 
   final SideProjectView? original;
@@ -51,6 +54,7 @@ final class ProjectFormValues {
   final String repoUrl;
   final String stack;
   final SideProjectStatus status;
+  final SideProjectKind kind;
 
   bool get isCreate => original == null;
 
@@ -70,7 +74,11 @@ final class ProjectFormValues {
   bool get hasChanges {
     final project = original;
     if (project == null) {
-      return name.isNotEmpty || description.isNotEmpty || repoUrl.isNotEmpty || stack.isNotEmpty;
+      return name.isNotEmpty ||
+          description.isNotEmpty ||
+          repoUrl.isNotEmpty ||
+          stack.isNotEmpty ||
+          kind != SideProjectKind.side;
     }
     return toPatchRequest(project).toJson().length > 1;
   }
@@ -81,6 +89,8 @@ final class ProjectFormValues {
     description: _nullIfEmpty(description),
     repoUrl: _nullIfEmpty(repoUrl.trim()),
     stack: _nullIfEmpty(stack),
+    // 기본값이면 보내지 않는다 — 서버가 SIDE로 둔다
+    kind: kind == SideProjectKind.side ? null : kind,
   );
 
   /// `PATCH /side-projects/{id}`: only changed fields; a cleared optional field is sent as `""`
@@ -91,6 +101,7 @@ final class ProjectFormValues {
     repoUrl: _changed(project.repoUrl, repoUrl.trim()),
     stack: _changed(project.stack, stack),
     status: status == project.status ? null : status,
+    kind: kind == project.kind ? null : kind,
     version: project.version,
   );
 
@@ -100,6 +111,7 @@ final class ProjectFormValues {
     String? repoUrl,
     String? stack,
     SideProjectStatus? status,
+    SideProjectKind? kind,
   }) => ProjectFormValues(
     original: original,
     name: name ?? this.name,
@@ -107,6 +119,7 @@ final class ProjectFormValues {
     repoUrl: repoUrl ?? this.repoUrl,
     stack: stack ?? this.stack,
     status: status ?? this.status,
+    kind: kind ?? this.kind,
   );
 
   static String? _nullIfEmpty(String value) => value.isEmpty ? null : value;

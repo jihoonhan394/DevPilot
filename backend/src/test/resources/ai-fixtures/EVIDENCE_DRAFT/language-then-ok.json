@@ -1,0 +1,43 @@
+{
+  "description": "1회차 영어(가드 위반) → 2회차 정상",
+  "attempts": [
+    {
+      "finishReason": "completed",
+      "output": {
+        "title": "설정 파일 로더의 자원 누수 수정",
+        "problem": "The config stream was never closed when an exception happened in the loader.",
+        "analysis": "Opening and closing lived in different methods so the failure path skipped the close call.",
+        "action": "Moved the close next to the open and tested the failure path explicitly.",
+        "result": "Tests confirm the stream is closed even when parsing fails.",
+        "explanationTopics": [
+          "자원 소유권"
+        ]
+      },
+      "usage": {
+        "inputTokens": 2400,
+        "cachedTokens": 0,
+        "outputTokens": 180,
+        "reasoningTokens": 0
+      }
+    },
+    {
+      "finishReason": "completed",
+      "output": {
+        "title": "설정 파일 로더의 자원 누수 수정",
+        "problem": "예외가 나면 설정 파일 스트림이 닫히지 않았습니다.",
+        "analysis": "자원을 여는 위치와 닫는 위치가 서로 다른 메서드에 흩어져 있었습니다.",
+        "action": "자원을 여는 곳에서 바로 닫히도록 구조를 바꾸고 예외 경로를 테스트했습니다.",
+        "result": "예외가 나도 스트림이 닫히는 것을 테스트로 확인했습니다.",
+        "explanationTopics": [
+          "자원 소유권"
+        ]
+      },
+      "usage": {
+        "inputTokens": 2400,
+        "cachedTokens": 0,
+        "outputTokens": 180,
+        "reasoningTokens": 0
+      }
+    }
+  ]
+}

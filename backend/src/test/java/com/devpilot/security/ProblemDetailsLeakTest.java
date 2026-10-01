@@ -72,6 +72,8 @@ class ProblemDetailsLeakTest extends ApiTestSupport {
     @Test
     void shouldUseSameFixedDetailForEveryInternalError() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
 
         String runtime =
                 api.body(api.get(user, "/api/v1/test-probe/runtime")).path("detail").asString();

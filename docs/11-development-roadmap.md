@@ -1,12 +1,14 @@
 # 11. Development Roadmap
 
-> Status: Accepted (v3) · Last updated: 2026-09-18 · Related: `13-product-backlog.md`, `12-acceptance-criteria.md`, `16-definition-of-ready-done.md`, `20-decisions-and-risks.md`, ADR-003, ADR-005, ADR-030, ADR-031, ADR-032, ADR-036, ADR-037
+> Status: Accepted (v3) · Last updated: 2026-09-20 · Related: `13-product-backlog.md`, `12-acceptance-criteria.md`, `16-definition-of-ready-done.md`, `20-decisions-and-risks.md`, ADR-003, ADR-005, ADR-030, ADR-031, ADR-032, ADR-036, ADR-037, ADR-040
 >
-> 목표는 **M1(S0~S3)을 최대한 빨리 끝내고 DevPilot으로 매일 공부하기 시작하는 것**이다. 단계에는 날짜가 없다 — exit criteria를 통과하면 끝난다. 학습 목표일(과 선택 항목인 중간 점검일)은 사용자가 설정창에 등록하는 값(`learning_goal.target_completion_date`·`checkpoint_date`)이고, 개발 일정이 아니다.
+> 목표는 **M1(S0~S3)을 최대한 빨리 끝내고 DevPilot으로 매일 공부하기 시작하는 것**이다. 단계에는 날짜가 없다 — exit criteria를 통과하면 끝난다. 목표일은 사용자가 설정창에 등록하는 값(`learning_goal.target_completion_date`)이고, 개발 일정이 아니다.
 >
 > 2026-09-18 확정(`20` DEC-19~23): 자체 서버 + Tailscale HTTPS(도메인·OCI·Supabase 없음), 개발·운영 DB는 서버 PostgreSQL 16, 인증은 `devtoken` 모드(운영 포함), AI 공급자 DeepSeek(월 USD 3), 배포는 `release.yml`(amd64 이미지·web zip) + 로컬에서 `deploy.sh` 수동 실행, 백업은 `pg_dump` + 로컬 PC 주 1회 pull. 서버 주소·계정은 저장소 밖 `DevPilot-ops/`에만 둔다.
 >
 > 2026-09-18 v3(`20` DEC-24~26, ADR-036·037): 학습 루프를 **읽는다 → 만든다 → 러버덕으로 설명한다 → 반복한다**로 바꿨다(러버덕·코드 읽기·사이드 프로젝트·교차 학습·확장 제안·진단 우선). 스프린트 날짜를 없애고 단계를 **M1(S0~S3) / M2(S4~S7)** 로 묶었다.
+>
+> 2026-09-20(ADR-041·042, DEC-34): **S3에 오늘의 팁·용어 사전·과제 체크리스트·학습 단계·연동 트랙·경험 기록(분류와 내보내기)·주간 요약과 연속 학습 일수·문제 세 종류·로드맵 비교(S7 → S3)를 넣었다.** S4는 재현 과제와 Project Coach 그대로다. 미루는 것(DEC-34): 캘린더 구독은 Later, AI 문제 생성·대시보드 추세 그래프는 S5, 계정 내보내기는 S6에 그대로 두고, 주간 회고 AI 문장은 만들지 않는다(주간 요약은 숫자만). S7은 배정 항목이 없어 M2 이월분을 담는 자리가 됐다.
 
 ---
 
@@ -42,7 +44,7 @@
 | S0 | M1 | spike 수동 확인, 위 운영 작업(tailnet HTTPS, healthchecks.io, DeepSeek 충전, GitHub secrets, 서버 준비) |
 | S1 | M1 | (없음 — PR 리뷰·결정) |
 | S2 | M1 | 백업 pull 스크립트 로컬 등록(`pull-backup.ps1`) |
-| S3 | M1 | 큐레이션 저장소 3개를 로컬에 clone(`content/curated-repos.yaml`의 `cloneHint`) → **실사용 시작** |
+| S3 | M1 | **S3 구현 시작 전 첫 소스 점검**(`19` §8.5 — 제안 목록을 보고 추가·교체·은퇴를 결정. 같은 점검에서 팁·용어의 `sourceUrl`도 함께 연다), 큐레이션 저장소를 로컬에 clone(`content/curated-repos.yaml`의 `cloneHint`), 팁·용어·체크리스트 콘텐츠 PR 검수(대표 표기 하나, `19` §11) → **실사용 시작** |
 | S4~S7 | M2 | (없음 — Coach로 자기 사이드 프로젝트 코드 리뷰 시작) |
 
 ### 2.2 단계 회고 (S1·S2·S3 종료 시)
@@ -60,6 +62,8 @@
 | 투입 ≤ 3h/주, 재작업률 ≤ 20% | 계획 유지 |
 | 투입 3~4h/주 또는 재작업률 20~30% | 다음 M1 단계의 P2를 M2로 미리 옮긴다 |
 | 투입 > 4h/주 또는 재작업률 > 30% | 위 조치 + 다음 M1 단계의 P1도 M2로 미리 옮긴다(순서는 `13-product-backlog.md` §5). 결정은 `20-decisions-and-risks.md`에 기록 |
+
+**소스 점검**: `READ_CODE`가 켜진 뒤(S3 이후)에는 단계 회고마다 소스 점검(`19` §8.5)을 한다 — 빈틈 목록·읽기 평가·저장소 상태를 보고 저장소·읽기 단위의 추가·교체·은퇴를 사용자가 정한다. 사용자가 요청하면 회고와 무관하게 한다. 자동으로 도는 것은 없다.
 
 **중간 트리거 (S1 직렬 사슬)**: S1의 `BL-CNT-01 → CNT-02·CNT-03 → CNT-05·SKL-01 → SKL-02 → GOL-06 → CLI-07`은 병렬화할 수 없는 직렬 사슬이다(`13-product-backlog.md` §4.14 주석). S1을 시작하고 1주 안에 `BL-CNT-03`(skill tree v0)이 merge되지 않으면 S1 종료를 기다리지 않고 위 표의 두 번째 행 조치를 미리 적용한다.
 
@@ -80,18 +84,20 @@ S0~S7은 **구현 순서를 나타내는 단계 ID**다. 기간·날짜가 없�
 | M1 | **S0** | Bootstrap + walking skeleton + 수동 배포 + spike | FND-01~07·22, SEC-03·07·09·12·16, OPS-01·02·04~07·09·10·21, CLI-01~03 | CI green(`main`·`developer`), `https://<tailnet-host>`에서 dev 로그인(`POST /api/v1/dev/token`) → `/me` 200(AC-25), SP-1~4 결론 ADR 기록, `deploy.sh` 배포 + 롤백 확인, 배포 환경 확인 |
 | M1 | **S1** | Identity · Onboarding(진단 선택·사이드 프로젝트) · Goal · Plan · seed v0 | FND-08~14·20·21, SEC-04~06·14, AIP-16, CLI-04~11·32, GOL-01~06, SKL-01~02, CNT-01~05, PRJ-01 | AC-01, AC-11(온보딩 — seed 카드·snapshot·진단 풀이 생략), AC-18, AC-25(allowlist 재확인), AC-24, AC-27(사이드 프로젝트 CRUD), AC-08(S1 endpoint), AC-09(planning level), AC-15(`DELETE /me` 상태 변경), 배포 환경 확인 |
 | M1 | **S2** | Today · Session · Review(교차 학습, AI 없음) · **기한 역산(budget·risk·축소/확장 제안)** · Dashboard 최소 · PWA · 백업 자동화 | FND-15, SEC-10·11, OPS-11~13·19, CLI-12·13·15~17·19·25, GOL-07~14·17, SKL-03, TDY-01~11, MEM-01~06·08·12, CNT-06 | AC-02, AC-03, AC-05(복습 스케줄), AC-10, AC-11(seed 카드), AC-17, AC-29, AC-30, AC-08(S2 endpoint), 배포 환경 확인 |
-| M1 | **S3** | AI Platform(DeepSeek) · Training · 진단 · Skill updater · **러버덕 · 코드 읽기** · 수동 카드 · evals | FND-16·23~26, OPS-15, CLI-14·20~23·33·34, SKL-04~06, TDY-14·16, MEM-07·09, TRN-01~03·05~13, AIP-01~03·05~13·15·17, RDK-01~04, CNT-07~10·15 | AC-04, AC-05(challenge 실패·수동 카드), AC-09, AC-11(진단), AC-12, AC-13, AC-14(submission·러버덕), AC-16(challenge), AC-23, AC-26, AC-28, 배포 환경 확인 → **실사용 시작** |
-| M2 | **S4** | Project Coach · CSP 강제 | FND-17, SEC-08, CLI-24, COA-01~10, CNT-11 | AC-06, AC-07(coach E2E), AC-12(coach 재검증), AC-14, AC-16(coach), AC-19(기록), AC-23(coach 재검증), 배포 환경 확인 |
-| M2 | **S5** | Weekly · Dashboard 완성 · 캘린더 · AI 문제 생성 · 실측 튜닝 | FND-18, CLI-18·26, SKL-07, TDY-12·13, TRN-04, EVD-01~04, AIP-14, CNT-14 | AC-12(402·content_filter), AC-19(추세), AC-21(weekly), FR-20(캘린더), 배포 환경 확인 |
-| M2 | **S6** | Evidence · Export · 복구 리허설 · 하드닝 | SEC-13·15, OPS-16~18, CLI-27~28, EVD-05~08, CNT-12 | AC-15(export), AC-21(evidence), AC-08·AC-18 전체 재검증, 복구 리허설 1회 기록, 배포 환경 확인 |
-| M2 | **S7** | 요구 역량 비교 | FND-19, CLI-29, REQ-01~04, CNT-13 | AC-22, 배포 환경 확인 |
-| — | **Later** | 현재 계획 밖 | OPS-20·22, SEC-17, CLI-30·31, GOL-15·16, MEM-10·11, TDY-15, TRN-14·15, COA-11, REQ-05. **`BL-SEC-18`(공개 인증)은 Later가 아니라 공개 전환 게이트의 필수 선행(P0)이다 — §3.10** | AC-20(Supabase 도입 시), AC-15(삭제 job) |
+| M1 | **S3** | AI Platform(DeepSeek) · Training · 진단 · Skill updater · **러버덕 · 코드 읽기** · **학습 트랙 3종(연동 트랙 포함)** · **프로젝트 기록·경험 기록** · **오늘의 팁 · 용어 사전 · 과제 체크리스트 · 학습 단계** · **주간 요약·연속 학습 일수** · **문제 세 종류** · **로드맵 비교** · 수동 카드 · evals | FND-16·19·23~27, OPS-15, CLI-14·20~23·29·33~36·38~47, SKL-04~06, TDY-14·16·19, MEM-07·09, TRN-01~03·05~13·16·18, AIP-01~03·05~13·15·17, RDK-01~04·06, PRJ-02~04, GOL-18, REQ-01~04, CNT-07~10·13·15~22, TIP-01~05, TRM-01~04, CHK-01~02, STG-01~02, DSH-01~02 | AC-04, AC-05(challenge 실패·수동 카드·팁·용어 카드), AC-09(updater·학습 단계), AC-11(진단), AC-12, AC-13, AC-14(submission·러버덕·프로젝트 기록), AC-16(challenge), AC-22(로드맵 비교), AC-23, AC-26, AC-27(경험 기록 분류), AC-28, AC-32, AC-33(기록 내보내기), AC-34, AC-35, AC-36, 배포 환경 확인 → **실사용 시작** |
+| M2 | **S4** | Project Coach · CSP 강제 · **재현 과제** | FND-17, SEC-08, CLI-24·37, COA-01~10, TDY-17·18, TRN-17, RDK-05, SKL-08, CNT-11 | AC-06, AC-07(coach E2E), AC-12(coach 재검증, 재현 과제), AC-14, AC-16(coach), AC-19(기록), AC-23(coach 재검증), AC-31, 배포 환경 확인 |
+| M2 | **S5** | Weekly · Dashboard 완성(추세) · AI 문제 생성 · 실측 튜닝 | FND-18, CLI-26, SKL-07, TDY-12, TRN-04, EVD-01~04, AIP-14, CNT-14 | AC-12(402·content_filter), AC-19(추세), AC-21(weekly), 배포 환경 확인 |
+| M2 | **S6** | Evidence · Export · 복구 리허설 · 하드닝 | SEC-13·15, OPS-16~18, CLI-27~28, EVD-05~09, CNT-12 | AC-15(export), AC-21(evidence), AC-33(프로젝트 기록 → 증거 초안), AC-08·AC-18 전체 재검증, 복구 리허설 1회 기록, 배포 환경 확인 |
+| M2 | **S7** | (배정 항목 없음 — 로드맵 비교가 S3으로 옮겨졌다) M2 이월분 정리 | — | S4~S6에서 이월된 P1·P2가 없음, 배포 환경 확인 |
+| — | **Later** | 현재 계획 밖 | OPS-20·22, SEC-17, CLI-18·30·31, GOL-15·16, MEM-10·11, TDY-13·15, TRN-14·15, COA-11, REQ-05. **`BL-SEC-18`(공개 인증)은 Later가 아니라 공개 전환 게이트의 필수 선행(P0)이다 — §3.10** | AC-20(Supabase 도입 시), AC-15(삭제 job) |
 
 "배포 환경 확인" = `main`의 `v0.<단계 번호>.<patch>` tag를 `release.yml`이 빌드(amd64 이미지 → GHCR, web zip → release)하고, 로컬에서 `ssh <server>` → `sudo -u deploy /opt/devpilot/deploy.sh v0.x.y`로 배포해 `/actuator/health`가 `UP`이며, 해당 단계 데모 체크리스트를 **tailnet URL**(`https://<tailnet-host>`)에서 모두 통과한 상태. 배포 자동화(Actions → tailnet)는 Later(`BL-OPS-22`).
 
 범위 조정 기록:
 - (2026-09-18 v2) 공개 인증은 단계 범위 밖(`BL-SEC-18` — 공개 전환 게이트의 필수 선행, §3.10), `POST /plans` Later(`BL-GOL-16`), `REVIEW_VARIANT` Later(`BL-MEM-10`), 계정 삭제 job Later(`BL-SEC-17`, `DELETE /me` 상태 변경은 S1), 수동 카드 CRUD는 S3, Trivy·CodeQL·digest 고정은 S2 P1(`BL-SEC-10`). S1 온보딩은 8·9단계(seed 카드 배정·snapshot)를 생략한다(`assignedSeedCardCount = 0`, `latestRiskLevel = null`).
-- (2026-09-18 v3, DEC-25) **budget·risk·replan 제안(축소·확장)은 S5 → S2** — "학습 목표일을 등록하면 중요한 것 위주로"가 MUST이고 risk는 planner 입력이다. 이제 S2부터 `deadline_risk`가 계산된다. **ICS 캘린더·AI 문제 생성(`BL-TRN-04`)은 S3 → S5**, **CSP 강제(`BL-SEC-08`)는 S3 → S4**(실사용 시작이 S3 완료로 옮겨졌으므로), **evals v1(`BL-AIP-13`)은 S4 → S3**(러버덕 prompt 품질을 M1 안에서 확인), 진단(`BL-TRN-13`·`BL-CLI-23`·`BL-CNT-08`)은 S3 P1 → P0. 새 BL: 사이드 프로젝트(`BL-PRJ-01`, `BL-CLI-32`)는 S1, 교차 학습(`BL-MEM-12`)·확장 제안(`BL-GOL-17`)은 S2, 러버덕(`BL-RDK-01~04`, `BL-CLI-33`)·코드 읽기(`BL-TDY-16`, `BL-CNT-15`, `BL-CLI-34`)는 S3.
+- (2026-09-20, DEC-29~31 / ADR-040) **학습 트랙 2종**(`BL-GOL-18`, `BL-CNT-17`, `BL-CLI-36`, `BL-TRN-16`)과 **사이드 프로젝트 결정·장애 기록**(`BL-PRJ-02`, `BL-CLI-35`)은 **S3**이다 — 둘 다 실사용 시작 시점에 있어야 한다(두 번째 학습자가 같은 날 시작할 수 있어야 하고, 프로젝트의 결정·장애는 그때부터 쌓인다). **재현 과제**(`BL-TDY-17`·`BL-TDY-18`, `BL-RDK-05`, `BL-TRN-17`, `BL-SKL-08`, `BL-CLI-37`)는 **S4**다 — 창(3~7일) 특성상 첫 재현은 실사용 시작 뒤에야 생기고, 잠금이 S3 P0인 hint·러버덕 위에 붙는다. 세 기능이 함께 쓰는 `V10` migration(`BL-FND-27`)은 S3에 넣는다.
+- (2026-09-20, ADR-041·042 / DEC-34) **짧게 읽는 것과 말을 고르는 것이 S3에 들어왔다**: 오늘의 팁(`TIP` epic), 용어 사전(`TRM`), 과제 체크리스트(`CHK`), 학습 단계(`STG`), 주간 요약·연속 학습 일수(`DSH`), 경험 기록 분류와 기록 내보내기(`BL-PRJ-03`·`BL-PRJ-04`), 설명 기록(`BL-TDY-19`), 지시어 세기(`BL-RDK-06`), 문제 시간 제한·경과 시간(`BL-TRN-18`)과 그 화면(`BL-CLI-38~47`)·콘텐츠(`BL-CNT-18~22`). 팁·용어·체크리스트 본문은 DB가 아니라 **콘텐츠**이고(ADR-041) 학습 단계는 저장하지 않고 기존 기록에서 계산한다(ADR-042) — 그래서 S3에 들어와도 테이블은 `user_daily_tip` 하나만 늘어난다(`V10`, `BL-FND-27`). **학습 트랙은 3종**이 됐다(`INTEGRATION_ENGINEER` — `BL-GOL-18`·`BL-CNT-17`). **로드맵 비교는 S7 → S3**(`BL-REQ-01~04`, `BL-CLI-29`, `BL-FND-19`, `BL-CNT-13`) — 무엇을 먼저 공부할지 정하는 입력이라 실사용 시작과 함께 있어야 한다. **미루는 것**(DEC-34): 캘린더 구독(`BL-TDY-13`·`BL-CLI-18`)은 S5 → **Later**(Today가 같은 일을 하고 공개 토큰 URL 보관 부담이 크다), AI 문제 생성(`BL-TRN-04`)과 대시보드 추세 그래프(`BL-TDY-12`·`BL-CLI-26`)는 S5 유지, 계정 내보내기(`BL-SEC-13`·`BL-CLI-28`)는 S6 유지, 주간 회고 AI 문장은 만들지 않는다.
+- (2026-09-18 v3, DEC-25) **budget·risk·replan 제안(축소·확장)은 S5 → S2** — "목표일을 등록하면 중요한 것 위주로"가 MUST이고 risk는 planner 입력이다. 이제 S2부터 `deadline_risk`가 계산된다. **ICS 캘린더·AI 문제 생성(`BL-TRN-04`)은 S3 → S5**, **CSP 강제(`BL-SEC-08`)는 S3 → S4**(실사용 시작이 S3 완료로 옮겨졌으므로), **evals v1(`BL-AIP-13`)은 S4 → S3**(러버덕 prompt 품질을 M1 안에서 확인), 진단(`BL-TRN-13`·`BL-CLI-23`·`BL-CNT-08`)은 S3 P1 → P0. 새 BL: 사이드 프로젝트(`BL-PRJ-01`, `BL-CLI-32`)는 S1, 교차 학습(`BL-MEM-12`)·확장 제안(`BL-GOL-17`)은 S2, 러버덕(`BL-RDK-01~04`, `BL-CLI-33`)·코드 읽기(`BL-TDY-16`, `BL-CNT-15`, `BL-CLI-34`)는 S3.
 
 ### 3.2 S0 — Bootstrap
 
@@ -130,7 +136,7 @@ S0~S7은 **구현 순서를 나타내는 단계 ID**다. 기간·날짜가 없�
 
 - S2부터 `REVIEW_ANSWERED`, `SESSION_*` 이벤트가 쌓인다. skill 레벨 갱신은 S3(`BL-SKL-05`)부터 적용되고, S2 이벤트도 60일 창 안에서 규칙 입력이 된다.
 - S1에 온보딩한 사용자의 seed 카드는 S2 첫 배포 기동 시 배정된다(`BL-MEM-08`).
-- **S2부터 budget·risk를 계산한다**(`BL-GOL-08~14`). 사용자가 등록한 학습 목표일이 첫 Today부터 planner 우선순위(`DEADLINE_RISK_MUST`)에 반영되고, replan 화면이 촉박하면 축소·defer를, 여유가 있으면 확장(복원·목표 +1)을 제안한다(`06` §4.4). 복습 due 목록은 교차 학습 재배치(`RV-INTERLEAVE`, `06` §6.5)를 거친다.
+- **S2부터 budget·risk를 계산한다**(`BL-GOL-08~14`). 사용자가 등록한 목표일이 첫 Today부터 planner 우선순위(`DEADLINE_RISK_MUST`)에 반영되고, replan 화면이 촉박하면 축소·defer를, 여유가 있으면 확장(복원·목표 +1)을 제안한다(`06` §4.4). 복습 due 목록은 교차 학습 재배치(`RV-INTERLEAVE`, `06` §6.5)를 거친다.
 - 일일 자동 백업(`BL-OPS-11`: `backup.sh` → `pg_dump -Fc` → `/opt/devpilot/backups`, `devpilot-backup.timer` 19:00 UTC)을 S2 안에서 활성화하고, 로컬 PC에서 `pull-backup.ps1`로 받은 첫 파일로 `db-restore` 절차의 로컬 복구를 1회 확인한다. 휴대폰 PWA는 Tailscale 앱이 켜져 있어야 접속된다.
 
 데모 체크리스트 (휴대폰 PWA + 데스크톱, 둘 다 tailnet 안):
@@ -139,18 +145,23 @@ S0~S7은 **구현 순서를 나타내는 단계 ID**다. 기간·날짜가 없�
 - [ ] 휴대폰 홈 화면 PWA로 복습 5장 완료, 힌트 보기 → `HARD` 상한 조정 사유 표시. 같은 skill 카드가 3장 연속으로 나오지 않는다(바꿀 카드가 있을 때, AC-29)
 - [ ] 00:00~03:59 KST에 조회 시 전날 plan-day로 표시 (AC-17)
 - [ ] `GET /plans/active/budget` 값이 수동 계산(`06` §3~4 공식)과 일치. Today 응답의 `deadline_risk`가 같은 값
-- [ ] 편집 중 risk HIGH → 제안(MUST 목표 축소 먼저 → SHOULD defer, `06` §4.4) 체크 → 새 버전 저장 → risk 재계산. 학습 목표일을 멀리 옮겨 risk LOW·ratio ≤ 7000 → 확장 제안(복원·목표 +1) → 받아들여 새 버전(`acceptedTargetRaises`, AC-30)
+- [ ] 편집 중 risk HIGH → 제안(MUST 목표 축소 먼저 → SHOULD defer, `06` §4.4) 체크 → 새 버전 저장 → risk 재계산. 목표일을 멀리 옮겨 risk LOW·ratio ≤ 7000 → 확장 제안(복원·목표 +1) → 받아들여 새 버전(`acceptedTargetRaises`, AC-30)
 - [ ] 로컬 dayStartHour 시각 이후 snapshot 생성 확인(`plan_progress_snapshot` 오늘 날짜)
-- [ ] Dashboard 최소 화면에 오늘 상태·due 수·7일 학습 시간 표시
+- [ ] Dashboard 최소 화면에 오늘 상태·due 수·**이번 주 학습 시간**(이번 주 월요일부터, `05` §13.1) 표시
 - [ ] healthchecks.io 알림 수신 테스트(`devpilot-healthping.timer`를 잠시 stop → 누락 알림 → start → 복구 알림)
 - [ ] 전날 `pg_dump` 파일이 `/opt/devpilot/backups/`에 있고(7일 보관), `pull-backup.ps1`로 `%USERPROFILE%\DevPilot-backups\`에 사본, `pg_restore`로 로컬 복구 성공
 - [ ] §2.2 단계 회고 기록
 
-### 3.5 S3 — AI Platform · Training · 러버덕 · 코드 읽기
+### 3.5 S3 — AI Platform · Training · 러버덕 · 코드 읽기 · 팁·용어·단계 · 로드맵 비교
 
 - 순서: `BL-AIP-15`(DeepSeek 잔액 소액 충전·`AiBalanceCheckJob`·동의 문구)와 `BL-OPS-15`(키 유출 runbook) 완료 전에는 prod provider를 `deepseek`로 바꾸지 않는다. 개발·테스트는 `fake`로 진행하고 실제 호출은 eval(`ai-eval.yml`, 1회 상한 USD 0.5, `BL-AIP-13`)에서만 한다.
 - 가장 무거운 단계다(항목 수는 `13-product-backlog.md` §5.1). 러버덕(`BL-RDK-*`)은 `AiGateway`(`BL-AIP-07`)·가드(`BL-AIP-08`)·`SecretMasker`(`BL-AIP-09`) 뒤에 붙는다. P1·P2 이월 순서는 같은 문서 §5.
+- **학습 트랙 2종**과 **프로젝트 기록**은 AI에 의존하지 않으므로 AI Platform과 **병렬로** 진행할 수 있다. 둘의 공통 선행은 `BL-FND-27`(`V10`)뿐이고, 트랙 쪽은 콘텐츠 작업(`BL-CNT-17`)이 임계 경로다 — role target 75개와 계획 템플릿을 새로 쓴다(`19` §10.4). 프로젝트 기록의 마스킹은 `BL-AIP-09`가 선행이다.
+- **두 번째 학습자**는 S3 완료 시점에 같이 시작한다. allowlist에 이메일을 하나 더 넣는 것은 설정 변경이고(DEC-01, 최대 3명), 계정은 서로 완전히 분리된다(`07` §4.3).
 - 코드 읽기는 서버가 저장소에 접근하지 않는다. 사용자가 `cloneHint`로 로컬에 clone하고 IDE로 읽는다(`07` §5.5, `19` §3.8).
+- **AI에 의존하지 않는 묶음은 AI Platform과 병렬로 간다**: 오늘의 팁(`TIP`), 용어 사전(`TRM`), 과제 체크리스트(`CHK`), 학습 단계(`STG`), 주간 요약·연속 학습 일수(`DSH`), 경험 기록(`BL-PRJ-03`·`BL-PRJ-04`), 설명 기록(`BL-TDY-19`), 문제 시간 제한(`BL-TRN-18`)은 AI를 호출하지 않는다. 공통 선행은 `BL-FND-27`(`V10`)뿐이고 임계 경로는 **콘텐츠**(`BL-CNT-18~22`)다 — 팁·용어·체크리스트·`whyItMatters`·문제 세 종류를 새로 쓰고 `sourceUrl`을 하나씩 열어 확인해야 한다(`19` §7.6). 지시어 세기(`BL-RDK-06`)만 러버덕 응답 경로 뒤에 붙는다.
+- **로드맵 비교**(`BL-REQ-01~04`, `BL-CLI-29`)는 `AiGateway`(`BL-AIP-07`)와 비동기 task 공통(`BL-FND-23`) 뒤에 붙는다. `BL-EVD-07`(evidence 승인)이 S6이라 S3에서는 `matchedEvidenceIds`가 빈 목록이고, 분류는 skill의 evidence 레벨로만 계산한다.
+- **S3 시작 전 첫 소스 점검**(`19` §8.5, `BL-CNT-16`): `READ_CODE`가 처음 제안되기 전에 현재 저장소 3개·읽기 단위 13개를 점검한다. 에이전트가 빈틈 목록(skill별 reading 유무)과 저장소의 라이선스·유지 상태를 모아 추가·교체·은퇴 제안을 만들고, 사용자가 고른 것만 `content/curated-repos.yaml`에 반영한다(`pinnedCommit` 고정, 경로·줄 재확인, `validate_content.py`, `catalogVersion` +1). 라이선스가 없는 저장소(`restbucks`)가 먼저 교체 후보다. 이 시점에는 읽기 평가가 아직 없다.
 
 데모 체크리스트:
 - [ ] seed challenge 풀이: self-explanation → hint 2단계(AI 호출 0회) → 제출 → 평가 COMPLETED → rubric coverage·outcome 표시
@@ -158,17 +169,32 @@ S0~S7은 **구현 순서를 나타내는 단계 ID**다. 기간·날짜가 없�
 - [ ] 평가 FAILED/PARTIAL → 다음 plan-day due 복습 카드 생성
 - [ ] 온보딩에서 "진단"을 고른 사용자에게 진단 challenge 제안 → 1문제 통과 → 해당 skill K·I가 `DIAG_PASSED`로 올라감(AC-11)
 - [ ] Today에 `READ_CODE` 과제(planning level ≥ 1인 skill, RC-3) → SCR-READ-CODE에 저장소·`pinnedCommit`·경로·줄 범위·질문 표시, **코드 본문 없음**, 서버 외부 요청 0건(AC-28)
-- [ ] 러버덕: 설명 → AI 질문(물음표로 끝남, 정답 단정 없음) 3턴 → "모르겠다" 2연속이면 hint 안내 → 종료 → gaps가 복습 카드로, `READ_CODE` 과제 COMPLETED(RC-1), `RUBBER_DUCK_COMPLETED` 기록(AC-26)
+- [ ] 러버덕: 설명 → AI 질문(물음표로 끝남, 정답 단정 없음) 3턴 → "모르겠다" 2연속이면 hint 안내 → 종료 → gaps가 복습 카드로, `RUBBER_DUCK_COMPLETED` 기록 → Today 완료 기록(읽기 평가 "도움 됐어요"·"어려웠어요"·"지루했어요" 중 선택 또는 생략) → `READ_CODE` 과제 COMPLETED(RC-1), 평가는 `learning_task.reading_feedback`에 저장(AC-26, AC-28)
 - [ ] skill 상세에 레벨 변경 이력(rule_code) 표시
 - [ ] 수동 카드 생성 → 다음 plan-day에 due
 - [ ] provider=`disabled`로 재배포 → Today·Review·Plan·기한 역산 정상, Today에 CHALLENGE·READ_CODE 제안 없음, 러버덕 시작 버튼 비활성, challenge 생성·제출 503 안내 (AC-12)
 - [ ] 설정 화면 AI 사용량(오늘 호출 수, 이번 달 비용/USD 3, 잔액 상태) 표시. `ai_call_log`의 `provider = deepseek`, `cost_micro_usd`가 peak ×2 공식과 일치
 - [ ] `rubber.duck`·`rubber.duck.summary` eval 1회 결과(합격 기준 충족 여부)를 PR에 첨부
+- [ ] 첫 소스 점검(`19` §8.5) 결과 — 제안 목록과 사용자 결정, 반영한 콘텐츠 PR — 가 기록되어 있다
+- [ ] **학습 트랙**: 두 번째 테스트 계정으로 온보딩 1단계에서 "Java 백엔드 입문"을 골라 완료 → plan 제목·milestone 수가 입문 템플릿과 같고, `GET /skills/tree?role=JAVA_BACKEND_STARTER`의 MUST 수가 기본 트랙보다 적다. 같은 planning level에서 제안 난이도가 기본 트랙보다 낮고, KNOWLEDGE 1에서는 `READ_CODE` 대신 `READING`이 나온다. `PUT /learning-goal`로 트랙을 바꾸면 400 (AC-32)
+- [ ] **두 계정 분리**: 두 계정을 모두 온보딩한 상태에서 각자의 Today·Plan·기술·사이드 프로젝트·export에 상대 항목이 0건이다 (AC-08, AC-32 S7)
+- [ ] **프로젝트 기록**: SCR-PROJECTS 카드 → 상세 → "+ 장애 기록" → 네 항목 작성 → 저장 → 목록에 표시. 유형 필터, 수정(유형 입력 없음), 삭제. 프로젝트를 지우면 기록도 사라진다. 본문에 secret 문자열 → 마스킹, private key → 422 (AC-33, AC-14)
+- [ ] **경험 기록**: 프로젝트 종류를 `PAST_WORK`로 바꾸면 다음 Today 생성부터 그 프로젝트의 `PROJECT_TASK`가 제안되지 않고 기록·러버덕은 그대로 쓸 수 있다. "Markdown으로 내려받기" → `notes-{projectId}-{날짜}.md`가 받아지고 본문이 마스킹본이며 기록이 `occurredOn` 오름차순이다 (AC-27, AC-33)
+- [ ] **오늘의 팁**: SCR-TODAY 팁 카드 → "자세히" → 증상·원인·확인할 곳·5분 실험 → "새로 알았어요" → 다음 plan-day 복습 카드로 나온다. 같은 날 다시 들어가도 같은 팁이고, "직접 해 볼래요"를 고르면 다음 Today에 25분 실험 후보로 보인다. "알고 있었어요"를 고른 팁은 다시 제안되지 않는다 (AC-34)
+- [ ] **용어 사전**: SCR-REVIEW-HOME "용어 찾기"에서 "칼럼"으로 검색 → 대표 표기 "컬럼" 항목이 나오고, 상세에서 "복습 카드 만들기" → 양방향 2장이 다음 plan-day에 due가 된다. 다시 눌러도 카드가 늘지 않는다 (AC-35)
+- [ ] **과제 체크리스트·`whyItMatters`**: Today 과제 카드 맨 위에 "왜 하는지" 한 줄과 시작 전·끝내기 전 확인 목록이 보이고, 맞는 체크리스트가 없는 과제에는 그 영역이 없다 (AC-02)
+- [ ] **학습 단계**: SCR-SKILL-DETAIL에 6칸(만들기 → 개념 읽기 → 코드 읽기 → 설명 → 복습 → 재현)이 보이고, 그날 러버덕을 마친 skill의 `EXPLAIN` 칸이 채워진다. 퍼센트·점수 표시 없음 (AC-09)
+- [ ] **설명 기록·지시어**: 러버덕 정리와 `EXPLAIN` 완료 시트에 "지시어 N번" 안내가 보이고, "다른 사람에게 설명했어요" + 한 줄 메모를 저장하면 그 skill의 `EXPLAIN` 단계가 채워진다. 고르지 않아도 완료된다 (AC-26, AC-09)
+- [ ] **주간 요약**: SCR-DASHBOARD에 이번 주(월요일부터)에 **만든 것**이 먼저, 그다음 끝낸 과제 수·적은 기록 수·학습 시간과 연속 학습 일수가 보인다. AI 문장은 없다 (AC-36)
+- [ ] **문제 세 종류**: 시간 제한이 있는 문제를 열면 제한 시간과 경과 시간이 보이고, 제출하면 `challenge_attempt.elapsed_seconds`가 남는다. 시간이 지나도 자동 종료·감점이 없다 (AC-04)
+- [ ] **로드맵 비교**: 공개 학습 로드맵 본문을 붙여넣기 → 항목별 READY/STRETCH/LATER, 화면·응답에 숫자 점수 없음, `sourceUrl`을 넣어도 서버 외부 요청 0건, 삭제하면 항목도 사라진다 (AC-22)
 - [ ] §2.2 단계 회고 기록
 
 **실사용 시작 조건 (M1 완료)**: S0~S3 exit criteria 전부 통과. 통과한 날을 **실사용 시작일**로 `20-decisions-and-risks.md`에 기록한다 — stop-loss(§6)와 성공 지표(`01`)의 기준일이다. 미달이면 미달 AC와 대체 사용 방법(예: Today·Review만 먼저 사용)을 같은 곳에 기록한다.
 
-### 3.6 S4 — Project Coach
+### 3.6 S4 — Project Coach · 재현 과제
+
+재현 과제(`BL-TDY-17`·`BL-TDY-18`)는 Coach와 독립적이라 순서에 제약이 없다. 잠금(`BL-RDK-05`, `BL-TRN-17`)은 S3의 러버덕·hint 위에 `learning.application.RedoLockProvider` port로 붙는다(`03` §2.2). 첫 재현 과제는 실사용 시작 뒤 3일이 지나야 나오므로, S4를 시작할 때 이미 원본이 쌓여 있다.
 
 데모 체크리스트:
 - [ ] SCR-COACH-NEW에 DeepSeek 동의 문구("코드는 AI 공급자 DeepSeek(중국 소재)로 전송되며 … 회사 코드를 붙여넣지 마세요.")가 동의 체크 옆에 표시된다
@@ -178,14 +204,16 @@ S0~S7은 **구현 순서를 나타내는 단계 ID**다. 기간·날짜가 없�
 - [ ] 원문 삭제 버튼 → content null, finding 유지
 - [ ] coach eval case 실행 결과 요약(합격 기준 충족 여부)을 PR에 첨부
 - [ ] 실사용 시작 후 1주 동안 CSP Report-Only 위반 0건 → `Content-Security-Policy` 강제 전환(`BL-SEC-08`)
+- [ ] **재현 과제**: 3일 전 힌트를 보고 푼 문제가 Today에 "혼자 다시 만들기"로 나오고, 카드에 잠금 안내가 보인다. 그 문제의 힌트 요청과 러버덕 시작이 409 `AI_ASSIST_LOCKED_FOR_REDO`이고 다른 대상은 정상이다. 완료 시트의 "AI 도움 없이 끝냈나요?"를 고르지 않으면 완료되지 않는다 (AC-31)
+- [ ] "네"로 완료 → skill 상세에 `I3_SOLVED_INDEPENDENT` 근거로 그 기록이 들어간다(조건이 찼을 때). "아니요"로 완료 → 다음 plan-day due 복습 카드가 생기고, 3~7일 뒤 같은 과제가 한 번 더 제안된다 (AC-31 S6)
+- [ ] provider=`disabled`로 재배포해도 재현 과제는 그대로 제안·완료된다. `ai_call_log` 새 행 0 (AC-12 S9)
 
-### 3.7 S5 — Weekly · Dashboard · 캘린더 · AI 문제 생성
+### 3.7 S5 — Weekly · Dashboard 완성 · AI 문제 생성
 
 데모 체크리스트:
 - [ ] provider `fake`의 402·`content_filter` fixture로 AC-12 S5 행(잔액 소진 → `BALANCE_EXHAUSTED`, 거절 → `AI_REFUSED` 재시도 불가) 확인 결과 첨부
 - [ ] 월요일 dayStartHour 이후 지난주 weekly review 생성, 회고 작성
-- [ ] Dashboard에 risk 추세·약한 thinking 축 표시
-- [ ] 캘린더 구독 URL 발급 → 캘린더 앱에 Today 일정 표시
+- [ ] Dashboard에 risk 추세·약한 thinking 축 표시(주간 요약 숫자는 S3에 이미 있다 — `BL-DSH-02`)
 - [ ] AI challenge 생성(`BL-TRN-04`) → `ChallengeValidationService` 통과 후 VALIDATED, Today 제안에 포함
 - [ ] 실측 2주 `ai_call_log`로 `17` §11 비용 표 갱신(`BL-AIP-14`)
 
@@ -193,20 +221,23 @@ S0~S7은 **구현 순서를 나타내는 단계 ID**다. 기간·날짜가 없�
 
 데모 체크리스트:
 - [ ] 독립 해결 이벤트로 evidence 초안 → 편집 → accept → skill `evidence_count` 증가
+- [ ] 사이드 프로젝트의 장애 기록 하나로 초안 요청(`sourceProjectNoteId`) → STAR 초안에 그 기록의 내용이 반영되고 evidence skill이 기록의 skill이다 (AC-33 S9)
 - [ ] 학습 기록(STAR) Markdown export 다운로드
 - [ ] `GET /me/export` JSON에 모든 섹션 존재
 - [ ] `account-deletion` runbook 리허설: 테스트 계정 `DELETE /me` → allowlist 제거 → 재기동 → 그 이메일로 `/api/v1/dev/token` 403(자동 삭제 job은 Later `BL-SEC-17`)
 - [ ] 백업 보관 개수(서버 7일·로컬 8주)·healthchecks.io 알림 확인, 복구 리허설(`db-restore`) 기록표 1행
 - [ ] CSP 강제 상태에서 전체 화면 콘솔 위반 0건
 
-### 3.9 S7 — 요구 역량 비교
+### 3.9 S7 — 예비 (배정 항목 없음)
 
-- 분류 규칙은 `06-learning-engine-rules.md`의 `RequirementFitClassifier` 절이다. 확률·점수·퍼센트는 어떤 응답에도 넣지 않는다.
+로드맵 비교는 2026-09-20에 **S3으로 옮겨졌다**(§3.1 범위 조정 기록, §3.5 데모 체크리스트). 분류 규칙은 `06-learning-engine-rules.md`의 `RequirementFitClassifier` 절이고, 확률·점수·퍼센트는 어떤 응답에도 넣지 않는다.
+
+- 단계 ID는 그대로 둔다(S0~S7). S7은 **M2에서 이월된 P1·P2를 정리하는 자리**이고, 이월이 없으면 M2는 S6에서 끝난다.
+- 새 기능을 S7에 넣기로 정하면 `13-product-backlog.md` §5의 항목 수 표와 이 표를 함께 갱신한다.
 
 데모 체크리스트:
-- [ ] 요구사항 목록(예: 팀 기술 스택 문서, 프로젝트 명세, 학습 로드맵) 붙여넣기 → requirement별 READY/STRETCH/LATER, 화면·응답에 숫자 점수 없음
-- [ ] `sourceUrl` 입력 후에도 서버 외부 요청 없음(로그·테스트 결과)
-- [ ] 요구사항 문서 삭제 → requirement 함께 삭제
+- [ ] S4~S6에서 이월된 항목이 없거나, 이월된 항목이 모두 끝났다
+- [ ] 배포 환경 확인
 
 ### 3.10 공개 전환 게이트 (단계 밖)
 
@@ -345,7 +376,7 @@ S0~S7은 **구현 순서를 나타내는 단계 ID**다. 기간·날짜가 없�
 - **셋 중 하나라도 불충족이면 발동한다.**
 - 경고(발동 조건 아님): 같은 기간 `COMPLETED` 러버덕 세션이 3개 미만이면 핵심 루프가 쓰이지 않는 것이다. `20`에 기록하고 러버덕 진입 경로(SCR-TODAY·SCR-READ-CODE)의 사용성부터 본다.
 - 발동 시 조치:
-  1. `COA`·`REQ` epic 전체, `BL-EVD-04~08`, `BL-CLI-24`, `BL-CLI-27`, `BL-CLI-29`, `BL-CNT-11~13`, `BL-FND-17`, `BL-FND-19`를 Later로 옮긴다. Weekly(`BL-EVD-01~03`)와 `BL-FND-18`은 유지하고, `BL-CLI-26`에서는 thinking 추세 표시만 뺀다.
+  1. `COA` epic 전체, `BL-EVD-04~08`, `BL-CLI-24`, `BL-CLI-27`, `BL-CNT-11~12`, `BL-FND-17`을 Later로 옮긴다. Weekly(`BL-EVD-01~03`)와 `BL-FND-18`은 유지하고, `BL-CLI-26`에서는 thinking 추세 표시만 뺀다. 로드맵 비교(`REQ`, `BL-CLI-29`, `BL-FND-19`, `BL-CNT-13`)는 2026-09-20에 S3으로 옮겨져 판정 시점에는 이미 끝나 있다 — 판정 전에 이월된 것이 있으면 그것부터 Later로 옮긴다(이월 순서는 `13-product-backlog.md` §5.2).
   2. M2 단계를 다음으로 바꾼다: S4 = M1 미완료 항목 + Today·Review·러버덕 사용성 개선, S5 = Weekly·Dashboard(축소), S6 = export·백업·하드닝(변경 없음), S7 = 사용 데이터 기반 튜닝.
   3. 결정을 `20-decisions-and-risks.md`에 날짜와 판정 수치와 함께 기록하고 RISK-01 상태를 갱신한다.
 - 미발동이어도 C-2 또는 C-3이 7~9일이면 경고로 기록하고, 14 plan-day 뒤에 같은 판정을 1회 더 한다.

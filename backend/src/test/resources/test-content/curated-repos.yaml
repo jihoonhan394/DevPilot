@@ -41,3 +41,14 @@ readings:
     lookFor:
       - 준비와 검증의 경계
       - 경계값 케이스
+  # 은퇴한 reading: 조회는 되고 planner는 제안하지 않는다 (docs/19 §8.2, AC-28 S4)
+  - key: READ.TESTREPO.LEGACY_CONTROLLER.001
+    repo: testrepo
+    path: src/main/java/example/LegacyOrderController.java
+    lines: [20, 45]
+    skillCodes: [TESTING.JUNIT]
+    estimatedMinutes: 10
+    question: 이 컨트롤러가 요청 검증을 어디에서 하는지 찾고 그 위치가 적절한지 이유와 함께 설명해 보세요.
+    lookFor:
+      - 요청 검증 위치
+    retired: true

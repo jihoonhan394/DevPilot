@@ -3,22 +3,37 @@ import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// "직접 입력" for study minutes: a number field limited to 0~720 (docs/02 step 2, §3.2).
+/// "직접 입력" for minutes: a number field limited to [minMinutes]~[maxMinutes] (docs/02 §3.2).
+/// Study time uses 0~720 (onboarding step 2), Today's available time 5~720.
 /// Returns the minutes, or null when cancelled.
 Future<int?> showMinutesInputDialog(
   BuildContext context, {
   required String title,
   required int initialMinutes,
+  int minMinutes = 0,
+  int maxMinutes = InputRules.studyMinutesMax,
 }) => showDialog<int>(
   context: context,
-  builder: (_) => _MinutesInputDialog(title: title, initialMinutes: initialMinutes),
+  builder: (_) => _MinutesInputDialog(
+    title: title,
+    initialMinutes: initialMinutes,
+    minMinutes: minMinutes,
+    maxMinutes: maxMinutes,
+  ),
 );
 
 class _MinutesInputDialog extends StatefulWidget {
-  const _MinutesInputDialog({required this.title, required this.initialMinutes});
+  const _MinutesInputDialog({
+    required this.title,
+    required this.initialMinutes,
+    required this.minMinutes,
+    required this.maxMinutes,
+  });
 
   final String title;
   final int initialMinutes;
+  final int minMinutes;
+  final int maxMinutes;
 
   @override
   State<_MinutesInputDialog> createState() => _MinutesInputDialogState();
@@ -35,7 +50,7 @@ class _MinutesInputDialogState extends State<_MinutesInputDialog> {
 
   int? get _minutes {
     final value = int.tryParse(_controller.text);
-    return value != null && InputRules.isValidStudyMinutes(value) ? value : null;
+    return value != null && value >= widget.minMinutes && value <= widget.maxMinutes ? value : null;
   }
 
   @override
@@ -56,7 +71,7 @@ class _MinutesInputDialogState extends State<_MinutesInputDialog> {
             decoration: InputDecoration(
               labelText: l10n.commonMinutesLabel,
               errorText: minutes == null
-                  ? l10n.validationRange(0, InputRules.studyMinutesMax)
+                  ? l10n.validationRange(widget.minMinutes, widget.maxMinutes)
                   : null,
             ),
             onSubmitted: (_) {

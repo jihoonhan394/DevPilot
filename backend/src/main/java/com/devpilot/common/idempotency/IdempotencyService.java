@@ -83,6 +83,8 @@ public class IdempotencyService {
     private static final String DELETE_EXPIRED =
             "delete from devpilot.idempotency_record where user_id = :userId and idempotency_key"
                     + " = :key and expires_at <= :now";
+    private static final String DELETE_ALL_EXPIRED =
+            "delete from devpilot.idempotency_record where expires_at < :now";
 
     private final JdbcClient jdbcClient;
     private final TransactionTemplate requiresNew;
@@ -170,6 +172,18 @@ public class IdempotencyService {
                                         .update());
             }
         }
+    }
+
+    /**
+     * 만료된 기록 전부 삭제 (docs/04 §8, BL-FND-24 {@code RetentionCleanupJob}). 자기 트랜잭션이다.
+     *
+     * @return 지운 행 수
+     */
+    public int deleteExpired(Instant now) {
+        Integer deleted =
+                requiresNew.execute(
+                        status -> jdbcClient.sql(DELETE_ALL_EXPIRED).param("now", now).update());
+        return deleted == null ? 0 : deleted;
     }
 
     /**

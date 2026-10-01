@@ -3,10 +3,9 @@ package com.devpilot.content.application;
 import com.devpilot.common.config.DevPilotProperties;
 import com.devpilot.content.domain.RawContent;
 import com.devpilot.content.infrastructure.YamlContentReader;
-import com.devpilot.plan.application.PlanTemplateRegistry;
+import com.devpilot.review.application.SeedCardAssignmentService;
 import com.devpilot.skill.application.SkillCatalogSeedService;
-import java.util.ArrayList;
-import java.util.List;
+import com.devpilot.training.application.ChallengeSeedService;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,9 +22,12 @@ import org.springframework.stereotype.Component;
  *       로그.
  *   <li>{@code catalogVersion < DB 버전}이면 적재하지 않고 WARN, 메모리 등록만 한다(이전 이미지로 롤백한 경우).
  *   <li>skill·prerequisite·role target upsert(한 트랜잭션). 사라진 skill은 {@code active = false}.
- *   <li>challenge upsert는 S3(training 모듈)부터다. 이 빌드는 {@code seed-challenges}와 무관하게 건너뛴다.
- *   <li>plan template을 {@link PlanTemplateRegistry}에 등록한다. review card(S2)·curated reading(S3) 등록은
- *       해당 단계에 붙는다.
+ *   <li>{@code seed-challenges = true}면 seed challenge를 upsert한다({@link ChallengeSeedService}). 구조가
+ *       바뀐 seed는 기동 실패다.
+ *   <li>{@link ContentRegistration}이 plan template·review card·curated reading·개념 읽기(은퇴한 것 포함)를 메모리
+ *       registry에 등록한다.
+ *   <li>새 seed card를 기존 온보딩 완료 사용자에게 추가한다({@link SeedCardAssignmentService#backfillAll()},
+ *       BL-MEM-08). 이미 있는 concept key는 건너뛴다.
  * </ol>
  */
 @Component
@@ -36,19 +38,25 @@ public class ContentSeeder implements ApplicationRunner {
     private final YamlContentReader yamlContentReader;
     private final ContentValidator contentValidator;
     private final SkillCatalogSeedService skillCatalogSeedService;
-    private final PlanTemplateRegistry planTemplateRegistry;
+    private final ContentRegistration contentRegistration;
+    private final SeedCardAssignmentService seedCardAssignmentService;
+    private final ChallengeSeedService challengeSeedService;
     private final DevPilotProperties.Content settings;
 
-    public ContentSeeder(
+    ContentSeeder(
             YamlContentReader yamlContentReader,
             ContentValidator contentValidator,
             SkillCatalogSeedService skillCatalogSeedService,
-            PlanTemplateRegistry planTemplateRegistry,
+            ContentRegistration contentRegistration,
+            SeedCardAssignmentService seedCardAssignmentService,
+            ChallengeSeedService challengeSeedService,
             DevPilotProperties properties) {
         this.yamlContentReader = yamlContentReader;
         this.contentValidator = contentValidator;
         this.skillCatalogSeedService = skillCatalogSeedService;
-        this.planTemplateRegistry = planTemplateRegistry;
+        this.contentRegistration = contentRegistration;
+        this.seedCardAssignmentService = seedCardAssignmentService;
+        this.challengeSeedService = challengeSeedService;
         this.settings = properties.content();
     }
 
@@ -97,20 +105,46 @@ public class ContentSeeder implements ApplicationRunner {
         } else {
             upsertCatalog(content, catalog, catalogVersion);
         }
+        seedChallenges(content, catalog);
+        ContentRegistration.Registered registered = contentRegistration.register(content, catalog);
+        int backfilled = seedCardAssignmentService.backfillAll();
         log.info(
-                "CONTENT_CHALLENGE_SEED_SKIPPED challenge upsert starts with the training module"
-                        + " (S3), seedChallenges={}",
-                settings.seedChallenges());
-        documents(content, catalog, "planTemplates")
-                .forEach(
-                        document ->
-                                planTemplateRegistry.register(CatalogMapping.template(document)));
-        log.info(
-                "content seed finished catalogVersion={} dbVersion={} warnings={} durationMs={}",
+                "content seed finished catalogVersion={} dbVersion={} warnings={} seedCards={}"
+                        + " readings={} conceptReadings={} lessons={} terms={}"
+                        + " backfilledCards={} durationMs={}",
                 catalogVersion,
                 dbVersion,
                 report.warnings().size(),
+                registered.seedCards(),
+                registered.readings(),
+                registered.conceptReadings(),
+                registered.lessons(),
+                registered.terms(),
+                backfilled,
                 (System.nanoTime() - started) / 1_000_000);
+    }
+
+    /** challenge upsert (docs/04 §9 5단계). 꺼져 있으면 YAML을 검증만 한다. */
+    private void seedChallenges(RawContent content, Map<String, Object> catalog) {
+        if (!settings.seedChallenges()) {
+            log.info("CONTENT_CHALLENGE_SEED_SKIPPED devpilot.content.seed-challenges=false");
+            return;
+        }
+        ChallengeSeedService.SeedOutcome outcome =
+                challengeSeedService.upsert(
+                        CatalogMapping.challenges(
+                                ContentRegistration.documents(content, catalog, "challenges")));
+        if (outcome.rejected() > 0) {
+            challengeSeedService
+                    .rejectedSeedKeys()
+                    .forEach(key -> log.warn("CONTENT_CHALLENGE_REJECTED seedKey={}", key));
+        }
+        log.info(
+                "content challenges upserted created={} updated={} rejected={} retired={}",
+                outcome.created(),
+                outcome.updated(),
+                outcome.rejected(),
+                outcome.retired());
     }
 
     private void upsertCatalog(
@@ -119,9 +153,12 @@ public class ContentSeeder implements ApplicationRunner {
                 skillCatalogSeedService.upsert(
                         new SkillCatalogSeedService.CatalogSeedCommand(
                                 catalogVersion,
-                                CatalogMapping.skills(documents(content, catalog, "skillTrees")),
+                                CatalogMapping.skills(
+                                        ContentRegistration.documents(
+                                                content, catalog, "skillTrees")),
                                 CatalogMapping.roleTargets(
-                                        documents(content, catalog, "roleTargets")),
+                                        ContentRegistration.documents(
+                                                content, catalog, "roleTargets")),
                                 CatalogChecks.stringSet(
                                         RawYaml.asMap(catalog.get("retired")).get("skillCodes"))));
         outcome.implicitlyRetired()
@@ -131,15 +168,5 @@ public class ContentSeeder implements ApplicationRunner {
                 catalogVersion,
                 outcome.createdSkills(),
                 outcome.updatedSkills());
-    }
-
-    private static List<Map<String, Object>> documents(
-            RawContent content, Map<String, Object> catalog, String key) {
-        Map<String, Object> files = RawYaml.asMap(catalog.get("files"));
-        List<Map<String, Object>> documents = new ArrayList<>();
-        for (Object path : RawYaml.asList(files.get(key))) {
-            documents.add(RawYaml.asMap(content.document((String) path).root()));
-        }
-        return documents;
     }
 }

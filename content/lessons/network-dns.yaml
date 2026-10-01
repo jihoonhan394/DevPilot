@@ -1,0 +1,410 @@
+# DevPilot 개념 노트 — 이름이 주소가 되기까지
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 0단계(환경과 첫 API)에서 쓴다. NETWORK.TCP_IP 노트의 1번 관문을 자세히 본다
+# - 예제는 주문 시스템 상황으로 쓴다 (CV-134)
+lessons:
+  - key: LESSON.NETWORK.DNS.001
+    skillCode: NETWORK.DNS
+    title: 이름이 주소가 되기까지 (DNS)
+    whyItMatters: |-
+      설정 파일에 적는 것은 이름(`db.internal`, `payment.example.com`)인데
+      실제로 붙는 것은 주소다. 그 사이를 누가 어떻게 바꿔 주는지 모르면
+      **"어제까진 됐는데요"를 설명할 수 없다.**
+      이름이 안 풀리는 것, 옛 주소로 계속 가는 것, 컴퓨터마다 다르게 보이는 것은
+      전부 이 구간의 일이고 코드를 아무리 봐도 안 보인다.
+    oneLine: 이름은 주소로 바뀐 뒤에야 연결이 시작되고, 그 결과는 여러 곳에 얼마 동안 저장된다.
+    units:
+      - key: LESSON.NETWORK.DNS.001.U1
+        title: 이름을 못 찾는 것과 못 붙는 것은 다르다
+        minutes: 10
+        core: true
+        explain: |-
+          `UnknownHostException`은 **아직 연결을 시도조차 안 한 것**이다.
+          이름을 주소로 바꾸는 데서 끝났기 때문에 방화벽도, 상대 서버도 아직 관계가 없다.
+
+          | 증상 | 어디까지 갔나 | 볼 곳 |
+          |---|---|---|
+          | `UnknownHostException` | 이름 → 주소에서 멈춤 | 철자, 검색 도메인, 네임서버 |
+          | `Connection refused` | 주소까지 갔고 연결에서 거절 | 상대 포트·기동 여부 |
+          | 연결 타임아웃 | 주소까지 갔고 대답 없음 | 방화벽·보안그룹 |
+
+          이름을 푸는 순서도 정해져 있다. 리눅스는 대개 **`/etc/hosts` 먼저,
+          그다음 네임서버**다. 그래서 hosts에 한 줄 적으면 네임서버 답을 덮는다 —
+          급할 때 쓰지만, 적어 두고 잊으면 **몇 달 뒤 가장 헷갈리는 원인**이 된다.
+
+          짧은 이름(`db`)을 쓰면 검색 도메인이 뒤에 붙어 `db.internal`처럼 완성된다.
+          그래서 **같은 설정이 컴퓨터마다 다르게 풀릴 수 있다.**
+        example:
+          language: text
+          code: |-
+            # 이름이 무엇으로 풀리나 (프로그램과 같은 경로로)
+            $ getent hosts payment.example.com
+            93.184.216.34   payment.example.com
+
+            # 안 풀리는 경우
+            $ getent hosts payment.exmaple.com
+            $ echo $?
+            2
+
+            # 무엇을 보고 푸는가
+            $ cat /etc/resolv.conf
+            search internal
+            nameserver 10.0.0.2
+          output: |-
+            java.net.UnknownHostException: payment.exmaple.com
+              at ... RestClient.get()
+
+            같은 오타를 curl로 보면
+            curl: (6) Could not resolve host: payment.exmaple.com
+          note: |-
+            - `getent hosts`는 `/etc/hosts`와 네임서버를 **프로그램과 같은 순서로** 본다
+            - `search internal`이 있으면 `db`는 `db.internal`로도 시도된다
+            - 못 찾으면 종료 코드 2. 빈 출력만 보고 지나치기 쉽다
+            - `Could not resolve host`와 `Connection refused`는 **완전히 다른 단계**다
+        predict:
+          question: "`/etc/hosts`에 `10.0.0.9 payment.example.com`을 적어 두면 네임서버 답은 어떻게 되나?"
+          choices:
+            - 대개 hosts를 먼저 보므로 네임서버 답은 쓰이지 않는다
+            - 둘 다 시도해 빠른 쪽을 쓴다
+            - 네임서버가 항상 이긴다
+            - 오류가 난다
+          answer: 대개 hosts를 먼저 보므로 네임서버 답은 쓰이지 않는다
+          explanation: |-
+            보는 순서는 `/etc/nsswitch.conf`가 정하고 보통 `files dns` — 파일이 먼저다.
+            그래서 hosts 한 줄이 조용히 모든 것을 덮는다. 진짜 주소가 바뀌어도
+            그 컴퓨터만 옛 주소로 간다. **"저 서버에서만 안 돼요"의 단골 원인**이다.
+        complete:
+          question: 이름이 무엇으로 풀리는지 확인하는 명령을 완성하세요.
+          code: |-
+            # 프로그램과 같은 경로로 이름을 푼다
+            $ ___ hosts payment.example.com
+
+            # 어떤 네임서버와 검색 도메인을 쓰는지
+            $ cat /etc/___
+          answers:
+            - [getent]
+            - [resolv.conf]
+          explanation: |-
+            `getent hosts`는 hosts 파일까지 포함해 보므로 앱이 보는 것과 같다.
+            네임서버에만 직접 묻는 도구는 hosts를 건너뛰어 **다른 답**을 줄 수 있다.
+        problem:
+          prompt: |-
+            주문 시스템이 부르는 바깥 API 이름을 가지고 **세 가지 실패를 갈라** 보세요.
+
+            - ① 존재하지 않는 이름으로 호출해 `UnknownHostException`을 봅니다
+            - ② `/etc/hosts`에 그 이름을 아무 주소로 적어 두고 다시 호출해 봅니다
+            - ③ hosts 줄을 지우고 원래대로 돌아오는지 확인합니다
+            - 각 경우의 `getent hosts` 결과와 앱의 예외를 나란히 적으세요
+          deliverables:
+            - 세 경우의 getent 결과와 앱 예외
+            - hosts가 네임서버 답을 덮는 것을 확인한 기록
+            - 실패 메시지만 보고 단계를 가르는 기준
+          hints:
+            - hosts를 고치려면 권한이 필요합니다. 되돌리는 것을 잊지 마세요.
+            - ②에서는 예외 종류가 바뀝니다. 어느 단계로 넘어갔는지 생각해 보세요.
+            - getent의 종료 코드(`echo $?`)도 같이 보세요.
+          modelAnswer: |-
+            ```text
+            ① $ getent hosts payment.exmaple.com     → (빈 출력), $? = 2
+               앱: UnknownHostException: payment.exmaple.com
+               → 이름 단계에서 끝. 연결은 시도도 안 했다
+
+            ② /etc/hosts:  10.255.255.1 payment.exmaple.com
+               $ getent hosts payment.exmaple.com     → 10.255.255.1 payment.exmaple.com
+               앱: ResourceAccessException ... connect timed out
+               → 이름은 풀렸다. 이제 연결 단계의 문제로 바뀌었다
+
+            ③ hosts 줄 삭제 후
+               $ getent hosts payment.exmaple.com     → (빈 출력), $? = 2
+               앱: UnknownHostException (원래대로)
+            ```
+
+            ②가 이 과제의 핵심이다. **오타는 그대로인데 예외가 바뀌었다.**
+            hosts 한 줄이 이름 단계를 통과시켜 버렸고, 그래서 증상이
+            "이름을 못 찾는다"에서 "붙지 못한다"로 옮겨 갔다.
+
+            가르는 기준:
+            - `UnknownHostException` / `Could not resolve host` → 이름 단계. 코드가 아니라 철자·검색 도메인·네임서버·hosts
+            - `Connection refused` → 상대 포트
+            - `connect timed out` → 중간에서 막힘
+
+            그래서 장애를 볼 때 `getent hosts`를 **가장 먼저** 한 번 돌린다.
+            한 줄로 세 갈래 중 하나가 지워진다.
+          selfChecks:
+            - 세 경우의 getent 결과와 예외를 나란히 적었는가
+            - hosts를 넣었을 때 예외 종류가 바뀐 것을 봤는가
+            - hosts 줄을 원래대로 되돌렸는가
+            - 메시지로 단계를 가르는 기준을 적었는가
+      - key: LESSON.NETWORK.DNS.001.U2
+        title: 바꿨는데 왜 옛 주소로 갈까 (캐시와 TTL)
+        minutes: 12
+        core: true
+        explain: |-
+          이름을 풀 때마다 네임서버에 묻지는 않는다. **답을 얼마 동안 들고 있어도 되는지**가
+          답과 함께 오고(TTL), 그 시간 동안은 저장해 두고 쓴다.
+
+          저장되는 곳이 하나가 아닌 것이 문제다.
+
+          | 어디 | 얼마 동안 |
+          |---|---|
+          | 네임서버(중간) | 받은 TTL만큼 |
+          | 운영체제 | 설정에 따라 |
+          | **JVM 안** | 보안 설정에 따라, 성공은 기본이 유한하지만 **실패도 잠시 저장된다** |
+
+          그래서 주소를 바꿔도 **어디선가 옛 답을 들고 있는 동안은** 옛 주소로 간다.
+          여러 층이 겹쳐 있으니 "언제 반영되나"의 답은 **가장 긴 층만큼**이다.
+
+          JVM 안에도 저장된다는 것이 특히 잘 잊힌다. 앱을 안 껐으면
+          **OS 캐시를 지워도 그대로**일 수 있다. 주소를 바꾼 뒤 확인할 때는
+          앱 밖에서 본 결과와 앱 안에서 본 결과를 **따로** 봐야 한다.
+        example:
+          language: java
+          code: |-
+            // 앱이 실제로 어느 주소로 가는지 (JVM 캐시를 거친 결과)
+            @GetMapping("/debug/resolve")
+            Map<String, Object> resolve(@RequestParam String host)
+                    throws UnknownHostException {
+                long start = System.nanoTime();
+                InetAddress[] found = InetAddress.getAllByName(host);
+                long tookMs = (System.nanoTime() - start) / 1_000_000;
+
+                return Map.of(
+                        "host", host,
+                        "addresses", Arrays.stream(found)
+                                .map(InetAddress::getHostAddress).toList(),
+                        "tookMs", tookMs);
+            }
+          output: |-
+            첫 호출  {"addresses":["93.184.216.34"],"tookMs":34}
+            두 번째  {"addresses":["93.184.216.34"],"tookMs":0}   ← JVM 안에 남아 있다
+
+            네임서버에서 주소를 바꾼 직후
+            $ getent hosts payment.example.com  →  93.184.216.99   (OS는 새 주소)
+            앱의 /debug/resolve                 →  93.184.216.34   (JVM은 옛 주소)
+          note: |-
+            - 두 번째 호출이 0ms면 물어보지 않은 것이다 — 어딘가에 저장되어 있다
+            - OS와 앱의 답이 다르면 **앱 쪽 캐시**를 의심한다
+            - 캐시 시간은 `networkaddress.cache.ttl` 보안 속성이 정한다(기본은 구현에 따른다)
+            - 무한으로 두면 주소가 바뀌어도 **앱을 껐다 켜야** 반영된다
+        predict:
+          question: 네임서버에서 주소를 바꿨는데 앱만 옛 주소로 간다면 가장 먼저 의심할 곳은?
+          choices:
+            - JVM 안에 남아 있는 이름-주소 캐시
+            - 상대 서버의 방화벽
+            - 데이터베이스 연결 풀
+            - 컨트롤러 매핑
+          answer: JVM 안에 남아 있는 이름-주소 캐시
+          explanation: |-
+            OS에서 `getent hosts`가 새 주소를 주는데 앱만 옛 주소면, 그 사이에 있는 것은
+            JVM 캐시뿐이다. 이걸 모르면 방화벽·상대 서버를 몇 시간 들여다보게 된다.
+            **밖에서 본 답과 앱이 본 답을 나란히 놓는 것**이 확인의 시작이다.
+        complete:
+          question: 앱이 보는 주소를 확인하는 코드를 완성하세요.
+          code: |-
+            // 이름에 대응하는 주소를 모두 가져온다 (JVM 캐시를 거친다)
+            InetAddress[] found = InetAddress.___(host);
+
+            List<String> addresses = Arrays.stream(found)
+                    .map(InetAddress::___)
+                    .toList();
+          answers:
+            - [getAllByName]
+            - [getHostAddress]
+          explanation: |-
+            `getAllByName`은 주소가 여럿일 수 있어 배열로 돌려준다.
+            `getHostAddress`는 이름을 되묻지 않고 **주소 문자열 그대로** 준다 —
+            `toString()`이나 `getHostName()`은 반대 방향 조회를 또 일으킬 수 있다.
+        problem:
+          prompt: |-
+            주문 시스템에 **이름이 무엇으로 풀리는지 보여 주는 끝점**을 만들고 캐시를 눈으로 보세요.
+
+            - `GET /debug/resolve?host=...`로 주소 목록과 걸린 시간을 돌려줍니다
+            - 같은 이름을 두 번 불러 **걸린 시간 차이**를 확인하세요
+            - `/etc/hosts`로 주소를 바꾼 뒤, OS(`getent`)와 앱의 답이 **언제 갈라지는지** 보세요
+            - 이 끝점을 운영에 두어도 되는지 판단하고 이유를 적으세요
+          deliverables:
+            - resolve 끝점 코드와 두 번 호출한 결과
+            - OS와 앱의 답이 갈린 기록
+            - 운영에 둘지에 대한 판단과 이유
+          hints:
+            - 두 번째 호출이 0ms에 가까우면 물어보지 않은 것입니다.
+            - hosts를 바꾼 직후 getent와 앱을 번갈아 호출해 보세요.
+            - 운영 판단은 "이 끝점으로 무엇을 알아낼 수 있나"를 생각해 보세요.
+          modelAnswer: |-
+            ```text
+            1차  {"addresses":["93.184.216.34"],"tookMs":31}
+            2차  {"addresses":["93.184.216.34"],"tookMs":0}
+
+            /etc/hosts에 10.0.0.9 추가 후
+              getent            → 10.0.0.9        (즉시 바뀜)
+              /debug/resolve    → 93.184.216.34   (그대로)
+            앱 재기동 후
+              /debug/resolve    → 10.0.0.9
+            ```
+
+            OS는 즉시 바뀌었는데 앱은 재기동까지 옛 주소였다. **둘을 나란히 보지 않으면
+            "왜 반영이 안 되지"에서 한참을 쓴다.**
+
+            운영에 둘지: **두지 않는다.** 이름을 넣으면 그것이 어떤 주소인지 알려 주는
+            끝점은, 아무나 부를 수 있으면 **내부망 구조를 훑는 도구**가 된다.
+            `db.internal`, `payment.internal` 같은 이름을 차례로 넣어 보면
+            무엇이 있는지 드러난다.
+
+            대신 이렇게 한다:
+            - 기동할 때 **부르는 곳들의 주소를 한 번** 로그로 남긴다
+            - 그 로그는 이름과 주소만 남기고 그 밖의 값은 안 남긴다
+            - 장애 때는 서버에 들어가 `getent`로 확인한다 — 끝점을 열어 두지 않는다
+
+            "편해서 열어 둔 것"이 나중에 가장 먼저 쓰이는 입구가 된다.
+          selfChecks:
+            - 같은 이름 두 번 호출의 시간 차이를 봤는가
+            - OS와 앱의 답이 갈리는 순간을 봤는가
+            - 언제 다시 맞춰지는지 확인했는가
+            - 운영에 둘지 판단하고 이유를 적었는가
+      - key: LESSON.NETWORK.DNS.001.U3
+        title: 이름으로 적어 두면 무엇이 편해지나
+        minutes: 10
+        core: true
+        explain: |-
+          설정에 IP를 직접 적으면 지금 당장은 확실하다. 그런데 **주소가 바뀌는 날**
+          그 값을 적어 둔 곳을 전부 찾아 고쳐야 한다 — 설정 파일, 방화벽 규칙,
+          문서, 누군가의 메모까지.
+
+          이름으로 적어 두면 바뀔 때 **한 곳만** 고친다. 그것이 이름을 쓰는 이유다.
+
+          같은 이유로 이름 하나에 주소가 **여럿**일 수 있다. 한 대가 빠져도
+          나머지 주소로 붙을 수 있게 하는 흔한 방법이다. 그래서 클라이언트는
+          **첫 주소가 안 되면 다음 주소를 시도해야** 한다.
+
+          이름과 주소를 나눠 두면 환경마다 다른 값도 자연스럽게 갈린다 —
+          코드와 설정 파일은 이름 하나로 같고, **어느 주소로 가는지는 그 환경이 정한다.**
+        example:
+          language: yaml
+          code: |-
+            # application.yml — 이름만 적는다
+            devpilot:
+              payment:
+                base-url: https://payment.internal
+                connect-timeout: 2s
+                read-timeout: 5s
+
+            # 환경마다 다른 것은 이름이 무엇으로 풀리느냐뿐이다
+            #   개발 서버 : payment.internal → 10.0.1.20
+            #   운영 서버 : payment.internal → 10.0.9.20
+          output: |-
+            $ getent hosts payment.internal     # 개발 서버에서
+            10.0.1.20   payment.internal
+
+            $ getent hosts payment.internal     # 운영 서버에서
+            10.0.9.20   payment.internal
+            10.0.9.21   payment.internal        ← 주소가 둘이다
+          note: |-
+            - 설정 파일은 두 환경이 **똑같다**. 다른 것은 이름이 풀리는 결과뿐이다
+            - 주소가 둘이면 클라이언트가 하나 실패 시 다음을 시도할 수 있어야 한다
+            - IP를 적어 두면 "이 IP가 어디에 적혀 있더라"를 찾는 일이 생긴다
+            - 이름을 쓰면 U1·U2의 확인 절차가 그대로 쓰인다 — IP는 확인할 단계가 없다
+        predict:
+          question: 설정에 IP를 직접 적어 두었는데 그 서버가 다른 IP로 옮겨 가면?
+          choices:
+            - 그 IP를 적어 둔 모든 곳을 찾아 고쳐야 한다
+            - 자동으로 따라간다
+            - 이름으로 바뀐다
+            - 아무 일도 없다
+          answer: 그 IP를 적어 둔 모든 곳을 찾아 고쳐야 한다
+          explanation: |-
+            설정 파일뿐이면 다행이다. 대개 방화벽 규칙, 배포 스크립트, 운영 문서에도
+            같은 숫자가 흩어져 있고 **한 곳을 놓치면 그것만 조용히 실패한다.**
+            이름으로 적어 두면 고칠 곳이 한 군데다.
+        complete:
+          question: 바깥 API 설정을 이름 기준으로 바꾸세요.
+          code: |-
+            devpilot:
+              payment:
+                base-url: https://___.internal    # IP 대신 이름
+                connect-timeout: 2s
+                ___-timeout: 5s                   # 답을 기다리는 시간
+          answers:
+            - [payment]
+            - [read]
+          explanation: |-
+            이름은 환경마다 다르게 풀리고, 타임아웃은 환경과 무관하게 같은 뜻이다.
+            **환경이 정할 것과 코드가 정할 것**이 이렇게 갈린다.
+        problem:
+          prompt: |-
+            주문 시스템의 바깥 호출 설정을 **이름 기준으로** 정리하세요.
+
+            - 설정에서 IP로 적힌 곳을 찾아 이름으로 바꿉니다 (없으면 하나 만들어 봅니다)
+            - 같은 이름이 개발·운영에서 다른 주소로 풀리게 `/etc/hosts`로 흉내 내 보세요
+            - 그 이름에 주소를 **두 개** 달아 두고, 하나를 막았을 때 붙는지 확인하세요
+            - 이름으로 바꾼 뒤 **고칠 곳이 몇 군데 줄었는지** 세어 적으세요
+          deliverables:
+            - 이름 기준으로 바뀐 설정
+            - 같은 설정이 두 환경에서 다르게 푸는 기록
+            - 주소 두 개 중 하나를 막았을 때의 결과
+          hints:
+            - hosts 파일은 같은 이름에 여러 줄을 적을 수 있습니다.
+            - 막는 것은 안 쓰는 포트나 라우팅되지 않는 주소로 흉내 낼 수 있습니다.
+            - 클라이언트가 두 번째 주소를 시도하는지는 걸린 시간으로 짐작할 수 있습니다.
+          modelAnswer: |-
+            ```text
+            /etc/hosts (개발 서버 흉내)
+              10.255.255.1  payment.internal      ← 안 되는 주소를 앞에
+              127.0.0.1     payment.internal      ← 되는 주소를 뒤에
+
+            $ getent hosts payment.internal
+            10.255.255.1  payment.internal
+            127.0.0.1     payment.internal
+
+            호출 결과: 2.1초 뒤 성공
+              → 첫 주소에서 연결 타임아웃(2초) 뒤 두 번째로 넘어가 붙었다
+            ```
+
+            두 번째 주소로 넘어가긴 했지만 **2초를 통째로 썼다.** 주소가 여럿이라고
+            공짜로 안전해지는 것이 아니다 — 연결 타임아웃이 길면 그만큼 느려지고,
+            타임아웃이 없으면 **넘어가지도 못한다.** U2의 연결 타임아웃이
+            여기서 다시 쓰인다.
+
+            고칠 곳: IP를 적어 둔 곳이 설정 1 + 배포 스크립트 1 + README 1 = 3군데였는데
+            이름으로 바꾼 뒤에는 **주소가 바뀌어도 고칠 코드가 0군데**다.
+            바뀌는 것은 그 환경의 이름 풀이뿐이다.
+
+            대신 새 조건이 하나 생긴다 — 그 이름이 어디서 어떻게 풀리는지를
+            **아는 사람이 있어야 한다.** 그래서 기동 로그에 한 번 남겨 두는 것이 U2의 결론이었다.
+          selfChecks:
+            - 설정에서 IP를 이름으로 바꿨는가
+            - 같은 이름이 두 환경에서 다르게 풀리는 것을 확인했는가
+            - 주소 두 개 중 하나를 막고 결과를 봤는가
+            - 고칠 곳이 몇 군데 줄었는지 세어 봤는가
+    commonMistakes:
+      - 이름을 못 찾은 것과 못 붙은 것을 같은 "안 됨"으로 보고 방화벽부터 본다 (U1)
+      - OS 캐시만 지우고 앱을 그대로 두어 옛 주소가 계속 쓰인다 (U2)
+      - 급해서 설정에 IP를 직접 적고, 주소가 바뀔 때 적어 둔 곳을 다 못 찾는다 (U3)
+    inProject: |-
+      0단계에서 주문 시스템이 DB나 바깥 API에 못 붙을 때 `getent hosts`를 먼저 돌려
+      이름 단계인지 아닌지를 가른다. 이 한 줄이 `NETWORK.TCP_IP` 노트의 세 갈래 중
+      하나를 바로 지운다.
+      4단계에서 서버에 올리면 같은 설정 파일이 다른 주소로 풀려야 하고, 그때
+      U3의 "이름만 적는다"가 그대로 쓰인다 — 설정을 환경마다 복사하지 않는 이유다.
+    sources:
+      - title: 'RFC 1034 — Domain Names: Concepts and Facilities'
+        url: https://www.rfc-editor.org/rfc/rfc1034.html
+        versionScope: RFC 1034
+      - title: RFC 8499 — DNS Terminology
+        url: https://www.rfc-editor.org/rfc/rfc8499.html
+        versionScope: RFC 8499
+      - title: man7 — resolv.conf(5)
+        url: https://man7.org/linux/man-pages/man5/resolv.conf.5.html
+        versionScope: Linux man-pages
+      - title: man7 — getaddrinfo(3)
+        url: https://man7.org/linux/man-pages/man3/getaddrinfo.3.html
+        versionScope: Linux man-pages
+      - title: Java SE 25 — java.net.InetAddress
+        url: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/net/InetAddress.html
+        versionScope: Java SE 25
+    readMore:
+      - title: Java SE 25 — Networking Properties (이름 캐시 설정)
+        url: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/net/doc-files/net-properties.html
+    verifiedAt: 2026-09-25

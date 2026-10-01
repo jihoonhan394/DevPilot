@@ -33,6 +33,7 @@ public enum ErrorCode {
     EVALUATION_IN_PROGRESS(409, "Evaluation in progress"),
     AI_TASK_NOT_RETRYABLE(409, "AI task not retryable"),
     REVIEW_ALREADY_CLOSED(409, "Review already closed"),
+    AI_ASSIST_LOCKED_FOR_REDO(409, "AI assist locked for redo"),
     INVALID_STATE_TRANSITION(409, "Invalid state transition"),
     CONCURRENT_MODIFICATION(409, "Concurrent modification"),
     IDEMPOTENCY_IN_PROGRESS(409, "Idempotency in progress"),

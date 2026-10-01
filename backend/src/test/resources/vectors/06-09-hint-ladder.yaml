@@ -1,0 +1,78 @@
+# source: 06 §9.2, rows: 6
+# storedLevels는 hint_disclosure에 저장된 단계, pregeneratedLevels는 challenge hints_json의 단계다.
+vectors:
+  - id: V01
+    case: HL-2 — 자기 설명 기록이 없으면 거절
+    maxHintLevel: SELF_EXPLAIN
+    requestedLevel: CONCEPT_HINT
+    storedLevels: []
+    pregeneratedLevels: [QUESTION_ONLY, CONCEPT_HINT, DIRECTION]
+    selfExplanationRecorded: false
+    submissionCount: 0
+    acknowledgeEvidenceImpact: false
+    giveUp: false
+    expectedOutcome: SELF_EXPLANATION_REQUIRED
+    expectedSkippedLevels: []
+  - id: V02
+    case: 자기 설명 제출 후 CONCEPT_HINT 공개, QUESTION_ONLY는 건너뜀
+    maxHintLevel: SELF_EXPLAIN
+    requestedLevel: CONCEPT_HINT
+    storedLevels: []
+    pregeneratedLevels: [QUESTION_ONLY, CONCEPT_HINT, DIRECTION]
+    selfExplanationRecorded: true
+    submissionCount: 0
+    acknowledgeEvidenceImpact: false
+    giveUp: false
+    expectedOutcome: DISCLOSE_PREGENERATED
+    expectedLevel: CONCEPT_HINT
+    expectedSkippedLevels: [QUESTION_ONLY]
+  - id: V03
+    case: HL-1 — 요청 단계 이하 저장분이 없으면 저장된 가장 낮은 단계를 돌려준다 (AI 호출 0)
+    maxHintLevel: CONCEPT_HINT
+    requestedLevel: QUESTION_ONLY
+    storedLevels: [CONCEPT_HINT]
+    pregeneratedLevels: [QUESTION_ONLY, CONCEPT_HINT, DIRECTION]
+    selfExplanationRecorded: true
+    submissionCount: 0
+    acknowledgeEvidenceImpact: false
+    giveUp: false
+    expectedOutcome: RETURN_STORED
+    expectedLevel: CONCEPT_HINT
+    expectedSkippedLevels: []
+  - id: V04
+    case: HL-4 — PSEUDOCODE 이상에 확인이 없으면 거절
+    maxHintLevel: CONCEPT_HINT
+    requestedLevel: PSEUDOCODE
+    storedLevels: [CONCEPT_HINT]
+    pregeneratedLevels: [QUESTION_ONLY, CONCEPT_HINT, DIRECTION]
+    selfExplanationRecorded: true
+    submissionCount: 0
+    acknowledgeEvidenceImpact: false
+    giveUp: false
+    expectedOutcome: CONFIRMATION_REQUIRED
+    expectedSkippedLevels: []
+  - id: V05
+    case: 확인이 있으면 AI가 만들고 DIRECTION을 건너뛴다
+    maxHintLevel: CONCEPT_HINT
+    requestedLevel: PSEUDOCODE
+    storedLevels: [CONCEPT_HINT]
+    pregeneratedLevels: [QUESTION_ONLY, CONCEPT_HINT, DIRECTION]
+    selfExplanationRecorded: true
+    submissionCount: 0
+    acknowledgeEvidenceImpact: true
+    giveUp: false
+    expectedOutcome: DISCLOSE_GENERATED
+    expectedLevel: PSEUDOCODE
+    expectedSkippedLevels: [DIRECTION]
+  - id: V06
+    case: HL-5 — 제출 0회이고 포기도 아니면 FULL_EXAMPLE 거절 (확인은 먼저 통과)
+    maxHintLevel: DIRECTION
+    requestedLevel: FULL_EXAMPLE
+    storedLevels: [CONCEPT_HINT, DIRECTION]
+    pregeneratedLevels: [QUESTION_ONLY, CONCEPT_HINT, DIRECTION]
+    selfExplanationRecorded: true
+    submissionCount: 0
+    acknowledgeEvidenceImpact: true
+    giveUp: false
+    expectedOutcome: FULL_EXAMPLE_NOT_ALLOWED
+    expectedSkippedLevels: []

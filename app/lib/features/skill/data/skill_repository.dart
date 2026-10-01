@@ -1,8 +1,10 @@
 import 'package:devpilot_app/core/api/api_client.dart';
 import 'package:devpilot_app/core/api/api_enums.dart';
+import 'package:devpilot_app/core/api/cursor_page.dart';
 import 'package:devpilot_app/core/auth/auth_controller.dart';
 import 'package:devpilot_app/core/l10n/enum_labels.dart';
 import 'package:devpilot_app/core/widgets/skill_multi_picker.dart';
+import 'package:devpilot_app/features/skill/data/skill_history_models.dart';
 import 'package:devpilot_app/features/skill/data/skill_models.dart';
 import 'package:devpilot_app/l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +16,16 @@ abstract interface class SkillRepository {
 
   /// `GET /skills/me`.
   Future<UserSkillStatesResponse> fetchMyStates();
+
+  /// `PUT /skills/me/self-assessment` (docs/05 §6.5). Sends only the categories that changed —
+  /// the server leaves the rest alone, so a one-chip edit cannot overwrite the other thirteen.
+  Future<UserSkillStatesResponse> updateSelfAssessment(Map<SkillCategory, int> levels);
+
+  /// `GET /skills/{skillId}/history?cursor=` — level changes, newest first.
+  Future<CursorPage<SkillStateChangeView>> fetchHistory({required String skillId, String? cursor});
+
+  /// `GET /skills/{skillId}` (docs/05 §6.4). 학습 단계 6칸이 들어 있다. 비활성 skill도 열린다.
+  Future<SkillDetailView> fetchDetail(String skillId);
 }
 
 final class ApiSkillRepository implements SkillRepository {
@@ -30,8 +42,43 @@ final class ApiSkillRepository implements SkillRepository {
   }
 
   @override
+  Future<UserSkillStatesResponse> updateSelfAssessment(Map<SkillCategory, int> levels) async {
+    assert(levels.isNotEmpty, 'nothing to send');
+    return UserSkillStatesResponse.fromJson(
+      await _apiClient.putJson(
+        '/skills/me/self-assessment',
+        body: {
+          'assessments': [
+            for (final entry in levels.entries)
+              {'category': entry.key.wireName, 'level': entry.value},
+          ],
+        },
+      ),
+    );
+  }
+
+  @override
   Future<UserSkillStatesResponse> fetchMyStates() async =>
       UserSkillStatesResponse.fromJson(await _apiClient.getJson('/skills/me'));
+
+  @override
+  Future<SkillDetailView> fetchDetail(String skillId) async =>
+      SkillDetailView.fromJson(await _apiClient.getJson('/skills/$skillId'));
+
+  @override
+  Future<CursorPage<SkillStateChangeView>> fetchHistory({
+    required String skillId,
+    String? cursor,
+  }) async {
+    final json = await _apiClient.getJson(
+      '/skills/$skillId/history',
+      queryParameters: {'cursor': ?cursor},
+    );
+    return CursorPage.fromJson(
+      json,
+      (item) => SkillStateChangeView.fromJson(item! as Map<String, Object?>),
+    );
+  }
 }
 
 final skillRepositoryProvider = Provider<SkillRepository>(
@@ -43,6 +90,14 @@ final skillRepositoryProvider = Provider<SkillRepository>(
 final skillTreeProvider = FutureProvider<SkillTreeResponse>((ref) {
   ref.watch(authStateProvider.select((authState) => authState.accessToken));
   return ref.watch(skillRepositoryProvider).fetchTree();
+});
+
+/// How many skills a track marks MUST, for the track radios of SCR-ONBOARDING step 1
+/// (docs/02 §3.4). One request per track; the screen leaves the number out when it fails.
+final roleMustCountProvider = FutureProvider.family<int, TargetRole>((ref, role) async {
+  ref.watch(authStateProvider.select((authState) => authState.accessToken));
+  final tree = await ref.watch(skillRepositoryProvider).fetchTree(role: role);
+  return tree.skills.where((skill) => skill.roleTarget?.priority == Priority.must).length;
 });
 
 /// The signed-in user's skill states, re-read each time a skill screen opens.

@@ -1,0 +1,479 @@
+# DevPilot 개념 노트 — 레거시 데이터 표준화
+# Spec: docs/19-content-spec.md §3.14 (schema), §4.1 CV-126~CV-136 (검증)
+# Screen: docs/02 SCR-LESSON · API: docs/05 §21
+#
+# - 설명과 예제는 공식 문서를 읽고 직접 쓴다. 읽은 문서를 sources에 남긴다 (CV-131)
+# - 명세서 노트(LESSON.INTEGRATION.INTERFACE_SPEC.001)는 "받기 전에 합의하기"를 다룬다.
+#   여기서는 "합의가 안 된 것이 이미 와 있을 때"를 다룬다 — 겹치지 않게 쓴다
+# - 기준 버전: PostgreSQL 16 (AGENTS.md §0). PG 17 전용 문법은 쓰지 않는다
+# - 예제는 주문 시스템 상황으로 쓴다 (CV-134)
+lessons:
+  - key: LESSON.INTEGRATION.LEGACY_DATA.001
+    skillCode: INTEGRATION.LEGACY_DATA
+    title: 제각각인 것을 한 모양으로 (레거시 데이터 표준화)
+    whyItMatters: |-
+      이미 십 년째 돌고 있는 시스템에 "형식을 바꿔 주세요"는 통하지 않는다.
+      날짜가 `20260930`이고 상태가 `01`이고 인코딩이 CP949인 채로 우리에게 온다.
+      그것을 받아 우리 모델로 바꾸는 일이 연동의 절반이다.
+      변환을 대충 하면 한글이 로 들어오고, 모르는 코드값이 `null`로 저장되고,
+      **그 사실을 아무도 모른 채 몇 달이 지난다.** 주문 시스템이 POS 매출을 받을 때 그대로 겪는다.
+    oneLine: 레거시 데이터 표준화는 형식과 코드값이 제각각인 기존 데이터를 우리 모델로 바꾸고, 바꿀 수 없는 것을 버리지 않고 격리하는 일이다.
+    units:
+      - key: LESSON.INTEGRATION.LEGACY_DATA.001.U1
+        title: 인코딩을 먼저 정하기 — 조용히 깨지는 것을 막기
+        minutes: 10
+        core: true
+        explain: |-
+          변환에서 가장 먼저 틀어지는 것은 글자다. 그리고 가장 늦게 발견된다.
+
+          CP949로 쓰인 바이트를 UTF-8로 읽으면 무슨 일이 생기나. **예외가 나지 않는다.**
+          Java의 `String(byte[], Charset)`은 문서에 이렇게 적혀 있다 —
+          "이 메서드는 잘못된 입력과 매핑할 수 없는 문자 시퀀스를
+          **항상 이 charset의 기본 대체 문자열로 바꾼다**." 그리고 덧붙인다 —
+          "디코딩 과정을 더 제어해야 할 때는 `CharsetDecoder`를 써야 한다."
+
+          그래서 `new String(bytes, UTF_8)`은 `홍길동` 대신 `���`를 돌려주고
+          아무 일도 없었던 것처럼 다음 줄로 넘어간다. 그 값이 DB에 저장되고,
+          몇 달 뒤 고객이 이름을 검색하지 못한다고 연락한다.
+
+          막는 방법은 둘이다.
+
+          | | 방법 |
+          |---|---|
+          | 인코딩을 **정한다** | 명세에 못 박고, 파일마다 무엇으로 왔는지 기록한다 |
+          | 깨짐을 **터지게 한다** | `CharsetDecoder`에 `REPORT`를 주어 예외로 만든다 |
+
+          둘째가 핵심이다. **조용히 넘어가는 것보다 터지는 것이 낫다.**
+          한 줄이 터지면 그 줄만 격리하면 되지만, 조용히 넘어간 값은 찾을 수가 없다.
+        example:
+          language: java
+          code: |-
+            /** 깨진 바이트를 대체 문자로 넘기지 않고 예외로 만든다. */
+            static String decodeStrict(byte[] bytes, Charset charset) throws CharacterCodingException {
+                CharsetDecoder decoder =
+                        charset
+                                .newDecoder()
+                                .onMalformedInput(CodingErrorAction.REPORT)
+                                .onUnmappableCharacter(CodingErrorAction.REPORT);
+                return decoder.decode(ByteBuffer.wrap(bytes)).toString();
+            }
+          output: |-
+            new String(cp949Bytes, UTF_8)        → "���"        (조용히 통과)
+            decodeStrict(cp949Bytes, UTF_8)      → MalformedInputException  (터진다)
+            decodeStrict(cp949Bytes, MS949)      → "홍길동"      (맞는 인코딩이면 통과)
+          note: |-
+            `REPORT`가 기본이 아니라는 점이 함정이다. 편의 생성자와 `Files.readString`은
+            대체 동작을 쓰므로, 강제하려면 위처럼 디코더를 직접 만들어야 한다.
+            그리고 **파일마다 인코딩을 기록해 둬야** 나중에 어느 파일이 어떤 규칙으로 읽혔는지 알 수 있다.
+        predict:
+          question: |-
+            CP949 로 저장된 상품명을 `new String(bytes, StandardCharsets.UTF_8)` 로 읽으면 어떻게 되나요?
+          choices:
+            - 예외 없이 대체 문자로 바뀐 문자열이 돌아온다
+            - MalformedInputException 이 발생한다
+            - 자동으로 CP949 로 인식해 정상 변환된다
+          answer: 예외 없이 대체 문자로 바뀐 문자열이 돌아온다
+          explanation: |-
+            문서가 "항상 기본 대체 문자열로 바꾼다"고 적어 둔 대로다.
+            예외가 나면 우리가 알 수 있지만, 대체 문자는 **정상 처리된 값처럼 보인다.**
+            그래서 이 생성자는 신뢰할 수 없는 바이트에 쓰지 않는다.
+        complete:
+          question: 깨진 입력을 예외로 만드는 디코더 설정의 빈칸을 채우세요.
+          code: |-
+            CharsetDecoder decoder = charset.newDecoder()
+                    .onMalformedInput(CodingErrorAction.___)
+                    .onUnmappableCharacter(CodingErrorAction.___);
+          answers:
+            - [REPORT]
+            - [REPORT]
+          explanation: |-
+            `CodingErrorAction`에는 `IGNORE`(버린다), `REPLACE`(대체 문자로 바꾼다),
+            `REPORT`(예외를 던진다)가 있다. 변환 파이프라인에서는 `REPORT`만 안전하다 —
+            나머지 둘은 데이터가 조용히 달라진 것을 감춘다.
+        problem:
+          prompt: |-
+            주문 시스템이 POS에서 매출 CSV를 받습니다. 상대는 "UTF-8로 보낸다"고 했지만
+            실제로는 어떤 날은 CP949로, 어떤 날은 UTF-8 BOM이 붙어 옵니다.
+
+            파일을 읽는 부분을 만드세요. 목표는 **깨진 값을 저장하지 않는 것**이고,
+            인코딩이 무엇이었는지 나중에 확인할 수 있어야 합니다.
+          deliverables:
+            - 파일을 읽는 코드 (인코딩을 어떻게 정하고, 깨짐을 어떻게 다루는지)
+            - BOM 처리 방법
+            - 무엇을 기록해 두는지
+          hints:
+            - 상대 말과 실제가 다릅니다. 둘 중 하나로 읽어 보고 실패하면 다른 쪽으로 가는 방법이 있습니다.
+            - 추측으로 읽는 것과 추측했다는 사실을 남기는 것은 다릅니다.
+            - BOM 은 UTF-8 에서 눈에 안 보이는 세 바이트입니다. 첫 항목 이름에 붙어 헤더 비교가 실패합니다.
+          modelAnswer: |-
+            ```java
+            /** 상대 말과 실제가 다르므로 UTF-8 을 먼저 시도하고, 실패하면 MS949 로 한 번만 되짚는다. */
+            record DecodedFile(String text, Charset charset) {}
+
+            DecodedFile read(byte[] raw) {
+                byte[] body = stripBom(raw);
+                for (Charset candidate : List.of(StandardCharsets.UTF_8, Charset.forName("MS949"))) {
+                    try {
+                        return new DecodedFile(decodeStrict(body, candidate), candidate);
+                    } catch (CharacterCodingException notThisOne) {
+                        // 다음 후보로 넘어간다. 원인을 삼키지 않으려면 마지막 실패를 밖으로 낸다
+                    }
+                }
+                throw new SalesFileUnreadableException("no candidate charset decoded the file");
+            }
+
+            /** UTF-8 BOM(EF BB BF)은 눈에 보이지 않지만 첫 항목 이름에 붙어 헤더 비교를 깨뜨린다. */
+            private static byte[] stripBom(byte[] raw) {
+                boolean hasBom =
+                        raw.length >= 3
+                                && (raw[0] & 0xFF) == 0xEF
+                                && (raw[1] & 0xFF) == 0xBB
+                                && (raw[2] & 0xFF) == 0xBF;
+                return hasBom ? Arrays.copyOfRange(raw, 3, raw.length) : raw;
+            }
+            ```
+
+            **기록하는 것**
+
+            수신 기록에 `charset` 칸을 둬서 어느 인코딩으로 읽혔는지 남긴다.
+            `UTF_8`이 아닌 값이 쌓이면 상대에게 "합의한 것과 다르게 오고 있다"를
+            **기록으로** 말할 수 있다. 말로 하면 "그럴 리 없다"로 끝난다.
+
+            **왜 순서가 UTF-8 먼저인가**
+
+            UTF-8은 검증이 엄격해서 CP949 바이트를 대부분 거절한다.
+            반대 순서로 하면 MS949는 거의 모든 바이트를 받아들이므로
+            UTF-8 파일도 MS949로 읽혀 한글이 깨진 채 통과한다 — 그리고 예외가 나지 않는다.
+          selfChecks:
+            - 깨진 입력이 예외가 되도록 디코더를 설정했는가
+            - 후보 순서를 UTF-8 먼저로 두고 그 이유를 적었는가
+            - BOM 을 처리했는가
+            - 어느 인코딩으로 읽혔는지 기록했는가
+      - key: LESSON.INTEGRATION.LEGACY_DATA.001.U2
+        title: 코드값을 매핑하고 모르는 값을 격리하기
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.INTEGRATION.LEGACY_DATA.001.U1
+        explain: |-
+          상대의 `01`이 우리의 `PAID`다. 이 대응을 어디에 둘 것인가가 이 단위의 주제다.
+
+          `switch`에 적으면 값이 하나 늘 때마다 배포해야 한다. 레거시 쪽은
+          코드값을 예고 없이 늘리므로, 그날 우리 배치가 멈춘다.
+          그래서 대응을 **데이터로** 둔다 — 매핑 표 한 개.
+
+          더 중요한 것은 **표에 없는 값이 왔을 때**다. 선택지는 셋이고 둘은 나쁘다.
+
+          | 처리 | 결과 |
+          |---|---|
+          | `null`로 저장 | 데이터가 조용히 비어 간다. 최악 |
+          | 그 줄을 버린다 | 매출이 소리 없이 빠진다 |
+          | **격리한다** | 나머지는 들어가고, 못 바꾼 것은 목록에 남는다 |
+
+          격리는 "실패를 저장하는 것"이다. 원본 줄과 실패 이유를 그대로 남기고,
+          사람이 매핑을 추가한 뒤 **그 줄만** 다시 처리한다.
+          버리지 않았으므로 복구가 가능하고, 목록이 보이므로 방치되지 않는다.
+
+          표를 채울 때 하나 더 — **우리 쪽에도 없는 상태**를 만들지 않는다.
+          상대에게 `09 보류`가 있고 우리 모델에 그 개념이 없으면,
+          억지로 `PAID`에 밀어 넣지 말고 격리해서 사람이 판단하게 둔다.
+        example:
+          language: sql
+          code: |-
+            -- 매핑은 데이터다. 값이 늘어도 배포하지 않는다
+            create table devpilot.pos_status_mapping (
+                source_code text primary key,
+                order_status text not null
+            );
+            insert into devpilot.pos_status_mapping (source_code, order_status)
+            values ('01', 'PAID'), ('02', 'SHIPPED'), ('09', 'CANCELLED');
+
+            -- 못 바꾼 줄은 버리지 않고 여기 남는다
+            create table devpilot.pos_quarantine (
+                id           bigserial primary key,
+                sales_date   date        not null,
+                line_no      int         not null,
+                raw_line     text        not null,
+                reason       text        not null,
+                created_at   timestamptz not null,
+                resolved_at  timestamptz
+            );
+          output: |-
+            '01' → PAID          정상
+            '07' → 매핑 없음      → pos_quarantine (reason='UNKNOWN_STATUS')
+          note: |-
+            `raw_line`에 **원본 줄을 그대로** 남기는 것이 핵심이다. 파싱한 뒤의 객체를 저장하면
+            파싱 자체가 틀렸을 때 복구할 수 없다. 격리의 목적은 "나중에 다시 할 수 있게"이므로
+            다시 하려면 원본이 있어야 한다.
+        predict:
+          question: |-
+            매핑 표에 없는 상태 코드 `07` 이 왔을 때 `null` 로 저장하면 무엇이 문제인가요?
+          choices:
+            - 데이터가 조용히 비어 가고, 나중에 복구할 원본이 남지 않는다
+            - null 은 DB 가 거절하므로 즉시 알 수 있다
+            - 다음 배치에서 자동으로 채워진다
+          answer: 데이터가 조용히 비어 가고, 나중에 복구할 원본이 남지 않는다
+          explanation: |-
+            `null`이 들어가면 그 줄은 "처리된 것"으로 보인다. 몇 달 뒤 통계가 안 맞아
+            거꾸로 찾아 들어가야 하고, 그때 원본이 없으면 복구가 불가능하다.
+            격리는 이 두 문제를 동시에 없앤다 — 보이게 남고, 원본이 있다.
+        complete:
+          question: 격리 테이블에 넣을 때 반드시 남겨야 하는 칸을 채우세요.
+          code: |-
+            insert into devpilot.pos_quarantine
+                   (sales_date, line_no, ___, reason, created_at)
+            values (:salesDate, :lineNo, :rawLine, :reason, :now)
+          answers:
+            - [raw_line, raw_line]
+          explanation: |-
+            원본 줄이 없으면 격리가 아니라 **버린 것**이다. 다시 처리할 근거가 사라진다.
+            `line_no`와 `sales_date`는 어디서 왔는지 찾기 위한 것이고,
+            `reason`은 무엇을 고쳐야 하는지 알려 준다. 세 개 다 필요하지만 없으면 안 되는 것은 원본이다.
+        problem:
+          prompt: |-
+            POS 매출을 우리 모델로 바꾸는 변환기를 만드세요.
+
+            상대 값은 이렇습니다.
+            - 결제수단: `01`(카드) `02`(현금) `03`(계좌이체) — 그리고 예고 없이 늘어납니다
+            - 날짜: `20260930` (구분자 없음)
+            - 금액: `000045000` (앞이 0으로 채워진 9자리, 원 단위)
+
+            한 파일 안에 정상 줄과 변환 실패 줄이 섞여 있습니다.
+            97줄은 반영되고 3줄은 격리되어야 합니다.
+          deliverables:
+            - 세 항목의 변환 코드
+            - 매핑에 없는 결제수단을 만났을 때의 처리
+            - 부분 실패를 어떻게 다루는지 (트랜잭션 경계 포함)
+            - 격리된 줄을 나중에 다시 처리하는 방법 한 문단
+          starterCode: |-
+            record PosLine(int lineNo, String raw, String date, String payMethod, String amount) {}
+
+            record ConversionResult(List<Sale> converted, List<Quarantined> quarantined) {}
+
+            ConversionResult convert(LocalDate salesDate, List<PosLine> lines) {
+                // TODO
+            }
+          hints:
+            - 실패한 줄 때문에 성공한 줄이 롤백되면 부분 반영이 안 됩니다. 경계를 어디에 둘지 생각하세요.
+            - 매핑 표는 코드가 아니라 데이터였습니다. 없는 값을 만났을 때 예외를 던질지, 결과에 담을지 고르세요.
+            - 다시 처리하려면 격리된 줄이 원본이어야 하고, 매핑이 추가됐는지 알아야 합니다.
+          modelAnswer: |-
+            ```java
+            ConversionResult convert(LocalDate salesDate, List<PosLine> lines) {
+                Map<String, OrderStatus> mapping = mappingRepository.payMethodMapping();
+                List<Sale> converted = new ArrayList<>();
+                List<Quarantined> quarantined = new ArrayList<>();
+
+                for (PosLine line : lines) {
+                    try {
+                        converted.add(
+                                new Sale(
+                                        LocalDate.parse(line.date(), BASIC_ISO_DATE),
+                                        require(mapping, line.payMethod()),
+                                        // 앞이 0으로 채워져도 정수 변환은 그대로 된다. 단위는 원이므로 소수 없음
+                                        Long.parseLong(line.amount())));
+                    } catch (ConversionException failure) {
+                        quarantined.add(
+                                new Quarantined(salesDate, line.lineNo(), line.raw(), failure.reason()));
+                    }
+                }
+                return new ConversionResult(converted, quarantined);
+            }
+
+            private static OrderStatus require(Map<String, OrderStatus> mapping, String code) {
+                OrderStatus mapped = mapping.get(code);
+                if (mapped == null) {
+                    throw new ConversionException("UNKNOWN_PAY_METHOD:" + code);
+                }
+                return mapped;
+            }
+            ```
+
+            **부분 실패와 트랜잭션 경계**
+
+            변환은 **트랜잭션 밖**에서 전부 끝낸다. 그 결과로 성공 목록과 격리 목록 두 개를 얻고,
+            그다음에 한 트랜잭션에서 둘을 함께 저장한다.
+            변환 도중에 저장하면 실패한 줄에서 예외가 올라와 앞의 성공이 롤백된다 —
+            97줄을 넣으려면 실패를 **값으로 다루어야** 하고 예외로 흘려보내면 안 된다.
+
+            ```java
+            @Transactional
+            void save(ConversionResult result) {
+                saleRepository.saveAll(result.converted());
+                quarantineRepository.saveAll(result.quarantined());
+            }
+            ```
+
+            **다시 처리하는 방법**
+
+            담당자가 매핑 표에 `07 → PAID`를 넣는다. 그다음 재처리 작업이
+            `resolved_at is null`인 격리 줄을 읽어 **원본 줄을 다시 변환**한다.
+            성공하면 매출로 넣고 `resolved_at`을 찍는다. 원본을 남겨 뒀기 때문에 가능한 일이고,
+            매핑이 데이터이기 때문에 배포 없이 된다.
+          selfChecks:
+            - 변환 실패를 예외로 흘리지 않고 결과 값으로 담았는가
+            - 성공 줄이 실패 줄 때문에 롤백되지 않는 경계를 만들었는가
+            - 격리에 원본 줄을 남겼는가
+            - 매핑을 코드가 아니라 데이터로 뒀는가
+      - key: LESSON.INTEGRATION.LEGACY_DATA.001.U3
+        title: 같은 파일이 두 번 와도 결과가 같게 만들기
+        minutes: 12
+        core: true
+        prerequisiteUnits:
+          - LESSON.INTEGRATION.LEGACY_DATA.001.U2
+        explain: |-
+          레거시 연동에서 재전송은 예외가 아니라 일상이다. 담당자가 "아까 파일 잘못 보냈어요,
+          다시 보냈습니다"라고 한다. 그러면 같은 영업일 매출이 두 번 들어오고 정산이 두 배가 된다.
+
+          막는 방법은 **자연 키를 정하고 그 키로 덮어쓰는 것**이다.
+          POS 매출이면 `(영업일, 줄 번호)` 또는 `(영업일, 영수증 번호)`가 자연 키가 된다.
+
+          PostgreSQL은 이것을 한 문장으로 해 준다. `INSERT ... ON CONFLICT`다.
+          규격에서 확인할 것이 셋 있다.
+
+          - `conflict_action`은 `DO NOTHING` 또는 `DO UPDATE SET`이다
+          - `DO NOTHING`은 `conflict_target`이 **선택**이고, 생략하면
+            "사용 가능한 모든 제약(그리고 유일 인덱스)에 대한 충돌이 처리된다"
+          - `DO UPDATE`는 `conflict_target`을 **반드시 줘야 한다(must be provided)**
+
+          `DO UPDATE`에서 새로 들어오려던 값은 `excluded`라는 특별한 이름으로 읽는다 —
+          "기존 행은 테이블 이름(또는 별칭)으로, 삽입하려던 행은 특별한 `excluded` 테이블로 접근한다."
+
+          어느 쪽을 쓸까. **재전송이 정정을 뜻하면 `DO UPDATE`**(나중 것이 맞다),
+          **중복 알림이면 `DO NOTHING`**(앞의 것이 이미 맞다). 이것은 코드 문제가 아니라
+          상대와 합의할 일이고, 명세서에 적혀 있어야 한다.
+        example:
+          language: sql
+          code: |-
+            -- 자연 키: (sales_date, receipt_no)
+            create table devpilot.pos_sale (
+                sales_date  date   not null,
+                receipt_no  text   not null,
+                pay_method  text   not null,
+                amount      bigint not null,
+                updated_at  timestamptz not null,
+                primary key (sales_date, receipt_no)
+            );
+
+            -- 재전송 = 정정. 나중 것이 맞다
+            insert into devpilot.pos_sale
+                   (sales_date, receipt_no, pay_method, amount, updated_at)
+            values (:salesDate, :receiptNo, :payMethod, :amount, :now)
+            on conflict (sales_date, receipt_no) do update
+               set pay_method = excluded.pay_method,
+                   amount     = excluded.amount,
+                   updated_at = excluded.updated_at;
+          output: |-
+            첫 전송   → insert                       amount=45000
+            재전송    → 같은 키 충돌 → do update      amount=45000 (또는 정정된 값)
+            결과      → 두 번 보내도 한 줄. 정산이 두 배가 되지 않는다
+          note: |-
+            `do update` 쪽에 `sales_date`와 `receipt_no`를 다시 쓰지 않는다 — 키는 그대로이므로 바꿀 것이 없다.
+            그리고 `do update`를 쓰려면 `on conflict (...)`로 대상을 **반드시** 적어야 한다.
+            문서가 그렇게 정해 두었다.
+        predict:
+          question: |-
+            `on conflict do update` 를 쓰는데 `on conflict` 뒤에 대상 컬럼을 적지 않으면 어떻게 되나요?
+          choices:
+            - 오류다. DO UPDATE 는 conflict_target 을 반드시 줘야 한다
+            - 모든 제약에 대해 동작한다
+            - 첫 번째 유일 인덱스가 자동으로 쓰인다
+          answer: 오류다. DO UPDATE 는 conflict_target 을 반드시 줘야 한다
+          explanation: |-
+            문서가 둘을 구분해 적어 두었다 — `DO NOTHING`은 대상을 생략할 수 있고
+            그때 "사용 가능한 모든 제약에 대한 충돌이 처리"되지만,
+            `DO UPDATE`는 대상을 "반드시 제공해야 한다". 어느 행을 고칠지 정해지지 않으면 갱신할 수 없기 때문이다.
+        complete:
+          question: 재전송을 정정으로 처리하는 문장의 빈칸을 채우세요.
+          code: |-
+            insert into devpilot.pos_sale (sales_date, receipt_no, amount, updated_at)
+            values (:salesDate, :receiptNo, :amount, :now)
+            on conflict (sales_date, receipt_no) do update
+               set amount = ___.amount,
+                   updated_at = ___.updated_at;
+          answers:
+            - [excluded]
+            - [excluded]
+          explanation: |-
+            `excluded`는 "삽입하려던 행"을 가리키는 특별한 이름이다.
+            그냥 `amount = amount`로 쓰면 기존 값을 자기 자신으로 덮는 것이라 아무것도 바뀌지 않는다.
+            새로 온 값을 쓰려면 `excluded.amount`여야 한다.
+        problem:
+          prompt: |-
+            POS 매출 적재를 재실행에 안전하게 만드세요.
+
+            상황 두 가지를 모두 다뤄야 합니다.
+            (가) 담당자가 같은 영업일 파일을 정정해서 다시 보냈다 — 나중 것이 맞다
+            (나) 우리 배치가 절반 처리하다 죽어서 다시 돌렸다 — 앞의 절반이 이미 들어가 있다
+
+            (나)에서 이미 들어간 절반을 지우고 다시 넣는 방식은 쓰지 마세요.
+            그 사이에 정산이 그 데이터를 읽을 수 있습니다.
+          deliverables:
+            - 자연 키 선택과 그 이유
+            - 적재 SQL (가·나 둘 다 안전한지 설명)
+            - 삭제 후 재삽입을 쓰지 않는 이유
+            - 정정으로 줄이 사라진 경우(앞 파일에 있던 영수증이 새 파일에 없다)의 처리
+          hints:
+            - 두 상황 모두 "같은 키가 다시 온다"입니다. 하나의 방법으로 둘 다 됩니다.
+            - 지우고 넣는 사이에 다른 트랜잭션이 그 구간을 읽으면 매출이 0으로 보입니다.
+            - 새 파일에 없는 영수증은 취소일 수도 있고 상대의 실수일 수도 있습니다. 어느 쪽인지 우리가 정할 수 없습니다.
+          modelAnswer: |-
+            **자연 키**
+
+            `(sales_date, receipt_no)`. 영수증 번호는 매장에서 한 거래에 하나뿐이고,
+            영업일과 묶으면 날짜가 바뀌어도 충돌하지 않는다.
+            줄 번호를 키로 쓰면 정정 파일에서 순서가 바뀌는 순간 다른 거래로 취급된다.
+
+            **적재**
+
+            ```sql
+            insert into devpilot.pos_sale
+                   (sales_date, receipt_no, pay_method, amount, updated_at)
+            values (:salesDate, :receiptNo, :payMethod, :amount, :now)
+            on conflict (sales_date, receipt_no) do update
+               set pay_method = excluded.pay_method,
+                   amount     = excluded.amount,
+                   updated_at = excluded.updated_at;
+            ```
+
+            (가) 정정 재전송 — 같은 키가 충돌해 `do update`로 나중 값이 남는다.
+            (나) 배치 재실행 — 이미 들어간 절반은 같은 값으로 덮어써지므로 결과가 달라지지 않고,
+            안 들어간 절반은 새로 삽입된다. **한 문장이 두 상황을 함께 해결한다.**
+
+            **왜 삭제 후 재삽입을 쓰지 않나**
+
+            `delete` 와 `insert` 사이에 그 영업일 매출이 **0건인 순간**이 생긴다.
+            그 사이에 정산 조회가 들어오면 매출이 없는 것으로 읽힌다.
+            한 트랜잭션으로 묶어도 다른 트랜잭션의 격리 수준에 따라 보일 수 있고,
+            무엇보다 삭제된 줄은 복구할 수 없다. upsert 는 그 빈 구간을 만들지 않는다.
+
+            **정정으로 줄이 사라진 경우**
+
+            앞 파일에 있던 영수증이 새 파일에 없다면 우리가 지울 수는 없다 —
+            취소인지 상대의 누락인지 우리는 모른다.
+            그래서 **격리 목록에 "사라진 영수증"으로 남기고 담당자에게 확인을 요청한다.**
+            명세서에 이 경우의 규칙(취소는 별도 항목으로 보낸다 등)을 추가하는 것이 근본 해결이다.
+          selfChecks:
+            - 자연 키를 고르고 줄 번호를 쓰지 않은 이유를 적었는가
+            - 한 문장으로 정정 재전송과 배치 재실행이 모두 안전해지는지 설명했는가
+            - 삭제 후 재삽입이 만드는 빈 구간을 지적했는가
+            - 사라진 줄을 우리가 임의로 지우지 않고 사람에게 넘겼는가
+    commonMistakes:
+      - 깨진 바이트를 `new String(bytes, UTF_8)` 로 읽는다. 예외가 나지 않고 대체 문자가 저장되므로, 몇 달 뒤 검색이 안 된다는 연락을 받고서야 알게 된다.
+      - 모르는 코드값을 `null` 로 저장하거나 그 줄을 버린다. 둘 다 원본이 남지 않아 복구할 수 없고, 데이터가 빠진 사실 자체가 드러나지 않는다.
+      - 재적재를 `delete` 후 `insert` 로 한다. 그 사이에 매출이 0건으로 보이는 구간이 생기고, 지운 줄은 되돌릴 수 없다.
+    inProject: |-
+      주문 시스템에서 이 노트가 그대로 쓰이는 자리는 POS 매출 적재다.
+      읽기(엄격한 디코딩) → 변환(매핑 표 + 격리) → 적재(자연 키 upsert) 세 단계를 나눠 만들고,
+      격리 목록을 볼 화면 하나를 둔다. 목록이 없으면 격리는 버리는 것과 같다.
+    sources:
+      - title: PostgreSQL 16 — INSERT (ON CONFLICT)
+        url: https://www.postgresql.org/docs/16/sql-insert.html
+        versionScope: PostgreSQL 16
+      - title: Java SE 25 API — java.lang.String
+        url: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/String.html
+        versionScope: Java 25
+      - title: RFC 4180 — Common Format and MIME Type for Comma-Separated Values (CSV) Files
+        url: https://www.rfc-editor.org/rfc/rfc4180
+        versionScope: CSV
+    verifiedAt: 2026-09-30

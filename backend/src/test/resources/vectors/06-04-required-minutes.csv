@@ -1,0 +1,5 @@
+# source: 06 §4.2, rows: 3
+id,target,planning,step,expectedRequired
+V01,4|4|4|3,2|1|3|3,120,608
+V02,3|3|3|2,3|3|3|2,150,0
+V03,4|4|3|3,0|0|0|0,90,994

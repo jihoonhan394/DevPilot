@@ -68,6 +68,12 @@ public class ProblemDetailFactory {
         return message;
     }
 
+    /** 임의 문구 키. 없으면 {@code error.<CODE>} 문구. */
+    public String message(String key, ErrorCode fallback) {
+        String message = messageSource.getMessage(key, null, null, MESSAGE_LOCALE);
+        return message != null ? message : detail(fallback);
+    }
+
     /** {@code validation.<code>} 문구. 없으면 {@code validation.DEFAULT}. */
     public String validationMessage(String code) {
         String fallback = messageSource.getMessage("validation.DEFAULT", null, MESSAGE_LOCALE);

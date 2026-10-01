@@ -1,0 +1,77 @@
+# source: 06 §5.10 "재현 과제" RE-1~RE-4, rows: 11
+# min-days-after = 3, max-days-after = 7, max-attempts = 2, today = 2026-10-20.
+# originals[]는 완료된 CHALLENGE·PROJECT_TASK, redos[]는 그 원본을 가리키는 REDO 과제다.
+# expected 는 skill 하나당 하나씩 남은 원본의 id 목록 (없으면 빈 목록).
+vectors:
+  - id: RE-V1
+    case: 완료 3일 뒤 — minDaysAfter 경계를 포함한다
+    originals:
+      - { id: T1, skill: S, type: CHALLENGE, completedOn: "2026-10-17", estimated: 35, difficulty: 2 }
+    redos: []
+    expected: [T1]
+  - id: RE-V2
+    case: 완료 2일 뒤 — 아직 창이 열리지 않았다
+    originals:
+      - { id: T1, skill: S, type: CHALLENGE, completedOn: "2026-10-18", estimated: 35, difficulty: 2 }
+    redos: []
+    expected: []
+  - id: RE-V3
+    case: 완료 7일 뒤 — maxDaysAfter 경계를 포함한다
+    originals:
+      - { id: T1, skill: S, type: PROJECT_TASK, completedOn: "2026-10-13", estimated: 30 }
+    redos: []
+    expected: [T1]
+  - id: RE-V4
+    case: 완료 8일 뒤 — 창이 닫혔다
+    originals:
+      - { id: T1, skill: S, type: PROJECT_TASK, completedOn: "2026-10-12", estimated: 30 }
+    redos: []
+    expected: []
+  - id: RE-V5
+    case: 실패한 재현이 1회 — lastAttemptDate가 그날로 밀려 창이 다시 열린다
+    originals:
+      - { id: T1, skill: S, type: CHALLENGE, completedOn: "2026-10-05", estimated: 35, difficulty: 2 }
+    redos:
+      - { source: T1, status: COMPLETED, completedOn: "2026-10-16", withoutAi: false }
+    expected: [T1]
+  - id: RE-V6
+    case: 실패한 재현이 2회 — 시도 상한에 이르렀다
+    originals:
+      - { id: T1, skill: S, type: CHALLENGE, completedOn: "2026-10-05", estimated: 35, difficulty: 2 }
+    redos:
+      - { source: T1, status: COMPLETED, completedOn: "2026-10-16", withoutAi: false }
+      - { source: T1, status: COMPLETED, completedOn: "2026-10-17", withoutAi: false }
+    expected: []
+  - id: RE-V7
+    case: AI 없이 끝낸 재현이 있다 — 그 원본은 확인이 끝났다
+    originals:
+      - { id: T1, skill: S, type: CHALLENGE, completedOn: "2026-10-05", estimated: 35, difficulty: 2 }
+    redos:
+      - { source: T1, status: COMPLETED, completedOn: "2026-10-16", withoutAi: true }
+    expected: []
+  - id: RE-V8
+    case: 열려 있는 재현이 있다 — 그것부터 하면 된다
+    originals:
+      - { id: T1, skill: S, type: CHALLENGE, completedOn: "2026-10-16", estimated: 35, difficulty: 2 }
+    redos:
+      - { source: T1, status: PLANNED }
+    expected: []
+  - id: RE-V9
+    case: skill이 없는 원본 — 증거를 붙일 자리가 없다
+    originals:
+      - { id: T1, skill: null, type: CHALLENGE, completedOn: "2026-10-16", estimated: 35, difficulty: 2 }
+    redos: []
+    expected: []
+  - id: RE-V10
+    case: 같은 skill에 둘 — lastAttemptDate가 이른 쪽만 넘긴다
+    originals:
+      - { id: T1, skill: S, type: CHALLENGE, completedOn: "2026-10-15", estimated: 35, difficulty: 2 }
+      - { id: T2, skill: S, type: PROJECT_TASK, completedOn: "2026-10-16", estimated: 30 }
+    redos: []
+    expected: [T1]
+  - id: RE-V11
+    case: 예산을 넘는 후보도 창 안에 남는다 — 자르는 것은 §5.6이다
+    originals:
+      - { id: T1, skill: S, type: CHALLENGE, completedOn: "2026-10-17", estimated: 60, difficulty: 3 }
+    redos: []
+    expected: [T1]

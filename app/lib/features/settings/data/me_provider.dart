@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:devpilot_app/core/api/api_enums.dart';
 import 'package:devpilot_app/core/api/api_exception.dart';
 import 'package:devpilot_app/core/auth/auth_controller.dart';
 import 'package:devpilot_app/core/auth/profile_refresh_signal.dart';
@@ -49,6 +50,12 @@ final class MeController extends AsyncNotifier<MeResponse> {
 }
 
 final meProvider = AsyncNotifierProvider<MeController, MeResponse>(MeController.new);
+
+/// `GET /me.aiStatus`: drives every AI button, banner and note (docs/02 §6.5). Re-read with the
+/// profile, also right after AI 429/503 answers. `unknown` until the profile is loaded.
+final aiStatusProvider = Provider<AiStatus>(
+  (ref) => ref.watch(meProvider.select((me) => me.value?.aiStatus)) ?? AiStatus.unknown,
+);
 
 /// The user's IANA zone for showing instants (docs/02 §6.6).
 final userTimeZoneProvider = Provider<String>(

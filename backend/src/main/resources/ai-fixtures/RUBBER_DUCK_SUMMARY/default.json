@@ -1,0 +1,28 @@
+{
+  "description": "gap 1, confirmed 1 (local·demo)",
+  "attempts": [
+    {
+      "finishReason": "completed",
+      "output": {
+        "gaps": [
+          {
+            "conceptKey": "SPRING.TRANSACTION.BOUNDARY",
+            "whatWasMissed": "읽기 전용 조회에도 트랜잭션 경계가 필요한 이유는 아직 정리되지 않았습니다.",
+            "whyItMatters": "경계를 모르면 지연 로딩과 커넥션 반환 시점을 예측할 수 없습니다.",
+            "reviewQuestion": "조회만 하는 메서드에 트랜잭션을 여는 이유를 설명해 보세요."
+          }
+        ],
+        "confirmed": [
+          "컨트롤러에 규칙이 없다는 점을 스스로 짚었다"
+        ],
+        "overallNote": "계층의 목적은 잡았고, 트랜잭션 경계가 다음 차례다."
+      },
+      "usage": {
+        "inputTokens": 3500,
+        "cachedTokens": 0,
+        "outputTokens": 1200,
+        "reasoningTokens": 700
+      }
+    }
+  ]
+}

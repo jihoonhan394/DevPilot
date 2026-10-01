@@ -14,6 +14,11 @@ abstract class SideProjectView with _$SideProjectView {
     String? repoUrl,
     String? stack,
     @JsonKey(unknownEnumValue: SideProjectStatus.unknown) required SideProjectStatus status,
+
+    /// 지금 만드는 것 / 지난 경험. S3 이전 서버는 보내지 않아 `side`로 읽는다.
+    @JsonKey(unknownEnumValue: SideProjectKind.unknown)
+    @Default(SideProjectKind.side)
+    SideProjectKind kind,
     required DateTime createdAt,
     required DateTime updatedAt,
     required int version,
@@ -30,6 +35,9 @@ abstract class SideProjectCreateRequest with _$SideProjectCreateRequest {
     String? description,
     String? repoUrl,
     String? stack,
+
+    /// 생략하면 서버가 `SIDE`로 둔다 (docs/05 §19.2).
+    @JsonKey(includeIfNull: false) SideProjectKind? kind,
   }) = _SideProjectCreateRequest;
 
   factory SideProjectCreateRequest.fromJson(Map<String, Object?> json) =>
@@ -46,6 +54,7 @@ abstract class SideProjectPatchRequest with _$SideProjectPatchRequest {
     @JsonKey(includeIfNull: false) String? repoUrl,
     @JsonKey(includeIfNull: false) String? stack,
     @JsonKey(includeIfNull: false) SideProjectStatus? status,
+    @JsonKey(includeIfNull: false) SideProjectKind? kind,
     required int version,
   }) = _SideProjectPatchRequest;
 

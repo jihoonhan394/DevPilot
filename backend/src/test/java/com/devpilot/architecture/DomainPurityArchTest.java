@@ -28,11 +28,29 @@ import org.springframework.stereotype.Service;
 @UnitTest
 class DomainPurityArchTest {
 
-    /** ARCH-12 규칙 클래스 (S1). 중첩 입력·출력 record는 이름 접두사로 함께 잡힌다. */
+    /** ARCH-12 규칙 클래스 (S1~S3). 중첩 입력·출력 record는 이름 접두사로 함께 잡힌다. */
     static final List<String> RULE_CLASSES =
             List.of(
                     "com.devpilot.skill.domain.PlanningLevelPolicy",
-                    "com.devpilot.plan.domain.PlanTemplatePlacement");
+                    "com.devpilot.plan.domain.PlanTemplatePlacement",
+                    "com.devpilot.plan.domain.StudyBudgetCalculator",
+                    "com.devpilot.plan.domain.DeadlineRiskEvaluator",
+                    "com.devpilot.plan.domain.ReplanSuggestionPolicy",
+                    "com.devpilot.today.domain.PlannerScoring",
+                    "com.devpilot.today.domain.TaskProposalPolicy",
+                    "com.devpilot.today.domain.TimeAllocator",
+                    "com.devpilot.today.domain.ReasonTemplates",
+                    "com.devpilot.learning.domain.ComebackModePolicy",
+                    "com.devpilot.review.domain.FinalRatingPolicy",
+                    "com.devpilot.review.domain.RuleBasedV1Scheduler",
+                    "com.devpilot.review.domain.DueReviewSelector",
+                    "com.devpilot.rubberduck.domain.RubberDuckPolicy",
+                    "com.devpilot.learning.domain.RubricScorer",
+                    "com.devpilot.learning.domain.HintLadderPolicy",
+                    "com.devpilot.skill.domain.SkillLevelRules",
+                    "com.devpilot.training.domain.AttemptOutcomeCalculator",
+                    "com.devpilot.training.domain.ReviewScheduleRule",
+                    "com.devpilot.training.domain.RetryPolicy");
 
     private static final Set<String> FLOATING_TYPES =
             Set.of("double", "float", "java.lang.Double", "java.lang.Float");

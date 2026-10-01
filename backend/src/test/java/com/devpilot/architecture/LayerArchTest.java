@@ -160,6 +160,9 @@ class LayerArchTest {
                 .haveSimpleNameEndingWith("Service")
                 .orShould()
                 .haveSimpleName("SkillStateUpdater")
+                .orShould()
+                // docs/03 §3 project 행이 정한 이름 (기록 → Markdown, docs/05 §19.13)
+                .haveSimpleName("SideProjectNoteExporter")
                 .because("ARCH-20: *Service, *QueryService or a docs/03 §3 name")
                 .check(ArchitectureClasses.main());
     }

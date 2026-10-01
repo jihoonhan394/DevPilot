@@ -3,8 +3,6 @@ package com.devpilot.onboarding.application;
 import com.devpilot.goal.application.LearningGoalCommand;
 import com.devpilot.project.application.SideProjectService;
 import com.devpilot.skill.domain.SkillCategory;
-import com.devpilot.user.domain.ExperienceProfile;
-import java.time.LocalDate;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -20,8 +18,6 @@ public record OnboardingCommand(
         int dayStartHour,
         int weekdayStudyMinutes,
         int weekendStudyMinutes,
-        ExperienceProfile experienceProfile,
-        @Nullable LocalDate experienceStartDate,
         LearningGoalCommand learningGoal,
         boolean runDiagnostic,
         List<SelfAssessment> selfAssessments,

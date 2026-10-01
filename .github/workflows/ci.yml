@@ -2,7 +2,8 @@
 # 기준: docs/10-deployment-and-operations.md §7.1 (2026-09-18)
 # 필수 status check (branch protection, main·developer 둘 다): security, backend, app, content
 # 단계 순서·실패 기준: docs/09-test-and-quality.md §14.1, docs/07-security-and-privacy.md §11
-# S0 보안 도구 = gitleaks + actions SHA 고정 검사 (+ dependabot.yml). Trivy·CodeQL·image digest 고정은 S2 P1 (docs/10 §7.4)
+# 보안 도구 = gitleaks + actions SHA 고정 검사 + Trivy fs(lockfile) (+ dependabot.yml). CodeQL은 codeql.yml,
+# Trivy image는 release.yml (docs/07 §11, docs/10 §7.4)
 name: ci
 
 on:
@@ -41,6 +42,45 @@ jobs:
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # .trivyignore 항목은 exp:YYYY-MM-DD(최대 30일)를 가져야 하고, 만료된 항목이 있으면 실패한다 (docs/07 §11.2)
+      - name: trivyignore expiry
+        run: |
+          set -euo pipefail
+          [ -f .trivyignore ] || { echo "no .trivyignore"; exit 0; }
+          today=$(date -u +%F)
+          status=0
+          while IFS= read -r line; do
+            case "$line" in ''|'#'*) continue ;; esac
+            exp=$(printf '%s\n' "$line" | grep -oE 'exp:[0-9]{4}-[0-9]{2}-[0-9]{2}' | cut -d: -f2 || true)
+            if [ -z "$exp" ]; then
+              echo "::error::.trivyignore entry without exp: $line"; status=1
+            elif [[ "$exp" < "$today" ]]; then
+              echo "::error::.trivyignore entry expired ($exp): $line"; status=1
+            fi
+          done < .trivyignore
+          exit "$status"
+      # 의존성 lockfile 스캔: 수정 버전이 있는 CRITICAL/HIGH가 있으면 실패 (docs/07 §11.2 trivy-fs)
+      - name: trivy fs (backend/gradle.lockfile)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: backend/gradle.lockfile
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+          trivyignores: .trivyignore
+      - name: trivy fs (app/pubspec.lock)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: app/pubspec.lock
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+          trivyignores: .trivyignore
+          skip-setup-trivy: true
 
   backend:
     name: backend

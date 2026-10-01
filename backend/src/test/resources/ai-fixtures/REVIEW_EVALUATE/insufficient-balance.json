@@ -1,0 +1,8 @@
+{
+  "description": "402",
+  "attempts": [
+    {
+      "simulate": "INSUFFICIENT_BALANCE"
+    }
+  ]
+}

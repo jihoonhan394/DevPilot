@@ -1,6 +1,7 @@
 package com.devpilot.onboarding.presentation;
 
 import com.devpilot.project.application.SideProjectService;
+import com.devpilot.project.domain.SideProjectKind;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.jspecify.annotations.Nullable;
@@ -16,6 +17,8 @@ public record SideProjectInput(
         @Nullable @Size(max = 300) String stack) {
 
     SideProjectService.NewSideProjectCommand toCommand() {
-        return new SideProjectService.NewSideProjectCommand(name, description, repoUrl, stack);
+        // 온보딩에서 만드는 것은 지금 만들 프로젝트다 — 지난 경험은 나중에 목록에서 분류를 바꾼다
+        return new SideProjectService.NewSideProjectCommand(
+                name, description, repoUrl, stack, SideProjectKind.SIDE);
     }
 }

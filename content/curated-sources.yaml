@@ -59,7 +59,7 @@ sources:
     publisher: PostgreSQL Global Development Group
     versionScope: PostgreSQL 16
     claim: 복합 B-tree 인덱스는 컬럼의 어떤 부분집합 조건에도 쓰일 수 있지만 선두(가장 왼쪽) 컬럼에 조건이 있을 때 가장 효율적이다.
-    verifiedAt: 2026-09-17
+    verifiedAt: 2026-09-19
   - id: CS-OWASP-SQL-INJECTION-PREVENTION
     title: OWASP Cheat Sheet Series — SQL Injection Prevention Cheat Sheet
     url: https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
@@ -74,3 +74,79 @@ sources:
     versionScope: 버전 없음 (2026-09-17 기준 내용)
     claim: 세션 식별자, 액세스 토큰, 인증 비밀번호, 암호화 키, 결제 정보, 민감한 개인정보는 로그에 직접 기록하지 않고 제거·마스킹·해시·암호화한다.
     verifiedAt: 2026-09-17
+  # ------------------------------------------------------------------------
+  # 개념 읽기 (2026-09-19 소스 점검). 스키마에 skill 필드가 없어 대상 skill은 주석으로 적는다.
+  # DEVOPS.GIT(Pro Git, git-scm.com)은 호스트가 trusted-source-hosts에 없어 넣지 않았다 (CV-71)
+  # ------------------------------------------------------------------------
+  # DATABASE.SQL_BASICS
+  - id: CS-POSTGRESQL-OUTER-JOIN
+    title: PostgreSQL 16 Documentation — 7.2 Table Expressions (Joined Tables)
+    url: https://www.postgresql.org/docs/16/queries-table-expressions.html
+    publisher: PostgreSQL Global Development Group
+    versionScope: PostgreSQL 16
+    claim: LEFT OUTER JOIN은 먼저 내부 조인을 한 뒤, 오른쪽 테이블의 어떤 행과도 조인 조건을 만족하지 않는 왼쪽 행마다 오른쪽 열을 null로 채운 행을 더한다. 그래서 결과에는 왼쪽 테이블의 각 행이 적어도 한 번 나온다.
+    verifiedAt: 2026-09-19
+  # DATABASE.SQL_BASICS
+  - id: CS-POSTGRESQL-WHERE-VS-HAVING
+    title: PostgreSQL 16 Documentation — 2.7 Aggregate Functions
+    url: https://www.postgresql.org/docs/16/tutorial-agg.html
+    publisher: PostgreSQL Global Development Group
+    versionScope: PostgreSQL 16
+    claim: WHERE는 그룹과 집계를 계산하기 전에 입력 행을 골라 어떤 행이 집계에 들어갈지 정하고, HAVING은 그룹과 집계를 계산한 뒤 그룹 행을 고른다.
+    verifiedAt: 2026-09-19
+  # DATABASE.INDEX
+  - id: CS-POSTGRESQL-INDEX-WRITE-COST
+    title: PostgreSQL 16 Documentation — 11.1 Indexes Introduction
+    url: https://www.postgresql.org/docs/16/indexes-intro.html
+    publisher: PostgreSQL Global Development Group
+    versionScope: PostgreSQL 16
+    claim: 인덱스를 만든 뒤에는 시스템이 인덱스를 테이블과 동기화해야 하므로 데이터 변경 작업에 부담이 더해지고, 조회에 거의 쓰이지 않는 인덱스는 지워야 한다.
+    verifiedAt: 2026-09-19
+  # WEB_HTTP.HTTP_BASICS
+  - id: CS-RFC9110-SAFE-IDEMPOTENT-METHODS
+    title: RFC 9110 HTTP Semantics — 9.2.1 Safe Methods, 9.2.2 Idempotent Methods
+    url: https://www.rfc-editor.org/rfc/rfc9110.html#name-idempotent-methods
+    publisher: IETF (RFC Editor)
+    versionScope: RFC 9110 (2022-06)
+    claim: 안전한 메서드는 정의상 본질적으로 읽기 전용이고, 멱등 메서드는 같은 요청을 여러 번 보내도 서버에 의도한 효과가 한 번 보낸 것과 같다. RFC 9110이 정의한 메서드 중 PUT, DELETE와 안전한 메서드가 멱등이다.
+    verifiedAt: 2026-09-19
+  # WEB_HTTP.HTTP_BASICS
+  - id: CS-MDN-HTTP-STATUS-CLASSES
+    title: MDN Web Docs — HTTP response status codes
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status
+    publisher: Mozilla (MDN Web Docs)
+    versionScope: 버전 없음 (2026-09-19 기준 내용)
+    claim: HTTP 응답 상태 코드는 정보(100–199), 성공(200–299), 리다이렉션(300–399), 클라이언트 오류(400–499), 서버 오류(500–599)의 다섯 가지로 나뉜다.
+    verifiedAt: 2026-09-19
+  # PRACTICAL_ENGINEERING.LOGGING
+  - id: CS-SPRING-BOOT-LOGGING-DEFAULTS
+    title: Spring Boot Reference — Logging
+    url: https://docs.spring.io/spring-boot/4.1/reference/features/logging.html
+    publisher: Spring (Broadcom)
+    versionScope: Spring Boot 4.1.x
+    claim: 스타터를 쓰면 기본 로깅 구현은 Logback이고, 기본 설정의 Spring Boot는 콘솔에만 로그를 쓰며 로그 파일은 만들지 않는다.
+    verifiedAt: 2026-09-19
+  # PRACTICAL_ENGINEERING.NULL_BOUNDARY
+  - id: CS-JAVA-OPTIONAL-RETURN-TYPE
+    title: java.util.Optional (Java SE 25 & JDK 25 API)
+    url: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Optional.html
+    publisher: Oracle
+    versionScope: Java SE 25
+    claim: Optional은 주로 결과 없음을 표현할 분명한 필요가 있고 null을 쓰면 오류가 나기 쉬운 메서드 반환 타입에 쓰도록 의도되었으며, Optional 타입의 변수 자체는 절대 null이면 안 된다.
+    verifiedAt: 2026-09-19
+  # PRACTICAL_ENGINEERING.NULL_BOUNDARY
+  - id: CS-JAVA-OBJECTS-REQUIRE-NON-NULL
+    title: java.util.Objects (Java SE 25 & JDK 25 API) — requireNonNull
+    url: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/Objects.html
+    publisher: Oracle
+    versionScope: Java SE 25
+    claim: Objects.requireNonNull은 주로 메서드와 생성자에서 매개변수를 검증하도록 설계되었고, 인자가 null이면 NullPointerException을 던진다.
+    verifiedAt: 2026-09-19
+  # PRACTICAL_ENGINEERING.NULL_BOUNDARY
+  - id: CS-OPENJDK-JEP358-HELPFUL-NPE
+    title: "JEP 358: Helpful NullPointerExceptions"
+    url: https://openjdk.org/jeps/358
+    publisher: OpenJDK
+    versionScope: JDK 14 이상 (JEP 358, Release 14)
+    claim: JVM이 만드는 NullPointerException의 메시지가 어떤 변수가 null이었는지 정확히 설명하도록 개선했다.
+    verifiedAt: 2026-09-19

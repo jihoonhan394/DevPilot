@@ -6,6 +6,7 @@ import 'package:devpilot_app/features/plan/data/learning_goal_repository.dart';
 import 'package:devpilot_app/features/plan/data/plan_models.dart';
 import 'package:devpilot_app/features/plan/data/plan_repository.dart';
 import 'package:devpilot_app/features/plan/domain/milestone_ordering.dart';
+import 'package:devpilot_app/features/plan/presentation/budget_risk_card.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// What SCR-PLAN shows: the active plan (null = `PLAN_NOT_FOUND` empty state) and the goal dates
@@ -85,8 +86,11 @@ final class PlanController extends AsyncNotifier<PlanScreenData> {
     }
   }
 
-  /// Re-reads everything while the current data stays on screen.
-  void reload() => ref.invalidateSelf();
+  /// Re-reads everything, the budget card included, while the current data stays on screen.
+  void reload() {
+    ref.invalidate(activeBudgetProvider);
+    ref.invalidateSelf();
+  }
 
   /// Shows the plan version saved by SCR-REPLAN without another request.
   ///
@@ -99,6 +103,8 @@ final class PlanController extends AsyncNotifier<PlanScreenData> {
       return;
     }
     final mapper = MilestoneIdMapper(response.milestoneIdMapping);
+    // The new version has its own budget and risk.
+    ref.invalidate(activeBudgetProvider);
     state = AsyncData(
       PlanScreenData(
         plan: response.plan,

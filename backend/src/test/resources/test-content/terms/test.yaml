@@ -1,0 +1,69 @@
+# 테스트 전용 용어 사전 (docs/19 §3.10). 은퇴한 용어를 한 건 두어 CV-105 경로를 덮는다.
+# 본문은 운영 콘텐츠가 아니라 길이·형식 검사(CV-101·CV-102·CV-106)를 넘기기 위한 최소 문장이다.
+terms:
+  - key: TERM.DATABASE.INDEX
+    representative: 인덱스
+    english: index
+    aliases: [색인]
+    definition: |-
+      찾을 행의 자리를 미리 정렬해 따로 만들어 둔 자료 구조로, 읽기는 빨라지고 쓰기는 느려진다.
+    example: |-
+      주문 목록이 느려서 status와 created_at을 묶어 하나 만들었더니 응답이 크게 줄었다.
+    confusableWith: [TERM.DATABASE.LOCK]
+    skillCodes: [DATABASE.INDEX]
+    level: BASIC
+    sourceUrl: https://www.postgresql.org/docs/16/indexes.html
+    retired: false
+
+  - key: TERM.DATABASE.LOCK
+    representative: 잠금
+    english: lock
+    definition: |-
+      같은 행을 두 작업이 동시에 고치지 못하게 한쪽을 기다리게 만드는 장치다.
+    example: |-
+      재고 차감 구간만 비관적으로 걸어 두 주문이 같은 순간에 들어와도 수량이 음수가 되지 않게 했다.
+    confusableWith: [TERM.DATABASE.INDEX]
+    skillCodes: [DATABASE.INDEX]
+    level: PRACTICAL
+    sourceUrl: https://www.postgresql.org/docs/16/explicit-locking.html
+    retired: false
+
+  - key: TERM.JAVA.CHECKED_EXCEPTION
+    representative: 체크 예외
+    english: checked exception
+    aliases: [검사 예외]
+    definition: |-
+      메서드가 던질 수 있다고 서명에 적어 두어야 하고, 부르는 쪽이 잡거나 다시 던지도록 컴파일러가 강제하는 종류다.
+    example: |-
+      IOException을 그대로 올리자 호출부마다 throws가 번져 경계에서 한 번만 감싸기로 했다.
+    confusableWith: []
+    skillCodes: [JAVA.EXCEPTION]
+    level: BASIC
+    sourceUrl: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Exception.html
+    retired: false
+
+  - key: TERM.WEB_HTTP.IDEMPOTENCY
+    representative: 멱등성
+    english: idempotency
+    definition: |-
+      같은 요청을 한 번 보내든 여러 번 보내든 서버에 남는 결과가 달라지지 않는 성질이다.
+    example: |-
+      결제 요청에 키를 붙여 응답을 못 받고 다시 보내도 두 번 처리되지 않게 했다.
+    confusableWith: []
+    skillCodes: [WEB_HTTP.HTTP_BASICS]
+    level: PRACTICAL
+    sourceUrl: https://www.rfc-editor.org/rfc/rfc9110.html
+    retired: false
+
+  - key: TERM.TESTING.OLD_WORD
+    representative: 옛 표기
+    english: retired word
+    definition: |-
+      더 쓰지 않기로 한 말이지만 이미 만든 복습 카드가 가리키고 있어 파일에는 그대로 남겨 둔 항목이다.
+    example: |-
+      검색 결과에서는 빠지지만 이미 카드를 만든 사람은 뜻을 다시 열어 볼 수 있다.
+    confusableWith: []
+    skillCodes: [TESTING.JUNIT]
+    level: BASIC
+    sourceUrl: https://junit.org/junit5/docs/current/user-guide/
+    retired: true

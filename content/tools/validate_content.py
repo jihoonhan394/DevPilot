@@ -36,12 +36,16 @@ except ImportError:  # pragma: no cover
 # ---------------------------------------------------------------------------
 SKILL_CATEGORIES = [
     "JAVA", "SPRING", "DATABASE", "WEB_HTTP", "NETWORK", "CS", "ALGORITHM",
-    "TESTING", "DEVOPS", "SECURITY", "PRACTICAL_ENGINEERING", "SYSTEM_DESIGN", "EXPLANATION",
+    "TESTING", "DEVOPS", "SECURITY", "INTEGRATION", "PRACTICAL_ENGINEERING", "SYSTEM_DESIGN",
+    "EXPLANATION",
 ]
-TARGET_ROLES = {"JAVA_BACKEND"}
+TARGET_ROLES = {"JAVA_BACKEND", "JAVA_BACKEND_STARTER", "INTEGRATION_ENGINEER"}
 PRIORITIES = ["MUST", "SHOULD", "LATER"]
 REVIEW_TYPES = {"RECALL", "BUG_SPOT", "EXPLAIN", "CHOICE"}
 CHALLENGE_PURPOSES = {"PRACTICE", "DIAGNOSTIC"}
+# docs/04 §3 TaskType. 체크리스트가 어떤 과제에 붙는지 정하는 값이다 (docs/19 §3.11)
+TASK_TYPES = {"READING", "READ_CODE", "CHALLENGE", "PROJECT_TASK", "EXPLAIN", "REVIEW",
+              "RECALL", "REDO"}
 RUBRIC_AXES = {"IMPLEMENTATION", "EXPLANATION", "DEBUGGING"}
 HINT_KEYS = ["QUESTION_ONLY", "CONCEPT_HINT", "DIRECTION"]
 PHASES = ["PREPARATION", "CONSOLIDATION"]
@@ -53,7 +57,9 @@ TRUSTED_SOURCE_HOSTS = [
     "owasp.org", "cheatsheetseries.owasp.org", "www.kisa.or.kr", "supabase.com", "dart.dev",
     "docs.flutter.dev", "api.flutter.dev", "pmd.github.io", "spotbugs.readthedocs.io",
     "checkstyle.org", "junit.org", "hibernate.org", "docs.jboss.org",
-    "developer.mozilla.org", "www.rfc-editor.org",
+    "developer.mozilla.org", "www.rfc-editor.org", "git-scm.com",
+    "spec.openapis.org", "docs.gradle.org", "man7.org", "docs.docker.com",
+    "docs.github.com", "kubernetes.io", "docs.aws.amazon.com",
 ]
 
 # docs/06-learning-engine-rules.md §4.2
@@ -72,6 +78,25 @@ MILESTONE_KEY_RE = re.compile(r"^[A-Z][A-Z0-9_]{2,59}$")
 CURATED_ID_RE = re.compile(r"^CS-[A-Z0-9]+(-[A-Z0-9]+)*$")
 CURATED_REPO_KEY_RE = re.compile(r"^[a-z][a-z0-9-]{1,29}$")
 READING_KEY_RE = re.compile(r"^READ\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\.[0-9]{3}$")
+CONCEPT_READING_KEY_RE = re.compile(r"^DOC\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\.[0-9]{3}$")
+LESSON_KEY_RE = re.compile(r"^LESSON\.[A-Z][A-Z0-9_]*(\.[A-Z][A-Z0-9_]*)*\.[0-9]{3}$")
+# docs/19 §3.9: TIP.<SERIES>.<TOPIC>.NNN
+TIP_KEY_RE = re.compile(r"^TIP\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\.[0-9]{3}$")
+TERM_KEY_RE = re.compile(r"^TERM\.[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*$")
+SENTENCE_END_RE = re.compile(r"[.!?]")
+TIP_SERIES = {"ERROR_READING", "RESOURCE", "LOGGING", "HTTP_INTEGRATION", "DATABASE",
+              "OPERATIONS", "CONVENTION"}
+TIP_LEVELS = {"BASIC", "PRACTICAL"}
+# docs/19 §3.9 length table: field -> (min, max)
+TIP_TEXT_LIMITS = {"title": (5, 80), "symptom": (20, 500), "cause": (40, 800),
+                   "whereToLook": (20, 400), "experiment": (20, 500), "example": (20, 800)}
+
+# docs/19 §3.11: CHK.<A>.<B>[.<C>]
+CHECKLIST_KEY = re.compile(r"^CHK\.[A-Z][A-Z0-9_]*(\.[A-Z][A-Z0-9_]*){1,2}$")
+UNIT_KEY_RE = re.compile(r"^LESSON\.[A-Z][A-Z0-9_.]*\.[0-9]{3}\.U[0-9]{1,2}$")
+# docs/19-content-spec.md §3.1: files.conceptReadings is optional and defaults to this path.
+# The catalog entry lands in P3 together with ConceptReadingRegistry (§3.13).
+DEFAULT_CONCEPT_READINGS = "concept-readings.yaml"
 COMMIT_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 CHOICE_OPTION_RE = re.compile(r"^\s*([A-E])\)\s+\S", re.MULTILINE)
 # review_item concept keys generated at runtime (06 §8.3, coach findings)
@@ -158,6 +183,34 @@ def code_lines(text: str) -> list[str]:
     return hits
 
 
+def fenced_code_lines(text: str) -> list[str]:
+    """Lines inside the first fenced code block (docs/19 §3.9 CV-94)."""
+    lines = text.splitlines()
+    inside = False
+    body = []
+    for line in lines:
+        if line.strip().startswith("```"):
+            if inside:
+                break
+            inside = True
+            continue
+        if inside:
+            body.append(line)
+    return body
+
+
+def walk_strings(path: str, node):
+    """(경로, 문자열) 쌍을 모두 내놓는다 (CV-104). 경로는 보고 위치로 쓴다."""
+    if isinstance(node, str):
+        yield path, node
+    elif isinstance(node, dict):
+        for key, value in node.items():
+            yield from walk_strings(f"{path}.{key}", value)
+    elif isinstance(node, list):
+        for index, item in enumerate(node):
+            yield from walk_strings(f"{path}[{index}]", item)
+
+
 def host_allowed(host: str) -> bool:
     host = (host or "").lower()
     return any(host == h or host.endswith("." + h) for h in TRUSTED_SOURCE_HOSTS)
@@ -203,21 +256,11 @@ def allocate(window_start: dt.date, window_end: dt.date, weights: list[int], min
     return out
 
 
-def place_template(template: dict, today: dt.date, checkpoint, target: dt.date):
-    """Return list of (key, phase, start, end, mode). Precondition: today <= target."""
+def place_template(template: dict, today: dt.date, target: dt.date):
+    """Return list of (key, phase, start, end). One window [today, target] in template order.
+    Precondition: today <= target."""
     ms = template["milestones"]
     min_days = template.get("placement", {}).get("minMilestoneDays", 7)
-    if checkpoint is not None and today < checkpoint:
-        result = []
-        windows = {"PREPARATION": (today, checkpoint - dt.timedelta(days=1)),
-                   "CONSOLIDATION": (checkpoint, target)}
-        for phase in PHASES:
-            group = [m for m in ms if m["phase"] == phase]
-            ws, we = windows[phase]
-            spans = allocate(ws, we, [m["weightBp"] for m in group], min_days)
-            for m, (s, e) in zip(group, spans):
-                result.append((m["key"], phase, s, e))
-        return result
     spans = allocate(today, target, [m["weightBp"] for m in ms], min_days)
     return [(m["key"], m["phase"], s, e) for m, (s, e) in zip(ms, spans)]
 
@@ -228,7 +271,7 @@ def place_template(template: dict, today: dt.date, checkpoint, target: dt.date):
 def validate(content_dir: str):
     res = Result()
     data = {"skills": [], "targets": [], "templates": [], "cards": [], "challenges": [],
-            "sources": [], "repos": [], "readings": [], "catalog": None}
+            "sources": [], "repos": [], "readings": [], "conceptReadings": [], "catalog": None}
 
     # ---- CV-01 catalog -----------------------------------------------------
     catalog = load_yaml(os.path.join(content_dir, "catalog.yaml"), res, "catalog.yaml")
@@ -242,19 +285,24 @@ def validate(content_dir: str):
         res.error("CV-01", "catalog.yaml", "catalogVersion must be an integer >= 1")
     files = catalog.get("files") or {}
     check_keys(files, {"skillTrees", "roleTargets", "planTemplates", "reviewCards", "challenges",
-                       "curatedSources", "curatedRepos"},
+                       "curatedSources", "curatedRepos", "conceptReadings", "lessons",
+                       "checklists", "tips", "terms"},
                {"skillTrees", "roleTargets", "planTemplates", "reviewCards", "challenges",
-                "curatedSources", "curatedRepos"}, res, "catalog.yaml#files")
+                "curatedSources", "curatedRepos", "checklists", "terms"},
+               res, "catalog.yaml#files")
     retired = catalog.get("retired") or {}
     check_keys(retired, {"skillCodes", "challengeSeedKeys", "conceptKeys", "curatedSourceIds",
-                         "readingKeys"},
+                         "readingKeys", "lessonKeys", "tipKeys", "termKeys"},
                {"skillCodes", "challengeSeedKeys", "conceptKeys", "curatedSourceIds",
-                "readingKeys"}, res, "catalog.yaml#retired")
+                "readingKeys", "termKeys"}, res, "catalog.yaml#retired")
     retired_skills = set(retired.get("skillCodes") or [])
     retired_seed = set(retired.get("challengeSeedKeys") or [])
     retired_concepts = set(retired.get("conceptKeys") or [])
     retired_sources = set(retired.get("curatedSourceIds") or [])
     retired_readings = set(retired.get("readingKeys") or [])
+    retired_lessons = set(retired.get("lessonKeys") or [])
+    retired_tips = set(retired.get("tipKeys") or [])
+    retired_terms = set(retired.get("termKeys") or [])
     diag_categories = catalog.get("diagnosticCategories") or []
     for c in diag_categories:
         if c not in SKILL_CATEGORIES:
@@ -270,6 +318,15 @@ def validate(content_dir: str):
     for single in ("curatedSources", "curatedRepos"):
         if isinstance(files.get(single), str):
             listed.append(files[single])
+    # files.conceptReadings is optional and falls back to the default path (docs/19 §3.1, §3.13)
+    concept_readings_rel = files.get("conceptReadings")
+    if not isinstance(concept_readings_rel, str):
+        concept_readings_rel = DEFAULT_CONCEPT_READINGS
+    listed.append(concept_readings_rel)
+    listed.extend(files.get("lessons") or [])
+    listed.extend(files.get("checklists") or [])
+    listed.extend(files.get("tips") or [])
+    listed.extend(files.get("terms") or [])
     if len(set(listed)) != len(listed):
         res.error("CV-02", "catalog.yaml#files", "duplicate file entry")
 
@@ -296,7 +353,7 @@ def validate(content_dir: str):
         for idx, s in enumerate(doc["skills"] or []):
             where = f"{rel}#skills[{idx}]"
             if not check_keys(s, {"code", "name", "category", "parent", "description",
-                                  "minutesPerLevelStep", "prerequisites"},
+                                  "whyItMatters", "minutesPerLevelStep", "prerequisites"},
                               {"code", "name", "category", "description"}, res, where):
                 continue
             code = s["code"]
@@ -346,6 +403,12 @@ def validate(content_dir: str):
             res.error("CV-14", where, "name length 1..200")
         if not str_len_ok(s["description"], 10, 300):
             res.error("CV-14", where, "description length 10..300")
+        # CV-88: 20..200자 한 문장이고 root skill에는 없다. CV-89는 role target을 다 읽은 뒤에 본다.
+        if "whyItMatters" in s:
+            if parent is None:
+                res.error("CV-88", where, "root skill must not have whyItMatters")
+            elif not str_len_ok(s["whyItMatters"], 20, 200):
+                res.error("CV-88", where, "whyItMatters length 20..200")
         mpls = s.get("minutesPerLevelStep", 120)
         # non-root 60 (docs/19 §7.5 "60 미만은 쓰지 않는다", O-11), root 10
         min_step = 60 if parent is not None else 10
@@ -395,6 +458,11 @@ def validate(content_dir: str):
                 stack.append((nxt, iter(sorted(skills_by_code[nxt].get("prerequisites") or []))))
 
     non_root = {c for c, s in skills_by_code.items() if s.get("parent") is not None}
+    # CV-89: 어느 트랙에서든 MUST인 non-root skill에는 whyItMatters가 반드시 있다 (19 §3.2·§7.5)
+    why_it_matters: set[str] = {
+        c for c, s in skills_by_code.items()
+        if s.get("parent") is not None and s.get("whyItMatters")
+    }
 
     # ---- role targets (CV-20..CV-24) --------------------------------------
     targets_by_role: dict[str, dict[str, dict]] = defaultdict(dict)
@@ -447,6 +515,15 @@ def validate(content_dir: str):
         missing = sorted(non_root - set(targets_by_role[role]))
         for sk in missing:
             res.error("CV-21", f"roleTargets[{role}]", f"missing role target for {sk}")
+    # CV-89: MUST인 skill은 과제 카드 맨 위에 붙을 한 문장이 있어야 한다 (19 §7.5)
+    must_anywhere = {
+        sk
+        for targets in targets_by_role.values()
+        for sk, t in targets.items()
+        if t["priority"] == "MUST"
+    }
+    for sk in sorted(must_anywhere - why_it_matters):
+        res.error("CV-89", "skillTrees", f"MUST skill needs whyItMatters: {sk}")
     tgt = targets_by_role["JAVA_BACKEND"]
 
     # CV-18 prerequisite readiness reachability (06 §5.2, §5.4)
@@ -529,10 +606,10 @@ def validate(content_dir: str):
         for ph in PHASES:
             if ph not in phases_seen:
                 res.error("CV-33", rel, f"phase {ph} needs at least one milestone")
-        if doc["targetRole"] == "JAVA_BACKEND":
-            for sk, t in sorted(tgt.items()):
-                if t["priority"] == "MUST" and sk not in skill_seen:
-                    res.error("CV-36", rel, f"MUST skill {sk} is not in any milestone")
+        # CV-36 is per track: every MUST skill of THIS template's role is in a milestone
+        for sk, t in sorted(targets_by_role.get(doc["targetRole"], {}).items()):
+            if t["priority"] == "MUST" and sk not in skill_seen:
+                res.error("CV-36", rel, f"MUST skill {sk} is not in any milestone")
         doc["_skill_milestone"] = skill_seen
     for role in TARGET_ROLES:
         if template_roles[role] != 1:
@@ -715,8 +792,10 @@ def validate(content_dir: str):
             if ch["isTransfer"] is True and is_int(ch["difficulty"]) and ch["difficulty"] < 3:
                 res.error("CV-58", where, "isTransfer=true requires difficulty >= 3")
             if ch["purpose"] == "DIAGNOSTIC":
-                if ch["difficulty"] != 3:
-                    res.error("CV-59", where, "DIAGNOSTIC difficulty must be 3")
+                # ADR-058: 진단은 주장한 수준을 재므로 1~3 사다리를 둔다. 4·5는 진단으로 쓰지 않는다 —
+                # 자기평가 상한이 3이고 그보다 높은 주장은 확인할 대상이 아니다.
+                if ch["difficulty"] not in (1, 2, 3):
+                    res.error("CV-59", where, "DIAGNOSTIC difficulty must be 1, 2 or 3")
                 if is_int(ch["estimatedMinutes"]) and ch["estimatedMinutes"] > 15:
                     res.error("CV-59", where, "DIAGNOSTIC estimatedMinutes must be <= 15")
                 if ch["isTransfer"]:
@@ -725,11 +804,17 @@ def validate(content_dir: str):
                 if len(cats) != 1:
                     res.error("CV-59", where, "DIAGNOSTIC skills must share one category")
                 for s in skills:
-                    t = tgt.get(s)
-                    if t and (t.get("priority") != "MUST" or not isinstance(t.get("importance"), (int, float))
-                              or t["importance"] < DIAGNOSTIC_MIN_IMPORTANCE - 1e-9):
+                    # 어느 한 트랙에서라도 MUST·importance >= 0.70이면 된다 (CV-59). 트랙이 하나이던 때에는
+                    # JAVA_BACKEND만 봐서, 그 트랙에서만 MUST인 category를 진단할 수 없었다.
+                    track_targets = [targets_by_role[r][s] for r in TARGET_ROLES if s in targets_by_role[r]]
+                    ready = any(
+                        t.get("priority") == "MUST"
+                        and isinstance(t.get("importance"), (int, float))
+                        and t["importance"] >= DIAGNOSTIC_MIN_IMPORTANCE - 1e-9
+                        for t in track_targets)
+                    if track_targets and not ready:
                         res.error("CV-59", where,
-                                  f"DIAGNOSTIC skill {s} must be MUST with importance >= 0.70")
+                                  f"DIAGNOSTIC skill {s} must be MUST with importance >= 0.70 in some track")
             elif is_int(ch["difficulty"]) and is_int(ch["estimatedMinutes"]):
                 limit = {1: 20, 2: 30, 3: 40, 4: 60, 5: 90}[ch["difficulty"]]
                 if ch["estimatedMinutes"] > limit:
@@ -775,7 +860,11 @@ def validate(content_dir: str):
                         res.error("CV-72", where, "verifiedAt must be YYYY-MM-DD")
                 data["sources"].append(src)
 
-    # ---- curated repos / readings (CV-80..CV-86) --------------------------
+    # ---- curated repos / readings (CV-80..CV-87) --------------------------
+    # reading keys live in ONE namespace: code readings (READ.*) in curated-repos.yaml and
+    # concept readings (DOC.*) in concept-readings.yaml both land in learning_task.reading_key
+    # and are served by GET /readings/{key} (docs/05 §19.7, docs/19 §3.13). Keys must not collide.
+    reading_keys: set[str] = set()
     rel = files.get("curatedRepos")
     if isinstance(rel, str):
         doc = load_yaml(os.path.join(content_dir, rel), res, rel)
@@ -821,17 +910,20 @@ def validate(content_dir: str):
                     res.error("CV-82", where, "pinnedCommit must be a 40-char lowercase hex SHA or null")
                 if pinned is None:
                     res.warn("CV-82", where, "pinnedCommit is null: reading line numbers are unpinned")
-                repo["_readings"] = 0
+                repo["_readings"] = 0  # readings that are not retired (CV-87)
                 data["repos"].append(repo)
 
             repos_by_key = {r["key"]: r for r in data["repos"]}
-            reading_keys: set[str] = set()
             for idx, rd in enumerate(readings):
                 where = f"{rel}#readings[{idx}]"
-                allowed = {"key", "repo", "path", "lines", "skillCodes", "estimatedMinutes",
-                           "question", "lookFor"}
-                if not check_keys(rd, allowed, allowed, res, where):
+                required = {"key", "repo", "path", "lines", "skillCodes", "estimatedMinutes",
+                            "question", "lookFor"}
+                # optional: retired (bool, default false) — docs/19 §3.8, §8.2
+                if not check_keys(rd, required | {"retired"}, required, res, where):
                     continue
+                if "retired" in rd and not isinstance(rd["retired"], bool):
+                    res.error("CV-03", where, "retired must be a boolean")
+                is_retired = rd.get("retired") is True
                 key = rd["key"]
                 where = f"{rel}#{key}"
                 if not (isinstance(key, str) and READING_KEY_RE.match(key) and len(key) <= 100):
@@ -839,13 +931,17 @@ def validate(content_dir: str):
                                               r"(^READ\.<REPO>\.<TOPIC>\.NNN$)")
                 if key in reading_keys:
                     res.error("CV-83", where, "duplicate reading key")
-                if key in retired_readings:
-                    res.error("CV-83", where, "key is in retired.readingKeys")
+                # CV-83 retirement: an active reading must not use a retired key, and a
+                # retired reading must be listed in retired.readingKeys (docs/19 §8.2)
+                if is_retired and key not in retired_readings:
+                    res.error("CV-83", where, "retired reading key must be listed in retired.readingKeys")
+                if not is_retired and key in retired_readings:
+                    res.error("CV-83", where, "key is in retired.readingKeys but the reading is not retired")
                 reading_keys.add(key)
 
                 if rd["repo"] not in repos_by_key:
                     res.error("CV-84", where, f"unknown repo reference {rd['repo']}")
-                else:
+                elif not is_retired:
                     repos_by_key[rd["repo"]]["_readings"] += 1
 
                 path = rd["path"]
@@ -888,10 +984,500 @@ def validate(content_dir: str):
                             res.error("CV-86", where, "lookFor item length 5..200")
                 data["readings"].append(rd)
 
+            # CV-87: count only readings that are not retired. A repo kept only for retired
+            # readings (0 active) is not a warning target. Range is 3..8 (docs/19 §3.8, CV-87)
             for repo in data["repos"]:
-                if not 3 <= repo["_readings"] <= 5:
+                active = repo["_readings"]
+                if active and not 3 <= active <= 8:
                     res.warn("CV-87", f"{rel}#{repo['key']}",
-                             f"repo has {repo['_readings']} readings (expected 3..5)")
+                             f"repo has {active} active readings (expected 3..8)")
+
+    # ---- concept readings (CV-120..CV-125) --------------------------------
+    crel = concept_readings_rel
+    if os.path.isfile(os.path.join(content_dir, crel)):
+        doc = load_yaml(os.path.join(content_dir, crel), res, crel)
+        if doc is not None and check_keys(doc, {"conceptReadings"}, {"conceptReadings"}, res, crel):
+            entries = doc.get("conceptReadings") or []
+            if not isinstance(entries, list) or not entries:
+                res.error("CV-120", crel, "conceptReadings must be a non-empty list")
+                entries = []
+            for idx, cr in enumerate(entries):
+                where = f"{crel}#conceptReadings[{idx}]"
+                required = {"key", "title", "url", "publisher", "versionScope", "skillCodes",
+                            "estimatedMinutes", "whyRead", "checkPoints", "verifiedAt"}
+                # optional: retired (bool, default false) — docs/19 §3.13, §8.2
+                if not check_keys(cr, required | {"retired"}, required, res, where):
+                    continue
+                if "retired" in cr and not isinstance(cr["retired"], bool):
+                    res.error("CV-03", where, "retired must be a boolean")
+                is_retired = cr.get("retired") is True
+                key = cr["key"]
+                where = f"{crel}#{key}"
+                if not (isinstance(key, str) and CONCEPT_READING_KEY_RE.match(key)
+                        and len(key) <= 100):
+                    res.error("CV-120", where, "concept reading key pattern invalid "
+                                               r"(^DOC\.<TOPIC>\.<UNIT>\.NNN$)")
+                if key in reading_keys:
+                    res.error("CV-120", where, "duplicate reading key "
+                                               "(code readings and concept readings share one namespace)")
+                if is_retired and key not in retired_readings:
+                    res.error("CV-120", where,
+                              "retired concept reading key must be listed in retired.readingKeys")
+                if not is_retired and key in retired_readings:
+                    res.error("CV-120", where,
+                              "key is in retired.readingKeys but the concept reading is not retired")
+                reading_keys.add(key)
+
+                u = urlparse(str(cr["url"]))
+                if u.scheme != "https" or not host_allowed(u.hostname or ""):
+                    res.error("CV-121", where,
+                              f"url must be https on a trusted host ({u.hostname})")
+
+                for fld, hi in (("title", 200), ("publisher", 100), ("versionScope", 100)):
+                    if not str_len_ok(cr[fld], 1, hi):
+                        res.error("CV-122", where, f"{fld} length 1..{hi}")
+                va = cr["verifiedAt"]
+                if not isinstance(va, dt.date):
+                    try:
+                        dt.date.fromisoformat(str(va))
+                    except ValueError:
+                        res.error("CV-122", where, "verifiedAt must be YYYY-MM-DD")
+
+                codes = cr["skillCodes"]
+                if not (isinstance(codes, list) and 1 <= len(codes) <= 4):
+                    res.error("CV-123", where, "skillCodes must be a list of 1..4 codes")
+                else:
+                    if len(set(codes)) != len(codes):
+                        res.error("CV-123", where, "duplicate skillCode")
+                    for c in codes:
+                        if c not in tgt:
+                            res.error("CV-123", where, f"skillCode {c} has no role target")
+                em = cr["estimatedMinutes"]
+                if not (is_int(em) and 5 <= em <= 60):
+                    res.error("CV-123", where, "estimatedMinutes must be an integer 5..60")
+
+                if not str_len_ok(cr["whyRead"], 40, 400):
+                    res.error("CV-124", where, "whyRead must be 40..400 chars")
+                cps = cr["checkPoints"]
+                if not (isinstance(cps, list) and len(cps) == 3):
+                    res.error("CV-124", where,
+                              "checkPoints must be exactly 3 items (06 §5.3 \"핵심 3가지\")")
+                else:
+                    for item in cps:
+                        if not str_len_ok(item, 10, 200):
+                            res.error("CV-124", where, "checkPoint length 10..200")
+                    if len(set(cps)) != len(cps):
+                        res.error("CV-124", where, "duplicate checkPoint")
+                if not is_retired:
+                    data["conceptReadings"].append(cr)
+
+    # CV-83/CV-120: every retired key keeps its definition in one of the two reading files
+    # (retired units stay resolvable through GET /readings/{key}, docs/19 §8.2)
+    for key in sorted(retired_readings - reading_keys):
+        res.error("CV-83", "catalog.yaml#retired.readingKeys",
+                  f"{key} has no reading definition (keep it with retired: true)")
+
+    readable_for_lessons = {c for rd in data["readings"] if not rd.get("retired")
+                            for c in (rd.get("skillCodes") or [])}
+    readable_for_lessons |= {c for cr in data["conceptReadings"]
+                             for c in (cr.get("skillCodes") or [])}
+
+    # ---- checklists (CV-110..CV-113) --------------------------------------
+    # docs/19 §3.11. 과제 카드의 "시작 전·끝내기 전 확인"이다. 저장하지 않고 응답을 만들 때 읽는다.
+    chk_keys: set[str] = set()
+    chk_pairs: dict[tuple[str, str], list[str]] = {}
+    # 어느 트랙에든 role target 이 있는 non-root skill (docs/19 §3.11 skillCodes 제약)
+    codes_with_target = {c for targets in targets_by_role.values() for c in targets}
+    for crel in files.get("checklists") or []:
+        path = os.path.join(content_dir, crel)
+        doc = load_yaml(path, res, crel)
+        if doc is None or not check_keys(doc, {"checklists"}, {"checklists"}, res, crel):
+            continue
+        entries = doc.get("checklists") or []
+        if not isinstance(entries, list) or not entries:
+            res.error("CV-110", crel, "checklists must be a non-empty list")
+            continue
+        for idx, ck in enumerate(entries):
+            where = f"{crel}#checklists[{idx}]"
+            required = {"key", "taskTypes", "skillCodes", "before", "after"}
+            if not check_keys(ck, required, required, res, where):
+                continue
+            key = ck.get("key")
+            if not isinstance(key, str) or not CHECKLIST_KEY.match(key) or len(key) > 120:
+                res.error("CV-110", where, f"bad checklist key {key!r}")
+            elif key in chk_keys:
+                res.error("CV-110", where, f"duplicate checklist key {key}")
+            else:
+                chk_keys.add(key)
+
+            task_types = ck.get("taskTypes") or []
+            if (not isinstance(task_types, list) or not 1 <= len(task_types) <= 8
+                    or len(set(task_types)) != len(task_types)):
+                res.error("CV-111", where, "taskTypes must be 1..8 distinct values")
+            else:
+                for t in task_types:
+                    if t not in TASK_TYPES:
+                        res.error("CV-111", where, f"unknown taskType {t}")
+
+            codes = ck.get("skillCodes") or []
+            if (not isinstance(codes, list) or not 1 <= len(codes) <= 4
+                    or len(set(codes)) != len(codes)):
+                res.error("CV-111", where, "skillCodes must be 1..4 distinct codes")
+            else:
+                for c in codes:
+                    if c not in codes_with_target:
+                        res.error("CV-111", where, f"skill without role target: {c}")
+
+            for field in ("before", "after"):
+                items = ck.get(field) or []
+                if not isinstance(items, list) or not 3 <= len(items) <= 5:
+                    res.error("CV-112", where, f"{field} must have 3..5 items")
+                    continue
+                for item in items:
+                    if not isinstance(item, str) or not 10 <= len(item) <= 120:
+                        res.error("CV-112", where, f"{field} item must be 10..120 chars")
+
+            if isinstance(key, str) and isinstance(task_types, list) and isinstance(codes, list):
+                for t in task_types:
+                    for c in codes:
+                        chk_pairs.setdefault((str(t), str(c)), []).append(key)
+
+    for (task_type, code), keys in sorted(chk_pairs.items()):
+        if len(keys) > 1:
+            res.warn("CV-113", "checklists",
+                     f"{task_type}+{code} matches {len(keys)}: only {sorted(keys)[0]} is shown")
+
+    # ---- tips (CV-90..CV-96) ----------------------------------------------
+    # docs/19 §3.9. 저장하지 않는 콘텐츠다 — 사용자별로 남는 것은 user_daily_tip 한 행뿐이다(ADR-041).
+    tip_keys: set[str] = set()
+    seen_retired_tips: set[str] = set()
+    active_series: set[str] = set()
+    for trel in files.get("tips") or []:
+        path = os.path.join(content_dir, trel)
+        doc = load_yaml(path, res, trel)
+        if doc is None or not check_keys(doc, {"tips"}, {"tips"}, res, trel):
+            continue
+        entries = doc.get("tips") or []
+        if not isinstance(entries, list) or not entries:
+            res.error("CV-90", trel, "tips must be a non-empty list")
+            continue
+        for idx, tip in enumerate(entries):
+            where = f"{trel}#tips[{idx}]"
+            required = {"key", "series", "level", "skillCodes", "title", "symptom", "cause",
+                        "whereToLook", "estimatedMinutes"}
+            allowed = required | {"example", "experiment", "sourceUrl", "retired"}
+            if not check_keys(tip, allowed, required, res, where):
+                continue
+
+            key = tip.get("key")
+            if not isinstance(key, str) or not TIP_KEY_RE.match(key) or len(key) > 120:
+                res.error("CV-90", where, f"bad tip key {key!r}")
+                key = None
+            elif key in tip_keys:
+                res.error("CV-90", where, f"duplicate tip key {key}")
+            else:
+                tip_keys.add(key)
+            series = tip.get("series")
+            if series not in TIP_SERIES:
+                res.error("CV-90", where, f"unknown series {series!r}")
+            elif key is not None and key.split(".")[1] != series:
+                res.error("CV-90", where, "series must match the second segment of key")
+            if tip.get("level") not in TIP_LEVELS:
+                res.error("CV-90", where, f"unknown level {tip.get('level')!r}")
+
+            codes = tip.get("skillCodes") or []
+            if (not isinstance(codes, list) or not 1 <= len(codes) <= 4
+                    or len(set(codes)) != len(codes)):
+                res.error("CV-93", where, "skillCodes must be 1..4 distinct codes")
+            else:
+                for c in codes:
+                    if c not in codes_with_target:
+                        res.error("CV-93", where, f"skill without role target: {c}")
+
+            for field, (lo, hi) in TIP_TEXT_LIMITS.items():
+                value = tip.get(field)
+                if value is None and field in ("experiment", "example"):
+                    continue
+                if not isinstance(value, str) or not lo <= len(value.strip()) <= hi:
+                    res.error("CV-94", where, f"{field} length {lo}..{hi}")
+            example = tip.get("example")
+            if isinstance(example, str) and len(fenced_code_lines(example)) > 15:
+                res.error("CV-94", where, "example code must be at most 15 lines")
+            minutes = tip.get("estimatedMinutes")
+            if not is_int(minutes) or not 1 <= minutes <= 10:
+                res.error("CV-94", where, "estimatedMinutes must be an integer 1..10")
+
+            # CV-91: 근거가 없는 팁은 확인할 길이 없는 이야기가 된다
+            source_url = tip.get("sourceUrl")
+            if source_url is None and tip.get("experiment") is None:
+                res.error("CV-91", where, "tip needs sourceUrl or experiment")
+            elif source_url is not None:
+                u = urlparse(str(source_url))
+                if u.scheme != "https" or not host_allowed(u.hostname or ""):
+                    res.error("CV-92", where,
+                              f"sourceUrl must be https on a trusted host ({u.hostname})")
+
+            if tip.get("retired") is True:
+                if key is not None:
+                    seen_retired_tips.add(key)
+                    if key not in retired_tips:
+                        res.error("CV-95", where, f"retired tip is not in retired.tipKeys: {key}")
+            else:
+                if isinstance(series, str):
+                    active_series.add(series)
+                if key is not None and key in retired_tips:
+                    res.error("CV-95", where, f"tip is in retired.tipKeys but not retired: {key}")
+
+    for key in sorted(retired_tips - seen_retired_tips):
+        res.error("CV-95", "catalog.yaml#retired.tipKeys",
+                  f"retired tipKey has no retired tip: {key}")
+    if files.get("tips"):
+        for series in sorted(TIP_SERIES - active_series):
+            res.warn("CV-96", "tips", f"series has no active tip: {series}")
+
+    # ---- terms (CV-100..CV-106) -------------------------------------------
+    # docs/19 3.10. 표기가 흔들리면 읽을 때마다 같은 것인지 다시 확인해야 한다 - 표기는 representative 하나다.
+    term_entries: list[tuple[str, dict]] = []
+    term_keys: set[str] = set()
+    for rel in files.get("terms") or []:
+        doc = load_yaml(os.path.join(content_dir, rel), res, rel)
+        if doc is None or not check_keys(doc, {"terms"}, {"terms"}, res, rel):
+            continue
+        entries = doc.get("terms") or []
+        if not isinstance(entries, list) or not entries:
+            res.error("CV-100", rel, "terms must be a non-empty list")
+            continue
+        for idx, term in enumerate(entries):
+            where = f"{rel}#terms[{idx}]"
+            required = {"key", "representative", "english", "definition", "example",
+                        "skillCodes", "level", "sourceUrl"}
+            allowed = required | {"aliases", "confusableWith", "retired"}
+            if not check_keys(term, allowed, required, res, where):
+                continue
+            if term.get("level") not in TIP_LEVELS:
+                res.error("CV-100", where, f"unknown level {term.get('level')!r}")
+            key = term.get("key")
+            if not isinstance(key, str) or not TERM_KEY_RE.match(key) or len(key) > 120:
+                res.error("CV-100", where, f"bad term key {key!r}")
+                continue
+            if key in term_keys:
+                res.error("CV-100", where, f"duplicate term key {key}")
+                continue
+            term_keys.add(key)
+            term_entries.append((where, term))
+
+    # CV-101: 한 표기는 한 뜻만 가리킨다 - 대표 표기도 별칭도 저장소 전체에서 유일하다
+    spelling_owner: dict[str, str] = {}
+    alias_to_representative: dict[str, str] = {}
+    for where, term in term_entries:
+        representative = str(term.get("representative") or "").strip()
+        if not 1 <= len(representative) <= 40:
+            res.error("CV-101", where, "representative length 1..40")
+        if not 1 <= len(str(term.get("english") or "").strip()) <= 60:
+            res.error("CV-101", where, "english length 1..60")
+        raw_aliases = term.get("aliases") or []
+        if not isinstance(raw_aliases, list) or len(raw_aliases) > 5:
+            res.error("CV-101", where, "aliases must be 0..5 strings")
+            raw_aliases = raw_aliases if isinstance(raw_aliases, list) else []
+        spellings = [representative]
+        for alias in raw_aliases:
+            alias = str(alias or "").strip()
+            if not 1 <= len(alias) <= 40:
+                res.error("CV-101", where, "alias length 1..40")
+            elif alias == representative:
+                res.error("CV-101", where, f"alias equals representative: {alias}")
+            else:
+                spellings.append(alias)
+                alias_to_representative.setdefault(alias, representative)
+        for spelling in spellings:
+            if not spelling:
+                continue
+            previous = spelling_owner.setdefault(spelling, where)
+            if previous != where:
+                res.error("CV-101", where, f"spelling already used at {previous}: {spelling}")
+
+    seen_retired_terms: set[str] = set()
+    active_terms: set[str] = set()
+    for where, term in term_entries:
+        key = term["key"]
+        # CV-102: 정의는 한 문장, 예문은 한 줄, 근거는 신뢰 호스트의 https
+        definition = str(term.get("definition") or "").strip()
+        if not 20 <= len(definition) <= 300:
+            res.error("CV-102", where, "definition length 20..300")
+        elif len(SENTENCE_END_RE.findall(definition)) != 1 or definition[-1] not in ".!?":
+            res.error("CV-102", where, "definition must be one sentence")
+        example = str(term.get("example") or "").strip()
+        if not 20 <= len(example) <= 300:
+            res.error("CV-102", where, "example length 20..300")
+        elif len(example.splitlines()) > 1:
+            res.error("CV-102", where, "example must be a single line")
+        u = urlparse(str(term.get("sourceUrl") or ""))
+        if u.scheme != "https" or not host_allowed(u.hostname or ""):
+            res.error("CV-102", where, f"sourceUrl must be https on a trusted host ({u.hostname})")
+
+        # CV-106: 정의가 역방향 카드의 답을 미리 말해 버리면 그 카드는 맞혀도 쓸모가 없다
+        own = [str(term.get("representative") or "").strip()]
+        own += [str(a or "").strip() for a in (term.get("aliases") or [])]
+        for spelling in own:
+            if spelling and spelling in definition:
+                res.error("CV-106", where, f"definition contains the answer: {spelling}")
+                break
+
+        # CV-103: confusableWith 와 skillCodes
+        confusable = term.get("confusableWith") or []
+        if not isinstance(confusable, list) or len(confusable) > 3:
+            res.error("CV-103", where, "confusableWith must be 0..3 keys")
+            confusable = confusable if isinstance(confusable, list) else []
+        for other in confusable:
+            if other == key:
+                res.error("CV-103", where, "confusableWith must not contain itself")
+            elif other not in term_keys:
+                res.error("CV-103", where, f"unknown term key: {other}")
+        codes = term.get("skillCodes") or []
+        if (not isinstance(codes, list) or not 1 <= len(codes) <= 4
+                or len(set(codes)) != len(codes)):
+            res.error("CV-103", where, "skillCodes must be 1..4 distinct codes")
+        else:
+            for c in codes:
+                if c not in codes_with_target:
+                    res.error("CV-103", where, f"skill without role target: {c}")
+
+        # CV-105: 은퇴 표시와 catalog 목록이 서로 맞는다
+        if term.get("retired") is True:
+            seen_retired_terms.add(key)
+            if key not in retired_terms:
+                res.error("CV-105", where, f"retired term is not in retired.termKeys: {key}")
+        else:
+            active_terms.add(key)
+            if key in retired_terms:
+                res.error("CV-105", where, f"term is in retired.termKeys but not retired: {key}")
+
+    for key in sorted(retired_terms - seen_retired_terms):
+        res.error("CV-105", "catalog.yaml#retired.termKeys",
+                  f"retired termKey has no retired term: {key}")
+    for where, term in term_entries:
+        for other in term.get("confusableWith") or []:
+            if other in seen_retired_terms and other not in active_terms:
+                res.error("CV-105", where, f"confusableWith points at a retired term: {other}")
+
+    # CV-104 (WARN): 별칭 표기가 다른 콘텐츠 본문에 나타나면 그 자리에 대표 표기를 쓰라는 경고다
+    if alias_to_representative:
+        scanned: list[str] = []
+        for fkey, value in files.items():
+            if fkey in ("skillTrees", "roleTargets", "terms"):
+                continue
+            scanned.extend([value] if isinstance(value, str) else (value or []))
+        for rel in scanned:
+            doc = load_yaml(os.path.join(content_dir, rel), res, rel)
+            if doc is None:
+                continue
+            reported: set[tuple[str, str]] = set()
+            for path, text in walk_strings(rel, doc):
+                for alias, representative in alias_to_representative.items():
+                    if alias in text and (path, alias) not in reported:
+                        reported.add((path, alias))
+                        res.warn("CV-104", path,
+                                 f"use the representative spelling {representative}"
+                                 f" instead of {alias}")
+
+    # ---- lessons (CV-126..CV-136) -----------------------------------------
+    # docs/19 §3.14. 가르치는 단계의 콘텐츠다 — 빠진 칸이 있으면 화면의 걸음 하나가 통째로 빈다.
+    lesson_keys: set[str] = set()
+    unit_keys: set[str] = set()
+    lesson_skills: set[str] = set()
+    for lrel in files.get("lessons") or []:
+        path = os.path.join(content_dir, lrel)
+        doc = load_yaml(path, res, lrel)
+        if doc is None or not check_keys(doc, {"lessons"}, {"lessons"}, res, lrel):
+            continue
+        entries = doc.get("lessons") or []
+        if not isinstance(entries, list) or not entries:
+            res.error("CV-126", lrel, "lessons must be a non-empty list")
+            continue
+        for idx, ls in enumerate(entries):
+            where = f"{lrel}#lessons[{idx}]"
+            required = {"key", "skillCode", "title", "whyItMatters", "oneLine", "units",
+                        "inProject", "sources", "verifiedAt"}
+            allowed = required | {"commonMistakes", "readMore", "retired"}
+            if not check_keys(ls, allowed, required, res, where):
+                continue
+            key = ls["key"]
+            where = f"{lrel}#{key}"
+            is_retired = ls.get("retired") is True
+
+            if not (isinstance(key, str) and LESSON_KEY_RE.match(key) and len(key) <= 120):
+                res.error("CV-126", where, r"lesson key pattern invalid (^LESSON\.<TOPIC>...NNN$)")
+            if key in lesson_keys:
+                res.error("CV-126", where, "duplicate lesson key")
+            lesson_keys.add(key)
+            if is_retired and key not in retired_lessons:
+                res.error("CV-126", where, "retired lesson must be listed in retired.lessonKeys")
+            if not is_retired and key in retired_lessons:
+                res.error("CV-126", where, "key is in retired.lessonKeys but the lesson is not retired")
+
+            skill_code = ls["skillCode"]
+            if skill_code not in skills_by_code:
+                res.error("CV-126", where, f"skill not found: {skill_code}")
+            elif not is_retired:
+                if skill_code in lesson_skills:
+                    res.error("CV-126", where, f"a skill can have only one lesson: {skill_code}")
+                lesson_skills.add(skill_code)
+
+            for fld, lo, hi in (("title", 1, 100), ("whyItMatters", 40, 400),
+                                ("oneLine", 10, 200), ("inProject", 40, 400)):
+                if not str_len_ok(ls[fld], lo, hi):
+                    res.error("CV-127", where, f"{fld} length {lo}..{hi}")
+            mistakes = ls.get("commonMistakes") or []
+            if len(mistakes) > 3:
+                res.error("CV-127", where, "commonMistakes must be at most 3")
+            for m in mistakes:
+                if not str_len_ok(m, 20, 300):
+                    res.error("CV-127", where, "each commonMistake length 20..300")
+
+            sources = ls.get("sources") or []
+            if not sources:
+                res.error("CV-131", where, "sources must have at least one official document")
+            for src in sources:
+                _check_lesson_source(src, where, res, version_required=True)
+            for src in ls.get("readMore") or []:
+                _check_lesson_source(src, where, res, version_required=False)
+            va = ls["verifiedAt"]
+            if not isinstance(va, dt.date):
+                try:
+                    dt.date.fromisoformat(str(va))
+                except ValueError:
+                    res.error("CV-131", where, "verifiedAt must be YYYY-MM-DD")
+
+            units = ls.get("units") or []
+            if not (isinstance(units, list) and 3 <= len(units) <= 6):
+                res.error("CV-127", where, "units must be 3..6")
+            unit_re = re.compile("^" + re.escape(str(key)) + r"\.U[0-9]{1,2}$")
+            for uidx, unit in enumerate(units if isinstance(units, list) else []):
+                _check_lesson_unit(unit, f"{where}#units[{uidx}]", unit_re, unit_keys, res)
+
+    # CV-136 WARN: first-milestone MUST skills of the two tracks without a lesson.
+    # 노트를 하나라도 쓰기 시작한 catalog에서만 본다 - 노트가 없으면 "전부 없다"가 되어 알려 주는 바가 없다.
+    for tpl in data["templates"] if lesson_skills else []:
+        role = tpl.get("targetRole")
+        if role not in ("INTEGRATION_ENGINEER", "JAVA_BACKEND_STARTER"):
+            continue
+        milestones = tpl.get("milestones") or []
+        if not milestones:
+            continue
+        for code in milestones[0].get("skillCodes") or []:
+            if code in lesson_skills:
+                continue
+            if targets_by_role[role].get(code, {}).get("priority") == "MUST":
+                res.warn("CV-136", "lessons",
+                         f"first-milestone MUST skill of {role} has no lesson: {code}")
+
+    # ---- CV-125 WARN: MUST skills with nothing to read --------------------
+    readable = {c for rd in data["readings"] if not rd.get("retired")
+                for c in (rd.get("skillCodes") or [])}
+    readable |= {c for cr in data["conceptReadings"] for c in (cr.get("skillCodes") or [])}
+    for sk, t in sorted(tgt.items()):
+        if t["priority"] == "MUST" and sk not in readable:
+            res.warn("CV-125", sk, "MUST skill has neither a code reading nor a concept reading")
 
     # ---- WARN: MUST skills without seed card ------------------------------
     carded = {c["skill"] for c in data["cards"]}
@@ -903,11 +1489,10 @@ def validate(content_dir: str):
     for tpl in data["templates"]:
         try:
             today = dt.date(2026, 10, 1)
-            cases = [(None, today), (None, today + dt.timedelta(days=9)),
-                     (today + dt.timedelta(days=20), today + dt.timedelta(days=30)),
-                     (today + dt.timedelta(days=150), today + dt.timedelta(days=210))]
-            for checkpoint, target in cases:
-                for key, phase, s, e in place_template(tpl, today, checkpoint, target):
+            targets = [today, today + dt.timedelta(days=9),
+                       today + dt.timedelta(days=30), today + dt.timedelta(days=210)]
+            for target in targets:
+                for key, phase, s, e in place_template(tpl, today, target):
                     if not (today <= s <= e <= target):
                         res.error("CV-61", tpl.get("templateKey", "?"),
                                   f"placement out of range for {key}: {s}..{e}")
@@ -999,19 +1584,20 @@ def print_placement_vectors(data: dict) -> None:
     tpl = data["templates"][0]
     d = dt.date
     cases = [
-        ("V1 checkpoint in future", d(2026, 10, 1), d(2027, 3, 1), d(2027, 4, 30)),
-        ("V2 no checkpoint", d(2026, 10, 1), None, d(2027, 3, 31)),
-        ("V3 short 20 days, no checkpoint", d(2026, 10, 1), None, d(2026, 10, 20)),
-        ("V4 5 days", d(2026, 10, 1), None, d(2026, 10, 5)),
-        ("V5 checkpoint <= today", d(2026, 10, 1), d(2026, 9, 20), d(2026, 12, 31)),
-        ("V6 prep 10 days", d(2026, 10, 1), d(2026, 10, 11), d(2026, 11, 30)),
-        ("V7 target == today", d(2026, 10, 1), None, d(2026, 10, 1)),
+        ("V1 212 days", d(2026, 10, 1), d(2027, 4, 30)),
+        ("V2 182 days", d(2026, 10, 1), d(2027, 3, 31)),
+        ("V3 short 20 days", d(2026, 10, 1), d(2026, 10, 20)),
+        ("V4 5 days", d(2026, 10, 1), d(2026, 10, 5)),
+        ("V5 92 days", d(2026, 10, 1), d(2026, 12, 31)),
+        ("V6 62 days, compressed", d(2026, 10, 1), d(2026, 12, 1)),
+        ("V7 target == today", d(2026, 10, 1), d(2026, 10, 1)),
+        ("V8 63 days = 9 x minDays, sequential", d(2026, 10, 1), d(2026, 12, 2)),
     ]
-    for name, today, checkpoint, target in cases:
-        print(f"\n### {name}: today={today} checkpointDate={checkpoint} targetCompletionDate={target}")
+    for name, today, target in cases:
+        print(f"\n### {name}: today={today} targetCompletionDate={target}")
         print("| key | phase | start | end | days |")
         print("|---|---|---|---|---|")
-        for key, phase, s, e in place_template(tpl, today, checkpoint, target):
+        for key, phase, s, e in place_template(tpl, today, target):
             print(f"| {key} | {phase} | {s} | {e} | {(e - s).days + 1} |")
 
 
@@ -1038,6 +1624,7 @@ def main(argv: list[str]) -> int:
           f"templates={len(data['templates'])} cards={len(data['cards'])} "
           f"challenges={len(data['challenges'])} curatedSources={len(data['sources'])} "
           f"curatedRepos={len(data['repos'])} readings={len(data['readings'])} "
+          f"conceptReadings={len(data['conceptReadings'])} "
           f"catalogVersion={(data['catalog'] or {}).get('catalogVersion')}")
     print(f"result: {'FAIL' if res.errors else 'PASS'} (errors={len(res.errors)}, warnings={len(res.warns)})")
     if "--report" in flags and "skills_by_code" in data:
@@ -1045,6 +1632,141 @@ def main(argv: list[str]) -> int:
     if "--placement-vectors" in flags:
         print_placement_vectors(data)
     return 1 if res.errors else 0
+
+
+
+def _check_lesson_source(src, where: str, res: Result, *, version_required: bool) -> None:
+    """docs/19 §3.14 sources/readMore. 서버는 이 URL을 요청하지 않는다 - 호스트 문자열만 본다."""
+    if not isinstance(src, dict):
+        res.error("CV-131", where, "source must be a mapping")
+        return
+    if not str_len_ok(src.get("title"), 1, 200):
+        res.error("CV-131", where, "source title length 1..200")
+    if version_required and not str_len_ok(src.get("versionScope"), 1, 100):
+        res.error("CV-131", where, "source versionScope length 1..100")
+    u = urlparse(str(src.get("url")))
+    if u.scheme != "https" or not host_allowed(u.hostname or ""):
+        res.error("CV-131", where, f"source url must be https on a trusted host ({u.hostname})")
+
+
+def _check_lesson_unit(unit, where: str, unit_re, unit_keys: set, res: Result) -> None:
+    """docs/19 §3.14 units[]. 단위 하나가 5~15분짜리 한 바퀴다."""
+    required = {"key", "title", "minutes", "core", "explain", "example", "predict",
+                "complete", "problem"}
+    allowed = required | {"prerequisiteUnits", "variants"}
+    if not check_keys(unit, allowed, required, res, where):
+        return
+    key = unit["key"]
+    if not (isinstance(key, str) and unit_re.match(key)):
+        res.error("CV-127", where, "unit key must be <lesson key>.U<n>")
+    if key in unit_keys:
+        res.error("CV-127", where, "duplicate unit key")
+    unit_keys.add(key)
+    if not str_len_ok(unit["title"], 1, 60):
+        res.error("CV-127", where, "unit title length 1..60")
+    if not str_len_ok(unit["explain"], 100, 800):
+        res.error("CV-127", where, "explain length 100..800")
+    minutes = unit["minutes"]
+    if not (isinstance(minutes, int) and not isinstance(minutes, bool) and 3 <= minutes <= 20):
+        res.error("CV-127", where, "minutes must be an integer 3..20")
+    if not isinstance(unit["core"], bool):
+        res.error("CV-127", where, "core must be a boolean")
+
+    example = unit["example"]
+    if not isinstance(example, dict) or not str(example.get("code") or "").strip():
+        res.error("CV-128", where, "example.code is required")
+    else:
+        if not str_len_ok(example.get("language"), 1, 20):
+            res.error("CV-128", where, "example.language is required")
+        if len(str(example["code"]).splitlines()) > 30:
+            res.error("CV-127", where, "example.code must be at most 30 lines")
+
+    predict = unit["predict"]
+    if not isinstance(predict, dict) or not str(predict.get("answer") or "").strip():
+        res.error("CV-129", where, "predict.answer is required")
+    else:
+        if not str_len_ok(predict.get("question"), 10, 400):
+            res.error("CV-128", where, "predict.question length 10..400")
+        if not str_len_ok(predict.get("explanation"), 10, 600):
+            res.error("CV-128", where, "predict.explanation length 10..600")
+        choices = predict.get("choices") or []
+        if choices:
+            if not (2 <= len(choices) <= 4):
+                res.error("CV-129", where, "predict.choices must be 2..4 when present")
+            if predict["answer"] not in choices:
+                res.error("CV-129", where, "predict.answer must be one of the choices")
+
+    complete = unit["complete"]
+    if not isinstance(complete, dict) or not str(complete.get("code") or "").strip():
+        res.error("CV-128", where, "complete.code is required")
+    else:
+        if not str_len_ok(complete.get("question"), 10, 400):
+            res.error("CV-128", where, "complete.question length 10..400")
+        if not str_len_ok(complete.get("explanation"), 10, 600):
+            res.error("CV-128", where, "complete.explanation length 10..600")
+        blanks = str(complete["code"]).count("___")
+        answers = complete.get("answers") or []
+        if not 1 <= blanks <= 2:
+            res.error("CV-128", where, "complete.code must have 1 or 2 blanks (___)")
+        if len(answers) != blanks:
+            res.error("CV-128", where,
+                      f"complete.answers must have one entry per blank: {blanks}")
+        else:
+            for accepted in answers:
+                if not (isinstance(accepted, list) and accepted):
+                    res.error("CV-128", where, "each blank needs at least one accepted answer")
+
+    _check_lesson_problem(unit["problem"], where, example, res)
+    variants = unit.get("variants") or []
+    if len(variants) > 2:
+        res.error("CV-130", where, "variants must be at most 2")
+    for variant in variants:
+        _check_lesson_problem(variant, where + "#variant", None, res)
+
+    for pre in unit.get("prerequisiteUnits") or []:
+        if pre == key:
+            res.error("CV-132", where, "a unit cannot require itself")
+        elif not UNIT_KEY_RE.match(str(pre)):
+            res.error("CV-132", where, "prerequisiteUnits entry is not a unit key")
+
+
+def _check_lesson_problem(problem, where: str, example, res: Result) -> None:
+    """docs/19 §3.14 problem. 서버는 이것을 채점하지 않는다 - 모범 답안과 견주기만 한다."""
+    required = {"prompt", "deliverables", "hints", "modelAnswer", "selfChecks"}
+    allowed = required | {"starterCode"}
+    if not check_keys(problem, allowed, required, res, where):
+        return
+    if not str_len_ok(problem["prompt"], 40, 800):
+        res.error("CV-130", where, "problem.prompt length 40..800")
+    for fld, lo, hi in (("deliverables", 2, 4), ("hints", 2, 3), ("selfChecks", 2, 4)):
+        items = problem.get(fld) or []
+        if not (isinstance(items, list) and lo <= len(items) <= hi):
+            res.error("CV-130", where, f"{fld} must be {lo}..{hi}")
+    model = str(problem.get("modelAnswer") or "")
+    if not model.strip():
+        res.error("CV-130", where, "problem.modelAnswer is required")
+        return
+    starter = problem.get("starterCode")
+    if isinstance(starter, str) and len(starter.splitlines()) > 20:
+        res.error("CV-130", where, "problem.starterCode must be at most 20 lines")
+
+    # CV-133: hints/deliverables must not repeat a line of the model answer
+    answer_lines = [ln.strip() for ln in model.splitlines()
+                    if len(ln.strip()) >= 12 and not ln.strip().startswith(("//", "```", "-"))]
+    for fld in ("hints", "deliverables"):
+        for item in problem.get(fld) or []:
+            if any(line in str(item) for line in answer_lines):
+                res.warn("CV-133", where,
+                         f"{fld} repeats a line of modelAnswer - it gives the answer away")
+
+    # CV-134: the prompt must not be the example code again
+    if isinstance(example, dict) and isinstance(example.get("code"), str):
+        left = re.sub(r"\s+", "", example["code"])
+        right = re.sub(r"\s+", "", str(problem["prompt"]))
+        if left and right:
+            shorter, longer = (left, right) if len(left) <= len(right) else (right, left)
+            if shorter in longer and len(shorter) * 10000 // len(longer) >= 8000:
+                res.warn("CV-134", where, "problem.prompt is nearly the example code")
 
 
 if __name__ == "__main__":

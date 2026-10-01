@@ -1,0 +1,38 @@
+# 테스트 plan template (입문 트랙): milestone 3개 (PREPARATION 2, CONSOLIDATION 1)
+# 그 트랙의 MUST skill이 모두 milestone에 들어 있다 (CV-36)
+templateKey: TEST_STARTER_DEFAULT
+targetRole: JAVA_BACKEND_STARTER
+planTitle: 테스트 백엔드 입문 계획
+placement:
+  minMilestoneDays: 7
+milestones:
+  - key: FIRST_API
+    title: 첫 API
+    description: 요청이 어디를 지나는지 따라가고 예외를 한곳에서 처리한 뒤 테스트로 고정한다.
+    priority: MUST
+    weightBp: 5000
+    phase: PREPARATION
+    skillCodes:
+      - WEB_HTTP.HTTP_BASICS
+      - JAVA.EXCEPTION
+      - JAVA.COLLECTION
+      - TESTING.JUNIT
+  - key: DEPLOY_AND_LOGS
+    title: 배포와 로그 확인
+    priority: MUST
+    weightBp: 3000
+    phase: PREPARATION
+    skillCodes:
+      - DEVOPS.DOCKER
+      - DATABASE.INDEX
+      - SPRING.TRANSACTION
+  - key: EXPLAIN_AND_CONSOLIDATE
+    title: 설명과 정리
+    description: 고친 것을 설명하고 아직 손대지 않은 주제를 이름과 쓰임 정도만 알아 둔다.
+    priority: SHOULD
+    weightBp: 2000
+    phase: CONSOLIDATION
+    skillCodes:
+      - EXPLANATION.PROJECT_STORY
+      - ALGORITHM.SORT_SEARCH
+      - SYSTEM_DESIGN.CACHING

@@ -9,7 +9,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 
 /**
@@ -40,18 +39,12 @@ public class PlanTemplateRegistry {
      * 규칙 클래스를 직접 쓰지 않는다, ARCH-02).
      */
     public List<DateSpan> placeMilestones(
-            PlanTemplate template,
-            LocalDate today,
-            @Nullable LocalDate checkpointDate,
-            LocalDate targetCompletionDate) {
+            PlanTemplate template, LocalDate today, LocalDate targetCompletionDate) {
         return placement.place(
                 today,
-                checkpointDate,
                 targetCompletionDate,
                 template.milestones().stream()
-                        .map(
-                                milestone ->
-                                        new PlacementInput(milestone.weightBp(), milestone.phase()))
+                        .map(milestone -> new PlacementInput(milestone.weightBp()))
                         .toList(),
                 template.minMilestoneDays());
     }

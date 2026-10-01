@@ -1,6 +1,10 @@
 # 12. Acceptance Criteria
 
-> Status: Accepted (v2) · Last updated: 2026-09-18 · Related: `01-product-requirements.md`, `05-api-spec.md`, `06-learning-engine-rules.md`, `09-test-and-quality.md`, `11-development-roadmap.md`, `13-product-backlog.md`
+> Status: Accepted (v2) · Last updated: 2026-09-19 · Related: `01-product-requirements.md`, `05-api-spec.md`, `06-learning-engine-rules.md`, `09-test-and-quality.md`, `11-development-roadmap.md`, `13-product-backlog.md`
+>
+> 2026-09-20 반영: AC-31 재현 과제(FR-28), AC-32 학습 트랙 2종(FR-03), AC-33 프로젝트 결정·장애 기록(FR-29)을 추가했다. AC-09에 독립 구현 증거(재현 과제)를, AC-12에 재현 잠금이 AI 불가와 다르다는 것을, AC-14에 프로젝트 기록 마스킹을 더했다.
+>
+> 2026-09-20 반영(ADR-041·042, DEC-34): **AC-34 오늘의 팁 · AC-35 용어 사전 · AC-36 주간 요약과 연속 학습 일수**를 추가했다(모두 S3). AC-02에 과제 카드의 `whyItMatters`·확인 목록(S11), AC-09에 학습 단계 6칸과 `GET /skills/{skillId}`(S7), AC-26에 지시어 세기(S15), AC-27에 경험 기록 분류 `kind`(S11), AC-33에 기록 Markdown 내보내기(S11)를 더했다. **AC-12 S7의 배너 범위를 `02` §6.5에 맞췄다 — Today·복습·계획 화면에는 배너를 띄우지 않는다.** `SkillCategory`가 14개가 되어 AC-11 S2의 `selfAssessments` 경계를 15개로 고쳤다. **AC-22(로드맵 비교)는 S7 → S3**이고 AC-14의 로드맵 비교 원문 마스킹도 S3이다.
 >
 > 2026-09-18 v3 반영: AC-26 러버덕, AC-27 사이드 프로젝트, AC-28 코드 읽기, AC-29 교차 학습, AC-30 기한 역산 확장 제안을 추가했다. AC-11에 진단 우선(`runDiagnostic`)·사이드 프로젝트(`sideProject`), AC-03을 S5 → S2로 옮겼다(budget·risk가 Today와 같은 단계). Sprint 열은 날짜 없는 단계 ID다(M1 = S0~S3, S3 완료 = 실사용 시작 / M2 = S4~S7, `13-product-backlog.md` §2).
 >
@@ -19,7 +23,7 @@
 | 검증 수준 | `unit`(순수 Java, vector) · `integration`(Spring + Testcontainers, 서비스·리포지토리) · `API E2E`(실행 중인 앱 + HTTP) · `UI`(Flutter widget / integration_test) · `manual ops`(prod 환경에서 사람이 확인) |
 | 테스트 클래스 | `09-test-and-quality.md` §3.1 명명을 따른다: 단위 `<ProductionClass>Test`, 통합 `<ProductionClass>IntegrationTest`, E2E `<Flow>FlowTest`, 아키텍처 `<Topic>ArchTest`, 모듈을 가로지르는 보안 테스트는 `07-security-and-privacy.md` §16 이름. 모든 클래스 이름은 `Test`로 끝나고 단위·통합 구분은 JUnit 태그로 한다(`*IT` 접미사 없음). 두 문서에 이름이 없는 테스트는 `<Feature><Scenario>Test`. Flutter는 `*_test.dart`. 추적은 테스트 메서드 이름 또는 `@DisplayName`에 `AC-xx Sn`을 넣는다 |
 | Sprint | 해당 AC를 처음 통과시켜야 하는 단계(`S0`~`S7` — 기간·날짜가 없는 구현 순서 ID, `13-product-backlog.md` §2). 이후 단계에서 회귀 테스트로 유지한다. **M1 = S0~S3**(S3 완료 = 실사용 시작), **M2 = S4~S7** |
-| 예시 날짜 | Given의 날짜(AC-01 S1의 `checkpointDate`, AC-03의 D 등)는 계산을 확인하기 위한 **예시 입력값**이다. 실제 학습 목표일과 중간 점검일은 사용자가 설정창에 등록한다(`learning_goal.target_completion_date`·`checkpoint_date`) |
+| 예시 날짜 | Given의 날짜(AC-01 S1의 `targetCompletionDate`, AC-03의 D 등)는 계산을 확인하기 위한 **예시 입력값**이다. 실제 목표일은 사용자가 설정창에 등록한다(`learning_goal.target_completion_date`) |
 
 ## 1. 요약
 
@@ -28,19 +32,19 @@
 | AC | 제목 | 관련 요구사항 | Sprint | 묶음 |
 |---|---|---|---|---|
 | AC-01 | 목표·계획 저장과 버전 이력 | FR-03, FR-04 | S1 (이벤트 S2) | M1 |
-| AC-02 | Today 생성 | FR-07, FR-08, FR-16, FR-21 | S2 (CHALLENGE·READ_CODE 제안 S3) | M1 |
+| AC-02 | Today 생성 | FR-07, FR-08, FR-16, FR-21 | S2 (CHALLENGE·READ_CODE 제안 S3, `whyItMatters`·확인 목록 S3) | M1 |
 | AC-03 | Deadline risk | FR-05 | S2 (v3에서 S5 → S2) | M1 |
 | AC-04 | Challenge | FR-09 | S3 (AI 생성 S5) | M1 → M2 |
-| AC-05 | Memory 스케줄 | FR-11 | S2 (challenge·러버덕 카드 S3, coach S4) | M1 → M2 |
+| AC-05 | Memory 스케줄 | FR-11 | S2 (challenge·러버덕·팁·용어 카드 S3, coach S4) | M1 → M2 |
 | AC-06 | Project Coach | FR-12 | S4 | M2 |
 | AC-07 | Verification | FR-14 | S4 | M2 |
 | AC-08 | 보안 격리·오류 노출 금지 | FR-01, NFR-04 | S1~S7 (endpoint 추가마다), 전체 재검증 S6 | M1 → M2 |
-| AC-09 | Learning state 갱신 | FR-06 | S1 (planning level), S3 (updater, 러버덕 설명 증거) | M1 |
+| AC-09 | Learning state 갱신 | FR-06 | S1 (planning level), S3 (updater, 러버덕 설명 증거, **학습 단계 6칸**), S4 (재현 과제 독립 구현 증거) | M1 → M2 |
 | AC-10 | 모바일 복습 | FR-11, NFR-08 | S2 | M1 |
 | AC-11 | 온보딩·진단 제안 | FR-02, FR-15, FR-26 | S1 (사이드 프로젝트 포함, seed 카드·snapshot S2, 진단 S3) | M1 |
-| AC-12 | AI 불가 시 동작 | NFR-03, FR-22 | S3 (러버덕·코드 읽기 포함), S4 재검증 (challenge 생성 S5) | M1 → M2 |
+| AC-12 | AI 불가 시 동작 | NFR-03, FR-22 | S3 (러버덕·코드 읽기 포함), S4 재검증(재현 과제는 AI 없이 그대로 동작), (challenge 생성 S5) | M1 → M2 |
 | AC-13 | AI 예산 가드 | FR-22, NFR-01 | S3 | M1 |
-| AC-14 | Secret masking | FR-12, NFR-05 | S3 (training·review·session·사이드 프로젝트·러버덕), S4 (coach), S7 (요구사항 문서) | M1 → M2 |
+| AC-14 | Secret masking | FR-12, NFR-05 | S3 (training·review·session·사이드 프로젝트·프로젝트 기록·러버덕·설명 기록·로드맵 비교), S4 (coach) | M1 → M2 |
 | AC-15 | Export·계정 삭제 | FR-23, NFR-05 | S6 | M2 |
 | AC-16 | Hint Ladder 정책 | FR-10 | S3 (challenge), S4 (coach) | M1 → M2 |
 | AC-17 | 날짜 경계 | FR-07, FR-24, NFR-09 | S2 | M1 |
@@ -48,15 +52,22 @@
 | AC-19 | Coach self-review·thinking pattern | FR-12, FR-13 | S4 (추세 S5) | M2 |
 | AC-20 | Data API 비노출 | NFR-04 | S0 (S1·S6 재확인) | M1 → M2 |
 | AC-21 | Evidence·Weekly | FR-17, FR-18 | S5 (weekly), S6 (evidence) | M2 |
-| AC-22 | 요구 역량 비교 | FR-19 | S7 | M2 |
+| AC-22 | 로드맵 비교 | FR-19 | S3 (S7 → S3, `matchedEvidence`는 S6에 재확인) | M1 |
 | AC-23 | Idempotency | NFR-01, NFR-04 | S3 (헤더 검사 S1), S4·S5 재검증 | M1 → M2 |
 | AC-24 | Plan 일관성(동시 replan) | FR-04 | S1 | M1 |
 | AC-25 | devtoken 인증 | FR-01, NFR-04 | S0 | M1 |
-| AC-26 | 러버덕 | FR-25 | S3 | M1 |
-| AC-27 | 사이드 프로젝트 | FR-26, FR-02 | S1 (`PROJECT_TASK` 연결 S2, 마스킹·러버덕 대상 S3, Coach 대상 S4) | M1 → M2 |
+| AC-26 | 러버덕 | FR-25 | S3 (지시어 세기 포함) | M1 |
+| AC-27 | 사이드 프로젝트 | FR-26, FR-02 | S1 (`PROJECT_TASK` 연결 S2, 마스킹·러버덕 대상·경험 기록 분류 S3, Coach 대상 S4) | M1 → M2 |
 | AC-28 | 코드 읽기 | FR-27, FR-07 | S3 | M1 |
 | AC-29 | 교차 학습 | FR-11 | S2 | M1 |
 | AC-30 | 기한 역산 확장 제안 | FR-05 | S2 | M1 |
+| AC-31 | 재현 과제 (AI 없이 다시 만들기) | FR-28 | S4 | M2 |
+| AC-32 | 학습 트랙 2종 | FR-03, FR-02 | S3 | M1 |
+| AC-33 | 사이드 프로젝트 결정·장애 기록 | FR-29 | S3 (기록 CRUD·Markdown 내보내기. 증거 초안 S6, 지표 S5) | M1 → M2 |
+| AC-34 | 오늘의 팁 | FR-07, FR-11 | S3 | M1 |
+| AC-35 | 용어 사전 | FR-11 | S3 | M1 |
+| AC-36 | 주간 요약 · 연속 학습 일수 | FR-16 | S3 | M1 |
+| AC-37 | 개념 익히기 (개념 노트 · 학습 단위) | FR-07 | S3 | M1 |
 
 ---
 
@@ -70,9 +81,10 @@
 | 테스트 클래스 | `LearningGoalServiceIntegrationTest`, `ReplanServiceIntegrationTest`, `ReplanFlowTest` |
 
 **S1. 저장 후 재조회**
-- Given A가 온보딩에서 `checkpointDate = 2027-01-05`, `targetCompletionDate = 2027-04-01`, `useTemplate = true`로 plan v1을 만들었다
+- Given A가 온보딩에서 `targetRole = JAVA_BACKEND`, `targetCompletionDate = 2027-04-01`, `useTemplate = true`로 plan v1을 만들었다
 - When A가 새 토큰으로 `GET /learning-goal`, `GET /plans/active`를 호출한다
-- Then `GET /learning-goal`의 두 날짜·focus skill이 온보딩 요청값과 같고, milestone 목록(title, startDate, endDate, priority, status, skillCodes)이 온보딩 직후 첫 `GET /plans/active` 응답과 필드 단위로 같다(온보딩 응답의 `PlanSummaryView`에는 milestone이 없다). `planVersion = 1`, `status = ACTIVE`
+- Then `GET /learning-goal`의 `targetRole`·`targetCompletionDate`(목표일)·focus skill이 온보딩 요청값과 같고(날짜 필드는 목표일 하나다), milestone 목록(title, startDate, endDate, priority, status, skillCodes)이 온보딩 직후 첫 `GET /plans/active` 응답과 필드 단위로 같다(온보딩 응답의 `PlanSummaryView`에는 milestone이 없다). `planVersion = 1`, `status = ACTIVE`
+- And milestone 날짜는 `19-content-spec.md` §5의 창 하나 `[D, targetCompletionDate]` 배치와 같다: 9개가 템플릿 순서이고 마지막 milestone "설명과 정리"(`CONSOLIDATION`)가 맨 뒤다. D가 목표일보다 63일 이상 앞이면(SEQUENTIAL) 첫 milestone `startDate = D`, 마지막 milestone `endDate = targetCompletionDate`, 빈 날·겹침이 없다(`19` §5.4 V1·V2·V5·V8과 같은 규칙)
 
 **S2. in-place 수정은 새 버전을 만들지 않는다**
 - When `PATCH /plans/{v1}/milestones/{m1}` `{ "status": "IN_PROGRESS", "version": 0 }`
@@ -94,7 +106,8 @@
 **S5. 목표 수정과 동시성**
 - When `PUT /learning-goal`에 이전 `version`을 보낸다 → 409 `CONCURRENT_MODIFICATION`, 값 변경 없음
 - When `targetCompletionDate`를 바꾼 `PUT /learning-goal`(최신 version) → 200, 활성 plan `replanRecommended = true`, `planVersion` 변화 없음
-- When `checkpointDate > targetCompletionDate` → 400 `VALIDATION_FAILED`, `errors[].code = DATE_ORDER_INVALID`
+- When `targetCompletionDate = D`(오늘) 또는 `D + 3년 + 1일` → 400 `VALIDATION_FAILED`, `errors[].code = DATE_OUT_OF_RANGE`(field `targetCompletionDate`), 값 변경 없음. `D + 1일`과 `D + 3년`은 200(경계 포함)
+- When 요청 body에 `LearningGoalUpdateRequest`에 없는 속성이 있다 → 400 `MALFORMED_REQUEST`
 
 ---
 
@@ -103,9 +116,9 @@
 | 항목 | 값 |
 |---|---|
 | 관련 요구사항 | FR-07, FR-08, FR-16, FR-21 |
-| Sprint | S2 (CHALLENGE·READ_CODE 제안 연결은 S3. `PROJECT_TASK`와 사이드 프로젝트는 AC-27 S7, `READ_CODE`는 AC-28) |
+| Sprint | S2 (CHALLENGE·READ_CODE 제안 연결과 `whyItMatters`·확인 목록은 S3. `PROJECT_TASK`와 사이드 프로젝트는 AC-27 S7, `READ_CODE`는 AC-28, 연속 학습 일수·주간 요약은 AC-36) |
 | 검증 수준 | unit(vector), API E2E, UI |
-| 테스트 클래스 | `PlannerScoringTest`, `TaskProposalPolicyTest`, `TimeAllocatorTest`, `ReasonTemplatesTest`, `ComebackModePolicyTest`, `TodayPlanServiceIntegrationTest`, `TodayChallengeProposalAiDisabledTest`, `LearningSessionServiceIntegrationTest`, `DashboardQueryServiceIntegrationTest`, `OnboardingToTodayFlowTest`, `today_screen_test.dart` |
+| 테스트 클래스 | `PlannerScoringTest`, `TaskProposalPolicyTest`, `TimeAllocatorTest`, `ReasonTemplatesTest`, `ComebackModePolicyTest`, `TodayPlanServiceIntegrationTest`, `TodayChallengeProposalAiDisabledTest`, `LearningSessionServiceIntegrationTest`, `DashboardQueryServiceIntegrationTest`, `TaskChecklistQueryServiceIntegrationTest`, `OnboardingToTodayFlowTest`, `today_screen_test.dart` |
 
 공통 Given: A의 활성 plan에 후보 skill이 1개 이상 있다(모든 target 충족이면 `mainTask = null`이 정상 응답이며 이 AC의 main 관련 Then은 적용하지 않는다). risk `LOW`, AI provider `disabled`.
 
@@ -120,7 +133,7 @@
 - And `ai_call_log` 새 행 0
 
 **S2. 결정적 규칙 vector**
-- `06` §5.6 표 6행(reviewMinutes·mainBudget·limit), §5.7 표 6행(A/B 선택), §5.8 최소 1개 보장이 모두 통과한다
+- `06` §5.6 표 6행(reviewMinutes·mainBudget·limit)과 추가 과제 표 5행(E-1~E-5), §5.7 표 10행(A/B 선택 — 7~10행은 `MONOTONY_*`), §5.8 최소 1개 보장이 모두 통과한다
 
 **S3. 입력 경계**
 - `availableMinutes` 4 또는 721 → 400 `VALIDATION_FAILED`
@@ -164,10 +177,51 @@
 - When `POST /learning-sessions/{id}/complete` `{ actualMinutes: 25, selfReflection: "…" }` → `COMPLETED`, `SESSION_COMPLETED.payload.actualMinutes = 25`
 - When `actualMinutes = 721` → 400 `VALIDATION_FAILED`, 세션 상태 변경 없음
 
+**S9b. 모른 채로 완료되지 않는다 (UI, `02` SCR-TODAY 완료 시트)**
+- Given main task를 시작해 20분이 지났고 "완료"로 완료 시트를 열었다
+- Then "지금 이 개념을 설명할 수 있나요?"가 보이고, **고르기 전에는 보내는 버튼이 비활성**이다
+- When "아직 모르겠어요"를 고른다
+- Then 버튼 글이 "내일 이어서 하기"로 바뀌고 무슨 일이 생기는지 한 줄이 보인다
+- When 보낸다
+- Then 세션은 `actualMinutes = 20`으로 완료되고(쓴 시간은 사실이다) 과제는 `COMPLETED`가 아니라 **`DEFERRED`**다 — 다음 날 같은 skill이 `CONTINUATION`으로 이어진다(`06` §5.4 3a)
+- And "여기까지 기록"으로 연 시트에는 이 질문이 **없다**(이미 못 끝냈다고 말한 것이다)
+
 **S10. Dashboard 최소 (FR-16)**
 - Given S1·S9 수행 후
 - When `GET /dashboard`
-- Then 응답에 오늘 main 상태, `dueReviewCount = 3`, `weekStudyMinutes`(D가 속한 ISO 주의 `weekStartDate` ~ D, COMPLETED 세션 합)에 25분 포함
+- Then 응답에 오늘 main 상태, `dueReviewCount = 3`, `weekStudyMinutes`(**이번 주 월요일부터** — D가 속한 ISO 주의 `weekStartDate` ~ D의 COMPLETED 세션 합)에 25분 포함
+- And 연속 학습 일수·이번 주 요약은 AC-36(S3)이다
+
+**S13. 지금 단계와 얼마나 왔나 (`05` §13.1, ADR-044)**
+- Given 활성 계획과 학습 목표가 있고 1단계를 아직 마치지 않았다
+- When `GET /dashboard`
+- Then `milestoneTimeline.milestones`에서 **`current = true`인 것이 정확히 하나**이고, 그것은 `sort_order`가 가장 앞선 **미완료** milestone이다 — 날짜로 정하지 않는다
+- And `skillCategories`는 활성 계획의 `deferred = false` skill만 category별로 묶고, `avgTargetLevelMilli > 0`이며 `avgPlanningLevelMilli < avgTargetLevelMilli`다
+- And 자기평가한 category(JAVA)는 `avgPlanningLevelMilli > 0`이다 — 온보딩 입력이 반영된다(`06` §7.5)
+- Given 모든 milestone을 마쳤다
+- Then `current = true`인 것이 하나도 없고, 화면은 카드 대신 "모든 단계를 마쳤어요" 한 줄을 둔다
+- Given 활성 계획이나 학습 목표가 없다
+- Then `milestoneTimeline`이 null이고 `skillCategories`가 비어 있다. 화면은 두 구역을 **숨긴다**
+- And 화면(SCR-DASHBOARD)은 `[n/전체단계]` 배지와 단계 제목, `다음: {다음 단계}`를 보이고, category마다 `지금 / 목표`를 소수 1자리로 보인다
+
+**S11. 과제 카드의 `whyItMatters`·확인 목록 (S3, `05` §8.1, `19` §3.11)**
+- Given main task의 skill `S`에 기술 트리 `whyItMatters`가 있고, `taskTypes`에 그 task의 `taskType`이 있으며 `skillCodes`에 `S`가 있는 체크리스트 `CHK.A.B`(`before` 3개·`after` 3개)가 있다
+- When `GET /today`
+- Then `mainTask.whyItMatters`가 그 문장이고 `mainTask.checklist = {key: "CHK.A.B", before: [3개], after: [3개]}`. `reviewTask`에는 두 필드가 없다
+- And 두 값은 **저장되지 않는다** — `learning_task`에 해당 컬럼이 없고, 콘텐츠의 문구를 바꾸고 재기동하면 같은 task의 응답이 바뀐다
+- Given 맞는 체크리스트가 둘(`CHK.A.B`, `CHK.A.C`) → `key` ASC로 `CHK.A.B` 하나만 붙는다
+- Given 맞는 체크리스트가 없거나 task에 `skill_id`가 없다 → `checklist = null`(`whyItMatters`도 skill이 없으면 `null`)
+
+**S12. 추가 과제로 하루 채우기 (`06` §5.6, ADR-043)**
+- Given 후보 skill이 4개 이상이고 due review가 없다
+- When `POST /today/generate` `{ "availableMinutes": 240, "energyLevel": "NORMAL" }`
+- Then `is_main = true` task는 여전히 **정확히 1개**(`PLANNED`)이고, `is_main = false`이며 `task_type != REVIEW`인 task가 **1~3개** 생긴다(`sort_order`는 main 다음부터 1씩)
+- And 그 task들의 skill은 서로 다르고 main의 skill과도 다르며, `challenge_id`·`reading_key`가 같은 task가 둘 이상 없다
+- And 모든 task의 `estimated_minutes` 합 ≤ `floorDiv(240 × 11_000, 10_000)`
+- And `GET /today`의 `earlierMainTasks`에 그 task들이 `sortOrder` ASC로 들어가고 각각 `reasons` 1~3개를 갖는다. `reviewTask`에는 들어가지 않는다
+- And `score_breakdown.rank`가 main 1, 추가 과제 2·3·4다
+- When `availableMinutes = 30`(남은 예산 < 15) → 추가 과제 0개
+- When 재생성(`force = false`) → 이전 추가 과제(`PLANNED`)는 삭제되고 새로 만들어진다
 
 ---
 
@@ -184,9 +238,12 @@
 - `06` §3.3 7행, §4.2 3행, §4.3 8행, §4.4 vector 1·2(축소)가 모두 통과한다. §4.4 vector 3·4(확장)는 AC-30
 
 **S2. Budget 조회**
-- Given 평일 45분·주말 240분, D = 2026-12-07(월), `checkpointDate = 2026-12-14`, 최근 28 plan-day `daily_plan` 없음
+- Given 평일 45분·주말 240분, D = 2026-12-07(월), `targetCompletionDate = 2026-12-14`(목표일, fixture로 저장), 최근 28 plan-day `daily_plan` 없음
 - When `GET /plans/active/budget`
 - Then `horizonDate = 2026-12-14`, `nominalBudgetMinutes = 705`(5 × 45 + 2 × 240), `completionRateBp = 7000`, `effectiveBudgetMinutes = 493`
+- And `completionRateEstimated = true`(기록이 없어 기본값, `06` §3.3) — 화면은 추정값으로 경고색을 쓰지 않는다
+- And `requiredMustMinutes`는 **지금 쌓을 방법이 있는 축만** 센 값이고(`06` §4.2 `now`), 나머지 축의 몫은 `requiredMustLaterMinutes > 0`으로 따로 나온다 (ADR-062)
+- And `feasibleCompletionDate`는 목표일을 못 지켜도 **언제면 되는지**를 답한다(`06` §3.4) — 테스트 catalog 기준 `2027-01-11`. 5년 안에 못 닿으면 `null`이고, 그때만 "범위를 줄여야 한다"고 말한다
 - And DB 저장 없음(`plan_progress_snapshot` 행 수 변화 0)
 
 **S3. HIGH risk 미리보기**
@@ -232,6 +289,14 @@
 **S2. 조회와 정답 정보 보호**
 - `GET /challenges?skillId=…`는 `VALIDATED` challenge만 반환한다(`DRAFT`, `REJECTED`, `RETIRED` 0건)
 - A가 해당 challenge의 평가 완료 attempt를 갖기 전 `GET /challenges/{id}` 응답에는 rubric·expectedConcepts 내용이 없다. 평가 완료 후에는 포함된다
+
+**S2b. `skillId`는 하위 skill을 포함한다 (`05` §10.2)**
+- Given 문제가 말단 skill `SPRING.TRANSACTION`에만 붙어 있고 그 상위가 `SPRING`이다
+- When `GET /challenges?skillId={SPRING.TRANSACTION}`과 `GET /challenges?skillId={SPRING}`
+- Then **둘 다** 그 문제를 포함한다 — 사용자가 보는 것은 트리이고, 상위를 고르면 아래 것이 나와야 한다
+- And 관계없는 가지(`DATABASE`)로 부르면 그 문제가 없다 — 필터가 넓어진 것이지 사라진 것이 아니다
+- And 없는 skill id는 오류가 아니라 빈 목록이다(비활성 skill도 같다)
+- And `GET /review-items?skillId=…`(`05` §11.4)도 같은 규칙이다
 
 **S3. AI 생성 (S5)**
 - When `POST /challenges/generate` `{ skillId, difficulty: 2, … }` → 202 `status = PENDING`
@@ -453,10 +518,12 @@
 | S4 | `GET /coach/reviews/{reviewId}`, `…/retry`, `…/findings/{findingId}/responses`, `…/findings/{findingId}/hints`, `PATCH …/findings/{findingId}`, `…/complete`, `DELETE …/content` |
 | S5 | `GET /weekly-reviews/{weekStartDate}`, `PUT /weekly-reviews/{weekStartDate}/reflection` |
 | S6 | `GET /evidence/{evidenceId}`, `PATCH /evidence/{evidenceId}`, `…/accept`, `…/reject` |
-| S7 | `GET /requirement-docs/{requirementDocId}`, `DELETE /requirement-docs/{requirementDocId}` |
+
+- S3의 새 endpoint도 같은 표에 넣는다: `GET /requirement-docs/{requirementDocId}`, `DELETE /requirement-docs/{requirementDocId}`(2026-09-20 S7 → S3), `GET /side-projects/{sideProjectId}/notes/export`. `GET /tips/today`·`POST /tips/{tipKey}/feedback`은 path가 사용자 id가 아니라 콘텐츠 key이므로 **B의 요청은 B 자신의 기록만 본다** — B가 A의 팁 key로 호출해도 A의 `user_daily_tip` 행은 바뀌지 않고, 보여 준 적 없는 key면 404다(`05` §20.3)
+- `GET /tips`·`GET /terms`·`GET /terms/{termKey}`·`GET /skills/{skillId}`는 사용자 소유 리소스가 아니다(공용 콘텐츠 조회) — A와 B의 본문이 같고 사용자별 값(`feedback`, `cards`, `learningStages`, evidence 레벨)만 각자의 것이다. 격리 catalog에는 `GET /skills/tree`와 같은 공용 조회로 넣는다
 
 **S2. 목록·집계에 다른 사용자 데이터 0건**
-- B가 호출한 `GET /plans`, `/plans/active`, `/learning-goal`, `/today`, `/learning-sessions`, `/reviews/due`, `/review-items`, `/challenges`, `/skills/me`, `/skills/{skillId}/history`, `/side-projects`, `/coach/reviews`, `/dashboard`, `/weekly-reviews`, `/thinking-patterns/trend`, `/evidence`, `/evidence/export`, `/requirement-docs`, `/me/export` 응답 어디에도 A의 리소스 id가 없다
+- B가 호출한 `GET /plans`, `/plans/active`, `/learning-goal`, `/today`, `/learning-sessions`, `/reviews/due`, `/review-items`, `/challenges`, `/skills/me`, `/skills/{skillId}/history`, `/side-projects`, `/side-projects/{id}/notes`, `/coach/reviews`, `/dashboard`, `/weekly-reviews`, `/thinking-patterns/trend`, `/evidence`, `/evidence/export`, `/requirement-docs`, `/me/export` 응답 어디에도 A의 리소스 id가 없다
 - `GET /readings/{readingKey}`는 사용자 소유 리소스가 아니다(공용 콘텐츠 조회, `05` §19.7). A와 B의 응답이 같고, 격리 catalog에는 `GET /skills/tree`와 같은 공용 조회로 넣는다
 
 **S3. 요청으로 사용자를 바꿀 수 없다**
@@ -490,12 +557,12 @@
 | 항목 | 값 |
 |---|---|
 | 관련 요구사항 | FR-06 |
-| Sprint | S1 (planning level, `GET /skills/me`), S3 (updater, history, 러버덕 설명 증거 — AC-26 S7) |
+| Sprint | S1 (planning level, `GET /skills/me`), S3 (updater, history, 러버덕 설명 증거 — AC-26 S7, **학습 단계**·`GET /skills/{skillId}`), S4 (재현 과제 독립 구현 증거 — AC-31) |
 | 검증 수준 | unit(vector), integration, API E2E |
-| 테스트 클래스 | `PlanningLevelPolicyTest`, `SkillLevelRulesTest`, `SkillStateUpdaterIntegrationTest`, `UserSkillStateQueryServiceIntegrationTest`, `CodingRulesArchTest`(ARCH-11) |
+| 테스트 클래스 | `PlanningLevelPolicyTest`, `SkillLevelRulesTest`, `SkillStateUpdaterIntegrationTest`, `UserSkillStateQueryServiceIntegrationTest`, `LearningStageEvaluatorTest`, `SkillDetailQueryIntegrationTest`, `CodingRulesArchTest`(ARCH-11) |
 
 **S1. 규칙 vector**
-- `06` §7.6 표 15행이 모두 통과한다(S1에는 13~14행, S3에 전체)
+- `06` §7.7 표 15행이 모두 통과한다(S1에는 13~14행, S3에 전체)
 
 **S2. 독립 해결 + 설명 성공 → 증거 반영**
 - Given A의 `JAVA.EXCEPTION` state (K, I, E, D) = (1, 1, 1, 0), cooldown 없음
@@ -519,6 +586,18 @@
 **S6. 조회 API**
 - `GET /skills/me`: skill마다 축별 evidence level, planning level, target, `selfAssessedLevel`. self 4·active·evidence (1,0,0,0) → planning (3,3,3,3) (vector 13)
 - `GET /skills/{skillId}/history`(S3): `changedAt` 내림차순, `ruleCode`, from/to, 근거 이벤트 요약
+
+**S7. 학습 단계 6칸 (S3, `06` §5.11, `05` §6.4)**
+- Given A의 skill `S`에 기록이 없다
+- When `GET /skills/{S}` → 200, `learningStages`가 **항상 6개**이고 순서가 `BUILD`, `READ_CONCEPT`, `READ_CODE`, `EXPLAIN`, `REVIEW`, `REDO`(만들기가 먼저다), 전부 `completed = false`·`completedAt = null`. `whyItMatters`는 콘텐츠 값(없으면 null)
+- Given `S`의 `CHALLENGE` task를 `COMPLETED` → `BUILD`만 `completed = true`, `completedAt` = 그 task의 `completed_at`. 같은 조건의 기록이 둘이면 **가장 이른** 시각이다(ST-3)
+- Given `S`를 `skill_id`로 하는 `COMPLETED` 러버덕 세션 또는 `explained_to_person = true`인 `EXPLAIN` 과제 → `EXPLAIN` 완료. `explained_to_person = false`로 완료한 `EXPLAIN` 과제만 있으면 **완료가 아니다**
+- Given `S`의 `review_item`에 `review_answer` 1건 → `REVIEW` 완료 / `REDO` 과제를 `redo_without_ai = true`로 완료(S4) → `REDO` 완료, `false`면 완료가 아니다
+- And 60일 창(`rule-window-days`)과 무관하다 — 61일 전 기록도 단계를 채운다(ST-4)
+- And 단계를 담는 컬럼·테이블·학습 이벤트가 없다(ADR-042): 위 시나리오 전후로 `learning_event` 행 수가 단계 때문에 늘지 않는다
+- And `active = false` skill은 단계를 계산하지 않는다(ST-6). 비활성 skill의 `GET /skills/{skillId}`는 200이고 `learningStages`는 6개 모두 `completed = false`
+- And 없는 `skillId` → 404 `RESOURCE_NOT_FOUND`. `/skills/tree`·`/skills/me`는 리터럴 경로로 먼저 매칭된다
+- And planner: `baseScore`가 같은 후보 A(완료 0개)·B(완료 3개)에서 `stageGapBonus`가 A에게 더 크게 붙어 A가 앞선다(ST-V12). 제안 분기(`06` §5.3)는 바뀌지 않는다
 
 ---
 
@@ -554,6 +633,19 @@
 **S6. 실기기 (manual)**
 - iOS Safari와 Android Chrome에서 홈 화면 추가 → standalone 실행 → 로그인 유지 → 5장 복습을 5분 안에 완료. 결과(기기, 소요 시간)를 S2 데모 기록에 남긴다
 
+**S7. AI 채점은 고른 카드에서만 부른다 (S3)**
+- Given 답을 썼고 rubric이 있는 카드, `aiStatus = ENABLED`
+- Then "AI로 채점하기" 체크가 보이고 **꺼져 있다**
+- When 켜지 않고 등급을 누른다
+- Then 요청 `evaluate = false`이고 채점 시트가 뜨지 않는다 — 켜지 않으면 AI를 부르지 않는다
+- When 켜고 등급을 누른다
+- Then 요청 `evaluate = true`, 채점 시트에 rubric 항목마다 "짚었어요/빠졌어요 — {기준}"과 총평이 보인다. 닫으면 조정 토스트로 이어진다
+- And 다음 카드는 다시 **꺼진 상태**로 시작한다 (마지막 선택을 기억하지 않는다)
+- Given 답을 쓰지 않았거나 rubric이 없거나 `aiStatus ∈ {DISABLED, BALANCE_EXHAUSTED}`
+- Then 체크 자체가 **보이지 않는다**
+- Given 채점이 실패한다(`evaluationSkippedReason`)
+- Then 오류 화면 없이 자기평가로 진행하고 조정 토스트에 한 줄로 알린다
+
 ---
 
 ## AC-11 온보딩·진단 제안
@@ -579,7 +671,8 @@
 **S2. 실패 시 아무것도 남지 않는다**
 - `focusSkillCodes`에 없는 code → 400 `VALIDATION_FAILED`(`SKILL_CODE_UNKNOWN`), `learning_goal`·`learning_plan`·`user_skill_state` 0행, `onboarding_completed_at` null
 - 같은 category 2번 → 400 `VALIDATION_FAILED`(`DUPLICATE_VALUE`)
-- `selfAssessments` 14개 → 400 `VALIDATION_FAILED`
+- `selfAssessments` **15개** → 400 `VALIDATION_FAILED`(`Size` — 상한은 `SkillCategory` 값 수 14다, `05` §4.1·§17. 14개는 201)
+- `learningGoal.targetCompletionDate = D`(오늘) 또는 `D + 3년 + 1일` → 400 `VALIDATION_FAILED`(`DATE_OUT_OF_RANGE`, field `learningGoal.targetCompletionDate`), 전체 롤백
 
 **S3. 중복 온보딩**
 - 완료 후 재호출 → 409 `ONBOARDING_ALREADY_COMPLETED`
@@ -637,9 +730,9 @@
 | 항목 | 값 |
 |---|---|
 | 관련 요구사항 | NFR-03, FR-22 |
-| Sprint | S3 (training·review·hint·러버덕·코드 읽기), S4 (coach 재검증), S5 (challenge 생성) |
+| Sprint | S3 (training·review·hint·러버덕·코드 읽기), S4 (coach 재검증, 재현 과제), S5 (challenge 생성) |
 | 검증 수준 | API E2E, unit(오류 매핑), UI |
-| 테스트 클래스 | `AiDisabledFlowTest`, `ReviewEvaluateFallbackTest`, `CoachResponseFeedbackFallbackTest`, `AiGatewayTest`, `DeepSeekAiProviderRequestTest`, `SubmissionEvaluationTaskIntegrationTest` |
+| 테스트 클래스 | `AiDisabledFlowTest`, `ReviewEvaluateFallbackTest`, `CoachResponseFeedbackFallbackTest`, `AiGatewayTest`, `DeepSeekAiProviderRequestTest`, `SubmissionEvaluationTaskIntegrationTest`, `RedoTaskFlowTest`(S9) |
 
 **S1. 비-AI 기능은 그대로 동작 (`devpilot.ai.provider = disabled`)**
 - `POST /today/generate`, `GET /today`, `PATCH /today/tasks/{id}`, 세션 4종, `GET /reviews/due`, `POST /reviews/{id}/answer`(`evaluate = false`), review-items 3종, `GET /plans/active`, `POST /plans/{id}/replan`, `POST /plans/{id}/replan/preview`, `GET /plans/active/budget`, `GET /skills/me`, `GET /dashboard`, `GET /challenges`, side-projects 5종, `GET /readings/{readingKey}`, `GET /rubber-duck/{sessionId}` → 모두 2xx
@@ -675,12 +768,18 @@
 - provider `disabled`: `POST /coach/reviews` → 503, `coach_review` 0행 / 기존 review `GET`, finding `PATCH`, `complete` → 2xx / finding 응답 → 2xx, 응답 저장, `feedbackSkippedReason = AI_UNAVAILABLE`
 - 분석 중 공급자 실패 → `FAILED` + retry로 복구
 
-**S7. UI**
-- `aiStatus = DISABLED`면 AI 진입 버튼 비활성 + 이유 문구, 비-AI 화면(Today·Review·Plan)은 배너만 표시하고 사용 가능
+**S7. UI (배너 범위는 `02` §6.5)**
+- `aiStatus ∈ {DISABLED, BALANCE_EXHAUSTED}`면 AI 진입 버튼이 비활성이고 버튼 아래 사유 1줄(`ai.disabledReason`/`ai.balanceExhaustedReason`)이 보인다
+- 배너(`AiUnavailableBanner`)는 **AI를 쓰는 화면에만** 뜬다: SCR-RUBBER-DUCK, SCR-READ-CODE, SCR-TRAINING-LIST, SCR-CHALLENGE-DETAIL, SCR-TRAINING-ATTEMPT, SCR-COACH-\*, SCR-EVIDENCE-DETAIL(초안 생성 중·실패), SCR-REQUIREMENTS-LIST, SCR-REQUIREMENT-NEW, SCR-MORE
+- **Today·복습·계획 화면에는 배너를 띄우지 않는다**: SCR-TODAY, SCR-REVIEW-\*, SCR-PLAN, SCR-PROJECTS, SCR-PROJECT-DETAIL, SCR-PROJECT-NOTE-EDIT은 AI 없이 동작하므로 배너 없이 그대로 쓸 수 있고, 그 화면의 러버덕 진입 버튼만 비활성 + 사유 1줄이다(widget test로 배너 위젯이 **없음**을 확인한다)
 
 **S8. 러버덕·코드 읽기 (S3)**
 - `POST /rubber-duck` → 201(시작은 AI를 부르지 않는다), `POST /rubber-duck/{id}/turns` → 503 `AI_UNAVAILABLE`, 턴 미저장 / 정리(`complete`)는 오류 없이 `COMPLETED` + `summarySkippedReason = AI_UNAVAILABLE` — 상세는 AC-26 S9·S11
 - planner는 `READ_CODE`를 제안하지 않는다(완료 조건이 러버덕이므로). 이미 만든 `READ_CODE` task의 `GET /readings/{readingKey}`는 200 — AC-28 S6
+
+**S9. 재현 과제는 AI 없이도 그대로 (S4, RE-8)**
+- provider `disabled`에서도 `POST /today/generate`가 `REDO`를 제안하고, `PATCH /today/tasks/{taskId}` `{status: COMPLETED, redoWithoutAi}`가 200이며 `REDO_COMPLETED` 이벤트와 실패 시 복습 카드가 그대로 생긴다. `ai_call_log` 새 행 0
+- **재현 잠금은 AI 불가와 다르다**: `409 AI_ASSIST_LOCKED_FOR_REDO`는 `aiStatus`와 무관하게 나오고, 화면은 AI 불가 배너가 아니라 잠금 사유를 보인다(AC-31 S7, `02` §6.5)
 
 ---
 
@@ -754,7 +853,7 @@
 | 항목 | 값 |
 |---|---|
 | 관련 요구사항 | FR-12, NFR-05 |
-| Sprint | S3 (`SecretMasker`, training·review·session endpoint, S1~S2에 먼저 생긴 사이드 프로젝트·온보딩 `sideProject`, 러버덕 턴), S4 (coach), S7 (요구사항 문서) |
+| Sprint | S3 (`SecretMasker`, training·review·session endpoint, S1~S2에 먼저 생긴 사이드 프로젝트·온보딩 `sideProject`, 러버덕 턴, 프로젝트 기록, 설명 기록 `explainedNote`, 로드맵 비교 원문 — 2026-09-20 S7 → S3), S4 (coach) |
 | 검증 수준 | unit(vector), API E2E |
 | 테스트 클래스 | `SecretMaskerTest`, `SecretMaskerPerformanceTest`, `CoachReviewMaskingOrderTest`, `SecretMaskingEndpointsTest` |
 
@@ -781,7 +880,7 @@
 - `content`에 `-----BEGIN RSA PRIVATE KEY-----` 블록 → 422 `SECRET_DETECTED_BLOCKED`, `coach_review` 0행, `ai_call_log` 0행, 감사 로그 `SECRET_BLOCKED`(개수·type만) <!-- gitleaks:allow -->
 - finding 응답 `text`에 private key → 422, finding 상태·`user_response` 변경 없음
 
-**S4. 다른 사용자 입력 endpoint (S3, 요구사항 문서는 S7)**
+**S4. 다른 사용자 입력 endpoint (S3 — 로드맵 비교 원문도 S3이다)**
 - `05-api-spec.md` §1.11 표와 `17-ai-integration.md` 적용 위치 표의 endpoint·필드마다: private key → 422이고 행 저장 없음 / `AKIA…` 키 → 저장값과 AI 입력에서 마스킹
 - 포함: `POST /rubber-duck/{sessionId}/turns` `explanation`(AC-26 S10), `POST /side-projects`·`PATCH /side-projects/{sideProjectId}`·`POST /onboarding` `sideProject`의 `name`·`description`·`stack`(`05` §19.2 — `repoUrl`은 URL 필드라 대상 아님, AC-27 S9)
 
@@ -1050,12 +1149,12 @@
 
 ---
 
-## AC-22 요구 역량 비교
+## AC-22 로드맵 비교
 
 | 항목 | 값 |
 |---|---|
 | 관련 요구사항 | FR-19 |
-| Sprint | S7 |
+| Sprint | S3 (2026-09-20 S7 → S3. `BL-EVD-07`이 S6이므로 S3에서는 `matchedEvidence`가 항상 `[]`이고 evidence 승인 후 S6에 다시 확인한다) |
 | 검증 수준 | unit(vector), API E2E |
 | 테스트 클래스 | `RequirementFitClassifierTest`, `RequirementRadarFlowTest`, `RetentionCleanupJobIntegrationTest` |
 
@@ -1072,9 +1171,9 @@
 - self-assessment 값이 높아도 evidence level만 사용한다(self 5, evidence (0,0,0,0) → LATER)
 
 **S2. 분석 흐름**
-- When `POST /requirement-docs` `{ title, sourceUrl: "https://docs.example.com/team-stack", sourceText }` → 202
-- Then `GET /requirement-docs/{id}`: `analysisStatus = COMPLETED`, `requirements[]`마다 `requirementType ∈ {REQUIRED, PREFERRED}`, AI가 catalog에 없는 skill code를 제안한 requirement는 `skill = null`, `fitCategory = null`
-- And `requirements[].matchedEvidence[]` ≤ 3개, 모두 A의 `status = ACCEPTED` evidence(accepted_at 내림차순), `fitCounts`는 개수만 담는다
+- When `POST /requirement-docs` `{ title: "Sample Roadmap", sourceUrl: "https://roadmap.example.com/backend", sourceText: <합성 로드맵 — 기술 항목 목록> }` → 202
+- Then `GET /requirement-docs/{id}`: `analysisStatus = COMPLETED`, `requirements[]`(로드맵 항목)마다 `requirementType ∈ {REQUIRED, PREFERRED}`, AI가 catalog에 없는 skill code를 제안한 requirement는 `skill = null`, `fitCategory = null`
+- And `requirements[].matchedEvidence[]` ≤ 3개, 모두 A의 `status = ACCEPTED` evidence(accepted_at 내림차순), `fitCounts`는 개수만 담는다. **S3에서는 evidence 승인 경로가 없어 항상 `[]`이고**(AC-21은 S6) 분류는 skill의 evidence 레벨만으로 계산한다 — S6에 evidence를 승인한 뒤 이 항목을 다시 확인한다
 
 **S3. 확률·점수 없음**
 - `GET /requirement-docs/{id}`, `GET /requirement-docs` 응답 JSON의 모든 key가 정규식 `(?i)(probability|score|percent|ratio|rate|rank)`에 매칭되지 않고, 모든 문자열 값에 `%` 없음
@@ -1342,6 +1441,17 @@
 **S14. Eval (prompt·모델·가드 변경 시)**
 - `rubber-duck` eval suite(러너 `BL-AIP-13`) 실행 결과가 PR에 첨부되어 있다: 모든 `question`이 NA-1~NA-3을 통과하고, 설명의 빈틈을 겨냥한다(RD-2 — 채점 기준은 `17-ai-integration.md` §12)
 
+**S15. 지시어 세기 (`06` §9.6 VR-1~VR-10)**
+- Given 턴 본문 `이거를 그거로 바꾸면 그렇게 동작합니다`(어절 5)
+- When `POST /rubber-duck/{sessionId}/turns` → 201, `vagueReferenceCount = 3`, `vagueReferencePer100Words = 60`
+- And **저장하지 않는다**: `rubber_duck_turn`에 해당 컬럼이 없고 로그에도 두 값이 없다. AI 출력이 아니라 서버 계산이다(같은 본문이면 provider fixture를 바꿔도 값이 같다)
+- And 마스킹 뒤 본문을 센다(VR-1) / 문장 첫 어절 `이렇게`는 세지 않는다(VR-5) / 한 어절을 두 번 세지 않는다(VR-4)
+- And `06-09-vague-reference.yaml` vector 전부가 parameterized test로 통과한다
+- Given 세션의 사용자 턴을 모두 이어 붙인 본문이 `count × 100 ≥ 3 × wordCount`
+- When `POST /rubber-duck/{sessionId}/complete` → `gaps`에 **`용어 — 지시어 대신 용어로 바꿔 말해 보기` 1건**이 더해진다(한 세션 최대 1건)
+- And 그 항목은 `summary_json.rawGapCount`에 들어가지 않고 **복습 카드를 만들지 않는다**(VR-10) — 그래서 `rawGapCount = 0`·`turns ≥ 3`이면 지시어가 많아도 설명 증거(S7)는 그대로 성립한다
+- And `EXPLAIN` 과제 답변과 challenge 자기 설명 응답에도 같은 두 값이 나온다(`05` §10)
+
 ---
 
 ## AC-27 사이드 프로젝트
@@ -1349,7 +1459,7 @@
 | 항목 | 값 |
 |---|---|
 | 관련 요구사항 | FR-26, FR-02 (SP-1 온보딩 생성·건너뛰기, SP-2 `PROJECT_TASK` 문구, SP-3 가장 최근 `ACTIVE` 하나) |
-| Sprint | S1 (CRUD·온보딩), S2 (`PROJECT_TASK` 연결), S3 (마스킹, 러버덕 `PROJECT_WORK`), S4 (Coach `sideProjectId`) |
+| Sprint | S1 (CRUD·온보딩), S2 (`PROJECT_TASK` 연결), S3 (마스킹, 러버덕 `PROJECT_WORK`, **경험 기록 분류 `kind`**), S4 (Coach `sideProjectId`) |
 | 검증 수준 | API E2E, integration, unit(vector), UI |
 | 테스트 클래스 | `SideProjectServiceIntegrationTest`, `SideProjectFlowTest`, `TaskProposalPolicyTest`, `TodayPlanServiceIntegrationTest`, `CoachReviewRequestValidationTest`, `projects_screen_test.dart` |
 
@@ -1415,6 +1525,15 @@
 **S10. UI (SCR-PROJECTS)**
 - 등록 → 목록에 표시, 수정·상태 변경·삭제 확인 대화상자, `repoUrl`은 텍스트 링크로만 표시(미리보기 요청 없음), 409 `CONCURRENT_MODIFICATION` 새로고침 안내(widget test)
 
+**S11. 경험 기록 분류 `kind` (S3, I-23, `06` SP-3)**
+- When `POST /side-projects`에 `kind`를 생략 → 201, `kind = SIDE`(기본값) / `{ kind: "PAST_WORK" }` → 201 그대로 / `{ kind: "OLD_JOB" }` → 400 `UNKNOWN_ENUM_VALUE`
+- When `PATCH /side-projects/{P}` `{ kind: "PAST_WORK", version }` → 200, 이미 만들어진 `PROJECT_TASK`와 기록은 그대로 남는다
+- Given P1 `ACTIVE`·`SIDE`(`updated_at` = t1), P2 `ACTIVE`·`PAST_WORK`(t2 > t1), 후보 skill 1개(AC-27 S7과 같은 fixture)
+- When `POST /today/generate` → main `PROJECT_TASK`의 `side_project_id = P1`이다(가장 최근이지만 `PAST_WORK`인 P2를 **고르지 않는다**)
+- Given `ACTIVE` 프로젝트가 `PAST_WORK` 하나뿐 → `PROJECT_TASK`를 만들지 않고 `EXPLAIN`으로 내려간다(SP-1과 같은 결과)
+- And `PAST_WORK` 프로젝트에도 기록(`POST …/notes`)·러버덕 `PROJECT_WORK`·내보내기(AC-33 S11)는 그대로 된다
+- And 상태 전이표가 없다 — `SIDE ↔ PAST_WORK`를 양방향으로 바꿀 수 있고 `status`와 독립이다(`04` §4.9)
+
 ---
 
 ## AC-28 코드 읽기
@@ -1435,18 +1554,18 @@
 | T-2 | (1, 1) | ENABLED | `READ.PETCLINIC.CONTROLLER_SLICE.001` (15분) | N | `READ_CODE`, estimated **15**, difficulty **2** |
 | T-3 | (1, 1) | DISABLED | 있음 | N | `READING` — AI 불가라 CHALLENGE·READ_CODE 모두 제외 |
 | T-4 | (3, 3) | ENABLED | 없음(전부 완료) | Y | `PROJECT_TASK` (30분, difficulty 3, `ACTIVE` 사이드 프로젝트 있음) |
-| T-5 | (3, 3) | ENABLED | 2개(`READ.RESTBUCKS.AGGREGATE.001`, `READ.RESTBUCKS.STATE_TRANSITION.001`) | Y | `READ_CODE` — key ASC로 `READ.RESTBUCKS.AGGREGATE.001` |
+| T-5 | (3, 3) | ENABLED | 2개(`READ.MODULAR_MONOLITH.SECURITY_CONFIG.001`, `READ.MODULAR_MONOLITH.STOCK_UPDATE.001`, 둘 다 15분) | Y | `READ_CODE` — key ASC로 `READ.MODULAR_MONOLITH.SECURITY_CONFIG.001`, estimated 15 |
 
 **S2. reading 선택은 결정적이다**
-- Given skill `SPRING.TRANSACTION`, planning KNOWLEDGE 1. `content/curated-repos.yaml`에서 이 skill을 가진 reading은 key ASC로 `READ.MODULITH.EVENT_FAILURE.001` → `READ.MODULITH.EVENT_PUBLISH.001` → `READ.RESTBUCKS.PAYMENT_TX.001` → `READ.RESTBUCKS.REPOSITORY_TX.001`
+- Given skill `SPRING.TRANSACTION`, planning KNOWLEDGE 1. `content/curated-repos.yaml`에서 이 skill을 가진 은퇴하지 않은 reading은 key ASC로 `READ.MODULITH.EVENT_FAILURE.001` → `READ.MODULITH.EVENT_PUBLISH.001` → `READ.SPRING_FRAMEWORK.CGLIB_PROXY.001` → `READ.SPRING_FRAMEWORK.TX_INTERCEPTOR.001` (은퇴한 `READ.RESTBUCKS.PAYMENT_TX.001`·`READ.RESTBUCKS.REPOSITORY_TX.001`은 후보가 아니다)
 
 | Given | 고른 reading |
 |---|---|
 | 이력 없음 | `READ.MODULITH.EVENT_FAILURE.001` |
 | A가 `EVENT_FAILURE`의 `READ_CODE` task를 `COMPLETED` | `READ.MODULITH.EVENT_PUBLISH.001` |
-| 위 + `EVENT_PUBLISH`가 D − 13에 제안됨(최근 14 plan-day) | `READ.RESTBUCKS.PAYMENT_TX.001` |
+| 위 + `EVENT_PUBLISH`가 D − 13에 제안됨(최근 14 plan-day) | `READ.SPRING_FRAMEWORK.CGLIB_PROXY.001` |
 | 위 + `EVENT_PUBLISH`가 D − 14에 제안됨 | `READ.MODULITH.EVENT_PUBLISH.001` |
-| 네 reading 모두 제외 | `READ_CODE` 없음 → `06` §5.3 3번(`READING`, KNOWLEDGE < 2) |
+| 네 reading(`EVENT_FAILURE`, `EVENT_PUBLISH`, `CGLIB_PROXY`, `TX_INTERCEPTOR`) 모두 제외 | `READ_CODE` 없음 → `06` §5.3 3번(`READING`, KNOWLEDGE < 2) |
 
 - 같은 입력으로 여러 번 생성해도 같은 reading이다(무작위 없음)
 
@@ -1463,20 +1582,31 @@
 - And `repo.url`을 요청 기록 stub 서버(WireMock) 주소로 바꾼 fixture 콘텐츠로 기동·조회 → 수신 요청 0건. `ai_call_log` 새 행 0
 - `GET /readings/read.petclinic.x` → 400 `VALIDATION_FAILED`(`Pattern`, field `readingKey`) / `GET /readings/READ.NOPE.TOPIC.001` → 404 `RESOURCE_NOT_FOUND` / 토큰 없음 → 401
 - B가 같은 key로 조회 → A와 같은 응답(사용자 소유 리소스가 아니다, AC-08 S2)
+- 은퇴한 테스트 reading(`retired: true`, key는 `retired.readingKeys`에도 있음) → 200, `retired = true`, 좌표·질문이 그대로다(`19` §8.2). 은퇴하지 않은 reading은 `retired = false`
+- 같은 skill에 은퇴한 reading만 있으면 `READ_CODE`를 제안하지 않는다(`06` §5.3 → READING 등으로 내려감)
 
 **S5. 완료 조건 (RC-1)**
 - Given `READ_CODE` task `T`가 `IN_PROGRESS`
 - When 러버덕 세션 없이 `PATCH /today/tasks/{T}` `{ status: "COMPLETED", version }` → 409 `INVALID_STATE_TRANSITION`, 상태 변화 없음
 - When `targetType = CODE_READING`, `targetId = T`인 세션이 `ABANDONED`뿐 → 409 `INVALID_STATE_TRANSITION`
-- When 그 세션에 턴 1개 이상 후 `complete` → `COMPLETED`(정리 AI 실패로 `summarySkippedReason`이 있어도 `COMPLETED`) → 같은 PATCH → 200, `completed_at` 설정
+- When 그 세션에 턴 1개 이상 후 `complete` → 세션 `COMPLETED`(정리 AI 실패로 `summarySkippedReason`이 있어도 `COMPLETED`). 이 시점에 T는 여전히 `IN_PROGRESS`다(정리는 과제 상태를 바꾸지 않는다, `05` §9.8) → 같은 PATCH → 200, `completed_at` 설정
 - `IN_PROGRESS → DEFERRED`, `PLANNED → SKIPPED`는 러버덕 세션 없이 허용
+
+**S5a. 읽기 평가 `readingFeedback` (선택, `05` §8.4)**
+- Given S5처럼 T에 `COMPLETED` 러버덕 세션이 있다
+- When `PATCH /today/tasks/{T}` `{ status: "COMPLETED", readingFeedback: "TOO_HARD", version }` → 200, `learning_task.reading_feedback = 'TOO_HARD'`
+- When `readingFeedback` 없이 완료 → 200, `reading_feedback = null`
+- When `{ status: "DEFERRED", readingFeedback: "BORING" }` 또는 `READ_CODE`가 아닌 task의 완료에 `readingFeedback` → 400 `VALIDATION_FAILED`(`errors[].code = VALUE_NOT_ALLOWED`, field `readingFeedback`), 상태·평가 변화 없음
+- When `readingFeedback = "GREAT"` → 400 `UNKNOWN_ENUM_VALUE`
+- And 평가를 저장해도 `user_skill_state`, `learning_event`, 다음 `POST /today/generate`의 후보·점수가 평가가 없을 때와 같다(규칙 입력이 아니다, `06` §5.3)
+- And `GET /me/export`의 `dailyPlans[].tasks[]`에서 T 행의 `readingFeedback`이 저장값과 같다(소스 점검 입력, `19` §8.5)
 
 **S6. AI 불가 시 제안하지 않는다 (`17` §3.10)**
 - `aiStatus = DISABLED`(T-3) 또는 `BALANCE_EXHAUSTED` → `READ_CODE` task를 만들지 않는다
 - 이미 만든 `READ_CODE` task의 `GET /readings/{readingKey}`는 AI 불가여도 200(읽기 안내까지는 동작)
 
 **S7. 콘텐츠 검증 (`19` §3.8·§4.1 CV-80~CV-87)**
-- 저장소의 `content/curated-repos.yaml`(저장소 3개·reading 13개) → `python3 content/tools/validate_content.py` ERROR 0, 백엔드 `ContentValidator` 기동 성공, 모든 저장소에 `pinnedCommit` 있음(CV-82 WARN 0)
+- 저장소의 `content/curated-repos.yaml`(저장소 9개·reading 41개 = 활성 36 + 은퇴 5) → `python3 content/tools/validate_content.py` ERROR 0, 백엔드 `ContentValidator` 기동 성공, 모든 저장소에 `pinnedCommit` 있음(CV-82 WARN 0)
 
 | 오류 fixture (`19` §4.3) | 결과 |
 |---|---|
@@ -1487,6 +1617,8 @@
 | `question` 7자 | CV-86 ERROR |
 | reading key 중복 | CV-83 ERROR |
 | `pinnedCommit: null` | CV-82 WARN |
+| reading `retired: true`인데 key가 `retired.readingKeys`에 없음 | CV-83 ERROR |
+| `retired.readingKeys`에 있는 key의 reading을 파일에서 지움 | CV-83 ERROR |
 
 - ERROR가 있으면 CI `content` job 실패, 백엔드는 기동 실패
 
@@ -1494,6 +1626,7 @@
 - `cloneHint`(복사 버튼)·`pinnedCommit`이 경로·질문보다 먼저 보이고, 코드 본문 위젯이 없다
 - `license = UNSPECIFIED`인 저장소(`restbucks`)는 읽기만 하라는 안내를 보인다
 - "러버덕으로 설명하기" → `POST /rubber-duck` `{ targetType: CODE_READING, targetId: T }` → SCR-RUBBER-DUCK. 완료 버튼은 409를 받으면 러버덕을 먼저 하라는 안내를 보인다(widget test)
+- `READ_CODE` 완료 시트에 읽기 평가 칩 3개(도움 됐어요 · 어려웠어요 · 지루했어요)가 있고, 아무것도 고르지 않아도 "완료 기록"이 활성이다. 고른 칩은 요청 body `readingFeedback`에 들어가고, 고르지 않으면 필드가 없다. 다른 task 유형과 "여기까지 기록" 시트에는 칩이 없다(widget test)
 
 ---
 
@@ -1585,3 +1718,465 @@
 
 **S5. UI (SCR-REPLAN)**
 - 여유가 있을 때 확장 제안 목록(복원·목표 상향)이 체크박스로 나오고, 체크한 항목이 `restoredDeferrals`·`acceptedTargetRaises`로 전송된다. 축소 제안 목록과 한 화면에 함께 나오지 않는다(widget test)
+
+---
+
+## AC-31 재현 과제 (AI 없이 다시 만들기)
+
+| 항목 | 값 |
+|---|---|
+| 관련 요구사항 | FR-28 (RE-1~RE-8 = `06` §5.10, HL-9 = `06` §9.1, 독립 구현 증거 = `06` §7.2) |
+| Sprint | S4 |
+| 검증 수준 | unit(vector), integration, API E2E, UI |
+| 테스트 클래스 | `RedoTaskPolicyTest`, `TaskProposalPolicyTest`, `PlannerScoringTest`, `ReasonTemplatesTest`, `SkillLevelRulesTest`, `RedoTaskIntegrationTest`, `InvariantConstraintIntegrationTest`, `today_flow_test.dart`, `attempt_flow_test.dart`, `rubber_duck_screen_test.dart` |
+
+**S1. 제안 창 (RE-2)** — 설정 `min-days-after = 3`, `max-days-after = 7`, today = `D`.
+
+- Given skill S의 `CHALLENGE` task T1(difficulty 2, 35분)이 `COMPLETED`이고 완료 plan-day가 아래와 같다
+- Then `POST /today/generate`의 main task는
+
+| T1 완료 plan-day | `daysBetween` | main |
+|---|---|---|
+| `D − 2` | 2 | `REDO` 아님 (창 전) |
+| `D − 3` | 3 | **`REDO`** (경계 포함) |
+| `D − 7` | 7 | **`REDO`** (경계 포함) |
+| `D − 8` | 8 | `REDO` 아님 (창 지남 — 이 기회는 사라진다) |
+
+- `REDO`일 때: `taskType = REDO`, `redoSourceTaskId = T1`, `redoSourceTaskType = CHALLENGE`, `estimatedMinutes = 35`(원본 그대로, RE-4), `title = "{T1 title} 혼자 다시 만들기"`, `reasons`에 `REDO_WITHOUT_AI`, `score_breakdown.modifiers`에 `{code: "REDO_DUE", multiplierBp: 13000}`, `reasonParams.redoDaysAfter` = 실제 일수
+- `PROJECT_TASK`도 같은 규칙으로 원본이 된다. `READ_CODE`·`READING`·`EXPLAIN`·`RECALL`·`REVIEW`·`COACH_REVIEW`·`REDO`는 원본이 되지 않는다(RE-1)
+- `skill_id`가 없는 원본은 후보가 아니다(RE-1)
+- `aiStatus = DISABLED`여도 `REDO`는 그대로 제안된다(RE-8)
+
+**S2. 한 원본에 하나씩 (RE-3)**
+
+| 그 원본을 가리키는 REDO | 오늘 창 안에서 |
+|---|---|
+| 없음 | 후보 |
+| `PLANNED` 또는 `IN_PROGRESS` 1개 | 후보 아님 |
+| `COMPLETED` + `withoutAi = true` 1개 | 후보 아님 (끝났다) |
+| `COMPLETED` + `withoutAi = false` 1개 | 후보 — 그 완료일부터 다시 3~7일 |
+| `COMPLETED` + `false` 2개 | 후보 아님 (`max-attempts = 2`) |
+| `SKIPPED` 1개 + `COMPLETED` + `false` 1개 | 후보 아님 (시도 2회) |
+| `DEFERRED` 1개 | 후보 (시도로 세지 않는다) |
+
+- 같은 skill에 재현 후보가 둘이면 `lastAttemptDate ASC → 원본 task.id ASC`로 첫 번째만 제안한다
+
+**S3. 시간이 모자라면 오늘은 제안하지 않는다 (RE-4)**
+- Given 원본 estimated 60분, `availableMinutes` 40 → `mainBudget` 40, `limit` 44
+- Then main은 `REDO`가 아니라 `06` §5.3 1번부터 다시 고른 제안이고, 후보는 창 안에 남는다. 다음 날 `availableMinutes` 90으로 생성하면 `REDO`가 나온다
+
+**S4. AI 잠금 (RE-5, HL-9)** — Given 그 challenge의 `REDO`가 `PLANNED` 또는 `IN_PROGRESS`
+
+| 요청 | 결과 |
+|---|---|
+| `POST /challenge-attempts/{그 challenge의 attempt}/hints` | 409 `AI_ASSIST_LOCKED_FOR_REDO`. `hint_disclosure` 새 행 0, `HINT_DISCLOSED` 0건, AI 호출 0. 자기설명이 없어도 이 코드가 먼저다(HL-9 > HL-2) |
+| `POST /rubber-duck` `{targetType: CHALLENGE, targetId: 그 attempt}` | 409 `AI_ASSIST_LOCKED_FOR_REDO`. `rubber_duck_session` 새 행 0, 기존 `IN_PROGRESS` 세션이 `ABANDONED`가 되지 않는다 |
+| (원본이 `PROJECT_TASK`일 때) `POST /rubber-duck` `{targetType: PROJECT_WORK, targetId: 그 프로젝트}` | 409 `AI_ASSIST_LOCKED_FOR_REDO` |
+| **다른** challenge의 hint, `REVIEW_ITEM`·`CODE_READING`·`CONCEPT` 러버덕 | 정상 |
+| 그 challenge의 자기설명·제출·평가 | 정상 — 잠기는 것은 AI 도움뿐이다 |
+| B(다른 사용자)의 같은 seed challenge hint | 정상 — 잠금은 사용자별이다 |
+| `REDO`가 `COMPLETED`·`SKIPPED`·`DEFERRED`가 된 뒤 같은 요청 | 정상 |
+
+**S5. 완료와 질문 (RE-6)**
+
+| `PATCH /today/tasks/{taskId}` | 결과 |
+|---|---|
+| `{status: COMPLETED, version}` (답 없음) | 400 `VALIDATION_FAILED`(field `redoWithoutAi`, code `VALUE_REQUIRED`). 상태·이벤트·카드 변화 0 |
+| `{status: COMPLETED, redoWithoutAi: true, version}` | 200. `redo_without_ai = true` |
+| `{status: SKIPPED, redoWithoutAi: true, version}` | 400 (`VALUE_NOT_ALLOWED`) |
+| `READ_CODE` task에 `{status: COMPLETED, redoWithoutAi: true, …}` | 400 (`VALUE_NOT_ALLOWED`) |
+
+- DB CHECK `learning_task_redo_answer_required`가 JDBC 직접 INSERT도 거부한다(23514, I-21)
+
+**S6. 성공만 증거가 된다 (RE-7, RE-8)**
+- When `redoWithoutAi: true` → `REDO_COMPLETED` 1행(skill별, dedupe `REDO:{taskId}:{skillId}`), payload `{taskId, sourceTaskId, sourceTaskType, withoutAi: true, difficulty}`. `review_item` 새 행 0
+- And 그 skill에 `CHALLENGE_EVALUATED` SOLVED_INDEPENDENTLY(difficulty ≥ 2)가 2개 더 있으면 IMPLEMENTATION 2 → 3 (`I3_SOLVED_INDEPENDENT`, 독립 구현 증거 3개·`evidenceKey` 3종)
+- When `redoWithoutAi: false` → `REDO_COMPLETED{withoutAi: false}` 1행. 레벨 변화 없음. `review_item` 1장: `concept_key = REDO:{sourceTaskId}`, `source_type = REDO_TASK`, `origin = MANUAL`, `review_type = EXPLAIN`, `due_at = planDayStart(today + 1)`, skill = task의 skill
+- And 같은 원본으로 두 번째 실패면 카드를 새로 만들지 않고 `due_at`만 당긴다(I-06)
+- And `REDO_COMPLETED`는 `withoutAi` 값과 무관하게 `I4`·`I5`에 쓰이지 않는다(`06` §7.2)
+
+**S7. UI (SCR-TODAY)**
+- `REDO` 카드에 배지 "AI 없이 재현"과 잠금 줄 `today.redo.locked`가 `PLANNED`·`IN_PROGRESS` 모두에서 보인다. `IN_PROGRESS`에 "러버덕으로 설명하기" 버튼이 없다
+- 완료 시트에 질문 "AI 도움 없이 끝냈나요?"와 버튼 둘이 있고, 고르기 전에는 "완료 기록"이 비활성이다. "아니요" 후 완료 → 토스트 + "복습하러 가기"
+- SCR-TRAINING-ATTEMPT·SCR-RUBBER-DUCK이 `409 AI_ASSIST_LOCKED_FOR_REDO`를 받으면 AI 불가 배너가 아니라 버튼 비활성 + 사유 1줄 + "Today로 가기"다(widget test)
+
+---
+
+## AC-32 학습 트랙 2종
+
+| 항목 | 값 |
+|---|---|
+| 관련 요구사항 | FR-03, FR-02 (트랙 기본값 = `devpilot.tracks`, `06` §5.3 / 콘텐츠 = `19` §3.3·§3.4·§10.4) |
+| Sprint | S3 |
+| 검증 수준 | unit(vector), integration(content·DB CHECK), API E2E, UI |
+| 테스트 클래스 | `TaskProposalPolicyTest`, `DevPilotPropertiesBindingTest`, `ContentValidatorTest`, `OnboardingServiceIntegrationTest`, `LearningGoalServiceIntegrationTest`, `DiagnosticSuggestionServiceIntegrationTest`, `onboarding_track_test.dart`, `content/tools/validate_content.py` |
+
+**S1. 두 트랙이 모두 온보딩된다**
+- When `POST /onboarding` `{learningGoal: {targetRole: "JAVA_BACKEND_STARTER", targetCompletionDate, focusSkillCodes}, …}`
+- Then 201. `learning_goal.target_role = 'JAVA_BACKEND_STARTER'`, plan v1의 `title`은 그 트랙 템플릿의 `planTitle`, milestone 수는 그 템플릿의 수
+- And `user_skill_state` 행은 **그 트랙에 role target이 있는 활성 non-root skill**에만 생긴다(`05` §4.1 5단계)
+- And `GET /skills/tree?role=JAVA_BACKEND_STARTER`의 `roleTarget.priority = MUST` 수가 `JAVA_BACKEND`보다 **적다**, 그리고 같은 skill의 축별 목표 합이 입문 트랙에서 더 작거나 같다
+- When `targetRole`에 없는 값 → 400 `UNKNOWN_ENUM_VALUE`. `focusSkillCodes`에 그 트랙의 role target이 없는 skill → 400 `SKILL_CODE_UNKNOWN`
+
+**S2. 트랙은 바꿀 수 없다**
+- When `PUT /learning-goal` `{targetRole: <다른 트랙>, …}` → 400 `VALIDATION_FAILED`(field `targetRole`, code `VALUE_NOT_ALLOWED`), `learning_goal` 변화 0
+- When 같은 `targetRole`로 날짜만 변경 → 200
+
+**S3. 트랙이 planner를 바꾼다 (`06` §5.3 T-6~T-9)**
+- Given planning (K, I) = (4, 4), 그 skill에 d5·d4·d3·d2 challenge가 있고 AI 사용 가능
+
+| 트랙 | `maxTaskDifficulty` | 제안 |
+|---|---|---|
+| `JAVA_BACKEND` | 5 | `CHALLENGE` difficulty 5 |
+| `JAVA_BACKEND_STARTER` | 3 | `CHALLENGE` difficulty 3 |
+
+- Given CHALLENGE 없음, 선택 가능한 reading 있음
+
+| 트랙 | `readCodeMinKnowledge` | planning K = 1 | planning K = 2 |
+|---|---|---|---|
+| `JAVA_BACKEND` | 1 | `READ_CODE` | `READ_CODE` |
+| `JAVA_BACKEND_STARTER` | 2 | `READING` | `READ_CODE` |
+
+- 그 밖의 규칙(factor·weight·modifier·시간 배분·복습 간격·레벨 갱신·budget)은 두 트랙에서 같은 입력에 같은 결과다
+
+**S4. 트랙이 진단 제안을 바꾼다**
+- `GET /diagnostics/suggestions`는 그 트랙에 role target이 있는 category만 제안하고, 제안하는 challenge의 `difficulty ≤ trackDefaults.maxTaskDifficulty`다. 입문 트랙에서는 difficulty 4·5 진단이 나오지 않는다
+
+**S5. 설정 검증**
+- `devpilot.tracks`에 `TargetRole` 값이 하나라도 빠지면 기동 실패. `max-task-difficulty`가 1~5 밖이거나 `read-code-min-knowledge`가 0~5 밖이면 기동 실패
+
+**S6. 콘텐츠 검증**
+- `ContentValidator`: 트랙마다 role target 파일 1개(CV-21 — 그 트랙의 non-root skill 하나당 target 1개)와 plan template 1개(CV-30), 그 트랙의 모든 MUST skill이 그 템플릿의 milestone에 있다(CV-36). 입문 트랙 파일을 빼면 기동 실패
+- `content/tools/validate_content.py`도 같은 규칙으로 실패한다(오류 fixture, `19` §4.3)
+
+**S7. 두 사용자는 서로를 보지 못한다**
+- A(`JAVA_BACKEND`)와 B(`JAVA_BACKEND_STARTER`)가 모두 온보딩한 상태에서 `AuthorizationIsolationTest` 전체가 통과한다. B의 `GET /skills/me`·`GET /plans/active`·`GET /side-projects`·`GET /me/export` 어디에도 A의 항목이 없고, A의 트랙이 B의 어떤 계산에도 들어가지 않는다 (AC-08, `07` §4.3)
+
+**S8. UI (SCR-ONBOARDING 1단계)**
+- 라디오 2개, 기본 `JAVA_BACKEND`. 각 항목에 이름·한 줄 설명·필수 skill 수. 트랙을 바꾸면 3단계 입력이 초기화된다. SCR-LEARNING-GOAL에서는 읽기 전용이고 `onboarding.goal.track.locked`가 보인다(widget test)
+
+---
+
+## AC-33 사이드 프로젝트 결정·장애 기록
+
+| 항목 | 값 |
+|---|---|
+| 관련 요구사항 | FR-29 (PN-1~PN-4 = `06` §9.5, I-22 = `04` §7) |
+| Sprint | S3 (기록 CRUD와 **Markdown 내보내기**, 증거 초안 연결 S6, 주간 지표 S5) |
+| 검증 수준 | API E2E, integration, unit, UI |
+| 테스트 클래스 | `SideProjectNoteServiceIntegrationTest`, `SideProjectNoteFlowTest`, `SideProjectNoteExportTest`, `InvariantConstraintIntegrationTest`, `MetricsCalculatorTest`, `EvidenceDraftTaskIntegrationTest`, `project_notes_screen_test.dart` |
+
+**S1. 결정 기록 만들기**
+- When `POST /side-projects/{P}/notes` `{ noteType: "DECISION", title: "주문 번호를 시퀀스 기반으로", occurredOn: <오늘>, skillCode: "<S>", decisionChoice, decisionOptions, decisionRationale }`
+- Then 201 `SideProjectNoteView`: 요청값 그대로, `incidentSymptom`·`incidentDetection`·`incidentFix`·`incidentPrevention` 모두 `null`, `version = 0`, `createdAt = updatedAt`
+- And `GET …/notes/{noteId}`가 같은 값, `GET …/notes`가 1건
+
+**S2. 유형별 필수·금지 (PN-1, I-22)**
+
+| 입력 | 결과 |
+|---|---|
+| `DECISION`인데 `decisionRationale` 없음 | 400 `VALIDATION_FAILED`(field `decisionRationale`, code `VALUE_REQUIRED`) |
+| `DECISION`인데 `incidentSymptom` 있음 | 400 (`VALUE_NOT_ALLOWED`) |
+| `INCIDENT`인데 넷 중 하나 없음 | 400 (`VALUE_REQUIRED`) |
+| `INCIDENT`인데 `decisionChoice` 있음 | 400 (`VALUE_NOT_ALLOWED`) |
+| 본문 항목이 공백만 | 400 (`VALUE_REQUIRED` — 앞뒤 공백 제거 후 판정) |
+| `title` 없음 / 201자 / 본문 항목 4001자 | 400 `VALIDATION_FAILED` |
+| `occurredOn` 내일 | 400 (`DATE_OUT_OF_RANGE`) |
+| 없는 `skillCode` / 비활성 skill | 400 (`SKILL_CODE_UNKNOWN`) |
+| 없는 `noteType` | 400 `UNKNOWN_ENUM_VALUE` |
+
+- 400이면 `side_project_note` 새 행 0. JDBC로 CHECK를 직접 위반하면 23514(I-22)
+
+**S3. 목록·필터·페이지**
+- Given N1(`INCIDENT`, `occurredOn = D−1`), N2(`DECISION`, `D−3`), N3(`DECISION`, `D−1`, id가 N1보다 작음)
+- `GET …/notes` → N1, N3, N2 (`occurredOn` DESC, `id` DESC) / `?noteType=DECISION` → N3, N2 / `?noteType=BUG` → 400 `UNKNOWN_ENUM_VALUE` / `limit=2` → 2건 + `nextCursor`, 다음 페이지 1건
+
+**S4. 수정 — 유형은 바꿀 수 없다 (PN-2)**
+- `PATCH …/notes/{N}` `{title: "…", version: 0}` → 200, `version = 1`, `updatedAt` 갱신
+- 같은 값으로 다시 → 200, `version`·`updatedAt` 그대로(바뀐 필드 없음)
+- body에 `noteType` → 400 `MALFORMED_REQUEST`(알 수 없는 속성)
+- 유형에 필요한 항목에 `""` → 400 `VALUE_REQUIRED` / 유형에 맞지 않는 항목에 값 → 400 `VALUE_NOT_ALLOWED`
+- `{skillCode: "", version}` → 200, `skill = null` / 이전 `version` → 409 `CONCURRENT_MODIFICATION`
+
+**S5. 삭제와 cascade**
+- `DELETE …/notes/{N}` → 204, 다시 → 404 `RESOURCE_NOT_FOUND`
+- 기록 2개가 있는 프로젝트에 `DELETE /side-projects/{P}` → 204, `side_project_note` 0행(`04` §8)
+
+**S6. 소유권 (AC-08)**
+- B가 A의 `sideProjectId`로 `GET`·`POST …/notes` → 404 `RESOURCE_NOT_FOUND`, 새 행 0
+- B가 **본인 프로젝트 id + A의 noteId**로 `GET`·`PATCH`·`DELETE` → 404, A의 기록은 `version`·내용 그대로
+- B의 `GET …/notes`에 A 항목 0건
+
+**S7. Masking (AC-14)**
+- 본문 항목에 런타임 조합 fake secret → 201, 저장값·응답·로그에 원문 0건
+- 어느 항목이든 private key 블록 → 422 `SECRET_DETECTED_BLOCKED`, 행 0, 감사 로그 `SECRET_BLOCKED`
+- `title`도 마스킹 대상이다(`05` §1.11)
+
+**S8. 레벨·계획에 영향이 없다 (PN-3)**
+- S1~S7 어디에서도 `learning_event`·`user_skill_state`·`skill_state_change`·`daily_plan` 행이 바뀌지 않는다
+
+**S9. 나중 기능으로 이어진다**
+- (S5) `MetricsCalculator`: 기간 내 `occurredOn`인 기록 수가 `weekly_review.metrics_json.projectNoteCount`에 들어간다
+- (S6) `POST /evidence/drafts` `{sourceProjectNoteId: N}` → 202. `evidence_candidate.skill_id` = 기록의 skill(없으면 null), `ai_draft_json.sourceProjectNoteId = N`. AI 입력은 그 기록의 **마스킹본**이다
+- `POST /evidence/drafts`에 둘 다 없으면 400 `ONE_OF_REQUIRED`, 둘 다 있으면 400 `MUTUALLY_EXCLUSIVE`, B의 기록 id면 400 `REFERENCE_NOT_FOUND`
+
+**S10. UI (SCR-PROJECT-DETAIL, SCR-PROJECT-NOTE-EDIT)**
+- 유형 필터 3개, 카드에 유형 배지·날짜·본문 첫 항목 2줄·skill 칩. "+ 결정 기록"·"+ 장애 기록"이 각각 `noteType` query로 이동
+- 편집 화면에 **유형을 바꾸는 입력이 없다**. 유형별 입력 항목이 3개·4개이고 전부 필수, 비면 "저장" 비활성. 날짜 선택기가 오늘 이후를 막는다
+- 편집 화면 상단에 안내 문구 "회사 소스·고객 정보는 적지 마세요. 상황과 판단만 적어요."가 보인다
+- `422` → 인라인 `projectNote.secretBlocked`, `409` → 최신 값으로 다시 채우고 토스트(widget test)
+
+**S11. Markdown 내보내기 (`05` §19.13)**
+- Given P에 기록 3건(`occurredOn` = D−3 `DECISION`, D−1 `INCIDENT`, D−1 `DECISION`)과 skill이 붙은 기록 1건
+- When `GET /side-projects/{P}/notes/export`
+- Then 200, `Content-Type: text/markdown; charset=UTF-8`, `Content-Disposition: attachment; filename="notes-{P}-{오늘 plan-day yyyyMMdd}.md"`
+- And 본문은 프로젝트 이름 제목 + 기록마다 `## {occurredOn} {title}`이고 순서는 **`occurredOn` ASC → `id` ASC**(목록 API의 DESC와 반대다), 페이지네이션 없이 전부 들어간다
+- And 유형별 소제목이 있다(`DECISION`: 고른 것·선택지·이유 / `INCIDENT`: 증상·발견·조치·재발 방지), skill이 있는 기록의 마지막 줄이 `기술: {skillCode}`다
+- And 본문은 저장된 **마스킹본** 그대로다 — S7에서 마스킹된 값이 파일에도 마스킹된 채로 나오고 원문은 0건이다
+- And 감사 로그 `DATA_EXPORTED` 1건, `ai_call_log` 새 행 0
+- When 기록이 0건인 프로젝트 → 200이고 제목만 있는 문서(빈 파일이 아니다)
+- When B가 A의 `sideProjectId`로 호출 → 404 `RESOURCE_NOT_FOUND`(random UUID와 같은 응답, AC-08)
+- And `PAST_WORK` 프로젝트에서도 같게 동작한다(AC-27 S11)
+
+---
+
+## AC-34 오늘의 팁
+
+| 항목 | 값 |
+|---|---|
+| 관련 요구사항 | FR-07, FR-11 (선택 규칙 TIP-1~TIP-6 = `06` §5.12, API = `05` §20.2~§20.4, 콘텐츠 = `19` §3.9) |
+| Sprint | S3 |
+| 검증 수준 | unit(vector), integration, API E2E, UI |
+| 테스트 클래스 | `DailyTipSelectorTest`, `DailyTipServiceIntegrationTest`, `DailyTipFlowTest`, `ContentValidatorTest`(CV-90~CV-96), `tip_detail_screen_test.dart` |
+
+공통 Given: today = D. 팁 4개 — `TIP.DATABASE.INDEX.001`(PRACTICAL, `[DATABASE.INDEX]`), `TIP.LOGGING.LEVELS.001`(PRACTICAL, `[PRACTICAL_ENGINEERING.LOGGING]`), `TIP.LOGGING.LEVELS.002`(BASIC, 같은 skill), `TIP.OPERATIONS.HEALTHCHECK.001`(BASIC, `[DEVOPS.DOCKER]`). A의 트랙은 `JAVA_BACKEND`(`basicTipsFirst = false`). 이 AC의 모든 호출에서 `ai_call_log` 새 행은 0이다.
+
+**S1. 선택 규칙 vector**
+- `06` §5.12 `06-05-daily-tip.yaml`의 TIP-V1~TIP-V11이 모두 parameterized test로 통과한다(묶음 1~4 순서, 묶음 안 정렬, TIP-1·TIP-2 제외, 트랙별 `basicTipsFirst`)
+
+**S2. 하루 1개 (TIP-3·TIP-4)**
+- Given 오늘 main task의 skill = `DATABASE.INDEX`, `user_daily_tip` 0행
+- When `GET /tips/today` → 200 `DailyTipView`, `tipKey = TIP.DATABASE.INDEX.001`, `shownOn = D`, `feedback = null`
+- And `user_daily_tip` 1행(`user_id = A`, `shown_on = D`, `feedback = null`), `TIP_VIEWED` 학습 이벤트 1건(payload `{tipKey, series, level}`, `skill_id` = `skillCodes`의 첫 활성 skill)
+- When 같은 D에 다시 `GET /tips/today` → **같은 팁**, 새 행·새 이벤트 0
+- When D+1에 호출 → 다른 팁이 뽑히고 D의 팁은 TIP-2로 후보에서 빠진다
+- Given 후보가 하나도 없다(모두 `retired` 또는 이미 받음) → 404 `RESOURCE_NOT_FOUND`, `user_daily_tip` 새 행 0, 이벤트 0
+- Given 서로 다른 `Idempotency-Key`로 동시 2회 → `user_daily_tip_unique` 위반은 오류가 아니라 같은 응답이고 행은 1개다(I-26)
+- And `TIP_VIEWED`는 레벨 규칙의 입력이 아니다 — 위 시나리오 후 `skill_state_change` 0행
+
+**S3. 읽은 뒤 선택 (`POST /tips/{tipKey}/feedback`)**
+
+| 상황 | 결과 |
+|---|---|
+| 보여 준 팁에 `{feedback: "LEARNED"}` | 201 `DailyTipView`(`feedback = LEARNED`), `review_item` 1행: `concept_key = TIP:{tipKey}`, `review_type = EXPLAIN`, `source_type = MANUAL`, `origin = MANUAL`, `skill_id` = 첫 활성 skill, 첫 due = `planDayStart(D + 1)` |
+| 같은 팁에 `{feedback: "KNEW_IT"}`를 또 보냄 | **200**, 저장값은 `LEARNED` 그대로(덮어쓰지 않는다), 카드 추가 없음 |
+| `{feedback: "WILL_TRY"}`(다른 팁) | 201, 카드 없음. D+1의 `GET /today`·`POST /today/generate` 응답에 `tipExperiment` 1건(`estimatedMinutes = 25`), 그날(D)에는 붙지 않는다 |
+| `{feedback: "KNEW_IT"}`(다른 팁) | 201, 카드·후보 없음. 이후 그 팁은 다시 제안되지 않는다 |
+| 보여 준 적 없는 팁 key | 404 `RESOURCE_NOT_FOUND`(읽기 전에 고를 수 없다) |
+| `tipKey = "TIP.bad"` | 400 `VALIDATION_FAILED`(field `tipKey`, code `Pattern`) |
+| registry에 없는, 형식이 맞는 key | 404 `RESOURCE_NOT_FOUND` |
+| `{feedback: "GOOD"}` | 400 `UNKNOWN_ENUM_VALUE` |
+| `LEARNED`인데 팁의 `skillCodes`에 활성 skill이 없음 | 201, 카드 0행(`review_item.skill_id`가 not null이다) |
+
+- `WILL_TRY` 팁은 **`learning_task`를 만들지 않는다**: D+1의 `daily_plan`·`learning_task` 행 수와 main task 선택·`score_breakdown`이 팁이 없을 때와 같다(TIP-6)
+- `LEARNED` 카드는 용어 카드와 달리 `source_type = MANUAL`이다(TIP-5)
+- 같은 `concept_key`의 활성 카드가 이미 있으면 새로 만들지 않고 due만 당긴다(`06` §6.3 마지막 행)
+
+**S4. 목록 (`GET /tips`)**
+- `retired = false`인 팁 전체가 `tipKey` ASC로 나오고, 이미 본 팁도 남는다(제외 규칙은 `/tips/today`에만 적용)
+- `?series=LOGGING` → 그 시리즈만 / `?level=BASIC` → 그 난이도만 / 둘 다 주면 AND / `?series=NOPE` → 400 `UNKNOWN_ENUM_VALUE` / 잘못된 cursor → 400 `INVALID_CURSOR`
+- A와 B의 목록 본문이 같고 `feedback`만 각자의 값이다(공용 콘텐츠 조회)
+
+**S5. 콘텐츠 검증 (`19` §3.9·§4.1)**
+- CV-90(키 패턴·유일·`series`가 키의 두 번째 세그먼트), CV-91(`sourceUrl` 또는 `experiment` 필수), CV-92(https·신뢰 호스트), CV-93(`skillCodes` 실재), CV-94(길이·예제 15줄), CV-95(은퇴 목록 일치)가 오류 fixture에서 실패한다. CV-96은 WARN
+- 은퇴한 팁(`retired: true`)은 새로 선택되지 않지만 이미 받은 사용자에게는 그대로 보인다(§20.2)
+
+**S6. UI (SCR-TODAY·SCR-TIP-DETAIL·SCR-TIPS)**
+- SCR-TODAY 팁 카드에 제목과 `symptom` 2줄, "자세히" → SCR-TIP-DETAIL. 팁이 없으면(404) 카드 영역 자체가 없다
+- SCR-TIP-DETAIL은 증상 → 원인 → 예제 → 확인할 곳 → 5분 실험 순서로 보이고 하단에 선택 3개가 있다. 고른 뒤 다시 들어가면 그 선택이 표시되고 재전송하지 않는다
+- feature flag `tips`가 꺼져 있으면 팁 카드와 진입점이 모두 숨는다(widget test)
+
+---
+
+## AC-35 용어 사전
+
+| 항목 | 값 |
+|---|---|
+| 관련 요구사항 | FR-11 (API = `05` §20.5~§20.7, 콘텐츠 = `19` §3.10) |
+| Sprint | S3 |
+| 검증 수준 | integration, API E2E, UI |
+| 테스트 클래스 | `TermQueryServiceIntegrationTest`, `TermCardFlowTest`, `ContentValidatorTest`(CV-100~CV-106), `term_detail_screen_test.dart` |
+
+공통 Given: 용어 `TERM.DATABASE.COLUMN`(대표 표기 "컬럼", `english: column`, `aliases: [열, 칼럼]`, `skillCodes: [DATABASE.MODELING]`, `confusableWith: [TERM.DATABASE.FIELD]`). AI 호출 0.
+
+**S1. 검색 (`GET /terms`)**
+- `?q=칼럼` → `aliases` 부분 일치로 `TERM.DATABASE.COLUMN` 1건, 응답의 `representative`는 **"컬럼"**이다(대표 표기 하나)
+- `?q=COL` → `english` 부분 일치(대소문자 무시), 앞뒤 공백은 제거하고 비교한다
+- `q` 없음 → 전체 목록, 정렬은 `termKey` ASC, cursor paging
+- `?skillId={DATABASE.MODELING의 id}` → 포함, 없는 `skillId`(random UUID) → **빈 목록**(오류가 아니다), `q`와 함께 주면 AND
+- `q`가 101자 → 400 `VALIDATION_FAILED`(`Size`), `?skillId=abc` → 400(`TYPE_MISMATCH`)
+- `retired: true`인 용어는 검색되지 않는다
+- `TermSummaryView.cardCreated`는 요청 사용자 기준이고 A·B가 서로 다르다
+
+**S2. 상세 (`GET /terms/{termKey}`)**
+- 200 `TermView`: 대표 표기·영어·`aliases`·정의·예문·`sourceUrl`·`level`, `confusableWith`가 `TermRefView`로 펼쳐진다(registry에 없는 key는 빠진다)
+- `cards`는 그 사용자의 `TERM:{termKey}` 접두사 카드를 `concept_key` ASC로. 만들기 전에는 `[]`
+- 은퇴한 용어도 200이다(검색만 빠진다) / `termKey = "TERM.bad.x"` → 400 `Pattern` / 없는 key → 404 `RESOURCE_NOT_FOUND`
+
+**S3. 복습 카드 만들기 (`POST /terms/{termKey}/card`)**
+- When 처음 호출 → **201**, `createdCount = 2`, `cards` 2건
+- And `review_item` 2행: `TERM:{termKey}`(prompt = 대표 표기 + 영어, expected = 정의 + 예문)와 `TERM:{termKey}:REVERSE`(prompt = 정의, expected = 대표 표기 + 다른 표기). 둘 다 `review_type = RECALL`, `source_type = TERM`, `origin = MANUAL`, `source_id = null`, `skill_id` = 첫 활성 skill, `rubric_json` 항목 1개, `due_at = planDayStart(D + 1)`, `interval_days = 1`
+- And `TERM_CARD_CREATED` 학습 이벤트 1건(payload `{termKey, conceptKey, cardCount}`, dedupe `TERM_CARD:{termKey}:{skillId}`), `skill_state_change` 0행(레벨 규칙의 입력이 아니다)
+- When 같은 용어로 다시 호출(새 `Idempotency-Key`) → **200**, `createdCount = 0`, 문항이 덮어써지지 않고 due도 그대로다
+- Given 정방향 카드만 남긴 상태(역방향 삭제) → 201, `createdCount = 1`
+- Given 활성 skill이 하나도 없는 용어 → 200, `cards = []`, `createdCount = 0`
+- When 같은 `Idempotency-Key`로 2회 → 두 번째는 재생(`Idempotent-Replayed: true`), 행 수 변화 없음(AC-23)
+- And 다음 plan-day `GET /reviews/due`에 두 카드가 나오고 복습 흐름(AC-05)이 그대로 동작한다
+- And B가 같은 용어로 카드를 만들어도 A의 카드는 그대로다(공용 콘텐츠·사용자별 카드)
+
+**S4. 콘텐츠 검증 (`19` §3.10·§4.1)**
+- CV-100~CV-103·CV-105가 오류 fixture에서 실패한다. **CV-106**: `definition` 안에 그 용어의 대표 표기나 `aliases`가 들어가면 실패한다(역방향 카드의 답이 문제에 나온다)
+- CV-104(WARN): 다른 콘텐츠 본문에 "칼럼"이 남아 있으면 파일·키 경로와 함께 경고한다
+
+**S5. UI (SCR-TERMS·SCR-TERM-DETAIL)**
+- 검색어를 넣으면 목록이 좁혀지고, 결과가 없으면 빈 상태 문구가 보인다
+- 상세에서 "복습 카드 만들기" → 만든 수 토스트, 이미 두 장이 있으면 만든 상태로 보인다. `confusableWith` 항목을 누르면 그 용어 상세로 이동한다(widget test)
+- feature flag `terms`가 꺼져 있으면 진입점과 "복습 카드 만들기"가 숨는다
+
+---
+
+## AC-36 주간 요약 · 연속 학습 일수
+
+| 항목 | 값 |
+|---|---|
+| 관련 요구사항 | FR-16 (`05` §13.1) |
+| Sprint | S3 |
+| 검증 수준 | integration, API E2E, UI |
+| 테스트 클래스 | `DashboardQueryServiceIntegrationTest`, `dashboard_screen_test.dart` |
+
+**S1. 이번 주 요약 (`weeklySummary`)**
+- Given D = 수요일. 이번 주 월요일 = `weekStartDate`. 월요일에 `CHALLENGE` 완료 1건, 화요일에 `PROJECT_TASK` 완료 1건과 `REVIEW` task 완료 1건, 수요일에 `side_project_note` 2건, 세션 `actual_minutes` 합 75분. **지난주 일요일**에도 완료 과제 1건이 있다
+- When `GET /dashboard`
+- Then `weeklySummary.builtThisWeek`가 2건(`CHALLENGE`·`PROJECT_TASK`만 — `REVIEW`는 빠진다)이고 정렬은 `plan_date` DESC → `sort_order` DESC, 최대 5개다. **지난주 일요일 항목은 들어가지 않는다**
+- And `completedTasks = 3`(REVIEW 포함), `notesWritten = 2`, `studyMinutes = 75 = weekStudyMinutes`
+- And 응답 필드 순서가 `builtThisWeek` → `completedTasks` → `notesWritten` → `studyMinutes`다(만든 것이 먼저다)
+- And 기준은 **이번 주 월요일부터**다: `weekStartDate` = D가 속한 ISO week의 월요일이고 최근 7일 창이 아니다(월요일에 조회하면 그날 하루만 집계된다)
+- And AI 문장이 없다 — 응답에 요약 문장 필드가 없고 `ai_call_log` 새 행 0(DEC-34)
+- And `REDO` 완료 과제(S4)도 `builtThisWeek`에 들어간다
+
+**S2. 연속 학습 일수 (`streakDays`)**
+
+| Given (완료한 `learning_task`가 있는 plan-day) | `streakDays` |
+|---|---|
+| 기록 없음 | 0 |
+| D에 1건 | 1 |
+| D−1, D−2, D−3에 각 1건이고 D는 아직 없음 | 3 (오늘은 아직 끊긴 날이 아니다 — 어제부터 센다) |
+| D, D−1, D−2에 각 1건, D−3 없음 | 3 |
+| D−2, D−3에 있고 D−1·D 없음 | 0 (어제도 없으면 0) |
+| 367일 연속 | 366 (세는 범위 상한) |
+
+- plan-day 경계는 `dayStartHour`를 따른다(AC-17) — D의 02:00 KST(`dayStartHour = 4`) 조회는 전날 plan-day 기준이다
+- 세는 단위는 **완료한 과제가 있는 날**이고 세션·복습 답변만 있는 날은 세지 않는다
+
+**S3. 빈 상태와 격리**
+- 온보딩 직후(과제·기록 0) → `streakDays = 0`, `builtThisWeek = []`, `completedTasks = 0`, `notesWritten = 0`, `studyMinutes = 0`. 200이고 null이 아니다
+- B의 `GET /dashboard`에 A의 과제·기록이 0건 반영된다(AC-08 S2)
+
+**S4. UI (SCR-DASHBOARD)**
+- 이번 주 요약이 **만든 것 → 끝낸 것 → 적은 것 → 시간** 순서로 보이고 연속 학습 일수가 함께 표시된다. 쉰 날 수·목표 대비 부족 퍼센트·빨간 경고 숫자는 없다(U-3)
+- `builtThisWeek`가 비면 그 영역에 다음 행동 1개를 안내하는 빈 상태 문구가 보인다(widget test)
+
+---
+
+## AC-37 개념 익히기 (개념 노트 · 학습 단위)
+
+| 항목 | 값 |
+|---|---|
+| 관련 요구사항 | FR-07 (`05` §21, `19` §3.14, `02` SCR-LESSON·SCR-LESSON-LIST, ADR-047) |
+| Sprint | S3 |
+| 검증 수준 | integration, API E2E, UI |
+| 테스트 클래스 | `LessonQueryServiceIntegrationTest`, `LessonControllerIntegrationTest`, `UnitAnswerMatcherTest`, `lesson_screen_test.dart`, `lesson_list_screen_test.dart` |
+
+**S1. 노트를 조회해도 답이 오지 않는다**
+- Given 단위 3개짜리 노트 1개가 콘텐츠에 있다
+- When `GET /lessons/{lessonKey}`
+- Then 200이고 `units`가 3개이며 각 단위에 `explain`·`example`·`predict.question`·`complete.question`·`problem.prompt`·`problem.hints`가 있다
+- And 응답 JSON 어디에도 `answer`·`answers`·`modelAnswer`·`selfChecks` 필드가 **없다**
+- And `progress`는 기록이 없으므로 null이다
+
+**S2. 예측·빈칸은 서버가 즉시 채점한다 (AI 없음)**
+- Given 단위의 `predict.answer`가 `index`, `complete.answers`가 `[["@GetMapping"], ["/orders"]]`
+- When `POST /lessons/{k}/units/{u}/predict` `{"answer": "  index  "}`
+- Then 200 `{correct: true, expected: "index", explanation: ...}` — 앞뒤 공백을 버리고 비교한다
+- When `{"answer": "Index"}`
+- Then `correct: false`다 — **대소문자를 구분한다**
+- When `POST …/complete` `{"answers": ["@GetMapping"]}` (빈칸은 2개)
+- Then 400 `VALIDATION_FAILED`(field `answers`, code `Size`)
+- And 이 두 endpoint를 부르는 동안 `ai_call_log`에 새 행이 0이다
+
+**S3. 모범 답안은 조회로 보고, 사용자 답은 서버로 가지 않는다**
+- When `GET /lessons/{k}/units/{u}/answer`
+- Then 200에 `modelAnswer`와 `selfChecks`가 있다
+- And 이 요청은 상태를 바꾸지 않는다 — `learning_event`가 늘지 않는다
+- And 요청 본문이 없다: 사용자가 쓴 답을 서버로 보내지 않고 어느 테이블에도 저장하지 않는다
+
+**S4. 단위를 마치면 기록이 한 번 남는다**
+- When `POST …/finish` `{"helpLevel": "HINT", "selfChecksMet": 2}` + `Idempotency-Key`
+- Then 200이고 `learning_event`에 `UNIT_SOLVED` 1건이 생긴다. `skill_id`는 노트의 skill, payload는 `{lessonKey, unitKey, helpLevel: "HINT", selfChecksMet: 2}`다
+- And 같은 `Idempotency-Key`로 다시 부르면 같은 응답이고 이벤트는 늘지 않는다
+- And 다른 키로 다시 마치면 이벤트가 하나 더 쌓인다(다시 풀기) — **이전 이벤트를 고치지 않는다**
+- And `selfChecksMet`을 생략하면 payload에 그 칸이 없다
+- And `selfChecksMet`이 `selfChecks` 개수보다 크면 400 `VALIDATION_FAILED`
+
+**S5. 레벨은 오르지 않는다**
+- Given S4를 마친 직후
+- When `GET /skills/{skillId}`
+- Then `evidenceLevels`가 그대로다 — 단위를 풀었다고 skill 레벨이 오르지 않는다(`01` 원칙 4)
+
+**S6. 화면은 한 걸음씩 간다 (UI)**
+- Given SCR-LESSON을 연다
+- Then 처음 화면에 `whyItMatters`와 단위 목록이 보이고 예제·정답은 보이지 않는다
+- And "예제 보기"를 누르기 전에는 `example.code`가 화면에 없다
+- And 5번 걸음에서 힌트는 **한 번에 하나씩** 열리고, 모범 답안 버튼은 힌트를 다 연 뒤에 열린다
+- And "이미 안다 → 문제부터"를 누르면 5번 걸음으로 건너뛴다
+- And 코드 블록은 가로 스크롤이고 360px에서 화면이 넓어지지 않는다(§2.4)
+
+**S7. 없는 key**
+- When `GET /lessons/LESSON.NOPE.001`
+- Then 404 `RESOURCE_NOT_FOUND`
+- When key 형식이 어긋나면 400 `VALIDATION_FAILED`(code `Pattern`)
+- And 토큰이 없으면 401 `UNAUTHORIZED`
+
+**S8. 막힌 자리에서 노트로 간다 (§21.3, UI)**
+- Given `SPRING.MVC_REST`에 노트가 있고 `DATABASE.INDEX`에는 없다
+- When `GET /skills/{skillId}/lesson`을 노트가 있는 skill로 부른다
+- Then 200이고 그 skill의 `LessonView`다. 노트가 없는 skill과 없는 skill id는 404 `RESOURCE_NOT_FOUND`다
+- And 두 사용자가 같은 skill로 부르면 같은 본문을 받는다(콘텐츠다 — `09` §9.2 SHARED_CONTENT)
+- Given 러버덕 결과 화면(SCR-RUBBER-DUCK ④)에서 그 세션의 skill에 노트가 있다
+- Then "그래서 답이 뭔가요"가 보이고 누르면 SCR-LESSON으로 간다 — **러버덕은 답을 말하지 않으므로 답은 여기에만 있다**
+- And 오늘 과제 카드(SCR-TODAY)에서 과제의 skill에 노트가 있으면 "먼저 개념 익히기"가 보인다. 마친 과제에는 보이지 않는다
+- And 노트가 없는 skill이면 두 자리 모두 **버튼 자체가 없다**
+
+**S9. 목록에서 어디까지 했는지 보고 이어서 한다 (§21.9, UI)**
+- Given 노트 3개가 있고 그중 하나는 단위 하나를 마친 상태다
+- When `GET /lessons`
+- Then 200이고 `lessons`가 3개이며 각 줄에 `title`·`oneLine`·`unitCount`·`solvedUnitCount`·`minutes`·`status`가 있다
+- And 마친 노트가 **맨 앞**이고 `status`가 `IN_PROGRESS`, 나머지는 `NOT_STARTED`로 `lessonKey` 순이다
+- And 응답 JSON 어디에도 본문(`explain`·`units`)과 답이 **없다**
+- And 다른 사용자가 마친 단위는 내 목록의 진행에 섞이지 않는다
+- Given SCR-LESSON-LIST를 연다
+- Then 서버가 준 순서 그대로 그리고, 상태가 바뀌는 자리에만 "이어서 하기"·"아직 안 연 것"·"한 바퀴 돈 것" 제목이 붙는다
+- And 줄을 누르면 그 노트의 SCR-LESSON으로 간다. 노트가 하나도 없으면 빈 상태 문구만 보인다
+
+**S10. 설명이 안 통하면 다른 각도로 한 번 더 (§21.10, ADR-047)**
+- Given 학습 단위를 읽는 중이고 `aiStatus = ENABLED`
+- When `POST /lessons/{k}/units/{u}/reexplain` `{"reason": "WHY_NOT_CLEAR"}`
+- Then 200이고 `explanation`이 비어 있지 않다. `analogy`는 null일 수 있다
+- And `aiMeta.promptVersion`이 `lesson.reexplain@`로 시작한다
+- And **학습 이벤트가 늘지 않는다** — 읽기를 돕는 일이지 배움의 증거가 아니다. 저장하는 것이 없다
+- And AI에 보낸 입력에 **`modelAnswer`와 `selfChecks`가 없다.** 보내지 않으므로 흘릴 수 없다
+- When AI가 코드 블록을 섞어 답한다
+- Then `CodeLeakGuard`가 막아 5xx다. 재설명은 개념에 머문다
+- Given `reason`이 세 값 밖이다
+- Then 400 `VALIDATION_FAILED`다. 자유 입력을 받지 않는다
+

@@ -187,6 +187,10 @@ class IdempotencyTest extends ApiTestSupport {
 
     private int projects(TestUser user) {
         UUID userId = userId(user);
-        return count("select count(*) from devpilot.side_project where user_id = ?", userId);
+        // ADR-050: 온보딩이 만든 기본 프로젝트는 세지 않는다
+        return count(
+                "select count(*) from devpilot.side_project where user_id = ? and name <> '주문"
+                        + " 시스템'",
+                userId);
     }
 }

@@ -1,0 +1,30 @@
+{
+  "description": "R1만 met — 인용은 제출물에 있는 문장 (docs/06 §8.1: coverage 5000 → PARTIAL)",
+  "attempts": [
+    {
+      "finishReason": "completed",
+      "output": {
+        "rubric": [
+          {
+            "id": "R1",
+            "met": true,
+            "evidenceQuote": "한 트랜잭션 경계 안에서 실행"
+          },
+          {
+            "id": "R2",
+            "met": false,
+            "evidenceQuote": null
+          }
+        ],
+        "misconceptions": ["같은 클래스 안의 호출도 프록시를 거친다고 보고 있다"],
+        "followUpQuestion": "같은 클래스의 메서드를 직접 부르면 트랜잭션 경계는 어디에서 시작할까요?"
+      },
+      "usage": {
+        "inputTokens": 2400,
+        "cachedTokens": 0,
+        "outputTokens": 180,
+        "reasoningTokens": 0
+      }
+    }
+  ]
+}

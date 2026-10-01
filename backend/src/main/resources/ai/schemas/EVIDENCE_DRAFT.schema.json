@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "devpilot/ai/EVIDENCE_DRAFT.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "title",
+    "problem",
+    "analysis",
+    "action",
+    "result",
+    "explanationTopics"
+  ],
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "problem": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 3000
+    },
+    "analysis": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 3000
+    },
+    "action": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 3000
+    },
+    "result": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 3000
+    },
+    "explanationTopics": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200
+      }
+    }
+  }
+}

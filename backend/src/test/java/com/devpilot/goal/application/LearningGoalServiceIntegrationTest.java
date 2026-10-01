@@ -26,7 +26,7 @@ class LearningGoalServiceIntegrationTest extends ApiTestSupport {
         api.get(user, GOAL)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.targetRole").value("JAVA_BACKEND"))
-                .andExpect(jsonPath("$.checkpointDate").value("2027-01-05"))
+                .andExpect(jsonPath("$.checkpointDate").doesNotExist())
                 .andExpect(jsonPath("$.targetCompletionDate").value("2027-04-01"))
                 .andExpect(jsonPath("$.focusSkills.length()").value(1))
                 .andExpect(jsonPath("$.focusSkills[0].code").value("SPRING.TRANSACTION"))
@@ -50,7 +50,7 @@ class LearningGoalServiceIntegrationTest extends ApiTestSupport {
     void shouldRecommendReplanWithoutNewVersionWhenTargetDateChanges() throws Exception {
         TestUser user = onboardedOwner();
 
-        api.put(user, GOAL, request("2027-01-05", "2027-06-30", List.of("SPRING.TRANSACTION"), 0))
+        api.put(user, GOAL, request("2027-06-30", List.of("SPRING.TRANSACTION"), 0))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.targetCompletionDate").value("2027-06-30"))
                 .andExpect(jsonPath("$.replanRecommended").value(true))
@@ -70,14 +70,7 @@ class LearningGoalServiceIntegrationTest extends ApiTestSupport {
     void shouldNotRecommendReplanWhenOnlyFocusSkillsChange() throws Exception {
         TestUser user = onboardedOwner();
 
-        api.put(
-                        user,
-                        GOAL,
-                        request(
-                                "2027-01-05",
-                                "2027-04-01",
-                                List.of("DATABASE.INDEX", "JAVA.EXCEPTION"),
-                                0))
+        api.put(user, GOAL, request("2027-04-01", List.of("DATABASE.INDEX", "JAVA.EXCEPTION"), 0))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.focusSkills.length()").value(2))
                 .andExpect(jsonPath("$.replanRecommended").value(false));
@@ -88,10 +81,9 @@ class LearningGoalServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldRejectStaleVersionWithoutChangingGoal() throws Exception {
         TestUser user = onboardedOwner();
-        api.put(user, GOAL, request("2027-01-05", "2027-05-01", List.of(), 0))
-                .andExpect(status().isOk());
+        api.put(user, GOAL, request("2027-05-01", List.of(), 0)).andExpect(status().isOk());
 
-        api.put(user, GOAL, request("2027-01-05", "2027-07-01", List.of(), 0))
+        api.put(user, GOAL, request("2027-07-01", List.of(), 0))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONCURRENT_MODIFICATION"));
 
@@ -99,14 +91,29 @@ class LearningGoalServiceIntegrationTest extends ApiTestSupport {
     }
 
     @Test
-    void shouldRejectCheckpointDateAfterTarget() throws Exception {
+    void shouldRejectTargetDateOutsideTomorrowToThreeYears() throws Exception {
         TestUser user = onboardedOwner();
 
-        api.put(user, GOAL, request("2027-05-01", "2027-04-01", List.of(), 0))
+        api.put(user, GOAL, request("2026-10-05", List.of(), 0))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
-                .andExpect(jsonPath("$.errors[0].field").value("checkpointDate"))
-                .andExpect(jsonPath("$.errors[0].code").value("DATE_ORDER_INVALID"));
+                .andExpect(jsonPath("$.errors[0].field").value("targetCompletionDate"))
+                .andExpect(jsonPath("$.errors[0].code").value("DATE_OUT_OF_RANGE"));
+        api.put(user, GOAL, request("2029-10-06", List.of(), 0))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].code").value("DATE_OUT_OF_RANGE"));
+        api.put(user, GOAL, request("2029-10-05", List.of(), 0)).andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldRejectPropertiesOutsideGoalModel() throws Exception {
+        TestUser user = onboardedOwner();
+        Map<String, Object> body = request("2027-04-01", List.of(), 0);
+        body.put("checkpointDate", "2027-01-05");
+
+        api.put(user, GOAL, body)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
 
         api.get(user, GOAL).andExpect(jsonPath("$.version").value(0));
     }
@@ -115,7 +122,7 @@ class LearningGoalServiceIntegrationTest extends ApiTestSupport {
     void shouldRejectUnknownFocusSkill() throws Exception {
         TestUser user = onboardedOwner();
 
-        api.put(user, GOAL, request(null, "2027-04-01", List.of("JAVA.EXCEPTION", "NOPE"), 0))
+        api.put(user, GOAL, request("2027-04-01", List.of("JAVA.EXCEPTION", "NOPE"), 0))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[0].field").value("focusSkillCodes[1]"))
                 .andExpect(jsonPath("$.errors[0].code").value("SKILL_CODE_UNKNOWN"));
@@ -125,10 +132,7 @@ class LearningGoalServiceIntegrationTest extends ApiTestSupport {
     void shouldRejectDuplicateFocusSkills() throws Exception {
         TestUser user = onboardedOwner();
 
-        api.put(
-                        user,
-                        GOAL,
-                        request(null, "2027-04-01", List.of("JAVA.EXCEPTION", "JAVA.EXCEPTION"), 0))
+        api.put(user, GOAL, request("2027-04-01", List.of("JAVA.EXCEPTION", "JAVA.EXCEPTION"), 0))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[0].field").value("focusSkillCodes"))
                 .andExpect(jsonPath("$.errors[0].code").value("UniqueElements"));
@@ -141,16 +145,14 @@ class LearningGoalServiceIntegrationTest extends ApiTestSupport {
         api.get(user, GOAL)
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("ONBOARDING_REQUIRED"));
-        api.put(user, GOAL, request(null, "2027-04-01", List.of(), 0))
+        api.put(user, GOAL, request("2027-04-01", List.of(), 0))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("ONBOARDING_REQUIRED"));
     }
 
-    private static Map<String, Object> request(
-            String checkpointDate, String target, List<String> focus, long version) {
+    private static Map<String, Object> request(String target, List<String> focus, long version) {
         Map<String, Object> request = new LinkedHashMap<>();
         request.put("targetRole", "JAVA_BACKEND");
-        request.put("checkpointDate", checkpointDate);
         request.put("targetCompletionDate", target);
         request.put("focusSkillCodes", focus);
         request.put("version", version);

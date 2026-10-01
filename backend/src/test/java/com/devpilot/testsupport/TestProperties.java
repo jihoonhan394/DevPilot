@@ -47,12 +47,19 @@ public final class TestProperties {
                 security,
                 base.web(),
                 base.time(),
+                base.tracks(),
                 base.planner(),
                 base.budget(),
+                base.review(),
                 base.skill(),
+                base.sideProject(),
                 base.privacy(),
                 base.content(),
-                base.ai());
+                base.ai(),
+                base.rubberduck(),
+                base.tips(),
+                base.training(),
+                base.coach());
     }
 
     private static DevPilotProperties bind(boolean testProfile, Map<String, Object> overrides) {

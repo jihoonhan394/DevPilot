@@ -1,0 +1,30 @@
+{
+  "description": "전부 met (coverage 10000 → CORRECT). R2 인용은 제출물에 없어 저장 시 null이 된다 (docs/17 §3.4 후처리 1)",
+  "attempts": [
+    {
+      "finishReason": "completed",
+      "output": {
+        "rubric": [
+          {
+            "id": "R1",
+            "met": true,
+            "evidenceQuote": "한 트랜잭션 경계 안에서 실행"
+          },
+          {
+            "id": "R2",
+            "met": true,
+            "evidenceQuote": "이 인용은 제출물 어디에도 없는 문장이다"
+          }
+        ],
+        "misconceptions": [],
+        "followUpQuestion": "재고 감소가 실패하면 주문은 어떤 상태로 남아야 할까요?"
+      },
+      "usage": {
+        "inputTokens": 2400,
+        "cachedTokens": 0,
+        "outputTokens": 180,
+        "reasoningTokens": 0
+      }
+    }
+  ]
+}

@@ -61,6 +61,13 @@ final class IdempotencyKeyCache {
     _bodyFingerprint = null;
   }
 
+  /// Drops the key so the next attempt gets a new one: an AI answer that failed its checks
+  /// (`AI_OUTPUT_INVALID`, `AI_TIMEOUT`) is asked again as a new request (docs/02 §5.1).
+  void discard() {
+    _key = null;
+    _bodyFingerprint = null;
+  }
+
   static bool _canRetryWithSameKey(ApiException error) {
     final status = error.status;
     return error.isNetworkFailure ||

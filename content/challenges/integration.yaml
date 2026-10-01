@@ -1,0 +1,691 @@
+# Seed challenges — INTEGRATION (PRACTICE)
+# Spec: docs/19-content-spec.md §3.6 (schema), §6 (난이도), §7 (rubric·hint 작성 가이드), §7.7 (문제 세 종류)
+# 기준: Spring Boot 4.1 / Spring Framework 7 / PostgreSQL 16 / OpenAPI 3.1.1 / RFC 9110 · 9457 · 6749 · 6750 · 4180
+# 연동·구축 트랙의 난이도 상한은 4다 (06 §5.3). 이 파일은 2~3으로 둔다
+challenges:
+  - seedKey: PRACTICE.INTEGRATION.API_CONTRACT.L2.001
+    purpose: PRACTICE
+    skills:
+      - INTEGRATION.API_CONTRACT
+    difficulty: 2
+    estimatedMinutes: 30
+    isTransfer: false
+    title: 메일로 보낸 필드 목록을 API 명세로 바꾸기
+    scenario: |-
+      주문 상태 조회 API에 고객사 두 곳이 붙습니다. 지금 전달한 문서는 메일 본문의 필드 목록 한 장이고,
+      오류 응답은 적혀 있지 않습니다. 고객사 A는 실패해도 200이 오고 본문 message로 알 수 있다고 보고
+      문자열을 비교하도록 구현했고, 고객사 B는 없는 주문이면 404가 온다고 보고 구현했습니다. 실제 서버는
+      아래와 같습니다.
+      ```java
+      @GetMapping("/api/v1/orders/{orderNo}")
+      OrderStatusResponse get(@PathVariable String orderNo) {
+          return orderQueryService.findStatus(orderNo);   // 없으면 OrderNotFoundException
+      }
+      ```
+      오류가 날 때 어떤 상태 코드와 어떤 본문이 나가는지는 아무 문서에도 없습니다.
+    prompt: |-
+      1. 이 끝점의 요청과 응답을 OpenAPI 3.1 문서로 작성하세요. 성공 응답과, 없는 주문·잘못된 형식·서버
+         오류에 해당하는 응답을 상태 코드별로 모두 적습니다.
+      2. 오류 본문 스키마를 한 곳에 정의하고 각 응답에서 참조하도록 문서를 구성하세요. 고객사가 분기에
+         쓸 오류 구분 값과 그 값의 목록도 정하세요.
+      3. 고객사가 오류 문구가 아니라 값으로 분기하게 해야 하는 이유와, 이 문서가 있을 때 고객사가 붙이기
+         전에 무엇까지 구현할 수 있는지 설명하세요.
+    constraints:
+      - 오류 본문은 RFC 9457 problem detail 형식을 따른다
+      - 새 라이브러리나 인프라를 도입하지 않는다
+      - 내부 예외 이름이나 스택 트레이스를 응답 스키마에 넣지 않는다
+    expectedConcepts:
+      - 상태 코드별 응답 정의
+      - 공용 스키마 참조
+      - 오류 구분 코드 값
+      - RFC 9457 problem detail
+      - 명세 우선 합의
+    rubric:
+      - id: R1
+        criterion: 성공과 실패를 상태 코드별로 나누어 각각의 본문 스키마를 명세에 적는다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 오류 본문 스키마를 한 곳에 정의하고 각 응답에서 참조한다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 문구가 아니라 오류 구분 값으로 분기하게 해야 하는 이유를 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+      - id: R4
+        criterion: 명세가 먼저 있을 때 상대가 붙이기 전에 구현할 수 있는 범위를 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+    commonMistakes:
+      - 성공 응답만 적고 오류는 "오류 시 메시지 반환"으로 뭉뚱그림
+      - 끝점마다 오류 본문을 따로 적어 형식이 서로 달라짐
+      - 오류를 사람이 읽는 문구로만 구분하게 둠
+      - 내부 예외 이름을 그대로 응답 필드에 노출함
+    transferTargets:
+      - WEB_HTTP.REST_API_DESIGN
+      - SPRING.EXCEPTION_HANDLING
+    hints:
+      QUESTION_ONLY: 지금 문서만 받은 사람이 실패했을 때 무엇을 보고 판단해야 하는지 알 수 있을까요?
+      CONCEPT_HINT: 응답을 상태 코드별로 나누어 적는 것과, 같은 모양을 여러 응답이 함께 쓰도록 한 곳에 정의해 두는 방법을 떠올려 보세요.
+      DIRECTION: 성공, 예상한 실패, 예상하지 못한 실패 세 갈래로 먼저 나누고 각각에 상태 코드를 배정한 다음, 본문에서 공통으로 빠지는 부분과 끝점마다 다른 부분을 갈라 보세요.
+
+  - seedKey: PRACTICE.INTEGRATION.API_CONTRACT.L3.001
+    purpose: PRACTICE
+    skills:
+      - INTEGRATION.API_CONTRACT
+    difficulty: 3
+    estimatedMinutes: 40
+    isTransfer: false
+    title: 이미 연동 중인 응답을 바꿔 달라는 요구 판정하기
+    scenario: |-
+      고객사 세 곳이 붙어 있는 조회 API에 내부 요구가 들어왔습니다. ① 응답 필드 customerNo를 partnerCode로
+      바꾼다 ② 금액 필드를 문자열에서 숫자로 바꾼다 ③ 선택 항목이던 요청 파라미터 channel을 필수로 바꾼다
+      ④ 응답에 새 필드 deliveryEta를 추가한다. 고객사 한 곳은 내부 일정 때문에 앞으로 6개월 동안 클라이언트를
+      고칠 수 없다고 알려 왔습니다. 현재 명세 문서는 한 벌이고 버전 구분이 없습니다.
+    prompt: |-
+      1. ①~④가 각각 이미 붙어 있는 고객사의 구현을 깨뜨리는지 판정하고, 왜 그런지 근거를 적으세요.
+      2. 깨뜨리는 요구를 지금 상태 그대로 내보낼 수 있는 방법이 있는지, 있다면 명세와 구현을 각각 어떻게
+         두어야 하는지 적으세요.
+      3. 그래도 깨뜨릴 수밖에 없는 요구에 대해 전환 절차를 설계하세요. 무엇을 언제 알리고, 두 형태를 얼마나
+         함께 운영하며, 옛 형태를 언제 어떻게 끝낼지 적습니다.
+      4. 명세만 고치고 구현을 두거나 구현만 고치고 명세를 두면 각각 어떤 일이 생기는지 설명하세요.
+    constraints:
+      - 고객사에게 같은 날 모두 고치라고 요구하지 않는다
+      - 끝점을 통째로 새로 만들되 옛 끝점을 그대로 방치하는 방식은 쓰지 않는다
+      - 변경 사항은 문서와 구현에 함께 반영한다
+    expectedConcepts:
+      - 호환을 깨는 변경과 깨지 않는 변경
+      - 선택 필드 추가
+      - 버전 분리와 병행 운영
+      - 전환 기간 공지와 종료
+      - 문서와 구현의 일치
+    rubric:
+      - id: R1
+        criterion: 네 가지 요구를 각각 호환을 깨는지 판정하고 근거를 댄다
+        weightBp: 3000
+        axis: EXPLANATION
+      - id: R2
+        criterion: 두 형태를 함께 내보내거나 버전을 나누는 방법을 명세와 구현 양쪽으로 적는다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 공지 시점과 병행 기간, 옛 형태 종료 시점을 포함한 전환 절차를 설명한다
+        weightBp: 2500
+        axis: EXPLANATION
+      - id: R4
+        criterion: 문서와 구현 중 한쪽만 바뀌었을 때 생기는 문제를 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+    commonMistakes:
+      - 필드 이름 변경을 "문서만 고치면 되는 일"로 봄
+      - 모든 변경을 새 버전으로 미뤄 버전이 끝없이 늘어남
+      - 전환 기간만 정하고 옛 형태를 끄는 시점을 정하지 않음
+      - 선택 항목을 필수로 바꾸는 것을 추가와 같은 변경으로 봄
+    transferTargets:
+      - WEB_HTTP.REST_API_DESIGN
+    hints:
+      QUESTION_ONLY: 지금 붙어 있는 고객사가 아무것도 고치지 않았을 때, 네 가지 요구 중 어느 것이 그 코드를 멈추게 할까요?
+      CONCEPT_HINT: 더하는 변경과 빼거나 바꾸는 변경의 차이, 그리고 두 형태를 한동안 함께 두는 방식을 떠올려 보세요.
+      DIRECTION: 요구를 하나씩 "받는 쪽이 모르는 채로 지나갈 수 있는가"로 걸러 보고, 지나갈 수 없는 것만 남겨 공지와 병행 운영과 종료 순서로 일정을 잡아 보세요.
+
+  - seedKey: PRACTICE.INTEGRATION.INTERFACE_SPEC.L3.001
+    purpose: PRACTICE
+    skills:
+      - INTEGRATION.INTERFACE_SPEC
+    difficulty: 3
+    estimatedMinutes: 40
+    isTransfer: false
+    title: 메일 한 통으로 온 연동 요구를 명세서로 정리하기
+    scenario: |-
+      고객사 담당자에게서 이렇게 전달받았습니다. "매일 새벽에 회원 정보를 넘겨 주세요. 전부 말고 변경된
+      것만요. 형식은 CSV로 주시면 되고, 실패하면 다시 보내 주세요. 필수 항목은 이름, 연락처, 가입일 정도면
+      됩니다." 지난주 회의록에는 "회원 정보는 주 1회면 충분하다"고 적혀 있습니다. 사내 개인정보 처리
+      기준에는 연락처를 그대로 내보내지 않는다는 항목이 있습니다. 이 상태로 구현을 시작하면 며칠 뒤부터
+      같은 질문이 전화로 돌아옵니다.
+    prompt: |-
+      1. 이 요구에서 빠진 정보를 목록으로 적으세요. 항목 정의, 주기와 시각, 전달 방식, 실패 처리, 보안 ·
+         개인정보처럼 성격별로 나누어 적습니다.
+      2. 서로 어긋나는 대목을 짚고, 각각 누구에게 무엇을 확인해야 하는지 적으세요.
+      3. 확인 전이라도 내가 기본값으로 정해 둘 것과 그 근거를 적으세요. 정하면 안 되는 것은 왜 정하면
+         안 되는지도 함께 적습니다.
+      4. 재처리 절차에 무엇이 들어가야 운영 중에 사람이 매번 판단하지 않아도 되는지 설명하세요.
+    constraints:
+      - 코드를 쓰지 않는다
+      - 확인이 필요한 항목을 임의로 정하고 넘어가지 않는다
+      - 개인정보 항목은 사내 기준을 우선한다
+    expectedConcepts:
+      - 항목 정의의 빈칸
+      - 주기와 기준 시각
+      - 요구 수준 구분
+      - 재처리 절차와 한도
+      - 중복 방지 식별자
+    rubric:
+      - id: R1
+        criterion: 빠진 정보를 성격별로 나누어 항목 정의와 운영 조건까지 짚는다
+        weightBp: 3000
+        axis: DEBUGGING
+      - id: R2
+        criterion: 서로 어긋나는 대목을 짚고 무엇을 누구에게 확인할지 적는다
+        weightBp: 2000
+        axis: DEBUGGING
+      - id: R3
+        criterion: 스스로 정할 기본값과 정하면 안 되는 것을 근거와 함께 구분한다
+        weightBp: 3000
+        axis: EXPLANATION
+      - id: R4
+        criterion: 재처리 대상 판단과 재시도 한도, 중복 방지를 포함한 절차를 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+    commonMistakes:
+      - 빠진 것을 묻지 않고 "보통 이렇게 한다"로 정해 버림
+      - 항목 이름만 나열하고 필수 여부 · 형식 · 값 목록을 비워 둠
+      - 실패하면 다시 보낸다는 문장을 그대로 명세서에 옮겨 적음
+      - 회의록과 메일이 다른 것을 알고도 한쪽만 보고 진행함
+    transferTargets:
+      - SECURITY.SENSITIVE_DATA_LOGGING
+    hints:
+      QUESTION_ONLY: 이 글만 읽고 구현을 시작한 사람이 가장 먼저 되물을 질문은 무엇일까요?
+      CONCEPT_HINT: 값 하나를 정의하는 데 필요한 것들과, 반드시 해야 하는 일과 권장하는 일을 갈라 적는 방식을 떠올려 보세요.
+      DIRECTION: 항목 하나를 골라 이름부터 예시 값까지 채워 보면서 채울 수 없는 칸을 모으고, 그다음 언제 · 무엇으로 · 실패하면 어떻게 순서로 운영 조건을 훑어 보세요.
+
+  - seedKey: PRACTICE.INTEGRATION.CLIENT_AUTH.L2.001
+    purpose: PRACTICE
+    skills:
+      - INTEGRATION.CLIENT_AUTH
+    difficulty: 2
+    estimatedMinutes: 30
+    isTransfer: false
+    title: 호출마다 새로 받던 토큰을 재사용과 만료 갱신으로 바꾸기
+    scenario: |-
+      연동 대상에서 "토큰 발급 호출이 분당 제한을 넘었다"는 연락이 왔습니다. 현재 코드는 아래와 같고,
+      토큰 응답에는 수명이 초 단위로 들어 있습니다.
+      ```java
+      @Service
+      class PartnerOrderSender {
+          OrderResult send(OrderRequest request) {
+              TokenResponse token = authClient.issueToken(clientId, clientSecret);
+              return apiClient.postOrder(token.accessToken(), request);
+          }
+      }
+      ```
+      자원 서버는 만료된 토큰을 받으면 401과 함께 invalid_token을 돌려줍니다.
+    prompt: |-
+      1. 다음이 동작하게 고치세요. 토큰을 한 번 받아 만료 전까지 재사용하고, 만료가 가까우면 미리 새로
+         받고, 그래도 401이 오면 새 토큰으로 한 번만 다시 보냅니다.
+      2. 셋 중 무엇을 먼저 구현하고 무엇을 뒤로 미룰지 정하고, 그렇게 정한 이유를 한 줄로 적으세요.
+    constraints:
+      - 새 라이브러리나 캐시 인프라를 추가하지 않는다
+      - 현재 시각은 주입된 Clock으로 판단한다
+      - 토큰 값을 로그에 남기지 않는다
+      - 공개 메서드 시그니처는 그대로 둔다
+    expectedConcepts:
+      - 토큰 캐시와 만료 시각 보관
+      - 만료 여유 시간
+      - 401 응답 후 한 번 재시도
+      - 자격 증명 로그 금지
+    rubric:
+      - id: R1
+        criterion: 발급받은 토큰을 만료 시각과 함께 보관해 다음 호출에서 재사용한다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 만료 직전에 새로 받도록 여유 시간을 두고 판단한다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 401 응답을 받으면 새 토큰으로 한 번만 다시 보내고 끝없이 반복하지 않는다
+        weightBp: 2000
+        axis: IMPLEMENTATION
+      - id: R4
+        criterion: 먼저 구현할 것과 뒤로 미룰 것을 정하고 그 근거를 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+    commonMistakes:
+      - 토큰만 보관하고 만료 시각을 보관하지 않아 만료를 알 수 없음
+      - 만료 판단을 무인자 현재 시각으로 해 테스트할 수 없게 만듦
+      - 401이 반복될 때 재시도가 끝나지 않음
+      - 디버깅한다고 토큰 값을 로그에 찍음
+    transferTargets:
+      - SECURITY.SECRET_MANAGEMENT
+    hints:
+      QUESTION_ONLY: 지금 코드는 방금 받은 토큰이 아직 쓸 수 있는 토큰인지 어떻게 알 수 있을까요?
+      CONCEPT_HINT: 발급 응답에 들어 있는 수명 값과, 값을 다시 쓰기 위해 함께 들고 있어야 하는 정보를 떠올려 보세요.
+      DIRECTION: 보관할 것을 값 하나가 아니라 값과 쓸 수 있는 시한 한 쌍으로 잡고, 보낼 때마다 시한을 먼저 보고 필요하면 받아 오는 순서로 나눠 보세요.
+
+  - seedKey: PRACTICE.INTEGRATION.CLIENT_AUTH.L3.001
+    purpose: PRACTICE
+    skills:
+      - INTEGRATION.CLIENT_AUTH
+    difficulty: 3
+    estimatedMinutes: 40
+    isTransfer: false
+    title: 새벽에 멈춘 연동의 자격 증명 교체 절차 만들기
+    scenario: |-
+      연동 대상이 보안 정책에 따라 API 키를 교체했습니다. 교체 시각은 새벽 3시였고, 우리 쪽 설정은 그날
+      오전 출근 후에야 바뀌었습니다. 그 사이 모든 호출이 401로 실패했고 실패한 3,200건은 자동으로 다시
+      보내지지 않았습니다. 실패는 배치 담당자가 오전에 대시보드를 열어 보고 처음 알았습니다. 다음 교체는
+      2주 뒤로 예정되어 있고, 같은 대상에 대해 우리 쪽 다른 서비스 두 개도 같은 키를 씁니다.
+    prompt: |-
+      1. 이번 장애가 왜 났는지 기술이 아니라 절차 관점에서 설명하세요. 키가 바뀐 것 자체는 사고가 아닙니다.
+      2. 2주 뒤 교체에서 호출이 끊기지 않도록 교체 절차를 설계하세요. 누가 무엇을 언제 하는지 순서로 적고,
+         우리 쪽 서비스가 여러 개라는 점을 반영합니다.
+      3. 같은 일이 또 생겼을 때 사람이 대시보드를 열기 전에 알아차리려면 무엇을 봐야 하는지 적으세요.
+      4. 상대가 API 키 대신 OAuth2 client credentials를 쓰는 경우 이 절차에서 무엇이 달라지고 무엇이
+         그대로인지 설명하세요.
+    constraints:
+      - 자격 증명을 저장소나 설정 파일 평문으로 두지 않는다
+      - 교체를 위해 서비스를 중단하지 않는다
+      - 키 값을 로그나 응답에 남기지 않는다
+    expectedConcepts:
+      - 두 자격 증명의 병행 유효 기간
+      - 발급 · 전환 · 확인 · 폐기 순서
+      - 만료와 실패의 감지
+      - 자격 증명 보관 위치
+      - 토큰 수명과 키 수명의 차이
+    rubric:
+      - id: R1
+        criterion: 교체 시점과 반영 시점이 벌어진 것을 원인으로 짚어 설명한다
+        weightBp: 3000
+        axis: EXPLANATION
+      - id: R2
+        criterion: 두 자격 증명이 함께 유효한 기간을 두는 교체 순서를 설계한다
+        weightBp: 3000
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 인증 실패가 늘어나는 것을 사람보다 먼저 알아차릴 방법을 적는다
+        weightBp: 2000
+        axis: IMPLEMENTATION
+      - id: R4
+        criterion: 키 방식과 토큰 방식에서 각각 무엇이 만료되고 무엇을 갱신하는지 구분해 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+    commonMistakes:
+      - 교체를 한 시점에 양쪽이 동시에 바꾸는 일로 계획함
+      - 옛 키를 즉시 폐기해 되돌릴 수 없게 만듦
+      - 실패 건을 다시 보낼 방법을 준비하지 않음
+      - 서비스마다 키를 따로 관리해 어디가 옛 키를 쓰는지 모름
+    transferTargets:
+      - SECURITY.SECRET_MANAGEMENT
+      - DEVOPS.OBSERVABILITY
+    hints:
+      QUESTION_ONLY: 양쪽이 같은 순간에 설정을 바꾸지 않아도 호출이 끊기지 않으려면 그 사이에 무엇이 성립해야 할까요?
+      CONCEPT_HINT: 옛 것과 새 것이 함께 통하는 기간을 두는 방식과, 무엇을 확인한 뒤에 옛 것을 끄는지를 떠올려 보세요.
+      DIRECTION: 절차를 새로 받기, 우리 쪽이 옮기기, 옛 것이 안 쓰이는지 확인하기, 끄기의 네 단계로 나누고 각 단계에서 되돌릴 수 있는지 따져 보세요.
+
+  - seedKey: PRACTICE.INTEGRATION.WEBHOOK.L3.001
+    purpose: PRACTICE
+    skills:
+      - INTEGRATION.WEBHOOK
+    difficulty: 3
+    estimatedMinutes: 40
+    isTransfer: false
+    title: 두 번 들어온 결제 완료 이벤트가 두 번 반영되는 문제 고치기
+    scenario: |-
+      결제사에서 보내는 완료 이벤트를 받아 정산에 반영합니다. 어제 한 주문의 정산 금액이 두 배로 잡혔고,
+      수신 로그에는 같은 eventId가 1분 간격으로 두 번 찍혀 있었습니다. 첫 번째 요청도 정산 반영까지는
+      끝났지만 응답이 나가기 전에 연결이 끊긴 것으로 보입니다.
+      ```java
+      @PostMapping("/webhooks/payments")
+      ResponseEntity<Void> receive(@RequestBody PaymentEvent event) {
+          settlementService.apply(event.orderNo(), event.amount());
+          return ResponseEntity.ok().build();
+      }
+      ```
+      결제사 문서에는 "응답이 2초 안에 오지 않거나 2xx가 아니면 최대 5회까지 다시 보낸다"고 적혀 있습니다.
+    prompt: |-
+      1. 같은 이벤트가 두 번 들어오는 일이 왜 정상 동작의 일부인지 설명하세요.
+      2. 두 번 들어와도 정산 결과가 한 번과 같도록 수신 쪽을 고친 코드를 작성하세요.
+      3. 두 요청이 거의 동시에 들어와 둘 다 "처음 보는 이벤트"로 판정되는 경우까지 막으려면 무엇이 더
+         필요한지 적고 구현에 반영하세요.
+      4. 이미 처리한 이벤트를 다시 받았을 때 어떤 응답을 돌려줘야 발신 쪽이 재시도를 멈추는지 설명하세요.
+    constraints:
+      - 결제사에 재시도를 끄라고 요청하지 않는다
+      - 새 메시지 인프라를 도입하지 않는다
+      - 처리 여부 판단을 애플리케이션 메모리에만 두지 않는다
+    expectedConcepts:
+      - 중복 수신과 재시도
+      - 이벤트 식별자 저장
+      - 유일 제약
+      - 트랜잭션 경계
+      - 중복 시 성공 응답
+    rubric:
+      - id: R1
+        criterion: 이벤트 식별자를 저장해 이미 처리한 이벤트를 다시 처리하지 않는다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 식별자에 유일 제약을 두고 저장과 반영을 같은 트랜잭션에 넣어 동시 중복을 막는다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 응답 유실로도 재시도가 오므로 중복 수신이 정상임을 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+      - id: R4
+        criterion: 중복 이벤트에 성공 응답을 돌려줘야 재시도가 멈추는 이유를 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+    commonMistakes:
+      - 조회로 먼저 확인하고 없으면 저장해 동시 요청에서 둘 다 통과함
+      - 중복이면 오류로 응답해 발신 쪽 재시도를 계속 부름
+      - 처리 기록을 메모리 컬렉션에 담아 재기동하면 사라짐
+      - 결제사에 중복을 보내지 말라고 요청하는 것으로 마무리함
+    transferTargets:
+      - WEB_HTTP.IDEMPOTENCY
+      - DATABASE.TRANSACTION
+    hints:
+      QUESTION_ONLY: 첫 번째 요청의 처리가 끝난 뒤에 연결이 끊겼다면, 보낸 쪽은 그 사실을 알 수 있을까요?
+      CONCEPT_HINT: 같은 일을 여러 번 해도 결과가 같게 만드는 성질과, 그 판단을 여러 요청이 동시에 해도 틀리지 않게 하는 장치를 떠올려 보세요.
+      DIRECTION: 처리한 이벤트를 남기는 자리를 먼저 정하고, 그 자리에 두 요청이 동시에 기록하려 할 때 하나만 남게 하는 방법을 데이터베이스 쪽에서 찾아 보세요.
+
+  - seedKey: PRACTICE.INTEGRATION.WEBHOOK.L3.002
+    purpose: PRACTICE
+    skills:
+      - INTEGRATION.WEBHOOK
+    difficulty: 3
+    estimatedMinutes: 40
+    isTransfer: false
+    title: 발신 webhook의 재시도와 서명 설계하기
+    scenario: |-
+      우리가 고객사에 주문 상태 변경 이벤트를 보내는 쪽입니다. 어제 고객사 서버가 30분 동안 응답하지 않았고,
+      그동안 발생한 이벤트 4,000건이 모두 사라졌습니다. 현재 발신 코드는 실패하면 곧바로 세 번 더 보내고
+      그래도 실패하면 로그만 남깁니다. 고객사는 "우리 쪽 장애 동안 요청이 계속 몰려 복구가 더 늦어졌다"고
+      알려 왔고, "보낸 사람이 정말 그쪽이 맞는지 확인할 방법이 없다"고도 했습니다.
+    prompt: |-
+      1. 재시도 정책을 설계하세요. 간격을 어떻게 두고 몇 번까지 보낼지, 그동안 이벤트를 어디에 두고,
+         끝까지 실패하면 무엇을 남길지 적습니다.
+      2. 고객사가 보낸 사람과 내용이 바뀌지 않았음을 확인할 수 있도록 무엇을 함께 보낼지 정하세요.
+         같은 요청을 가로채 다시 보내는 경우까지 막을 수 있어야 합니다.
+      3. 고객사가 중복 수신을 걸러 낼 수 있도록 우리가 반드시 넣어 보내야 하는 값을 정하세요.
+      4. 실패하자마자 곧바로 세 번 다시 보내는 방식이 상대 장애를 왜 키우는지 설명하세요.
+    constraints:
+      - 이벤트 본문에 고객 개인정보 원문을 담지 않는다
+      - 공유 비밀값을 저장소나 로그에 남기지 않는다
+      - 새 메시지 인프라를 도입하지 않는다
+    expectedConcepts:
+      - 재시도 간격 늘리기
+      - 발신 대기 이벤트 보관
+      - 서명과 검증 정보
+      - 시각 포함과 허용 범위
+      - 이벤트 고유 식별자
+    rubric:
+      - id: R1
+        criterion: 재시도 간격을 점점 늘리고 횟수 한도와 최종 실패 처리를 정한다
+        weightBp: 3000
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 보낼 이벤트를 저장해 두고 실패 건을 나중에 다시 보낼 수 있게 한다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 서명이 덮는 대상과 시각을 정해 가로채 다시 보내는 요청을 걸러 낼 수 있게 한다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R4
+        criterion: 즉시 연속 재시도가 상대 장애를 키우는 이유를 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+    commonMistakes:
+      - 실패한 이벤트를 메모리에만 두어 재기동하면 사라짐
+      - 간격 없이 연속으로 재시도해 상대 복구를 방해함
+      - 본문만 서명하고 시각을 넣지 않아 같은 요청을 다시 보내는 공격을 막지 못함
+      - 이벤트마다 고유 값을 넣지 않아 상대가 중복을 구분하지 못함
+    transferTargets:
+      - PRACTICAL_ENGINEERING.LOGGING
+    hints:
+      QUESTION_ONLY: 상대 서버가 30분 동안 멈춰 있는 동안 우리가 계속 요청을 보내면 상대의 복구는 빨라질까요?
+      CONCEPT_HINT: 실패가 이어질 때 간격을 벌리는 방식과, 보낼 것을 잠시 쌓아 두는 자리, 그리고 보낸 사람을 확인시켜 주는 값들을 함께 생각해 보세요.
+      DIRECTION: 이벤트가 생기는 순간과 실제로 나가는 순간을 떼어 놓고, 나가는 쪽에서 실패 횟수와 다음 시도 시각을 들고 다니게 만든 다음 서명에 무엇을 넣을지 정해 보세요.
+
+  - seedKey: PRACTICE.INTEGRATION.LEGACY_DATA.L2.001
+    purpose: PRACTICE
+    skills:
+      - INTEGRATION.LEGACY_DATA
+    difficulty: 2
+    estimatedMinutes: 30
+    isTransfer: false
+    title: 고객사 CSV를 표준 회원 모델로 적재하기
+    scenario: |-
+      고객사에서 매일 회원 파일을 CSV로 내려 줍니다. 표본 몇 줄은 이렇습니다.
+      ```text
+      1001,홍길동,"서울시 강남구, 1층",19850000,1,-
+      1002,김철수,부산시 해운대구,19900312,9,01012345678
+      1003,"이,영희",대구시 중구,20001131,2,
+      ```
+      컬럼은 회원번호, 이름, 주소, 생년월일, 성별코드, 연락처입니다. 파일 인코딩은 CP949이고, 결측은
+      빈칸이거나 하이픈 한 글자입니다. 성별코드 9는 고객사 내부에서 "확인 안 됨"을 뜻합니다. 지금 적재
+      코드는 줄을 쉼표로 잘라 컬럼을 채우고, 값이 이상하면 건너뛰고 다음 줄로 갑니다.
+    prompt: |-
+      1. 표준 회원 모델로 가는 매핑 규칙을 항목별로 적으세요. 결측 표현, 성별 코드값, 날짜 형식, 연락처
+         형식을 각각 어떻게 다룰지 정합니다.
+      2. 파일을 읽고 변환하는 코드를 작성하세요. 값을 잘못 읽는 행이 나오지 않아야 합니다.
+      3. 변환할 수 없는 행을 어떻게 다룰지 정하고 구현하세요.
+      4. 지금처럼 이상한 행을 조용히 건너뛰는 방식과, 한 행이라도 실패하면 전체를 실패시키는 방식이 각각
+         무엇이 문제인지 설명하세요.
+    constraints:
+      - 표준 모델에 값을 추측해 채워 넣지 않는다
+      - 파일 인코딩을 코드에 숨기지 말고 설정으로 다룬다
+      - 적재 결과로 처리 건수와 실패 건수를 남긴다
+    expectedConcepts:
+      - CSV 따옴표 규칙
+      - 문자 인코딩 지정
+      - 결측과 코드값 매핑
+      - 실패 행 격리
+      - 적재 결과 집계
+    rubric:
+      - id: R1
+        criterion: 따옴표로 감싼 값과 그 안의 쉼표를 바르게 읽어 컬럼이 밀리지 않게 한다
+        weightBp: 3000
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 결측 표현과 코드값을 표준 모델의 값으로 바꾸는 규칙을 항목별로 정해 구현한다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 변환 실패 행을 원본 값과 사유, 줄 번호와 함께 따로 남긴다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R4
+        criterion: 조용히 건너뛰기와 전체 실패가 각각 무엇을 잃게 하는지 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+    commonMistakes:
+      - 줄을 쉼표로 잘라 따옴표 안의 쉼표에서 컬럼이 밀림
+      - 인코딩을 지정하지 않아 실행 환경에 따라 결과가 달라짐
+      - 존재하지 않는 날짜를 그대로 저장하거나 임의의 날로 바꿈
+      - 실패 행을 로그 한 줄로만 남겨 나중에 찾을 수 없게 함
+    transferTargets:
+      - PRACTICAL_ENGINEERING.NULL_BOUNDARY
+    hints:
+      QUESTION_ONLY: 표본 셋째 줄의 이름 값을 지금 코드로 읽으면 컬럼이 몇 개가 될까요?
+      CONCEPT_HINT: 값 안에 구분자가 들어갈 수 있는 형식의 규칙과, 파일을 열 때 정해 줘야 하는 문자 집합을 떠올려 보세요.
+      DIRECTION: 읽기, 값 하나씩 변환하기, 저장하기를 분리하고 변환 단계에서 성공한 것과 실패한 것을 서로 다른 자리로 보내도록 만들어 보세요.
+
+  - seedKey: PRACTICE.INTEGRATION.LEGACY_DATA.L3.001
+    purpose: PRACTICE
+    skills:
+      - INTEGRATION.LEGACY_DATA
+    difficulty: 3
+    estimatedMinutes: 40
+    isTransfer: false
+    title: 한 컬럼에 여러 의미가 섞인 레거시 상태값 표준화하기
+    scenario: |-
+      10년 넘게 쓰인 구형 시스템의 계약 테이블을 표준 모델로 옮깁니다. 상태 컬럼 STAT_CD에는 A, B, C, 9,
+      ZZ, 공백이 들어 있고, 어떤 행은 상태가 비어 있는 대신 비고 컬럼에 "해지(2019 이관)"처럼 적혀 있습니다.
+      인수인계 문서에는 A, B, C만 설명되어 있고 나머지는 적혀 있지 않습니다. 계약 종료일 컬럼에는
+      99991231이 전체의 40%입니다. 담당자는 "예전 담당자가 쓰던 값이라 정확히는 모른다"고 합니다.
+    prompt: |-
+      1. 표준 상태로 매핑하기 전에 무엇을 먼저 조사할지 적으세요. 어떤 질의로 무엇을 확인할지 구체적으로
+         적습니다.
+      2. 조사 결과를 근거로 매핑 표를 정하세요. 문서에 없는 값을 어떻게 다룰지 규칙을 포함합니다.
+      3. 끝까지 판단할 수 없는 값을 어떻게 처리할지 정하고, 그렇게 정한 이유를 적으세요.
+      4. 99991231 같은 값을 표준 모델에서 어떻게 표현할지 정하고, 그대로 옮겼을 때 나중에 무엇이 잘못되는지
+         설명하세요.
+    constraints:
+      - 문서에 없는 코드값의 의미를 추측해 매핑하지 않는다
+      - 원본 값을 잃지 않도록 보관 방법을 함께 정한다
+      - 표준 모델의 상태 목록을 임의로 늘리지 않는다
+    expectedConcepts:
+      - 값 분포 조사
+      - 코드값 매핑 표
+      - 판단 불가 값의 격리
+      - 원본 값 보관
+      - 특수 날짜 표현
+    rubric:
+      - id: R1
+        criterion: 실제 쓰이는 값과 건수를 조사해 매핑의 근거를 만드는 방법을 적는다
+        weightBp: 3000
+        axis: DEBUGGING
+      - id: R2
+        criterion: 조사 결과에 근거한 매핑 표와 문서에 없는 값의 처리 규칙을 정한다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 추측으로 매핑하지 않고 확인이 필요한 값을 구분하는 기준을 설명한다
+        weightBp: 2500
+        axis: EXPLANATION
+      - id: R4
+        criterion: 무기한을 뜻하는 날짜를 표준 모델에서 어떻게 표현할지 근거와 함께 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+    commonMistakes:
+      - 문서에 없는 값을 비슷해 보이는 상태로 임의 매핑함
+      - 비고 컬럼에만 있는 정보를 확인하지 않고 버림
+      - 먼 미래 날짜를 그대로 옮겨 만료 계산이 이상해짐
+      - 원본 값을 남기지 않아 매핑이 틀렸을 때 되돌릴 수 없음
+    transferTargets:
+      - DATABASE.SQL_BASICS
+    hints:
+      QUESTION_ONLY: 문서에 없는 값들이 실제로 몇 건이나 되는지 알기 전에 매핑을 정할 수 있을까요?
+      CONCEPT_HINT: 값별 건수를 세어 보는 조사와, 판단할 수 없는 것을 따로 모아 두는 처리 방식을 떠올려 보세요.
+      DIRECTION: 값별 건수와 최근 사용 시점을 먼저 뽑아 자주 쓰이는 값부터 확인하고, 남는 값은 옮기지 말고 따로 모아 담당자 확인 대기로 두세요.
+
+  - seedKey: PRACTICE.INTEGRATION.BATCH_SYNC.L3.001
+    purpose: PRACTICE
+    skills:
+      - INTEGRATION.BATCH_SYNC
+    difficulty: 3
+    estimatedMinutes: 40
+    isTransfer: true
+    title: 매일 몇 건씩 조용히 빠지는 증분 동기화 고치기
+    scenario: |-
+      원본 시스템에서 변경된 회원만 매시간 가져옵니다. 조회 조건은 아래와 같고, 마지막 실행 시각은 배치가
+      끝날 때 현재 시각으로 갱신합니다.
+      ```sql
+      SELECT * FROM member WHERE updated_at > :lastRunAt ORDER BY updated_at
+      ```
+      한 달에 몇 건씩 우리 쪽에만 없는 회원이 발견되는데, 그 회원들의 updated_at은 모두 배치가 돌던 시각
+      부근입니다. 빠진 건은 그 뒤로 다시 들어오지 않고, 원본에서 다시 수정되어야만 들어옵니다.
+      원본 테이블은 운영 중이라 구조를 바꾸려면 협의가 필요합니다.
+    prompt: |-
+      1. 행이 빠지는 이유를 트랜잭션 관점에서 설명하세요. 값이 정해지는 시점과 다른 트랜잭션에서 보이게
+         되는 시점을 나누어 적습니다.
+      2. 한 번 빠진 행이 왜 다음 실행에서도 들어오지 않는지 설명하세요.
+      3. 커서 방식을 고치세요. 원본 구조를 바꾸지 않고 할 수 있는 방법과, 협의가 가능하다면 더 나은 방법을
+         함께 적습니다.
+      4. 고친 방식에서는 같은 행이 여러 번 들어올 수 있습니다. 적재 쪽이 어떤 조건을 만족해야 하는지 적고
+         반영하세요.
+    constraints:
+      - 매번 전체를 다시 가져오는 방식으로 바꾸지 않는다
+      - 원본 테이블 구조 변경은 협의가 필요한 선택지로만 제시한다
+      - 새 인프라를 도입하지 않는다
+    expectedConcepts:
+      - 커밋 시점과 조회 스냅샷
+      - 커서 기준 시각
+      - 겹치는 구간 재조회
+      - 단조 증가 변경 순번
+      - 멱등 적재
+    rubric:
+      - id: R1
+        criterion: 값이 정해지는 시점과 커밋 시점이 달라 조회에서 빠지는 과정을 설명한다
+        weightBp: 3000
+        axis: EXPLANATION
+      - id: R2
+        criterion: 커서를 겹쳐 읽거나 단조 증가 순번으로 바꾸는 방법을 구체적으로 적는다
+        weightBp: 3000
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 같은 행이 다시 들어와도 결과가 같도록 적재를 멱등하게 만든다
+        weightBp: 2000
+        axis: IMPLEMENTATION
+      - id: R4
+        criterion: 한 번 빠진 행이 다음 실행에서도 들어오지 않는 이유를 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+    commonMistakes:
+      - 커서를 배치 종료 시각으로 갱신해 실행 중 커밋된 행을 영영 놓침
+      - 겹쳐 읽도록 바꾸고 적재는 그대로 두어 중복 행이 쌓임
+      - 빠진 건을 사람이 찾아 수동으로 넣는 것으로 마무리함
+      - 전체 재적재로 바꿔 매시간 원본에 부하를 줌
+    transferTargets:
+      - DATABASE.TRANSACTION
+    hints:
+      QUESTION_ONLY: 조회가 시작된 뒤에 커밋된 행은 그 조회 결과에 나타날 수 있을까요?
+      CONCEPT_HINT: 조회가 어느 시점의 상태를 보는지에 대한 규칙과, 시각 대신 쓸 수 있는 증가하는 값을 떠올려 보세요.
+      DIRECTION: 행에 시각이 찍히는 순간과 다른 세션이 그 행을 볼 수 있게 되는 순간을 종이에 시간 순으로 그려 보고, 그 틈만큼 커서를 물리면 무엇이 더 필요해지는지 따져 보세요.
+
+  - seedKey: PRACTICE.INTEGRATION.BATCH_SYNC.L2.001
+    purpose: PRACTICE
+    skills:
+      - INTEGRATION.BATCH_SYNC
+    difficulty: 2
+    estimatedMinutes: 30
+    isTransfer: false
+    title: 지우고 다시 넣는 배치를 재실행 가능한 적재로 바꾸기
+    scenario: |-
+      매일 새벽 상품 정보를 받아 적재하는 배치입니다. 현재 구조는 대상 테이블을 비우고 받은 파일을 전부
+      다시 넣습니다.
+      ```java
+      @Transactional
+      public void load(List<ProductRow> rows) {
+          productRepository.deleteAll();
+          rows.forEach(row -> productRepository.save(toEntity(row)));
+      }
+      ```
+      어제는 파일 전송이 중간에 끊겨 6만 건 중 2만 건만 받은 상태로 배치가 돌았고, 오전 내내 상품 목록
+      화면에 일부 상품이 보이지 않았습니다. 담당자는 배치를 다시 돌리는 것이 안전한지 몰라 연락을
+      기다렸습니다.
+    prompt: |-
+      1. 배치를 다시 돌려도 안전하도록 적재 방식을 바꾼 코드를 작성하세요.
+      2. 그 방식이 동작하려면 대상 테이블에 무엇이 있어야 하는지 적으세요.
+      3. 원본에서 사라진 상품을 어떻게 다룰지 정하고 이유를 적으세요.
+      4. 지우고 다시 넣는 방식이 왜 위험한지, 어제 같은 상황에서 무엇이 달라졌을지 설명하세요.
+    constraints:
+      - 대상 테이블을 통째로 비우지 않는다
+      - 파일이 불완전할 때를 판단할 수 있어야 한다
+      - 새 인프라를 도입하지 않는다
+    expectedConcepts:
+      - 업무 키와 유일 제약
+      - 키 기준 upsert
+      - 재실행 안전성
+      - 사라진 행의 처리
+      - 적재 전 건수 확인
+    rubric:
+      - id: R1
+        criterion: 업무 키를 기준으로 있으면 갱신하고 없으면 삽입하는 적재로 바꾼다
+        weightBp: 3500
+        axis: IMPLEMENTATION
+      - id: R2
+        criterion: 업무 키에 유일 제약이 필요하다는 점을 짚고 반영한다
+        weightBp: 2500
+        axis: IMPLEMENTATION
+      - id: R3
+        criterion: 원본에 없어진 행을 지울지 표시만 할지 정하고 근거를 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+      - id: R4
+        criterion: 비우고 다시 넣는 방식이 중간 실패에서 무엇을 남기는지 설명한다
+        weightBp: 2000
+        axis: EXPLANATION
+    commonMistakes:
+      - 비우기와 넣기를 한 트랜잭션에 묶는 것만으로 안전하다고 봄
+      - 유일 제약 없이 조회 후 저장해 동시 실행에서 중복이 생김
+      - 받은 파일이 불완전한지 확인하지 않고 그대로 반영함
+      - 원본에서 사라진 행을 아무 기록 없이 삭제함
+    transferTargets:
+      - DATABASE.TRANSACTION
+    hints:
+      QUESTION_ONLY: 어제처럼 파일이 절반만 왔을 때, 지금 방식은 무엇을 근거로 그 파일을 믿고 반영할까요?
+      CONCEPT_HINT: 같은 배치를 여러 번 돌려도 결과가 같게 만드는 성질과, 그 판단의 기준이 되는 키를 떠올려 보세요.
+      DIRECTION: 행을 식별하는 값을 먼저 정하고, 그 값이 이미 있을 때와 없을 때 데이터베이스가 한 번에 처리하도록 맡기는 방법을 찾아 보세요.

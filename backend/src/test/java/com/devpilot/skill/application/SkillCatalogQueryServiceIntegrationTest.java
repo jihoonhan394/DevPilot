@@ -12,7 +12,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 
-/** docs/05 §6.1·§6.2 (BL-SKL-01, BL-SKL-02). 테스트 catalog: root 13 + non-root 10. */
+/** docs/05 §6.1·§6.2 (BL-SKL-01, BL-SKL-02). 테스트 catalog: root 14 + non-root 10. */
 @IntegrationTest
 class SkillCatalogQueryServiceIntegrationTest extends ApiTestSupport {
 
@@ -24,7 +24,7 @@ class SkillCatalogQueryServiceIntegrationTest extends ApiTestSupport {
         assertThat(tree.path("role").asString()).isEqualTo("JAVA_BACKEND");
         assertThat(tree.path("catalogVersion").asInt()).isEqualTo(1);
         JsonNode skills = tree.path("skills");
-        assertThat(skills).hasSize(23);
+        assertThat(skills).hasSize(24);
         assertThat(skills.get(0).path("code").asString()).isEqualTo("JAVA");
         assertThat(skills.get(0).path("parentCode").isNull()).isTrue();
         assertThat(skills.get(0).path("roleTarget").isNull()).isTrue();
@@ -65,7 +65,7 @@ class SkillCatalogQueryServiceIntegrationTest extends ApiTestSupport {
 
         JsonNode items = api.body(api.get(user, "/api/v1/skills/me")).path("items");
 
-        assertThat(items).hasSize(23);
+        assertThat(items).hasSize(24);
         JsonNode root = item(items, "JAVA");
         assertThat(root.path("selfAssessedLevel").isNull()).isTrue();
         assertThat(root.path("target").isNull()).isTrue();

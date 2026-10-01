@@ -41,16 +41,10 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
                                 .andExpect(status().isCreated())
                                 .andExpect(jsonPath("$.user.onboardingCompleted").value(true))
                                 .andExpect(jsonPath("$.user.displayName").value("Test Owner"))
-                                .andExpect(
-                                        jsonPath("$.user.experienceProfile")
-                                                .value("WORKING_DEVELOPER"))
-                                .andExpect(
-                                        jsonPath("$.user.experienceStartDate").value("2020-02-01"))
+                                .andExpect(jsonPath("$.user.weekdayStudyMinutes").value(45))
                                 .andExpect(
                                         jsonPath("$.learningGoal.targetRole").value("JAVA_BACKEND"))
-                                .andExpect(
-                                        jsonPath("$.learningGoal.checkpointDate")
-                                                .value("2027-01-05"))
+                                .andExpect(jsonPath("$.learningGoal.checkpointDate").doesNotExist())
                                 .andExpect(
                                         jsonPath("$.learningGoal.targetCompletionDate")
                                                 .value("2027-04-01"))
@@ -60,12 +54,37 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
                                 .andExpect(jsonPath("$.activePlan.planVersion").value(1))
                                 .andExpect(jsonPath("$.activePlan.status").value("ACTIVE"))
                                 .andExpect(jsonPath("$.activePlan.milestoneCount").value(3))
-                                .andExpect(jsonPath("$.activePlan.latestRiskLevel").doesNotExist())
-                                .andExpect(jsonPath("$.activePlan.latestRatioBp").doesNotExist())
-                                .andExpect(jsonPath("$.sideProject").doesNotExist())
+                                .andExpect(jsonPath("$.activePlan.latestRiskLevel").value("LOW"))
+                                // ADR-050: 만들 것을 정하지 않아도 기본 프로젝트를 준다
+                                .andExpect(jsonPath("$.sideProject.name").value("주문 시스템"))
+                                .andExpect(jsonPath("$.sideProject.status").value("ACTIVE"))
                                 .andExpect(jsonPath("$.assignedSeedCardCount").value(0))
                                 .andExpect(jsonPath("$.suggestedDiagnostics").isEmpty()));
         UUID userId = userId(user);
+
+        // 9단계: 오늘 snapshot 1행, 응답 latestRatioBp는 그 값이다 (AC-11 S1 S2 빌드)
+        Map<String, Object> snapshot =
+                jdbc.queryForMap(
+                        "select s.snapshot_date::text as snapshot_date, s.ratio_bp, s.risk_level"
+                                + " from devpilot.plan_progress_snapshot s join"
+                                + " devpilot.learning_plan p on p.id = s.plan_id where p.user_id ="
+                                + " ?",
+                        userId);
+        assertThat(snapshot)
+                .containsEntry("snapshot_date", "2026-10-05")
+                .containsEntry("risk_level", "LOW");
+        assertThat(body.path("activePlan").path("latestRatioBp").asInt())
+                .isEqualTo(((Number) snapshot.get("ratio_bp")).intValue());
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
+        assertThat(
+                        count(
+                                "select count(*) from devpilot.review_item where user_id = ? and"
+                                        + " source_type = 'SEED_CARD' and origin = 'SEED'",
+                                userId))
+                .isEqualTo(10);
+        assertThat(count("select count(*) from devpilot.learning_event where user_id = ?", userId))
+                .isZero();
 
         assertThat(body.path("user").path("onboardingCompletedAt").asString())
                 .isEqualTo("2026-10-05T10:00:00Z");
@@ -205,11 +224,11 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
     }
 
     @Test
-    void shouldRejectMoreThanThirteenSelfAssessments() throws Exception {
+    void shouldRejectMoreThanFourteenSelfAssessments() throws Exception {
         TestUser user = TestUser.owner();
         Map<String, Object> request = TestApi.onboardingRequest();
         List<Object> assessments = new ArrayList<>();
-        for (int i = 0; i < 14; i++) {
+        for (int i = 0; i < 15; i++) {
             assessments.add(Map.of("category", "JAVA", "level", 1));
         }
         request.put("selfAssessments", assessments);
@@ -250,9 +269,15 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
         request.put("runDiagnostic", true);
         request.put("selfAssessments", List.of());
 
+        // 05 §4.2: 진단 모드면 category당 1개(최대 5개)를 제안하고 selfAssessedLevel은 null이다.
+        // 맨 앞은 활성 plan에서 가장 중요한 category다 — 테스트 role target의 SPRING.TRANSACTION이
+        // importance 0.95로 가장 높다(1단계 정렬). category 선언 순서가 아니다.
         api.post(user, ONBOARDING, request)
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.suggestedDiagnostics").isEmpty());
+                .andExpect(jsonPath("$.suggestedDiagnostics").isNotEmpty())
+                .andExpect(jsonPath("$.suggestedDiagnostics[0].category").value("SPRING"))
+                .andExpect(jsonPath("$.suggestedDiagnostics[0].selfAssessedLevel").doesNotExist())
+                .andExpect(jsonPath("$.suggestedDiagnostics[0].challengeId").isNotEmpty());
 
         assertThat(
                         count(
@@ -263,10 +288,10 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
     }
 
     @Test
-    void shouldRejectInvalidTimezoneAndDateOrder() throws Exception {
+    void shouldRejectInvalidTimezoneAndTargetDateBeyondThreeYears() throws Exception {
         Map<String, Object> request = TestApi.onboardingRequest();
         request.put("timezone", "Mars/Olympus");
-        learningGoal(request).put("checkpointDate", "2027-05-01");
+        learningGoal(request).put("targetCompletionDate", "2029-10-06");
 
         api.post(TestUser.owner(), ONBOARDING, request)
                 .andExpect(status().isBadRequest())
@@ -274,14 +299,32 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
                         jsonPath("$.errors[?(@.field == 'timezone')].code")
                                 .value("TIMEZONE_INVALID"))
                 .andExpect(
-                        jsonPath("$.errors[?(@.field == 'learningGoal.checkpointDate')].code")
-                                .value("DATE_ORDER_INVALID"));
+                        jsonPath(
+                                        "$.errors[?(@.field =="
+                                                + " 'learningGoal.targetCompletionDate')].code")
+                                .value("DATE_OUT_OF_RANGE"));
+    }
+
+    @Test
+    void shouldRejectPropertiesOutsideGoalModel() throws Exception {
+        TestUser user = TestUser.owner();
+        Map<String, Object> withProfile = TestApi.onboardingRequest();
+        withProfile.put("experienceProfile", "WORKING_DEVELOPER");
+        Map<String, Object> withCheckpoint = TestApi.onboardingRequest();
+        learningGoal(withCheckpoint).put("checkpointDate", "2027-01-05");
+
+        api.post(user, ONBOARDING, withProfile)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
+        api.post(user, ONBOARDING, withCheckpoint)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
+        assertNothingPersisted(user);
     }
 
     @Test
     void shouldRejectTargetDateNotAfterToday() throws Exception {
         Map<String, Object> request = TestApi.onboardingRequest();
-        learningGoal(request).put("checkpointDate", null);
         learningGoal(request).put("targetCompletionDate", "2026-10-05");
 
         api.post(TestUser.owner(), ONBOARDING, request)
@@ -308,7 +351,7 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldRejectUnknownEnumValue() throws Exception {
         Map<String, Object> request = TestApi.onboardingRequest();
-        request.put("experienceProfile", "working_developer");
+        learningGoal(request).put("targetRole", "java_backend");
 
         api.post(TestUser.owner(), ONBOARDING, request)
                 .andExpect(status().isBadRequest())
@@ -318,6 +361,8 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
     @Test
     void shouldRejectSecondOnboarding() throws Exception {
         TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 쓰는 테스트는 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
 
         api.post(user, ONBOARDING, TestApi.onboardingRequest())
                 .andExpect(status().isConflict())
@@ -425,6 +470,14 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
                                 userId))
                 .isZero();
         assertThat(count("select count(*) from devpilot.side_project where user_id = ?", userId))
+                .isZero();
+        assertThat(count("select count(*) from devpilot.review_item where user_id = ?", userId))
+                .isZero();
+        assertThat(
+                        count(
+                                "select count(*) from devpilot.plan_progress_snapshot where"
+                                        + " user_id = ?",
+                                userId))
                 .isZero();
         assertThat(
                         count(
