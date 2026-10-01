@@ -17,9 +17,11 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 
 /**
- * docs/05 §7.9, docs/06 §3·§4 (BL-GOL-11), AC-03 S2·S4. horizon은 학습 목표일이다. 테스트 catalog 기본 온보딩(JAVA
- * 3, SPRING 2, DATABASE 2, ALGORITHM 1)의 requiredMust = 2825분, requiredShould =
- * 1192분(ALGORITHM.SORT_SEARCH 477 + DEVOPS.DOCKER 715).
+ * docs/05 §7.9, docs/06 §3·§4 (BL-GOL-11), AC-03 S2·S4. horizon은 학습 목표일이다.
+ *
+ * <p>테스트 catalog 기본 온보딩(JAVA 3, SPRING 2, DATABASE 2, ALGORITHM 1)의 requiredMust = <b>2412분</b>이다 —
+ * 네 축을 모두 세면 2825분이지만 risk는 <b>지금 잴 수 있는 축만</b> 센다(ADR-062, docs/06 §4.2). 디버깅 축 몫은 {@code
+ * requiredMustLaterMinutes}로 따로 나온다. requiredShould도 같은 이유로 줄었다.
  */
 @IntegrationTest
 class StudyBudgetServiceIntegrationTest extends ApiTestSupport {
@@ -44,10 +46,18 @@ class StudyBudgetServiceIntegrationTest extends ApiTestSupport {
         assertThat(budget.path("nominalBudgetMinutes").asInt()).isEqualTo(705);
         assertThat(budget.path("completionRateBp").asInt()).isEqualTo(7_000);
         assertThat(budget.path("effectiveBudgetMinutes").asInt()).isEqualTo(493);
-        assertThat(budget.path("requiredMustMinutes").asInt()).isEqualTo(2_825);
-        assertThat(budget.path("requiredShouldMinutes").asInt()).isEqualTo(1_192);
-        assertThat(budget.path("ratioBp").asInt()).isEqualTo(57_302);
+        assertThat(budget.path("requiredMustMinutes").asInt()).isEqualTo(2_412);
+        assertThat(budget.path("requiredShouldMinutes").asInt()).isEqualTo(943);
+        assertThat(budget.path("ratioBp").asInt()).isEqualTo(48_924);
         assertThat(budget.path("riskLevel").asString()).isEqualTo("CRITICAL");
+        // 아직 쌓을 방법이 없는 축의 몫은 risk 밖에 있지만 사라지지 않는다 (ADR-062).
+        // 2412 + 415 = 2827로 네 축 합(2825)보다 2분 크다 — 축을 나눠 각각 ceil 하기 때문이다(docs/06 §4.2)
+        assertThat(budget.path("requiredMustLaterMinutes").asInt()).isEqualTo(415);
+        // 목표일까지 한 주뿐이라 CRITICAL이다. 그래도 도구가 할 말은 "못 합니다"가 아니라 이 날짜다 —
+        // 주당 effective 493분이면 2412분은 다섯 주쯤, 즉 2027-01-11이다 (ADR-062)
+        assertThat(budget.path("feasibleCompletionDate").asString()).isEqualTo("2027-01-11");
+        // 기록이 없으니 완료율은 추정값이다. 화면은 이것을 보고 경고색을 쓰지 않는다
+        assertThat(budget.path("completionRateEstimated").asBoolean()).isTrue();
         assertThat(budget.path("planId").asString())
                 .isEqualTo(activePlan(user).path("id").asString());
         assertThat(snapshotCount(userId)).isEqualTo(snapshots);
@@ -63,9 +73,12 @@ class StudyBudgetServiceIntegrationTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.horizonDate").value("2027-04-01"))
                 .andExpect(jsonPath("$.nominalBudgetMinutes").value(17_760))
                 .andExpect(jsonPath("$.effectiveBudgetMinutes").value(12_432))
-                .andExpect(jsonPath("$.requiredMustMinutes").value(2_825))
-                .andExpect(jsonPath("$.ratioBp").value(2_272))
-                .andExpect(jsonPath("$.riskLevel").value("LOW"));
+                .andExpect(jsonPath("$.requiredMustMinutes").value(2_412))
+                .andExpect(jsonPath("$.ratioBp").value(1_940))
+                .andExpect(jsonPath("$.riskLevel").value("LOW"))
+                // 목표일(2027-04-01) 안에 끝나는 범위다 — 주당 effective 493분으로 2412분은 다섯 주쯤이다
+                .andExpect(jsonPath("$.feasibleCompletionDate").value("2026-11-09"))
+                .andExpect(jsonPath("$.requiredMustLaterMinutes").value(415));
     }
 
     @Test
@@ -107,8 +120,8 @@ class StudyBudgetServiceIntegrationTest extends ApiTestSupport {
                 .andExpect(status().isCreated());
 
         api.get(user, BUDGET)
-                .andExpect(jsonPath("$.requiredShouldMinutes").value(477))
-                .andExpect(jsonPath("$.requiredMustMinutes").value(2_825))
+                .andExpect(jsonPath("$.requiredShouldMinutes").value(394))
+                .andExpect(jsonPath("$.requiredMustMinutes").value(2_412))
                 .andExpect(jsonPath("$.planId").value(activePlan(user).path("id").asString()));
     }
 

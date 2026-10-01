@@ -498,7 +498,9 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
         // AC-03 S5: 목표일 2026-11-09 → effective 2467, requiredMust 2825 → ratio 11451 (HIGH)
         TestUser user = TestUser.owner();
         Map<String, Object> request = TestApi.onboardingRequest();
-        learningGoal(request).put("targetCompletionDate", "2026-11-09");
+        // 2026-11-02다: risk가 잴 수 있는 축만 세면서(ADR-062) 11-09는 MEDIUM이 됐다.
+        // HIGH 동작을 보는 테스트이므로 단정을 약하게 만들지 않고 정말 HIGH인 날짜로 바꿨다.
+        learningGoal(request).put("targetCompletionDate", "2026-11-02");
         api.onboard(user, request);
 
         JsonNode today = api.generateToday(user, 60, "NORMAL");

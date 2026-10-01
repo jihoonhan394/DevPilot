@@ -8,11 +8,13 @@ import com.devpilot.skill.domain.Priority;
 import com.devpilot.skill.domain.SkillAxis;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -46,14 +48,30 @@ public final class ReplanSuggestionPolicy {
                     .thenComparing(TargetItem::skillCode);
 
     private final DeadlineRiskEvaluator evaluator;
+    private final Set<SkillAxis> measurable;
 
+    /** 네 축을 모두 세는 정책. */
     public ReplanSuggestionPolicy(DeadlineRiskEvaluator evaluator) {
+        this(evaluator, EnumSet.allOf(SkillAxis.class));
+    }
+
+    /**
+     * 지금 근거를 쌓을 수 있는 축만 세는 정책 (ADR-062).
+     *
+     * <p>risk가 잴 수 있는 축만 본다면 제안도 같은 축만 봐야 한다. 안 그러면 미리보기가 두 가지 자(尺)를 섞어 쓰고, <b>도구가 시켜 주지도 않는 일을
+     * 줄이라고 제안한다.</b>
+     *
+     * @param measurable 지금 근거를 쌓을 수 있는 축 (docs/06 §7.6)
+     */
+    public ReplanSuggestionPolicy(DeadlineRiskEvaluator evaluator, Set<SkillAxis> measurable) {
         this.evaluator = Objects.requireNonNull(evaluator, "evaluator");
+        this.measurable = Set.copyOf(Objects.requireNonNull(measurable, "measurable"));
     }
 
     /** 편집안(요청의 조정을 적용한 목표 목록)과 effective budget으로 제안을 만든다. */
     public Suggestions suggest(List<TargetItem> items, int effectiveMinutes) {
-        RiskEstimate current = evaluator.evaluate(requirements(items), effectiveMinutes);
+        RiskEstimate current =
+                evaluator.evaluate(requirements(items), effectiveMinutes, measurable);
         Integer ratio = current.ratioBp();
         if (ratio == null) {
             return Suggestions.none(current);
@@ -154,11 +172,19 @@ public final class ReplanSuggestionPolicy {
         return defers;
     }
 
-    /** 3단계: gap이 가장 큰 축(동점 K, I, E, D)의 target을 1 낮춘다. 낮춘 뒤 3 미만이 되는 축은 보지 않는다. */
+    /**
+     * 3단계: gap이 가장 큰 축(동점 K, I, E, D)의 target을 1 낮춘다. 낮춘 뒤 3 미만이 되는 축은 보지 않는다.
+     *
+     * <p>잴 수 없는 축은 후보가 아니다 (ADR-062). 그 축을 낮춰도 risk는 1분도 줄지 않으니 제안할 이유가 없다 — 늦은 원인이 아닌 것을 포기하라고 말하는
+     * 셈이다. 동점 축 순서는 {@code Set}이 아니라 <b>enum 선언 순서</b>로 정한다 — {@code Set}에는 순서가 없다.
+     */
     private Optional<TargetReduction> reduction(TargetItem item) {
         @Nullable SkillAxis chosen = null;
         int chosenGap = 0;
         for (SkillAxis axis : SkillAxis.values()) {
+            if (!measurable.contains(axis)) {
+                continue;
+            }
             int target = axis.levelOf(item.targets());
             int gap = target - axis.levelOf(item.planning());
             if (target > MIN_REDUCED_TARGET && gap > chosenGap) {
@@ -294,7 +320,9 @@ public final class ReplanSuggestionPolicy {
     }
 
     private int required(TargetItem item, AxisLevels targets) {
-        return evaluator.requiredMinutes(targets, item.planning(), item.minutesPerLevelStep());
+        return evaluator
+                .requiredMinutes(targets, item.planning(), item.minutesPerLevelStep(), measurable)
+                .nowMinutes();
     }
 
     private static List<TargetRequirement> requirements(List<TargetItem> items) {

@@ -4,12 +4,12 @@ import 'package:devpilot_app/app/routes.dart';
 import 'package:devpilot_app/core/l10n/display_format.dart';
 import 'package:devpilot_app/core/l10n/enum_labels.dart';
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
-import 'package:devpilot_app/core/widgets/badges.dart';
 import 'package:devpilot_app/core/widgets/screen_body.dart';
 import 'package:devpilot_app/features/today/data/today_models.dart';
 import 'package:devpilot_app/features/today/presentation/active_rubber_duck_tile.dart';
 import 'package:devpilot_app/features/today/presentation/buildable_line.dart';
 import 'package:devpilot_app/features/today/presentation/daily_tip_card.dart';
+import 'package:devpilot_app/features/today/presentation/goal_guide.dart';
 import 'package:devpilot_app/features/today/presentation/main_task_card.dart';
 import 'package:devpilot_app/features/today/presentation/optional_section.dart';
 import 'package:devpilot_app/features/today/presentation/today_actions.dart';
@@ -58,6 +58,8 @@ class TodayGeneratedView extends StatelessWidget {
           _ReviewTaskTile(task: review),
         ],
         // 오늘 할 일과 곁가지 사이. 오늘 무엇을 하는지 본 다음에 "그래서 어디까지 왔나"가 온다
+        const SizedBox(height: AppSpacing.lg),
+        const GoalGuide(),
         const BuildableLine(),
         // 여기부터는 곁가지다. 오늘의 핵심과 같은 무게로 보이면 무엇부터 할지 알 수 없다
         // (docs/02 SCR-TODAY "천천히 봐도 되는 것").
@@ -99,7 +101,10 @@ class _ComebackBanner extends StatelessWidget {
   }
 }
 
-/// "마감 위험 [보통]   45분 · 보통 [변경]".
+/// "45분 · 보통 [변경]".
+///
+/// 위험 배지는 여기 없다 (ADR-062). 첫 화면이 할 일은 오늘 할 일을 보여 주는 것이고, 목표일 이야기는
+/// [GoalGuide]가 "언제면 되는지"와 함께 말한다. 판정만 떼어 놓고 보여 주면 바꿀 수 있는 게 없다.
 class _SummaryBar extends ConsumerWidget {
   const _SummaryBar({required this.today, required this.data});
 
@@ -109,21 +114,11 @@ class _SummaryBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final risk = today.deadlineRisk;
     return Wrap(
       spacing: AppSpacing.md,
       runSpacing: AppSpacing.sm,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        if (risk != null)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ExcludeSemantics(child: Text(l10n.todayRiskLabel)),
-              const SizedBox(width: AppSpacing.xs),
-              RiskBadge(risk: risk),
-            ],
-          ),
         Text(
           l10n.todayInputSummary(
             formatMinutes(today.availableMinutes, l10n),

@@ -788,7 +788,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ │ 다시 시작해도 괜찮아요.      │ │
 │ │ 오늘은 가볍게 시작해요.      │ │
 │ └────────────────────────────┘ │
-│ 마감 위험 [보통]   45분 · 보통 [변경]│
+│ 45분 · 보통            [변경]  │
 │                                │
 │ 오늘의 핵심                     │
 │ ┌────────────────────────────┐ │
@@ -812,6 +812,17 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 │ ┌────────────────────────────┐ │  REVIEW task가 있을 때
 │ │ 복습 6장 · 약 9분     [복습] │ │
 │ └────────────────────────────┘ │
+│ ┌────────────────────────────┐ │  목표 가이드 (S4, ADR-062)
+│ │ 방향은 맞아요.               │ │
+│ │ 지금 실력으로는 "로그인 API" │ │
+│ │ 까지 해 볼 수 있어요.        │ │
+│ │ 전부 하려면 2027년 7월쯤이에요│ │
+│ │ 하루씩 쌓으면 이 날짜가 당겨져요│
+│ │  줄이는 안 보기  목표일 바꾸기 │ │
+│ └────────────────────────────┘ │
+│ ┌────────────────────────────┐ │  지금 만들 수 있는 것 (S3)
+│ │ 🔧 지금 만들 수 있는 단계 2개 │ │
+│ └────────────────────────────┘ │
 │ ┌────────────────────────────┐ │  오늘의 팁 (S3, tips flag)
 │ │ 오늘의 팁 · 약 3분            │ │
 │ │ 로그 레벨은 언제 무엇을 쓰나  │ │  title
@@ -830,6 +841,14 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 └────────────────────────────────┘
 ```
 
+- **목표 가이드 카드 (S4, ADR-062)**: 복습 줄 아래, "지금 만들 수 있는 것" 줄 위에 둔다. `GET /plans/active/budget`(`05` §7.9)과 `GET /plans/active/buildable`(`05` §7.10)을 읽는다. **첫 화면에는 더 이상 마감 위험 배지가 없다** — 목표일을 못 지킨다는 판정만 떼어 놓고 보여 주면 사용자가 바꿀 수 있는 게 없고, 첫날 빨간색은 시작할 마음만 가져간다(`01` §4). 위험 배지는 SCR-PLAN의 budget 카드에 그대로 남는다.
+  - 세 줄 순서: **방향은 맞다**(`guide.directionOk`, 항상) → **지금 실력으로 어디까지**(`guide.nowReach`, `buildable`의 BUILDABLE 단계 중 가장 먼 것의 제목. 없으면 줄을 뺀다) → **전부 하려면 언제쯤**(`feasibleCompletionDate`).
+  - 날짜 줄: `feasibleCompletionDate`가 `horizonDate` 이내면 `guide.feasibleOnTime`, 넘으면 `guide.feasibleDate`, `null`이면 `guide.noDate`(날짜로 답할 문제가 아니라 범위를 줄여야 하는 상태, `06` §3.4).
+  - 넘거나 `null`일 때만 `guide.pullsDateIn` 한 줄과 **줄이는 안 보기**(→ `/plan/replan?from=goal`) · **목표일 바꾸기**(→ `/plan/goal`) 두 버튼을 붙인다. 목표일 안에 들어오는 사람에게는 고를 것을 주지 않는다 — 할 말이 없을 때 말하지 않는 것도 가이드다.
+  - `guide.pullsDateIn`은 격려가 아니라 계산이다. 완료율은 최근 28일의 실제/가능 비율이고(`06` §3.3), 그게 오르면 역산 날짜가 실제로 앞으로 온다.
+  - `requiredMustLaterMinutes > 0`이면 `guide.laterHours`를 덧붙인다 — 아직 쌓을 방법이 없는 축의 몫이고(ADR-061), 위험도에는 들어가지 않는다.
+  - **경고색을 쓰지 않는다.** `completionRateEstimated = true`면 완료율 자체가 추정값이다. 한 번도 해 보지 않은 사람에게 색으로 "늦었다"고 말할 근거가 없다.
+  - 예산을 못 읽으면 카드 전체를 숨긴다. 계획이 없는 사람에게 오류를 보여 줄 자리가 아니다(오류는 SCR-PLAN budget 카드가 맡는다).
 - **`whyItMatters` 줄** (S3): main 카드의 예상 시간 아래 한 줄이다. `MainTaskView.whyItMatters`(`05` §8.1)를 그대로 쓴다 — 서버가 응답을 만들 때 기술 트리 콘텐츠에서 읽은 값이므로 클라이언트가 조합하거나 다듬지 않는다. 라벨은 `today.whyItMatters`이고 최대 2줄까지 보인 뒤 말줄임한다. `null`(값이 없는 skill, skill 없는 과제)이면 줄 전체를 숨긴다. **"왜 오늘?"과 다르다** — "왜 오늘?"은 오늘 이 과제를 고른 이유(`reasons`)이고, 이 줄은 **그 기술을 왜 하는지**다. 두 영역을 나란히 두고 각각 제목을 붙인다(A-3).
 - **확인 목록 (S3)**: `MainTaskView.checklist`(`05` §8.1, 콘텐츠 `19` §3.11)가 있을 때만 보인다.
   - **시작 전**: `PLANNED` 카드에서 "시작" 위에 접힘 줄 `today.checklist.before`. 펼치면 `before[]` 3~5개를 글머리표로 보여준다. `IN_PROGRESS`에서도 같은 자리에 접힌 채로 남는다(하던 중에 다시 볼 수 있다).
@@ -1097,7 +1116,15 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `today.generate.button` | 오늘 계획 만들기 |
 | `today.inputSummary` | {minutes} · {energy} |
 | `today.change` | 변경 |
-| `today.risk.label` | 마감 위험 |
+| `guide.directionOk` | 방향은 맞아요. 이 순서대로 가면 목표에 닿아요. |
+| `guide.nowReach` | 지금 실력으로는 "{step}"까지 해 볼 수 있어요. |
+| `guide.feasibleDate` | 전부 하려면 {date}쯤이에요. 목표일까지는 빠듯하지만 포기할 일은 아니에요. |
+| `guide.feasibleOnTime` | 지금 속도면 목표일 안에 들어와요. |
+| `guide.noDate` | 이 범위는 날짜를 늘려서 되는 게 아니에요. 필수 위주로 줄이면 길이 생겨요. |
+| `guide.pullsDateIn` | 하루씩 쌓으면 이 날짜가 당겨져요. 완료한 날이 늘면 계산에 들어가는 속도가 올라가요. |
+| `guide.laterHours` | 코드 읽고 고치는 연습은 약 {hours}시간 몫이 더 있어요. 기록할 방법이 생기면 이 자리에 들어와요. |
+| `guide.shrink` | 줄이는 안 보기 |
+| `guide.changeDate` | 목표일 바꾸기 |
 | `today.main.title` | 오늘의 핵심 |
 | `today.main.estimated` | 약 {minutes} |
 | `today.whyItMatters` | 왜 중요한가 |

@@ -241,6 +241,9 @@
 - Given 평일 45분·주말 240분, D = 2026-12-07(월), `targetCompletionDate = 2026-12-14`(목표일, fixture로 저장), 최근 28 plan-day `daily_plan` 없음
 - When `GET /plans/active/budget`
 - Then `horizonDate = 2026-12-14`, `nominalBudgetMinutes = 705`(5 × 45 + 2 × 240), `completionRateBp = 7000`, `effectiveBudgetMinutes = 493`
+- And `completionRateEstimated = true`(기록이 없어 기본값, `06` §3.3) — 화면은 추정값으로 경고색을 쓰지 않는다
+- And `requiredMustMinutes`는 **지금 쌓을 방법이 있는 축만** 센 값이고(`06` §4.2 `now`), 나머지 축의 몫은 `requiredMustLaterMinutes > 0`으로 따로 나온다 (ADR-062)
+- And `feasibleCompletionDate`는 목표일을 못 지켜도 **언제면 되는지**를 답한다(`06` §3.4) — 테스트 catalog 기준 `2027-01-11`. 5년 안에 못 닿으면 `null`이고, 그때만 "범위를 줄여야 한다"고 말한다
 - And DB 저장 없음(`plan_progress_snapshot` 행 수 변화 0)
 
 **S3. HIGH risk 미리보기**

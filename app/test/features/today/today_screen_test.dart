@@ -72,7 +72,7 @@ void main() {
     expect(request.toJson(), {'availableMinutes': 240, 'energyLevel': 'NORMAL', 'force': false});
   });
 
-  testWidgets('shouldShowMainTaskReasonsRiskAndReviewRowWhenGenerated', (tester) async {
+  testWidgets('shouldShowMainTaskReasonsAndReviewRowWhenGenerated', (tester) async {
     backend.todayRepository.today = testTodayView();
     final semantics = tester.ensureSemantics();
     await pumpApp(tester, backend: backend);
@@ -85,7 +85,9 @@ void main() {
     expect(find.text('실무에서 중요도가 높은 기술'), findsOneWidget);
     expect(find.text('목표 수준과 차이가 큼 (구현 1/4)'), findsOneWidget);
     expect(find.text('30분 · 보통'), findsOneWidget);
-    expect(find.bySemanticsLabel('마감 위험: 보통'), findsOneWidget);
+    // 마감 위험 배지는 첫 화면에 없다 (ADR-062). 배지는 SCR-PLAN budget 카드에 있고
+    // 그 접근성 라벨은 plan_screen_test가 확인한다
+    expect(find.bySemanticsLabel(RegExp('마감 위험')), findsNothing);
     expect(find.text('복습 3장 · 약 5분'), findsOneWidget);
     expect(find.text('다시 시작해도 괜찮아요. 오늘은 가볍게 시작해요.'), findsNothing);
     semantics.dispose();
@@ -206,11 +208,14 @@ void main() {
     expect(locationOf(tester), '/dashboard');
   });
 
-  testWidgets('shouldShowRiskLabelOnlyAsText', (tester) async {
+  /// CRITICAL이어도 첫 화면은 판정을 말하지 않는다 (ADR-062). 첫날 빨간 글자는 바꿀 수 있는 것을
+  /// 주지 않으면서 시작할 마음만 가져간다. 목표일 이야기는 목표 가이드가 날짜와 함께 한다.
+  testWidgets('shouldNotShowTheRiskVerdictEvenWhenItIsCritical', (tester) async {
     backend.todayRepository.today = testTodayView(deadlineRisk: RiskLevel.critical);
     await pumpApp(tester, backend: backend);
 
-    expect(find.text('매우 빠듯함'), findsOneWidget);
+    expect(find.text('매우 빠듯함'), findsNothing);
+    expect(find.byKey(const Key('today.goalGuide')), findsOneWidget);
   });
 
   testWidgets('shouldShowStartFailureAsToastAndKeepCard', (tester) async {

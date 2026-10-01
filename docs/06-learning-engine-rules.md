@@ -75,6 +75,7 @@ days   = window 안에서 daily_plan이 존재하는 plan-day 수
 Σactual = window 안 COMPLETED learning_session.actual_minutes 합 (plan_date 기준)
 
 if days < 14 or Σavail == 0 → completionRateBp = 7_000
+                                      # 이 경우 completionRateEstimated = true (ADR-062)
 else completionRateBp = clamp(floorDiv(Σactual × 10_000, Σavail), 3_000, 10_000)
 
 effectiveMinutes = floorDiv(nominalMinutes × completionRateBp, 10_000)
@@ -94,6 +95,32 @@ effectiveMinutes = floorDiv(nominalMinutes × completionRateBp, 10_000)
 
 ---
 
+### 3.4 도달 가능 날짜 (역산, ADR-062)
+
+```text
+feasibleDate(from, requiredMinutes, weekday, weekend, rateBp)
+  = from 부터 하루씩 더하며 누적 nominal 을 쌓고,
+    effectiveMinutes(누적) >= requiredMinutes 가 되는 첫 날의 다음 날
+  = requiredMinutes <= 0 이면 from
+  = 5년 안에 닿지 못하면 null
+```
+
+- `requiredMinutes`에는 **§4.2의 `now` 몫만** 넣는다. 아직 잴 수 없는 축까지 넣으면 "도구가 시켜 주지도 않는 일"까지 날짜에 얹는다.
+- 다음 날을 돌려주는 이유: horizon은 당일을 빼므로(§3.2) `feasibleDate`를 목표일로 넣으면 그 날까지의 예산이 필요 시간과 맞는다.
+- **이 값은 목표일을 바꾸라는 지시가 아니다.** "이 범위를 다 하려면 이때쯤"이라는 사실이고, 사용자는 날짜를 늘리거나 범위를 줄이거나 그대로 둘 수 있다.
+- null은 **날짜로 답할 문제가 아니라는 뜻**이다 — 그때는 범위를 줄이는 제안(§4.4)만 말한다.
+
+**Test vectors** (평일 45 · 주말 120 · rate 7_000 → 주당 nominal 465, effective 325)
+
+| from | requiredMinutes | 기대 |
+|---|---|---|
+| 2026-10-01 (목) | 0 | 2026-10-01 |
+| 2026-10-01 | 325 | 약 1주 뒤 |
+| 2026-10-01 | 12_797 | 2027-07쯤 |
+| 2026-10-01 | 100_000_000 | null (5년 밖) |
+
+---
+
 ## 4. Required Minutes · Deadline Risk (`DeadlineRiskEvaluator`)
 
 ### 4.1 대상
@@ -108,12 +135,21 @@ effectiveMinutes = floorDiv(nominalMinutes × completionRateBp, 10_000)
 AXIS_COST_BP   = { KNOWLEDGE: 5_000, IMPLEMENTATION: 10_000, EXPLANATION: 4_000, DEBUGGING: 8_000 }
 REVIEW_OVERHEAD_BP = 11_500
 
-weightedGap = Σ_axis max(0, target_axis − planningLevel_axis) × AXIS_COST_BP[axis]
-requiredMinutes(skill) = ceilDiv(weightedGap × minutesPerLevelStep × REVIEW_OVERHEAD_BP, 100_000_000)
+weightedGap(axes) = Σ_(axis ∈ axes) max(0, target_axis − planningLevel_axis) × AXIS_COST_BP[axis]
+minutes(axes)     = ceilDiv(weightedGap(axes) × minutesPerLevelStep × REVIEW_OVERHEAD_BP, 100_000_000)
+
+now   = minutes(지금 잴 수 있는 축)      # §7.6 measurable-axes
+later = minutes(그 밖의 축)
 ```
 `planningLevel`은 §7.5를 따른다.
 
+`now`와 `later`는 **각각 ceil**로 올림한다. 그래서 `now + later`가 네 축을 한 번에 센 값보다 **최대 1분 클 수 있다** — 올림을 두 번 하기 때문이다. risk 판정은 `now`만 보므로 영향이 없고, 화면에 두 값을 더해 보일 때만 1분 차이가 난다.
+
+**risk는 `now`만 쓴다 (ADR-062).** DEBUGGING은 코드 리뷰 기능이 생길 때까지 쌓을 방법이 없는데(§7.6) axis cost의 약 30%(8_000 / 27_000)를 차지한다. 그대로 넣으면 **도구가 시켜 주지도 않는 일로 "늦었다"고 말한다.** `later`는 없애지 않고 "아직 열리지 않은 몫"으로 따로 보인다(`05` §7.9 `requiredMustLaterMinutes`).
+
 **Test vectors**
+
+아래 표의 `required`는 **네 축을 모두 센 값**(`now + later`)이다. 축을 나눈 값은 §7.6 MA 벡터에서 본다.
 
 | target (K,I,E,D) | planning (K,I,E,D) | step | weightedGap | required |
 |---|---|---|---|---|

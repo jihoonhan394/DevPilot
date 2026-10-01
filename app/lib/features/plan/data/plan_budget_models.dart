@@ -26,6 +26,18 @@ abstract class BudgetView with _$BudgetView {
     /// Null when the effective budget is 0.
     int? ratioBp,
     @JsonKey(unknownEnumValue: RiskLevel.unknown) required RiskLevel riskLevel,
+
+    /// Minutes charged to axes there is no way to earn yet (ADR-061, ADR-062). Not in the risk.
+    /// Defaults to 0 so an older server does not break the whole budget card.
+    @Default(0) int requiredMustLaterMinutes,
+
+    /// When the current scope could be finished (docs/06 §3.4). Null when no date carries it —
+    /// then the answer is to shrink the scope, not to move the date.
+    String? feasibleCompletionDate,
+
+    /// True when the completion rate is the default guess, not measured (docs/06 §3.3). The screen
+    /// never paints a warning colour from a guess. Defaults to false for an older server.
+    @Default(false) bool completionRateEstimated,
   }) = _BudgetView;
 
   factory BudgetView.fromJson(Map<String, Object?> json) => _$BudgetViewFromJson(json);

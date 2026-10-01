@@ -31,7 +31,9 @@ class ReplanFlowTest extends ApiTestSupport {
         // 1. 활성 plan P1
         TestUser user = TestUser.owner();
         Map<String, Object> onboarding = TestApi.onboardingRequest();
-        learningGoal(onboarding).put("targetCompletionDate", "2026-11-09");
+        // 2026-11-02다: risk가 잴 수 있는 축만 세면서(ADR-062) 11-09는 MEDIUM이 됐다.
+        // HIGH 동작을 보는 테스트이므로 단정을 약하게 만들지 않고 정말 HIGH인 날짜로 바꿨다.
+        learningGoal(onboarding).put("targetCompletionDate", "2026-11-02");
         api.onboard(user, onboarding);
         UUID userId = userId(user);
         JsonNode p1 = activePlan(user);

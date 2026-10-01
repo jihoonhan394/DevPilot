@@ -249,6 +249,10 @@ BudgetView testBudget({RiskLevel risk = RiskLevel.high, int? ratioBp = 11950}) =
   requiredShouldMinutes: 1810,
   ratioBp: ratioBp,
   riskLevel: risk,
+  // 디버깅 축 몫 — risk에는 들어가지 않는다 (ADR-062)
+  requiredMustLaterMinutes: 2400,
+  feasibleCompletionDate: '2027-07-15',
+  completionRateEstimated: false,
 );
 
 SkillRef testSkillRef(String code, String name, SkillCategory category) =>

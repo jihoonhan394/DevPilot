@@ -50,7 +50,9 @@ class ReplanSuggestionPolicyTest {
                                 integer(expected, "requiredMust"),
                                 integer(expected, "requiredShould"),
                                 integer(expected, "ratioBp"),
-                                RiskLevel.valueOf((String) expected.get("risk"))));
+                                RiskLevel.valueOf((String) expected.get("risk")),
+                                // 이 vector 들은 잴 수 없는 축을 쓰지 않는다 (ADR-062)
+                                0));
         assertThat(result.reductions()).as(id).isEqualTo(reductions(expected));
         assertThat(result.defers().stream().map(DeferSuggestion::skillCode).toList())
                 .as(id)
@@ -294,7 +296,8 @@ class ReplanSuggestionPolicyTest {
                 integer(values, "requiredMust"),
                 integer(values, "requiredShould"),
                 integer(values, "ratioBp"),
-                RiskLevel.valueOf((String) values.get("risk")));
+                RiskLevel.valueOf((String) values.get("risk")),
+                0);
     }
 
     private static Integer integer(Map<String, Object> values, String key) {

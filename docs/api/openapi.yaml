@@ -2595,9 +2595,14 @@ components:
         completionRateBp:
           type: integer
           format: int32
+        completionRateEstimated:
+          type: boolean
         effectiveBudgetMinutes:
           type: integer
           format: int32
+        feasibleCompletionDate:
+          type: string
+          format: date
         horizonDate:
           type: string
           format: date
@@ -2608,6 +2613,9 @@ components:
           type: string
           format: uuid
         ratioBp:
+          type: integer
+          format: int32
+        requiredMustLaterMinutes:
           type: integer
           format: int32
         requiredMustMinutes:
@@ -2628,11 +2636,14 @@ components:
           format: date
       required:
       - completionRateBp
+      - completionRateEstimated
       - effectiveBudgetMinutes
+      - feasibleCompletionDate
       - horizonDate
       - nominalBudgetMinutes
       - planId
       - ratioBp
+      - requiredMustLaterMinutes
       - requiredMustMinutes
       - requiredShouldMinutes
       - riskLevel

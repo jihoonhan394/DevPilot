@@ -145,7 +145,9 @@ public class ReplanService {
                         .toList();
         Evaluation evaluation = studyBudgetService.evaluate(user.userId(), edited, today);
         Suggestions suggestions =
-                new ReplanSuggestionPolicy(studyBudgetService.riskEvaluator())
+                new ReplanSuggestionPolicy(
+                                studyBudgetService.riskEvaluator(),
+                                studyBudgetService.measurableAxes())
                         .suggest(evaluation.items(), evaluation.budget().effectiveMinutes());
         return toPreview(plan.getId(), today, evaluation, suggestions);
     }

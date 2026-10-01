@@ -19,13 +19,17 @@ import com.devpilot.plan.domain.RiskLevel;
 import com.devpilot.plan.domain.StudyBudgetCalculator;
 import com.devpilot.plan.infrastructure.LearningPlanRepository;
 import com.devpilot.plan.infrastructure.PlanProgressSnapshotRepository;
+import com.devpilot.skill.application.MeasurableAxes;
 import com.devpilot.skill.domain.Priority;
+import com.devpilot.skill.domain.SkillAxis;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,18 +49,24 @@ public class StudyBudgetService {
     private final Clock clock;
     private final StudyBudgetCalculator budgetCalculator;
     private final DeadlineRiskEvaluator riskEvaluator;
+    private final MeasurableAxes measurableAxes;
     private final int replanRecommendAfterDays;
+
+    /** 도달 가능 날짜를 찾는 범위 (docs/06 §3.4). 이 안에 못 닿으면 날짜가 아니라 범위를 줄여야 하는 상태다. */
+    private static final int FEASIBLE_SEARCH_YEARS = 5;
 
     StudyBudgetService(
             LearningPlanRepository learningPlanRepository,
             PlanProgressSnapshotRepository snapshotRepository,
             StudyBudgetInputs inputs,
             Clock clock,
+            MeasurableAxes measurableAxes,
             DevPilotProperties properties) {
         this.learningPlanRepository = learningPlanRepository;
         this.snapshotRepository = snapshotRepository;
         this.inputs = inputs;
         this.clock = clock;
+        this.measurableAxes = measurableAxes;
         this.budgetCalculator = new StudyBudgetCalculator(PlanRuleSettings.budget(properties));
         this.riskEvaluator = new DeadlineRiskEvaluator(PlanRuleSettings.risk(properties));
         this.replanRecommendAfterDays = properties.budget().replanRecommendAfterDays();
@@ -185,12 +195,30 @@ public class StudyBudgetService {
                                                         item.planning(),
                                                         item.minutesPerLevelStep()))
                                 .toList(),
-                        budget.effectiveMinutes());
-        return new Evaluation(budget, risk, items);
+                        budget.effectiveMinutes(),
+                        Set.copyOf(measurableAxes.axes()));
+        // 가이드가 먼저다(ADR-062): 목표일을 못 지키면 "언제면 되는지"를 함께 계산한다.
+        LocalDate feasible =
+                budgetCalculator.feasibleDate(
+                        today,
+                        risk.requiredMustMinutes(),
+                        settings.weekdayStudyMinutes(),
+                        settings.weekendStudyMinutes(),
+                        budget.completionRateBp(),
+                        FEASIBLE_SEARCH_YEARS);
+        boolean estimated =
+                budgetCalculator.completionRateEstimated(
+                        history.days(), history.availableMinutes());
+        return new Evaluation(budget, risk, items, feasible, estimated);
     }
 
     DeadlineRiskEvaluator riskEvaluator() {
         return riskEvaluator;
+    }
+
+    /** 제안도 risk와 같은 축만 봐야 한다 (ADR-062). */
+    Set<SkillAxis> measurableAxes() {
+        return Set.copyOf(measurableAxes.axes());
     }
 
     private LearningPlan activePlan(UUID userId) {
@@ -239,7 +267,10 @@ public class StudyBudgetService {
                 risk.requiredMustMinutes(),
                 risk.requiredShouldMinutes(),
                 risk.ratioBp(),
-                risk.riskLevel());
+                risk.riskLevel(),
+                risk.requiredMustLaterMinutes(),
+                evaluation.feasibleCompletionDate(),
+                evaluation.completionRateEstimated());
     }
 
     /**
@@ -258,9 +289,15 @@ public class StudyBudgetService {
      * 계산 결과.
      *
      * @param items 활성 skill 목표의 규칙 입력 (replan 제안에 그대로 쓴다)
+     * @param feasibleCompletionDate 지금 범위를 다 하려면 언제쯤인가 (docs/06 §3.4). 5년 안에 못 닿으면 null
+     * @param completionRateEstimated 완료율이 기록 없이 추정한 값인가 (docs/06 §3.3)
      */
     record Evaluation(
-            StudyBudgetCalculator.Budget budget, RiskEstimate risk, List<TargetItem> items) {
+            StudyBudgetCalculator.Budget budget,
+            RiskEstimate risk,
+            List<TargetItem> items,
+            @Nullable LocalDate feasibleCompletionDate,
+            boolean completionRateEstimated) {
 
         Evaluation {
             items = List.copyOf(items);

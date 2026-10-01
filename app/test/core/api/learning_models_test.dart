@@ -163,6 +163,10 @@ void main() {
     });
     expect(budget.ratioBp, isNull);
     expect(budget.riskLevel, RiskLevel.low);
+    // ADR-062 필드가 없는 응답(조금 오래된 서버)도 읽힌다 — budget 화면 전체가 깨지지 않는다
+    expect(budget.requiredMustLaterMinutes, 0);
+    expect(budget.feasibleCompletionDate, isNull);
+    expect(budget.completionRateEstimated, isFalse);
 
     final preview = ReplanPreviewResponse.fromJson({
       'planId': '9e2b1c7a-0f0e-4d7b-8e59-0c3e1f6b2a01',

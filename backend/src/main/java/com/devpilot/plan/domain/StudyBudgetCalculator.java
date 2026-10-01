@@ -4,6 +4,7 @@ import com.devpilot.common.math.FixedPointMath;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Study budget (docs/06 §3, BL-GOL-08). 순수 규칙 클래스다(ARCH-12). 학습 목표일까지 남은 학습 가능 시간을 사용자가 정한 평일·주말 학습
@@ -39,9 +40,19 @@ public final class StudyBudgetCalculator {
         return Math.toIntExact(total);
     }
 
+    /**
+     * 완료율이 <b>추정값</b>인가 (docs/06 §3.3). 기록이 모자라 기본값을 쓴 경우다.
+     *
+     * <p>화면이 이것을 본다 — 추정값으로 계산한 위험도에 경고색을 쓰지 않는다(ADR-062). 아직 한 번도 해 보지 않은 사람에게 "늦었다"고 색으로 말할 근거가
+     * 없다.
+     */
+    public boolean completionRateEstimated(int historyDays, long sumAvailableMinutes) {
+        return historyDays < settings.minHistoryDays() || sumAvailableMinutes == 0;
+    }
+
     /** docs/06 §3.3. 기록이 부족하면 기본값, 아니면 [minRate, 10_000]으로 자른다. */
     public int completionRateBp(int historyDays, long sumAvailableMinutes, long sumActualMinutes) {
-        if (historyDays < settings.minHistoryDays() || sumAvailableMinutes == 0) {
+        if (completionRateEstimated(historyDays, sumAvailableMinutes)) {
             return settings.defaultRateBp();
         }
         long rate =
@@ -69,6 +80,39 @@ public final class StudyBudgetCalculator {
                 completionRateBp(
                         input.historyDays(), input.sumAvailableMinutes(), input.sumActualMinutes());
         return new Budget(horizon, nominal, rate, effectiveMinutes(nominal, rate));
+    }
+
+    /**
+     * 지금 범위를 다 하려면 언제쯤인가 (docs/06 §3.4, ADR-062). {@code from}부터 하루씩 더해 누적 effective가 {@code
+     * requiredMinutes}에 닿는 첫 날을 돌려준다.
+     *
+     * <p>목표일을 지킬 수 없을 때 빨간 배지 대신 <b>지킬 수 있는 날짜</b>를 말하기 위한 값이다. 숫자를 주지 않고 "빠듯하다"고만 하면 사용자가 할 수 있는
+     * 선택이 없다.
+     *
+     * @param requiredMinutes 지금 잴 수 있는 축의 필요 시간만 넣는다(§4.2)
+     * @return 필요 시간이 0이면 {@code from}. {@code searchYears} 안에 닿지 못하면 null — 날짜로 답할 문제가 아니라 범위를 줄여야
+     *     하는 상태다
+     */
+    public @Nullable LocalDate feasibleDate(
+            LocalDate from,
+            long requiredMinutes,
+            int weekdayMinutes,
+            int weekendMinutes,
+            int completionRateBp,
+            int searchYears) {
+        if (requiredMinutes <= 0) {
+            return from;
+        }
+        LocalDate limit = from.plusYears(searchYears);
+        long nominal = 0;
+        for (LocalDate day = from; day.isBefore(limit); day = day.plusDays(1)) {
+            nominal += isWeekend(day) ? weekendMinutes : weekdayMinutes;
+            if (effectiveMinutes(Math.toIntExact(nominal), completionRateBp) >= requiredMinutes) {
+                // horizon은 당일을 빼므로(§3.2) 그 다음 날이 "이 날까지 하면 된다"가 된다
+                return day.plusDays(1);
+            }
+        }
+        return null;
     }
 
     private static boolean isWeekend(LocalDate day) {

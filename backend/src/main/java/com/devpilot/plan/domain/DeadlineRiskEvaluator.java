@@ -4,8 +4,10 @@ import com.devpilot.common.math.FixedPointMath;
 import com.devpilot.common.web.AxisLevels;
 import com.devpilot.skill.domain.Priority;
 import com.devpilot.skill.domain.SkillAxis;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -31,13 +33,43 @@ public final class DeadlineRiskEvaluator {
         this.settings = Objects.requireNonNull(settings, "settings");
     }
 
-    /** docs/06 §4.2. 목표를 이미 넘은 축은 0으로 센다. */
+    /** docs/06 §4.2. 목표를 이미 넘은 축은 0으로 센다. 네 축을 모두 센 값이다. */
     public int requiredMinutes(AxisLevels target, AxisLevels planning, int minutesPerLevelStep) {
-        long weightedGap = 0;
+        return requiredMinutes(
+                        target, planning, minutesPerLevelStep, EnumSet.allOf(SkillAxis.class))
+                .total();
+    }
+
+    /**
+     * docs/06 §4.2를 <b>지금 잴 수 있는 축과 그렇지 않은 축으로 나눠</b> 센다 (ADR-062).
+     *
+     * <p>디버깅 축은 코드 리뷰 기능이 생길 때까지 쌓을 방법이 없는데(ADR-061, §7.6) axis cost의 약 30%를 차지한다. 그대로 risk에 넣으면
+     * <b>도구가 시켜 주지도 않는 일로 "늦었다"고 말한다.</b> 그래서 risk는 {@code now}만 쓰고, {@code later}는 "나중에 열리는 몫"으로
+     * 따로 보인다.
+     *
+     * @param measurable 지금 근거를 쌓을 수 있는 축 (§7.6)
+     */
+    public Required requiredMinutes(
+            AxisLevels target,
+            AxisLevels planning,
+            int minutesPerLevelStep,
+            Set<SkillAxis> measurable) {
+        long nowGap = 0;
+        long laterGap = 0;
         for (SkillAxis axis : SkillAxis.values()) {
             int gap = Math.max(0, axis.levelOf(target) - axis.levelOf(planning));
-            weightedGap += (long) gap * settings.axisCostBp(axis);
+            long weighted = (long) gap * settings.axisCostBp(axis);
+            if (measurable.contains(axis)) {
+                nowGap += weighted;
+            } else {
+                laterGap += weighted;
+            }
         }
+        return new Required(
+                minutes(nowGap, minutesPerLevelStep), minutes(laterGap, minutesPerLevelStep));
+    }
+
+    private int minutes(long weightedGap, int minutesPerLevelStep) {
         long numerator =
                 Math.multiplyExact(
                         Math.multiplyExact(weightedGap, minutesPerLevelStep),
@@ -78,22 +110,36 @@ public final class DeadlineRiskEvaluator {
 
     /** MUST·SHOULD 필요 시간 합계와 risk. {@code deferred = true}인 항목과 LATER는 합계에서 빠진다. */
     public RiskEstimate evaluate(List<TargetRequirement> targets, int effectiveMinutes) {
-        long requiredMust = 0;
-        long requiredShould = 0;
+        return evaluate(targets, effectiveMinutes, EnumSet.allOf(SkillAxis.class));
+    }
+
+    /**
+     * 지금 잴 수 있는 축으로만 risk를 본다 (ADR-062). 나머지 축의 몫은 {@code requiredMustLaterMinutes}로 따로 돌려준다 — 없애는
+     * 것이 아니라 "아직 열리지 않은 몫"으로 보여 주는 값이다.
+     */
+    public RiskEstimate evaluate(
+            List<TargetRequirement> targets, int effectiveMinutes, Set<SkillAxis> measurable) {
+        long mustNow = 0;
+        long mustLater = 0;
+        long shouldNow = 0;
         for (TargetRequirement target : targets) {
             if (target.deferred()) {
                 continue;
             }
-            int minutes =
+            Required required =
                     requiredMinutes(
-                            target.targets(), target.planning(), target.minutesPerLevelStep());
+                            target.targets(),
+                            target.planning(),
+                            target.minutesPerLevelStep(),
+                            measurable);
             if (target.priority() == Priority.MUST) {
-                requiredMust += minutes;
+                mustNow += required.nowMinutes();
+                mustLater += required.laterMinutes();
             } else if (target.priority() == Priority.SHOULD) {
-                requiredShould += minutes;
+                shouldNow += required.nowMinutes();
             }
         }
-        return estimate(requiredMust, requiredShould, effectiveMinutes);
+        return estimate(mustNow, shouldNow, effectiveMinutes).withLater(Math.toIntExact(mustLater));
     }
 
     /** 합계에서 risk 추정값을 만든다. */
@@ -102,7 +148,8 @@ public final class DeadlineRiskEvaluator {
                 Math.toIntExact(requiredMust),
                 Math.toIntExact(requiredShould),
                 ratioBp(requiredMust, effectiveMinutes),
-                riskLevel(requiredMust, effectiveMinutes));
+                riskLevel(requiredMust, effectiveMinutes),
+                0);
     }
 
     /**
@@ -158,5 +205,25 @@ public final class DeadlineRiskEvaluator {
             int requiredMustMinutes,
             int requiredShouldMinutes,
             @Nullable Integer ratioBp,
-            RiskLevel riskLevel) {}
+            RiskLevel riskLevel,
+            int requiredMustLaterMinutes) {
+
+        RiskEstimate withLater(int laterMinutes) {
+            return new RiskEstimate(
+                    requiredMustMinutes, requiredShouldMinutes, ratioBp, riskLevel, laterMinutes);
+        }
+    }
+
+    /**
+     * 필요 시간을 축으로 나눈 값 (ADR-062).
+     *
+     * @param nowMinutes 지금 잴 수 있는 축의 몫. risk는 이것만 쓴다
+     * @param laterMinutes 아직 잴 방법이 없는 축의 몫. 화면에 따로 보인다
+     */
+    public record Required(int nowMinutes, int laterMinutes) {
+
+        public int total() {
+            return nowMinutes + laterMinutes;
+        }
+    }
 }

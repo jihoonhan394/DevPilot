@@ -270,8 +270,27 @@ void main() {
     expect(find.text('건너뛰었어요'), findsOneWidget);
     expect(find.text('오늘 과제를 건너뛰었어요'), findsOneWidget);
 
-    await tester.tap(find.text('되돌리기').first);
+    // 토스트의 되돌리기를 누른다. 화면 안에도 같은 글자의 버튼이 있어서 `.first`로 고르면 스크롤 위치에 따라
+    // 엉뚱한 쪽을 누른다 — 이름이 말하는 대로 토스트 쪽을 집는다.
+    await tester.tap(
+      find.descendant(of: find.byType(SnackBarAction), matching: find.text('되돌리기')),
+    );
     await tester.pumpAndSettle();
+
+    expect(backend.todayRepository.patches.map((patch) => patch.request.status), [
+      TaskStatus.skipped,
+      TaskStatus.planned,
+    ]);
+    expect(find.byKey(const Key('today.startButton')), findsOneWidget);
+  });
+
+  /// 토스트가 사라진 뒤에도 돌아올 길은 남는다 — 건너뛴 카드 안의 되돌리기다 (docs/02 SCR-TODAY).
+  testWidgets('shouldUndoFromTheSkippedCardAfterTheToastIsGone', (tester) async {
+    backend.todayRepository.today = testTodayView();
+    await pumpApp(tester, backend: backend);
+
+    await tapKey(tester, 'today.skipButton');
+    await tapKey(tester, 'today.undoButton');
 
     expect(backend.todayRepository.patches.map((patch) => patch.request.status), [
       TaskStatus.skipped,

@@ -1730,6 +1730,9 @@ public record MilestoneIdMappingView(UUID previousId, UUID newId) {}
 | Sprint · 요구사항 | S2 · FR-05, AC-03, AC-30 |
 
 - 요청 시점에 `06-learning-engine-rules.md` §3, §4.1~§4.3으로 계산한다. 저장하지 않는다(저장은 `ProgressSnapshotJob`, replan, 온보딩). 제안은 포함하지 않는다(preview 사용).
+- `requiredMustMinutes`는 **지금 잴 수 있는 축만** 센다(`06` §4.2, ADR-062). 나머지 축의 몫은 `requiredMustLaterMinutes`다 — risk에 들어가지 않고 "아직 열리지 않은 몫"으로 보인다.
+- `feasibleCompletionDate`: 지금 범위를 다 하려면 언제쯤인가(`06` §3.4). **목표일을 바꾸라는 지시가 아니다** — 사실이고 선택은 사용자 것이다. 5년 안에 못 닿으면 null이고, 그때는 날짜가 아니라 범위를 줄이는 제안(§7.7)만 말한다.
+- `completionRateEstimated`: 기록이 모자라 기본값을 쓴 경우 true(`06` §3.3). **화면은 추정값으로 경고색을 쓰지 않는다**(ADR-062) — 아직 한 번도 해 보지 않은 사람에게 색으로 "늦었다"고 말할 근거가 없다.
 
 ### 7.10 `GET /plans/active/buildable` — 지금 만들 수 있는 것
 
