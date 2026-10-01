@@ -1018,6 +1018,8 @@ RV-INTERLEAVE(list)                      # list = 1~2단계 결과, 0-based, 무
 
 ### 7.4 진단 (예외 규칙)
 
+**어느 category를 묻나** — 자기평가가 있는 category마다 한 문제를 고르고 상한 5개는 **그 뒤에** 적용한다. 남길 것은 활성 plan의 중요도로 고른다(`05` §4.2 1단계). category 선언 순서로 자르면 트랙이 기대는 분야가 뒤 순번이라는 이유로 빠진다.
+
 - `DIAGNOSTIC_PASSED`: 해당 skill의 KNOWLEDGE, IMPLEMENTATION을 `max(현재, min(claimedLevel, 3))`으로 설정한다. rule_code `DIAG_PASSED`. **1단계 제한과 cooldown을 적용하지 않는다.**
   - `claimedLevel` = 그 skill의 `self_assessed_level`. **null이면**(온보딩 진단 모드 `runDiagnostic = true`, 또는 그 category를 자기평가하지 않음) 진단 challenge의 `difficulty`를 쓴다. 예: 진단 모드에서 difficulty 2 진단을 통과 → K·I = `max(현재, min(2, 3))` = 2.
 - `DIAGNOSTIC_FAILED`: 레벨은 바꾸지 않고 `self_assessment_active = false`. 그 결과 planning이 evidence로 떨어지고(§7.5), 문턱 아래가 되어 **다음 과제가 그 skill의 개념 노트**가 된다(ADR-057). 한 번 틀렸다고 레벨을 내리지 않는 대신 **안다는 주장을 거둔다** — 증거가 아니라 주장이 틀린 것이기 때문이다.

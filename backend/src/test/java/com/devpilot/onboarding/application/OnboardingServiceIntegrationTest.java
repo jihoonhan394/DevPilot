@@ -270,10 +270,12 @@ class OnboardingServiceIntegrationTest extends ApiTestSupport {
         request.put("selfAssessments", List.of());
 
         // 05 §4.2: 진단 모드면 category당 1개(최대 5개)를 제안하고 selfAssessedLevel은 null이다.
+        // 맨 앞은 활성 plan에서 가장 중요한 category다 — 테스트 role target의 SPRING.TRANSACTION이
+        // importance 0.95로 가장 높다(1단계 정렬). category 선언 순서가 아니다.
         api.post(user, ONBOARDING, request)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.suggestedDiagnostics").isNotEmpty())
-                .andExpect(jsonPath("$.suggestedDiagnostics[0].category").value("JAVA"))
+                .andExpect(jsonPath("$.suggestedDiagnostics[0].category").value("SPRING"))
                 .andExpect(jsonPath("$.suggestedDiagnostics[0].selfAssessedLevel").doesNotExist())
                 .andExpect(jsonPath("$.suggestedDiagnostics[0].challengeId").isNotEmpty());
 

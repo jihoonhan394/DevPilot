@@ -119,6 +119,39 @@ class DiagnosticSuggestionIntegrationTest extends ApiTestSupport {
                 .isTrue();
     }
 
+    /**
+     * docs/05 §4.2 1단계: 상한 5개를 넘을 때 <b>무엇을 남길지</b>는 활성 plan의 중요도로 고른다. 선언 순서로 자르면 트랙이 기대는 분야가 뒤
+     * 순번이라는 이유만으로 빠진다 — 2026-10-01 시나리오 테스트에서 연동 트랙 사용자가
+     * INTEGRATION·SECURITY·PRACTICAL_ENGINEERING(선언 10~12번)을 한 번도 못 받았다.
+     *
+     * <p>테스트 catalog의 중요도: SPRING.TRANSACTION 0.95 &gt; JAVA.EXCEPTION 0.90 &gt;
+     * DATABASE.INDEX·WEB_HTTP.HTTP_BASICS·TESTING.JUNIT 0.85 &gt; EXPLANATION.PROJECT_STORY 0.80.
+     * 선언 순서로 자르면 JAVA가 먼저 오고 EXPLANATION이 빠진다 — 중요도로 자르면 SPRING이 먼저 온다.
+     */
+    @Test
+    void shouldKeepTheCategoriesTheActivePlanCaresAboutMost() throws Exception {
+        TestUser user = TestUser.owner();
+        Map<String, Object> request = TestApi.onboardingRequest();
+        @SuppressWarnings("unchecked")
+        List<Object> levels = (List<Object>) request.get("selfAssessments");
+        levels.clear();
+        for (String category :
+                List.of("JAVA", "SPRING", "DATABASE", "WEB_HTTP", "TESTING", "EXPLANATION")) {
+            levels.add(Map.of("category", category, "level", 2));
+        }
+        api.onboard(user, request);
+
+        List<String> categories = categories(suggestions(user));
+
+        assertThat(categories).hasSize(5);
+        // 중요도가 가장 높은 SPRING이 맨 앞이다. 선언 순서라면 JAVA가 앞이다.
+        assertThat(categories.get(0)).isEqualTo("SPRING");
+        assertThat(categories.get(1)).isEqualTo("JAVA");
+        // 가장 낮은 중요도 하나만 빠진다.
+        assertThat(categories).doesNotContain("EXPLANATION");
+        assertThat(categories).contains("DATABASE", "WEB_HTTP", "TESTING");
+    }
+
     private TestUser selfAssessedUser() throws Exception {
         TestUser user = TestUser.owner();
         api.onboard(user, TestApi.onboardingRequest());

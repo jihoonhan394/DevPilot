@@ -1078,7 +1078,7 @@ public record DiagnosticSuggestionView(
 ```
 
 선택 규칙 (`DiagnosticSuggestionService`, 결정적):
-1. 대상 category — `SkillCategory` 선언 순서로 처리하고, 결과는 **최대 5개**로 자른다(category당 1문제, 설계 §8).
+1. 대상 category — category당 1문제를 고르고, **그다음에** 최대 5개로 자른다(설계 §8). 자르는 순서는 **활성 plan의 중요도**다: `plan_skill_target.priority`(MUST → SHOULD → LATER → 없음) → `practical_importance` DESC → `SkillCategory` 선언 순서. **선언 순서로 자르지 않는다** — 그러면 연동 트랙 사용자가 `INTEGRATION`·`SECURITY`·`PRACTICAL_ENGINEERING`(선언 10~12번)을 영영 받지 못한다. 앞의 네 category가 상한을 다 먹는다(2026-10-01 시나리오 테스트에서 확인). 4단계의 category 안 정렬과 같은 키를 쓴다.
    - **진단 모드**(`user_skill_state` 중 `self_assessed_level`이 `null`이 아닌 행이 하나도 없음 = 온보딩에서 `runDiagnostic = true`): `self_assessment_active = true`인 행이 있는 category 전부.
    - **자기평가 모드**: `self_assessment_active = true`인 행의 `self_assessed_level` 최댓값이 **1 이상**인 category(ADR-058). 0은 확인할 주장이 없어 빼고, 그 분야는 개념 노트부터 간다(ADR-057).
 2. 그 category에서 **지금 재려는 난이도를 이미 확인한 경우** 제외한다(ADR-059) — 그 category의 `purpose = DIAGNOSTIC` challenge 중 `status ∈ {SUBMITTED, EVALUATED}`인 attempt가 있고 그 challenge의 `difficulty`가 4단계의 **목표 난이도와 같을 때**다. 진단 모드에는 목표 난이도가 없으므로 한 번 받았으면 끝이다.

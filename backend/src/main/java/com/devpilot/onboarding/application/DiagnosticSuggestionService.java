@@ -103,39 +103,60 @@ public class DiagnosticSuggestionService {
                 candidates.stream()
                         .filter(candidate -> !diagnosed.contains(candidate.id()))
                         .toList();
-        List<DiagnosticSuggestionView> suggestions = new ArrayList<>();
+        // category마다 한 문제를 고르고, 상한은 그 뒤에 적용한다. 선언 순서로 자르면 트랙이 기대는 분야가
+        // 뒤 순번이라는 이유만으로 영영 안 나온다 — 연동 트랙 사용자가 INTEGRATION을 못 받던 이유다.
+        List<Picked> picked = new ArrayList<>();
         for (Map.Entry<SkillCategory, Integer> entry : targetCategories.entrySet()) {
-            SkillCategory category = entry.getKey();
-            Optional<Selected> selected =
-                    select(
-                            category,
+            select(
+                            entry.getKey(),
                             unseen,
                             assessments,
                             skills,
                             targets,
-                            targetDifficulty(diagnosticMode, entry.getValue()));
-            if (selected.isEmpty()) {
-                continue;
-            }
-            Selected found = selected.get();
-            suggestions.add(
-                    new DiagnosticSuggestionView(
-                            category,
-                            diagnosticMode ? null : entry.getValue(),
-                            skills.get(found.skillId()).ref(),
-                            found.candidate().id(),
-                            found.candidate().title(),
-                            found.candidate().difficulty(),
-                            found.candidate().estimatedMinutes(),
-                            challengeQueryService
-                                    .findActiveAttemptId(userId, found.candidate().id())
-                                    .orElse(null)));
-            if (suggestions.size() == MAX_SUGGESTIONS) {
-                break;
-            }
+                            targetDifficulty(diagnosticMode, entry.getValue()))
+                    .ifPresent(
+                            found ->
+                                    picked.add(
+                                            new Picked(entry.getKey(), entry.getValue(), found)));
         }
-        return List.copyOf(suggestions);
+        return picked.stream()
+                .sorted(byPlanRelevance(targets))
+                .limit(MAX_SUGGESTIONS)
+                .map(
+                        pick ->
+                                new DiagnosticSuggestionView(
+                                        pick.category(),
+                                        diagnosticMode ? null : pick.claimedLevel(),
+                                        skills.get(pick.selected().skillId()).ref(),
+                                        pick.selected().candidate().id(),
+                                        pick.selected().candidate().title(),
+                                        pick.selected().candidate().difficulty(),
+                                        pick.selected().candidate().estimatedMinutes(),
+                                        challengeQueryService
+                                                .findActiveAttemptId(
+                                                        userId, pick.selected().candidate().id())
+                                                .orElse(null)))
+                .toList();
     }
+
+    /**
+     * 상한을 넘을 때 <b>무엇을 남길지</b>의 순서 (docs/05 §4.2 1단계). 활성 plan에서 중요한 skill의 category가 먼저다 — 같은 조건이면
+     * category 선언 순서로 안정화한다.
+     *
+     * <p>category 안에서 문제를 고르는 순서({@link #order})와 같은 키를 쓴다. 한쪽은 plan 중요도를 보고 다른 쪽은 선언 순서만 보면, 고르는
+     * 기준과 남기는 기준이 어긋난다.
+     */
+    private static Comparator<Picked> byPlanRelevance(Map<UUID, SkillTargetView> targets) {
+        return Comparator.<Picked>comparingInt(
+                        pick -> priorityRank(targets.get(pick.selected().skillId())))
+                .thenComparing(
+                        pick -> importanceBp(targets.get(pick.selected().skillId())),
+                        Comparator.reverseOrder())
+                .thenComparing(pick -> pick.category().ordinal());
+    }
+
+    /** 한 category에서 고른 문제 하나와 그 주장 수준. */
+    private record Picked(SkillCategory category, Integer claimedLevel, Selected selected) {}
 
     /** category → 자기평가 최댓값 ({@code SkillCategory} 선언 순서 유지). */
     private static Map<SkillCategory, Integer> targetCategories(
