@@ -33,6 +33,12 @@ version = "0.0.1-SNAPSHOT"
 // CVE-2026-68525; fixed in 11.0.25). Drop this override once a Boot release manages 11.0.25+.
 extra["tomcat.version"] = "11.0.26"
 
+// Boot 4.1.1이 관리하는 Jackson에 HIGH CVE 셋이 있다 — CVE-2026-68497(수치 파싱 DoS),
+// CVE-2026-91776, CVE-2026-91777. Jackson 3(tools.jackson)은 3.1.7, 호환용으로 함께 들어오는
+// Jackson 2는 2.21.7에서 고쳐졌다. Boot 릴리스가 그 이상을 관리하면 이 override를 지운다.
+extra["jackson-bom.version"] = "3.1.7"
+extra["jackson-2-bom.version"] = "2.21.7"
+
 java {
     toolchain {
         // DEC-02: Java 25. SP-4 실패 시 21로 내리고 ADR을 갱신한다
