@@ -12,11 +12,11 @@
 spring-boot = "4.1.1"                    # Initializr 기본값 (4.1.2는 SNAPSHOT)
 spring-dependency-management = "1.1.7"   # Initializr 생성값
 springdoc = "3.1.1"                      # springdoc 3.x = Boot 4. Initializr(4.1.1)는 3.1.0을 넣는다
-archunit = "1.5.0"
+archunit = "1.5.1"
 # AI 공급자 SDK·HTTP stub 없음: DeepSeek은 Spring RestClient로 호출하고 테스트는 MockRestServiceServer(spring-test)를 쓴다 (2026-09-18)
-spotless = "8.10.2"
+spotless = "8.10.3"
 google-java-format = "1.36.1"
-spotbugs-plugin = "6.5.11"
+spotbugs-plugin = "6.5.12"
 spotbugs-tool = "4.10.4"
 checkstyle = "14.1.0"
 pmd = "7.27.0"
