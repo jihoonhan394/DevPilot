@@ -2209,6 +2209,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 - **지금 만들 차례인 카드만 색을 쓴다.** 다 칠하면 어디부터 볼지 알 수 없다.
 - 모자란 skill 한 줄: 이름 + **부족한 축만** `{축} {지금}/{목표}`. 탭하면 `/skills/{skillId}`. 채워진 축까지 늘어놓으면 무엇이 남았는지가 묻힌다. 목록은 최대 5개고, 더 있으면 `buildableGapMore`.
 - **세는 것은 근거 레벨뿐이다.** 자기평가로 올라간 계획 레벨은 빼고 본다 — 그래서 SCR-DASHBOARD 타임라인의 "지금 단계"와 어긋날 수 있고, `buildableIntro`가 그 차이를 먼저 말한다(ADR-060).
+- **"기술이 다 차지 않아도 지금 할 수 있는 것" (S4, ADR-062)**: `NEXT` 단계 카드에 모자란 축이 남아 있을 때만 "Today 열기" 아래에 붙인다(`buildableStartAnywayTitle`·`buildableStartAnywayBody`·`buildableStartAnywayAction`, 버튼은 SCR-PROJECTS로). 모자란 축을 다 채운 뒤에 시작하면 **남는 게 없다** — 만든 만큼 기록으로 남기면 그게 나중에 설명 자료가 된다. 이 화면이 "아직 안 된다"로만 끝나면 가이드가 아니다.
 - 상태: Loading — skeleton. Empty — 활성 plan이 없으면(`404 PLAN_NOT_FOUND`) `buildableEmpty`. Error·Offline — 공통.
 - SCR-TODAY의 진입은 **카드가 아니라 한 줄**이다. 오늘 할 일과 같은 무게로 보이면 무엇부터 할지 알 수 없다. 아직 안 왔거나 실패하면 그 줄은 스스로 사라진다.
 - 화면을 드나드는 이동은 모두 `context.go`다. `push`는 이 라우터에서 주소를 바꾸지 않는다(SCR-SELF-ASSESSMENT와 같다).

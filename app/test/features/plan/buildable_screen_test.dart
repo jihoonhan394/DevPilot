@@ -109,4 +109,18 @@ void main() {
 
     expect(find.textContaining('계획을 먼저 만들어요'), findsOneWidget);
   });
+
+  /// 게이트가 덜 찬 단계에서 "아직 안 된다"로 끝나면 가이드가 아니다 (ADR-062). 지금 수준으로도 할 수 있는
+  /// 일 — 만든 만큼 기록으로 남기기 — 를 함께 말한다.
+  testWidgets('shouldSayWhatToDoNowOnTheStepWhoseSkillsAreNotFullYet', (tester) async {
+    await pumpApp(tester, backend: backend, at: AppRoutes.buildable);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('buildable.startAnyway')), findsOneWidget);
+    expect(find.textContaining('다 채운 뒤에 시작하면 남는 게 없어요'), findsOneWidget);
+
+    await tapKey(tester, 'buildable.startAnywayAction');
+
+    expect(locationOf(tester), '/projects');
+  });
 }

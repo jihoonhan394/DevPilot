@@ -2945,5 +2945,11 @@
   "guideLaterHours": "코드 읽고 고치는 연습은 약 {hours}시간 몫이 더 있어요. 기록할 방법이 생기면 이 자리에 들어와요.",
   "@guideLaterHours": {"description": "SCR-TODAY: whole hours charged to axes that cannot be earned yet (ADR-062).", "placeholders": {"hours": {"type": "int"}}},
   "guidePullsDateIn": "하루씩 쌓으면 이 날짜가 당겨져요. 완료한 날이 늘면 계산에 들어가는 속도가 올라가요.",
-  "@guidePullsDateIn": {"description": "SCR-TODAY guide: consistency literally moves feasibleCompletionDate earlier via completionRateBp (docs/06 §3.3)."}
+  "@guidePullsDateIn": {"description": "SCR-TODAY guide: consistency literally moves feasibleCompletionDate earlier via completionRateBp (docs/06 §3.3)."},
+  "buildableStartAnywayTitle": "기술이 다 차지 않아도 지금 할 수 있는 것",
+  "@buildableStartAnywayTitle": {"description": "SCR-BUILDABLE: heading of the block on the NEXT step that says what to do before the gate skills are met (ADR-062)."},
+  "buildableStartAnywayBody": "모자란 축이 있어도 이 단계는 지금 시작할 수 있어요. 만든 만큼 기록으로 남기면 그게 나중에 설명 자료가 돼요. 다 채운 뒤에 시작하면 남는 게 없어요.",
+  "@buildableStartAnywayBody": {"description": "SCR-BUILDABLE: body of the same block."},
+  "buildableStartAnywayAction": "기록 남기기",
+  "@buildableStartAnywayAction": {"description": "SCR-BUILDABLE: button to the side project list, where the record lives."}
 }

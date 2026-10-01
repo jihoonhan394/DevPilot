@@ -194,9 +194,41 @@ class _StepCard extends StatelessWidget {
                   child: Text(l10n.buildableOpenToday),
                 ),
               ),
+              // 모자란 축을 다 채운 뒤에 시작하면 남는 게 없다 (ADR-062). 지금 단계에서 실력이 모자라도
+              // 할 수 있는 일을 함께 말한다 — 이 화면이 "아직 안 된다"로만 끝나면 가이드가 아니다.
+              if (step.gaps.isNotEmpty) _StartAnyway(),
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 게이트가 덜 찬 "지금 만들 단계"에만 붙는다. 기술이 다 차기를 기다리는 동안에도 남길 것은 있다.
+class _StartAnyway extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.md),
+      child: Column(
+        key: const Key('buildable.startAnyway'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.buildableStartAnywayTitle, style: theme.textTheme.labelLarge),
+          const SizedBox(height: AppSpacing.xs),
+          Text(l10n.buildableStartAnywayBody, style: theme.textTheme.bodySmall),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              key: const Key('buildable.startAnywayAction'),
+              onPressed: () => context.go(AppRoutes.projects),
+              child: Text(l10n.buildableStartAnywayAction),
+            ),
+          ),
+        ],
       ),
     );
   }
