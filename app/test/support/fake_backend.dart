@@ -361,8 +361,11 @@ final class FakeSkillRepository implements SkillRepository {
     return treeByRole[role] ?? testSkillTree();
   }
 
+  /// `GET /skills/me`. 자기평가와 기록의 조합(ADR-065)을 바꿔 보려면 이것을 덮어쓴다.
+  UserSkillStatesResponse states = testSkillStates();
+
   @override
-  Future<UserSkillStatesResponse> fetchMyStates() async => testSkillStates();
+  Future<UserSkillStatesResponse> fetchMyStates() async => states;
 
   /// 마지막으로 보낸 자기평가 수정 (docs/05 §6.5). 적은 category만 담겨야 한다.
   Map<SkillCategory, int>? revisedSelfAssessment;
@@ -370,7 +373,7 @@ final class FakeSkillRepository implements SkillRepository {
   @override
   Future<UserSkillStatesResponse> updateSelfAssessment(Map<SkillCategory, int> levels) async {
     revisedSelfAssessment = Map.of(levels);
-    return testSkillStates();
+    return states;
   }
 
   /// `GET /skills/{skillId}`. 설정하면 그 오류로 실패한다 — 단계 영역만 인라인 오류가 되는지 본다.

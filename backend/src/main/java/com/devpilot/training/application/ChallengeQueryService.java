@@ -10,6 +10,7 @@ import com.devpilot.training.application.TrainingViews.ChallengeSummaryView;
 import com.devpilot.training.application.TrainingViews.ChallengeView;
 import com.devpilot.training.application.TrainingViews.LastAttemptView;
 import com.devpilot.training.application.TrainingViews.RubricItemView;
+import com.devpilot.training.domain.AttemptOutcome;
 import com.devpilot.training.domain.Challenge;
 import com.devpilot.training.domain.ChallengeAttempt;
 import com.devpilot.training.domain.ChallengePurpose;
@@ -211,6 +212,23 @@ public class ChallengeQueryService {
                             skillCodes(challenge, refs)));
         }
         return List.copyOf(candidates);
+    }
+
+    /**
+     * 최근 평가가 끝난 PRACTICE attempt에서 "맞혔는가"만 최신순으로 (docs/06 §5.3 적정 난이도 밴드, ADR-066).
+     *
+     * <p>planner가 난이도를 정할 때 쓴다. 진단은 수준을 재는 자리라 빼고, 힌트를 보고 맞힌 것도 성공으로 센다 — 85% 규칙이 재는 것은 "맞혔는가"다. 힌트
+     * 사용 여부는 docs/06 §7.2 상승 규칙이 따로 본다.
+     */
+    public List<Boolean> recentPracticeSolved(UUID userId, int limit) {
+        return attemptRepository.findRecentPracticeOutcomes(userId, Limit.of(limit)).stream()
+                .map(ChallengeQueryService::solved)
+                .toList();
+    }
+
+    private static boolean solved(AttemptOutcome outcome) {
+        return outcome == AttemptOutcome.SOLVED_INDEPENDENTLY
+                || outcome == AttemptOutcome.SOLVED_WITH_HINTS;
     }
 
     /**

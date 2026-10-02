@@ -11,6 +11,7 @@ import com.devpilot.review.application.ReviewQueryService;
 import com.devpilot.review.application.ReviewQueryService.DueSummary;
 import com.devpilot.today.application.PlannerInputCollector.Context;
 import com.devpilot.today.application.PlannerInputCollector.Inputs;
+import com.devpilot.today.domain.DifficultyBandPolicy;
 import com.devpilot.today.domain.EnergyLevel;
 import com.devpilot.today.domain.LearningTask;
 import com.devpilot.today.domain.PlannerModifier;
@@ -69,7 +70,7 @@ public class DailyPlanComposer {
     private final PlannerInputCollector inputCollector;
     private final ProposalOptionCollector proposalOptionCollector;
     private final PlannerScoring scoring;
-    private final TaskProposalPolicy proposalPolicy = new TaskProposalPolicy();
+    private final TaskProposalPolicy proposalPolicy;
     private final TimeAllocator timeAllocator;
     private final ReasonTemplates reasonTemplates;
     private final StudyThreadPolicy studyThreadPolicy;
@@ -93,6 +94,9 @@ public class DailyPlanComposer {
         this.reasonTemplates = new ReasonTemplates(TodayRuleSettings.reasons(properties));
         this.studyThreadPolicy =
                 new StudyThreadPolicy(properties.planner().studyThreadMaxConsecutiveDays());
+        this.proposalPolicy =
+                new TaskProposalPolicy(
+                        new DifficultyBandPolicy(TodayRuleSettings.difficultyBand(properties)));
     }
 
     /** 오늘 계획을 계산한다. 호출자 트랜잭션에서 읽는다. 활성 plan이 없으면 404 {@code PLAN_NOT_FOUND}. */
@@ -253,7 +257,8 @@ public class DailyPlanComposer {
                                 options.projectGuideFor(code),
                                 options.redoFor(code),
                                 options.lessonStepFor(
-                                        code, inputs.solvedUnitKeysByLesson(), mainBudgetMinutes)));
+                                        code, inputs.solvedUnitKeysByLesson(), mainBudgetMinutes),
+                                options.recentSolved()));
         ScoredCandidate scored =
                 scoring.score(
                         new ScoreInput(

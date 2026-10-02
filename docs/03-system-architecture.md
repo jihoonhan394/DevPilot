@@ -519,6 +519,11 @@ devpilot:
       min-days-after: 3                    # RE-2 창 시작 (원본 완료·지난 재현 이후 일수, 경계 포함)
       max-days-after: 7                    # RE-2 창 끝 (경계 포함). min <= max가 아니면 기동 실패
       max-attempts: 2                      # RE-3 한 원본에 허용하는 재현 시도 수
+    difficulty-band:                       # 06 §5.3 적정 난이도 밴드 (ADR-066, Wilson et al. 2019)
+      upper: 0.85                          # 측정 성공률이 이것을 넘으면 난이도 +1 (8_500bp)
+      lower: 0.70                          # 이것 아래면 −1 (7_000bp). lower > upper면 기동 실패
+      window-size: 10                      # 최근 평가된 PRACTICE attempt 개수 (DIAGNOSTIC 제외)
+      min-samples: 5                       # 이보다 적으면 움직이지 않는다. window < min이면 기동 실패
     low-energy-long-task-minutes: 30
     min-prerequisite-readiness: 0.5
     overrun-tolerance: 1.10

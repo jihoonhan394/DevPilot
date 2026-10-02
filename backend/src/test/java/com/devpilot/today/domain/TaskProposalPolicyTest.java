@@ -159,7 +159,9 @@ class TaskProposalPolicyTest {
                 null,
                 null,
                 null,
-                null);
+                null,
+                // 표본이 없으면 난이도 밴드는 움직이지 않는다 (ADR-066)
+                List.of());
     }
 
     @Test
@@ -192,7 +194,20 @@ class TaskProposalPolicyTest {
                 sideProject == null ? null : new SideProjectRef(PROJECT_ID, sideProject),
                 (String) row.get("projectGuide"),
                 redoCandidate(row.get("redo")),
-                lessonStep(row.get("lesson")));
+                lessonStep(row.get("lesson")),
+                // §5.3 vector는 고정 규칙(planning + 1)을 본다. 밴드는 표본이 없으면 움직이지 않는다
+                solved(row.get("recentSolved")));
+    }
+
+    /**
+     * vector의 {@code recentSolved} 값 → 난이도 밴드 입력 (docs/06 §5.3, ADR-066). {@code "1101"}처럼 최신순 1/0
+     * 문자열로 적는다. 적지 않으면 표본이 없어 밴드가 움직이지 않는다.
+     */
+    private static List<Boolean> solved(@Nullable Object value) {
+        if (value == null) {
+            return List.of();
+        }
+        return ((String) value).chars().mapToObj(c -> c == '1').toList();
     }
 
     /**

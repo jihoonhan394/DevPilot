@@ -2679,7 +2679,13 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `skill.detail.stage.how.REVIEW` | 이 기술의 복습 카드에 한 번 답하면 채워져요. |
 | `skill.detail.stage.how.REDO` | 재현 과제를 AI 도움 없이 마치면 채워져요. |
 
-- **문구**: `skill.detail.axis` = "축", `skill.detail.evidence` = "증거 레벨", `skill.detail.planning` = "계획용 레벨", `skill.detail.target` = "목표", `skill.detail.self` = "자기평가 {level}", `skill.detail.selfInactive` = "최근 기록을 반영해 자기평가는 더 이상 쓰지 않아요", `skill.detail.reviewCards` = "복습 카드", `skill.detail.practice` = "문제 풀기", `skill.detail.explain` = "개념 설명하기", `skill.detail.history` = "레벨 변경 기록", `skill.detail.historyItem` = "{axis} {from} → {to}", `skill.detail.evidenceCount` = "근거 기록 {count}개", `skill.detail.historyEmpty` = "아직 레벨 변경 기록이 없어요. 복습과 문제 풀이를 하면 여기에 쌓여요.", `skill.detail.makeDraft` = "증거 초안 만들기"
+- **말한 수준과 기록을 나란히 (S4, ADR-065)**: 자기평가가 있는 skill이면 축 표 아래 `자기평가 {level}` 다음에 **한 문장**을 둔다(`skillDetail.calibration`). 숫자 세 열과 떨어진 한 줄로는 "내가 3이라고 했는데 기록은 0"이 읽히지 않는다 — Open Learner Model 연구는 자기평가와 시스템 모델의 **일치/불일치를 보여 주면** 자기 점검과 성취가 개선되고 특히 낮은 성취자에게 그렇다고 본다.
+  - 주장 > 기록, 주장 유효 → `guide`처럼 **다음에 무엇이 달라지는지**로 끝낸다: "말한 수준은 {self}, 기록은 아직 {evidence}예요. 지금 난이도는 말한 수준을 따라가요 — 한 문제만 풀어도 기록이 따라옵니다."
+  - 기록 ≥ 주장 → "기록이 말한 수준({self})을 따라잡았어요. 이제 기록으로 난이도를 잡습니다."
+  - 주장이 거둬짐(ADR-063) → "말한 수준({self})에서 막혀서 더 쓰지 않아요. 지금은 기록({evidence})으로 난이도를 잡습니다." (전의 `selfInactive` 한 줄을 대신한다)
+  - 기록 쪽은 **축 중 가장 높은 값**이다 — 한 축이라도 주장에 닿으면 그 축에서는 `06` §7.5가 기록을 쓴다.
+  - **판정이 아니다.** "당신 평가가 틀렸다"고 말하는 자리가 아니고, 기록이 따라잡은 경우도 함께 말한다(ADR-062).
+- **문구**: `skill.detail.axis` = "축", `skill.detail.evidence` = "증거 레벨", `skill.detail.planning` = "계획용 레벨", `skill.detail.target` = "목표", `skill.detail.self` = "자기평가 {level}", `skill.detail.calibration` = 아래 세 문구 중 하나(ADR-065), `skill.detail.reviewCards` = "복습 카드", `skill.detail.practice` = "문제 풀기", `skill.detail.explain` = "개념 설명하기", `skill.detail.history` = "레벨 변경 기록", `skill.detail.historyItem` = "{axis} {from} → {to}", `skill.detail.evidenceCount` = "근거 기록 {count}개", `skill.detail.historyEmpty` = "아직 레벨 변경 기록이 없어요. 복습과 문제 풀이를 하면 여기에 쌓여요.", `skill.detail.makeDraft` = "증거 초안 만들기"
 
 ### 3.11 Dashboard · Weekly
 

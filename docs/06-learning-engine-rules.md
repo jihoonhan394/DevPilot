@@ -299,7 +299,44 @@ ratioBp (저장·표시용) = effective == 0 ? null : floorDiv(requiredMust × 1
 
 ```text
 d = clamp(planning IMPLEMENTATION + 1, 1, trackDefaults.maxTaskDifficulty)   # 트랙 기본값, §5.3의 "학습 트랙" 문단
+d = band(d)                                                                  # 적정 난이도 밴드, 아래
 if comebackMode: d = min(d, 2)
+
+**적정 난이도 밴드 (`DifficultyBandPolicy`, ADR-066)**
+
+```text
+window  = 최근 평가가 끝난 PRACTICE attempt의 "맞혔는가" window-size개 (최신순, DIAGNOSTIC 제외)
+if |window| < min-samples: band(d) = d                 # 표본이 모자라면 움직이지 않는다
+rateBp  = floorDiv(성공 수 × 10_000, |window|)
+band(d) = clamp(d + 1, 1, maxTaskDifficulty)   if rateBp >  upper      # 기본 8_500
+        = clamp(d − 1, 1, maxTaskDifficulty)   if rateBp <  lower      # 기본 7_000
+        = d                                    그 밖에
+```
+
+- **왜**: 고정 `planning + 1`은 실제로 몇 개를 맞히는지 보지 않았다. 자기평가가 높으면 계속 어려운 문제가, 낮으면 계속 쉬운 문제가 나왔다. Wilson et al.(2019) *The Eighty Five Percent Rule for optimal learning*은 정답률 **85%** 부근에서 학습이 가장 빠르다고 본다 — 다 맞히면 무엇을 고칠지 알 수 없고, 다 틀리면 무엇이 통했는지 알 수 없다.
+- **법칙이 아니라 목표 밴드다.** 논문은 이진 분류 과제에서 유도한 값이고 저자 본인이 모든 학습에 그대로 적용되지는 않는다고 적었다. 그래서 **한 번에 ±1**이고 표본이 모자라면 움직이지 않는다.
+- **사용자 전체를 센다(skill별이 아니다).** skill 하나에 표본이 쌓이는 데 몇 주가 걸려 skill별로는 규칙이 영원히 발동하지 않는다. 85% 규칙이 재는 것도 "지금 내는 난이도에서 학습자가 얼마나 맞히는가"이므로 학습자 단위가 맞다. skill별 차이는 이미 `planning`이 들고 있다.
+- **힌트를 보고 맞힌 것도 성공이다**(`SOLVED_INDEPENDENTLY`·`SOLVED_WITH_HINTS`). 85% 규칙이 재는 것은 "맞혔는가"다. 힌트 사용 여부는 §7.2 상승 규칙이 따로 본다.
+- **진단은 세지 않는다.** 진단은 수준을 재는 자리이고 난이도도 주장한 수준에 맞춰 내므로(§7.4) 밴드에 넣으면 되먹임이 꼬인다.
+- `comebackMode` 상한은 밴드 **뒤에** 적용한다 — 오래 쉬고 돌아온 날은 측정값보다 컨디션이 우선이다(§5.5).
+- ADR-063 `I_DOWN_CLAIM_UNSUPPORTED`와 **겹치지 않는다**: 그 규칙은 `planning`(= `d`의 기준)을 내리고, 밴드는 그 위에서 측정값으로 움직인다. 밴드가 보는 성공률은 이미 지금 난이도에서 나온 결과이므로 이중 보정이 아니다.
+
+**Test vectors** (upper 8_500 · lower 7_000 · window 10 · minSamples 5 · max 5)
+
+| ID | d | window (최신순) | 기대 | 이유 |
+|---|---|---|---|---|
+| DB-1 | 3 | `1111` | 3 | 표본 4개 < 5 |
+| DB-2 | 3 | `11111` | 4 | 100% > 85% |
+| DB-3 | 3 | `1111111110` | 4 | 90% > 85% |
+| DB-4 | 3 | `1111111100` | 3 | 80%, 밴드 안 |
+| DB-5 | 3 | `1111111000` | 3 | 70% = 하한, "아래"가 아니다 |
+| DB-6 | 3 | `1111110000` | 2 | 60% < 70% |
+| DB-7 | 3 | `00000` | 2 | 0% |
+| DB-8 | 3 | `11111111110000` | 4 | 앞 10개만 본다 → 100% |
+| DB-9 | 5 | `11111` | 5 | 트랙 상한 |
+| DB-10 | 1 | `00000` | 1 | 하한 1 |
+
+---
 
 0. 이 skill에 오늘 제안할 재현 후보가 있으면(§5.10 RE-2)
    → REDO (estimated = §5.10 RE-4, difficulty = 원본 과제의 difficulty, `redoSourceTaskId` = 그 후보의 원본 task)
@@ -844,7 +881,7 @@ redoCandidates(today, userId):
 | **교차 학습 (interleaving)** | §6.5 `RV-INTERLEAVE` | 같은 skill 카드가 3장 연속 나오지 않도록 출제 순서를 재배치한다. **꺼낼 때만** 섞는다 — 처음 배우는 구간은 §5.13대로 한 주제를 이어 간다 |
 | **생성 효과 (generation)** | §5.3 EXPLAIN·PROJECT_TASK·READ_CODE 제안, §9.5 RD-1 | 정답을 받기 전에 스스로 답·설명·구현을 만들어 보게 한다. 러버덕에서 AI는 답을 주지 않고 되묻기만 한다 |
 | **정교화 (elaboration)** | §7.2 EXPLANATION 축 규칙(E2~E5), §8.1 `explanationCoverageBp`, §9.5 RD-2 | "왜 그런가"를 어디까지 설명했는지를 coverage로 재서 레벨 증거로 쓴다. 되묻는 질문은 설명의 빈틈과 틀린 전제를 겨냥한다 |
-| **적정 난이도 (desirable difficulty)** | §5.3 `d = planning IMPLEMENTATION + 1`, §5.5 `LOW_ENERGY_DEEP_TASK`·`HIGH_ENERGY_HARD_TASK`·`COMEBACK_HARD_TASK`, §6.4 leech | 지금 수준보다 한 단계 위를 낸다. 다만 컨디션이 낮거나 오래 쉬고 돌아온 날은 난이도를 낮추고, 4회 연속 실패한 카드는 중단해서 좌절을 막는다 |
+| **적정 난이도 (desirable difficulty)** | §5.3 `d = planning IMPLEMENTATION + 1` + 측정된 성공률 밴드(ADR-066), §5.5 `LOW_ENERGY_DEEP_TASK`·`HIGH_ENERGY_HARD_TASK`·`COMEBACK_HARD_TASK`, §6.4 leech | 지금 수준보다 한 단계 위를 낸다. 다만 컨디션이 낮거나 오래 쉬고 돌아온 날은 난이도를 낮추고, 4회 연속 실패한 카드는 중단해서 좌절을 막는다 |
 
 읽는 법:
 

@@ -64,7 +64,8 @@ class ConceptReadingSelectionTest {
                                 null,
                                 null,
                                 null,
-                                null));
+                                null,
+                                List.of()));
 
         Map<String, Object> expected = map(row.get("expected"));
         assertThat(proposal.taskType()).as(description).isEqualTo(TaskType.READING);

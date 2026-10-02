@@ -2957,5 +2957,11 @@
   "guideCheckLevel": "확인 문제 풀어 보기",
   "@guideCheckLevel": {"description": "SCR-TODAY guide: one tap to the diagnostic, the door that replaces a claim with a record (ADR-063)."},
   "trainingEvalDifficultyLowered": "이 수준에서 막혔으니 {skill}은 기록 기준으로 다시 잡아요. 다음 과제는 더 쉬운 단계부터 나오고, 목표일 계산도 지금 실력으로 바뀌어요.",
-  "@trainingEvalDifficultyLowered": {"description": "SCR-TRAINING-ATTEMPT result: why the difficulty dropped (ADR-064). Not a verdict — it says what changes next.", "placeholders": {"skill": {"type": "String"}}}
+  "@trainingEvalDifficultyLowered": {"description": "SCR-TRAINING-ATTEMPT result: why the difficulty dropped (ADR-064). Not a verdict — it says what changes next.", "placeholders": {"skill": {"type": "String"}}},
+  "skillDetailCalibrationAhead": "말한 수준은 {self}, 기록은 아직 {evidence}예요. 지금 난이도는 말한 수준을 따라가요 — 한 문제만 풀어도 기록이 따라옵니다.",
+  "@skillDetailCalibrationAhead": {"description": "SCR-SKILL-DETAIL: the claim is ahead of the record. Open Learner Model research (ASEE 2023) finds that showing this alignment improves self-monitoring, most for low achievers.", "placeholders": {"self": {"type": "String"}, "evidence": {"type": "String"}}},
+  "skillDetailCalibrationMet": "기록이 말한 수준({self})을 따라잡았어요. 이제 기록으로 난이도를 잡습니다.",
+  "@skillDetailCalibrationMet": {"description": "SCR-SKILL-DETAIL: the record has caught up with the claim — the positive calibration case.", "placeholders": {"self": {"type": "String"}}},
+  "skillDetailCalibrationWithdrawn": "말한 수준({self})에서 막혀서 더 쓰지 않아요. 지금은 기록({evidence})으로 난이도를 잡습니다.",
+  "@skillDetailCalibrationWithdrawn": {"description": "SCR-SKILL-DETAIL: the claim was withdrawn (ADR-063). Replaces the bare skillDetailSelfInactive line with the two numbers side by side.", "placeholders": {"self": {"type": "String"}, "evidence": {"type": "String"}}}
 }

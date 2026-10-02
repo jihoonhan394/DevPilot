@@ -4,6 +4,7 @@ import com.devpilot.common.config.TrackDefaults;
 import com.devpilot.common.web.AxisLevels;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -29,6 +30,21 @@ import org.jspecify.annotations.Nullable;
  * ConceptReadingSelection}), 이 클래스는 순서와 선택만 정한다. S2 빌드는 후보 목록을 비워 둔다(BL-TDY-14·BL-TDY-16은 S3).
  */
 public final class TaskProposalPolicy {
+
+    private final DifficultyBandPolicy difficultyBand;
+
+    public TaskProposalPolicy(DifficultyBandPolicy difficultyBand) {
+        this.difficultyBand = Objects.requireNonNull(difficultyBand, "difficultyBand");
+    }
+
+    /** 밴드를 쓰지 않는 정책 (기존 vector·테스트용). 표본이 없으면 밴드는 아무것도 하지 않는다. */
+    public TaskProposalPolicy() {
+        this(new DifficultyBandPolicy(new DifficultyBandPolicy.Settings(8_500, 7_000, 10, 5)));
+    }
+
+    private static List<DifficultyBandPolicy.Outcome> outcomes(List<Boolean> recentSolved) {
+        return recentSolved.stream().map(DifficultyBandPolicy.Outcome::new).toList();
+    }
 
     static final int READING_MINUTES = 25;
     static final int PROJECT_TASK_MINUTES = 30;
@@ -68,6 +84,11 @@ public final class TaskProposalPolicy {
             return lesson(skill, lessonStep);
         }
         int difficulty = Math.clamp(planning.implementation() + 1L, 1, track.maxTaskDifficulty());
+        // 측정된 성공률로 ±1 (docs/06 §5.3 적정 난이도 밴드, ADR-066). planning은 skill마다 다르고
+        // 성공률은 사용자 전체다 — 고정 +1만으로는 "실제로 몇 개 맞히는지"가 난이도에 들어오지 않는다.
+        difficulty =
+                difficultyBand.adjust(
+                        difficulty, outcomes(input.recentSolved()), track.maxTaskDifficulty());
         if (input.comebackMode()) {
             difficulty = Math.min(difficulty, COMEBACK_MAX_DIFFICULTY);
         }
@@ -420,6 +441,7 @@ public final class TaskProposalPolicy {
      * @param conceptReadings 3번 분기가 쓸 개념 읽기 후보 (key ASC, {@link ConceptReadingSelection}). AI 상태와
      *     무관하다 — 개념 읽기는 AI를 쓰지 않는다
      * @param activeSideProject 없으면 null (SP-1: PROJECT_TASK를 제안하지 않는다)
+     * @param recentSolved 사용자 전체의 최근 PRACTICE attempt에서 "맞혔는가", 최신순 (§5.3 난이도 밴드)
      */
     public record ProposalInput(
             SkillContext skill,
@@ -433,12 +455,14 @@ public final class TaskProposalPolicy {
             @Nullable SideProjectRef activeSideProject,
             @Nullable String projectGuide,
             RedoTaskPolicy.@Nullable RedoCandidate redoCandidate,
-            @Nullable LessonStep lessonStep) {
+            @Nullable LessonStep lessonStep,
+            List<Boolean> recentSolved) {
 
         public ProposalInput {
             challenges = List.copyOf(challenges);
             readings = List.copyOf(readings);
             conceptReadings = List.copyOf(conceptReadings);
+            recentSolved = List.copyOf(recentSolved);
         }
     }
 

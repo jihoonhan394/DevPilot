@@ -61,6 +61,7 @@ class ProposalOptionCollector {
     private final ChallengeQueryService challengeQueryService;
     private final RedoTaskPolicy redoTaskPolicy;
     private final int challengeExclusionDays;
+    private final int difficultyBandWindow;
     private final long redoOriginLookbackDays;
 
     ProposalOptionCollector(
@@ -86,6 +87,7 @@ class ProposalOptionCollector {
         // 실패한 재현이 창을 뒤로 미루므로(RE-2) 원본은 그보다 훨씬 오래된 것일 수 있다.
         // 시도는 max-attempts로 막혀 있어 사슬 길이가 정해진다: 원본 + 시도마다 최대 max-days-after.
         this.redoOriginLookbackDays = (long) redo.maxDaysAfter() * (redo.maxAttempts() + 1) + 1;
+        this.difficultyBandWindow = properties.planner().difficultyBand().windowSize();
     }
 
     ProposalOptions collect(
@@ -100,6 +102,9 @@ class ProposalOptionCollector {
         Map<String, RedoCandidate> redos =
                 redoCandidates(userId, today, zone, dayStartHour, skillIdsByCode);
         Set<String> excluded = excludedReadingKeys(userId, today);
+        // 난이도 밴드는 AI 상태와 무관하다 (ADR-066) — 읽기·재현 과제의 난이도에도 쓰인다
+        List<Boolean> recentSolved =
+                challengeQueryService.recentPracticeSolved(userId, difficultyBandWindow);
         List<ConceptReading> conceptReadings =
                 conceptReadingRegistry.active().stream()
                         .filter(reading -> !excluded.contains(reading.key()))
@@ -107,7 +112,13 @@ class ProposalOptionCollector {
                         .toList();
         if (!aiAvailable) {
             return new ProposalOptions(
-                    false, List.of(), List.of(), conceptReadings, lessonRegistry, redos);
+                    false,
+                    List.of(),
+                    List.of(),
+                    conceptReadings,
+                    lessonRegistry,
+                    redos,
+                    recentSolved);
         }
         List<CuratedReading> readings =
                 curatedReadingRegistry.active().stream()
@@ -123,7 +134,8 @@ class ProposalOptionCollector {
                 challengeQueryService.practiceCandidates(userId, recentSince),
                 conceptReadings,
                 lessonRegistry,
-                redos);
+                redos,
+                recentSolved);
     }
 
     /**
@@ -201,20 +213,27 @@ class ProposalOptionCollector {
         return excluded;
     }
 
-    /** 제안 입력. {@code readings}·{@code conceptReadings}는 key ASC. */
+    /**
+     * 제안 입력. {@code readings}·{@code conceptReadings}는 key ASC.
+     *
+     * @param recentSolved 사용자 전체의 최근 PRACTICE attempt에서 "맞혔는가", 최신순 (docs/06 §5.3 난이도 밴드, ADR-066).
+     *     skill별이 아니다 — skill 하나에 표본이 쌓이는 데 몇 주가 걸린다
+     */
     record ProposalOptions(
             boolean aiAvailable,
             List<CuratedReading> readings,
             List<ChallengeCandidate> challenges,
             List<ConceptReading> conceptReadings,
             LessonRegistry lessons,
-            Map<String, RedoCandidate> redosBySkillCode) {
+            Map<String, RedoCandidate> redosBySkillCode,
+            List<Boolean> recentSolved) {
 
         ProposalOptions {
             readings = List.copyOf(readings);
             challenges = List.copyOf(challenges);
             conceptReadings = List.copyOf(conceptReadings);
             redosBySkillCode = Map.copyOf(redosBySkillCode);
+            recentSolved = List.copyOf(recentSolved);
         }
 
         /** 오늘 이 skill에 걸 재현 후보 (docs/06 §5.10). 없으면 null이고 제안은 1번 분기부터 간다. */
