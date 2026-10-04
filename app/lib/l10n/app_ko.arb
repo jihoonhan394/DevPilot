@@ -2963,5 +2963,11 @@
   "skillDetailCalibrationMet": "기록이 말한 수준({self})을 따라잡았어요. 이제 기록으로 난이도를 잡습니다.",
   "@skillDetailCalibrationMet": {"description": "SCR-SKILL-DETAIL: the record has caught up with the claim — the positive calibration case.", "placeholders": {"self": {"type": "String"}}},
   "skillDetailCalibrationWithdrawn": "말한 수준({self})에서 막혀서 더 쓰지 않아요. 지금은 기록({evidence})으로 난이도를 잡습니다.",
-  "@skillDetailCalibrationWithdrawn": {"description": "SCR-SKILL-DETAIL: the claim was withdrawn (ADR-063). Replaces the bare skillDetailSelfInactive line with the two numbers side by side.", "placeholders": {"self": {"type": "String"}, "evidence": {"type": "String"}}}
+  "@skillDetailCalibrationWithdrawn": {"description": "SCR-SKILL-DETAIL: the claim was withdrawn (ADR-063). Replaces the bare skillDetailSelfInactive line with the two numbers side by side.", "placeholders": {"self": {"type": "String"}, "evidence": {"type": "String"}}},
+  "replanPreviewReschedule": "목표일에 맞춰 일정 다시 배치",
+  "@replanPreviewReschedule": {"description": "SCR-REPLAN preview: applies the proposed milestone dates (ADR-067). An action, not an alert."},
+  "replanPreviewRescheduleHint": "남은 단계 {count}개를 목표일까지 고르게 다시 나눠요. 끝낸 단계는 그대로 둡니다.",
+  "@replanPreviewRescheduleHint": {"description": "SCR-REPLAN preview: what the reschedule button will do.", "placeholders": {"count": {"type": "int"}}},
+  "replanPreviewRescheduleDone": "일정을 다시 배치했어요. 저장하기 전에 아래에서 확인하세요.",
+  "@replanPreviewRescheduleDone": {"description": "SCR-REPLAN preview: the dates were applied to the edit form but not saved yet."}
 }

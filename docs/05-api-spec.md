@@ -1544,7 +1544,16 @@ public record ReplanPreviewResponse(
         List<DeferSuggestionView> deferSuggestions,                       // 제안 순서 그대로
         List<TargetReductionSuggestionView> mustTargetReductionSuggestions,
         List<ExpansionSuggestionView> expansionSuggestions,               // 여유가 있을 때만 (06 §4.4 6단계). 위 두 목록과 동시에 비어 있지 않은 경우는 없다
-        RiskEstimateView riskAfterSuggestions) {}
+        RiskEstimateView riskAfterSuggestions,
+        List<MilestoneScheduleView> milestoneSchedule) {}   // 목표일에 맞춘 제안 날짜. 바뀔 것이 없으면 []
+
+public record MilestoneScheduleView(
+        UUID id,                        // 기존 milestone이면 그 id, 화면에서 새로 더한 것이면 null
+        int sortOrder,
+        String title,
+        LocalDate startDate,
+        LocalDate endDate,
+        boolean changed) {}             // 지금 날짜와 다른가 — 화면이 바뀐 것만 강조한다
 
 public record DeferSuggestionView(
         SkillRef skill,
@@ -2501,6 +2510,10 @@ public record ScheduledReviewView(UUID reviewItemId, String skillCode, LocalDate
 **시간 제한**: `timeLimitMinutes`는 콘텐츠(seed challenge)의 값이고 서버는 이 시간을 강제하지 않는다 — 클라이언트가 경과 시간을 보여 주고(`02` 문제 풀이 화면), 사용자가 제출할 때 `elapsedSeconds`를 함께 보낸다(§10.9). 시간 초과라는 상태는 없고 outcome 계산(`06` §8.2)에도 쓰지 않는다.
 
 **정답 정보 공개**: `answerRevealed = true` ⇔ 요청 사용자가 이 challenge에 대해 `evaluated_outcome IS NOT NULL`인 attempt를 하나 이상 가짐(한 번이라도 평가 완료). 이후 재제출·포기와 무관하게 계속 공개한다.
+
+`milestoneSchedule` 계산 (ADR-067): 요청의 `milestones`를 `sortOrder` ASC로 보고, **`status != PLANNED`인 것은 날짜를 그대로 두고** 나머지를 `[max(오늘, 고정된 것의 마지막 end + 1), 목표일]` 창에 `19-content-spec.md` §5 배치 알고리즘으로 다시 배치한다. **가중치는 각 milestone의 지금 길이**다 — 템플릿 weight를 다시 꺼내지 않는다(사용자가 손으로 늘려 둔 비율을 지키고, 저장된 계획에는 weight가 없다). 전부 지금 날짜와 같으면 `[]`다. 창이 없으면(고정된 것이 이미 목표일을 넘었다) 역시 `[]`이고, 그때 할 말은 "목표일을 더 늘리거나 범위를 줄이세요"다(ADR-062).
+
+**목표일을 바꾸지 않아도 비어 있지 않을 수 있다.** 온보딩은 그날부터 목표일까지로 배치했고 재배치는 **오늘부터** 보기 때문이다. 그래서 화면은 이것을 경고가 아니라 **언제든 누를 수 있는 동작**으로 둔다.
 
 `claimWithdrawnSkills` 계산: attempt `outcome`이 null이 아닐 때만 채운다(푸는 중에는 `[]`). challenge skill 중 `self_assessed_level`이 있고 `self_assessment_active = false`인 것을 `code` ASC로 넣는다. **주장이 거둬지면 `06` §7.5가 planning을 근거로 떨어뜨려 다음 과제의 난이도가 내려가고 예산이 늘어난다** — 그 사실을 말하지 않으면 사용자는 왜 갑자기 쉬워졌는지도, 왜 목표일이 멀어졌는지도 모른다(ADR-064). 거둬진 시점은 저장하지 않으므로 **"방금 바뀌었다"가 아니라 "지금 이렇다"**를 말한다.
 

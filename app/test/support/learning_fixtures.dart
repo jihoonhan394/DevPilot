@@ -289,6 +289,25 @@ ReplanPreviewResponse testShrinkPreview({RiskLevel risk = RiskLevel.high}) => Re
     ),
   ],
   expansionSuggestions: const [],
+  // 목표일에 맞춘 제안 날짜 (ADR-067). 첫 단계는 그대로, 둘째가 움직인다
+  milestoneSchedule: const [
+    MilestoneScheduleView(
+      id: milestoneFoundationId,
+      sortOrder: 0,
+      title: '기반 다지기',
+      startDate: '2026-10-05',
+      endDate: '2026-11-04',
+      changed: false,
+    ),
+    MilestoneScheduleView(
+      id: milestoneAuthId,
+      sortOrder: 1,
+      title: '회원과 인증',
+      startDate: '2026-11-05',
+      endDate: '2027-04-01',
+      changed: true,
+    ),
+  ],
   riskAfterSuggestions: const RiskEstimateView(
     requiredMustMinutes: 1896,
     requiredShouldMinutes: 0,

@@ -62,6 +62,7 @@ public class ReplanService {
     private final PlanQueryService planQueryService;
     private final StudyBudgetService studyBudgetService;
     private final ReplanEventRecorder replanEventRecorder;
+    private final MilestoneScheduleSuggester scheduleSuggester;
     private final Clock clock;
 
     ReplanService(
@@ -70,12 +71,14 @@ public class ReplanService {
             PlanQueryService planQueryService,
             StudyBudgetService studyBudgetService,
             ReplanEventRecorder replanEventRecorder,
+            MilestoneScheduleSuggester scheduleSuggester,
             Clock clock) {
         this.learningPlanRepository = learningPlanRepository;
         this.inputs = inputs;
         this.planQueryService = planQueryService;
         this.studyBudgetService = studyBudgetService;
         this.replanEventRecorder = replanEventRecorder;
+        this.scheduleSuggester = scheduleSuggester;
         this.clock = clock;
     }
 
@@ -149,7 +152,18 @@ public class ReplanService {
                                 studyBudgetService.riskEvaluator(),
                                 studyBudgetService.measurableAxes())
                         .suggest(evaluation.items(), evaluation.budget().effectiveMinutes());
-        return toPreview(plan.getId(), today, evaluation, suggestions);
+        // 목표일이 바뀌면 plan 구조는 그대로라(05 §5.2) 일정표가 옛 날짜에 남는다. 손으로 고치게 두면
+        // 날짜가 썩고 §5.4 milestoneUrgency가 포화된다 — 같은 배치 알고리즘으로 제안만 함께 돌려준다(ADR-067).
+        List<MilestoneSchedule> schedule =
+                scheduleSuggester
+                        .suggest(
+                                inputs.targetRole(user.userId()),
+                                today,
+                                evaluation.budget().horizonDate(),
+                                command.milestones())
+                        .filter(proposed -> proposed.stream().anyMatch(MilestoneSchedule::changed))
+                        .orElseGet(List::of);
+        return toPreview(plan.getId(), today, evaluation, suggestions, schedule);
     }
 
     private LearningPlan activePlan(UUID userId, UUID planId, long version) {
@@ -296,7 +310,11 @@ public class ReplanService {
     }
 
     private ReplanPreviewResult toPreview(
-            UUID planId, LocalDate today, Evaluation evaluation, Suggestions suggestions) {
+            UUID planId,
+            LocalDate today,
+            Evaluation evaluation,
+            Suggestions suggestions,
+            List<MilestoneSchedule> milestoneSchedule) {
         Map<String, SkillRef> refs =
                 inputs.activeSkillDetails().values().stream()
                         .collect(Collectors.toMap(detail -> detail.code(), detail -> detail.ref()));
@@ -349,7 +367,8 @@ public class ReplanService {
                         suggestions.after().requiredMustMinutes(),
                         suggestions.after().requiredShouldMinutes(),
                         suggestions.after().ratioBp(),
-                        suggestions.after().riskLevel()));
+                        suggestions.after().riskLevel()),
+                milestoneSchedule);
     }
 
     /**

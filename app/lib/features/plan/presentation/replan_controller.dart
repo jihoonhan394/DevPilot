@@ -1,6 +1,7 @@
 import 'package:devpilot_app/core/api/api_exception.dart';
 import 'package:devpilot_app/core/api/idempotency_key.dart';
 import 'package:devpilot_app/core/time/local_date.dart';
+import 'package:devpilot_app/features/plan/data/plan_budget_models.dart';
 import 'package:devpilot_app/features/plan/data/plan_repository.dart';
 import 'package:devpilot_app/features/plan/domain/milestone_ordering.dart';
 import 'package:devpilot_app/features/plan/domain/replan_draft.dart';
@@ -162,6 +163,26 @@ final class ReplanController extends AsyncNotifier<ReplanState> {
     }
     milestones.insert(target, milestones.removeAt(index));
     return draft.copyWith(milestones: milestones);
+  });
+
+  /// Applies the dates the preview proposed for the goal's target date (ADR-067).
+  ///
+  /// The server only proposes — nothing is saved until the reader commits the replan. Milestones
+  /// that are done or underway are not in the proposal, so their dates stay put.
+  void applySchedule(List<MilestoneScheduleView> schedule) => _editDraft((draft) {
+    final byKey = {for (final item in schedule) item.id: item};
+    return draft.copyWith(
+      milestones: [
+        for (final milestone in draft.milestones)
+          if (byKey[milestone.id] case final proposed?)
+            milestone.copyWith(
+              startDate: LocalDate.parse(proposed.startDate),
+              endDate: LocalDate.parse(proposed.endDate),
+            )
+          else
+            milestone,
+      ],
+    );
   });
 
   /// Discards the edit and starts again from the latest active plan (conflict dialog).

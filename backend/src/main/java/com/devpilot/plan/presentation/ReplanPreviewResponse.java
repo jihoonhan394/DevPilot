@@ -1,5 +1,6 @@
 package com.devpilot.plan.presentation;
 
+import com.devpilot.plan.application.MilestoneSchedule;
 import com.devpilot.plan.application.ReplanPreviewResult;
 import com.devpilot.plan.application.ReplanPreviewResult.DeferSuggestionView;
 import com.devpilot.plan.application.ReplanPreviewResult.ExpansionSuggestionView;
@@ -15,6 +16,7 @@ import org.jspecify.annotations.Nullable;
  * {@code POST /plans/{planId}/replan/preview} 200 응답 (docs/05 §7.7). 제안 목록은 제안 순서 그대로다.
  *
  * @param expansionSuggestions 여유가 있을 때만 (docs/06 §4.4 6단계). 축소·defer 목록과 동시에 비어 있지 않은 경우는 없다
+ * @param milestoneSchedule 목표일에 맞춘 제안 날짜 (ADR-067). 날짜로 답할 수 없거나 바뀔 것이 없으면 빈 목록
  */
 public record ReplanPreviewResponse(
         UUID planId,
@@ -30,12 +32,14 @@ public record ReplanPreviewResponse(
         List<DeferSuggestionView> deferSuggestions,
         List<TargetReductionSuggestionView> mustTargetReductionSuggestions,
         List<ExpansionSuggestionView> expansionSuggestions,
-        RiskEstimateView riskAfterSuggestions) {
+        RiskEstimateView riskAfterSuggestions,
+        List<MilestoneSchedule> milestoneSchedule) {
 
     public ReplanPreviewResponse {
         deferSuggestions = List.copyOf(deferSuggestions);
         mustTargetReductionSuggestions = List.copyOf(mustTargetReductionSuggestions);
         expansionSuggestions = List.copyOf(expansionSuggestions);
+        milestoneSchedule = List.copyOf(milestoneSchedule);
     }
 
     static ReplanPreviewResponse from(ReplanPreviewResult result) {
@@ -53,6 +57,7 @@ public record ReplanPreviewResponse(
                 result.deferSuggestions(),
                 result.mustTargetReductionSuggestions(),
                 result.expansionSuggestions(),
-                result.riskAfterSuggestions());
+                result.riskAfterSuggestions(),
+                result.milestoneSchedule());
     }
 }

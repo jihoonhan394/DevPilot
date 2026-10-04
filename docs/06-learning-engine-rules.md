@@ -1501,6 +1501,40 @@ AI 출력 파싱 직후 finding마다 순서대로 적용한다.
 - milestone 날짜는 `19-content-spec.md`의 **계획 템플릿 배치 알고리즘**으로 계산한다. `useTemplate=false`이면 milestone 없이 plan만 만든다.
 - plan title: 템플릿의 `planTitle`(예: `Java 백엔드 성장 계획`). `useTemplate=false`이면 같은 targetRole 템플릿의 `planTitle`을 제목으로만 쓴다
 
+### 11.5 목표일에 맞춘 재배치 (`MilestoneRescheduler`, ADR-067)
+
+```text
+movable   = status == PLANNED 인 milestone (sortOrder ASC)
+fixed     = 그 밖 (COMPLETED·IN_PROGRESS·SKIPPED) → 날짜를 바꾸지 않는다
+if movable 없음: 지금 날짜가 답이다
+windowStart = max(today, fixed 중 가장 늦은 end + 1)
+if windowStart > targetCompletionDate: 재배치 불가 (날짜로 답할 문제가 아니다)
+weights   = movable 각각의 지금 길이 (daysBetween(start, end) + 1, 최소 1)
+spans     = 19 §5 allocate(windowStart, targetCompletionDate, weights, minMilestoneDays)
+결과      = fixed는 그대로, movable은 spans를 순서대로
+```
+
+- **새 알고리즘이 아니다.** 온보딩이 쓰는 `19` §5를 그대로 부르고 입력만 다르게 준다.
+- **왜 지금 길이를 가중치로 쓰나**: 저장된 계획에는 템플릿 `weightBp`가 없고(`plan_milestone`에 열이 없다), 사용자가 손으로 늘려 둔 단계가 있으면 그 비율이 유지되어야 한다. 지금 길이를 쓰면 **모양을 지키며 창에만 맞추는 비례 재배치**가 된다.
+- **왜 끝난 단계를 건드리지 않나**: 완료·진행 중인 단계의 날짜를 옮기면 그 기간에 쌓인 기록과 어긋난다. `SKIPPED`도 지난 일이다.
+- **왜 필요한가**: 목표일을 바꾸면 예산·위험도·역산 날짜는 즉시 새 날짜를 쓰지만(`05` §5.2) plan 구조는 그대로다. 날짜가 썩으면 표시만 어긋나는 것이 아니라 **§5.4 `milestoneUrgency`가 포화된다** — 그 식은 `max(200_000, 1_000_000 − floorDiv(daysLeft × 1_000_000, length))`이고 **위쪽 한계가 없어서** 끝 날짜가 지날수록 계속 커진다. 남은 단계가 전부 그 상태면 그 factor가 우선순위를 가리지 못한다.
+- 적용은 저장하지 않는다 — replan 미리보기가 제안만 돌려주고(`05` §7.7 `milestoneSchedule`) 확정은 기존 replan 경로를 그대로 쓴다.
+
+**Test vectors**
+
+| ID | 입력 | 기대 |
+|---|---|---|
+| RS-1 | movable 3개, 목표일 연장 | 창 전체를 빈 날·겹침 없이 덮고 마지막 end = 목표일 |
+| RS-2 | movable 2개, 목표일 당김 | 같은 방식으로 줄어든다 |
+| RS-3 | 길이 10일 / 30일 | 새 창에서도 뒤가 더 길다 (비율 유지) |
+| RS-4 | fixed 1개 + movable 1개 | fixed는 그대로, movable은 fixed 끝 다음 날부터 |
+| RS-5 | fixed가 오늘보다 과거 | movable은 **오늘**부터 |
+| RS-6 | 전부 fixed | 아무것도 바뀌지 않는다 |
+| RS-7 | fixed가 목표일을 넘음 | 비어 있다 (재배치 불가) |
+| RS-8 | milestone 없음 | 빈 목록 |
+
+---
+
 ### 11.4 지금 만들 수 있는 것 (`BuildableStepEvaluator`)
 
 milestone은 과목 순서가 아니라 **사이드 프로젝트를 만드는 순서**다(`19-content-spec.md` §3.4). 그래서 "오늘까지 배운 것으로 어디까지 만들 수 있나"는 milestone을 `sort_order`로 훑으며 답한다.

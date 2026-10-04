@@ -30,12 +30,14 @@ public record ReplanPreviewResult(
         List<DeferSuggestionView> deferSuggestions,
         List<TargetReductionSuggestionView> mustTargetReductionSuggestions,
         List<ExpansionSuggestionView> expansionSuggestions,
-        RiskEstimateView riskAfterSuggestions) {
+        RiskEstimateView riskAfterSuggestions,
+        List<MilestoneSchedule> milestoneSchedule) {
 
     public ReplanPreviewResult {
         deferSuggestions = List.copyOf(deferSuggestions);
         mustTargetReductionSuggestions = List.copyOf(mustTargetReductionSuggestions);
         expansionSuggestions = List.copyOf(expansionSuggestions);
+        milestoneSchedule = List.copyOf(milestoneSchedule);
     }
 
     /**

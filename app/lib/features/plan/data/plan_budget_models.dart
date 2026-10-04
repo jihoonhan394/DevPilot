@@ -62,10 +62,34 @@ abstract class ReplanPreviewResponse with _$ReplanPreviewResponse {
     required List<TargetReductionSuggestionView> mustTargetReductionSuggestions,
     required List<ExpansionSuggestionView> expansionSuggestions,
     required RiskEstimateView riskAfterSuggestions,
+
+    /// Dates proposed for the goal's target date (docs/05 §7.7, ADR-067). Empty when nothing
+    /// would move, or when no date can carry the remaining steps. Defaults to empty so an older
+    /// server does not break the preview.
+    @Default(<MilestoneScheduleView>[]) List<MilestoneScheduleView> milestoneSchedule,
   }) = _ReplanPreviewResponse;
 
   factory ReplanPreviewResponse.fromJson(Map<String, Object?> json) =>
       _$ReplanPreviewResponseFromJson(json);
+}
+
+/// One milestone's proposed dates (docs/05 §7.7, ADR-067).
+@freezed
+abstract class MilestoneScheduleView with _$MilestoneScheduleView {
+  const factory MilestoneScheduleView({
+    /// Null for a milestone the reader added in the form and has not saved yet.
+    String? id,
+    required int sortOrder,
+    required String title,
+    required String startDate,
+    required String endDate,
+
+    /// Whether this differs from the date the plan holds now — the screen highlights only these.
+    required bool changed,
+  }) = _MilestoneScheduleView;
+
+  factory MilestoneScheduleView.fromJson(Map<String, Object?> json) =>
+      _$MilestoneScheduleViewFromJson(json);
 }
 
 @freezed
