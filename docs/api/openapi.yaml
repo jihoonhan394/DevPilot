@@ -4035,6 +4035,23 @@ components:
       - choices
       - code
       - question
+    LessonRequirementView:
+      type: object
+      properties:
+        planningLevels:
+          $ref: "#/components/schemas/AxisLevels"
+        priority:
+          type: string
+          enum:
+          - MUST
+          - SHOULD
+          - LATER
+        targets:
+          $ref: "#/components/schemas/AxisLevels"
+      required:
+      - planningLevels
+      - priority
+      - targets
     LessonSourceView:
       type: object
       properties:
@@ -4150,6 +4167,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/LessonSourceView"
+        requirement:
+          $ref: "#/components/schemas/LessonRequirementView"
         retired:
           type: boolean
         skillCode:
@@ -4177,6 +4196,7 @@ components:
       - lessonKey
       - oneLine
       - readMore
+      - requirement
       - retired
       - skillCode
       - skillId

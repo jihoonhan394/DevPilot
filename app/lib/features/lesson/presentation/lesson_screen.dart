@@ -1,5 +1,7 @@
 import 'package:devpilot_app/app/explain_with_duck_button.dart';
 import 'package:devpilot_app/app/routes.dart';
+import 'package:devpilot_app/core/api/api_enums.dart';
+import 'package:devpilot_app/core/l10n/enum_labels.dart';
 import 'package:devpilot_app/core/theme/app_dimensions.dart';
 import 'package:devpilot_app/core/theme/devpilot_colors.dart';
 import 'package:devpilot_app/core/widgets/error_view.dart';
@@ -208,8 +210,51 @@ class _WhyBox extends StatelessWidget {
               lesson.oneLine,
               style: theme.textTheme.titleSmall?.copyWith(color: scheme.onPrimaryContainer),
             ),
+            // "이걸 외워야 하나, 이 정도면 프로젝트를 만들어도 되나"에 답한다 (ADR-069). 계획이 들고 있던
+            // 값인데 이 화면에 없었다 — 읽는 사람은 기준을 알 수 없었다.
+            if (lesson.requirement case final requirement?)
+              _Requirement(requirement: requirement, color: scheme.onPrimaryContainer),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// "이 기술은 필수이고, 목표는 지식 3(혼자 기본 가능)이에요. 지금은 전혀 모름이에요." (ADR-069)
+///
+/// 노트 본문이 주제가 아닌 어휘를 쓸 때(상태 코드 같은) 읽는 사람이 묻는 것은 "이걸 외워야 하나"다. 그 답은
+/// 계획에 있다 — 우선순위와 축별 목표. 지식 축만 쓴다: 노트는 가르치는 단계이고 §7.2에서 노트가 올리는 축이
+/// 지식이다. 구현·설명 목표는 문제와 러버덕이 맡는다.
+class _Requirement extends StatelessWidget {
+  const _Requirement({required this.requirement, required this.color});
+
+  final LessonRequirementView requirement;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final priority = requirement.priority;
+    if (priority == null || priority == Priority.unknown) {
+      return const SizedBox.shrink();
+    }
+    final target = requirement.targets.knowledge;
+    final now = requirement.planningLevels.knowledge;
+    final text = now >= target
+        ? l10n.lessonRequirementMet(priority.label(l10n), skillLevelLabel(target, l10n))
+        : l10n.lessonRequirement(
+            priority.label(l10n),
+            skillLevelLabel(target, l10n),
+            skillLevelLabel(now, l10n),
+          );
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.sm),
+      child: Text(
+        text,
+        key: const Key('lesson.requirement'),
+        style: theme.textTheme.bodySmall?.copyWith(color: color),
       ),
     );
   }

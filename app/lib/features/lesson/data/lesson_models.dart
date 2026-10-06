@@ -1,3 +1,5 @@
+import 'package:devpilot_app/core/api/api_enums.dart';
+import 'package:devpilot_app/core/api/common_models.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'lesson_models.freezed.dart';
@@ -89,6 +91,21 @@ abstract class LessonSummaryView with _$LessonSummaryView {
 }
 
 @freezed
+/// 이 기술을 어디까지 알아야 하는가 (docs/05 §21.8, ADR-069).
+@freezed
+abstract class LessonRequirementView with _$LessonRequirementView {
+  const factory LessonRequirementView({
+    /// 활성 plan의 우선순위. plan에 목표가 없으면 null.
+    @JsonKey(unknownEnumValue: Priority.unknown) Priority? priority,
+    required AxisLevels targets,
+    required AxisLevels planningLevels,
+  }) = _LessonRequirementView;
+
+  factory LessonRequirementView.fromJson(Map<String, Object?> json) =>
+      _$LessonRequirementViewFromJson(json);
+}
+
+@freezed
 abstract class LessonView with _$LessonView {
   const LessonView._();
 
@@ -107,6 +124,10 @@ abstract class LessonView with _$LessonView {
     required String inProject,
     @Default(<LessonSourceView>[]) List<LessonSourceView> sources,
     @Default(<LessonSourceView>[]) List<LessonSourceView> readMore,
+
+    /// How far this skill has to be learnt (docs/05 §21.8, ADR-069). Null when the active plan has
+    /// no target for it — the screen then shows no line rather than inventing a standard.
+    LessonRequirementView? requirement,
     @Default(false) bool retired,
   }) = _LessonView;
 

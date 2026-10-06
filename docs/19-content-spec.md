@@ -674,6 +674,7 @@ conceptReadings:
 | `problem` | 예제를 그대로 다시 쓰게 하지 않는다. 같은 규칙을 다른 자리에 쓰게 한다 |
 | `hints` | 1번은 "어디를 보라", 2번은 "무엇이 문제인가", 3번은 "어떤 도구를 쓰나". 답은 마지막까지 말하지 않는다 |
 | 순서 | 앞 단위에서 배운 것만 쓴다. 필요하면 `prerequisiteUnits`로 잇는다 |
+| 주제 밖 어휘 | 단위의 주제가 아닌 말을 설명 장치로 쓰면(예: 요구사항 표의 결과 칸에 쓴 상태 코드) **그렇다고 본문에 적는다** — "이것은 이 단위의 주제가 아니다, 지금 가져갈 것은 하나다". 그 말의 뜻은 `TERM.*` 카드로 따로 두고, 적지 않으면 읽는 사람은 그것도 외울 거리로 읽는다 (ADR-069) |
 
 ---
 
@@ -1359,6 +1360,15 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 
 **점검 기록**
 
+2026-10-06 — 새 용어 카드 2장의 근거 본문 확인 (catalogVersion 69 → 70)
+
+| 항목 | 내용 |
+|---|---|
+| 대상 | 새로 추가한 `TERM.WEB_HTTP.STATUS_CODE`·`TERM.WEB_HTTP.NOT_FOUND_VS_FORBIDDEN`의 `sourceUrl`(RFC 9110) |
+| 방법 | RFC 본문(`rfc9110.txt`)을 받아 해당 절을 **직접 읽었다** — 링크 생존만 본 2026-10-02 점검과 다르다 |
+| 결과 | §15 머리글 *"The first digit of the status code defines the class of response"*, §15.5.4 *"An origin server that wishes to 'hide' the current existence of a forbidden target resource MAY instead respond with a status code of 404 (Not Found)"*, §15.5.5(404), §15.5.10(409). **두 카드의 주장이 모두 본문으로 확인된다** |
+| **확인하지 않은 것** | 나머지 18건의 `sourceUrl` 본문. 2026-10-02 점검이 남긴 숙제가 그대로 남아 있다 |
+
 2026-10-02 — 용어 링크 생존 확인 (catalogVersion 69, 콘텐츠 변경 없음)
 
 | 항목 | 내용 |
@@ -1516,17 +1526,18 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 - [ ] 어느 트랙에서든 MUST인 skill에 `whyItMatters`가 있고, "모르면 무엇이 잘못되는지"를 쓴 한 문장이다 (CV-89, §7.5)
 - [ ] 팁마다 `sourceUrl` 또는 `experiment`가 있고(CV-91), `sourceUrl`은 브라우저로 열어 내용을 확인했다
 - [ ] 용어의 `representative`가 유일하고, 새로 쓴 콘텐츠가 `aliases` 표기 대신 `representative`를 쓴다 (CV-101·CV-104)
+- [ ] 노트 단위가 주제 밖 어휘를 설명 장치로 썼으면 본문에 "이 단위의 주제가 아니다"를 적었고, 그 어휘의 `TERM.*` 카드가 있다 (§3.14, ADR-069)
 - [ ] 체크리스트 항목이 질문형이고 특정 문제의 정답을 흘리지 않으며, 같은 `(taskType, skill)` 조합에 하나만 있다 (CV-113)
 - [ ] `timeLimitMinutes`를 붙였다면 시간 제한 구현 문제이고(§7.7), rubric에 "시간 안에 끝냈다" 항목이 없다
 - [ ] 신뢰 호스트를 새로 썼다면 `03` §9와 `06` §10을 같은 PR에서 고쳤고 §7.6 H-1~H-5를 만족한다
 
 ---
 
-## 12. 콘텐츠 인벤토리 (catalogVersion 69)
+## 12. 콘텐츠 인벤토리 (catalogVersion 70)
 
 ### 12.1 카테고리별 수량
 
-`--report` 출력(2026-10-02, catalogVersion 69). skills는 root 포함. challenge는 첫 번째 skill의 category로 센다. **이 표는 `python content/tools/validate_content.py --report`의 출력을 그대로 옮긴 것이다** — 손으로 고치지 말고 다시 돌려 붙인다.
+`--report` 출력(2026-10-06, catalogVersion 70). skills는 root 포함. challenge는 첫 번째 skill의 category로 센다. **이 표는 `python content/tools/validate_content.py --report`의 출력을 그대로 옮긴 것이다** — 손으로 고치지 말고 다시 돌려 붙인다.
 
 | category | skills | MUST | SHOULD | LATER | cards | PRACTICE | DIAGNOSTIC |
 |---|---|---|---|---|---|---|---|

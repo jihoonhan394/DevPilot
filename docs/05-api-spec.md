@@ -4543,7 +4543,15 @@ public record LessonView(
         String inProject,
         List<LessonSourceView> sources,
         List<LessonSourceView> readMore,
+        LessonRequirementView requirement, // 계획에 목표가 없으면 null (ADR-069)
         boolean retired) {}
+
+/**
+ * 이 기술을 어디까지 알아야 하는지. 활성 계획의 우선순위와 축별 목표, 그리고 지금 수준이다. 계획에 그 skill의 목표가
+ * 없으면 `requirement` 자체가 null이다 — 꾸며 내지 않는다.
+ */
+public record LessonRequirementView(
+        Priority priority, AxisLevels targets, AxisLevels planningLevels) {}
 
 public record LessonUnitView(
         String unitKey,
@@ -4579,8 +4587,12 @@ public record UnitProgressView(
 
 노트 하나와 단위 전부. **정답을 담지 않는다** — `predict.answer`, `complete.answers`, `problem.modelAnswer`, `problem.selfChecks`는 채점·제출 응답에만 들어간다. 그래서 이 응답을 캐시해도 답이 새지 않는다.
 
-- 200 `LessonView`. 다른 사용자의 자원이 아니므로 소유권 검사는 없다(콘텐츠다). 진행(`progress`)만 호출한 사용자 것이다.
+- 200 `LessonView`. 다른 사용자의 자원이 아니므로 소유권 검사는 없다(콘텐츠다). 진행(`progress`)과 `requirement`만 호출한 사용자 것이다.
 - 404 `RESOURCE_NOT_FOUND` — registry에 없는 key
+
+`requirement`는 노트 본문이 답하지 못하는 질문에 답한다(ADR-069): "이걸 외워야 하나, 이 정도면 만들 수 있나." 본문은
+콘텐츠라 모두에게 같지만 기준은 그 사람 계획에 있다 — 우선순위(`MUST`/`SHOULD`/`LATER`)와 축별 목표. 화면은 지식 축만
+쓴다(노트가 올리는 축이다, `19` §7.2). 계획에 그 skill의 목표가 없으면 null이고 앱은 줄을 비운다.
 
 ### 21.3 `GET /api/v1/skills/{skillId}/lesson`
 
