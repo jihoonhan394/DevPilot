@@ -130,4 +130,30 @@ void main() {
     expect(isDiagnosticMode(<DiagnosticSuggestionView>[testDiagnostic()]), isTrue);
     expect(isDiagnosticMode([testDiagnostic(), testDiagnostic(claimedLevel: 4)]), isFalse);
   });
+
+  /// 진단을 그만둬도 수준을 말할 길이 있어야 한다 (ADR-068).
+  ///
+  /// 진단은 선택이고 중간에 포기할 수 있다. 그러면 모든 분야가 0에서 시작하는데, 전에는 수준을 직접 고르는 화면이
+  /// 설정 안에만 있어서 진단 모드로 시작한 사람은 그 길을 찾을 수 없었다.
+  testWidgets('shouldOfferTheSelfAssessmentFromTheDiagnosticsScreen', (tester) async {
+    await pumpApp(tester, backend: backend);
+    await goTo(tester, AppRoutes.diagnostics);
+
+    expect(find.byKey(const Key('diagnostics.pickLevelHint')), findsOneWidget);
+    expect(find.textContaining('직접 고르면'), findsOneWidget);
+
+    await tapKey(tester, 'diagnostics.pickLevelButton');
+
+    expect(locationOf(tester), AppRoutes.settingsSelfAssessment);
+  });
+
+  /// Today의 진단 카드에서도 같은 길이 열린다 — 진단 화면까지 가지 않아도 된다.
+  testWidgets('shouldOfferTheSelfAssessmentFromTheTodayCard', (tester) async {
+    backend.todayRepository.today = null;
+    await pumpApp(tester, backend: backend);
+
+    await tapKey(tester, 'today.diagnosticPickLevelButton');
+
+    expect(locationOf(tester), AppRoutes.settingsSelfAssessment);
+  });
 }

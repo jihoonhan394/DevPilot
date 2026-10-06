@@ -184,4 +184,31 @@ void main() {
     expect(find.byKey(const Key('replan.shrinkSuggestions')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  /// 목표일에 맞춘 날짜 제안을 눌러 편집 양식에 넣는다 (ADR-067).
+  ///
+  /// 경고가 아니라 동작이다 — 목표일을 바꾸지 않아도 오늘이 지나면 창이 줄어 제안이 생기므로, 알림으로 두면
+  /// 매번 뜨는 잔소리가 된다.
+  testWidgets('shouldApplyTheProposedMilestoneDatesToTheEditForm', (tester) async {
+    await openPreview(tester, reason: '목표일을 늘렸다');
+
+    expect(find.byKey(const Key('replan.reschedule')), findsOneWidget);
+    // 움직이는 단계 수를 먼저 말한다
+    expect(find.textContaining('남은 단계 1개'), findsOneWidget);
+
+    await tapKey(tester, 'replan.rescheduleButton');
+
+    expect(find.textContaining('다시 배치했어요'), findsOneWidget);
+    // 저장하지 않았다 — 서버에 commit이 가지 않는다
+    expect(backend.planRepository.replans, isEmpty);
+  });
+
+  /// 제안이 비어 있으면 그 영역 자체가 없다.
+  testWidgets('shouldHideTheRescheduleBlockWhenThereIsNoProposal', (tester) async {
+    backend.planRepository.previewResponder = (_) =>
+        testShrinkPreview().copyWith(milestoneSchedule: const []);
+    await openPreview(tester);
+
+    expect(find.byKey(const Key('replan.reschedule')), findsNothing);
+  });
 }

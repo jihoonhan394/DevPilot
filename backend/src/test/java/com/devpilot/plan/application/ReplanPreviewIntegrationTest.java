@@ -106,6 +106,75 @@ class ReplanPreviewIntegrationTest extends ApiTestSupport {
         assertThat(counts(user)).isEqualTo(before);
     }
 
+    /**
+     * 목표일을 늘리면 남은 milestone 날짜를 새 목표일에 맞춘 제안이 함께 온다 (ADR-067).
+     *
+     * <p>목표일만 바꾸면 plan 구조는 그대로라(docs/05 §5.2) 일정표가 옛 날짜에 남는다. 손으로 고치게 두면 날짜가 썩고 docs/06 §5.4 {@code
+     * milestoneUrgency}가 포화된다.
+     */
+    @Test
+    void shouldSuggestMilestoneDatesForTheNewTargetDate() throws Exception {
+        TestUser user = onboardedOwner();
+        JsonNode plan = activePlan(user);
+        // 목표일을 2027-04-01 → 2027-07-01 로 석 달 늘린다
+        api.put(
+                        user,
+                        "/api/v1/learning-goal",
+                        Map.of(
+                                "targetRole",
+                                "JAVA_BACKEND",
+                                "targetCompletionDate",
+                                "2027-07-01",
+                                "focusSkillCodes",
+                                List.of(),
+                                "version",
+                                0))
+                .andExpect(status().isOk());
+
+        // 목표일 변경은 같은 트랜잭션에서 활성 plan의 replanRecommended를 바꾼다(05 §5.2) → version이 오른다.
+        // 낡은 plan으로 요청을 만들면 409 CONCURRENT_MODIFICATION이다.
+        JsonNode refreshed = activePlan(user);
+        JsonNode preview =
+                api.body(
+                        preview(user, refreshed, replanRequest(refreshed, "목표일 연장"))
+                                .andExpect(status().isOk()));
+
+        JsonNode schedule = preview.path("milestoneSchedule");
+        assertThat(schedule).isNotEmpty();
+        // 마지막 단계가 새 목표일에서 끝난다
+        assertThat(schedule.get(schedule.size() - 1).path("endDate").asString())
+                .isEqualTo("2027-07-01");
+        // 바뀐 것만 담긴 목록이 아니라 전체가 오고, 바뀐 것에 표시가 붙는다
+        assertThat(schedule.valueStream().anyMatch(item -> item.path("changed").asBoolean()))
+                .isTrue();
+        // 저장하지 않는다 — 제안일 뿐이다
+        assertThat(activePlan(user).path("milestones").get(0).path("endDate").asString())
+                .isEqualTo(plan.path("milestones").get(0).path("endDate").asString());
+    }
+
+    /**
+     * 목표일을 바꾸지 않아도 제안이 나온다 — 오늘이 지나면서 남은 창이 줄기 때문이다 (ADR-067).
+     *
+     * <p>온보딩은 그날부터 목표일까지로 배치했고, 재배치는 <b>오늘부터</b> 본다. 그래서 "목표일을 바꿀 때만 나오는 알림"이 아니라 <b>언제든 누를 수 있는
+     * 동작</b>이다 — 화면도 경고가 아니라 버튼으로 둔다.
+     */
+    @Test
+    void shouldSuggestDatesEvenWithoutAGoalChangeBecauseTheWindowShrinks() throws Exception {
+        TestUser user = onboardedOwner();
+        JsonNode plan = activePlan(user);
+
+        JsonNode preview =
+                api.body(preview(user, plan, replanRequest(plan, "확인")).andExpect(status().isOk()));
+
+        JsonNode schedule = preview.path("milestoneSchedule");
+        assertThat(schedule).isNotEmpty();
+        // 남은 첫 단계는 오늘부터 — 지난 날짜에 다시 배치하지 않는다
+        assertThat(schedule.get(0).path("startDate").asString()).isEqualTo("2026-10-05");
+        // 마지막은 목표일에서 끝난다
+        assertThat(schedule.get(schedule.size() - 1).path("endDate").asString())
+                .isEqualTo("2027-04-01");
+    }
+
     @Test
     void shouldEvaluateEditedTargetsWithoutApplyingThem() throws Exception {
         TestUser user = onboardedOwner();

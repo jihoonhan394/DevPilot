@@ -1081,7 +1081,7 @@ public record DiagnosticSuggestionView(
 1. 대상 category — category당 1문제를 고르고, **그다음에** 최대 5개로 자른다(설계 §8). 자르는 순서는 **활성 plan의 중요도**다: `plan_skill_target.priority`(MUST → SHOULD → LATER → 없음) → `practical_importance` DESC → `SkillCategory` 선언 순서. **선언 순서로 자르지 않는다** — 그러면 연동 트랙 사용자가 `INTEGRATION`·`SECURITY`·`PRACTICAL_ENGINEERING`(선언 10~12번)을 영영 받지 못한다. 앞의 네 category가 상한을 다 먹는다(2026-10-01 시나리오 테스트에서 확인). 4단계의 category 안 정렬과 같은 키를 쓴다.
    - **진단 모드**(`user_skill_state` 중 `self_assessed_level`이 `null`이 아닌 행이 하나도 없음 = 온보딩에서 `runDiagnostic = true`): `self_assessment_active = true`인 행이 있는 category 전부.
    - **자기평가 모드**: `self_assessment_active = true`인 행의 `self_assessed_level` 최댓값이 **1 이상**인 category(ADR-058). 0은 확인할 주장이 없어 빼고, 그 분야는 개념 노트부터 간다(ADR-057).
-2. 그 category에서 **지금 재려는 난이도를 이미 확인한 경우** 제외한다(ADR-059) — 그 category의 `purpose = DIAGNOSTIC` challenge 중 `status ∈ {SUBMITTED, EVALUATED}`인 attempt가 있고 그 challenge의 `difficulty`가 4단계의 **목표 난이도와 같을 때**다. 진단 모드에는 목표 난이도가 없으므로 한 번 받았으면 끝이다.
+2. 그 category에서 **지금 재려는 난이도를 이미 확인한 경우** 제외한다(ADR-059) — 그 category의 `purpose = DIAGNOSTIC` challenge 중 `status ∈ {SUBMITTED, EVALUATED}`인 attempt가 있고 그 challenge의 `difficulty`가 4단계의 **목표 난이도와 같을 때**다. 진단 모드의 목표 난이도는 2이므로(4단계) 난이도 2를 한 번 받으면 그 category는 끝이다.
    - **왜 난이도까지 보나**: category당 1회로 두면 자기평가를 고쳐 수준이 올라가도(§6.5) 그 새 주장을 확인할 자리가 없다. 도구가 자기 추정을 맞다고 전제하고 반증할 기회를 한 번만 주는 셈이다(2026-09-30 실사용 지적). 같은 수준을 반복해 묻지는 않는다 — 확인이 끝난 자리를 다시 두드리는 것은 방해다.
    - `STARTED`(시작만 함)는 **제외하지 않고 이어서 풀도록 그대로 제안**한다. 응답의 `activeAttemptId`가 그 attempt다.
    - `ABANDONED`(제출 없이 그만둠)도 **제외하지 않는다.** 진단을 받지 않았기 때문이다.
@@ -1089,7 +1089,7 @@ public record DiagnosticSuggestionView(
 3. 후보 challenge: `status = VALIDATED`, `purpose = DIAGNOSTIC`, `owner_user_id IS NULL`, `challenge_skill` 중 하나 이상이 그 category에 속하고 해당 skill의 `self_assessment_active = true`.
 4. 정렬: **난이도 거리**(ADR-058) → 대상 skill의 활성 plan `plan_skill_target.priority`(MUST → SHOULD → LATER → target 없음) → `practical_importance` DESC → `challenge.seed_key` ASC. 첫 번째 1개를 고른다. challenge가 여러 skill에 걸치면 이 정렬에서 가장 앞선 skill을 `skill`로 쓴다.
    - **난이도 거리**는 주장한 수준을 재기 위한 것이다. 자기평가 모드의 목표 난이도는 `min(claimedLevel, 3)`이고, `difficulty`가 목표와 같은 것이 가장 앞이다. 같은 것이 없으면 **목표보다 낮은 쪽**이 먼저다 — 주장보다 어려운 문제를 내면 정직하게 답한 사람이 떨어져 `self_assessment_active`가 꺼진다.
-   - **진단 모드**는 목표가 없다. 이 모드에서는 `difficulty`가 그대로 레벨이 되므로(`06` §7.4) **가장 높은 난이도**를 고른다.
+   - **진단 모드의 목표 난이도는 2다**(ADR-068). 이 모드에는 주장이 없다. 전에는 "`difficulty`가 그대로 레벨이 되니 통과하면 최고 레벨을 준다"는 이유로 **가장 높은 난이도**를 골랐는데, `06` §7.4 `DIAGNOSTIC_FAILED`는 레벨을 올리지 않으므로 결과가 **전부 아니면 전무**였다. 2026-10-06 실사용에서 난이도 3을 받은 사용자가 중간에 그만뒀고, 그 뒤 모든 분야가 0에서 시작했다. 수준을 모르는 사람에게 최고 난이도를 내는 것은 재는 것이 아니라 떨어뜨리는 것이다. 통과하면 레벨 2에서 시작하고, 더 높다고 생각하면 자기평가(§6.5)로 직접 올린다.
 5. 후보가 없는 category는 결과에서 뺀다.
 
 - 제안은 저장하지 않는다. 사용자는 `POST /challenges/{challengeId}/attempts`(§10.5)로 시작하고, 평가 결과는 `DIAGNOSTIC_PASSED`/`DIAGNOSTIC_FAILED` 규칙(`06-learning-engine-rules.md` §7.4)을 따른다. 이벤트 payload `claimedLevel`은 평가 시점 해당 skill의 `self_assessed_level`이다.
@@ -1544,7 +1544,16 @@ public record ReplanPreviewResponse(
         List<DeferSuggestionView> deferSuggestions,                       // 제안 순서 그대로
         List<TargetReductionSuggestionView> mustTargetReductionSuggestions,
         List<ExpansionSuggestionView> expansionSuggestions,               // 여유가 있을 때만 (06 §4.4 6단계). 위 두 목록과 동시에 비어 있지 않은 경우는 없다
-        RiskEstimateView riskAfterSuggestions) {}
+        RiskEstimateView riskAfterSuggestions,
+        List<MilestoneScheduleView> milestoneSchedule) {}   // 목표일에 맞춘 제안 날짜. 바뀔 것이 없으면 []
+
+public record MilestoneScheduleView(
+        UUID id,                        // 기존 milestone이면 그 id, 화면에서 새로 더한 것이면 null
+        int sortOrder,
+        String title,
+        LocalDate startDate,
+        LocalDate endDate,
+        boolean changed) {}             // 지금 날짜와 다른가 — 화면이 바뀐 것만 강조한다
 
 public record DeferSuggestionView(
         SkillRef skill,
@@ -2502,6 +2511,10 @@ public record ScheduledReviewView(UUID reviewItemId, String skillCode, LocalDate
 
 **정답 정보 공개**: `answerRevealed = true` ⇔ 요청 사용자가 이 challenge에 대해 `evaluated_outcome IS NOT NULL`인 attempt를 하나 이상 가짐(한 번이라도 평가 완료). 이후 재제출·포기와 무관하게 계속 공개한다.
 
+`milestoneSchedule` 계산 (ADR-067): 요청의 `milestones`를 `sortOrder` ASC로 보고, **`status != PLANNED`인 것은 날짜를 그대로 두고** 나머지를 `[max(오늘, 고정된 것의 마지막 end + 1), 목표일]` 창에 `19-content-spec.md` §5 배치 알고리즘으로 다시 배치한다. **가중치는 각 milestone의 지금 길이**다 — 템플릿 weight를 다시 꺼내지 않는다(사용자가 손으로 늘려 둔 비율을 지키고, 저장된 계획에는 weight가 없다). 전부 지금 날짜와 같으면 `[]`다. 창이 없으면(고정된 것이 이미 목표일을 넘었다) 역시 `[]`이고, 그때 할 말은 "목표일을 더 늘리거나 범위를 줄이세요"다(ADR-062).
+
+**목표일을 바꾸지 않아도 비어 있지 않을 수 있다.** 온보딩은 그날부터 목표일까지로 배치했고 재배치는 **오늘부터** 보기 때문이다. 그래서 화면은 이것을 경고가 아니라 **언제든 누를 수 있는 동작**으로 둔다.
+
 `claimWithdrawnSkills` 계산: attempt `outcome`이 null이 아닐 때만 채운다(푸는 중에는 `[]`). challenge skill 중 `self_assessed_level`이 있고 `self_assessment_active = false`인 것을 `code` ASC로 넣는다. **주장이 거둬지면 `06` §7.5가 planning을 근거로 떨어뜨려 다음 과제의 난이도가 내려가고 예산이 늘어난다** — 그 사실을 말하지 않으면 사용자는 왜 갑자기 쉬워졌는지도, 왜 목표일이 멀어졌는지도 모른다(ADR-064). 거둬진 시점은 저장하지 않으므로 **"방금 바뀌었다"가 아니라 "지금 이렇다"**를 말한다.
 
 `reviewScheduled` 계산: attempt `outcome`이 `06-learning-engine-rules.md` §8.3 생성 조건을 만족하면 challenge skill마다 같은 절의 `concept_key`로 `review_item`을 찾아 `{reviewItemId, skillCode, dueDate = planDate(due_at)}`를 넣는다.
@@ -3384,7 +3397,7 @@ public record SkillCategorySummaryView(
 | `weekStudyMinutes`, `weekCompletedSessions` | `plan_date ∈ [weekStartDate, today]`인 `COMPLETED` 세션의 `actual_minutes` 합, 개수 (`06-learning-engine-rules.md` §12 정의). 주간 학습 시간의 기준은 **이번 주 월요일부터**다 |
 | `streakDays` | 완료한 `learning_task`가 1건 이상인 plan-day를 오늘부터 거꾸로 세어 **끊기지 않고 이어진 날 수**. 오늘 아직 완료가 없으면 어제부터 센다(오늘은 아직 끊긴 날이 아니다). 어제도 없으면 0. 세는 범위는 최근 366 plan-day까지다 |
 | `weeklySummary` | `builtThisWeek`: `plan_date ∈ [weekStartDate, today]`이고 `status = COMPLETED`인 `CHALLENGE`·`PROJECT_TASK`·`REDO` task를 `plan_date` DESC, `sort_order` DESC로 최대 5개. `completedTasks`: 같은 기간의 `COMPLETED` task 수(REVIEW task 포함). `notesWritten`: 같은 기간의 `side_project_note` 수(`occurred_on` 기준 — 기록을 적은 날이 아니라 **일이 있었던 날**로 센다. `06` §12 `projectNoteCount`와 같은 기준이다). dashboard는 `project`를 직접 의존하지 않고 `evidence.application.LearningMetricsQueryService`로 읽는다(`03-system-architecture.md` §2.2). `studyMinutes`: `weekStudyMinutes`와 같은 값 |
-| `risk.trend` | 사용자의 `plan_progress_snapshot`에서 서로 다른 `snapshot_date` 최근 8개. 같은 날짜에 여러 행(replan)이 있으면 `generated_at`이 가장 늦은 행 |
+| `risk.trend` | 사용자의 `plan_progress_snapshot`에서 서로 다른 `snapshot_date` 최근 8개. 같은 날짜에 여러 행(replan)이 있으면 `generated_at`이 가장 늦은 행. **주의: 2026-10-01 경계가 있다** — 그 이전 행은 네 축 기준, 이후 행은 잴 수 있는 축 기준으로 계산한 값이다(ADR-062). 경계에서 위험도가 내려간 것은 사용자가 나아진 것이 아니므로, 추세를 그리는 화면은 그 경계를 표시하거나 이전 점을 빼야 한다 |
 | `skillCategories` | 활성 plan의 `plan_skill_target` 중 `deferred = false`인 skill을 category별로 묶는다. `n` = skill 수. `avgPlanningLevelMilli = floorDiv(Σ_skill Σ_axis planning × 1000, n × 4)`, `avgTargetLevelMilli = floorDiv(Σ_skill Σ_axis target × 1000, n × 4)` (planning은 `06-learning-engine-rules.md` §7.5). `n ≥ 1`인 category만, `SkillCategory` 선언 순서 |
 | `milestoneTimeline.milestones[].current` | **`sort_order`가 가장 앞선 미완료 milestone 하나만 true**다(ADR-044, `06` §5.2·§7.6). 완료 판정의 목표는 지금 잴 수 있는 축만 본다(ADR-061) — Today와 같은 기준이어야 두 화면이 같은 단계를 가리킨다. 날짜로 정하지 않는다 — Today가 고르는 단계와 같아야 하고, 날짜로 판정하면 쉬었을 때 두 화면이 다른 단계를 가리킨다. 전부 끝냈으면 모두 false다. 학습 목표가 없으면 `milestoneTimeline` 자체가 null이다(`horizonDate`를 만들 수 없다) |
 | `weakThinkingAxes` | `06-learning-engine-rules.md` §12 `weakThinkingAxes`, 기간 최근 28 plan-day |

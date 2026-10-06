@@ -2,6 +2,7 @@ package com.devpilot.today.application;
 
 import com.devpilot.common.config.DevPilotProperties;
 import com.devpilot.common.math.FixedPointMath;
+import com.devpilot.today.domain.DifficultyBandPolicy;
 import com.devpilot.today.domain.PlannerScoring;
 import com.devpilot.today.domain.ReasonTemplates;
 import com.devpilot.today.domain.TimeAllocator;
@@ -44,6 +45,16 @@ public final class TodayRuleSettings {
                         FixedPointMath.toMicros(planner.leechReviewUrgency())),
                 planner.lowEnergyLongTaskMinutes(),
                 Math.toIntExact(FixedPointMath.toMicros(weights.stageGap())));
+    }
+
+    /** 적정 난이도 밴드 (docs/06 §5.3, ADR-066). 비율은 bp 정수로 바꿔 넘긴다 (§1 N-6). */
+    public static DifficultyBandPolicy.Settings difficultyBand(DevPilotProperties properties) {
+        DevPilotProperties.DifficultyBand band = properties.planner().difficultyBand();
+        return new DifficultyBandPolicy.Settings(
+                FixedPointMath.toBasisPoints(band.upper()),
+                FixedPointMath.toBasisPoints(band.lower()),
+                band.windowSize(),
+                band.minSamples());
     }
 
     public static TimeAllocator.Settings timeAllocation(DevPilotProperties properties) {

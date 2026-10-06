@@ -1,5 +1,6 @@
 package com.devpilot.training.infrastructure;
 
+import com.devpilot.training.domain.AttemptOutcome;
 import com.devpilot.training.domain.ChallengeAttempt;
 import java.time.Instant;
 import java.util.Collection;
@@ -70,6 +71,21 @@ public interface ChallengeAttemptRepository extends JpaRepository<ChallengeAttem
                                  com.devpilot.training.domain.AttemptOutcome.SOLVED_WITH_HINTS)
             """)
     List<UUID> findSolvedChallengeIds(@Param("userId") UUID userId);
+
+    /**
+     * 최근 평가가 끝난 PRACTICE attempt의 결과, 최신순 (docs/06 §5.3 적정 난이도 밴드, ADR-066). 진단은 수준을 재는 자리라 난이도 밴드에
+     * 넣지 않는다.
+     */
+    @Query(
+            """
+            select a.outcome from ChallengeAttempt a join Challenge c on c.id = a.challengeId
+             where a.userId = :userId
+               and a.status = com.devpilot.training.domain.AttemptStatus.EVALUATED
+               and a.outcome is not null
+               and c.purpose <> com.devpilot.training.domain.ChallengePurpose.DIAGNOSTIC
+             order by a.completedAt desc
+            """)
+    List<AttemptOutcome> findRecentPracticeOutcomes(@Param("userId") UUID userId, Limit limit);
 
     /** 진단 제안에서 제외할 challenge (docs/05 §4.2 2단계): 상태와 무관하게 attempt가 있는 것. */
     @Query(

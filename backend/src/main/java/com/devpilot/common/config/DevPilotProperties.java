@@ -159,6 +159,7 @@ public record DevPilotProperties(
             @Valid @NotNull Weights weights,
             @Valid @NotNull Modifiers modifiers,
             @Valid @NotNull Redo redo,
+            @Valid @NotNull DifficultyBand difficultyBand,
             @Positive int lowEnergyLongTaskMinutes,
             @NotNull BigDecimal minPrerequisiteReadiness,
             @NotNull BigDecimal overrunTolerance,
@@ -197,6 +198,31 @@ public record DevPilotProperties(
             if (medium >= high) {
                 throw new IllegalArgumentException(
                         "planner.reason-medium-threshold must be lower than reason-high-threshold");
+            }
+        }
+    }
+
+    /**
+     * 적정 난이도 밴드 (docs/06 §5.3, ADR-066). 측정된 성공률이 상한을 넘으면 한 단계 올리고 하한 아래면 내린다. 기본값은 Wilson et
+     * al.(2019) 85% 규칙에서 왔다 — 법칙이 아니라 목표 밴드다.
+     */
+    public record DifficultyBand(
+            @NotNull BigDecimal upper,
+            @NotNull BigDecimal lower,
+            @Positive int windowSize,
+            @Positive int minSamples) {
+
+        public DifficultyBand {
+            int upperBp = requireBasisPoints(upper, "planner.difficulty-band.upper");
+            int lowerBp = requireBasisPoints(lower, "planner.difficulty-band.lower");
+            if (lowerBp > upperBp) {
+                throw new IllegalArgumentException(
+                        "devpilot.planner.difficulty-band.lower must not exceed upper");
+            }
+            if (windowSize < minSamples) {
+                throw new IllegalArgumentException(
+                        "devpilot.planner.difficulty-band.window-size must be at least"
+                                + " min-samples");
             }
         }
     }

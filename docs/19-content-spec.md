@@ -1359,6 +1359,15 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 
 **점검 기록**
 
+2026-10-02 — 용어 링크 생존 확인 (catalogVersion 69, 콘텐츠 변경 없음)
+
+| 항목 | 내용 |
+|---|---|
+| 대상 | `terms/*.yaml`의 `sourceUrl` **20건 전부**(중복 제거 후). 2026-10-01 점검에서 "다음 점검에서 연다"로 남긴 PostgreSQL 16 · Spring · RFC 9110 · OWASP · Docker · git-scm · JDK 25 링크를 포함한다 |
+| 방법 | 리다이렉트를 따라가는 HTTP 요청으로 최종 상태 코드만 확인했다 (`curl -sIL`) |
+| 결과 | **20건 모두 200.** 끊긴 링크·이동한 링크 없음. 2026-10-01에 바꾼 `docs.hibernate.org/orm/7.0/userguide/…`와 `docs.junit.org/current/…`도 살아 있다 |
+| **확인하지 않은 것** | **그 문장이 아직 그 페이지에 있는지는 보지 않았다.** 링크가 사는 것과 내용이 맞는 것은 다르다(§7.6 2번). 공식 문서는 같은 주소에서 내용을 고치므로, 다음 점검에서 본문을 읽어야 한다 |
+
 2026-10-01 — 링크·버전 점검 (catalogVersion 67 → 68)
 
 | 항목 | 내용 |
@@ -1513,11 +1522,11 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 
 ---
 
-## 12. 콘텐츠 인벤토리 (catalogVersion 68)
+## 12. 콘텐츠 인벤토리 (catalogVersion 69)
 
 ### 12.1 카테고리별 수량
 
-`--report` 출력(2026-10-01, catalogVersion 68). skills는 root 포함. challenge는 첫 번째 skill의 category로 센다. **이 표는 `python content/tools/validate_content.py --report`의 출력을 그대로 옮긴 것이다** — 손으로 고치지 말고 다시 돌려 붙인다.
+`--report` 출력(2026-10-02, catalogVersion 69). skills는 root 포함. challenge는 첫 번째 skill의 category로 센다. **이 표는 `python content/tools/validate_content.py --report`의 출력을 그대로 옮긴 것이다** — 손으로 고치지 말고 다시 돌려 붙인다.
 
 | category | skills | MUST | SHOULD | LATER | cards | PRACTICE | DIAGNOSTIC |
 |---|---|---|---|---|---|---|---|
@@ -1531,11 +1540,11 @@ catalog는 삭제하지 않고 비활성화한다(`04` §1, §8).
 | TESTING | 7 | 4 | 2 | 0 | 7 | 6 | 3 |
 | DEVOPS | 13 | 3 | 6 | 3 | 12 | 9 | 3 |
 | SECURITY | 6 | 4 | 1 | 0 | 6 | 3 | 3 |
-| INTEGRATION | 10 | 0 | 4 | 5 | 18 | 11 | 3 |
+| INTEGRATION | 10 | 0 | 4 | 5 | 18 | 11 | 4 |
 | PRACTICAL_ENGINEERING | 8 | 2 | 5 | 0 | 7 | 3 | 3 |
 | SYSTEM_DESIGN | 4 | 0 | 1 | 2 | 0 | 0 | 0 |
 | EXPLANATION | 5 | 4 | 0 | 0 | 4 | 0 | 3 |
-| **합계** | **107** | **43** | **39** | **11** | **111** | **63** | **30** |
+| **합계** | **107** | **43** | **39** | **11** | **111** | **63** | **31** |
 
 **DIAGNOSTIC 0인 네 category**(NETWORK · CS · ALGORITHM · SYSTEM_DESIGN)는 콘텐츠가 빠진 것이 아니다. 어느 트랙에서도 MUST(importance ≥ 0.70)인 skill이 없어 **CV-59가 진단을 허용하지 않는다** — 재지 않기로 한 자리다. 나머지 10개 category는 L1·L2·L3 사다리가 모두 있다(ADR-058·059).
 

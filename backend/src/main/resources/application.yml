@@ -144,6 +144,11 @@ devpilot:
       monotony-three-days: 0.70            # 06 §5.5 MONOTONY_THREE_DAYS (7_000bp)
       monotony-five-days: 0.40             # 06 §5.5 MONOTONY_FIVE_DAYS (4_000bp)
       redo-due: 1.30                       # 06 §5.5 REDO_DUE (13_000bp)
+    difficulty-band:                       # 06 §5.3 적정 난이도 밴드 (ADR-066, Wilson et al. 2019)
+      upper: 0.85                          # 넘으면 한 단계 올린다
+      lower: 0.70                          # 아래면 한 단계 내린다
+      window-size: 10                      # 최근 평가된 PRACTICE attempt 개수
+      min-samples: 5                       # 이보다 적으면 움직이지 않는다
     low-energy-long-task-minutes: 30
     min-prerequisite-readiness: 0.5
     overrun-tolerance: 1.10

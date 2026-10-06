@@ -4462,6 +4462,25 @@ components:
           format: int64
       required:
       - version
+    MilestoneSchedule:
+      type: object
+      properties:
+        changed:
+          type: boolean
+        endDate:
+          type: string
+          format: date
+        id:
+          type: string
+          format: uuid
+        sortOrder:
+          type: integer
+          format: int32
+        startDate:
+          type: string
+          format: date
+        title:
+          type: string
     MilestoneTimelineView:
       type: object
       properties:
@@ -4985,6 +5004,10 @@ components:
         horizonDate:
           type: string
           format: date
+        milestoneSchedule:
+          type: array
+          items:
+            $ref: "#/components/schemas/MilestoneSchedule"
         mustTargetReductionSuggestions:
           type: array
           items:
@@ -5022,6 +5045,7 @@ components:
       - effectiveBudgetMinutes
       - expansionSuggestions
       - horizonDate
+      - milestoneSchedule
       - mustTargetReductionSuggestions
       - nominalBudgetMinutes
       - planId

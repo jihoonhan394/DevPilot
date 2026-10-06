@@ -2957,5 +2957,21 @@
   "guideCheckLevel": "확인 문제 풀어 보기",
   "@guideCheckLevel": {"description": "SCR-TODAY guide: one tap to the diagnostic, the door that replaces a claim with a record (ADR-063)."},
   "trainingEvalDifficultyLowered": "이 수준에서 막혔으니 {skill}은 기록 기준으로 다시 잡아요. 다음 과제는 더 쉬운 단계부터 나오고, 목표일 계산도 지금 실력으로 바뀌어요.",
-  "@trainingEvalDifficultyLowered": {"description": "SCR-TRAINING-ATTEMPT result: why the difficulty dropped (ADR-064). Not a verdict — it says what changes next.", "placeholders": {"skill": {"type": "String"}}}
+  "@trainingEvalDifficultyLowered": {"description": "SCR-TRAINING-ATTEMPT result: why the difficulty dropped (ADR-064). Not a verdict — it says what changes next.", "placeholders": {"skill": {"type": "String"}}},
+  "skillDetailCalibrationAhead": "말한 수준은 {self}, 기록은 아직 {evidence}예요. 지금 난이도는 말한 수준을 따라가요 — 한 문제만 풀어도 기록이 따라옵니다.",
+  "@skillDetailCalibrationAhead": {"description": "SCR-SKILL-DETAIL: the claim is ahead of the record. Open Learner Model research (ASEE 2023) finds that showing this alignment improves self-monitoring, most for low achievers.", "placeholders": {"self": {"type": "String"}, "evidence": {"type": "String"}}},
+  "skillDetailCalibrationMet": "기록이 말한 수준({self})을 따라잡았어요. 이제 기록으로 난이도를 잡습니다.",
+  "@skillDetailCalibrationMet": {"description": "SCR-SKILL-DETAIL: the record has caught up with the claim — the positive calibration case.", "placeholders": {"self": {"type": "String"}}},
+  "skillDetailCalibrationWithdrawn": "말한 수준({self})에서 막혀서 더 쓰지 않아요. 지금은 기록({evidence})으로 난이도를 잡습니다.",
+  "@skillDetailCalibrationWithdrawn": {"description": "SCR-SKILL-DETAIL: the claim was withdrawn (ADR-063). Replaces the bare skillDetailSelfInactive line with the two numbers side by side.", "placeholders": {"self": {"type": "String"}, "evidence": {"type": "String"}}},
+  "replanPreviewReschedule": "목표일에 맞춰 일정 다시 배치",
+  "@replanPreviewReschedule": {"description": "SCR-REPLAN preview: applies the proposed milestone dates (ADR-067). An action, not an alert."},
+  "replanPreviewRescheduleHint": "남은 단계 {count}개를 목표일까지 고르게 다시 나눠요. 끝낸 단계는 그대로 둡니다.",
+  "@replanPreviewRescheduleHint": {"description": "SCR-REPLAN preview: what the reschedule button will do.", "placeholders": {"count": {"type": "int"}}},
+  "replanPreviewRescheduleDone": "일정을 다시 배치했어요. 저장하기 전에 아래에서 확인하세요.",
+  "@replanPreviewRescheduleDone": {"description": "SCR-REPLAN preview: the dates were applied to the edit form but not saved yet."},
+  "diagnosticsPickLevel": "직접 고르기",
+  "@diagnosticsPickLevel": {"description": "SCR-DIAGNOSTICS / SCR-TODAY diagnostic card: go to the self-assessment screen instead of answering (ADR-068)."},
+  "diagnosticsPickLevelHint": "문제로 재지 않아도 돼요. 분야별 수준을 직접 고르면 그 수준에서 시작합니다.",
+  "@diagnosticsPickLevelHint": {"description": "SCR-DIAGNOSTICS: why the self-assessment link is there — the diagnostic is optional and quitting it leaves everything at 0."}
 }

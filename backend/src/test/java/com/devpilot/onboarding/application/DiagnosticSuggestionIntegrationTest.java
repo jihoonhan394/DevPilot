@@ -105,16 +105,19 @@ class DiagnosticSuggestionIntegrationTest extends ApiTestSupport {
     }
 
     /**
-     * ADR-058: 진단 모드는 claimedLevel이 없어 difficulty가 그대로 레벨이 된다(docs/06 §7.4). 그래서 가장 높은 난이도를 고른다 —
-     * JAVA에서 L2를 골라 버리면 통과해도 레벨이 2에 갇힌다.
+     * 진단 모드는 난이도 <b>2</b>에서 시작한다 (ADR-068).
+     *
+     * <p>전에는 "difficulty가 그대로 레벨이 되니 통과하면 최고 레벨을 준다"는 이유로 <b>가장 높은 난이도</b>를 골랐다(ADR-058). 그런데 §7.4
+     * {@code DIAGNOSTIC_FAILED}는 레벨을 올리지 않으므로 결과가 <b>전부 아니면 전무</b>였고, 2026-10-06 실사용에서 사용자가 난이도 3을
+     * 받고 중간에 그만뒀다 — 그 뒤 모든 분야가 0에서 시작했다. 수준을 모르는 사람에게 최고 난이도를 내는 것은 재는 것이 아니라 떨어뜨리는 것이다.
      */
     @Test
-    void shouldPickTheHighestDifficultyInDiagnosticMode() throws Exception {
+    void shouldStartFromTheMiddleDifficultyInDiagnosticMode() throws Exception {
         TestUser user = diagnosticModeUser();
 
         JsonNode items = suggestions(user);
 
-        assertThat(difficultyOf(items, "JAVA")).isEqualTo(3);
+        assertThat(difficultyOf(items, "JAVA")).isEqualTo(2);
         assertThat(items.valueStream().allMatch(item -> item.path("selfAssessedLevel").isNull()))
                 .isTrue();
     }
