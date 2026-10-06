@@ -69,6 +69,22 @@ class _SuggestionList extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(isDiagnosticMode(items) ? l10n.diagnosticsHelpDiagnosticMode : l10n.diagnosticsHelp),
+        // 진단은 선택이고 그만둬도 된다. 그러면 모든 분야가 0에서 시작하는데, 전에는 수준을 직접 고르는 길이
+        // 설정 안에만 있어서 진단 모드로 시작한 사람은 그 화면을 찾을 수 없었다 (ADR-068).
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          l10n.diagnosticsPickLevelHint,
+          key: const Key('diagnostics.pickLevelHint'),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            key: const Key('diagnostics.pickLevelButton'),
+            onPressed: () => context.go(AppRoutes.settingsSelfAssessment),
+            child: Text(l10n.diagnosticsPickLevel),
+          ),
+        ),
         const SizedBox(height: AppSpacing.lg),
         for (final item in open) ...[
           DiagnosticCard(suggestion: item),

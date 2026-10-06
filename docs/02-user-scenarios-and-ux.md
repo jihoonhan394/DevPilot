@@ -1212,6 +1212,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
 - **목적**: 진단 challenge 제안 전체를 보고 풀거나 건너뛴다(FR-15, FR-02 진단 모드). 온보딩에서 짧은 진단을 고른 사용자에게는 **시작 수준을 정하는 화면**이다. **진입**: SCR-ONBOARDING 5단계 "진단 시작", SCR-TODAY 진단 카드 "모두 보기". **Sprint**: S3.
 - **레이아웃**: 설명 1줄(진단 모드면 `diagnostics.helpDiagnosticMode`, 자기평가 모드면 `diagnostics.help`) + 카테고리별 카드 목록(카테고리 라벨, `selfAssessedLevel` 라벨 — 진단 모드는 `null`이라 이 줄을 숨긴다, `skill.name`, challenge `title`, `L{difficulty}`, `estimatedMinutes`, "풀기", "건너뛰기"). 최대 5개(`05` §4.2). 건너뛴 항목은 하단 "건너뛴 항목" 접힘 영역에 "다시 보기" 버튼과 함께 둔다.
+- **"직접 고르기" (S4, ADR-068)**: 설명 줄 아래에 `diagnostics.pickLevelHint` 한 줄과 `diagnostics.pickLevel` 버튼을 둔다(→ SCR-SELF-ASSESSMENT). **진단은 선택이고 중간에 그만둘 수 있다** — 그러면 모든 분야가 0에서 시작하는데, 전에는 수준을 직접 고르는 화면이 **설정 안에만** 있어서 진단 모드로 시작한 사람은 그 길을 찾을 수 없었다(2026-10-06 실사용에서 확인). SCR-TODAY 진단 카드에도 같은 버튼을 둔다(`today.diagnosticPickLevelButton`) — 진단 화면까지 가지 않아도 되게.
 - **모드 판정**: 모든 제안의 `selfAssessedLevel`이 `null`이면 진단 모드다(`05` §4.2 `DiagnosticSuggestionView`).
 - **데이터**: 진입 시 `GET /diagnostics/suggestions`. "풀기" → `POST /challenges/{challengeId}/attempts` → `/training/attempts/{attemptId}`.
 - **건너뛰기 저장**: 서버 API가 없다. `localStorage` key `devpilot.diagnostics.skipped.<externalAuthId>`에 challengeId 목록을 저장한다(try/catch). SCR-TODAY 카드는 건너뛰지 않은 첫 제안 1개만 보여주고, 모두 건너뛰면 카드를 숨긴다.

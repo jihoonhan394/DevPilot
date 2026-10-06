@@ -80,6 +80,13 @@ class _CardActions extends ConsumerWidget {
           onPressed: () => ref.read(diagnosticSkipsProvider.notifier).skip(challengeId),
           child: Text(l10n.todayDiagnosticSkip),
         ),
+        // 진단은 선택이다. 그만두면 모든 분야가 0에서 시작하는데, 전에는 그 사실도 수준을 직접 고르는 길도
+        // 어디에도 없었다 — 설정 안에만 있었다 (ADR-068).
+        TextButton(
+          key: const Key('today.diagnosticPickLevelButton'),
+          onPressed: () => context.go(AppRoutes.settingsSelfAssessment),
+          child: Text(l10n.diagnosticsPickLevel),
+        ),
         TextButton(
           key: const Key('today.diagnosticAllButton'),
           onPressed: () => context.go(AppRoutes.diagnostics),

@@ -1123,7 +1123,7 @@ RV-INTERLEAVE(list)                      # list = 1~2단계 결과, 0-based, 무
   - `claimedLevel` = 그 skill의 `self_assessed_level`. **null이면**(온보딩 진단 모드 `runDiagnostic = true`, 또는 그 category를 자기평가하지 않음) 진단 challenge의 `difficulty`를 쓴다. 예: 진단 모드에서 difficulty 2 진단을 통과 → K·I = `max(현재, min(2, 3))` = 2.
 - `DIAGNOSTIC_FAILED`: 레벨은 바꾸지 않고 `self_assessment_active = false`. 그 결과 planning이 evidence로 떨어지고(§7.5), 문턱 아래가 되어 **다음 과제가 그 skill의 개념 노트**가 된다(ADR-057). 한 번 틀렸다고 레벨을 내리지 않는 대신 **안다는 주장을 거둔다** — 증거가 아니라 주장이 틀린 것이기 때문이다.
 - 판정: challenge purpose = DIAGNOSTIC, evaluatedOutcome = CORRECT, maxHintLevel ≤ QUESTION_ONLY → PASSED. 그 외 평가 완료 → FAILED
-- 진단 challenge 제안 규칙(선택 순서)은 `05-api-spec.md` §4.2가 기준이다. 제안은 자기평가가 **1 이상**인 category에 주고, 난이도는 주장한 수준(`min(claimedLevel, 3)`)에 맞춘다(ADR-058). challenge에 skill이 여러 개면, 그 category에 속한 challenge skill 중 `(priority MUST→SHOULD→LATER→없음, practicalImportance DESC, skill.code ASC)`로 가장 앞선 skill의 값을 그 challenge의 정렬 키로 쓴다. `claimedLevel`은 평가 시점 해당 skill의 `self_assessed_level`이다.
+- 진단 challenge 제안 규칙(선택 순서)은 `05-api-spec.md` §4.2가 기준이다. 제안은 자기평가가 **1 이상**인 category에 주고, 난이도는 주장한 수준(`min(claimedLevel, 3)`)에 맞춘다(ADR-058). **진단 모드(주장이 없음)는 난이도 2에서 시작한다**(ADR-068) — 가장 높은 난이도를 내면 실패가 기본이 되고 실패는 레벨을 주지 않는다. challenge에 skill이 여러 개면, 그 category에 속한 challenge skill 중 `(priority MUST→SHOULD→LATER→없음, practicalImportance DESC, skill.code ASC)`로 가장 앞선 skill의 값을 그 challenge의 정렬 키로 쓴다. `claimedLevel`은 평가 시점 해당 skill의 `self_assessed_level`이다.
 
 ### 7.5 Planning level (`PlanningLevelPolicy`)
 

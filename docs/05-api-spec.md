@@ -1081,7 +1081,7 @@ public record DiagnosticSuggestionView(
 1. 대상 category — category당 1문제를 고르고, **그다음에** 최대 5개로 자른다(설계 §8). 자르는 순서는 **활성 plan의 중요도**다: `plan_skill_target.priority`(MUST → SHOULD → LATER → 없음) → `practical_importance` DESC → `SkillCategory` 선언 순서. **선언 순서로 자르지 않는다** — 그러면 연동 트랙 사용자가 `INTEGRATION`·`SECURITY`·`PRACTICAL_ENGINEERING`(선언 10~12번)을 영영 받지 못한다. 앞의 네 category가 상한을 다 먹는다(2026-10-01 시나리오 테스트에서 확인). 4단계의 category 안 정렬과 같은 키를 쓴다.
    - **진단 모드**(`user_skill_state` 중 `self_assessed_level`이 `null`이 아닌 행이 하나도 없음 = 온보딩에서 `runDiagnostic = true`): `self_assessment_active = true`인 행이 있는 category 전부.
    - **자기평가 모드**: `self_assessment_active = true`인 행의 `self_assessed_level` 최댓값이 **1 이상**인 category(ADR-058). 0은 확인할 주장이 없어 빼고, 그 분야는 개념 노트부터 간다(ADR-057).
-2. 그 category에서 **지금 재려는 난이도를 이미 확인한 경우** 제외한다(ADR-059) — 그 category의 `purpose = DIAGNOSTIC` challenge 중 `status ∈ {SUBMITTED, EVALUATED}`인 attempt가 있고 그 challenge의 `difficulty`가 4단계의 **목표 난이도와 같을 때**다. 진단 모드에는 목표 난이도가 없으므로 한 번 받았으면 끝이다.
+2. 그 category에서 **지금 재려는 난이도를 이미 확인한 경우** 제외한다(ADR-059) — 그 category의 `purpose = DIAGNOSTIC` challenge 중 `status ∈ {SUBMITTED, EVALUATED}`인 attempt가 있고 그 challenge의 `difficulty`가 4단계의 **목표 난이도와 같을 때**다. 진단 모드의 목표 난이도는 2이므로(4단계) 난이도 2를 한 번 받으면 그 category는 끝이다.
    - **왜 난이도까지 보나**: category당 1회로 두면 자기평가를 고쳐 수준이 올라가도(§6.5) 그 새 주장을 확인할 자리가 없다. 도구가 자기 추정을 맞다고 전제하고 반증할 기회를 한 번만 주는 셈이다(2026-09-30 실사용 지적). 같은 수준을 반복해 묻지는 않는다 — 확인이 끝난 자리를 다시 두드리는 것은 방해다.
    - `STARTED`(시작만 함)는 **제외하지 않고 이어서 풀도록 그대로 제안**한다. 응답의 `activeAttemptId`가 그 attempt다.
    - `ABANDONED`(제출 없이 그만둠)도 **제외하지 않는다.** 진단을 받지 않았기 때문이다.
@@ -1089,7 +1089,7 @@ public record DiagnosticSuggestionView(
 3. 후보 challenge: `status = VALIDATED`, `purpose = DIAGNOSTIC`, `owner_user_id IS NULL`, `challenge_skill` 중 하나 이상이 그 category에 속하고 해당 skill의 `self_assessment_active = true`.
 4. 정렬: **난이도 거리**(ADR-058) → 대상 skill의 활성 plan `plan_skill_target.priority`(MUST → SHOULD → LATER → target 없음) → `practical_importance` DESC → `challenge.seed_key` ASC. 첫 번째 1개를 고른다. challenge가 여러 skill에 걸치면 이 정렬에서 가장 앞선 skill을 `skill`로 쓴다.
    - **난이도 거리**는 주장한 수준을 재기 위한 것이다. 자기평가 모드의 목표 난이도는 `min(claimedLevel, 3)`이고, `difficulty`가 목표와 같은 것이 가장 앞이다. 같은 것이 없으면 **목표보다 낮은 쪽**이 먼저다 — 주장보다 어려운 문제를 내면 정직하게 답한 사람이 떨어져 `self_assessment_active`가 꺼진다.
-   - **진단 모드**는 목표가 없다. 이 모드에서는 `difficulty`가 그대로 레벨이 되므로(`06` §7.4) **가장 높은 난이도**를 고른다.
+   - **진단 모드의 목표 난이도는 2다**(ADR-068). 이 모드에는 주장이 없다. 전에는 "`difficulty`가 그대로 레벨이 되니 통과하면 최고 레벨을 준다"는 이유로 **가장 높은 난이도**를 골랐는데, `06` §7.4 `DIAGNOSTIC_FAILED`는 레벨을 올리지 않으므로 결과가 **전부 아니면 전무**였다. 2026-10-06 실사용에서 난이도 3을 받은 사용자가 중간에 그만뒀고, 그 뒤 모든 분야가 0에서 시작했다. 수준을 모르는 사람에게 최고 난이도를 내는 것은 재는 것이 아니라 떨어뜨리는 것이다. 통과하면 레벨 2에서 시작하고, 더 높다고 생각하면 자기평가(§6.5)로 직접 올린다.
 5. 후보가 없는 category는 결과에서 뺀다.
 
 - 제안은 저장하지 않는다. 사용자는 `POST /challenges/{challengeId}/attempts`(§10.5)로 시작하고, 평가 결과는 `DIAGNOSTIC_PASSED`/`DIAGNOSTIC_FAILED` 규칙(`06-learning-engine-rules.md` §7.4)을 따른다. 이벤트 payload `claimedLevel`은 평가 시점 해당 skill의 `self_assessed_level`이다.

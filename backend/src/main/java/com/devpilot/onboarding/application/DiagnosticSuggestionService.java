@@ -58,6 +58,12 @@ public class DiagnosticSuggestionService {
     /** 자기평가 상한 (docs/06 §7.5 {@code devpilot.skill.self-assessment-cap}과 같은 값). */
     private static final int CLAIM_CAP = 3;
 
+    /**
+     * 주장이 없을 때(진단 모드) 재기 시작하는 난이도 (docs/05 §4.2, ADR-068). 가장 어려운 문제를 내면 실패가 기본이 되고, 실패는 레벨을 주지
+     * 않는다. 통과하면 레벨 2에서 시작하고, 더 높다고 생각하면 자기평가로 직접 올린다.
+     */
+    private static final int UNKNOWN_LEVEL_DIFFICULTY = 2;
+
     private final ChallengeQueryService challengeQueryService;
     private final SkillCatalogQueryService skillCatalogQueryService;
     private final UserSkillStateQueryService userSkillStateQueryService;
@@ -205,21 +211,22 @@ public class DiagnosticSuggestionService {
     }
 
     /**
-     * 재려는 난이도 (ADR-058). 자기평가 모드는 주장한 수준({@code min(claimed, 3)}), 진단 모드는 null — 그때는 {@code
-     * difficulty}가 레벨이 되므로 가장 높은 것을 고른다.
+     * 목표 난이도 (docs/05 §4.2 4단계).
+     *
+     * <p>자기평가 모드는 주장한 수준에 맞춘다(ADR-058). <b>진단 모드는 주장이 없으므로 {@code UNKNOWN_LEVEL_DIFFICULTY}에서
+     * 시작한다</b> — 전에는 "통과하면 가장 높은 레벨을 준다"는 이유로 가장 어려운 문제를 냈는데, 실패하면 아무것도 주지 않으므로(§7.4 {@code
+     * DIAGNOSTIC_FAILED}는 레벨을 올리지 않는다) 결과가 <b>전부 아니면 전무</b>였다. 수준을 모르는 사람에게 최고 난이도를 내는 것은 재는 것이 아니라
+     * 떨어뜨리는 것이다(ADR-068).
      */
-    private static @Nullable Integer targetDifficulty(boolean diagnosticMode, int claimedLevel) {
-        return diagnosticMode ? null : Math.min(claimedLevel, CLAIM_CAP);
+    private static int targetDifficulty(boolean diagnosticMode, int claimedLevel) {
+        return diagnosticMode ? UNKNOWN_LEVEL_DIFFICULTY : Math.min(claimedLevel, CLAIM_CAP);
     }
 
     /**
-     * 목표 난이도에서 얼마나 먼지. 같으면 0이고, 같은 거리면 <b>낮은 쪽이 먼저다</b> — 주장보다 어려운 문제는 정직하게 답한 사람을 떨어뜨려 자기평가를 끄기
-     * 때문이다(ADR-058).
+     * 목표 난이도에서 얼마나 먼지. 같으면 0이고, 같은 거리면 <b>낮은 쪽이 먼저다</b> — 목표보다 어려운 문제는 정직하게 답한 사람을 떨어뜨려 자기평가를 끄기
+     * 때문이다(ADR-058). 진단 모드도 이제 목표가 있다(ADR-068).
      */
-    private static int difficultyRank(int difficulty, @Nullable Integer targetDifficulty) {
-        if (targetDifficulty == null) {
-            return -difficulty; // 진단 모드: 높은 난이도가 앞선다
-        }
+    private static int difficultyRank(int difficulty, int targetDifficulty) {
         int distance = Math.abs(difficulty - targetDifficulty);
         return distance * 2 + (difficulty > targetDifficulty ? 1 : 0);
     }
