@@ -1,4 +1,5 @@
 import 'package:devpilot_app/core/api/api_enums.dart';
+import 'package:devpilot_app/core/api/common_models.dart';
 import 'package:devpilot_app/features/lesson/data/lesson_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -218,6 +219,43 @@ void main() {
 
     expect(find.byKey(const Key('lesson.inProject')), findsOneWidget);
     expect(find.byKey(const Key('lesson.nextUnitButton')), findsOneWidget);
+  });
+
+  /// ADR-069: "이걸 외워야 하나"의 답은 계획에 있다 — 우선순위와 지식 축 목표. 노트가 그걸 보여 준다.
+  testWidgets('shouldShowHowFarThisSkillHasToGo', (tester) async {
+    backend.lessonRepository.lesson = testLesson(
+      requirement: const LessonRequirementView(
+        priority: Priority.must,
+        targets: AxisLevels(knowledge: 3, implementation: 3, explanation: 2, debugging: 0),
+        planningLevels: AxisLevels.zero,
+      ),
+    );
+    await openLesson(tester);
+
+    expect(find.byKey(const Key('lesson.requirement')), findsOneWidget);
+    expect(find.textContaining('필수'), findsWidgets);
+    expect(find.textContaining('혼자 기본 가능'), findsWidgets);
+  });
+
+  /// 목표에 닿았으면 "지금은 모름" 같은 뒤처진 문장을 띄우지 않는다.
+  testWidgets('shouldSayTheTargetIsReachedWhenItIs', (tester) async {
+    backend.lessonRepository.lesson = testLesson(
+      requirement: const LessonRequirementView(
+        priority: Priority.should,
+        targets: AxisLevels(knowledge: 3, implementation: 3, explanation: 2, debugging: 0),
+        planningLevels: AxisLevels(knowledge: 4, implementation: 3, explanation: 2, debugging: 0),
+      ),
+    );
+    await openLesson(tester);
+
+    expect(find.textContaining('이미 닿았어요'), findsOneWidget);
+  });
+
+  /// 계획에 없는 기술이면 보여 줄 기준이 없다 — 빈 줄을 만들지 않는다.
+  testWidgets('shouldHideTheRequirementLineWithoutAPlan', (tester) async {
+    await openLesson(tester);
+
+    expect(find.byKey(const Key('lesson.requirement')), findsNothing);
   });
 
   testWidgets('shouldShowNotFoundForAKeyThatIsNotALessonKey', (tester) async {

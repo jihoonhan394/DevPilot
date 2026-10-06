@@ -7,25 +7,27 @@ const testLessonKey = 'LESSON.SPRING.MVC_REST.001';
 String testUnitKey(int number) => '$testLessonKey.U$number';
 
 /// 단위 2개짜리 노트. 형식은 진짜와 같고 본문만 짧다.
-LessonView testLesson({List<LessonUnitView>? units}) => LessonView(
-  lessonKey: testLessonKey,
-  skillId: 'e3a1d0f2-0000-4000-8000-000000000001',
-  skillCode: 'SPRING.MVC_REST',
-  skillName: 'Spring MVC REST API',
-  title: '요청을 메서드에 잇기',
-  whyItMatters: '주소가 어느 메서드로 가는지 정하지 못하면 화면도 앱도 서버에 말을 걸 수 없다.',
-  oneLine: '컨트롤러는 URL과 자바 메서드를 이어 주는 자리다.',
-  units: units ?? [testUnit(1), testUnit(2)],
-  commonMistakes: const ['`@Controller`만 붙이고 문자열을 돌려줘서 화면을 찾다가 실패한다.'],
-  inProject: '주문 시스템의 상품 목록과 주문 넣기가 이 매핑 위에 올라간다.',
-  sources: const [
-    LessonSourceView(
-      title: 'Spring Framework Reference — Request Mapping',
-      url: 'https://docs.spring.io/spring-framework/reference/web/webmvc.html',
-      versionScope: 'Spring Framework 7',
-    ),
-  ],
-);
+LessonView testLesson({List<LessonUnitView>? units, LessonRequirementView? requirement}) =>
+    LessonView(
+      lessonKey: testLessonKey,
+      skillId: 'e3a1d0f2-0000-4000-8000-000000000001',
+      skillCode: 'SPRING.MVC_REST',
+      skillName: 'Spring MVC REST API',
+      title: '요청을 메서드에 잇기',
+      whyItMatters: '주소가 어느 메서드로 가는지 정하지 못하면 화면도 앱도 서버에 말을 걸 수 없다.',
+      oneLine: '컨트롤러는 URL과 자바 메서드를 이어 주는 자리다.',
+      units: units ?? [testUnit(1), testUnit(2)],
+      requirement: requirement,
+      commonMistakes: const ['`@Controller`만 붙이고 문자열을 돌려줘서 화면을 찾다가 실패한다.'],
+      inProject: '주문 시스템의 상품 목록과 주문 넣기가 이 매핑 위에 올라간다.',
+      sources: const [
+        LessonSourceView(
+          title: 'Spring Framework Reference — Request Mapping',
+          url: 'https://docs.spring.io/spring-framework/reference/web/webmvc.html',
+          versionScope: 'Spring Framework 7',
+        ),
+      ],
+    );
 
 LessonUnitView testUnit(int number, {UnitProgressView? progress}) => LessonUnitView(
   unitKey: testUnitKey(number),

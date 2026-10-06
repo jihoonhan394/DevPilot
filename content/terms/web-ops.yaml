@@ -27,6 +27,32 @@ terms:
     sourceUrl: https://www.rfc-editor.org/rfc/rfc9110.html
     retired: false
 
+  - key: TERM.WEB_HTTP.STATUS_CODE
+    representative: 상태 코드
+    english: HTTP status code
+    definition: |-
+      요청을 어떻게 처리했는지 세 자리 숫자 하나로 알려 주는 값으로, 첫 자리가 분류를 정한다.
+    example: |-
+      이미 배송 중인 주문을 취소하려 하면 형식이 틀린 400이 아니라 상태가 안 맞는 409로 답했다.
+    confusableWith: [TERM.WEB_HTTP.IDEMPOTENCY]
+    skillCodes: [WEB_HTTP.REST_API_DESIGN]
+    level: BASIC
+    sourceUrl: https://www.rfc-editor.org/rfc/rfc9110.html
+    retired: false
+
+  - key: TERM.WEB_HTTP.NOT_FOUND_VS_FORBIDDEN
+    representative: 404와 403의 구분
+    english: 404 vs 403
+    definition: |-
+      404는 그런 것이 없다는 뜻이고 403은 있지만 권한이 없다는 뜻이라, 403은 리소스의 존재를 알려 준다.
+    example: |-
+      남의 주문 번호로 요청하면 403이 아니라 404로 답했다. 403만 돌려주면 번호를 바꿔 눌러 실제 주문을 찾아낼 수 있다.
+    confusableWith: [TERM.SECURITY.AUTHORIZATION, TERM.WEB_HTTP.STATUS_CODE]
+    skillCodes: [WEB_HTTP.REST_API_DESIGN]
+    level: PRACTICAL
+    sourceUrl: https://www.rfc-editor.org/rfc/rfc9110.html
+    retired: false
+
   - key: TERM.SECURITY.AUTHENTICATION
     representative: 인증
     english: authentication

@@ -2973,5 +2973,9 @@
   "diagnosticsPickLevel": "직접 고르기",
   "@diagnosticsPickLevel": {"description": "SCR-DIAGNOSTICS / SCR-TODAY diagnostic card: go to the self-assessment screen instead of answering (ADR-068)."},
   "diagnosticsPickLevelHint": "문제로 재지 않아도 돼요. 분야별 수준을 직접 고르면 그 수준에서 시작합니다.",
-  "@diagnosticsPickLevelHint": {"description": "SCR-DIAGNOSTICS: why the self-assessment link is there — the diagnostic is optional and quitting it leaves everything at 0."}
+  "@diagnosticsPickLevelHint": {"description": "SCR-DIAGNOSTICS: why the self-assessment link is there — the diagnostic is optional and quitting it leaves everything at 0."},
+  "lessonRequirement": "이 기술은 {priority}이고, 목표는 {label}이에요. 지금은 {now}예요.",
+  "@lessonRequirement": {"description": "SCR-LESSON: how far this skill has to go (ADR-069). Answers 'do I have to memorise this / is this enough to build'.", "placeholders": {"priority": {"type": "String"}, "label": {"type": "String"}, "now": {"type": "String"}}},
+  "lessonRequirementMet": "이 기술은 {priority}이고, 목표 {label}에 이미 닿았어요.",
+  "@lessonRequirementMet": {"description": "SCR-LESSON: the target is already reached.", "placeholders": {"priority": {"type": "String"}, "label": {"type": "String"}}}
 }

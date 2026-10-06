@@ -165,6 +165,41 @@ class LessonControllerIntegrationTest extends ApiTestSupport {
         assertThat(progress.path("selfChecksMet").asInt()).isEqualTo(1);
     }
 
+    /**
+     * ADR-069: 노트는 "이 기술을 어디까지 알아야 하는지"를 함께 준다. 본문이 주제가 아닌 어휘를 쓸 때 읽는 사람이 묻는 것은 "이걸 외워야 하나"이고, 그 답은
+     * 계획에 있다 — 우선순위와 축별 목표.
+     */
+    @Test
+    void shouldTellHowFarThisSkillHasToGo() throws Exception {
+        TestUser user = onboardedUser();
+
+        JsonNode requirement =
+                api.body(api.get(user, LESSON, LESSON_KEY).andExpect(status().isOk()))
+                        .path("requirement");
+
+        assertThat(requirement.isNull()).isFalse();
+        assertThat(requirement.path("priority").asString()).isIn("MUST", "SHOULD", "LATER");
+        assertThat(requirement.path("targets").path("knowledge").asInt()).isPositive();
+        assertThat(requirement.path("planningLevels").path("knowledge").asInt()).isZero();
+    }
+
+    /** 계획에 그 기술의 목표가 없으면 보여 줄 기준이 없다 — 꾸며 내지 않고 비운다. */
+    @Test
+    void shouldLeaveTheRequirementEmptyWithoutAPlanTarget() throws Exception {
+        TestUser user = onboardedUser();
+        jdbc.update(
+                "delete from devpilot.plan_skill_target"
+                        + " where plan_id in (select id from devpilot.learning_plan"
+                        + " where user_id = ?)"
+                        + " and skill_id = (select id from devpilot.skill where code = ?)",
+                userId(user),
+                LESSON_SKILL_CODE);
+
+        JsonNode lesson = api.body(api.get(user, LESSON, LESSON_KEY).andExpect(status().isOk()));
+
+        assertThat(lesson.path("requirement").isNull()).isTrue();
+    }
+
     /** docs/05 §21.9: 목록은 노트 전부와 그 사용자의 진행을 준다. 본문·답은 오지 않는다. */
     @Test
     void shouldListEveryLessonWithTheUsersProgress() throws Exception {

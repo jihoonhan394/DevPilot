@@ -14,7 +14,6 @@ import com.devpilot.review.application.ReviewItemService.NewReviewItem;
 import com.devpilot.review.domain.ReviewItemSourceType;
 import com.devpilot.review.domain.ReviewType;
 import com.devpilot.review.domain.RubricItem;
-import com.devpilot.skill.application.SkillCatalogQueryService;
 import com.devpilot.skill.application.SkillRef;
 import com.devpilot.today.application.LessonListView.LessonSummaryView;
 import com.devpilot.today.application.LessonView.LessonExampleView;
@@ -66,7 +65,7 @@ public class LessonQueryService {
                     .thenComparing(LessonSummaryView::lessonKey);
 
     private final LessonRegistry lessonRegistry;
-    private final SkillCatalogQueryService skillCatalogQueryService;
+    private final LessonSkillNotes skillNotes;
     private final LearningEventQueryService learningEventQueryService;
     private final LearningEventRecorder learningEventRecorder;
     private final ReviewItemService reviewItemService;
@@ -75,14 +74,14 @@ public class LessonQueryService {
 
     public LessonQueryService(
             LessonRegistry lessonRegistry,
-            SkillCatalogQueryService skillCatalogQueryService,
+            LessonSkillNotes skillNotes,
             LearningEventQueryService learningEventQueryService,
             LearningEventRecorder learningEventRecorder,
             ReviewItemService reviewItemService,
             DevPilotProperties properties,
             Clock clock) {
         this.lessonRegistry = lessonRegistry;
-        this.skillCatalogQueryService = skillCatalogQueryService;
+        this.skillNotes = skillNotes;
         this.learningEventQueryService = learningEventQueryService;
         this.learningEventRecorder = learningEventRecorder;
         this.reviewItemService = reviewItemService;
@@ -103,8 +102,7 @@ public class LessonQueryService {
     public LessonListView list(UUID userId) {
         List<Lesson> lessons = lessonRegistry.all().stream().filter(l -> !l.retired()).toList();
         Map<String, SkillRef> skills =
-                skillCatalogQueryService.findActiveByCodes(
-                        lessons.stream().map(Lesson::skillCode).toList());
+                skillNotes.findActiveByCodes(lessons.stream().map(Lesson::skillCode).toList());
         Map<String, LessonProgressView> progress = learningEventQueryService.lessonProgress(userId);
         List<LessonSummaryView> summaries = new ArrayList<>();
         for (Lesson lesson : lessons) {
@@ -135,8 +133,7 @@ public class LessonQueryService {
     /** 그 skill의 노트. 없으면 404. */
     public LessonView getForSkill(UUID userId, UUID skillId) {
         SkillRef skill =
-                Optional.ofNullable(
-                                skillCatalogQueryService.findRefs(List.of(skillId)).get(skillId))
+                Optional.ofNullable(skillNotes.findRefs(List.of(skillId)).get(skillId))
                         .orElseThrow(LessonQueryService::notFound);
         return toView(
                 userId,
@@ -198,7 +195,7 @@ public class LessonQueryService {
         LessonUnit unit = lesson.unit(unitKey).orElseThrow(LessonQueryService::notFound);
         UUID skillId =
                 Optional.ofNullable(
-                                skillCatalogQueryService
+                                skillNotes
                                         .findActiveByCodes(List.of(lesson.skillCode()))
                                         .get(lesson.skillCode()))
                         .map(SkillRef::id)
@@ -271,7 +268,7 @@ public class LessonQueryService {
     private LessonView toView(UUID userId, Lesson lesson) {
         Optional<SkillRef> skill =
                 Optional.ofNullable(
-                        skillCatalogQueryService
+                        skillNotes
                                 .findActiveByCodes(List.of(lesson.skillCode()))
                                 .get(lesson.skillCode()));
         List<LearningEventQueryService.UnitSolvedView> progress =
@@ -289,6 +286,7 @@ public class LessonQueryService {
                 lesson.inProject(),
                 lesson.sources().stream().map(LessonQueryService::toView).toList(),
                 lesson.readMore().stream().map(LessonQueryService::toView).toList(),
+                skillNotes.requirement(userId, skill.map(SkillRef::id).orElse(null)),
                 lesson.retired());
     }
 

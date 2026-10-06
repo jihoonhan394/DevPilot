@@ -1,5 +1,7 @@
 package com.devpilot.today.application;
 
+import com.devpilot.common.web.AxisLevels;
+import com.devpilot.skill.domain.Priority;
 import com.devpilot.today.domain.HelpLevel;
 import java.time.Instant;
 import java.util.List;
@@ -23,7 +25,21 @@ public record LessonView(
         String inProject,
         List<LessonSourceView> sources,
         List<LessonSourceView> readMore,
+        @Nullable LessonRequirementView requirement,
         boolean retired) {
+
+    /**
+     * 이 기술을 어디까지 알아야 하는가 (docs/05 §21.1·§21.2, ADR-069).
+     *
+     * <p>노트를 읽는 사람이 가장 먼저 묻는 것이 <b>"이걸 외워야 하나, 이 정도 알면 프로젝트를 만들어도 되나"</b>다. 계획은 그 답을 이미 들고
+     * 있는데(우선순위와 축별 목표) 노트 화면에 없었다.
+     *
+     * @param priority 활성 plan의 우선순위. plan에 이 skill 목표가 없으면 null
+     * @param targets 축별 목표 레벨
+     * @param planningLevels 지금 수준 (docs/06 §7.5). 목표와 나란히 두면 남은 거리가 읽힌다
+     */
+    public record LessonRequirementView(
+            @Nullable Priority priority, AxisLevels targets, AxisLevels planningLevels) {}
 
     /** 단위 하나. 문항은 보이는 부분만 담는다. */
     public record LessonUnitView(
