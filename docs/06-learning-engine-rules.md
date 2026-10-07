@@ -474,7 +474,7 @@ task 제목 템플릿:
 | `practicalImportance` | `plan_skill_target.practical_importance × 1_000_000` (target 없으면 `300_000`) |
 | `skillGap` | `Σtarget == 0 ? 0 : floorDiv(Σ_axis max(0, target − planning) × 1_000_000, Σ_axis target)` |
 | `reviewUrgency` | due 없음 → 0 / 있음 → `min(1_000_000, 300_000 + 100_000 × maxOverdueDays)`, `overdueDays = daysBetween(planDate(due_at), today)` (≥0) |
-| `milestoneUrgency` | 현재 milestone skill: `length = daysBetween(start, end) + 1`, `daysLeft = daysBetween(today, end)`, `max(200_000, 1_000_000 − floorDiv(daysLeft × 1_000_000, length))` / 다음 milestone skill: `100_000` / 그 외 0 (여러 milestone이면 최댓값) |
+| `milestoneUrgency` | 현재 milestone skill: `length = daysBetween(start, end) + 1`, `daysLeft = daysBetween(today, end)`, **`clamp(1_000_000 − floorDiv(daysLeft × 1_000_000, length), 200_000, 1_000_000)`** / 다음 milestone skill: `100_000` / 그 외 0 (여러 milestone이면 최댓값). **상한이 `MICRO`다**(ADR-071, Proposed) — 다른 다섯 factor가 전부 `[0, MICRO]`이므로 하나만 그 범위를 벗어나면 "합이 10,000인 정규화 가중합"이 깨진다. 목표일을 넘기면 `daysLeft`가 음수가 되어 전에는 끝없이 자랐다(`§11.1` 참고). 연체는 위험도(§4.3)와 재계획 제안(§4.4)이 말한다 — planner 점수로 말하면 그 점수가 다른 비교를 밀어내고 정작 늦은 이유는 화면에 안 나온다 |
 | `projectNeed` | 학습 목표의 focus skill → `1_000_000`, 아니면 0 |
 | `prerequisiteReadiness` | prerequisite 없음 → `1_000_000` / 있음 → `floorDiv(count(planning IMPLEMENTATION ≥ 2) × 1_000_000, count)` |
 | `stageGap` | `floorDiv((6 − 완료한 학습 단계 수) × 1_000_000, 6)` (§5.11 ST-5). **`WEIGHT_BP`에 들어가지 않는다** — 아래 보너스로만 쓴다 |

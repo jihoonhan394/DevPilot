@@ -125,6 +125,13 @@ BuildableView testBuildable({
   String? nextStepId = milestoneAuthId,
   int buildableStepCount = 1,
   List<SkillAxis> uncountedAxes = const [SkillAxis.debugging],
+  // ADR-070: 지금 제품이 어느 레벨까지 근거를 만들 수 있는가. D가 0이라 uncountedAxes와 맞는다.
+  AxisLevels evidenceCeiling = const AxisLevels(
+    knowledge: 4,
+    implementation: 3,
+    explanation: 3,
+    debugging: 0,
+  ),
 }) => BuildableView(
   planId: planId,
   planVersion: 1,
@@ -134,6 +141,7 @@ BuildableView testBuildable({
   nextStepId: nextStepId,
   countedAxes: const [SkillAxis.knowledge, SkillAxis.implementation, SkillAxis.explanation],
   uncountedAxes: uncountedAxes,
+  evidenceCeiling: evidenceCeiling,
   steps:
       steps ??
       [
@@ -180,6 +188,7 @@ BuildableStepView testBuildableStep({
   required int gateSkillCount,
   String? description = '이 단계에서 무엇을 만드는지 적어 둔 안내.',
   List<BuildableGapView> gaps = const [],
+  List<CapabilityPendingView> capabilityPending = const [],
 }) => BuildableStepView(
   milestoneId: milestoneId,
   title: title,
@@ -191,6 +200,7 @@ BuildableStepView testBuildableStep({
   metSkillCount: metSkillCount,
   gateSkillCount: gateSkillCount,
   gaps: gaps,
+  capabilityPending: capabilityPending,
 );
 
 BuildableGapView testBuildableGap(
