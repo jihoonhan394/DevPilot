@@ -2180,3 +2180,59 @@
 - Given `reason`이 세 값 밖이다
 - Then 400 `VALIDATION_FAILED`다. 자유 입력을 받지 않는다
 
+
+---
+
+## AC-38 지금 근거를 만들 수 있는 범위로 판정한다 (**Proposed**, ADR-070)
+
+> **Status: Proposed.** 소유자 승인 전에는 구현하지 않는다. 규칙과 벡터는 `06-learning-engine-rules.md` §7.6b.
+> 아래 `C`는 `devpilot.skill.evidence-ceiling` = `(K4, I3, E3, D0)`다.
+
+**S1. 다음 단계로 넘어간다**
+- Given 기본 `JAVA_BACKEND` 트랙, 1단계 관문 skill의 원래 목표에 I4 또는 E4가 있다
+- And 그 skill들의 계획 레벨이 **현재 판정 목표**(`min(원래, C)`)를 모두 채웠고 `lastPracticedAt`이 있다
+- When `POST /today/generate`
+- Then **main task의 skill이 2단계 skill이다.** 1단계에 갇히지 않는다
+- And `GET /dashboard`의 `milestoneTimeline.milestones[].current`가 **같은 2단계**를 가리킨다
+
+**S2. 학습 기록이 없으면 두 화면이 어긋나지 않는다**
+- Given 1단계 관문 skill 1개, 현재 판정 목표 `(2,2,2,0)`, 자기평가로 계획 레벨 `(3,3,3,3)`, 근거 레벨 `(0,0,0,0)`, `lastPracticedAt = null`
+- And 뒤에 미완료 milestone이 하나 더 있다
+- When `POST /today/generate`, `GET /dashboard`, `GET /plans/active/buildable`
+- Then Today의 main task skill이 **1단계** skill이다
+- And `milestoneTimeline`의 `current`도 **1단계**다 (지금은 대시보드가 `lastPracticedAt`을 빠뜨려 2단계를 가리킬 수 있다 — 그것이 이 AC가 막는 것이다)
+- And `buildable`의 1단계 `status`가 `BUILDABLE`이 **아니다** (근거 레벨 0)
+
+**S3. `BUILDABLE`이어도 남은 원래 목표가 보인다**
+- Given 1단계 관문 skill의 근거 레벨이 현재 판정 목표를 채웠고, 원래 목표에 I4·E4·D3이 남아 있다
+- When `GET /plans/active/buildable`
+- Then 1단계 `status = BUILDABLE`, `gaps = []`
+- And **`steps[0].capabilityPending`이 비어 있지 않다** — 항목에 `originalTargets`·`currentTargets`·`pending`이 있고 `pending`에 I4·E4·D3이 들어 있다
+- And `evidenceCeiling`이 `(4,3,3,0)`이고 `uncountedAxes`가 `["DEBUGGING"]`과 어긋나지 않는다
+- And `capabilityPending`의 항목 수는 `gaps`의 5개 제한과 **무관하다**
+
+**S4. 아직 못 하는 공부를 날짜·위험도·확장으로 제안하지 않는다**
+- Given MUST skill의 원래 목표 I4·E4·D3, 계획 레벨 `(2,2,1,0)`
+- When `GET /plans/active/budget` (또는 Today 응답의 risk)
+- Then `requiredMustMinutes`는 **현재 몫만** 센다 (`min(원래, C)`까지의 격차)
+- And `requiredMustLaterMinutes`에 **MUST의 기능 대기 몫만** 들어간다 (SHOULD를 섞지 않는다)
+- And `ratioBp`·`riskLevel`·`feasibleCompletionDate`가 **현재 몫에만** 반응한다
+- Given risk `LOW`이고 여유가 있고, 그 MUST skill의 D 목표가 2이고 계획 레벨 D가 0이다
+- When `POST /plans/{planId}/replan/preview`
+- Then `expansionSuggestions`에 **`RAISE_TARGET` D2→3이 없다** (`C(D) = 0`이라 현재 학습이 늘지 않는다)
+- And 현재 필요 시간 절감이 0인 축소 제안도, 현재 증가가 0인 복원 제안도 없다
+
+**S5. 저장된 목표와 기록은 바뀌지 않는다**
+- When 위 S1~S4를 모두 거친다
+- Then `plan_skill_target`의 축별 목표가 **하나도 바뀌지 않았다**
+- And `user_skill_state`의 근거 레벨과 `learning_event`가 바뀌지 않았다
+- And 다른 사용자 토큰으로 같은 요청 → 404 (소유권 격리 유지)
+
+**S6. 기능이 열리면 상한만 올린다**
+- Given `evidence-ceiling`을 `(4,4,3,0)`으로 바꾼다 (I4 근거 경로가 생겼다고 가정)
+- When `GET /plans/active/buildable`, `GET /plans/active/budget`
+- Then 현재 판정 목표의 I가 4가 되고 `capabilityPending`에서 I4가 빠진다
+- And `requiredMustMinutes`가 늘고 `requiredMustLaterMinutes`가 줄어든다
+- And **저장된 목표는 그대로이고**, 이미 획득한 레벨이 "전체 목표 충족"으로 뒤바뀌지 않는다
+- Given 설정이 비었거나 `SkillAxis`에 없는 축 이름이 있다
+- Then **기동 실패**다
