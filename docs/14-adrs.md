@@ -1784,7 +1784,7 @@ max(200_000, 1_000_000 - floorDiv(daysLeft x 1_000_000, length))
 
 ## ADR-070 목표는 그대로 두고, 지금 근거를 만들 수 있는 범위로 판정한다
 
-- **Status**: **Proposed** (2026-10-07) — 구현 전에 소유자 승인이 필요하다. 근거 토론은 `docs/roadmap/` (git 밖).
+- **Status**: **Accepted** (2026-10-07) — 소유자 승인. 근거 토론은 `docs/roadmap/` (git 밖).
 - **Context**: ADR-061이 *"잴 수 없는 축은 진도를 막지 않는다"*로 **축 단위** 제외를 들여왔다. 그런데 막히는 것은 축만이 아니다. **축 안의 레벨**도 막힌다.
 
 `docs/06` §7.2가 이미 사실로 적어 놓았다 — *"도달 가능 상한(Sprint별, 규칙이 아니라 사실): S3까지는 D = 0, I ≤ 3(I4는 `EVIDENCE_ACCEPTED`가 필요 → S6), E ≤ 3(E4는 variant 답변이 필요 → `REVIEW_VARIANT`가 Later), K·I·E의 5는 difficulty 5 challenge가 필요."* 코드로도 확인했다: `EVIDENCE_ACCEPTED`는 `LearningEventType`에 있고 `SkillLevelRules`가 읽지만 **만드는 곳이 없다.** `variantReady`를 켜는 setter가 main에 하나도 없고 `ReviewService`는 `wasVariant != isVariantReady()`면 409로 거절한다. PRACTICE challenge의 난이도 분포는 `{1:11, 2:32, 3:18, 4:2}`로 **5가 0개**다.

@@ -2183,9 +2183,9 @@
 
 ---
 
-## AC-38 지금 근거를 만들 수 있는 범위로 판정한다 (**Proposed**, ADR-070)
+## AC-38 지금 근거를 만들 수 있는 범위로 판정한다 (ADR-070)
 
-> **Status: Proposed.** 소유자 승인 전에는 구현하지 않는다. 규칙과 벡터는 `06-learning-engine-rules.md` §7.6b.
+> 규칙과 벡터는 `06-learning-engine-rules.md` §7.6b.
 > 아래 `C`는 `devpilot.skill.evidence-ceiling` = `(K4, I3, E3, D0)`다.
 
 **S1. 다음 단계로 넘어간다**
