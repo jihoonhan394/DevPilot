@@ -394,13 +394,16 @@ public record DevPilotProperties(
      *
      * @param measurableAxes 지금 근거를 쌓을 수 있는 축의 이름 (docs/06 §7.6). 값이 {@code SkillAxis}에 있는지는 skill
      *     모듈이 기동 시 확인한다 — common은 도메인 모듈을 알지 못한다(docs/03 §2.2)
+     * @param evidenceCeiling 지금 제품이 <b>어느 레벨까지</b> 근거를 만들 수 있는가 (docs/06 §7.6b, ADR-070). 전역이고
+     *     skill별이 아니다. {@code measurableAxes}가 축을 다루고 이것이 축 안의 레벨을 다룬다
      */
     public record Skill(
             @Positive int ruleWindowDays,
             @NotNull Duration axisChangeCooldown,
             @Min(0) @Max(5) int selfAssessmentCap,
             @Min(0) @Max(5) int diagnosticMaxLevel,
-            @NotEmpty Set<@NotBlank String> measurableAxes) {}
+            @NotEmpty Set<@NotBlank String> measurableAxes,
+            @NotNull Map<@NotBlank String, @Min(0) @Max(5) Integer> evidenceCeiling) {}
 
     /**
      * 사이드 프로젝트 기본값 (ADR-050). 온보딩에서 만들 것을 정하지 않은 사람에게 주는 프로젝트다.
