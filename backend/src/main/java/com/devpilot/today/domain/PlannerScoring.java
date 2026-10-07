@@ -138,18 +138,15 @@ public final class PlannerScoring {
      *
      * <p>자기평가가 버려지는 것은 아니다. 그 skill은 후보로 남아 <b>자기평가한 수준의 난이도</b>로 제안되고(docs/06 §5.3), 풀어 내면 그때 증거가
      * 생겨 넘어간다.
+     *
+     * <p><b>대시보드 타임라인의 현재 단계도 같은 두 조건을 쓴다</b>(docs/05 §13.1, AC-38 S2) — {@code
+     * AxisLevels.meets}(비교의 단일 출처)와 {@code lastPracticedAt != null}이다. 모듈 의존 규칙(ARCH-02)상 {@code
+     * dashboard}가 이 클래스를 직접 부를 수 없어 조건을 양쪽에 두고 AC-38 S2가 묶는다. 조건이 갈라지면 두 화면이 서로 다른 단계를 가리킨다.
+     *
+     * @param targets 호출자가 {@code MeasurableAxes.forProgress}를 이미 적용한 <b>현재 판정 목표</b>다 (ADR-070)
      */
     private static boolean targetReached(SkillProfile profile, AxisLevels targets) {
-        return profile.lastPracticedAt() != null && allMet(profile.planning(), targets);
-    }
-
-    private static boolean allMet(AxisLevels planning, AxisLevels targets) {
-        for (SkillAxis axis : SkillAxis.values()) {
-            if (axis.levelOf(planning) < axis.levelOf(targets)) {
-                return false;
-            }
-        }
-        return true;
+        return profile.lastPracticedAt() != null && profile.planning().meets(targets);
     }
 
     /**

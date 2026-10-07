@@ -107,6 +107,52 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.mainTask.id").value(main.path("id").asString()));
     }
 
+    /**
+     * AC-38 S1 · ADR-070: **현재 범위를 채우면 다음 단계로 넘어간다.**
+     *
+     * <p>1단계 관문 skill 넷의 목표에 I4·E4가 있는데 지금 그 레벨에는 근거를 만들 길이 없다 — `EVIDENCE_ACCEPTED`(S6)와 variant
+     * 복습(Later)이 없다. 전에는 그래서 `targetReached`가 영구 false였고 `currentMilestone`이 1단계에 고정됐다. 그러면
+     * `selectCandidates`가 현재 단계 후보가 빌 때만 다음 단계를 넣으므로 **2단계는 점수 비교에 오르지도 못했다.**
+     */
+    @Test
+    void shouldMoveToTheNextMilestoneWhenTheCurrentScopeIsMet() throws Exception {
+        TestUser user = onboardedOwner();
+        for (String code :
+                List.of(
+                        "JAVA.EXCEPTION",
+                        "JAVA.COLLECTION",
+                        "WEB_HTTP.HTTP_BASICS",
+                        "TESTING.JUNIT")) {
+            meetCurrentScope(user, code);
+        }
+
+        JsonNode today = api.generateToday(user, 90, "NORMAL");
+
+        // 2단계(ORDER_FLOW)의 skill이어야 한다. 1단계 넷 중 하나면 아직 갇혀 있는 것이다.
+        assertThat(today.path("mainTask").path("skillCode").asString())
+                .isIn("SPRING.TRANSACTION", "DATABASE.INDEX", "DEVOPS.DOCKER");
+    }
+
+    /**
+     * 현재 판정 목표(= {@code min(원래 목표, evidenceCeiling)})까지만 올리고 학습 기록을 남긴다. 원래 목표인 I4·E4는 **일부러 채우지
+     * 않는다** — 채울 방법이 없는 것이 이 테스트의 전제다.
+     */
+    private void meetCurrentScope(TestUser user, String skillCode) {
+        jdbc.update(
+                "update devpilot.user_skill_state s set"
+                        + " knowledge_level = least(t.target_knowledge_level, 4),"
+                        + " implementation_level = least(t.target_implementation_level, 3),"
+                        + " explanation_level = least(t.target_explanation_level, 3),"
+                        + " last_practiced_at = now()"
+                        + " from devpilot.plan_skill_target t, devpilot.learning_plan p,"
+                        + " devpilot.skill k"
+                        + " where p.id = t.plan_id and k.id = t.skill_id"
+                        + " and t.skill_id = s.skill_id and p.user_id = s.user_id"
+                        + " and p.status = 'ACTIVE' and s.user_id = ? and k.code = ?",
+                userId(user),
+                skillCode);
+    }
+
     @Test
     void shouldRejectInvalidGenerateRequests() throws Exception {
         // AC-02 S3
