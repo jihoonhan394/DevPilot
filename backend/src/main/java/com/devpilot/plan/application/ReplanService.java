@@ -150,7 +150,7 @@ public class ReplanService {
         Suggestions suggestions =
                 new ReplanSuggestionPolicy(
                                 studyBudgetService.riskEvaluator(),
-                                studyBudgetService.measurableAxes())
+                                studyBudgetService.effectiveCeiling())
                         .suggest(evaluation.items(), evaluation.budget().effectiveMinutes());
         // 목표일이 바뀌면 plan 구조는 그대로라(05 §5.2) 일정표가 옛 날짜에 남는다. 손으로 고치게 두면
         // 날짜가 썩고 §5.4 milestoneUrgency가 포화된다 — 같은 배치 알고리즘으로 제안만 함께 돌려준다(ADR-067).

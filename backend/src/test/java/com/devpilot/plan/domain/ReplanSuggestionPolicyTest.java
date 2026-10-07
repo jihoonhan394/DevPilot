@@ -186,6 +186,100 @@ class ReplanSuggestionPolicyTest {
         assertThat(result.expansions().getFirst().newTarget()).isEqualTo(5);
     }
 
+    // --- ADR-070: 0분짜리 제안을 내지 않는다 (AC-38 S4) ---
+
+    /** 상한 `(5,3,5,0)`: I는 3까지, D는 아예 못 센다. */
+    private static final AxisLevels CEILING = new AxisLevels(5, 3, 5, 0);
+
+    private final ReplanSuggestionPolicy capped = new ReplanSuggestionPolicy(evaluator, CEILING);
+
+    /**
+     * <b>{@code raiseAxis} 수정</b>. Codex 발견: 그 메서드는 planning이 가장 낮은 축을 고르는데, 측정 불가 축은 근거 경로가 없어
+     * 자기평가가 없는 사용자에게는 planning이 0이다. 그래서 D가 체계적으로 골라졌고 {@code required}가 D를 세지 않으므로 <b>"여유가 생겼으니 더
+     * 공부하라"가 0분짜리 제안</b>이었다. 이제 상한 이내의 축만 고른다.
+     */
+    @Test
+    void shouldNotPickAnAxisWhoseTargetAlreadySitsAtItsCeiling() {
+        TargetItem item =
+                new TargetItem(
+                        "X.PICK",
+                        Priority.MUST,
+                        9_000,
+                        false,
+                        new AxisLevels(4, 3, 5, 2), // D 목표 2 — 상한 0 위. 전에는 planning 0이라 D가 뽑혔다
+                        new AxisLevels(3, 3, 5, 0), // K만 현재 목표 미달
+                        10);
+
+        Suggestions result = capped.suggest(List.of(item), 100_000);
+
+        assertThat(result.expansions()).hasSize(1);
+        // D(상한 0)가 아니라 K다. D를 2 → 3으로 올려도 지금 할 수 있는 공부가 늘지 않는다.
+        assertThat(result.expansions().getFirst().axis()).isEqualTo(SkillAxis.KNOWLEDGE);
+    }
+
+    /**
+     * <b>{@code belowTarget} 수정</b>. 원래 목표로 보면 상한 위 목표가 남은 skill이 <b>영구히 "상향 가능"</b>이 되어, 측정 가능한 축을
+     * 모두 채운 뒤에도 0분짜리 후보로 남았다. 현재 판정 목표로 보면 후보에서 빠진다.
+     */
+    @Test
+    void shouldNotTreatASkillAsRaisableWhenOnlyCappedTargetsRemain() {
+        TargetItem item =
+                new TargetItem(
+                        "X.DONE",
+                        Priority.MUST,
+                        9_000,
+                        false,
+                        new AxisLevels(5, 3, 5, 2), // 남은 것은 상한 위의 D 목표뿐이다
+                        new AxisLevels(5, 3, 5, 0), // 측정 가능한 축은 모두 현재 목표에 닿았다
+                        10);
+
+        Suggestions result = capped.suggest(List.of(item), 100_000);
+
+        assertThat(result.expansions()).isEmpty();
+    }
+
+    /** 상한 <b>이내</b>로 올릴 여지가 있으면 그대로 제안한다 — 상한이 확장을 전부 막는 것이 아니다. */
+    @Test
+    void shouldStillRaiseWithinTheCeiling() {
+        TargetItem item =
+                new TargetItem(
+                        "X.ROOM",
+                        Priority.MUST,
+                        9_000,
+                        false,
+                        new AxisLevels(4, 2, 5, 0), // I는 2 → 3으로 올릴 여지가 있다 (상한 3)
+                        new AxisLevels(3, 2, 5, 0), // K가 현재 목표 미달이라 후보가 된다
+                        10);
+
+        Suggestions result = capped.suggest(List.of(item), 100_000);
+
+        assertThat(result.expansions()).hasSize(1);
+        // planning이 가장 낮은 축은 I(2)다. 상한 3 이내이므로 실제로 공부가 는다.
+        assertThat(result.expansions().getFirst().axis()).isEqualTo(SkillAxis.IMPLEMENTATION);
+        assertThat(result.expansions().getFirst().newTarget()).isEqualTo(3);
+    }
+
+    /**
+     * <b>{@code reduction} 수정</b>. 상한 위의 목표를 낮춰 봐야 <b>지금 필요한 시간이 줄지 않는다.</b> I 목표 5를 4로 낮춰도 상한이 3이면
+     * 0분 절감이다.
+     */
+    @Test
+    void shouldNotReduceATargetThatSitsAboveTheCeiling() {
+        TargetItem item =
+                new TargetItem(
+                        "X.ABOVE",
+                        Priority.MUST,
+                        9_000,
+                        false,
+                        new AxisLevels(3, 5, 3, 0), // I 목표 5, 상한 3
+                        new AxisLevels(3, 3, 3, 0), // I는 상한까지 이미 닿았다
+                        10_000);
+
+        Suggestions result = capped.suggest(List.of(item), 1);
+
+        assertThat(result.reductions()).noneMatch(r -> r.axis() == SkillAxis.IMPLEMENTATION);
+    }
+
     private static void assertOneDirection(Suggestions result) {
         boolean reducing = !result.defers().isEmpty() || !result.reductions().isEmpty();
         boolean expanding = !result.expansions().isEmpty();

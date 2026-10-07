@@ -4,11 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.devpilot.common.web.AxisLevels;
 import com.devpilot.plan.domain.DeadlineRiskEvaluator.Required;
-import com.devpilot.skill.domain.SkillAxis;
 import com.devpilot.testsupport.UnitTest;
 import java.time.LocalDate;
-import java.util.EnumSet;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -82,10 +79,10 @@ class FeasibleDateTest {
                                 5_000, 10_000, 4_000, 8_000, 11_500, 8_000, 10_000, 12_500));
         AxisLevels target = AxisLevels.uniform(3);
         AxisLevels planning = AxisLevels.ZERO;
-        Set<SkillAxis> measurable =
-                EnumSet.of(SkillAxis.KNOWLEDGE, SkillAxis.IMPLEMENTATION, SkillAxis.EXPLANATION);
+        // ADR-070: 축 제외는 "그 축의 상한이 0"으로 표현된다 — EnumSet.of(K,I,E)와 같은 뜻이다.
+        AxisLevels ceiling = new AxisLevels(5, 5, 5, 0);
 
-        Required split = evaluator.requiredMinutes(target, planning, 120, measurable);
+        Required split = evaluator.requiredMinutes(target, planning, 120, ceiling);
         int all = evaluator.requiredMinutes(target, planning, 120);
 
         assertThat(split.laterMinutes()).isPositive();
@@ -93,6 +90,48 @@ class FeasibleDateTest {
         assertThat(split.total()).isBetween(all, all + 1);
         // 디버깅 몫이 전체의 4분의 1을 넘는다 — 그만큼이 "시켜 주지도 않는 일"이었다
         assertThat(split.laterMinutes() * 4).isGreaterThan(all);
+    }
+
+    /**
+     * ADR-070: 축이 열려 있어도 <b>그 위 레벨</b>이 막힐 수 있다. I 목표 4에 상한 3이면 3까지가 현재 몫이고 4로 가는 한 칸이 대기 몫이다.
+     *
+     * <p>raw gap은 보존된다 — {@code max(0,min(T,C)−P) + max(0,T−max(P,C)) = max(0,T−P)}. 다만 분으로 각각
+     * 올림하므로 합이 한 번에 올린 값보다 1분 클 수 있다(§4.2).
+     */
+    @Test
+    void shouldSplitAtTheCeilingInsideAnAxisThatIsOtherwiseOpen() {
+        DeadlineRiskEvaluator evaluator =
+                new DeadlineRiskEvaluator(
+                        new DeadlineRiskEvaluator.Settings(
+                                5_000, 10_000, 4_000, 8_000, 11_500, 8_000, 10_000, 12_500));
+        AxisLevels target = new AxisLevels(0, 4, 0, 0);
+        AxisLevels ceiling = new AxisLevels(5, 3, 5, 0);
+
+        Required split = evaluator.requiredMinutes(target, AxisLevels.ZERO, 120, ceiling);
+        int all = evaluator.requiredMinutes(target, AxisLevels.ZERO, 120);
+
+        assertThat(split.nowMinutes()).isPositive();
+        assertThat(split.laterMinutes()).isPositive();
+        assertThat(split.total()).isBetween(all, all + 1);
+        // 4칸 중 3칸이 현재 몫이다 — 대기 몫은 한 칸뿐이므로 현재 몫이 더 크다.
+        assertThat(split.nowMinutes()).isGreaterThan(split.laterMinutes());
+    }
+
+    /** 계획 레벨이 이미 상한을 넘었으면 현재 몫은 0이고 그 위가 전부 대기 몫이다. */
+    @Test
+    void shouldCountEverythingAsPendingWhenPlanningAlreadySitsAtTheCeiling() {
+        DeadlineRiskEvaluator evaluator =
+                new DeadlineRiskEvaluator(
+                        new DeadlineRiskEvaluator.Settings(
+                                5_000, 10_000, 4_000, 8_000, 11_500, 8_000, 10_000, 12_500));
+        AxisLevels target = new AxisLevels(0, 4, 0, 0);
+        AxisLevels planning = new AxisLevels(0, 3, 0, 0);
+        AxisLevels ceiling = new AxisLevels(5, 3, 5, 0);
+
+        Required split = evaluator.requiredMinutes(target, planning, 120, ceiling);
+
+        assertThat(split.nowMinutes()).isZero();
+        assertThat(split.laterMinutes()).isPositive();
     }
 
     /** 네 축을 모두 잴 수 있으면 아무것도 빠지지 않는다. */
@@ -105,10 +144,7 @@ class FeasibleDateTest {
 
         Required split =
                 evaluator.requiredMinutes(
-                        AxisLevels.uniform(3),
-                        AxisLevels.ZERO,
-                        120,
-                        EnumSet.allOf(SkillAxis.class));
+                        AxisLevels.uniform(3), AxisLevels.ZERO, 120, AxisLevels.uniform(5));
 
         assertThat(split.laterMinutes()).isZero();
     }

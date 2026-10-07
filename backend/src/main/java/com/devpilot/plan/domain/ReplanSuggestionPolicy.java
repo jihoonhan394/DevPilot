@@ -8,13 +8,11 @@ import com.devpilot.skill.domain.Priority;
 import com.devpilot.skill.domain.SkillAxis;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -48,11 +46,11 @@ public final class ReplanSuggestionPolicy {
                     .thenComparing(TargetItem::skillCode);
 
     private final DeadlineRiskEvaluator evaluator;
-    private final Set<SkillAxis> measurable;
+    private final AxisLevels ceiling;
 
-    /** 네 축을 모두 세는 정책. */
+    /** 상한 없이 네 축을 모두 세는 정책. */
     public ReplanSuggestionPolicy(DeadlineRiskEvaluator evaluator) {
-        this(evaluator, EnumSet.allOf(SkillAxis.class));
+        this(evaluator, AxisLevels.uniform(5));
     }
 
     /**
@@ -61,17 +59,16 @@ public final class ReplanSuggestionPolicy {
      * <p>risk가 잴 수 있는 축만 본다면 제안도 같은 축만 봐야 한다. 안 그러면 미리보기가 두 가지 자(尺)를 섞어 쓰고, <b>도구가 시켜 주지도 않는 일을
      * 줄이라고 제안한다.</b>
      *
-     * @param measurable 지금 근거를 쌓을 수 있는 축 (docs/06 §7.6)
+     * @param ceiling 축별 도달 가능 상한 (docs/06 §7.6b, ADR-070). 측정 불가 축은 0으로 들어온다
      */
-    public ReplanSuggestionPolicy(DeadlineRiskEvaluator evaluator, Set<SkillAxis> measurable) {
+    public ReplanSuggestionPolicy(DeadlineRiskEvaluator evaluator, AxisLevels ceiling) {
         this.evaluator = Objects.requireNonNull(evaluator, "evaluator");
-        this.measurable = Set.copyOf(Objects.requireNonNull(measurable, "measurable"));
+        this.ceiling = Objects.requireNonNull(ceiling, "ceiling");
     }
 
     /** 편집안(요청의 조정을 적용한 목표 목록)과 effective budget으로 제안을 만든다. */
     public Suggestions suggest(List<TargetItem> items, int effectiveMinutes) {
-        RiskEstimate current =
-                evaluator.evaluate(requirements(items), effectiveMinutes, measurable);
+        RiskEstimate current = evaluator.evaluate(requirements(items), effectiveMinutes, ceiling);
         Integer ratio = current.ratioBp();
         if (ratio == null) {
             return Suggestions.none(current);
@@ -182,10 +179,9 @@ public final class ReplanSuggestionPolicy {
         @Nullable SkillAxis chosen = null;
         int chosenGap = 0;
         for (SkillAxis axis : SkillAxis.values()) {
-            if (!measurable.contains(axis)) {
-                continue;
-            }
-            int target = axis.levelOf(item.targets());
+            // ADR-070: 상한 위의 목표를 낮춰도 **지금 할 수 있는 공부가 줄지 않는다** — 0분 절감을
+            // "시간을 아꼈다"로 제안하면 안 된다. 그래서 현재 판정 목표(min(원래, 상한))로 고른다.
+            int target = Math.min(axis.levelOf(item.targets()), axis.levelOf(ceiling));
             int gap = target - axis.levelOf(item.planning());
             if (target > MIN_REDUCED_TARGET && gap > chosenGap) {
                 chosen = axis;
@@ -246,7 +242,7 @@ public final class ReplanSuggestionPolicy {
         List<TargetItem> raisable =
                 items.stream()
                         .filter(item -> item.priority() == Priority.MUST && !item.deferred())
-                        .filter(ReplanSuggestionPolicy::belowTarget)
+                        .filter(this::belowTarget)
                         .sorted(IMPORTANCE_DESC_CODE)
                         .toList();
         for (TargetItem item : raisable) {
@@ -267,12 +263,17 @@ public final class ReplanSuggestionPolicy {
     }
 
     /** 6c: target < 5인 축 중 planning이 가장 낮은 축(동점 K, I, E, D). 모든 축 target이 5면 없음. */
-    private static Optional<SkillAxis> raiseAxis(TargetItem item) {
+    private Optional<SkillAxis> raiseAxis(TargetItem item) {
         @Nullable SkillAxis chosen = null;
         int lowestPlanning = Integer.MAX_VALUE;
         for (SkillAxis axis : SkillAxis.values()) {
             int planning = axis.levelOf(item.planning());
-            if (axis.levelOf(item.targets()) < MAX_LEVEL && planning < lowestPlanning) {
+            // ADR-070: 상한 위로 올리면 **지금 할 수 있는 공부가 늘지 않는다**(required의 nowMinutes가
+            // 그대로다). 그런데 측정 불가 축은 근거 경로가 없어 자기평가가 없는 사용자에게는 planning이
+            // 0이라, 전에는 그 축이 가장 낮아 체계적으로 골라졌다 — "여유가 생겼으니 더 공부하라"가
+            // 0분짜리 제안이었다. 상한 이내에서만 올린다.
+            int limit = Math.min(MAX_LEVEL, axis.levelOf(ceiling));
+            if (axis.levelOf(item.targets()) < limit && planning < lowestPlanning) {
                 chosen = axis;
                 lowestPlanning = planning;
             }
@@ -280,9 +281,14 @@ public final class ReplanSuggestionPolicy {
         return Optional.ofNullable(chosen);
     }
 
-    private static boolean belowTarget(TargetItem item) {
+    /**
+     * 아직 올릴 여지가 있는가. <b>현재 판정 목표</b>로 본다 (ADR-070) — 원래 목표로 보면 상한 위 목표가 남은 skill이 <b>영구히 "상향
+     * 가능"</b>이 되어, 측정 가능한 축을 모두 채운 뒤에도 0분짜리 상향 후보로 남는다.
+     */
+    private boolean belowTarget(TargetItem item) {
         for (SkillAxis axis : SkillAxis.values()) {
-            if (axis.levelOf(item.planning()) < axis.levelOf(item.targets())) {
+            int target = Math.min(axis.levelOf(item.targets()), axis.levelOf(ceiling));
+            if (axis.levelOf(item.planning()) < target) {
                 return true;
             }
         }
@@ -321,7 +327,7 @@ public final class ReplanSuggestionPolicy {
 
     private int required(TargetItem item, AxisLevels targets) {
         return evaluator
-                .requiredMinutes(targets, item.planning(), item.minutesPerLevelStep(), measurable)
+                .requiredMinutes(targets, item.planning(), item.minutesPerLevelStep(), ceiling)
                 .nowMinutes();
     }
 
