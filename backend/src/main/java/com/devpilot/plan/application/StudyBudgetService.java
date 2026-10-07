@@ -21,13 +21,11 @@ import com.devpilot.plan.infrastructure.LearningPlanRepository;
 import com.devpilot.plan.infrastructure.PlanProgressSnapshotRepository;
 import com.devpilot.skill.application.MeasurableAxes;
 import com.devpilot.skill.domain.Priority;
-import com.devpilot.skill.domain.SkillAxis;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Limit;
@@ -196,7 +194,7 @@ public class StudyBudgetService {
                                                         item.minutesPerLevelStep()))
                                 .toList(),
                         budget.effectiveMinutes(),
-                        Set.copyOf(measurableAxes.axes()));
+                        measurableAxes.effectiveCeiling());
         // 가이드가 먼저다(ADR-062): 목표일을 못 지키면 "언제면 되는지"를 함께 계산한다.
         LocalDate feasible =
                 budgetCalculator.feasibleDate(
@@ -216,9 +214,9 @@ public class StudyBudgetService {
         return riskEvaluator;
     }
 
-    /** 제안도 risk와 같은 축만 봐야 한다 (ADR-062). */
-    Set<SkillAxis> measurableAxes() {
-        return Set.copyOf(measurableAxes.axes());
+    /** 제안도 risk와 같은 범위를 봐야 한다 (ADR-062 → ADR-070). 측정 불가 축은 상한이 0이다. */
+    AxisLevels effectiveCeiling() {
+        return measurableAxes.effectiveCeiling();
     }
 
     private LearningPlan activePlan(UUID userId) {

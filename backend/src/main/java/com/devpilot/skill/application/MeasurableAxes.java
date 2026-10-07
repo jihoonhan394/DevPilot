@@ -98,9 +98,14 @@ public class MeasurableAxes {
                 resolved.get(SkillAxis.DEBUGGING));
     }
 
-    /** 지금 제품이 어느 레벨까지 근거를 만들 수 있는가 (ADR-070). 전역이고 skill별이 아니다. */
+    /** 설정에 적힌 레벨 상한 (ADR-070). 전역이고 skill별이 아니다. 축 제외는 반영되지 않은 날 값이다. */
     public AxisLevels evidenceCeiling() {
         return ceiling;
+    }
+
+    /** 판정·예산에 넘기는 상한. <b>측정 불가 축은 0</b>이다 — 그래서 받는 쪽은 축 제외를 따로 알 필요가 없다 (docs/06 §4.2·§7.6b). */
+    public AxisLevels effectiveCeiling() {
+        return forProgress(AxisLevels.uniform(5));
     }
 
     /** 지금 잴 수 있는 축. {@code SkillAxis} 선언 순서다. */

@@ -541,12 +541,14 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
 
     @Test
     void shouldPreferMustSkillsWithRiskModifierWhenRiskIsHigh() throws Exception {
-        // AC-03 S5: 목표일 2026-11-09 → effective 2467, requiredMust 2825 → ratio 11451 (HIGH)
+        // AC-03 S5: HIGH일 때의 modifier를 보는 테스트다.
         TestUser user = TestUser.owner();
         Map<String, Object> request = TestApi.onboardingRequest();
-        // 2026-11-02다: risk가 잴 수 있는 축만 세면서(ADR-062) 11-09는 MEDIUM이 됐다.
-        // HIGH 동작을 보는 테스트이므로 단정을 약하게 만들지 않고 정말 HIGH인 날짜로 바꿨다.
-        learningGoal(request).put("targetCompletionDate", "2026-11-02");
+        // 날짜가 두 번 당겨졌다. 필요 시간이 줄 때마다 같은 날짜가 한 단계 낮은 risk가 되기 때문이다 —
+        // ADR-062(축을 빼면서 11-09 → MEDIUM), ADR-070(레벨 상한으로 requiredMust 2412 → 1825,
+        // 11-02 → MEDIUM). **HIGH 동작을 보는 테스트이므로 단정을 약하게 만들지 않고 날짜를 바꿨다.**
+        // 2026-10-28: effective 1543, requiredMust 1825 → ratio 11827 (HIGH 범위 가운데).
+        learningGoal(request).put("targetCompletionDate", "2026-10-28");
         api.onboard(user, request);
 
         JsonNode today = api.generateToday(user, 60, "NORMAL");

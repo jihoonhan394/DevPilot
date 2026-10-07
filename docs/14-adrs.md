@@ -1851,5 +1851,23 @@ raw gap 합    = max(0, T − P)              # 원래 값과 같다
   - `05` §7.10의 예시가 D3을 쓰는데 현 코드는 D0으로 판정한다 → **예시를 고친다.**
   - `06` §4.2·§5.2·§5.3·§7.6·§11.4와 `12` AC-01·02·03·09·30의 정수 예시가 바뀔 수 있다. **예시를 조용히 약화하지 않고** 변경 이유와 새 수치를 여기에 적는다.
   - **바뀐 기존 벡터 (BL-GOL-21)**: `BuildableStepServiceIntegrationTest.shouldNameTheSkillsThatAreStillShort`가 `gaps[].targets.implementation`을 **4 → 3**으로 기대한다. 저장된 목표는 그대로 4이고 I 상한이 3이라 현재 판정 목표가 3이다. **약화가 아니라 기대 동작이 바뀐 것**이고, 원래 4가 남아 있다는 사실은 `capabilityPending`(BL-GOL-24)이 보인다. `MeasurableAxesTest`의 MA-1~MA-5는 **하나도 고치지 않았다** — 레벨 상한 없는 생성자를 남겨 그 벡터의 뜻을 보존했다.
+  - **바뀐 기존 수치 (BL-GOL-23)** — 테스트 catalog 기본 온보딩(JAVA 3, SPRING 2, DATABASE 2, ALGORITHM 1) 기준. **예시를 약화한 것이 아니라 규칙이 바뀐 것이다.**
+
+| 값 | 네 축 전부 | ADR-062 (축 제외) | **ADR-070 (레벨 상한)** |
+|---|---|---|---|
+| `requiredMustMinutes` | 2,825 | 2,412 | **1,825** |
+| `requiredShouldMinutes` | — | 943 | 943 (바뀌지 않음) |
+| `requiredMustLaterMinutes` | — | 415 (D만) | **1,003** (D + I4·E4) |
+| `ratioBp` (목표일 2026-10-12) | — | 48,924 | **37,018** |
+| `ratioBp` (목표일 2027-04-01) | — | 1,940 | **1,467** |
+| `feasibleCompletionDate` (한 주 horizon) | — | 2027-01-11 | **2027-01-04** |
+| `feasibleCompletionDate` (2027-04-01 horizon) | — | 2026-11-09 | **2026-11-02** |
+| `RAISE_TARGET` 제안 수 (여유 있을 때) | — | MUST 7개 | **3개** |
+
+  - **`feasibleDate`가 당겨진 것이 이 변경의 요점이다** — 할 수 없는 일을 세지 않으니 더 이른 날짜를 말한다.
+  - **`RAISE_TARGET`이 7개 → 3개가 된 이유**: 나머지 넷(`SPRING.TRANSACTION`·`JAVA.EXCEPTION`·`JAVA.COLLECTION`·`DATABASE.INDEX`)은 모든 축의 목표가 이미 상한 `(4,3,3,0)`에 닿아 있다. 올려도 현재 필요 시간이 늘지 않는다. 그 테스트에 이미 있던 `addedMinutes > 0` 단정이 그 근거다 — 넷을 그대로 두면 그 단정이 깨진다.
+  - **risk 단정을 바꾸지 않고 날짜를 당긴 테스트 3건**: `shouldPreferMustSkillsWithRiskModifierWhenRiskIsHigh`, `shouldSuggestDeferralsAndReductionsWhenRiskIsHigh`, `shouldPreviewCommitAndRestoreAcrossVersions`. 셋 다 **HIGH일 때의 동작**을 보는 테스트라 `"HIGH"` → `"MEDIUM"`으로 고치면 검증이 사라진다. 목표일을 `2026-11-02` → `2026-10-28`로 당겼다(effective 1,543 / ratio 11,827 — HIGH 범위 가운데). ADR-062 때도 같은 처리를 했고(`2026-11-09` → `2026-11-02`) 그 주석이 남아 있다.
+  - **0분 제안을 막는 지점 세 곳**: `raiseAxis`(상한 이내의 축만), `belowTarget`(현재 판정 목표와 비교 — 안 그러면 상한 위 목표가 남은 skill이 영구 후보), `reduction`(현재 판정 목표로 고름 — 상한 위 목표를 낮춰도 0분 절감).
+  - **`requiredShouldMinutes`에는 대기 몫을 넣지 않는다**: 그 값은 "지금 할 수 있는 SHOULD"이고, 못 하는 몫을 섞으면 축소 제안이 줄일 수 없는 시간을 보고 판단한다. 코드가 이미 그랬다(`evaluate`가 `shouldNow`만 누적).
   - **미결정**: `05` API 필드 모양과 사용자 문구, 전체 목표를 계획 단위로 집계할 때 MUST/SHOULD/LATER·`deferred`의 분모, 기능 대기 목록의 순서와 0개일 때 문구.
   - **이 ADR은 교육 효과를 판정하지 않는다.** 콘텐츠 품질·planner 가중치·복습 간격·Hint Ladder·skill tree 분해·AI 프롬프트·나머지 두 트랙은 미검토다.
