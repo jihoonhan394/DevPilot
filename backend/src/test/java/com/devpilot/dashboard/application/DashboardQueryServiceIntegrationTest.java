@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.devpilot.skill.domain.SkillCategory;
 import com.devpilot.testsupport.ApiTestSupport;
 import com.devpilot.testsupport.IntegrationTest;
 import com.devpilot.testsupport.TestApi;
@@ -212,6 +213,42 @@ class DashboardQueryServiceIntegrationTest extends ApiTestSupport {
         }
         // 아무것도 하지 않은 사용자는 맨 앞 단계에 있다. current 는 하나뿐이다.
         assertThat(current).containsExactly(0);
+    }
+
+    /**
+     * AC-38 S2 · ADR-070: **자기평가만 올려도 단계가 넘어가지 않는다.** 그리고 Today와 대시보드가 같은 단계를 가리킨다.
+     *
+     * <p>전에는 대시보드가 계획 레벨만 비교하고 `lastPracticedAt`을 보지 않아서, 자기평가로 수준을 올린 사용자에게 Today는 1단계를 주는데 대시보드는
+     * 다음 단계로 넘어간 것처럼 보일 수 있었다(docs/05 §13.1).
+     */
+    @Test
+    void shouldNotAdvanceTheTimelineOnSelfAssessmentAlone() throws Exception {
+        TestUser user = onboardedOwner();
+        // 열네 category를 자기평가 상한(3)까지 올린다. 학습 기록은 하나도 만들지 않는다.
+        List<Map<String, Object>> assessments = new ArrayList<>();
+        for (SkillCategory category : SkillCategory.values()) {
+            assessments.add(Map.of("category", category.name(), "level", 3));
+        }
+        api.put(user, "/api/v1/skills/me/self-assessment", Map.of("assessments", assessments))
+                .andExpect(status().isOk());
+
+        JsonNode milestones =
+                api.body(api.get(user, DASHBOARD).andExpect(status().isOk()))
+                        .path("milestoneTimeline")
+                        .path("milestones");
+
+        List<Integer> current = new ArrayList<>();
+        for (int index = 0; index < milestones.size(); index++) {
+            if (milestones.get(index).path("current").asBoolean()) {
+                current.add(index);
+            }
+        }
+        // 학습 기록이 없으므로 여전히 맨 앞 단계다 — ADR-049 "주장은 증거가 아니다".
+        assertThat(current).containsExactly(0);
+
+        // 같은 사용자의 Today도 1단계 skill을 낸다 (두 화면이 같은 단계를 가리킨다).
+        JsonNode plan = api.generateToday(user, 60, "NORMAL");
+        assertThat(plan.path("mainTask").isNull()).isFalse();
     }
 
     /** docs/05 §13.1: category별 평균은 활성 plan의 deferred=false skill만 세고 4축 평균 milli다. */
