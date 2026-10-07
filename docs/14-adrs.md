@@ -1660,7 +1660,7 @@ SCR-SKILL-DETAIL은 축 표에 `증거 레벨 | 계획용 레벨 | 목표`를 �
 - **Status**: Accepted (2026-10-03)
 - **Context**: `06` §5.3은 난이도를 `planning IMPLEMENTATION + 1`로 정한다. 고정 규칙이고 **실제로 몇 개를 맞히는지 보지 않는다.** 그래서 자기평가가 높은 사용자에게는 계속 어려운 문제가, 낮은 사용자에게는 계속 쉬운 문제가 나간다. ADR-063이 그 일부를 "주장 수준에서 2회 실패"라는 **이진 트립와이어**로 막았지만, 그것은 자기평가를 거두는 규칙이고 난이도 자체를 조절하지는 않는다.
 
-Wilson et al.(2019) *The Eighty Five Percent Rule for optimal learning*(Nature Communications)은 정답률 **85%**(오답 15%) 부근에서 학습이 가장 빠르다고 본다. 다 맞히면 무엇을 고칠지 알 수 없고, 다 틀리면 무엇이 통했는지 알 수 없다.
+Wilson et al.(2019) *The Eighty Five Percent Rule for optimal learning*(Nature Communications)은 정답률 **85%**(오답 15%) 부근에서 학습이 가장 빠르다고 본다. 다 맞히면 무엇을 고칠지 알 수 없고, 다 틀리면 무엇이 통했는지 알 수 없다. **이 수치를 그대로 끌어오지 않는다** — 논문은 이진 분류 과제에서 유도한 값이고 백엔드 만들기 과제에 옮겨 간다는 직접 근거가 없다. 아래 "왜 한 번에 ±1인가"에 그 한계를 적었고, **법칙이 아니라 실측으로 확인할 휴리스틱으로 쓴다**(`BL-CNT-14` 실측 튜닝에서 재검토).
 
 - **Decision**: `DifficultyBandPolicy`(`today.domain`, 순수 규칙)를 더해 `d = planning I + 1` **위에** 측정된 성공률로 ±1을 얹는다. 규칙과 vector는 `06` §5.3, 설정은 `03` §9 `devpilot.planner.difficulty-band`.
 
