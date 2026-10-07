@@ -232,6 +232,74 @@ class PlannerScoringTest {
                 .contains(first);
     }
 
+    // --- AC-39 / ADR-071: 포화되는 factor는 순위를 가리지 못한다 ---
+
+    private MilestoneContext contextOf(LocalDate today, LocalDate start, LocalDate end) {
+        MilestoneSpan milestone =
+                new MilestoneSpan(MILESTONE_ID, "지난 단계", 0, start, end, Set.of("A"));
+        return scoring.milestoneContext(
+                today,
+                List.of(milestone),
+                mustTargets(AxisLevels.uniform(3), "A"),
+                unmetSkills("A"),
+                "A");
+    }
+
+    /**
+     * AC-39 S1: 끝나는 날을 지나도 {@code MICRO}에서 멈춘다. 전에는 {@code daysLeft}가 음수가 되어 끝없이 자랐고, 그러면 그 factor
+     * 하나가 나머지 다섯의 최댓값 합(가중치 0.85)을 넘었다.
+     */
+    @Test
+    void shouldCapMilestoneUrgencyAtMicroWhenTheEndDateHasPassed() {
+        LocalDate start = LocalDate.parse("2026-09-01");
+        LocalDate end = LocalDate.parse("2026-09-30");
+
+        assertThat(contextOf(LocalDate.parse("2026-09-30"), start, end).urgency())
+                .isEqualTo(1_000_000);
+        assertThat(contextOf(LocalDate.parse("2026-10-30"), start, end).urgency())
+                .isEqualTo(1_000_000);
+        assertThat(contextOf(LocalDate.parse("2027-09-30"), start, end).urgency())
+                .isEqualTo(1_000_000);
+    }
+
+    /** AC-39 S1: 하루 더 지나도 커지지 않는다 — 포화가 멈췄다는 뜻이다. */
+    @Test
+    void shouldNotGrowFurtherOnceTheCapIsReached() {
+        LocalDate start = LocalDate.parse("2026-09-01");
+        LocalDate end = LocalDate.parse("2026-09-30");
+
+        long first = contextOf(LocalDate.parse("2026-10-01"), start, end).urgency();
+        long later = contextOf(LocalDate.parse("2026-12-01"), start, end).urgency();
+
+        assertThat(later).isEqualTo(first);
+    }
+
+    /** AC-39 S2: 상한에 닿지 않는 날은 값이 그대로다 — 상한이 기존 식을 바꾸지 않는다. */
+    @Test
+    void shouldLeaveTheValueAloneWhileTheEndDateIsStillAhead() {
+        // length 20, daysLeft 10 → 1_000_000 − 500_000 = 500_000 (docs/06 §5.8 vector와 같다)
+        assertThat(
+                        contextOf(
+                                        LocalDate.parse("2026-10-10"),
+                                        LocalDate.parse("2026-10-01"),
+                                        LocalDate.parse("2026-10-20"))
+                                .urgency())
+                .isEqualTo(500_000);
+    }
+
+    /** AC-39 S2: 하한도 그대로다 — 시작한 단계는 아예 0이 아니다. */
+    @Test
+    void shouldStillApplyTheFloorForAStepThatBarelyStarted() {
+        // length 100, daysLeft 99 → 1_000_000 − 990_000 = 10_000 < floor(200_000)
+        assertThat(
+                        contextOf(
+                                        LocalDate.parse("2026-10-01"),
+                                        LocalDate.parse("2026-10-01"),
+                                        LocalDate.parse("2027-01-08"))
+                                .urgency())
+                .isEqualTo(200_000);
+    }
+
     /** 단계 안의 급한 정도는 그 단계의 날짜로 잰다. 끝나는 날이 지났으면 최대다. */
     @Test
     void shouldUseFloorAndNextMilestoneUrgency() {

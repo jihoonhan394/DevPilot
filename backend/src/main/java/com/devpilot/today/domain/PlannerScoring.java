@@ -284,9 +284,13 @@ public final class PlannerScoring {
     }
 
     /**
-     * skill의 milestone 맥락과 {@code milestoneUrgency}. 현재 milestone skill: {@code max(floor,
-     * 1_000_000 − floorDiv(daysLeft × 1_000_000, length))}, 다음 milestone skill: 고정값, 여러 milestone이면
-     * 최댓값.
+     * skill의 milestone 맥락과 {@code milestoneUrgency}. 현재 milestone skill: {@code daysLeft <= 0 ?
+     * 1_000_000 : max(floor, 1_000_000 − floorDiv(daysLeft × 1_000_000, length))}, 다음 milestone
+     * skill: 고정값, 여러 milestone이면 최댓값.
+     *
+     * <p><b>끝나는 날을 지나면 상한에서 멈춘다</b>(ADR-071). 전에는 음수 {@code daysLeft}가 그대로 {@code floorDiv}에 들어가
+     * <b>예외가 났다</b> — 뒤처진 사용자의 {@code POST /today/generate}가 500이 됐다. 상한이 {@code MICRO}인 이유는 다른 다섯
+     * factor가 전부 {@code [0, MICRO]}이기 때문이다 — 하나만 그 범위를 벗어나면 가중합의 정규화가 깨진다.
      */
     public MilestoneContext milestoneContext(
             LocalDate today,
@@ -304,10 +308,18 @@ public final class PlannerScoring {
             // 지났으면 daysLeft가 음수라 값이 올라간다 — 늦었다는 뜻이다.
             long length = ChronoUnit.DAYS.between(current.startDate(), current.endDate()) + 1;
             long daysLeft = ChronoUnit.DAYS.between(today, current.endDate());
+            // ADR-071: 끝나는 날을 지나면 MICRO다. 전에는 daysLeft가 음수인 채로 floorDiv에 들어가
+            // **IllegalArgumentException**이 났다 — N-4가 음수 피제수를 금지한다(FixedPointMath).
+            // 즉 포화가 아니라 500이었다. 그리고 상한이 MICRO인 이유: 다른 다섯 factor가 전부
+            // [0, MICRO]이므로 하나만 그 범위를 벗어나면 "합이 10_000인 정규화 가중합"이 깨진다.
+            // 연체는 위험도(§4.3)와 재계획 제안(§4.4)이 말한다 — planner 점수로 말하면 그 점수가
+            // 다른 비교를 밀어내고 정작 늦은 이유는 화면에 안 나온다.
             urgency =
-                    Math.max(
-                            settings.factors().milestoneUrgencyFloor(),
-                            MICRO - FixedPointMath.floorDiv(daysLeft * MICRO, length));
+                    daysLeft <= 0
+                            ? MICRO
+                            : Math.max(
+                                    settings.factors().milestoneUrgencyFloor(),
+                                    MICRO - FixedPointMath.floorDiv(daysLeft * MICRO, length));
         }
         MilestoneSpan next =
                 nextMilestone(milestones, targets, skills)

@@ -474,7 +474,7 @@ task 제목 템플릿:
 | `practicalImportance` | `plan_skill_target.practical_importance × 1_000_000` (target 없으면 `300_000`) |
 | `skillGap` | `Σtarget == 0 ? 0 : floorDiv(Σ_axis max(0, target − planning) × 1_000_000, Σ_axis target)` |
 | `reviewUrgency` | due 없음 → 0 / 있음 → `min(1_000_000, 300_000 + 100_000 × maxOverdueDays)`, `overdueDays = daysBetween(planDate(due_at), today)` (≥0) |
-| `milestoneUrgency` | 현재 milestone skill: `length = daysBetween(start, end) + 1`, `daysLeft = daysBetween(today, end)`, **`clamp(1_000_000 − floorDiv(daysLeft × 1_000_000, length), 200_000, 1_000_000)`** / 다음 milestone skill: `100_000` / 그 외 0 (여러 milestone이면 최댓값). **상한이 `MICRO`다**(ADR-071, Proposed) — 다른 다섯 factor가 전부 `[0, MICRO]`이므로 하나만 그 범위를 벗어나면 "합이 10,000인 정규화 가중합"이 깨진다. 목표일을 넘기면 `daysLeft`가 음수가 되어 전에는 끝없이 자랐다(`§11.1` 참고). 연체는 위험도(§4.3)와 재계획 제안(§4.4)이 말한다 — planner 점수로 말하면 그 점수가 다른 비교를 밀어내고 정작 늦은 이유는 화면에 안 나온다 |
+| `milestoneUrgency` | 현재 milestone skill: `length = daysBetween(start, end) + 1`, `daysLeft = daysBetween(today, end)`, **`daysLeft <= 0 ? 1_000_000 : max(200_000, 1_000_000 − floorDiv(daysLeft × 1_000_000, length))`** / 다음 milestone skill: `100_000` / 그 외 0 (여러 milestone이면 최댓값). **상한이 `MICRO`다**(ADR-071) — 다른 다섯 factor가 전부 `[0, MICRO]`이므로 하나만 그 범위를 벗어나면 "합이 10,000인 정규화 가중합"이 깨진다. 목표일을 넘기면 `daysLeft`가 음수가 되는데, 전에는 그대로 `floorDiv`에 들어가 **예외가 났다**(N-4가 음수 피제수를 금지한다) — 뒤처진 사용자의 Today 생성이 500이었다. 연체는 위험도(§4.3)와 재계획 제안(§4.4)이 말한다 — planner 점수로 말하면 그 점수가 다른 비교를 밀어내고 정작 늦은 이유는 화면에 안 나온다 |
 | `projectNeed` | 학습 목표의 focus skill → `1_000_000`, 아니면 0 |
 | `prerequisiteReadiness` | prerequisite 없음 → `1_000_000` / 있음 → `floorDiv(count(planning IMPLEMENTATION ≥ 2) × 1_000_000, count)` |
 | `stageGap` | `floorDiv((6 − 완료한 학습 단계 수) × 1_000_000, 6)` (§5.11 ST-5). **`WEIGHT_BP`에 들어가지 않는다** — 아래 보너스로만 쓴다 |
@@ -1575,7 +1575,7 @@ spans     = 19 §5 allocate(windowStart, targetCompletionDate, weights, minMiles
 - **새 알고리즘이 아니다.** 온보딩이 쓰는 `19` §5를 그대로 부르고 입력만 다르게 준다.
 - **왜 지금 길이를 가중치로 쓰나**: 저장된 계획에는 템플릿 `weightBp`가 없고(`plan_milestone`에 열이 없다), 사용자가 손으로 늘려 둔 단계가 있으면 그 비율이 유지되어야 한다. 지금 길이를 쓰면 **모양을 지키며 창에만 맞추는 비례 재배치**가 된다.
 - **왜 끝난 단계를 건드리지 않나**: 완료·진행 중인 단계의 날짜를 옮기면 그 기간에 쌓인 기록과 어긋난다. `SKIPPED`도 지난 일이다.
-- **왜 필요한가**: 목표일을 바꾸면 예산·위험도·역산 날짜는 즉시 새 날짜를 쓰지만(`05` §5.2) plan 구조는 그대로다. 날짜가 썩으면 표시만 어긋나는 것이 아니라 **§5.4 `milestoneUrgency`가 포화된다** — 그 식은 `max(200_000, 1_000_000 − floorDiv(daysLeft × 1_000_000, length))`이고 **위쪽 한계가 없어서** 끝 날짜가 지날수록 계속 커진다. 남은 단계가 전부 그 상태면 그 factor가 우선순위를 가리지 못한다.
+- **왜 필요한가**: 목표일을 바꾸면 예산·위험도·역산 날짜는 즉시 새 날짜를 쓰지만(`05` §5.2) plan 구조는 그대로다. 날짜가 썩으면 표시만 어긋나는 것이 아니라 **§5.4 `milestoneUrgency`가 깨진다** — 그 식은 `max(200_000, 1_000_000 − floorDiv(daysLeft × 1_000_000, length))`이고 `daysLeft`가 음수가 되면 N-4가 음수 피제수를 금지하므로 **예외가 난다**(ADR-071에서 확인했다. 이 줄은 처음에 "위쪽 한계가 없어서 계속 커진다"로 적혀 있었는데, 식만 보고 N-4 가드를 빼먹은 것이다). ADR-071이 `daysLeft <= 0`을 `1_000_000`으로 막았고, 그래도 **날짜가 썩는 것 자체를 고치는 것은 이 재배치다.**
 - 적용은 저장하지 않는다 — replan 미리보기가 제안만 돌려주고(`05` §7.7 `milestoneSchedule`) 확정은 기존 replan 경로를 그대로 쓴다.
 
 **Test vectors**

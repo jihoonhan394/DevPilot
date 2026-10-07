@@ -2240,9 +2240,9 @@
 
 ---
 
-## AC-39 포화되는 factor는 순위를 가리지 못한다 (**Proposed**, ADR-071)
+## AC-39 포화되는 factor는 순위를 가리지 못한다 (ADR-071)
 
-> 규칙은 `06-learning-engine-rules.md` §5.4. 소유자 승인 전에는 구현하지 않는다.
+> 규칙은 `06-learning-engine-rules.md` §5.4.
 
 **S1. 상한에서 멈춘다**
 - Given 현재 milestone의 종료일이 **지났다** (`daysLeft < 0`)
