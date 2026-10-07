@@ -153,6 +153,44 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
                 skillCode);
     }
 
+    /**
+     * AC-39 S1·S4 · ADR-071: **현재 단계의 종료일을 지나도 Today가 터지지 않는다.**
+     *
+     * <p>전에는 음수 {@code daysLeft}가 {@code FixedPointMath.floorDiv}에 들어가 {@code
+     * IllegalArgumentException}이 났다(N-4가 음수 피제수를 금지한다). 뒤처진 사용자의 {@code POST /today/generate}가
+     * 500이었다. ADR-070 전에는 1단계가 영원히 미완료였으므로 1단계 종료일이 지나는 날 반드시 터졌다.
+     *
+     * <p>그리고 연체 정보는 사라지지 않는다 — 위험도가 그것을 말한다(AC-39 S4).
+     */
+    @Test
+    void shouldStillGenerateTodayAfterTheCurrentMilestoneEndDatePassed() throws Exception {
+        TestUser user = onboardedOwner();
+        // 1단계의 끝을 어제로 만든다. 날짜만 바꾸고 진행은 그대로다 — 뒤처진 상태다.
+        jdbc.update(
+                "update devpilot.plan_milestone m set start_date = date '2026-09-01',"
+                        + " end_date = date '2026-10-04'"
+                        + " from devpilot.learning_plan p"
+                        + " where p.id = m.plan_id and p.status = 'ACTIVE' and p.user_id = ?"
+                        + " and m.sort_order = 0",
+                userId(user));
+
+        JsonNode today = api.generateToday(user, 60, "NORMAL");
+
+        assertThat(today.path("mainTask").isNull()).isFalse();
+        // 상한에서 멈춘다 — 전에는 여기 오기 전에 예외가 났다.
+        Long urgency =
+                jdbc.queryForObject(
+                        "select (lt.score_breakdown->'factors'->>'milestoneUrgency')::bigint"
+                                + " from devpilot.learning_task lt where lt.user_id = ?"
+                                + " and lt.score_breakdown is not null"
+                                + " order by lt.sort_order limit 1",
+                        Long.class,
+                        userId(user));
+        assertThat(urgency).isNotNull().isEqualTo(1_000_000L);
+        // AC-39 S4: 늦었다는 사실은 위험도가 말한다. planner 점수가 아니다.
+        assertThat(today.path("deadlineRisk").asString()).isNotBlank();
+    }
+
     @Test
     void shouldRejectInvalidGenerateRequests() throws Exception {
         // AC-02 S3
