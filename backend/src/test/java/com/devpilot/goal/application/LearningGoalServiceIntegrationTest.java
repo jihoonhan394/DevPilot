@@ -150,6 +150,43 @@ class LearningGoalServiceIntegrationTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.code").value("ONBOARDING_REQUIRED"));
     }
 
+    /**
+     * AC-34 S2 · docs/05 §5.2: **학습 트랙은 바꿀 수 없다.** 트랙을 바꾸면 role target·계획 템플릿·skill state가 모두 다른
+     * 집합이 되어 계획과 증거를 잇지 못한다(`19` §10.4 — 트랙 변경은 MVP 범위 밖).
+     */
+    @Test
+    void shouldRejectTrackChangeWithoutTouchingTheGoal() throws Exception {
+        TestUser user = TestUser.owner();
+        api.onboard(user);
+        JsonNode before = api.body(api.get(user, GOAL).andExpect(status().isOk()));
+
+        Map<String, Object> other =
+                request("2027-04-01", List.of(), before.path("version").asLong());
+        other.put("targetRole", "JAVA_BACKEND_STARTER");
+        api.put(user, GOAL, other)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("targetRole"))
+                .andExpect(jsonPath("$.errors[0].code").value("VALUE_NOT_ALLOWED"));
+
+        JsonNode after = api.body(api.get(user, GOAL).andExpect(status().isOk()));
+        assertThat(after.path("targetRole").asString()).isEqualTo("JAVA_BACKEND");
+        assertThat(after.path("version").asLong()).isEqualTo(before.path("version").asLong());
+    }
+
+    /** 같은 트랙으로 날짜만 바꾸면 통과한다 (AC-34 S2 두 번째 줄). */
+    @Test
+    void shouldAllowDateChangeWithTheSameTrack() throws Exception {
+        TestUser user = TestUser.owner();
+        api.onboard(user);
+        long version = api.body(api.get(user, GOAL)).path("version").asLong();
+
+        api.put(user, GOAL, request("2027-05-01", List.of(), version))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.targetCompletionDate").value("2027-05-01"))
+                .andExpect(jsonPath("$.targetRole").value("JAVA_BACKEND"));
+    }
+
     private static Map<String, Object> request(String target, List<String> focus, long version) {
         Map<String, Object> request = new LinkedHashMap<>();
         request.put("targetRole", "JAVA_BACKEND");
