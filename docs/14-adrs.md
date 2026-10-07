@@ -1850,5 +1850,6 @@ raw gap 합    = max(0, T − P)              # 원래 값과 같다
   - `05` §7.10에 전역 `evidenceCeiling`과 **단계별 기능 대기 목록**이 생긴다. `gaps[].targets`는 **지금 이미 현재 판정 목표이므로 그 뜻을 유지한다**(`BuildableStepService`가 `forProgress`로 만들어 넣는다). 대기 목록은 **`GAP_LIMIT = 5`와 독립**이어야 한다 — `gaps=[]`·`status=BUILDABLE`이어도 남는다.
   - `05` §7.10의 예시가 D3을 쓰는데 현 코드는 D0으로 판정한다 → **예시를 고친다.**
   - `06` §4.2·§5.2·§5.3·§7.6·§11.4와 `12` AC-01·02·03·09·30의 정수 예시가 바뀔 수 있다. **예시를 조용히 약화하지 않고** 변경 이유와 새 수치를 여기에 적는다.
+  - **바뀐 기존 벡터 (BL-GOL-21)**: `BuildableStepServiceIntegrationTest.shouldNameTheSkillsThatAreStillShort`가 `gaps[].targets.implementation`을 **4 → 3**으로 기대한다. 저장된 목표는 그대로 4이고 I 상한이 3이라 현재 판정 목표가 3이다. **약화가 아니라 기대 동작이 바뀐 것**이고, 원래 4가 남아 있다는 사실은 `capabilityPending`(BL-GOL-24)이 보인다. `MeasurableAxesTest`의 MA-1~MA-5는 **하나도 고치지 않았다** — 레벨 상한 없는 생성자를 남겨 그 벡터의 뜻을 보존했다.
   - **미결정**: `05` API 필드 모양과 사용자 문구, 전체 목표를 계획 단위로 집계할 때 MUST/SHOULD/LATER·`deferred`의 분모, 기능 대기 목록의 순서와 0개일 때 문구.
   - **이 ADR은 교육 효과를 판정하지 않는다.** 콘텐츠 품질·planner 가중치·복습 간격·Hint Ladder·skill tree 분해·AI 프롬프트·나머지 두 트랙은 미검토다.

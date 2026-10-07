@@ -113,7 +113,22 @@ class BuildableStepServiceIntegrationTest extends ApiTestSupport {
                 .containsExactly("TESTING.JUNIT", "WEB_HTTP.HTTP_BASICS");
         JsonNode junit = gaps.get(0);
         assertThat(junit.path("evidenceLevels").path("implementation").asInt()).isZero();
-        assertThat(junit.path("targets").path("implementation").asInt()).isEqualTo(4);
+        // ADR-070: targets는 **현재 판정 목표**다 — min(원래 목표, evidenceCeiling). 저장된 목표는 4이고
+        // I 상한이 3이라 3이 온다. 원래 4가 남아 있다는 사실은 capabilityPending이 보인다(BL-GOL-24).
+        assertThat(junit.path("targets").path("implementation").asInt()).isEqualTo(3);
+    }
+
+    /** ADR-070: 상한이 목표를 가리는 것이 아니라 낮출 뿐이다 — 상한 아래의 축은 저장된 목표가 그대로 온다. */
+    @Test
+    void shouldKeepATargetThatSitsBelowTheCeiling() throws Exception {
+        TestUser user = onboardedOwner();
+
+        JsonNode gaps = api.body(api.get(user, BUILDABLE)).path("steps").get(0).path("gaps");
+        JsonNode first = gaps.get(0);
+
+        // K 상한은 4라 K 목표 3·4는 그대로다. D 상한은 0이라 판정에서 빠진다.
+        assertThat(first.path("targets").path("knowledge").asInt()).isPositive();
+        assertThat(first.path("targets").path("debugging").asInt()).isZero();
     }
 
     /** BS-7: 미룬 목표는 관문에서 빠진다 — 미루기로 한 것이 단계를 막으면 미룬 것이 아니다. */
