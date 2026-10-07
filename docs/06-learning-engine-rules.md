@@ -474,7 +474,7 @@ task 제목 템플릿:
 | `practicalImportance` | `plan_skill_target.practical_importance × 1_000_000` (target 없으면 `300_000`) |
 | `skillGap` | `Σtarget == 0 ? 0 : floorDiv(Σ_axis max(0, target − planning) × 1_000_000, Σ_axis target)` |
 | `reviewUrgency` | due 없음 → 0 / 있음 → `min(1_000_000, 300_000 + 100_000 × maxOverdueDays)`, `overdueDays = daysBetween(planDate(due_at), today)` (≥0) |
-| `milestoneUrgency` | 현재 milestone skill: `length = daysBetween(start, end) + 1`, `daysLeft = daysBetween(today, end)`, `max(200_000, 1_000_000 − floorDiv(daysLeft × 1_000_000, length))` / 다음 milestone skill: `100_000` / 그 외 0 (여러 milestone이면 최댓값) |
+| `milestoneUrgency` | 현재 milestone skill: `length = daysBetween(start, end) + 1`, `daysLeft = daysBetween(today, end)`, **`daysLeft <= 0 ? 1_000_000 : max(200_000, 1_000_000 − floorDiv(daysLeft × 1_000_000, length))`** / 다음 milestone skill: `100_000` / 그 외 0 (여러 milestone이면 최댓값). **상한이 `MICRO`다**(ADR-071) — 다른 다섯 factor가 전부 `[0, MICRO]`이므로 하나만 그 범위를 벗어나면 "합이 10,000인 정규화 가중합"이 깨진다. 목표일을 넘기면 `daysLeft`가 음수가 되는데, 전에는 그대로 `floorDiv`에 들어가 **예외가 났다**(N-4가 음수 피제수를 금지한다) — 뒤처진 사용자의 Today 생성이 500이었다. 연체는 위험도(§4.3)와 재계획 제안(§4.4)이 말한다 — planner 점수로 말하면 그 점수가 다른 비교를 밀어내고 정작 늦은 이유는 화면에 안 나온다 |
 | `projectNeed` | 학습 목표의 focus skill → `1_000_000`, 아니면 0 |
 | `prerequisiteReadiness` | prerequisite 없음 → `1_000_000` / 있음 → `floorDiv(count(planning IMPLEMENTATION ≥ 2) × 1_000_000, count)` |
 | `stageGap` | `floorDiv((6 − 완료한 학습 단계 수) × 1_000_000, 6)` (§5.11 ST-5). **`WEIGHT_BP`에 들어가지 않는다** — 아래 보너스로만 쓴다 |
@@ -1148,7 +1148,7 @@ DEBUGGING은 §7.2에서 `COACH_*` 이벤트로만 오르는데 coach 모듈이 
 
 **규칙**: 위 세 곳에 들어가는 목표는 **잴 수 없는 축을 0으로 내린 값**을 쓴다. 저장된 `plan_skill_target`은 바꾸지 않는다 — 판정에서 빼는 것이지 목표를 낮추는 것이 아니다.
 
-- **예산·위험도(§3·§4)는 그대로 둔다.** 나중에 들일 시간은 지금도 계획에 들어 있어야 한다. 빼면 남은 일이 실제보다 적어 보인다.
+- **예산·위험도(§3·§4)는 축을 빼지 않고 `now`/`later`로 나눈다**(ADR-062, §4.2). 나중에 들일 시간은 지금도 계획에 들어 있어야 하므로 총량에서 없애지 않는다 — 다만 **위험도와 축소·확장 제안은 `now`만 본다**(`DeadlineRiskEvaluator`가 측정 가능한 축 집합을 받고, 나머지 몫은 `requiredMustLaterMinutes`로 따로 돌려준다). ADR-061 시절에는 이 줄이 "그대로 둔다"였다 — ADR-062가 분리를 들여왔다.
 - **상승 규칙(§7.2)도 그대로다.** 축이 오를 길이 생기면 그때 오른다.
 - coach가 들어오면 설정에 `DEBUGGING`을 더하는 것으로 끝난다. 값이 `SkillAxis`에 없으면 **기동 실패**다(skill 모듈이 검사).
 - 화면은 세는 축과 빼는 축을 함께 보인다(`05` §7.10 `countedAxes`·`uncountedAxes`). 조용히 빼면 "왜 9/10에서 안 움직이나"를 알 수 없다.
@@ -1162,6 +1162,64 @@ DEBUGGING은 §7.2에서 `COACH_*` 이벤트로만 오르는데 coach 모듈이 
 | MA-3 | 근거 (3,2,3,0), 목표 (3,3,3,2) | 아직 — I가 모자라다 |
 | MA-4 | 측정 가능 = 네 축 전부 | 목표가 그대로다 |
 | MA-5 | 설정이 비었거나 모르는 축 이름 | 기동 실패 |
+
+### 7.6b 지금 닿을 수 있는 레벨 (`evidenceCeiling`, ADR-070)
+
+> §7.6이 **축**을 다루고 이 절이 **축 안의 레벨**을 다룬다.
+
+`devpilot.skill.evidence-ceiling`은 **지금 제품이 어느 레벨까지 근거를 만들 수 있는가**를 적는다. 전역 값이고 skill별이 아니다. 현재 값은 **`(K4, I3, E3, D0)`**이고, §7.2의 "도달 가능 상한"을 설정으로 옮긴 것이다.
+
+| 축 | 상한 | 막는 것 |
+|---|---|---|
+| K | 4 | K5는 difficulty 5 challenge가 필요. seed 분포가 `{1:11, 2:32, 3:18, 4:2}`로 **5가 0개**이고 AI 생성은 S5 |
+| I | 3 | I4는 `EVIDENCE_ACCEPTED`가 필요(S6) — 그 이벤트를 **만드는 코드가 없다**. I5는 difficulty 5 |
+| E | 3 | E4는 `wasVariant = true` 답변이 필요 — `variantReady`를 켜는 코드가 없고 `ReviewService`가 409로 거절한다(`REVIEW_VARIANT`는 Later). E5는 difficulty 5 |
+| D | 0 | D1부터 `COACH_*`가 필요(S4) |
+
+**현재 판정 목표 = 축별 `min(원래 목표, evidenceCeiling)`**. 조회 때마다 계산하고 `plan_skill_target`은 바꾸지 않는다.
+
+**세 결과를 구분한다** (ADR-070 ③). 같은 "충족"이라는 말을 셋에 쓰지 않는다.
+
+| 결과 | 목표 범위 | 비교 레벨 | 추가 조건 | 쓰는 곳 |
+|---|---|---|---|---|
+| 계획상 현재 학습 범위 충족 | 현재 | planning | **`lastPracticedAt != null`** | §5.2 현재 milestone·후보·점수, `05` §13.1 타임라인 |
+| 근거상 현재 관문 충족 | 현재 | evidence | — | §11.4 `BUILDABLE` |
+| 근거상 전체 목표 충족 | **원래 목표** | evidence | — | 전체 목표 별도 표시 |
+
+**`05` §13.1 타임라인의 현재 단계는 §5.2와 같은 조건을 쓴다** — 지금 대시보드는 레벨만 비교하고 `lastPracticedAt`을 빠뜨렸다. 자기평가만 있고 학습 기록이 없으면 두 화면이 어긋난다.
+
+**예산 분할** (§4.2 위에 얹는다). 축별 목표 `T`, 상한 `C`, 계획 레벨 `P`:
+
+```text
+현재 gap      = max(0, min(T, C) − P)
+기능 대기 gap = max(0, T − max(P, C))
+raw gap 합    = max(0, T − P)              # 원래 값과 같다
+```
+
+`requiredMustMinutes`·`requiredShouldMinutes`는 각각 **현재 몫만**, `requiredMustLaterMinutes`에는 **MUST의 대기 몫만** 넣는다(SHOULD를 섞지 않는다). **raw gap은 보존되지만 각각 분으로 올림하면 합이 한 번에 올린 값과 1분 차이 날 수 있다** — 올림 단위·시점은 §4.2 식을 그대로 쓴다.
+
+**재계획**(§4.4)은 현재 범위 위로만 제안한다. `RAISE_TARGET`은 현재 상한 **이내**의 실제 학습 증가만, **현재 절감 0인 축소**와 **현재 증가 0인 복원·상향**은 자동 제안에서 뺀다.
+
+**기능이 열리면** 설정의 상한만 올린다. 저장 목표를 건드리지 않고 다음 조회부터 재계산된다. 값이 `SkillAxis`를 전부 덮지 않으면 **기동 실패**다(§7.6과 같은 방식).
+
+**전역 상한은 모든 skill이 그 레벨까지 도달할 수 있다는 보장이 아니다.** skill별 콘텐츠·근거 경로의 공백은 따로 본다.
+
+**Test vectors** — `C = (4,3,3,0)`
+
+| ID | 입력 | 기대 |
+|---|---|---|
+| EC-1 | T=(4,4,4,3) | 현재 판정 목표 (4,3,3,0). 저장 T 불변. 대기 = I4·E4·D1~3 |
+| EC-2 | T=(4,4,4,3), P=(4,3,3,0), `lastPracticedAt` 있음 | 계획상 현재 범위 충족 → **다음 milestone 선택**. 근거가 같으면 관문 충족. **전체 목표 충족은 false** |
+| EC-3 | T=(4,4,4,3), P=(2,2,1,0) | K·I·E 미달로 후보·`skillGap` 남는다. 막힌 I4·E4·D만으로 같은 skill을 무한 반복하지 않는다 |
+| EC-4 | 현재 범위 충족 + 이전 단계 skill에 due | 다음 단계 main 후보가 열리고 이전 due는 §5.6 경로로 나온다. 관문용 분기 없음 |
+| EC-5 | 관문 충족, 원래 I4·E4·D 미달 | `BUILDABLE` + `gaps=[]` + 기능 대기 목록 **동시 존재**. `gaps[].targets`는 현재 목표 |
+| EC-6 | T=(4,4,4,3), P=(2,2,1,0) | `requiredMustMinutes`=현재 몫, `requiredMustLaterMinutes`=MUST 대기 몫. risk·`feasibleCompletionDate`는 현재 몫에만 반응 |
+| EC-7 | risk LOW·여유, MUST의 D 목표 2, P(D)=0, C(D)=0 | `RAISE_TARGET D2→3` 제안 **없음**. 상한 위 목표를 없애 0분 절약했다는 축소 제안도 없음 |
+| EC-8 | 상한이 (4,4,3,0)으로 올라감 | 저장 T 불변으로 현재 목표·budget·관문 재계산. I4 대기분이 현재 범위로 이동. 전체 목표 달성을 거짓으로 처리하지 않음 |
+| EC-9 | 자기평가로 P=(3,3,3,3), evidence=(0,0,0,0), `lastPracticedAt=null`, 현재 목표 (2,2,2,0) | **Today와 대시보드 둘 다 1단계를 현재 단계로 표시**. `BUILDABLE`은 evidence 0이라 열리지 않음 |
+| EC-10 | EC-9에서 학습 기록이 생기고 P가 현재 목표를 채움 | Today와 대시보드가 **같은 다음 단계**로 이동. `BUILDABLE`은 근거 레벨 조건을 독립적으로 따름 |
+| EC-11 | 설정이 비었거나 모르는 축 이름 | 기동 실패 |
+| EC-12 | 사용자가 목표를 수정하거나 replan | 원래 목표의 **새 버전 보존**. 현재 목표·대기분은 새 T로 재계산. 이전 plan 기록 불변 |
 
 ### 7.7 Test vectors
 
@@ -1517,7 +1575,7 @@ spans     = 19 §5 allocate(windowStart, targetCompletionDate, weights, minMiles
 - **새 알고리즘이 아니다.** 온보딩이 쓰는 `19` §5를 그대로 부르고 입력만 다르게 준다.
 - **왜 지금 길이를 가중치로 쓰나**: 저장된 계획에는 템플릿 `weightBp`가 없고(`plan_milestone`에 열이 없다), 사용자가 손으로 늘려 둔 단계가 있으면 그 비율이 유지되어야 한다. 지금 길이를 쓰면 **모양을 지키며 창에만 맞추는 비례 재배치**가 된다.
 - **왜 끝난 단계를 건드리지 않나**: 완료·진행 중인 단계의 날짜를 옮기면 그 기간에 쌓인 기록과 어긋난다. `SKIPPED`도 지난 일이다.
-- **왜 필요한가**: 목표일을 바꾸면 예산·위험도·역산 날짜는 즉시 새 날짜를 쓰지만(`05` §5.2) plan 구조는 그대로다. 날짜가 썩으면 표시만 어긋나는 것이 아니라 **§5.4 `milestoneUrgency`가 포화된다** — 그 식은 `max(200_000, 1_000_000 − floorDiv(daysLeft × 1_000_000, length))`이고 **위쪽 한계가 없어서** 끝 날짜가 지날수록 계속 커진다. 남은 단계가 전부 그 상태면 그 factor가 우선순위를 가리지 못한다.
+- **왜 필요한가**: 목표일을 바꾸면 예산·위험도·역산 날짜는 즉시 새 날짜를 쓰지만(`05` §5.2) plan 구조는 그대로다. 날짜가 썩으면 표시만 어긋나는 것이 아니라 **§5.4 `milestoneUrgency`가 깨진다** — 그 식은 `max(200_000, 1_000_000 − floorDiv(daysLeft × 1_000_000, length))`이고 `daysLeft`가 음수가 되면 N-4가 음수 피제수를 금지하므로 **예외가 난다**(ADR-071에서 확인했다. 이 줄은 처음에 "위쪽 한계가 없어서 계속 커진다"로 적혀 있었는데, 식만 보고 N-4 가드를 빼먹은 것이다). ADR-071이 `daysLeft <= 0`을 `1_000_000`으로 막았고, 그래도 **날짜가 썩는 것 자체를 고치는 것은 이 재배치다.**
 - 적용은 저장하지 않는다 — replan 미리보기가 제안만 돌려주고(`05` §7.7 `milestoneSchedule`) 확정은 기존 replan 경로를 그대로 쓴다.
 
 **Test vectors**

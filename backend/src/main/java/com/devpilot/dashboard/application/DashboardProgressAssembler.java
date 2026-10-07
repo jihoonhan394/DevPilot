@@ -16,6 +16,7 @@ import com.devpilot.skill.application.UserSkillStateQueryService;
 import com.devpilot.skill.application.UserSkillStateView;
 import com.devpilot.skill.domain.Priority;
 import com.devpilot.skill.domain.SkillCategory;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -106,7 +107,7 @@ class DashboardProgressAssembler {
 
     /** 지금 단계 = sort_order가 가장 앞선 미완료 milestone (ADR-044). 전부 끝냈으면 null. */
     private @Nullable UUID currentMilestoneId(UUID userId, PlanView plan) {
-        Map<String, AxisLevels> planning = planningByCode(userId);
+        Map<String, PlanningState> planning = planningByCode(userId);
         Map<String, PlanSkillTargetView> targets = new HashMap<>();
         for (PlanSkillTargetView target : plan.skillTargets()) {
             targets.put(target.skill().code(), target);
@@ -119,19 +120,33 @@ class DashboardProgressAssembler {
                 .orElse(null);
     }
 
-    private Map<String, AxisLevels> planningByCode(UUID userId) {
-        Map<String, AxisLevels> planning = new HashMap<>();
+    /**
+     * skill code → 계획 레벨과 마지막 학습 시각. ADR-070 전에는 계획 레벨만 담았고, 그래서 자기평가만 있고 학습 기록이 없는 사용자에게 <b>Today는
+     * 1단계에 남는데 대시보드는 다음 단계로 넘어갔다</b>(docs/05 §13.1, AC-38 S2).
+     */
+    private Map<String, PlanningState> planningByCode(UUID userId) {
+        Map<String, PlanningState> planning = new HashMap<>();
         for (UserSkillStateView state : userSkillStateQueryService.myStates(userId)) {
-            planning.put(state.skill().code(), state.planningLevels());
+            planning.put(
+                    state.skill().code(),
+                    new PlanningState(state.planningLevels(), state.lastPracticedAt()));
         }
         return planning;
     }
 
-    /** MUST가 전부 목표에 닿으면 끝난 것이다. MUST가 없으면 SHOULD로, 둘 다 없으면 끝난 것으로 본다(ADR-044). */
+    /** 타임라인 판정에 필요한 두 값. Today의 {@code SkillProfile}과 같은 역할이다. */
+    private record PlanningState(AxisLevels planning, @Nullable Instant lastPracticedAt) {}
+
+    /**
+     * MUST가 전부 목표에 닿으면 끝난 것이다. MUST가 없으면 SHOULD로, 둘 다 없으면 끝난 것으로 본다(ADR-044).
+     *
+     * <p>판정은 <b>Today와 같은 규칙</b>({@link PlannerScoring#currentScopeMet})을 쓴다 — 목표는 현재 판정 범위로
+     * 낮추고(ADR-070) 학습 기록을 함께 요구한다. 조건이 다르면 두 화면이 서로 다른 단계를 가리킨다(docs/05 §13.1).
+     */
     private static boolean isComplete(
             MilestoneView milestone,
             Map<String, PlanSkillTargetView> targets,
-            Map<String, AxisLevels> planning,
+            Map<String, PlanningState> planning,
             MeasurableAxes measurableAxes) {
         List<PlanSkillTargetView> gate = gate(milestone, targets, Priority.MUST);
         if (gate.isEmpty()) {
@@ -141,8 +156,10 @@ class DashboardProgressAssembler {
             return true;
         }
         for (PlanSkillTargetView target : gate) {
-            AxisLevels levels = planning.get(target.skill().code());
-            if (levels == null || !allMet(levels, measurableAxes.forProgress(target.targets()))) {
+            PlanningState state = planning.get(target.skill().code());
+            if (state == null
+                    || state.lastPracticedAt() == null
+                    || !state.planning().meets(measurableAxes.forProgress(target.targets()))) {
                 return false;
             }
         }
@@ -158,13 +175,6 @@ class DashboardProgressAssembler {
                 .toList();
     }
 
-    private static boolean allMet(AxisLevels planning, AxisLevels targets) {
-        return planning.knowledge() >= targets.knowledge()
-                && planning.implementation() >= targets.implementation()
-                && planning.explanation() >= targets.explanation()
-                && planning.debugging() >= targets.debugging();
-    }
-
     /**
      * category별 평균 레벨 (docs/05 §13.1). 활성 plan의 {@code deferred = false}인 skill만 세고, 평균은 4축 전체에 대한
      * milli 정수다. skill이 하나도 없는 category는 넣지 않는다.
@@ -173,7 +183,7 @@ class DashboardProgressAssembler {
         if (plan == null) {
             return List.of();
         }
-        Map<String, AxisLevels> planning = planningByCode(userId);
+        Map<String, PlanningState> planning = planningByCode(userId);
         Map<SkillCategory, List<PlanSkillTargetView>> byCategory =
                 new EnumMap<>(SkillCategory.class);
         for (PlanSkillTargetView target : plan.skillTargets()) {
@@ -192,7 +202,8 @@ class DashboardProgressAssembler {
             long planningSum = 0;
             long targetSum = 0;
             for (PlanSkillTargetView target : skills) {
-                planningSum += sum(planning.getOrDefault(target.skill().code(), ZERO));
+                PlanningState state = planning.get(target.skill().code());
+                planningSum += sum(state == null ? ZERO : state.planning());
                 targetSum += sum(target.targets());
             }
             long axes = (long) skills.size() * AXIS_COUNT;

@@ -1,6 +1,8 @@
 import 'package:devpilot_app/app/routes.dart';
 import 'package:devpilot_app/core/api/api_enums.dart';
 import 'package:devpilot_app/core/api/api_exception.dart';
+import 'package:devpilot_app/core/api/common_models.dart';
+import 'package:devpilot_app/features/plan/data/plan_buildable_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -48,6 +50,66 @@ void main() {
     await pumpApp(tester, backend: backend, at: AppRoutes.buildable);
 
     expect(find.byKey(const Key('buildable.uncountedAxes')), findsNothing);
+  });
+
+  /// ADR-070: 지금 할 수 있는 것을 다 해도 원래 목표가 남을 수 있다. 그 줄이 보여야 "끝났다"로 읽히지 않는다.
+  testWidgets('shouldSayWhatIsWaitingOnACapabilityTheProductLacks', (tester) async {
+    backend.planRepository.buildable = testBuildable(
+      steps: [
+        testBuildableStep(
+          milestoneId: 'm1',
+          title: '기반 다지기',
+          sortOrder: 0,
+          status: BuildableStatus.buildable,
+          metSkillCount: 3,
+          gateSkillCount: 3,
+          capabilityPending: [
+            const CapabilityPendingView(
+              skill: SkillRef(
+                id: 's1',
+                code: 'SPRING.TRANSACTION',
+                name: '트랜잭션',
+                category: SkillCategory.spring,
+              ),
+              originalTargets: AxisLevels(
+                knowledge: 4,
+                implementation: 4,
+                explanation: 4,
+                debugging: 3,
+              ),
+              currentTargets: AxisLevels(
+                knowledge: 4,
+                implementation: 3,
+                explanation: 3,
+                debugging: 0,
+              ),
+              pending: AxisLevels(
+                knowledge: 0,
+                implementation: 4,
+                explanation: 4,
+                debugging: 3,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    await pumpApp(tester, backend: backend, at: AppRoutes.buildable);
+
+    expect(find.byKey(const Key('buildable.capabilityPending')), findsOneWidget);
+    expect(find.textContaining('목표가 사라진 게 아니에요'), findsOneWidget);
+    // 보류된 축만 적는다 — 상한 아래인 지식은 나오지 않는다.
+    expect(find.textContaining('구현 4'), findsOneWidget);
+    expect(find.textContaining('문제 인지 3'), findsOneWidget);
+    expect(find.textContaining('지식 4'), findsNothing);
+  });
+
+  /// 보류가 없으면 그 줄은 나오지 않는다 — 빈 칸을 만들지 않는다.
+  testWidgets('shouldNotMentionPendingCapabilityWhenThereIsNone', (tester) async {
+    await pumpApp(tester, backend: backend, at: AppRoutes.buildable);
+
+    expect(find.byKey(const Key('buildable.capabilityPending')), findsNothing);
   });
 
   /// 모자란 축만 적는다 — 채워진 축까지 늘어놓으면 무엇이 남았는지가 묻힌다.

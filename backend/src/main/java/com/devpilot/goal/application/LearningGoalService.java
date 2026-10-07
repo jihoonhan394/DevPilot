@@ -105,8 +105,8 @@ public class LearningGoalService {
     }
 
     /**
-     * {@code PUT /learning-goal} (docs/05 §5.2). 조회(404) → version(409) → 도메인 검사(400) → 전체 교체. 목표일이
-     * 바뀌면 이벤트를 발행한다. plan 구조는 바꾸지 않는다.
+     * {@code PUT /learning-goal} (docs/05 §5.2). 조회(404) → version(409) → <b>트랙 불변</b>·도메인 검사(400)
+     * → 전체 교체. 목표일이 바뀌면 이벤트를 발행한다. plan 구조는 바꾸지 않는다.
      */
     @Transactional
     public LearningGoalView update(CurrentUser user, LearningGoalCommand command, long version) {
@@ -121,7 +121,13 @@ public class LearningGoalService {
             throw new ConflictException(
                     ErrorCode.CONCURRENT_MODIFICATION, "learning goal version does not match");
         }
-        List<ApiFieldError> errors = validate(command, today, "");
+        List<ApiFieldError> errors = new ArrayList<>();
+        // 학습 트랙은 바꿀 수 없다 (docs/05 §5.2, AC-34 S2). 트랙을 바꾸면 role target·계획 템플릿·skill state가
+        // 모두 다른 집합이 되어 계획과 증거를 잇지 못한다 — 트랙 변경은 MVP 범위 밖이다 (19 §10.4).
+        if (command.targetRole() != goal.getTargetRole()) {
+            errors.add(ApiFieldError.of("targetRole", FieldErrorCodes.VALUE_NOT_ALLOWED));
+        }
+        errors.addAll(validate(command, today, ""));
         if (!errors.isEmpty()) {
             throw new BusinessValidationException("invalid learning goal", errors);
         }

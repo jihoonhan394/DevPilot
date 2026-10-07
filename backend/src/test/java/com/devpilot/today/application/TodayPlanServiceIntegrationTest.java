@@ -107,6 +107,90 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.mainTask.id").value(main.path("id").asString()));
     }
 
+    /**
+     * AC-38 S1 · ADR-070: **현재 범위를 채우면 다음 단계로 넘어간다.**
+     *
+     * <p>1단계 관문 skill 넷의 목표에 I4·E4가 있는데 지금 그 레벨에는 근거를 만들 길이 없다 — `EVIDENCE_ACCEPTED`(S6)와 variant
+     * 복습(Later)이 없다. 전에는 그래서 `targetReached`가 영구 false였고 `currentMilestone`이 1단계에 고정됐다. 그러면
+     * `selectCandidates`가 현재 단계 후보가 빌 때만 다음 단계를 넣으므로 **2단계는 점수 비교에 오르지도 못했다.**
+     */
+    @Test
+    void shouldMoveToTheNextMilestoneWhenTheCurrentScopeIsMet() throws Exception {
+        TestUser user = onboardedOwner();
+        for (String code :
+                List.of(
+                        "JAVA.EXCEPTION",
+                        "JAVA.COLLECTION",
+                        "WEB_HTTP.HTTP_BASICS",
+                        "TESTING.JUNIT")) {
+            meetCurrentScope(user, code);
+        }
+
+        JsonNode today = api.generateToday(user, 90, "NORMAL");
+
+        // 2단계(ORDER_FLOW)의 skill이어야 한다. 1단계 넷 중 하나면 아직 갇혀 있는 것이다.
+        assertThat(today.path("mainTask").path("skillCode").asString())
+                .isIn("SPRING.TRANSACTION", "DATABASE.INDEX", "DEVOPS.DOCKER");
+    }
+
+    /**
+     * 현재 판정 목표(= {@code min(원래 목표, evidenceCeiling)})까지만 올리고 학습 기록을 남긴다. 원래 목표인 I4·E4는 **일부러 채우지
+     * 않는다** — 채울 방법이 없는 것이 이 테스트의 전제다.
+     */
+    private void meetCurrentScope(TestUser user, String skillCode) {
+        jdbc.update(
+                "update devpilot.user_skill_state s set"
+                        + " knowledge_level = least(t.target_knowledge_level, 4),"
+                        + " implementation_level = least(t.target_implementation_level, 3),"
+                        + " explanation_level = least(t.target_explanation_level, 3),"
+                        + " last_practiced_at = now()"
+                        + " from devpilot.plan_skill_target t, devpilot.learning_plan p,"
+                        + " devpilot.skill k"
+                        + " where p.id = t.plan_id and k.id = t.skill_id"
+                        + " and t.skill_id = s.skill_id and p.user_id = s.user_id"
+                        + " and p.status = 'ACTIVE' and s.user_id = ? and k.code = ?",
+                userId(user),
+                skillCode);
+    }
+
+    /**
+     * AC-39 S1·S4 · ADR-071: **현재 단계의 종료일을 지나도 Today가 터지지 않는다.**
+     *
+     * <p>전에는 음수 {@code daysLeft}가 {@code FixedPointMath.floorDiv}에 들어가 {@code
+     * IllegalArgumentException}이 났다(N-4가 음수 피제수를 금지한다). 뒤처진 사용자의 {@code POST /today/generate}가
+     * 500이었다. ADR-070 전에는 1단계가 영원히 미완료였으므로 1단계 종료일이 지나는 날 반드시 터졌다.
+     *
+     * <p>그리고 연체 정보는 사라지지 않는다 — 위험도가 그것을 말한다(AC-39 S4).
+     */
+    @Test
+    void shouldStillGenerateTodayAfterTheCurrentMilestoneEndDatePassed() throws Exception {
+        TestUser user = onboardedOwner();
+        // 1단계의 끝을 어제로 만든다. 날짜만 바꾸고 진행은 그대로다 — 뒤처진 상태다.
+        jdbc.update(
+                "update devpilot.plan_milestone m set start_date = date '2026-09-01',"
+                        + " end_date = date '2026-10-04'"
+                        + " from devpilot.learning_plan p"
+                        + " where p.id = m.plan_id and p.status = 'ACTIVE' and p.user_id = ?"
+                        + " and m.sort_order = 0",
+                userId(user));
+
+        JsonNode today = api.generateToday(user, 60, "NORMAL");
+
+        assertThat(today.path("mainTask").isNull()).isFalse();
+        // 상한에서 멈춘다 — 전에는 여기 오기 전에 예외가 났다.
+        Long urgency =
+                jdbc.queryForObject(
+                        "select (lt.score_breakdown->'factors'->>'milestoneUrgency')::bigint"
+                                + " from devpilot.learning_task lt where lt.user_id = ?"
+                                + " and lt.score_breakdown is not null"
+                                + " order by lt.sort_order limit 1",
+                        Long.class,
+                        userId(user));
+        assertThat(urgency).isNotNull().isEqualTo(1_000_000L);
+        // AC-39 S4: 늦었다는 사실은 위험도가 말한다. planner 점수가 아니다.
+        assertThat(today.path("deadlineRisk").asString()).isNotBlank();
+    }
+
     @Test
     void shouldRejectInvalidGenerateRequests() throws Exception {
         // AC-02 S3
@@ -495,12 +579,14 @@ class TodayPlanServiceIntegrationTest extends ApiTestSupport {
 
     @Test
     void shouldPreferMustSkillsWithRiskModifierWhenRiskIsHigh() throws Exception {
-        // AC-03 S5: 목표일 2026-11-09 → effective 2467, requiredMust 2825 → ratio 11451 (HIGH)
+        // AC-03 S5: HIGH일 때의 modifier를 보는 테스트다.
         TestUser user = TestUser.owner();
         Map<String, Object> request = TestApi.onboardingRequest();
-        // 2026-11-02다: risk가 잴 수 있는 축만 세면서(ADR-062) 11-09는 MEDIUM이 됐다.
-        // HIGH 동작을 보는 테스트이므로 단정을 약하게 만들지 않고 정말 HIGH인 날짜로 바꿨다.
-        learningGoal(request).put("targetCompletionDate", "2026-11-02");
+        // 날짜가 두 번 당겨졌다. 필요 시간이 줄 때마다 같은 날짜가 한 단계 낮은 risk가 되기 때문이다 —
+        // ADR-062(축을 빼면서 11-09 → MEDIUM), ADR-070(레벨 상한으로 requiredMust 2412 → 1825,
+        // 11-02 → MEDIUM). **HIGH 동작을 보는 테스트이므로 단정을 약하게 만들지 않고 날짜를 바꿨다.**
+        // 2026-10-28: effective 1543, requiredMust 1825 → ratio 11827 (HIGH 범위 가운데).
+        learningGoal(request).put("targetCompletionDate", "2026-10-28");
         api.onboard(user, request);
 
         JsonNode today = api.generateToday(user, 60, "NORMAL");

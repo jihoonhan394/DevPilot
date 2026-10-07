@@ -47,20 +47,31 @@ class ReplanPreviewIntegrationTest extends ApiTestSupport {
         assertThat(preview.path("today").asString()).isEqualTo("2026-10-05");
         assertThat(preview.path("horizonDate").asString()).isEqualTo("2027-04-01");
         assertThat(preview.path("riskLevel").asString()).isEqualTo("LOW");
-        assertThat(preview.path("ratioBp").asInt()).isEqualTo(1_940);
+        // ADR-070: requiredMust가 레벨 상한만큼 줄어 ratio도 내려갔다 (1_940 → 1_467).
+        assertThat(preview.path("ratioBp").asInt()).isEqualTo(1_467);
         assertThat(preview.path("deferSuggestions")).isEmpty();
         assertThat(preview.path("mustTargetReductionSuggestions")).isEmpty();
         JsonNode expansions = preview.path("expansionSuggestions");
-        // MUST 7개 모두 한 단계씩 (importance DESC: SPRING.TRANSACTION 0.95가 먼저)
-        assertThat(expansions).hasSize(7);
+        // ADR-070: 7개 → **3개**다. 나머지 넷(SPRING.TRANSACTION·JAVA.EXCEPTION·JAVA.COLLECTION·
+        // DATABASE.INDEX)은 모든 축의 목표가 이미 상한 (4,3,3,0)에 닿아 있어 올려도 **지금 할 수 있는
+        // 공부가 늘지 않는다.** 아래 addedMinutes > 0 단정이 그 근거다 — 상한 아래에서 그 넷을 그대로
+        // 두면 addedMinutes가 0이 되어 이 테스트가 깨진다.
+        assertThat(expansions).hasSize(3);
+        assertThat(expansions.valueStream().map(e -> e.path("skill").path("code").asString()))
+                .doesNotContain(
+                        "SPRING.TRANSACTION",
+                        "JAVA.EXCEPTION",
+                        "JAVA.COLLECTION",
+                        "DATABASE.INDEX");
         JsonNode first = expansions.get(0);
         assertThat(first.path("kind").asString()).isEqualTo("RAISE_TARGET");
-        assertThat(first.path("skill").path("code").asString()).isEqualTo("SPRING.TRANSACTION");
+        // importance 0.85 셋이 동률이라 code ASC로 TESTING.JUNIT이 먼저다 (IMPORTANCE_DESC_CODE).
+        assertThat(first.path("skill").path("code").asString()).isEqualTo("TESTING.JUNIT");
         assertThat(first.path("priority").asString()).isEqualTo("MUST");
-        assertThat(first.path("practicalImportanceBp").asInt()).isEqualTo(9_500);
+        assertThat(first.path("practicalImportanceBp").asInt()).isEqualTo(8_500);
         assertThat(first.path("axis").asString()).isEqualTo("KNOWLEDGE");
-        assertThat(first.path("currentTarget").asInt()).isEqualTo(4);
-        assertThat(first.path("newTarget").asInt()).isEqualTo(5);
+        assertThat(first.path("currentTarget").asInt()).isEqualTo(3);
+        assertThat(first.path("newTarget").asInt()).isEqualTo(4);
         for (JsonNode expansion : expansions) {
             assertThat(expansion.path("kind").asString()).isEqualTo("RAISE_TARGET");
             assertThat(expansion.path("newTarget").asInt())
@@ -69,7 +80,7 @@ class ReplanPreviewIntegrationTest extends ApiTestSupport {
         }
         JsonNode after = preview.path("riskAfterSuggestions");
         assertThat(after.path("riskLevel").asString()).isEqualTo("LOW");
-        assertThat(after.path("requiredMustMinutes").asInt()).isGreaterThan(2_412);
+        assertThat(after.path("requiredMustMinutes").asInt()).isGreaterThan(1_825);
         assertThat(counts(user)).isEqualTo(before);
         assertThat(activePlan(user)).isEqualTo(plan);
     }
@@ -79,7 +90,9 @@ class ReplanPreviewIntegrationTest extends ApiTestSupport {
         // AC-03 S3 (테스트 catalog 기준): SHOULD defer는 importance ASC
         TestUser user = TestUser.owner();
         Map<String, Object> onboarding = TestApi.onboardingRequest();
-        learningGoal(onboarding).put("targetCompletionDate", "2026-11-02");
+        // ADR-070으로 requiredMust가 2412 → 1825가 되어 11-02는 MEDIUM이 됐다. 축소·defer는 HIGH에서만
+        // 나오므로 **단정을 약하게 만들지 않고** 정말 HIGH인 날짜로 바꿨다 (effective 1543, ratio 11827).
+        learningGoal(onboarding).put("targetCompletionDate", "2026-10-28");
         api.onboard(user, onboarding);
         JsonNode plan = activePlan(user);
         Counts before = counts(user);
@@ -88,8 +101,8 @@ class ReplanPreviewIntegrationTest extends ApiTestSupport {
                 api.body(preview(user, plan, replanRequest(plan, "위험")).andExpect(status().isOk()));
 
         assertThat(preview.path("riskLevel").asString()).isEqualTo("HIGH");
-        assertThat(preview.path("ratioBp").asInt()).isEqualTo(12_218);
-        assertThat(preview.path("effectiveBudgetMinutes").asInt()).isEqualTo(1_974);
+        assertThat(preview.path("ratioBp").asInt()).isEqualTo(11_827);
+        assertThat(preview.path("effectiveBudgetMinutes").asInt()).isEqualTo(1_543);
         assertThat(codes(preview.path("deferSuggestions")))
                 .containsExactly("ALGORITHM.SORT_SEARCH", "DEVOPS.DOCKER");
         JsonNode reductions = preview.path("mustTargetReductionSuggestions");
@@ -102,7 +115,7 @@ class ReplanPreviewIntegrationTest extends ApiTestSupport {
         }
         assertThat(preview.path("expansionSuggestions")).isEmpty();
         assertThat(preview.path("riskAfterSuggestions").path("requiredMustMinutes").asInt())
-                .isLessThan(2_412);
+                .isLessThan(1_825);
         assertThat(counts(user)).isEqualTo(before);
     }
 
@@ -185,7 +198,7 @@ class ReplanPreviewIntegrationTest extends ApiTestSupport {
         preview(user, plan, request)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.requiredShouldMinutes").value(394))
-                .andExpect(jsonPath("$.requiredMustMinutes").value(2_412));
+                .andExpect(jsonPath("$.requiredMustMinutes").value(1_825));
 
         assertThat(activePlan(user)).isEqualTo(plan);
     }

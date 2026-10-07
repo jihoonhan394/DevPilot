@@ -1758,6 +1758,13 @@ public record MilestoneIdMappingView(UUID previousId, UUID newId) {}
 - `countedAxes`는 지금 잴 수 있는 축, `uncountedAxes`는 아직 잴 방법이 없어 빼고 보는 축이다(`06` §7.6, ADR-061). 화면이 그것을 보여 준다 — 조용히 빼면 왜 안 움직이는지 알 수 없다.
 - 요청 시점에 계산하고 저장하지 않는다. AI를 부르지 않는다.
 
+**(ADR-070)**
+
+- **`gaps[].targets`는 "현재 판정 목표"다.** 원래 저장 목표가 아니다 — `BuildableStepService`가 `min(원래 목표, evidenceCeiling)`을 넣는다. **이 뜻을 바꾸지 않는다.** 원래 목표는 `capabilityPending`과 계획 조회(§7.2)에서 본다.
+- **`evidenceCeiling`**(`AxisLevels`): 지금 제품이 어느 레벨까지 근거를 만들 수 있는가. **전역이고 skill별이 아니다**(`06` §7.6b). `uncountedAxes`는 이 값이 0인 축으로 유도된다 — 두 필드가 어긋나면 안 된다.
+- **`steps[].capabilityPending`**: 그 단계의 관문 skill 중 **원래 목표가 상한 위에 있는 것**. 항목마다 `skill` · `originalTargets`(저장 목표) · `currentTargets`(= `min(원래, 상한)`) · `pending`(보류 축·레벨). **`gaps`의 최대 5개 제한과 독립**이다 — `gaps=[]`이고 `status=BUILDABLE`이어도 **남을 수 있다.** 0개면 빈 배열이고 화면은 그 줄을 그리지 않는다.
+- 화면은 `BUILDABLE`과 "원래 목표가 남음"을 **동시에** 설명한다. `BUILDABLE`은 **"그 단계의 관문 역량을 지금 근거로 갖췄다"**는 뜻이고, **실제로 만들었다는 뜻도 전체 목표를 채웠다는 뜻도 아니다.**
+
 ```json
 {
   "planId": "9e2b1c7a-0f0e-4d7b-8e59-0c3e1f6b2a01",
@@ -1768,18 +1775,26 @@ public record MilestoneIdMappingView(UUID previousId, UUID newId) {}
   "nextStepId": "a2…",
   "countedAxes": ["KNOWLEDGE", "IMPLEMENTATION", "EXPLANATION"],
   "uncountedAxes": ["DEBUGGING"],
+  "evidenceCeiling": { "knowledge": 4, "implementation": 3, "explanation": 3, "debugging": 0 },
   "steps": [
     { "milestoneId": "a1…", "title": "코어 도메인", "description": "주문 한 건을 받아 저장하고 돌려주는 자리를 만든다…",
       "sortOrder": 0, "startDate": "2026-09-30", "endDate": "2026-10-25",
-      "status": "BUILDABLE", "metSkillCount": 12, "gateSkillCount": 12, "gaps": [] },
+      "status": "BUILDABLE", "metSkillCount": 12, "gateSkillCount": 12, "gaps": [],
+      "capabilityPending": [
+        { "skill": { "id": "…", "code": "SPRING.TRANSACTION", "name": "트랜잭션", "category": "SPRING" },
+          "originalTargets": { "knowledge": 4, "implementation": 4, "explanation": 4, "debugging": 3 },
+          "currentTargets":  { "knowledge": 4, "implementation": 3, "explanation": 3, "debugging": 0 },
+          "pending": { "implementation": 4, "explanation": 4, "debugging": 3 } }
+      ] },
     { "milestoneId": "a2…", "title": "인증과 권한", "description": "사람이 쓰는 로그인과 시스템이 쓰는 연동 인증을 나눠서 만든다…",
       "sortOrder": 1, "startDate": "2026-10-26", "endDate": "2026-12-06",
       "status": "NEXT", "metSkillCount": 6, "gateSkillCount": 9,
       "gaps": [
         { "skill": { "id": "…", "code": "SPRING.SECURITY", "name": "Spring Security", "category": "SPRING" },
           "evidenceLevels": { "knowledge": 1, "implementation": 0, "explanation": 0, "debugging": 0 },
-          "targets": { "knowledge": 4, "implementation": 4, "explanation": 3, "debugging": 3 } }
-      ] }
+          "targets": { "knowledge": 4, "implementation": 3, "explanation": 3, "debugging": 0 } }
+      ],
+      "capabilityPending": [] }
   ]
 }
 ```
@@ -3399,7 +3414,7 @@ public record SkillCategorySummaryView(
 | `weeklySummary` | `builtThisWeek`: `plan_date ∈ [weekStartDate, today]`이고 `status = COMPLETED`인 `CHALLENGE`·`PROJECT_TASK`·`REDO` task를 `plan_date` DESC, `sort_order` DESC로 최대 5개. `completedTasks`: 같은 기간의 `COMPLETED` task 수(REVIEW task 포함). `notesWritten`: 같은 기간의 `side_project_note` 수(`occurred_on` 기준 — 기록을 적은 날이 아니라 **일이 있었던 날**로 센다. `06` §12 `projectNoteCount`와 같은 기준이다). dashboard는 `project`를 직접 의존하지 않고 `evidence.application.LearningMetricsQueryService`로 읽는다(`03-system-architecture.md` §2.2). `studyMinutes`: `weekStudyMinutes`와 같은 값 |
 | `risk.trend` | 사용자의 `plan_progress_snapshot`에서 서로 다른 `snapshot_date` 최근 8개. 같은 날짜에 여러 행(replan)이 있으면 `generated_at`이 가장 늦은 행. **주의: 2026-10-01 경계가 있다** — 그 이전 행은 네 축 기준, 이후 행은 잴 수 있는 축 기준으로 계산한 값이다(ADR-062). 경계에서 위험도가 내려간 것은 사용자가 나아진 것이 아니므로, 추세를 그리는 화면은 그 경계를 표시하거나 이전 점을 빼야 한다 |
 | `skillCategories` | 활성 plan의 `plan_skill_target` 중 `deferred = false`인 skill을 category별로 묶는다. `n` = skill 수. `avgPlanningLevelMilli = floorDiv(Σ_skill Σ_axis planning × 1000, n × 4)`, `avgTargetLevelMilli = floorDiv(Σ_skill Σ_axis target × 1000, n × 4)` (planning은 `06-learning-engine-rules.md` §7.5). `n ≥ 1`인 category만, `SkillCategory` 선언 순서 |
-| `milestoneTimeline.milestones[].current` | **`sort_order`가 가장 앞선 미완료 milestone 하나만 true**다(ADR-044, `06` §5.2·§7.6). 완료 판정의 목표는 지금 잴 수 있는 축만 본다(ADR-061) — Today와 같은 기준이어야 두 화면이 같은 단계를 가리킨다. 날짜로 정하지 않는다 — Today가 고르는 단계와 같아야 하고, 날짜로 판정하면 쉬었을 때 두 화면이 다른 단계를 가리킨다. 전부 끝냈으면 모두 false다. 학습 목표가 없으면 `milestoneTimeline` 자체가 null이다(`horizonDate`를 만들 수 없다) |
+| `milestoneTimeline.milestones[].current` | **`sort_order`가 가장 앞선 미완료 milestone 하나만 true**다(ADR-044, `06` §5.2·§7.6). 완료 판정의 목표는 지금 잴 수 있는 축만 본다(ADR-061) — Today와 같은 기준이어야 두 화면이 같은 단계를 가리킨다. **(ADR-070) 조건은 축만이 아니다.** Today의 `PlannerScoring.targetReached`는 `lastPracticedAt != null`도 요구하는데 지금 대시보드는 레벨만 비교해 **그 조건을 빠뜨렸다** — 자기평가만 있고 학습 기록이 없으면 Today는 1단계에 남고 대시보드는 완료로 본다. **두 화면은 같은 판정(현재 판정 목표 × 계획 레벨 × `lastPracticedAt`)을 쓴다**(`06` §7.6b EC-9·EC-10). 공통 규칙을 쓰거나 같은 계약 테스트로 보장하고, **`dashboard`가 `today`의 내부를 직접 부르지 않는다**(`03` §2.2) — 새 공통 규칙이 필요하면 `03`에 위치·이름을 먼저 적는다. 날짜로 정하지 않는다 — Today가 고르는 단계와 같아야 하고, 날짜로 판정하면 쉬었을 때 두 화면이 다른 단계를 가리킨다. 전부 끝냈으면 모두 false다. 학습 목표가 없으면 `milestoneTimeline` 자체가 null이다(`horizonDate`를 만들 수 없다) |
 | `weakThinkingAxes` | `06-learning-engine-rules.md` §12 `weakThinkingAxes`, 기간 최근 28 plan-day |
 | `aiStatus` | §1.9.1 |
 | `replanRecommended` | 활성 plan의 `replan_recommended` (없으면 false) |

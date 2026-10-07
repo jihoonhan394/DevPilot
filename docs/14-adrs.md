@@ -1660,7 +1660,7 @@ SCR-SKILL-DETAIL은 축 표에 `증거 레벨 | 계획용 레벨 | 목표`를 �
 - **Status**: Accepted (2026-10-03)
 - **Context**: `06` §5.3은 난이도를 `planning IMPLEMENTATION + 1`로 정한다. 고정 규칙이고 **실제로 몇 개를 맞히는지 보지 않는다.** 그래서 자기평가가 높은 사용자에게는 계속 어려운 문제가, 낮은 사용자에게는 계속 쉬운 문제가 나간다. ADR-063이 그 일부를 "주장 수준에서 2회 실패"라는 **이진 트립와이어**로 막았지만, 그것은 자기평가를 거두는 규칙이고 난이도 자체를 조절하지는 않는다.
 
-Wilson et al.(2019) *The Eighty Five Percent Rule for optimal learning*(Nature Communications)은 정답률 **85%**(오답 15%) 부근에서 학습이 가장 빠르다고 본다. 다 맞히면 무엇을 고칠지 알 수 없고, 다 틀리면 무엇이 통했는지 알 수 없다.
+Wilson et al.(2019) *The Eighty Five Percent Rule for optimal learning*(Nature Communications)은 정답률 **85%**(오답 15%) 부근에서 학습이 가장 빠르다고 본다. 다 맞히면 무엇을 고칠지 알 수 없고, 다 틀리면 무엇이 통했는지 알 수 없다. **이 수치를 그대로 끌어오지 않는다** — 논문은 이진 분류 과제에서 유도한 값이고 백엔드 만들기 과제에 옮겨 간다는 직접 근거가 없다. 아래 "왜 한 번에 ±1인가"에 그 한계를 적었고, **법칙이 아니라 실측으로 확인할 휴리스틱으로 쓴다**(`BL-CNT-14` 실측 튜닝에서 재검토).
 
 - **Decision**: `DifficultyBandPolicy`(`today.domain`, 순수 규칙)를 더해 `d = planning I + 1` **위에** 측정된 성공률로 ±1을 얹는다. 규칙과 vector는 `06` §5.3, 설정은 `03` §9 `devpilot.planner.difficulty-band`.
 
@@ -1781,3 +1781,160 @@ max(200_000, 1_000_000 - floorDiv(daysLeft x 1_000_000, length))
   - `catalogVersion` 69 → 70.
   - 용어 카드의 근거를 RFC 9110 본문으로 확인했다(2026-10-06): §15 머리글 *"The first digit of the status code defines the class of response"*, §15.5.4 *"An origin server that wishes to 'hide' the current existence of a forbidden target resource MAY instead respond with a status code of 404 (Not Found)"*, §15.5.5(404), §15.5.10(409).
   - 남은 것: 다른 노트에도 주제 밖 어휘가 있는지 훑기.
+
+## ADR-070 목표는 그대로 두고, 지금 근거를 만들 수 있는 범위로 판정한다
+
+- **Status**: **Accepted** (2026-10-07) — 소유자 승인. 근거 토론은 `docs/roadmap/` (git 밖).
+- **Context**: ADR-061이 *"잴 수 없는 축은 진도를 막지 않는다"*로 **축 단위** 제외를 들여왔다. 그런데 막히는 것은 축만이 아니다. **축 안의 레벨**도 막힌다.
+
+`docs/06` §7.2가 이미 사실로 적어 놓았다 — *"도달 가능 상한(Sprint별, 규칙이 아니라 사실): S3까지는 D = 0, I ≤ 3(I4는 `EVIDENCE_ACCEPTED`가 필요 → S6), E ≤ 3(E4는 variant 답변이 필요 → `REVIEW_VARIANT`가 Later), K·I·E의 5는 difficulty 5 challenge가 필요."* 코드로도 확인했다: `EVIDENCE_ACCEPTED`는 `LearningEventType`에 있고 `SkillLevelRules`가 읽지만 **만드는 곳이 없다.** `variantReady`를 켜는 setter가 main에 하나도 없고 `ReviewService`는 `wasVariant != isVariantReady()`면 409로 거절한다. PRACTICE challenge의 난이도 분포는 `{1:11, 2:32, 3:18, 4:2}`로 **5가 0개**다.
+
+그런데 `MeasurableAxes.forProgress`는 **축 전체만 0으로 내리고 레벨 상한을 모른다.** 그 결과:
+
+- 기본 `JAVA_BACKEND` 트랙 MUST 43개 중 **32개(74%)**가 I≥4 또는 E≥4를 목표로 한다. 입문·연동 트랙은 0개다.
+- `PlannerScoring.isComplete`가 그 목표로 `targetReached`를 요구하고, `currentMilestone`은 `isComplete`가 false인 첫 milestone을 고른다 → **1단계 `FOUNDATION_SETUP`의 gate 10개 중 8개가 막혀 첫날부터 1단계에 고정된다.**
+- `DailyPlanComposer`는 `currentMilestone`을 `selectCandidates`보다 먼저 정하고, `selectCandidates`는 현재 단계 후보가 **빌 때만** 다음 단계를 합집합에 넣는다 → **다음 단계가 후보에 들어오지 않는다. 점수 비교에 오르지도 못한다.**
+- `DeadlineRiskEvaluator`가 도달 불가능한 몫까지 `now`에 넣는다(planning 0에서 2,455분, 9%) → **`feasibleDate`가 영원히 못 끝낼 일에 유한한 날짜를 약속한다.** ADR-062가 세운 "거짓 안심을 주지 않는다"를 어긴다.
+- `DashboardProgressAssembler`는 레벨만 비교하고 `lastPracticedAt` 조건을 빠뜨렸다 → **자기평가만 있고 학습 기록이 없으면 Today는 1단계에 남고 대시보드는 완료로 본다.** `docs/05` §13.1은 둘이 같은 단계를 가리켜야 한다고 적는다.
+
+**실사용자가 겪는 것**: 기본 트랙으로 시작하면 "기반 다지기" 8개 skill만 계속 받고 "회원과 인증"으로 영원히 넘어가지 않는다. 주문 생성·조회 성능·배포를 한 번도 제안받지 못한다.
+
+- **Decision**: 저장된 목표를 바꾸지 않고 **판정 범위를 좁힌다.**
+
+**① `evidenceCeiling`** — "지금 제품이 어느 레벨까지 근거를 만들 수 있는가"를 **전역 설정**으로 둔다. skill별 값이 아니다. 현재 값 **`(K4, I3, E3, D0)`**. 설정 키는 `devpilot.skill.evidence-ceiling` (`03` §9). 값이 `SkillAxis`를 전부 덮지 않으면 **기동 실패**다 — `measurable-axes`와 같은 방식이다(§7.6).
+
+**② 현재 판정 목표 = 축별 `min(원래 목표, evidenceCeiling)`**. 조회 때마다 계산한다. `plan_skill_target`은 **바꾸지 않는다.** DB 추가 없다.
+
+**③ 세 결과를 구분한다.** 새 enum 셋을 반드시 만든다는 뜻이 아니다 — 기존 상태와 추가 필드로 표현하고 DTO·문구는 `05`에서 고정한다.
+
+| 결과 | 목표 범위 | 비교 레벨 | 추가 조건 | 쓰는 곳 |
+|---|---|---|---|---|
+| 계획상 현재 학습 범위 충족 | 현재 | `planningLevel` | **`lastPracticedAt != null`** | Today 현재 milestone · 후보 · 점수 · 대시보드 타임라인 |
+| 근거상 현재 관문 충족 | 현재 | `evidenceLevel` | — | `BUILDABLE` |
+| 근거상 전체 목표 충족 | **원래 목표** | `evidenceLevel` | — | 전체 목표 별도 표시 |
+
+**④ 여섯 소비자가 쓸 범위**
+
+| 소비자 | 범위 |
+|---|---|
+| `PlannerSkillInputs` → planner 전체 입력 | 현재 |
+| `PlannerScoring.excluded` → 후보 | 현재 |
+| `PlannerScoring.isComplete` → `currentMilestone` | 현재 |
+| `PlannerScoring.skillGap` → 점수 | 현재 |
+| `BuildableStepService` → `BUILDABLE` | 현재 × `evidenceLevel` |
+| `DeadlineRiskEvaluator` → 예산·risk·`feasibleDate` | 현재 + 대기 몫을 따로 |
+| `DashboardProgressAssembler` → 진도 | **둘 다 보여 준다.** 현재 단계 판정은 Today와 **같은 조건**(`lastPracticedAt` 포함) |
+
+**⑤ 예산 분할.** 축별 목표 `T`, 상한 `C`, 계획 레벨 `P`:
+
+```text
+현재 gap      = max(0, min(T, C) − P)
+기능 대기 gap = max(0, T − max(P, C))
+raw gap 합    = max(0, T − P)              # 원래 값과 같다
+```
+
+`requiredMustMinutes`·`requiredShouldMinutes`는 각각 **현재 몫만** 센다. **`requiredMustLaterMinutes`에는 MUST의 대기 몫만** 넣는다(SHOULD를 섞지 않는다). `ratioBp`·risk·snapshot·Today risk·`feasibleCompletionDate`는 전부 현재 범위다. **raw gap은 보존되지만 각각 분으로 올림하면 합이 한 번에 올린 값과 1분 차이 날 수 있다** — 올림 단위·시점은 §4.2 식을 그대로 쓰고 벡터로 고정한다.
+
+**⑥ 재계획은 현재 범위 위로만 제안한다.** `RAISE_TARGET`은 현재 기능 상한 **이내**의 실제 학습 증가만 제안한다. **현재 필요 시간 절감이 0인 축소**, **현재 학습 증가가 0인 복원·상향**은 자동 제안에서 뺀다. 사용자가 직접 원래 목표를 편집하는 권한과 자동 추천은 다르다. 상한 위 목표를 없애서 시간을 절약했다고 표현하지 않는다.
+
+**⑦ 기능이 열리면 상한만 올린다.** 저장된 목표를 건드리지 않고 다음 조회부터 재계산된다. 과거 학습 기록과 이미 획득한 레벨은 고치지 않는다.
+
+- **왜 목표를 낮추지 않는가**: `06` §11.2가 plan 생성 시 `role_skill_target`을 복사하므로 **`role-targets`를 낮춰도 이미 계획을 가진 사용자에게는 반영되지 않는다.** 다음 replan도 이전 plan을 복사하니 안 따라온다. 그리고 S6에 증거 기록이 들어오면 되돌려야 하는데, 낮추면 "원래 어디까지 가려 했는지"가 사라진다. §7.6의 *"판정에서 빼는 것이지 목표를 낮추는 것이 아니다"*를 레벨로 확장하는 것이다.
+- **왜 `min(T,C)`를 "목표 완료"라고 쓰지 않는가**: 그러면 **74%의 미완료가 74%의 허위 완료로 바뀐다.** 그래서 ③의 세 결과를 **따로** 표시한다. 전역 상한은 **모든 skill이 그 레벨까지 도달할 수 있다는 보장이 아니다** — skill별 콘텐츠·근거 경로의 공백은 따로 본다.
+- **왜 관문용 `usable`을 따로 만들지 않는가**: `DailyPlanComposer`가 `currentMilestone`을 `selectCandidates`보다 **먼저** 정하므로, `isComplete`만 고치면 1단계 충족 시 현재 단계가 이미 2단계다. 이전 단계의 due 복습은 §5.6 예산 경로로 따로 나온다(`PlannerScoring`의 *"REVIEW 과제는 main task 선정과 별개다"*).
+- **Alternatives**:
+  - **상한을 skill별로 둔다** — 콘텐츠 공백을 더 정확히 담지만, 상한의 뜻이 "제품의 능력"에서 "그 skill의 사정"으로 바뀌어 기능이 열릴 때 107개를 다 손봐야 한다. 전역으로 두고 skill별 공백은 콘텐츠 작업으로 다룬다.
+  - **`forProgress`에 `min(target, cap)`을 넣고 기존 판정을 그대로 쓴다** — 가장 작은 변경이지만 ③ 없이는 "완료"가 거짓이 된다. **상한 값이 아니라 결과에 붙이는 이름이 문제다.**
+- **Consequences**:
+  - **Q16 반영 직후 risk가 낮아지는 것은 학습자가 성장한 결과가 아니다.** `05` §13.1에 ADR-062 전후의 추세 경계 규칙이 이미 있다 — **이번 적용 시점도 같은 방식으로 기록**하고, 추세에서 계산 기준이 다른 점을 학습 개선으로 읽지 않게 한다. 이를 위해 migration이 필요하다고 미리 가정하지 않는다.
+  - `05` §7.10에 전역 `evidenceCeiling`과 **단계별 기능 대기 목록**이 생긴다. `gaps[].targets`는 **지금 이미 현재 판정 목표이므로 그 뜻을 유지한다**(`BuildableStepService`가 `forProgress`로 만들어 넣는다). 대기 목록은 **`GAP_LIMIT = 5`와 독립**이어야 한다 — `gaps=[]`·`status=BUILDABLE`이어도 남는다.
+  - `05` §7.10의 예시가 D3을 쓰는데 현 코드는 D0으로 판정한다 → **예시를 고친다.**
+  - `06` §4.2·§5.2·§5.3·§7.6·§11.4와 `12` AC-01·02·03·09·30의 정수 예시가 바뀔 수 있다. **예시를 조용히 약화하지 않고** 변경 이유와 새 수치를 여기에 적는다.
+  - **바뀐 기존 벡터 (BL-GOL-21)**: `BuildableStepServiceIntegrationTest.shouldNameTheSkillsThatAreStillShort`가 `gaps[].targets.implementation`을 **4 → 3**으로 기대한다. 저장된 목표는 그대로 4이고 I 상한이 3이라 현재 판정 목표가 3이다. **약화가 아니라 기대 동작이 바뀐 것**이고, 원래 4가 남아 있다는 사실은 `capabilityPending`(BL-GOL-24)이 보인다. `MeasurableAxesTest`의 MA-1~MA-5는 **하나도 고치지 않았다** — 레벨 상한 없는 생성자를 남겨 그 벡터의 뜻을 보존했다.
+  - **바뀐 기존 수치 (BL-GOL-23)** — 테스트 catalog 기본 온보딩(JAVA 3, SPRING 2, DATABASE 2, ALGORITHM 1) 기준. **예시를 약화한 것이 아니라 규칙이 바뀐 것이다.**
+
+| 값 | 네 축 전부 | ADR-062 (축 제외) | **ADR-070 (레벨 상한)** |
+|---|---|---|---|
+| `requiredMustMinutes` | 2,825 | 2,412 | **1,825** |
+| `requiredShouldMinutes` | — | 943 | 943 (바뀌지 않음) |
+| `requiredMustLaterMinutes` | — | 415 (D만) | **1,003** (D + I4·E4) |
+| `ratioBp` (목표일 2026-10-12) | — | 48,924 | **37,018** |
+| `ratioBp` (목표일 2027-04-01) | — | 1,940 | **1,467** |
+| `feasibleCompletionDate` (한 주 horizon) | — | 2027-01-11 | **2027-01-04** |
+| `feasibleCompletionDate` (2027-04-01 horizon) | — | 2026-11-09 | **2026-11-02** |
+| `RAISE_TARGET` 제안 수 (여유 있을 때) | — | MUST 7개 | **3개** |
+
+  - **`feasibleDate`가 당겨진 것이 이 변경의 요점이다** — 할 수 없는 일을 세지 않으니 더 이른 날짜를 말한다.
+  - **`RAISE_TARGET`이 7개 → 3개가 된 이유**: 나머지 넷(`SPRING.TRANSACTION`·`JAVA.EXCEPTION`·`JAVA.COLLECTION`·`DATABASE.INDEX`)은 모든 축의 목표가 이미 상한 `(4,3,3,0)`에 닿아 있다. 올려도 현재 필요 시간이 늘지 않는다. 그 테스트에 이미 있던 `addedMinutes > 0` 단정이 그 근거다 — 넷을 그대로 두면 그 단정이 깨진다.
+  - **risk 단정을 바꾸지 않고 날짜를 당긴 테스트 3건**: `shouldPreferMustSkillsWithRiskModifierWhenRiskIsHigh`, `shouldSuggestDeferralsAndReductionsWhenRiskIsHigh`, `shouldPreviewCommitAndRestoreAcrossVersions`. 셋 다 **HIGH일 때의 동작**을 보는 테스트라 `"HIGH"` → `"MEDIUM"`으로 고치면 검증이 사라진다. 목표일을 `2026-11-02` → `2026-10-28`로 당겼다(effective 1,543 / ratio 11,827 — HIGH 범위 가운데). ADR-062 때도 같은 처리를 했고(`2026-11-09` → `2026-11-02`) 그 주석이 남아 있다.
+  - **0분 제안을 막는 지점 세 곳**: `raiseAxis`(상한 이내의 축만), `belowTarget`(현재 판정 목표와 비교 — 안 그러면 상한 위 목표가 남은 skill이 영구 후보), `reduction`(현재 판정 목표로 고름 — 상한 위 목표를 낮춰도 0분 절감).
+  - **`requiredShouldMinutes`에는 대기 몫을 넣지 않는다**: 그 값은 "지금 할 수 있는 SHOULD"이고, 못 하는 몫을 섞으면 축소 제안이 줄일 수 없는 시간을 보고 판단한다. 코드가 이미 그랬다(`evaluate`가 `shouldNow`만 누적).
+  - **미결정**: `05` API 필드 모양과 사용자 문구, 전체 목표를 계획 단위로 집계할 때 MUST/SHOULD/LATER·`deferred`의 분모, 기능 대기 목록의 순서와 0개일 때 문구.
+  - **이 ADR은 교육 효과를 판정하지 않는다.** 콘텐츠 품질·planner 가중치·복습 간격·Hint Ladder·skill tree 분해·AI 프롬프트·나머지 두 트랙은 미검토다.
+
+## ADR-071 포화되는 factor는 순위를 가리지 못한다 — `milestoneUrgency`에 상한을 둔다
+
+- **Status**: **Accepted** (2026-10-07) — 소유자 승인.
+- **Context**: `06` §5.4의 `milestoneUrgency`는 이렇다.
+
+```text
+length   = daysBetween(start, end) + 1
+daysLeft = daysBetween(today, end)
+urgency  = max(200_000, 1_000_000 − floorDiv(daysLeft × 1_000_000, length))
+```
+
+**하한만 있고 상한이 없다.** 그래서 `docs/06` §11.1(ADR-067)은 이렇게 적었다 — *"날짜가 썩으면 … §5.4 `milestoneUrgency`가 포화된다 … **위쪽 한계가 없어서** 끝 날짜가 지날수록 계속 커진다."*
+
+**그런데 실제로는 포화되지 않는다. 예외가 난다.** 구현하면서 단위 테스트로 확인했다:
+
+```
+java.lang.IllegalArgumentException: dividend must not be negative: -30000000
+  at PlannerScoring.milestoneContext
+```
+
+`FixedPointMath.floorDiv`는 **음수 피제수를 금지한다**(N-4). `daysLeft`가 음수면 `daysLeft × MICRO`가 음수가 되어 그 자리에서 던진다. `DailyPlanComposer`가 `milestoneContext`를 직접 부르므로 **뒤처진 사용자의 `POST /today/generate`가 500이 된다.**
+
+**ADR-067의 서술과 이 ADR의 첫 초안이 둘 다 틀렸다.** 식만 보고 N-4 가드를 빼먹었다. 수학으로는 자라지만 코드는 거기까지 가지 않는다.
+
+**누가 언제 겪는가**: 현재 milestone의 종료일이 지나고 그 단계가 아직 미완료일 때다. 계획 템플릿이 배치한 날짜를 지나 뒤처지면 바로 그 상태다. **ADR-070 전에는 1단계가 영원히 미완료였으므로**(MUST 43개 중 32개가 영구 미달) 기본 트랙 사용자는 1단계 종료일이 지나는 날 — 52주 계획이면 약 44일째 — **반드시 터졌다.** 실사용 데이터가 없어서 아무도 보지 못했다.
+
+52주 계획의 1단계(≈44일)를 기준으로 가중치 `milestone-urgency: 0.15`를 적용하면:
+
+| 경과 | daysLeft | urgency | 가중합 기여 |
+|---|---|---|---|
+| 44일 (종료일) | 0 | 1,000,000 | 0.15 |
+| 110일 | −66 | 2,500,000 | 0.38 |
+| 364일 | −320 | 8,272,728 | **1.24** |
+
+`Factor` enum은 6개이고 `milestoneUrgency`를 뺀 다섯의 가중치 합은 **0.85**다(`stageGap`은 가중합 밖의 보너스다). 1년째에는 한 factor가 나머지 다섯의 최댓값 합을 넘는다.
+
+**다만 "나머지 factor를 전부 무의미하게 만든다"는 과한 표현이다.** 같은 현재 milestone의 후보들은 **같은 urgency를 받는다** — 그 안에서는 왜곡이 없다. 문제는 **urgency가 다른 후보끼리 비교될 때**다. 세 경로가 있다.
+
+1. **선행 skill 치환** — `selectCandidates`의 `usable`은 `prerequisiteReadiness`가 문턱 미만이면 그 skill 대신 **가장 약한 선행 skill**을 넣는다. 그 skill이 현재 milestone 밖이면 urgency가 0 또는 `next-milestone-urgency`(100_000)다. 현재 milestone 후보가 포화돼 있으면 **치환된 선행 skill은 영원히 뽑히지 않는다** — 넣어 준 의미가 사라진다.
+2. **`dueSkills` 폴백** — 현재·다음 단계에 쓸 후보가 없을 때 들어오는 복습 skill도 같은 처지다.
+3. **modifier가 곱이다** — `PlannerScoring`은 가중합에 modifier를 **곱한다**. base가 크면 같은 배율도 절대 차이가 커져, 서로 다른 modifier를 받은 후보 사이의 간격이 벌어진다.
+
+- **Decision**: 끝나는 날을 지나면 **`MICRO`(1,000,000)에서 멈춘다.** 음수를 `floorDiv`에 넣지 않는다.
+
+```text
+urgency = daysLeft <= 0
+        ? 1_000_000
+        : max(200_000, 1_000_000 − floorDiv(daysLeft × 1_000_000, length))
+```
+
+`clamp`로 감싸는 것으로는 **고쳐지지 않는다** — 예외는 `clamp`가 값을 받기 **전에** `floorDiv` 안에서 난다. 분기로 막아야 한다.
+
+**연체 정보는 버리지 않는다.** 그것을 말하는 자리는 이미 둘 있다 — 위험도(`06` §4.3)와 재계획 제안(§4.4·ADR-067의 일정 재배치)이다. **"늦었다"를 planner 점수로 말하면 그 점수가 다른 모든 비교를 밀어내고, 정작 늦은 이유는 화면에 안 나온다.**
+
+- **왜 상한을 `MICRO`로 두나**: 다른 다섯 factor가 전부 `[0, MICRO]`다. 하나만 그 범위를 벗어나면 `WEIGHT_BP`의 "합이 10,000인 정규화 가중합"이라는 성질이 깨진다. 상한을 두는 것은 factor를 약하게 만드는 것이 아니라 **원래 설계된 범위로 되돌리는 것**이다.
+- **왜 하한은 그대로 두나**: `200_000`은 "시작한 단계는 아예 0이 아니다"를 말한다. 그 뜻은 바뀌지 않는다.
+- **Alternatives**:
+  - **연체를 별도 factor로 만든다** — `overdueUrgency`를 더하고 `WEIGHT_BP`를 7개로 재정규화한다. 그러면 여섯 factor의 비중이 모두 달라지고, 실측 없이 가중치를 정해야 한다. `stageGap`처럼 가중합 밖의 보너스로 두는 길도 있지만, 연체는 "조금 앞세우는" 성질이 아니다 — 범위를 줄이거나 날짜를 바꾸는 쪽이 맞고 그건 §4.4가 한다.
+  - **`length`를 지난 날수만큼 늘려 포화를 늦춘다** — 분모를 키우면 자라는 속도만 느려지고 상한은 여전히 없다.
+- **Consequences**:
+  - **먼저 500이 사라진다.** 이것이 이 ADR의 가장 큰 효과다 — 순위 왜곡보다 앞선다.
+  - `docs/06` §11.1(ADR-067)의 *"계속 커진다"* 서술을 고친다. 그 ADR의 **결정(일정 재배치)은 그대로 옳다** — 날짜가 썩는 것을 막으니 이 예외도 덜 만난다. 틀린 것은 그 ADR이 든 **이유**다.
+  - 목표일을 넘긴 사용자의 `milestoneUrgency`가 `1_000_000`에서 멈춘다. 그 단계의 후보끼리는 순위가 **바뀌지 않는다**(같은 값을 받으므로). 바뀌는 것은 **치환된 선행 skill·복습 폴백 후보와의 비교**다.
+  - `06` §5.4 식과 §5.8 test vector를 고친다. 기존 vector의 `daysLeft ≥ 0` 사례는 **값이 바뀌지 않는다** — 상한에 닿지 않는다.
+  - **ADR-067의 일정 재배치는 그대로 필요하다.** 상한은 포화의 **피해**를 막고, 재배치는 **날짜가 썩는 것 자체**를 고친다. 둘은 겹치지 않는다.
+  - 테스트는 **상한 값 검사와 실제 후보 비교 사례를 함께** 둔다 — 상한만 재면 "그래서 순위가 달라지는가"를 모른다.

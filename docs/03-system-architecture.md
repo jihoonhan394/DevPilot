@@ -583,6 +583,7 @@ devpilot:
     self-assessment-cap: 3
     diagnostic-max-level: 3                # 06 §7.4 min(claimedLevel, 3)
     measurable-axes: [KNOWLEDGE, IMPLEMENTATION, EXPLANATION]   # 06 §7.6 지금 근거를 쌓을 수 있는 축 (coach가 들어오면 DEBUGGING 추가)
+    evidence-ceiling: { knowledge: 4, implementation: 3, explanation: 3, debugging: 0 }   # ADR-070 지금 제품이 근거를 만들 수 있는 **레벨** 상한 (전역, skill별 아님)
   radar:
     default-target: { knowledge: 3, implementation: 3, explanation: 3, debugging: 2 }   # 06 §13 target 없을 때
   training:

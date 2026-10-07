@@ -184,6 +184,27 @@ class _StepCard extends StatelessWidget {
                   style: theme.textTheme.bodySmall?.copyWith(color: colors.neutral),
                 ),
             ],
+            // ADR-070: 지금 할 수 있는 것을 다 해도 원래 목표가 남을 수 있다. `gaps`가 비어 BUILDABLE이어도
+            // 이 줄은 남는다 — "끝났다"와 "여기까지가 지금 할 수 있는 끝이다"는 다른 말이다.
+            if (step.capabilityPending.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.md),
+              Text(l10n.buildablePendingTitle, style: theme.textTheme.labelLarge),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                l10n.buildablePendingBody,
+                key: const Key('buildable.capabilityPending'),
+                style: theme.textTheme.bodySmall?.copyWith(color: colors.neutral),
+              ),
+              for (final pending in step.capabilityPending)
+                Text(
+                  l10n.buildablePendingSkill(
+                    pending.skill.name,
+                    _pendingAxes(pending, l10n).join(' · '),
+                  ),
+                  key: Key('buildable.pending.${pending.skill.code}'),
+                  style: theme.textTheme.bodySmall?.copyWith(color: colors.neutral),
+                ),
+            ],
             if (isNext) ...[
               const SizedBox(height: AppSpacing.md),
               Align(
@@ -206,6 +227,17 @@ class _StepCard extends StatelessWidget {
 }
 
 /// 게이트가 덜 찬 "지금 만들 단계"에만 붙는다. 기술이 다 차기를 기다리는 동안에도 남길 것은 있다.
+/// 보류된 축만 골라 "축 이름 레벨"로 만든다. 0인 축은 보류가 없다는 뜻이라 뺀다.
+List<String> _pendingAxes(CapabilityPendingView pending, AppLocalizations l10n) {
+  final levels = pending.pending;
+  return [
+    if (levels.knowledge > 0) '${l10n.enumSkillAxisKnowledge} ${levels.knowledge}',
+    if (levels.implementation > 0) '${l10n.enumSkillAxisImplementation} ${levels.implementation}',
+    if (levels.explanation > 0) '${l10n.enumSkillAxisExplanation} ${levels.explanation}',
+    if (levels.debugging > 0) '${l10n.enumSkillAxisDebugging} ${levels.debugging}',
+  ];
+}
+
 class _StartAnyway extends StatelessWidget {
   @override
   Widget build(BuildContext context) {

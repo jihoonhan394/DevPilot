@@ -22,7 +22,7 @@ DevPilot은 **사용자가 스스로 정한 목표일까지 실무에 쓰이는 
 | 공부 방식의 중심 | **AI와의 러버덕 코딩**(FR-25). AI는 답을 주지 않고 되묻는다 |
 | 학습 목표 | **무엇을, 언제까지** — 학습 트랙(`targetRole`)과 **목표일**(`targetCompletionDate`) 하나다. 사용자가 설정의 "학습 목표"에 직접 등록한다(FR-03). 목표일로 남은 시간을 역산해 촉박하면 필수 위주로, 여유 있으면 깊이 있게 안내한다(FR-05) |
 | 형태 | 웹 우선 Flutter PWA + Spring Boot backend + AI 코칭 (Android 앱은 Later, DEC-18) |
-| 학습 트랙 | Java 백엔드 (`TargetRole.JAVA_BACKEND`만 지원. 다른 트랙은 값 추가 + 콘텐츠 작업, C-7) |
+| 학습 트랙 | **3종** — `JAVA_BACKEND`(기본), `JAVA_BACKEND_STARTER`(입문), `INTEGRATION_ENGINEER`(연동). ADR-040·DEC-29~31·DEC-34로 늘렸다. 네 번째 이후는 값 추가 + 콘텐츠 작업(C-7)이고 다른 스택이면 skill tree부터 새로 쓴다(`19` §10.4) |
 | 사용자 | 소유자 1명 + 초대 최대 2명 (DEC-01) |
 | UI 언어 | 한국어 (식별자·기술 용어는 영어 원문) |
 
@@ -240,7 +240,7 @@ v2까지의 학습 루프는 **개념 → 연습문제 → 복습**이었다. �
 | Deadline risk | `riskLevel`, `ratioBp` (주 마지막 snapshot) | 1주차 (budget·risk는 S2부터 계산) | 매주 **MEDIUM 이하** 또는 replan으로 MEDIUM 이하 복귀 |
 | 승인된 evidence | `acceptedEvidenceCount` | S6 완료 다음 주 | 사용자가 등록한 목표일(`learning_goal.target_completion_date`)까지 누적 **3개 이상** (8주 범위 밖일 수 있음, 추적만) |
 | 약한 thinking 축 | `weakThinkingAxes` | S4 완료 다음 주 | 목표 없음. 상위 3개 축이 Today/Coach 맥락에 반영되는지 확인 |
-| 로드맵 항목 준비 비율 | `requirementCoverageBp` | S7 완료 다음 주 | 목표 없음. **사용자 화면에 퍼센트로 표시하지 않는다**(NG-6). 내부 추적만 |
+| 로드맵 항목 준비 비율 | `requirementCoverageBp` | S3 완료 다음 주 (DEC-34로 S7 → S3) | 목표 없음. **사용자 화면에 퍼센트로 표시하지 않는다**(NG-6). 내부 추적만 |
 
 제품 건강 확인(지표 외):
 - Today를 생성한 plan-day 수 ≥ 주 5일 (`daily_plan` 수)
@@ -253,7 +253,7 @@ v2까지의 학습 루프는 **개념 → 연습문제 → 복습**이었다. �
 S0~S7은 **구현 순서를 나타내는 단계 ID**다. 기간·날짜·일수가 없고, 단계는 exit criteria(`11-development-roadmap.md` §3)를 통과하면 끝난다. 단계는 두 묶음이다.
 
 - **M1 — 쓸 수 있는 최소 (S0 · S1 · S2 · S3)**: 온보딩(학습 트랙 선택·진단·사이드 프로젝트 등록) · 학습 계획 · 기한 역산 · 오늘 할 일 · 코드 읽기 · 러버덕 · 프로젝트 결정·장애 기록 · 복습(교차 학습) · 레벨 갱신 · 로그인 · 배포. **S3 완료 = M1 완료 = 실사용 시작(매일 쓰기 시작).** S2가 끝나면 AI 없이 Today·Review만 먼저 써도 된다(선택).
-- **M2 — M1을 쓰면서 필요한 순서로 (S4 · S5 · S6 · S7)**: Coach 코드 리뷰, 주간 리뷰·Dashboard 완성, 캘린더, AI 문제 자동 생성, 증거·export, 로드맵 비교. 단계 순서는 잠정이다.
+- **M2 — M1을 쓰면서 필요한 순서로 (S4 · S5 · S6 · S7)**: Coach 코드 리뷰, 주간 리뷰·Dashboard 완성, AI 문제 자동 생성, 증거·export. 단계 순서는 잠정이다. (**로드맵 비교는 DEC-34로 S3으로, 캘린더 구독은 Later로 옮겼다** — `11` §3.1)
 - 목표일은 사용자가 설정에 등록하는 값(`learning_goal`)이고 단계 진행과 무관하다. 문서에 목표일·실사용 시작 날짜를 상수로 쓰지 않는다.
 
 | 묶음 | 단계 | 목표 | FR (해당 단계에 완성 또는 시작하는 부분) | 주요 AC |
@@ -261,12 +261,12 @@ S0~S7은 **구현 순서를 나타내는 단계 ID**다. 기간·날짜·일수�
 | M1 | S0 | Bootstrap, walking skeleton, 배포, spike | FR-01(로그인 왕복, `GET /me` 401→200) | — |
 | M1 | S1 | Identity · Onboarding · Goal · Plan · **사이드 프로젝트** · seed v0 | FR-01(allowlist, JIT), FR-02(목표·시간·자기평가·사이드 프로젝트 등록), FR-03, FR-04(9개 milestone 템플릿, milestone 편집, 최소 replan 저장), FR-06(조회, 자기평가 반영), FR-24, **FR-26(등록·조회·수정·삭제)** | AC-01, AC-11(온보딩·`sideProject`), AC-18, AC-24, AC-27 |
 | M1 | S2 | Today · Session · Review(AI 없음, **교차 학습**) · **Budget·Risk·Replan 제안(축소·확장)** · Dashboard 최소 · PWA | **FR-05**, FR-07, FR-08, FR-11(due, 답변, 스케줄, 수동 카드, 교차 학습), FR-16(최소), FR-21, FR-26(PROJECT_TASK 연결) | AC-02, **AC-03**, AC-05, AC-10, AC-17, AC-27(PROJECT_TASK), **AC-29**, **AC-30** |
-| M1 | S3 | AI Platform · Training · Skill updater · **온보딩 진단** · **코드 읽기** · **러버덕** · **학습 트랙 2종** · **프로젝트 기록** — 완료 = 실사용 시작 | FR-02(진단 모드, 트랙 선택), FR-03(학습 트랙 2종), FR-06(규칙 갱신, 이력), FR-09(seed challenge 풀이·평가), FR-10(challenge), FR-11(evaluate, variant, 러버덕 gaps 카드), FR-14(guard 기반), FR-15, FR-22, **FR-25**, **FR-27**, **FR-29** | AC-04, AC-09, AC-11(진단), AC-12, AC-13, AC-16, AC-23, **AC-26**, **AC-28**, **AC-32**, **AC-33** |
+| M1 | S3 | AI Platform · Training · Skill updater · **온보딩 진단** · **코드 읽기** · **러버덕** · **학습 트랙 3종** · **프로젝트 기록** · **로드맵 비교** — 완료 = 실사용 시작 | FR-02(진단 모드, 트랙 선택), FR-03(학습 트랙 3종), FR-19(로드맵 비교 — DEC-34로 S7 → S3), FR-06(규칙 갱신, 이력), FR-09(seed challenge 풀이·평가), FR-10(challenge), FR-11(evaluate, variant, 러버덕 gaps 카드), FR-14(guard 기반), FR-15, FR-22, **FR-25**, **FR-27**, **FR-29** | AC-04, AC-09, AC-11(진단), AC-12, AC-13, AC-16, AC-23, **AC-26**, **AC-28**, **AC-32**, **AC-33** |
 | M2 | S4 | Project Coach · evals v1 · **재현 과제** | FR-10(coach finding), FR-12(사이드 프로젝트 연결 포함), FR-13(기록), FR-14(finding 배지), **FR-28** | AC-06, AC-07, AC-14, AC-19, **AC-31**, AC-12·AC-23 재검증 |
-| M2 | S5 | Weekly review · Dashboard 완성 · **캘린더 구독** · **AI 문제 자동 생성** | FR-09(AI 문제 생성), FR-13(추세), FR-16(완성), FR-17(`projectNoteCount`·`independentRedoCount` 포함), FR-20 | AC-21(weekly) |
+| M2 | S5 | Weekly review · Dashboard 완성 · **AI 문제 자동 생성** | FR-09(AI 문제 생성), FR-13(추세), FR-16(완성), FR-17(`projectNoteCount`·`independentRedoCount` 포함) | AC-21(weekly) |
 | M2 | S6 | Evidence · Export · 계정 삭제 · 백업 · 하드닝 | FR-18(프로젝트 기록 초안 포함), FR-23 | AC-08 재검증, AC-15, AC-20, AC-21(evidence), AC-33(초안 연결) |
-| M2 | S7 | 로드맵 비교 | FR-19 | AC-22 |
-| — | Later | 확장 | Android 앱, FSRS, code runner, IDE plugin, 데모 모드, 공휴일 반영, 다크 모드, 이메일·Push 알림, **세 번째 이후 학습 트랙**(다른 스택이면 skill tree부터 새로 쓴다, `19` §10.4), 학습 트랙 변경 | — |
+| M2 | S7 | (배정 항목 없음 — 로드맵 비교가 S3으로 옮겨졌다, DEC-34) M2 이월분 정리 | — | — |
+| — | Later | 확장 | Android 앱, FSRS, code runner, IDE plugin, 데모 모드, 공휴일 반영, 다크 모드, 이메일·Push 알림, **캘린더 구독**(DEC-34 — Today가 같은 일을 하고 공개 토큰 URL 보관 부담이 크다), **네 번째 이후 학습 트랙**(다른 스택이면 skill tree부터 새로 쓴다, `19` §10.4), 학습 트랙 변경 | — |
 
 v3에서 옮긴 것(`11` §3, `13` §2): Budget·Risk·Replan 제안은 S5 → **S2**(목표일 역산은 MUST이고 risk는 planner 입력 `DEADLINE_RISK_MUST`이므로 Today와 같은 단계다 — 이제 S2부터 `deadline_risk`가 계산된다), 캘린더 구독·AI 문제 자동 생성은 S2·S3 → **S5**(M1에 필요 없다), 진단 제안은 S3 안에서 필수(P0)로 올렸다.
 
@@ -367,7 +367,7 @@ v3에서 옮긴 것(`11` §3, `13` §2): Budget·Risk·Replan 제안은 S5 → *
 
 **관련 API** — `GET /learning-goal`, `PUT /learning-goal`, `POST /onboarding`(`learningGoal.targetRole`), `GET /skills/tree?role=`
 **관련 화면** — SCR-LEARNING-GOAL, SCR-SETTINGS("학습 목표" 행), SCR-PLAN, SCR-ONBOARDING(1단계 트랙 선택)
-**AC** — AC-01, AC-32 · **Sprint** — S1 (학습 트랙 2종은 S3) · **우선순위** — MUST
+**AC** — AC-01, AC-32 · **Sprint** — S1 (학습 트랙 3종은 S3) · **우선순위** — MUST
 
 ### FR-04 학습 계획·milestone·계획 버전
 

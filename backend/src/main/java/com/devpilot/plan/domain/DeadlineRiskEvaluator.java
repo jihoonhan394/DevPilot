@@ -4,10 +4,8 @@ import com.devpilot.common.math.FixedPointMath;
 import com.devpilot.common.web.AxisLevels;
 import com.devpilot.skill.domain.Priority;
 import com.devpilot.skill.domain.SkillAxis;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -33,37 +31,45 @@ public final class DeadlineRiskEvaluator {
         this.settings = Objects.requireNonNull(settings, "settings");
     }
 
-    /** docs/06 §4.2. 목표를 이미 넘은 축은 0으로 센다. 네 축을 모두 센 값이다. */
+    /** docs/06 §4.2. 목표를 이미 넘은 축은 0으로 센다. <b>상한 없이</b> 네 축을 모두 센 값이다 — 원래 목표의 총량이다. */
     public int requiredMinutes(AxisLevels target, AxisLevels planning, int minutesPerLevelStep) {
-        return requiredMinutes(
-                        target, planning, minutesPerLevelStep, EnumSet.allOf(SkillAxis.class))
+        return requiredMinutes(target, planning, minutesPerLevelStep, AxisLevels.uniform(5))
                 .total();
     }
 
     /**
-     * docs/06 §4.2를 <b>지금 잴 수 있는 축과 그렇지 않은 축으로 나눠</b> 센다 (ADR-062).
+     * docs/06 §4.2를 <b>지금 근거를 만들 수 있는 몫과 기능을 기다리는 몫으로 나눠</b> 센다 (ADR-062 → ADR-070).
      *
-     * <p>디버깅 축은 코드 리뷰 기능이 생길 때까지 쌓을 방법이 없는데(ADR-061, §7.6) axis cost의 약 30%를 차지한다. 그대로 risk에 넣으면
-     * <b>도구가 시켜 주지도 않는 일로 "늦었다"고 말한다.</b> 그래서 risk는 {@code now}만 쓰고, {@code later}는 "나중에 열리는 몫"으로
-     * 따로 보인다.
+     * <p>ADR-062는 <b>축</b>으로만 나눴다: 디버깅 축은 코드 리뷰 기능이 생길 때까지 쌓을 방법이 없는데(§7.6) axis cost의 약 30%를 차지하고,
+     * 그대로 risk에 넣으면 <b>도구가 시켜 주지도 않는 일로 "늦었다"고 말한다.</b>
      *
-     * @param measurable 지금 근거를 쌓을 수 있는 축 (§7.6)
+     * <p>ADR-070이 <b>축 안의 레벨</b>까지 넓혔다. I4는 {@code EVIDENCE_ACCEPTED}(S6), E4는 variant 답변(Later)이
+     * 필요해서 축은 열려 있는데 그 위 레벨이 막혀 있다. 축별 목표 {@code T}, 상한 {@code C}, 계획 레벨 {@code P}에 대해:
+     *
+     * <pre>
+     * 현재 gap      = max(0, min(T, C) − P)
+     * 기능 대기 gap = max(0, T − max(P, C))
+     * raw gap 합    = max(0, T − P)              # 원래 값과 같다
+     * </pre>
+     *
+     * <p><b>분 단위는 각각 올림한다</b>(§4.2 식 그대로). 그래서 두 분의 합이 raw gap을 한 번에 올린 값과 1분 다를 수 있다 — gap 보존과 분
+     * 합계의 동일성은 다른 얘기다.
+     *
+     * @param ceiling 축별 도달 가능 상한. <b>측정 불가 축은 0으로 들어온다</b>({@code MeasurableAxes.forProgress}) —
+     *     그래서 ADR-062의 축 분할이 이 식의 특수한 경우가 된다
      */
     public Required requiredMinutes(
-            AxisLevels target,
-            AxisLevels planning,
-            int minutesPerLevelStep,
-            Set<SkillAxis> measurable) {
+            AxisLevels target, AxisLevels planning, int minutesPerLevelStep, AxisLevels ceiling) {
         long nowGap = 0;
         long laterGap = 0;
         for (SkillAxis axis : SkillAxis.values()) {
-            int gap = Math.max(0, axis.levelOf(target) - axis.levelOf(planning));
-            long weighted = (long) gap * settings.axisCostBp(axis);
-            if (measurable.contains(axis)) {
-                nowGap += weighted;
-            } else {
-                laterGap += weighted;
-            }
+            int targetLevel = axis.levelOf(target);
+            int planningLevel = axis.levelOf(planning);
+            int cap = axis.levelOf(ceiling);
+            int now = Math.max(0, Math.min(targetLevel, cap) - planningLevel);
+            int later = Math.max(0, targetLevel - Math.max(planningLevel, cap));
+            nowGap += (long) now * settings.axisCostBp(axis);
+            laterGap += (long) later * settings.axisCostBp(axis);
         }
         return new Required(
                 minutes(nowGap, minutesPerLevelStep), minutes(laterGap, minutesPerLevelStep));
@@ -108,17 +114,23 @@ public final class DeadlineRiskEvaluator {
                         Math.multiplyExact(requiredMust, FixedPointMath.BP_SCALE), effective));
     }
 
-    /** MUST·SHOULD 필요 시간 합계와 risk. {@code deferred = true}인 항목과 LATER는 합계에서 빠진다. */
+    /**
+     * MUST·SHOULD 필요 시간 합계와 risk. {@code deferred = true}인 항목과 LATER는 합계에서 빠진다. <b>상한 없이</b> 센다 —
+     * 원래 목표의 총량이다.
+     */
     public RiskEstimate evaluate(List<TargetRequirement> targets, int effectiveMinutes) {
-        return evaluate(targets, effectiveMinutes, EnumSet.allOf(SkillAxis.class));
+        return evaluate(targets, effectiveMinutes, AxisLevels.uniform(5));
     }
 
     /**
-     * 지금 잴 수 있는 축으로만 risk를 본다 (ADR-062). 나머지 축의 몫은 {@code requiredMustLaterMinutes}로 따로 돌려준다 — 없애는
-     * 것이 아니라 "아직 열리지 않은 몫"으로 보여 주는 값이다.
+     * 지금 근거를 만들 수 있는 몫으로만 risk를 본다 (ADR-062 → ADR-070). 기능을 기다리는 몫은 {@code
+     * requiredMustLaterMinutes}로 따로 돌려준다 — 없애는 것이 아니라 "아직 열리지 않은 몫"으로 보여 주는 값이다.
+     *
+     * <p><b>대기 몫은 MUST만 센다.</b> SHOULD의 대기 몫은 합계에 넣지 않는다 — {@code requiredShouldMinutes}는 "지금 할 수
+     * 있는 SHOULD"이고, 거기에 못 하는 몫을 섞으면 축소 제안이 줄일 수 없는 시간을 보고 판단한다.
      */
     public RiskEstimate evaluate(
-            List<TargetRequirement> targets, int effectiveMinutes, Set<SkillAxis> measurable) {
+            List<TargetRequirement> targets, int effectiveMinutes, AxisLevels ceiling) {
         long mustNow = 0;
         long mustLater = 0;
         long shouldNow = 0;
@@ -131,7 +143,7 @@ public final class DeadlineRiskEvaluator {
                             target.targets(),
                             target.planning(),
                             target.minutesPerLevelStep(),
-                            measurable);
+                            ceiling);
             if (target.priority() == Priority.MUST) {
                 mustNow += required.nowMinutes();
                 mustLater += required.laterMinutes();
