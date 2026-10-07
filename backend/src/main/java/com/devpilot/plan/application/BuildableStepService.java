@@ -5,6 +5,7 @@ import com.devpilot.common.time.PlanDayCalculator;
 import com.devpilot.common.web.AxisLevels;
 import com.devpilot.plan.application.BuildableView.BuildableGapView;
 import com.devpilot.plan.application.BuildableView.BuildableStepView;
+import com.devpilot.plan.application.BuildableView.CapabilityPendingView;
 import com.devpilot.plan.domain.BuildableStatus;
 import com.devpilot.plan.domain.BuildableStepEvaluator;
 import com.devpilot.plan.domain.BuildableStepEvaluator.Gap;
@@ -86,7 +87,7 @@ public class BuildableStepService {
             } else if (step.status() == BuildableStatus.NEXT) {
                 nextStepId = milestone.id();
             }
-            steps.add(toView(milestone, step, targets));
+            steps.add(toView(milestone, step, targets, measurableAxes));
         }
         return new BuildableView(
                 plan.id(),
@@ -97,6 +98,7 @@ public class BuildableStepService {
                 nextStepId,
                 measurableAxes.axes(),
                 measurableAxes.unmeasured(),
+                measurableAxes.effectiveCeiling(),
                 steps);
     }
 
@@ -142,7 +144,10 @@ public class BuildableStepService {
     }
 
     private static BuildableStepView toView(
-            MilestoneView milestone, StepReadiness step, Map<String, PlanSkillTargetView> targets) {
+            MilestoneView milestone,
+            StepReadiness step,
+            Map<String, PlanSkillTargetView> targets,
+            MeasurableAxes measurableAxes) {
         List<BuildableGapView> gaps =
                 step.gaps().stream().map(gap -> toGapView(gap, targets)).toList();
         return new BuildableStepView(
@@ -155,7 +160,51 @@ public class BuildableStepService {
                 step.status(),
                 step.metCount(),
                 step.gateCount(),
-                gaps);
+                gaps,
+                capabilityPending(milestone, targets, measurableAxes));
+    }
+
+    /**
+     * 원래 목표가 상한 위에 있는 관문 skill (ADR-070, docs/05 §7.10).
+     *
+     * <p><b>{@code gaps}와 다른 목록이다.</b> {@code gaps}는 "지금 목표에 모자란 것"이고 최대 5개로 자른다. 이것은 "기능이 열려야 갈 수
+     * 있는 곳"이고 자르지 않는다 — {@code gaps}가 비어 {@code BUILDABLE}이어도 남을 수 있다. 둘을 한 목록으로 묶으면 "지금 할 수 있는 것은
+     * 끝났지만 원래 목표는 남았다"를 말할 수 없다.
+     *
+     * <p>관문과 같은 순서·같은 우선순위 규칙을 쓴다 — {@code stepInput}과 어긋나면 화면이 관문에 없는 skill을 보인다.
+     */
+    private static List<CapabilityPendingView> capabilityPending(
+            MilestoneView milestone,
+            Map<String, PlanSkillTargetView> targets,
+            MeasurableAxes measurableAxes) {
+        List<PlanSkillTargetView> gate = gateTargets(milestone, targets, Priority.MUST);
+        if (gate.isEmpty()) {
+            gate = gateTargets(milestone, targets, Priority.SHOULD);
+        }
+        List<CapabilityPendingView> pending = new ArrayList<>();
+        for (PlanSkillTargetView target : gate) {
+            AxisLevels above = measurableAxes.pendingAbove(target.targets());
+            if (above.equals(AxisLevels.ZERO)) {
+                continue;
+            }
+            pending.add(
+                    new CapabilityPendingView(
+                            target.skill(),
+                            target.targets(),
+                            measurableAxes.forProgress(target.targets()),
+                            above));
+        }
+        return List.copyOf(pending);
+    }
+
+    /** {@code gate}와 같은 고르기지만 {@code GateSkill}로 바꾸지 않고 목표 그대로 돌려준다. */
+    private static List<PlanSkillTargetView> gateTargets(
+            MilestoneView milestone, Map<String, PlanSkillTargetView> targets, Priority priority) {
+        return milestone.skillCodes().stream()
+                .map(targets::get)
+                .filter(target -> target != null && !target.deferred())
+                .filter(target -> target.priority() == priority)
+                .toList();
     }
 
     /** gap은 관문 skill에서만 나오고 관문은 {@code targets}에서 골랐으므로 조회는 반드시 맞는다. */

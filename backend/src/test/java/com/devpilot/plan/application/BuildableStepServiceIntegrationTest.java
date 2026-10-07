@@ -131,6 +131,49 @@ class BuildableStepServiceIntegrationTest extends ApiTestSupport {
         assertThat(first.path("targets").path("debugging").asInt()).isZero();
     }
 
+    /**
+     * AC-38 S3 · ADR-070: {@code BUILDABLE}이어도 <b>원래 목표가 남았다</b>는 사실이 함께 보인다.
+     *
+     * <p>{@code gaps}는 "지금 목표에 모자란 것"이고 최대 5개로 자른다. {@code capabilityPending}은 "기능이 열려야 갈 수 있는 곳"이고
+     * 자르지 않는다 — 둘을 한 목록으로 묶으면 "지금 할 수 있는 것은 끝났지만 원래 목표는 남았다"를 말할 수 없다.
+     */
+    @Test
+    void shouldShowWhatIsPendingOnCapabilityEvenWhenTheStepIsBuildable() throws Exception {
+        TestUser user = onboardedOwner();
+        raiseEvidenceToTarget(user, "JAVA.EXCEPTION");
+        raiseEvidenceToTarget(user, "JAVA.COLLECTION");
+        raiseEvidenceToTarget(user, "WEB_HTTP.HTTP_BASICS");
+        raiseEvidenceToTarget(user, "TESTING.JUNIT");
+
+        JsonNode buildable = api.body(api.get(user, BUILDABLE));
+        JsonNode step = buildable.path("steps").get(0);
+
+        assertThat(step.path("status").asString()).isEqualTo("BUILDABLE");
+        assertThat(step.path("gaps")).isEmpty();
+
+        // 전역 상한이 uncountedAxes와 어긋나지 않는다 — D 상한이 0이고 D가 빠진 축이다.
+        JsonNode ceiling = buildable.path("evidenceCeiling");
+        assertThat(ceiling.path("knowledge").asInt()).isEqualTo(4);
+        assertThat(ceiling.path("implementation").asInt()).isEqualTo(3);
+        assertThat(ceiling.path("explanation").asInt()).isEqualTo(3);
+        assertThat(ceiling.path("debugging").asInt()).isZero();
+        assertThat(names(buildable.path("uncountedAxes"))).containsExactly("DEBUGGING");
+
+        // gaps가 비었는데도 남은 원래 목표가 보인다.
+        JsonNode pending = step.path("capabilityPending");
+        assertThat(pending).isNotEmpty();
+        JsonNode first = pending.get(0);
+        assertThat(first.path("skill").path("code").asString()).isNotBlank();
+        // 원래 목표는 그대로이고, 현재 판정 목표는 상한으로 낮춘 값이다.
+        assertThat(first.path("originalTargets").path("debugging").asInt()).isPositive();
+        assertThat(first.path("currentTargets").path("debugging").asInt()).isZero();
+        assertThat(first.path("currentTargets").path("implementation").asInt())
+                .isLessThanOrEqualTo(3);
+        // 보류 축에는 원래 목표 레벨이 담긴다. 상한 이하인 축은 0이다.
+        assertThat(first.path("pending").path("debugging").asInt())
+                .isEqualTo(first.path("originalTargets").path("debugging").asInt());
+    }
+
     /** BS-7: 미룬 목표는 관문에서 빠진다 — 미루기로 한 것이 단계를 막으면 미룬 것이 아니다. */
     @Test
     void shouldLeaveDeferredTargetsOutOfTheGate() throws Exception {

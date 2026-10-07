@@ -2669,6 +2669,10 @@ components:
     BuildableStepView:
       type: object
       properties:
+        capabilityPending:
+          type: array
+          items:
+            $ref: "#/components/schemas/CapabilityPendingView"
         description:
           type: string
         endDate:
@@ -2702,6 +2706,7 @@ components:
         title:
           type: string
       required:
+      - capabilityPending
       - description
       - endDate
       - gaps
@@ -2727,6 +2732,8 @@ components:
             - IMPLEMENTATION
             - EXPLANATION
             - DEBUGGING
+        evidenceCeiling:
+          $ref: "#/components/schemas/AxisLevels"
         nextStepId:
           type: string
           format: uuid
@@ -2758,6 +2765,7 @@ components:
       required:
       - buildableStepCount
       - countedAxes
+      - evidenceCeiling
       - nextStepId
       - planId
       - planVersion
@@ -2793,6 +2801,22 @@ components:
       - taskId
       - taskType
       - title
+    CapabilityPendingView:
+      type: object
+      properties:
+        currentTargets:
+          $ref: "#/components/schemas/AxisLevels"
+        originalTargets:
+          $ref: "#/components/schemas/AxisLevels"
+        pending:
+          $ref: "#/components/schemas/AxisLevels"
+        skill:
+          $ref: "#/components/schemas/SkillRef"
+      required:
+      - currentTargets
+      - originalTargets
+      - pending
+      - skill
     CategoryLevel:
       type: object
       properties:

@@ -2236,3 +2236,33 @@
 - And **저장된 목표는 그대로이고**, 이미 획득한 레벨이 "전체 목표 충족"으로 뒤바뀌지 않는다
 - Given 설정이 비었거나 `SkillAxis`에 없는 축 이름이 있다
 - Then **기동 실패**다
+
+
+---
+
+## AC-39 포화되는 factor는 순위를 가리지 못한다 (**Proposed**, ADR-071)
+
+> 규칙은 `06-learning-engine-rules.md` §5.4. 소유자 승인 전에는 구현하지 않는다.
+
+**S1. 상한에서 멈춘다**
+- Given 현재 milestone의 종료일이 **지났다** (`daysLeft < 0`)
+- When `POST /today/generate`
+- Then `learning_task.score_breakdown`의 `milestoneUrgency` factor 값이 **`1_000_000`을 넘지 않는다**
+- And 하루 더 지나도 그 값이 **커지지 않는다**
+
+**S2. 상한에 닿지 않는 경우는 그대로다**
+- Given 현재 milestone의 종료일이 아직 오지 않았다 (`daysLeft ≥ 0`)
+- Then `milestoneUrgency`가 기존 식과 **같은 값**이다 (§5.8 vector 그대로)
+- And 시작한 단계는 `200_000` 아래로 내려가지 않는다
+
+**S3. 치환된 선행 skill이 다시 뽑힐 수 있다**
+- Given 현재 milestone의 종료일이 오래 지났다
+- And 그 단계의 skill 하나가 선행 조건 문턱 미만이라 **가장 약한 선행 skill**로 치환됐고, 그 선행 skill은 현재 milestone 밖이다
+- And 그 선행 skill의 나머지 factor(중요도·격차·복습)가 현재 단계 후보보다 **높다**
+- When `POST /today/generate`
+- Then main task가 **그 선행 skill**이다 (상한 전에는 포화된 urgency 때문에 영원히 뽑히지 않았다)
+
+**S4. 연체 정보는 사라지지 않는다**
+- Given 같은 상태
+- Then `GET /plans/active/budget`의 `riskLevel`과 `ratioBp`가 늦은 상태를 그대로 보인다
+- And `POST /plans/{planId}/replan/preview`가 일정 재배치(`milestoneSchedule`)를 돌려준다 (ADR-067)
