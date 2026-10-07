@@ -237,7 +237,7 @@ v2까지의 학습 루프는 **개념 → 연습문제 → 복습**이었다. �
 | 평균 hint 단계 | `averageHintLevelMilli` | 1주차 | **하락 추세**: 7~8주차 평균 < 3~4주차 평균, 8주차 값 **≤ 2000** |
 | 주간 완료 러버덕 세션 수 | 계산 출처: `rubber_duck_session`(`04`) 중 `status = COMPLETED`이고 `completed_at`의 plan-day(`06` §2)가 그 ISO week에 속하는 행 수. `COMPLETED`는 턴이 1개 이상일 때만 생기고(턴 0개 종료는 `ABANDONED`, `05` §9.8), 정리 AI가 실패한 세션(`summary_json = null`)도 센다 — 대화 자체가 학습이므로. `RUBBER_DUCK_COMPLETED` 이벤트 수는 쓰지 않는다(skill이 없는 세션은 이벤트가 없다, RD-7). `06` §12·`04` §5.7에 `completedRubberDuckSessions`로 추가해야 한다 | 1주차 | **주 3회 이상**을 8주 중 6주 이상 |
 | 스스로 발견한 위험 | `selfFoundRiskCount` | S4(Project Coach) 완료 다음 주 | 2주마다 **1개 이상** |
-| Deadline risk | `riskLevel`, `ratioBp` (주 마지막 snapshot) | 1주차 (budget·risk는 S2부터 계산) | 매주 **MEDIUM 이하** 또는 replan으로 MEDIUM 이하 복귀 |
+| Deadline risk | `riskLevel`, `ratioBp` (주 마지막 snapshot) | 1주차 (budget·risk는 S2부터 계산) | **`ratioBp`가 내려가는 추세**(7~8주차 평균 < 1~2주차 평균) **또는** 매주 MEDIUM 이하 (ADR-072). **절대 수준으로 판정하지 않는다** — 그 값은 필요 시간과 **사용자가 고른 목표일**의 비율이고, 시작 수준 0인 사람이 6개월을 잡으면 어떤 제품이어도 8주 내내 미달이다. 제품이 움직이는 것은 그 비율이 좋아지는가다. `riskLevel`이 아니라 `ratioBp`를 보는 이유: 네 칸짜리 계단은 CRITICAL 안에서 좋아지는 것을 보여 주지 못한다 |
 | 승인된 evidence | `acceptedEvidenceCount` | S6 완료 다음 주 | 사용자가 등록한 목표일(`learning_goal.target_completion_date`)까지 누적 **3개 이상** (8주 범위 밖일 수 있음, 추적만) |
 | 약한 thinking 축 | `weakThinkingAxes` | S4 완료 다음 주 | 목표 없음. 상위 3개 축이 Today/Coach 맥락에 반영되는지 확인 |
 | 로드맵 항목 준비 비율 | `requirementCoverageBp` | S3 완료 다음 주 (DEC-34로 S7 → S3) | 목표 없음. **사용자 화면에 퍼센트로 표시하지 않는다**(NG-6). 내부 추적만 |
