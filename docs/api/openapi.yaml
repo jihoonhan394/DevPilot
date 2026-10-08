@@ -6381,12 +6381,6 @@ components:
     SkillCategorySummaryView:
       type: object
       properties:
-        avgPlanningLevelMilli:
-          type: integer
-          format: int32
-        avgTargetLevelMilli:
-          type: integer
-          format: int32
         category:
           type: string
           enum:
@@ -6404,13 +6398,19 @@ components:
           - PRACTICAL_ENGINEERING
           - SYSTEM_DESIGN
           - EXPLANATION
+        confirmedSkillCount:
+          type: integer
+          format: int32
+        selfAssessedLevel:
+          type: integer
+          format: int32
         skillCount:
           type: integer
           format: int32
       required:
-      - avgPlanningLevelMilli
-      - avgTargetLevelMilli
       - category
+      - confirmedSkillCount
+      - selfAssessedLevel
       - skillCount
     SkillDetailView:
       type: object

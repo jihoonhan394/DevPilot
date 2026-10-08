@@ -1,4 +1,6 @@
+import 'package:devpilot_app/core/api/api_enums.dart';
 import 'package:devpilot_app/core/api/learning_enums.dart';
+import 'package:devpilot_app/features/dashboard/data/dashboard_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -48,14 +50,39 @@ void main() {
     expect(find.byKey(const Key('dashboard.stepCard')), findsNothing);
   });
 
-  /// "얼마나 남았는지"가 보이는 것이 이 줄의 목적이다.
-  testWidgets('shouldShowCurrentAndTargetLevelPerCategory', (tester) async {
+  /// ADR-073: 확인된 수가 보이는 것이 이 줄의 목적이다 — 레벨 평균이 아니다.
+  testWidgets('shouldShowConfirmedCountPerCategory', (tester) async {
     await pumpApp(tester, backend: backend, at: '/dashboard');
 
     expect(find.byKey(const Key('dashboard.category.java')), findsOneWidget);
-    expect(find.text('1.5 / 3.0'), findsOneWidget);
-    expect(find.text('0.0 / 4.0'), findsOneWidget);
     expect(find.text('6개'), findsOneWidget);
+    expect(find.text('확인 2개'), findsOneWidget);
+    expect(find.text('확인 0개'), findsOneWidget);
+  });
+
+  /// 자기평가는 진행 막대와 섞지 않고 아래 한 줄로만 적는다 (ADR-073).
+  testWidgets('shouldShowSelfAssessedStartApartFromProgress', (tester) async {
+    await pumpApp(tester, backend: backend, at: '/dashboard');
+
+    expect(find.text('적어 둔 출발점: Java 2'), findsOneWidget);
+  });
+
+  /// 적어 둔 category가 없으면 줄 자체가 없다 — 빈 줄을 남기지 않는다.
+  testWidgets('shouldHideSelfAssessedStartWhenNoneWasWritten', (tester) async {
+    backend.dashboardRepository.dashboard = testDashboard(
+      skillCategories: const [
+        SkillCategorySummaryView(
+          category: SkillCategory.testing,
+          skillCount: 3,
+          confirmedSkillCount: 0,
+        ),
+      ],
+    );
+
+    await pumpApp(tester, backend: backend, at: '/dashboard');
+
+    expect(find.byKey(const Key('dashboard.category.testing')), findsOneWidget);
+    expect(find.byKey(const Key('dashboard.selfAssessedStart')), findsNothing);
   });
 
   /// 활성 계획이나 학습 목표가 없으면 서버가 null을 준다 — 그 자리를 비운다.

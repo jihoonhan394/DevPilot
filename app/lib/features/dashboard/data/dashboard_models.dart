@@ -97,7 +97,10 @@ abstract class TimelineMilestoneView with _$TimelineMilestoneView {
       _$TimelineMilestoneViewFromJson(json);
 }
 
-/// category별 평균 레벨 (docs/05 §13.1). 평균은 4축 전체에 대한 milli 정수다.
+/// category별 요약 (docs/05 §13.1). **레벨 평균이 아니라 확인된 skill 수**다 (ADR-073).
+///
+/// 평균을 쓰던 동안에는 자기평가만 적고 아무것도 하지 않은 사람에게 막대가 꽉 차 보였다. [selfAssessedLevel]은
+/// 진행이 아니라 출발점이라 진행 막대와 섞지 않는다.
 @freezed
 abstract class SkillCategorySummaryView with _$SkillCategorySummaryView {
   const SkillCategorySummaryView._();
@@ -105,16 +108,15 @@ abstract class SkillCategorySummaryView with _$SkillCategorySummaryView {
   const factory SkillCategorySummaryView({
     @JsonKey(unknownEnumValue: SkillCategory.unknown) required SkillCategory category,
     required int skillCount,
-    required int avgPlanningLevelMilli,
-    required int avgTargetLevelMilli,
+    required int confirmedSkillCount,
+    int? selfAssessedLevel,
   }) = _SkillCategorySummaryView;
 
   factory SkillCategorySummaryView.fromJson(Map<String, Object?> json) =>
       _$SkillCategorySummaryViewFromJson(json);
 
-  /// 0.0~1.0. 목표가 0이면 0이다 (나눌 것이 없다).
-  double get progress =>
-      avgTargetLevelMilli == 0 ? 0 : (avgPlanningLevelMilli / avgTargetLevelMilli).clamp(0.0, 1.0);
+  /// 0.0~1.0. skill이 없으면 0이다 (나눌 것이 없다).
+  double get progress => skillCount == 0 ? 0 : (confirmedSkillCount / skillCount).clamp(0.0, 1.0);
 }
 
 /// 이번 주 요약 (docs/05 §13.1). **필드 순서가 화면 순서다**: 만든 것 → 끝낸 것 → 적은 것 → 시간.

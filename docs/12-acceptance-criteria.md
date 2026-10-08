@@ -2266,3 +2266,35 @@
 - Given 같은 상태
 - Then `GET /plans/active/budget`의 `riskLevel`과 `ratioBp`가 늦은 상태를 그대로 보인다
 - And `POST /plans/{planId}/replan/preview`가 일정 재배치(`milestoneSchedule`)를 돌려준다 (ADR-067)
+
+## AC-40 "얼마나 왔나"는 증거로 확인된 skill 수를 센다 (ADR-073)
+
+> BL-DSH-03. `GET /dashboard`의 `skillCategories`. 관련: AC-38 S2(타임라인 단계 판정은 계획 레벨 그대로), `05` §13.1, `06` §7.5·§7.6b
+
+**S1. 자기평가는 진행이 아니다**
+- Given 온보딩을 끝냈고 category 자기평가를 적었다 (JAVA = 3)
+- And 아직 아무 과제도 하지 않았다 (`last_practiced_at`이 전부 null)
+- When `GET /dashboard`
+- Then 모든 category의 `confirmedSkillCount`가 **0**이다
+- And JAVA의 `selfAssessedLevel`이 **3**이다 (출발점은 숨기지 않는다 — 진행과 분리한다)
+- And 자기평가를 적지 않은 category의 `selfAssessedLevel`은 **null**이다 (0이 아니다 — 0은 "안다고 적은 값이 0"과 구별되지 않는다)
+
+**S2. 증거가 현재 판정 목표에 닿으면 센다**
+- Given 어떤 skill의 증거 레벨이 증거 상한(`devpilot.skill.evidence-ceiling`)까지 올라갔고 학습 기록이 있다
+- And 그 skill의 **저장 목표에는 디버깅이 남아 있다** (상한이 0이라 지금은 잴 수 없다)
+- When `GET /dashboard`
+- Then 그 category의 `confirmedSkillCount`가 **1**이다 (판정 목표는 상한까지만 본다 — ADR-070)
+- And `confirmedSkillCount ≤ skillCount`다
+
+**S3. 세는 값은 평균이 아니다**
+- Given 같은 상태
+- Then 응답에 `avgPlanningLevelMilli`·`avgTargetLevelMilli`가 **없다**
+- And `skillCount`는 활성 plan의 `deferred = false`인 skill 수다
+
+**S4. 자기평가 + 학습 기록만으로는 확인이 아니다**
+- Given 자기평가가 살아 있고(`self_assessment_active = true`, JAVA = 3) 그 skill에 학습 기록이 생겼다
+- And 그 skill의 증거 레벨은 아직 현재 판정 목표에 못 미친다
+- When `GET /dashboard`
+- Then 그 category의 `confirmedSkillCount`가 **0**이다
+- And `selfAssessedLevel`은 **3** 그대로다
+- 이유: 계획 레벨은 자기평가를 품으므로(`06` §7.5) 계획 레벨로 세면 과제 하나를 끝낸 순간 증거 0인 채로 기본 트랙 **23개**가 확인으로 세어진다. 이 시나리오가 S1과 S2 사이를 막는다

@@ -3399,8 +3399,8 @@ public record TimelineMilestoneView(
 public record SkillCategorySummaryView(
         SkillCategory category,
         int skillCount,
-        int avgPlanningLevelMilli,
-        int avgTargetLevelMilli) {}
+        int confirmedSkillCount,          // ADR-073: 증거로 확인된 수. 레벨 평균이 아니다
+        @Nullable Integer selfAssessedLevel) {}   // 적어 둔 출발점. 진행이 아니다
 ```
 
 계산 (오늘 = 요청 시점 plan-day):
@@ -3413,7 +3413,7 @@ public record SkillCategorySummaryView(
 | `streakDays` | 완료한 `learning_task`가 1건 이상인 plan-day를 오늘부터 거꾸로 세어 **끊기지 않고 이어진 날 수**. 오늘 아직 완료가 없으면 어제부터 센다(오늘은 아직 끊긴 날이 아니다). 어제도 없으면 0. 세는 범위는 최근 366 plan-day까지다 |
 | `weeklySummary` | `builtThisWeek`: `plan_date ∈ [weekStartDate, today]`이고 `status = COMPLETED`인 `CHALLENGE`·`PROJECT_TASK`·`REDO` task를 `plan_date` DESC, `sort_order` DESC로 최대 5개. `completedTasks`: 같은 기간의 `COMPLETED` task 수(REVIEW task 포함). `notesWritten`: 같은 기간의 `side_project_note` 수(`occurred_on` 기준 — 기록을 적은 날이 아니라 **일이 있었던 날**로 센다. `06` §12 `projectNoteCount`와 같은 기준이다). dashboard는 `project`를 직접 의존하지 않고 `evidence.application.LearningMetricsQueryService`로 읽는다(`03-system-architecture.md` §2.2). `studyMinutes`: `weekStudyMinutes`와 같은 값 |
 | `risk.trend` | 사용자의 `plan_progress_snapshot`에서 서로 다른 `snapshot_date` 최근 8개. 같은 날짜에 여러 행(replan)이 있으면 `generated_at`이 가장 늦은 행. **주의: 2026-10-01 경계가 있다** — 그 이전 행은 네 축 기준, 이후 행은 잴 수 있는 축 기준으로 계산한 값이다(ADR-062). 경계에서 위험도가 내려간 것은 사용자가 나아진 것이 아니므로, 추세를 그리는 화면은 그 경계를 표시하거나 이전 점을 빼야 한다 |
-| `skillCategories` | 활성 plan의 `plan_skill_target` 중 `deferred = false`인 skill을 category별로 묶는다. `n` = skill 수. `avgPlanningLevelMilli = floorDiv(Σ_skill Σ_axis planning × 1000, n × 4)`, `avgTargetLevelMilli = floorDiv(Σ_skill Σ_axis target × 1000, n × 4)` (planning은 `06-learning-engine-rules.md` §7.5). `n ≥ 1`인 category만, `SkillCategory` 선언 순서 |
+| `skillCategories` | 활성 plan의 `plan_skill_target` 중 `deferred = false`인 skill을 category별로 묶는다. `n` = `skillCount`. **(ADR-073) 레벨 평균이 아니라 `confirmedSkillCount`를 센다** — 평균은 자기평가만 적고 아무것도 하지 않은 사용자에게 진행을 만들어 냈다(자기평가는 네 축에 똑같이 들어가는데(`06` §7.5) 목표 평균은 목표가 0인 축까지 나눠서 낮아지니, 현재가 목표를 넘어 막대가 꽉 찼다). `confirmedSkillCount` = **증거 레벨**이 현재 판정 목표(`06` §7.6b)를 네 축 모두 충족하고 `last_practiced_at != null`인 skill 수다. **`milestoneTimeline…current`와 세는 값이 다르다** — 저쪽은 계획 레벨(자기평가 포함)로 "다음 단계로 넘어가도 되는가"를 보고, 이쪽은 증거로 "실력이 확인됐는가"를 본다. 계획 레벨로 세면 자기평가 3을 적어 둔 사용자가 아무 과제나 하나 끝낸 순간 증거 0인 채로 수십 개가 확인으로 세어진다(기본 트랙 측정 23개). 두 숫자가 한 화면에 있으므로 **문구로 구분한다**(`02` SCR-DASHBOARD). `last_practiced_at`을 함께 요구하는 이유는 현재 판정 목표가 네 축 모두 0일 수 있기 때문이다 — 디버깅만 요구하는 skill은 상한 0이라 목표가 비고, 기록 없이 통과해 버린다. `selfAssessedLevel` = 그 category에 적어 둔 자기평가(`self_assessment_active = true`인 skill의 값. 자기평가는 category 단위로 전파되므로 같은 값이다). 하나도 없으면 null이다 — **0이 아니라 null이어야 "안 적었다"가 보인다**. `n ≥ 1`인 category만, `SkillCategory` 선언 순서 |
 | `milestoneTimeline.milestones[].current` | **`sort_order`가 가장 앞선 미완료 milestone 하나만 true**다(ADR-044, `06` §5.2·§7.6). 완료 판정의 목표는 지금 잴 수 있는 축만 본다(ADR-061) — Today와 같은 기준이어야 두 화면이 같은 단계를 가리킨다. **(ADR-070) 조건은 축만이 아니다.** Today의 `PlannerScoring.targetReached`는 `lastPracticedAt != null`도 요구하는데 지금 대시보드는 레벨만 비교해 **그 조건을 빠뜨렸다** — 자기평가만 있고 학습 기록이 없으면 Today는 1단계에 남고 대시보드는 완료로 본다. **두 화면은 같은 판정(현재 판정 목표 × 계획 레벨 × `lastPracticedAt`)을 쓴다**(`06` §7.6b EC-9·EC-10). 공통 규칙을 쓰거나 같은 계약 테스트로 보장하고, **`dashboard`가 `today`의 내부를 직접 부르지 않는다**(`03` §2.2) — 새 공통 규칙이 필요하면 `03`에 위치·이름을 먼저 적는다. 날짜로 정하지 않는다 — Today가 고르는 단계와 같아야 하고, 날짜로 판정하면 쉬었을 때 두 화면이 다른 단계를 가리킨다. 전부 끝냈으면 모두 false다. 학습 목표가 없으면 `milestoneTimeline` 자체가 null이다(`horizonDate`를 만들 수 없다) |
 | `weakThinkingAxes` | `06-learning-engine-rules.md` §12 `weakThinkingAxes`, 기간 최근 28 plan-day |
 | `aiStatus` | §1.9.1 |
