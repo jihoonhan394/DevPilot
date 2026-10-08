@@ -223,19 +223,15 @@ MilestoneTimelineView testTimeline({int currentIndex = 1}) => MilestoneTimelineV
   ],
 );
 
+/// ADR-073: Java는 6개 중 2개 확인(출발점 2를 적어 뒀다), Spring은 아직 하나도 확인 전이고 적어 둔 것도 없다.
 List<SkillCategorySummaryView> testSkillCategories() => const [
   SkillCategorySummaryView(
     category: SkillCategory.java,
     skillCount: 6,
-    avgPlanningLevelMilli: 1500,
-    avgTargetLevelMilli: 3000,
+    confirmedSkillCount: 2,
+    selfAssessedLevel: 2,
   ),
-  SkillCategorySummaryView(
-    category: SkillCategory.spring,
-    skillCount: 4,
-    avgPlanningLevelMilli: 0,
-    avgTargetLevelMilli: 4000,
-  ),
+  SkillCategorySummaryView(category: SkillCategory.spring, skillCount: 4, confirmedSkillCount: 0),
 ];
 
 BudgetView testBudget({RiskLevel risk = RiskLevel.high, int? ratioBp = 11950}) => BudgetView(

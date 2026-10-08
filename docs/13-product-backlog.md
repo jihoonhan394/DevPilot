@@ -493,6 +493,7 @@
 |---|---|---|---|---|---|---|---|
 | BL-DSH-01 | 연속 학습 일수 (`streakDays`) | `DashboardQueryService` + `GET /dashboard` `streakDays`(`05` §13.1): 완료한 `learning_task`가 1건 이상인 plan-day를 오늘부터 거꾸로 세어 **끊기지 않고 이어진 날 수**, 오늘 아직 완료가 없으면 어제부터 세고 어제도 없으면 0, 세는 범위는 최근 366 plan-day. 표시 규칙(죄책감 UI 금지 U-3)은 `02`를 따른다 | P1 | S3 | BL-TDY-11, BL-TDY-09 | AC-36 | FR-16 |
 | BL-DSH-02 | 이번 주 요약 (`weeklySummary`) | `WeeklySummaryView`(`05` §13.1) — 필드 순서가 화면 순서다: `builtThisWeek`(`plan_date ∈ [weekStartDate, today]`이고 `COMPLETED`인 `CHALLENGE`·`PROJECT_TASK`·`REDO` task를 `plan_date` DESC·`sort_order` DESC로 최대 5개) → `completedTasks`(같은 기간 `COMPLETED` task 수, REVIEW 포함) → `notesWritten`(같은 기간에 만든 `side_project_note` 수 — dashboard는 `project`를 직접 의존하지 않고 `evidence`의 지표 경로로 읽는다, `03` §2.2) → `studyMinutes`(= `weekStudyMinutes`). **기준은 이번 주 월요일부터**(`weekStartDate` = 오늘이 속한 ISO week의 월요일)다 | P1 | S3 | BL-DSH-01, BL-PRJ-02, BL-TDY-10 | AC-36 | FR-16 |
+| BL-DSH-03 | "얼마나 왔나"를 확인된 수로 (ADR-073) | `skillCategories`를 레벨 평균에서 **증거로 확인된 skill 수**로 바꾼다(`05` §13.1). `confirmedSkillCount` = 증거 레벨이 현재 판정 목표(`06` §7.6b)를 네 축 모두 충족 + `last_practiced_at != null`. `selfAssessedLevel`은 출발점으로 따로 내보내고 진행 막대와 섞지 않는다. 타임라인 단계 완료(계획 레벨, AC-38 S2)는 그대로 둔다 — 두 숫자는 뜻이 다르다. 실사용에서 아무것도 하지 않은 상태의 막대가 100%로 보여 발견했다 | P0 | S5 | BL-DSH-01, BL-GOL-21 | AC-40 | FR-16 |
 
 ---
 

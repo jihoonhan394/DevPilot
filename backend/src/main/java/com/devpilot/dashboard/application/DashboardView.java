@@ -109,12 +109,21 @@ public record DashboardView(
             MilestoneStatus status,
             boolean current) {}
 
-    /** skill 카테고리 요약 (S5). 평균 레벨은 milli 정수다. */
+    /**
+     * skill 카테고리 요약 (S5). <b>레벨 평균이 아니라 확인된 skill 수</b>다 (ADR-073).
+     *
+     * <p>평균을 쓰던 동안에는 자기평가만 있고 아무것도 하지 않은 사용자에게 진행이 보였다 — 자기평가는 네 축에 똑같이 들어가는데(docs/06 §7.5) 목표 평균은
+     * 목표가 0인 축까지 나눠서 낮아지니, 현재가 목표를 넘어 막대가 꽉 찼다.
+     *
+     * @param confirmedSkillCount 판정을 통과한 skill 수. 판정은 <b>타임라인 단계 완료와 같다</b> — 현재 판정 목표(ADR-070)를
+     *     충족하고 학습 기록이 있어야 한다(AC-38 S2, docs/06 §7.6b)
+     * @param selfAssessedLevel 온보딩에서 이 category에 적어 둔 출발점. 자기평가를 더 쓰지 않으면 null (docs/06 §7.5)
+     */
     public record SkillCategorySummaryView(
             SkillCategory category,
             int skillCount,
-            int avgPlanningLevelMilli,
-            int avgTargetLevelMilli) {}
+            int confirmedSkillCount,
+            @Nullable Integer selfAssessedLevel) {}
 
     /**
      * 이번 주 요약 (docs/05 §13.1). <b>필드 순서가 화면 순서다</b>: 만든 것 → 끝낸 것 → 적은 것 → 시간.

@@ -251,9 +251,12 @@ class DashboardQueryServiceIntegrationTest extends ApiTestSupport {
         assertThat(plan.path("mainTask").isNull()).isFalse();
     }
 
-    /** docs/05 §13.1: category별 평균은 활성 plan의 deferred=false skill만 세고 4축 평균 milli다. */
+    /**
+     * docs/05 §13.1, ADR-073 (AC-40 S1): category 요약은 <b>확인된 skill 수</b>다. 온보딩만 끝낸 사람은 학습 기록이 없으니 한
+     * 개도 확인되지 않는다 — 자기평가는 진행이 아니라 출발점으로만 보인다.
+     */
     @Test
-    void shouldSummarizeSkillCategoriesFromTheActivePlan() throws Exception {
+    void shouldNotCountSelfAssessmentAsProgress() throws Exception {
         TestUser user = onboardedOwner();
         // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
         assignSeedCardsAsIfStudied(user);
@@ -266,20 +269,115 @@ class DashboardQueryServiceIntegrationTest extends ApiTestSupport {
         for (JsonNode category : categories) {
             assertThat(category.path("category").asString()).isNotBlank();
             assertThat(category.path("skillCount").asInt()).isPositive();
-            // 목표는 0보다 크다 — 그래서 "얼마나 남았는지"가 보인다.
-            assertThat(category.path("avgTargetLevelMilli").asInt()).isPositive();
-            // planning은 자기평가가 반영돼 0이 아닐 수 있다(docs/06 §7.5). 아직 목표에는 못 미친다.
-            assertThat(category.path("avgPlanningLevelMilli").asInt())
-                    .isNotNegative()
-                    .isLessThan(category.path("avgTargetLevelMilli").asInt());
+            // 자기평가 3을 적은 JAVA도 여기서는 0이다 — 학습 기록이 없다(ADR-070·073).
+            assertThat(category.path("confirmedSkillCount").asInt()).isZero();
         }
-        // 자기평가한 JAVA는 planning이 이미 0보다 크다 — 온보딩 입력이 반영됐다는 뜻이다.
-        JsonNode java =
-                StreamSupport.stream(categories.spliterator(), false)
-                        .filter(category -> "JAVA".equals(category.path("category").asString()))
-                        .findFirst()
-                        .orElseThrow();
-        assertThat(java.path("avgPlanningLevelMilli").asInt()).isPositive();
+        // 출발점은 category 단위로 들어온 자기평가 값이다 — JAVA는 온보딩에서 3으로 적었다.
+        assertThat(category(categories, "JAVA").path("selfAssessedLevel").asInt()).isEqualTo(3);
+        // 적지 않은 category는 출발점이 없다 — 0이 아니라 null이어야 "안 적었다"가 보인다.
+        assertThat(category(categories, "TESTING").path("selfAssessedLevel").isNull()).isTrue();
+    }
+
+    /**
+     * ADR-073 (AC-40 S2·S3): 확인된 수는 실제로 올라가고, 판정 목표는 <b>증거 상한까지만</b> 본다(ADR-070). 상한이 0인 디버깅 축에 목표가
+     * 남아 있어도 확인을 막지 않는다.
+     */
+    @Test
+    void shouldCountASkillConfirmedUpToTheEvidenceCeiling() throws Exception {
+        TestUser user = onboardedOwner();
+        UUID userId = userId(user);
+        String code = "JAVA.COLLECTION";
+        // 저장 목표에 디버깅이 남아 있는 skill을 고른다 — 상한을 보지 않으면 영원히 확인되지 않는다.
+        assertThat(storedDebuggingTarget(userId, code)).isPositive();
+        // 증거 상한(K4·I3·E3·D0)까지만 올린다. 디버깅은 0 그대로다.
+        confirmUpToCeiling(userId, code);
+
+        JsonNode categories =
+                api.body(api.get(user, DASHBOARD).andExpect(status().isOk()))
+                        .path("skillCategories");
+
+        JsonNode java = category(categories, "JAVA");
+        assertThat(java.path("confirmedSkillCount").asInt()).isEqualTo(1);
+        assertThat(java.path("confirmedSkillCount").asInt())
+                .isLessThanOrEqualTo(java.path("skillCount").asInt());
+    }
+
+    /**
+     * ADR-073 (AC-40 S4): <b>자기평가 + 학습 기록이 있어도 증거가 목표에 못 미치면 확인이 아니다.</b>
+     *
+     * <p>이 사례가 S1(기록 없음 → 0)과 S2(증거를 상한까지 → 1) 사이에 있다. 계획 레벨로 세면 자기평가가 목표를 덮어 기본 트랙에서 23개가 증거 없이
+     * 확인으로 세어졌다.
+     */
+    @Test
+    void shouldNotConfirmASkillWhoseEvidenceIsBelowTheTarget() throws Exception {
+        TestUser user = onboardedOwner();
+        UUID userId = userId(user);
+        String code = "JAVA.COLLECTION";
+        // 자기평가 3이 그대로 살아 있고(온보딩 입력), 학습 기록만 생긴 상태를 만든다.
+        assertThat(selfAssessmentIsActive(userId, code)).isTrue();
+        practisedWithoutEvidence(userId, code);
+
+        JsonNode categories =
+                api.body(api.get(user, DASHBOARD).andExpect(status().isOk()))
+                        .path("skillCategories");
+
+        assertThat(category(categories, "JAVA").path("confirmedSkillCount").asInt()).isZero();
+        // 출발점은 그대로 보인다 — 숨기는 것이 아니라 진행과 분리하는 것이다.
+        assertThat(category(categories, "JAVA").path("selfAssessedLevel").asInt()).isEqualTo(3);
+    }
+
+    private static JsonNode category(JsonNode categories, String name) {
+        return StreamSupport.stream(categories.spliterator(), false)
+                .filter(category -> name.equals(category.path("category").asString()))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private boolean selfAssessmentIsActive(UUID userId, String skillCode) {
+        return Boolean.TRUE.equals(
+                jdbc.queryForObject(
+                        "select state.self_assessment_active from devpilot.user_skill_state state"
+                                + " join devpilot.skill on skill.id = state.skill_id"
+                                + " where state.user_id = ?::uuid and skill.code = ?",
+                        Boolean.class,
+                        userId.toString(),
+                        skillCode));
+    }
+
+    /** 학습 기록만 남기고 증거 레벨은 0으로 둔다 — 과제를 했지만 아직 아무 축도 올라가지 않은 상태다. */
+    private void practisedWithoutEvidence(UUID userId, String skillCode) {
+        jdbc.update(
+                "update devpilot.user_skill_state set knowledge_level = 0,"
+                        + " implementation_level = 0, explanation_level = 0, debugging_level = 0,"
+                        + " last_practiced_at = now(), evidence_count = 1"
+                        + " where user_id = ?::uuid and skill_id ="
+                        + " (select id from devpilot.skill where code = ?)",
+                userId.toString(),
+                skillCode);
+    }
+
+    private int storedDebuggingTarget(UUID userId, String skillCode) {
+        return jdbc.queryForObject(
+                "select target.target_debugging_level from devpilot.plan_skill_target target"
+                        + " join devpilot.learning_plan plan on plan.id = target.plan_id"
+                        + " join devpilot.skill on skill.id = target.skill_id"
+                        + " where plan.user_id = ?::uuid and plan.status = 'ACTIVE'"
+                        + " and skill.code = ?",
+                Integer.class,
+                userId.toString(),
+                skillCode);
+    }
+
+    /** 증거 상한(`devpilot.skill.evidence-ceiling`)까지 올리고 학습 기록을 남긴다. */
+    private void confirmUpToCeiling(UUID userId, String skillCode) {
+        jdbc.update(
+                "update devpilot.user_skill_state set knowledge_level = 4,"
+                        + " implementation_level = 3, explanation_level = 3, debugging_level = 0,"
+                        + " last_practiced_at = now(), evidence_count = 1"
+                        + " where user_id = ?::uuid and skill_id ="
+                        + " (select id from devpilot.skill where code = ?)",
+                userId.toString(),
+                skillCode);
     }
 
     @Test

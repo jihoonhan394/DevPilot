@@ -108,10 +108,41 @@ class _DashboardContent extends StatelessWidget {
           SectionTitle(l10n.dashboardSkills),
           const SizedBox(height: AppSpacing.sm),
           for (final category in view.skillCategories) _CategoryRow(category: category),
+          // 자기평가는 진행이 아니다 — 막대와 섞지 않고 아래 한 줄로만 적는다 (ADR-073)
+          ?_selfAssessedStart(context, l10n, view.skillCategories),
         ],
       ],
     );
   }
+}
+
+/// 온보딩에서 적어 둔 출발점 한 줄 (ADR-073). 적은 category가 하나도 없으면 줄 자체를 숨긴다.
+///
+/// **진행 막대와 분리해서 둔다** — 자기평가는 "안다고 적은 것"이고 확인된 것이 아니다. 섞어서 세면 아무것도 하지 않은
+/// 사람에게 막대가 꽉 차 보인다.
+Widget? _selfAssessedStart(
+  BuildContext context,
+  AppLocalizations l10n,
+  List<SkillCategorySummaryView> categories,
+) {
+  final entries = <String>[];
+  for (final category in categories) {
+    final level = category.selfAssessedLevel;
+    if (level != null) {
+      entries.add(l10n.dashboardSelfAssessedEntry(category.category.label(l10n), level));
+    }
+  }
+  if (entries.isEmpty) {
+    return null;
+  }
+  return Padding(
+    padding: const EdgeInsets.only(top: AppSpacing.xs),
+    child: Text(
+      l10n.dashboardSelfAssessedStart(entries.join(', ')),
+      key: const Key('dashboard.selfAssessedStart'),
+      style: Theme.of(context).textTheme.bodySmall,
+    ),
+  );
 }
 
 /// 이번 주에 만든 것과 그 수 (docs/05 §13.1, docs/02 §3.11). S3 이전 빌드는 `weeklySummary`가 없어 영역을 숨긴다.
@@ -343,9 +374,6 @@ class _CategoryRow extends StatelessWidget {
 
   final SkillCategorySummaryView category;
 
-  /// milli 정수를 소수 한 자리로 (예: 1500 → 1.5).
-  static String _level(int milli) => (milli / 1000).toStringAsFixed(1);
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -365,16 +393,13 @@ class _CategoryRow extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
               Text(
-                l10n.dashboardSkillLevels(
-                  _level(category.avgPlanningLevelMilli),
-                  _level(category.avgTargetLevelMilli),
-                ),
+                l10n.dashboardSkillMet(category.confirmedSkillCount),
                 style: theme.textTheme.labelLarge,
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
-          // 진행은 옆의 "지금 / 목표" 숫자가 읽어 주므로 막대는 장식이다.
+          // 진행은 옆의 "확인 N개" 숫자가 읽어 주므로 막대는 장식이다.
           LinearProgressIndicator(value: category.progress, semanticsLabel: ''),
         ],
       ),
