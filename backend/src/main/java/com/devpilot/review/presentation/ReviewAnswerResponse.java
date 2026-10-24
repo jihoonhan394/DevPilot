@@ -21,6 +21,7 @@ import org.jspecify.annotations.Nullable;
  * @param adjustedBy 실제로 등급을 낮춘 규칙만 (docs/06 §6.1)
  * @param nextDueDate {@code planDate(새 due_at)}
  * @param evaluationSkippedReason AI 평가 대상인데 평가하지 못한 경우만
+ * @param status 처리 후 상태. 이번 답변으로 졸업했으면 {@code GRADUATED} (docs/06 §6.4)
  * @param leechDetected 이번 답변으로 SUSPENDED 되었으면 true
  */
 public record ReviewAnswerResponse(

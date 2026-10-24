@@ -39,6 +39,7 @@ extension ReviewItemStatusLabel on ReviewItemStatus {
   String label(AppLocalizations l10n) => switch (this) {
     ReviewItemStatus.active => l10n.enumReviewItemStatusActive,
     ReviewItemStatus.suspended => l10n.enumReviewItemStatusSuspended,
+    ReviewItemStatus.graduated => l10n.enumReviewItemStatusGraduated,
     ReviewItemStatus.archived => l10n.enumReviewItemStatusArchived,
     ReviewItemStatus.unknown => l10n.enumUnknown,
   };

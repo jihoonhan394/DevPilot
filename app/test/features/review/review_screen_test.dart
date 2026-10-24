@@ -156,6 +156,17 @@ void main() {
     expect(find.text('2 / 3'), findsOneWidget);
   });
 
+  testWidgets('shouldTellTheCardGraduatedInsteadOfTheNextDue', (tester) async {
+    backend.reviewRepository.answeredStatus = ReviewItemStatus.graduated;
+    await openSession(tester);
+
+    await tapKey(tester, 'review.session.revealButton');
+    await tapKey(tester, 'review.session.rate.good');
+
+    expect(find.textContaining('이 카드는 졸업해서 더 나오지 않아요'), findsOneWidget);
+    expect(find.textContaining('다음 복습:'), findsNothing);
+  });
+
   testWidgets('shouldShowFirstRubricItemAsHintAndExplainHardCap', (tester) async {
     await openSession(tester);
 

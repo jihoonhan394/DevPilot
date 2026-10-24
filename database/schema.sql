@@ -1,6 +1,6 @@
 -- =====================================================================
 -- DevPilot database schema (PostgreSQL 16 — 자체 서버 공용 인스턴스. PG 17 전용 문법 사용 금지)
--- Status: Accepted (v2) · Last updated: 2026-09-25 (V14: 학습 단계 6칸의 입력 TASK_COMPLETED)
+-- Status: Accepted (v2) · Last updated: 2026-10-24 (V15: 복습 카드 졸업 GRADUATED, ADR-074)
 -- Related: docs/04-domain-model-and-db.md (enum registry, state machines, JSON schemas)
 --
 -- 이 파일은 설계 기준(최종 형태)이다. 실제 적용은 Flyway migration으로 나눠서 한다
@@ -610,7 +610,7 @@ create table review_item (
     variant_expected_answer  text,
     variant_rubric_json      jsonb,
     variant_status_updated_at timestamptz,
-    status                   varchar(20) not null default 'ACTIVE' check (status in ('ACTIVE','SUSPENDED','ARCHIVED')),
+    status                   varchar(20) not null default 'ACTIVE' check (status in ('ACTIVE','SUSPENDED','GRADUATED','ARCHIVED')), -- GRADUATED는 V15에서 추가 (ADR-074)
     created_at               timestamptz not null default now(),
     version                  bigint not null default 0,
     unique (user_id, concept_key)

@@ -334,7 +334,7 @@
 | 관련 요구사항 | FR-11 |
 | Sprint | S2 (challenge 실패 카드·러버덕 gap 카드 S3, coach finding 카드 S4) |
 | 검증 수준 | unit(vector), API E2E |
-| 테스트 클래스 | `FinalRatingPolicyTest`, `RuleBasedV1SchedulerTest`, `DueReviewSelectorTest`, `ReviewServiceIntegrationTest`, `ReviewItemServiceIntegrationTest`, `SeedReviewFlowTest`, `SubmissionEvaluationTaskIntegrationTest`(실패 challenge 카드), `CoachReviewServiceIntegrationTest`(coach finding 카드) |
+| 테스트 클래스 | `FinalRatingPolicyTest`, `RuleBasedV1SchedulerTest`, `ReviewItemTest`(졸업 vector), `DueReviewSelectorTest`, `ReviewServiceIntegrationTest`, `ReviewItemServiceIntegrationTest`, `SeedReviewFlowTest`, `SubmissionEvaluationTaskIntegrationTest`(실패 challenge 카드), `CoachReviewServiceIntegrationTest`(coach finding 카드) |
 
 **S1. 규칙 vector**
 - `06` §6.6 표 10행이 모두 통과한다
@@ -365,8 +365,8 @@
 - When `PATCH /review-items/{id}` `{ status: "ACTIVE", version }` → `due_at = start(D + 1)`, `consecutive_failures = 0`
 
 **S5. Due 선택**
-- Given `ACTIVE` due item 25개(`due_at < start(D + 1)`), `SUSPENDED` 2개, `ARCHIVED` 1개
-- When `GET /reviews/due` → 20개, `06` §6.5 1~2단계로 고른 카드, SUSPENDED·ARCHIVED 0개. 응답 순서는 그 20장에 RV-INTERLEAVE를 적용한 순서다(AC-29)
+- Given `ACTIVE` due item 25개(`due_at < start(D + 1)`), `SUSPENDED` 2개, `GRADUATED` 1개, `ARCHIVED` 1개
+- When `GET /reviews/due` → 20개, `06` §6.5 1~2단계로 고른 카드, SUSPENDED·GRADUATED·ARCHIVED 0개. 응답 순서는 그 20장에 RV-INTERLEAVE를 적용한 순서다(AC-29)
 - Given 복귀 모드 → 10개
 
 **S6. 실패한 challenge → 다음 plan-day 복습 (S3)**
@@ -387,6 +387,16 @@
 
 **S9. 러버덕 gap → 다음 plan-day 복습 (S3)**
 - 러버덕 정리의 `gaps[]`마다 `source_type = RUBBER_DUCK`, `review_type = EXPLAIN`, `due_at = start(D + 1)` 카드가 생기고, 같은 `concept_key`가 있으면 새 행 없이 due만 당긴다 — 시나리오는 AC-26 S6
+
+**S10. 졸업 (ADR-074)**
+- `06` §6.6 졸업 표 G1~G7이 모두 통과한다(`graduate-after-days = 28`)
+- Given `ACTIVE` item `interval_days = 28`, `due_at = start(D)`
+- When `POST /reviews/{id}/answer` `{ selfRating: "GOOD", hintLevel: "SELF_EXPLAIN", evaluate: false }` → 응답 `status = GRADUATED`, `leechDetected = false`, `intervalAfter = 56`
+- And item `status = GRADUATED`, `interval_days = 56`, 이후 `GET /reviews/due`에 나오지 않음. 졸업 이벤트는 없다(`REVIEW_ANSWERED` 1건뿐)
+- Given 같은 조건에 `hintLevel = QUESTION_ONLY`, `selfRating = EASY` → `finalRating = GOOD`, `adjustedBy = [HINT_CAP_GOOD]`, `status = ACTIVE`
+- When 졸업 카드에 `PATCH /review-items/{id}` `{ status: "ACTIVE", version }` → `status = ACTIVE`, `due_at = start(D + 1)`, `consecutive_failures = 0`
+- When `ACTIVE` 카드에 `PATCH` `{ status: "GRADUATED", version }` → 409 `INVALID_STATE_TRANSITION` / 졸업 카드에 `{ status: "ARCHIVED" }` → 200
+- When 졸업 카드와 같은 `concept_key`로 `POST /review-items` → 200, 새 행 없음, `status = ACTIVE`, `due_at = min(기존, start(D + 1))`(`06` §6.3)
 
 ---
 

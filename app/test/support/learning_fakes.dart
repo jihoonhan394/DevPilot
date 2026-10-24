@@ -251,6 +251,9 @@ final class FakeReviewRepository implements ReviewRepository {
   /// `evaluate: true`일 때 돌려줄 총평. 비우면 응답에 담지 않는다.
   var evaluationFeedback = '두 번째 항목을 덧붙이면 설명이 닫힙니다.';
 
+  /// 답변 처리 후 카드 상태. 졸업(`GRADUATED`)을 흉내 낼 때 바꾼다.
+  var answeredStatus = ReviewItemStatus.active;
+
   @override
   Future<DueReviewsResponse> fetchDue() async {
     fetchCount++;
@@ -307,7 +310,7 @@ final class FakeReviewRepository implements ReviewRepository {
       intervalBefore: 1,
       intervalAfter: rating == ReviewRating.again ? 1 : 2,
       nextDueDate: rating == ReviewRating.again ? '2026-09-20' : '2026-09-21',
-      status: ReviewItemStatus.active,
+      status: answeredStatus,
       leechDetected: false,
     );
   }

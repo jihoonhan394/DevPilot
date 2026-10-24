@@ -241,6 +241,12 @@ public class ReviewService {
         if (leech) {
             answerRecorder.recordLeech(answered);
         }
+        // leech는 실패, 졸업은 성공에서만 나온다 — 한 답변에서 둘이 함께 일어나지 않는다
+        item.graduateIfRecalled(
+                intervalBefore,
+                rating.finalRating(),
+                rating.adjustedBy(),
+                schedulingSupport.graduateAfterDays());
         reviewItemRepository.flush();
         return new ReviewAnswerResult(
                 answer.getId(),

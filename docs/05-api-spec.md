@@ -2903,7 +2903,7 @@ public record ReviewAnswerResponse(
         int intervalAfter,
         LocalDate nextDueDate,                       // planDate(새 due_at)
         AsyncFailureCode evaluationSkippedReason,    // AI 평가 대상인데 평가하지 못한 경우만 (§1.9.4). 대상이 아니면 null
-        ReviewItemStatus status,                     // 처리 후 item 상태
+        ReviewItemStatus status,                     // 처리 후 item 상태. 이번 답변으로 졸업했으면 GRADUATED (06 §6.4)
         boolean leechDetected,                       // 이번 답변으로 SUSPENDED 되었으면 true
         AiMeta aiMeta) {}
 
@@ -3001,7 +3001,7 @@ public record ReviewItemPatchRequest(
         @NotNull Long version) {}
 ```
 
-- `status` 전이는 `04-domain-model-and-db.md` §4.5의 사용자 전이만: `ACTIVE → SUSPENDED`, `SUSPENDED → ACTIVE`(`due_at = planDayStart(today + 1)`, `consecutive_failures = 0`), `ACTIVE/SUSPENDED → ARCHIVED`. 현재와 같은 값이면 상태 변경 없음. 그 외 409 `INVALID_STATE_TRANSITION`.
+- `status` 전이는 `04-domain-model-and-db.md` §4.5의 사용자 전이만: `ACTIVE → SUSPENDED`, `SUSPENDED/GRADUATED → ACTIVE`(`due_at = planDayStart(today + 1)`, `consecutive_failures = 0`), `ACTIVE/SUSPENDED/GRADUATED → ARCHIVED`. `GRADUATED`로는 옮길 수 없다(답변 처리만, `06` §6.4). 현재와 같은 값이면 상태 변경 없음. 그 외 409 `INVALID_STATE_TRANSITION`.
 - `ARCHIVED` 항목의 `prompt`/`expectedAnswer` 수정은 409 `INVALID_STATE_TRANSITION`.
 - `prompt` 또는 `expectedAnswer`를 바꿀 때 `variant_status ∈ {PENDING, RUNNING}`이면 409 `INVALID_STATE_TRANSITION`. `READY`/`FAILED`이면 variant 필드를 비우고 `variant_status = NONE`으로 둔다(바뀐 문항과 맞지 않는 variant를 출제하지 않기 위해).
 - rubric은 이 API로 바꾸지 않는다.

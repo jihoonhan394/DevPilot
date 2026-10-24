@@ -220,6 +220,7 @@ V10,10,GOOD,CORRECT,SELF_EXPLAIN,GOOD,,5,4
 | §5.9 | — (상태 조합 표 7칸) | `TodayPlanServiceIntegrationTest` | integration |
 | §6.1 | `06-06-review-schedule.csv`의 final·adjustedBy 컬럼 | `FinalRatingPolicyTest` | unit |
 | §6.2, §6.6 | `06-06-review-schedule.csv` (10행) | `RuleBasedV1SchedulerTest` | unit |
+| §6.4, §6.6 졸업 | `06-06-review-graduation.csv` (7행, `V0n` = 표의 `Gn`) | `ReviewItemTest` | unit |
 | §6.3 | `06-06-first-due.yaml` | `SeedCardAssignmentServiceIntegrationTest` | integration |
 | §6.4 | — (failures 2/4 경계, variant 상태) | `ReviewServiceIntegrationTest` | integration |
 | §6.5 | `06-06-due-selection.yaml` (경계: `due_at = planDayStart(today + 1)`은 제외) | `DueReviewSelectorTest` | unit |

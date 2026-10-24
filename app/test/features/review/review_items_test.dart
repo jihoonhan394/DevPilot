@@ -45,6 +45,24 @@ void main() {
     expect(find.text('읽기 전용 트랜잭션의 장점은?'), findsOneWidget);
   });
 
+  testWidgets('shouldOfferTheGraduatedFilterWithItsOwnEmptyState', (tester) async {
+    await pumpApp(tester, backend: backend, at: AppRoutes.reviewItems);
+
+    await tapVisible(tester, find.text('졸업').first);
+
+    expect(locationOf(tester), AppRoutes.reviewItemsFor(status: 'GRADUATED'));
+    expect(find.textContaining('졸업한 카드가 없어요'), findsOneWidget);
+  });
+
+  testWidgets('shouldFitFourStatusSegmentsIn360PixelWidth', (tester) async {
+    usePhoneScreen(tester);
+    addTearDown(() => resetScreenSize(tester));
+    await pumpApp(tester, backend: backend, at: AppRoutes.reviewItems);
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('졸업'), findsOneWidget);
+  });
+
   testWidgets('shouldSuspendAndReactivateCards', (tester) async {
     await pumpApp(tester, backend: backend, at: AppRoutes.reviewItems);
 

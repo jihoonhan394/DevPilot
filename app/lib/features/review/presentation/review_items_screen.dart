@@ -67,7 +67,7 @@ class ReviewItemsScreen extends ConsumerWidget {
   }
 }
 
-/// Status segments (사용 중 · 일시중지 · 보관) and the skill chip; each change is a new route.
+/// Status segments (사용 중 · 일시중지 · 졸업 · 보관) and the skill chip; each change is a new route.
 class _Filters extends ConsumerWidget {
   const _Filters({required this.filter});
 
@@ -138,6 +138,7 @@ class _ItemList extends ConsumerWidget {
         icon: Icons.style,
         message: switch (filter.status) {
           ReviewItemStatus.suspended => l10n.reviewItemsEmptySuspended,
+          ReviewItemStatus.graduated => l10n.reviewItemsEmptyGraduated,
           ReviewItemStatus.archived => l10n.reviewItemsEmptyArchived,
           _ => l10n.reviewItemsEmptyActive,
         },

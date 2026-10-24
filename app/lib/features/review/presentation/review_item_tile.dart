@@ -135,7 +135,7 @@ class ReviewItemTile extends ConsumerWidget {
 
 String _short(String text) => text.length <= 40 ? text : '${text.substring(0, 40)}…';
 
-/// ACTIVE → 일시중지 · 보관 · 수정 · 러버덕 / SUSPENDED → 다시 사용 · 보관 · 수정 · 러버덕 /
+/// ACTIVE → 일시중지 · 보관 · 수정 · 러버덕 / SUSPENDED·GRADUATED → 다시 사용 · 보관 · 수정 · 러버덕 /
 /// ARCHIVED → no menu (archiving is final). The rubber duck item is hidden while the AI is off.
 class _ItemMenu extends ConsumerWidget {
   const _ItemMenu({required this.item, required this.onSelected});

@@ -356,6 +356,7 @@ public record DevPilotProperties(
      * 복습 설정 (docs/06 §6). 배율은 bp 정수로 떨어져야 하고, 간격 경계는 {@code minIntervalDays ≤ maxIntervalDays}다.
      *
      * @param variantAfterFailures {@code REVIEW_VARIANT}(Later)용. 바인딩만 한다
+     * @param graduateAfterDays 직전 간격이 이 값 이상인 카드를 혼자 떠올리면 졸업한다 (docs/06 §6.4, ADR-074)
      */
     public record Review(
             @Positive int maxPerDay,
@@ -370,6 +371,7 @@ public record DevPilotProperties(
             @Positive int easyMinDays,
             @Positive int variantAfterFailures,
             @Positive int suspendAfterFailures,
+            @Positive int graduateAfterDays,
             @Positive int lessonHelpedFirstDueDays,
             @Positive int lessonSolvedAloneFirstDueDays) {
 
@@ -385,6 +387,11 @@ public record DevPilotProperties(
             if (minIntervalDays > maxIntervalDays) {
                 throw new IllegalArgumentException(
                         "devpilot.review.min-interval-days must not exceed max-interval-days");
+            }
+            if (graduateAfterDays > maxIntervalDays) {
+                // 간격이 이 값에 닿지 못하면 어느 카드도 졸업하지 못한다
+                throw new IllegalArgumentException(
+                        "devpilot.review.graduate-after-days must not exceed max-interval-days");
             }
         }
     }

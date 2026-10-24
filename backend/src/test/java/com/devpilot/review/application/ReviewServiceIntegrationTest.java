@@ -199,6 +199,124 @@ class ReviewServiceIntegrationTest extends ApiTestSupport {
     }
 
     @Test
+    void shouldGraduateCardRecalledAloneAfterLongIntervalAndLetUserBringItBack() throws Exception {
+        // AC-05 S10 (graduate-after-days 28, ADR-074)
+        TestUser user = onboardedOwner();
+        // ADR-055: 카드는 그 skill을 배울 때 생긴다. 복습을 시험하려면 이미 배운 사람으로 시작한다
+        assignSeedCardsAsIfStudied(user);
+        List<String> ids = dueIds(user);
+        String itemId = ids.get(0);
+        String hinted = ids.get(1);
+        jdbc.update(
+                "update devpilot.review_item set interval_days = 28 where id in (?::uuid,"
+                        + " ?::uuid)",
+                itemId,
+                hinted);
+
+        JsonNode answer = api.answerReview(user, itemId, "GOOD", "SELF_EXPLAIN");
+
+        assertThat(answer.path("status").asString()).isEqualTo("GRADUATED");
+        assertThat(answer.path("leechDetected").asBoolean()).isFalse();
+        assertThat(answer.path("intervalBefore").asInt()).isEqualTo(28);
+        assertThat(
+                        jdbc.queryForObject(
+                                "select status from devpilot.review_item where id = ?::uuid",
+                                String.class,
+                                itemId))
+                .isEqualTo("GRADUATED");
+
+        JsonNode capped = api.answerReview(user, hinted, "EASY", "CONCEPT_HINT");
+        assertThat(capped.path("finalRating").asString()).isEqualTo("HARD");
+        assertThat(texts(capped.path("adjustedBy"))).containsExactly("HINT_CAP_HARD");
+        assertThat(capped.path("status").asString()).isEqualTo("ACTIVE");
+
+        api.patch(
+                        user,
+                        ITEMS + "/{id}",
+                        Map.of("status", "GRADUATED", "version", version(hinted)),
+                        hinted)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("INVALID_STATE_TRANSITION"));
+        api.patch(
+                        user,
+                        ITEMS + "/{id}",
+                        Map.of("status", "ACTIVE", "version", version(itemId)),
+                        itemId)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
+        assertThat(
+                        jdbc.queryForMap(
+                                "select "
+                                        + DUE_AT_UTC
+                                        + " as due_at, consecutive_failures from"
+                                        + " devpilot.review_item where id = ?::uuid",
+                                itemId))
+                .containsEntry("due_at", "2026-10-05T19:00:00Z")
+                .containsEntry("consecutive_failures", 0);
+    }
+
+    @Test
+    void shouldKeepGraduatedCardOutOfDueList() throws Exception {
+        // AC-05 S10: 졸업 카드는 due_at이 지나도 나오지 않는다 (06 §6.5 1단계)
+        TestUser user = onboardedOwner();
+        UUID userId = userId(user);
+        String active = insertItem(userId, "JAVA.EXCEPTION", "ACTIVE", 0);
+        String graduated = insertItem(userId, "JAVA.EXCEPTION", "GRADUATED", 1);
+
+        assertThat(dueIds(user)).contains(active).doesNotContain(graduated);
+        JsonNode listed = api.body(api.get(user, ITEMS + "?status=GRADUATED"));
+        assertThat(listed.path("items")).hasSize(1);
+        assertThat(listed.path("items").get(0).path("id").asString()).isEqualTo(graduated);
+    }
+
+    @Test
+    void shouldReviveGraduatedCardWhenSameConceptIsCreatedAgain() throws Exception {
+        // AC-05 S10 마지막 줄 (06 §6.3)
+        TestUser user = onboardedOwner();
+        UUID userId = userId(user);
+        String itemId = insertItem(userId, "JAVA.EXCEPTION", "GRADUATED", 0);
+        String conceptKey =
+                jdbc.queryForObject(
+                        "select concept_key from devpilot.review_item where id = ?::uuid",
+                        String.class,
+                        itemId);
+        jdbc.update(
+                "update devpilot.review_item set due_at = timestamptz '2026-12-01T19:00:00Z'"
+                        + " where id = ?::uuid",
+                itemId);
+
+        api.post(
+                        user,
+                        ITEMS,
+                        Map.of(
+                                "skillCode",
+                                "JAVA.EXCEPTION",
+                                "conceptKey",
+                                conceptKey,
+                                "reviewType",
+                                "RECALL",
+                                "prompt",
+                                "질문",
+                                "expectedAnswer",
+                                "답",
+                                "rubric",
+                                List.of("핵심")))
+                .andExpect(status().isOk());
+
+        assertThat(
+                        jdbc.queryForMap(
+                                "select status, "
+                                        + DUE_AT_UTC
+                                        + " as due_at from devpilot.review_item where id ="
+                                        + " ?::uuid",
+                                itemId))
+                .containsEntry("status", "ACTIVE")
+                .containsEntry("due_at", "2026-10-05T19:00:00Z");
+        assertThat(count("select count(*) from devpilot.review_item where user_id = ?", userId))
+                .isEqualTo(1);
+    }
+
+    @Test
     void shouldSelectCapOfActiveDueItemsInInterleavedOrder() throws Exception {
         // AC-05 S5, AC-29 S2: ACTIVE due 25장(seed 5 + 추가 20), SUSPENDED 2, ARCHIVED 1
         TestUser user = onboardedOwner();
@@ -406,6 +524,10 @@ class ReviewServiceIntegrationTest extends ApiTestSupport {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
         assertThat(dueIds(other)).doesNotContain(itemId);
+    }
+
+    private int version(String itemId) {
+        return count("select version from devpilot.review_item where id = ?::uuid", itemId);
     }
 
     private String firstDueId(TestUser user) throws Exception {

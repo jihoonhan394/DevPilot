@@ -253,7 +253,7 @@ go_router `redirect`는 아래 순서로 평가하고 처음 해당하는 규칙
 | `MilestoneStatus` | PLANNED 예정 · IN_PROGRESS 진행 중 · DONE 완료 · DEFERRED 미룸 · DROPPED 제외 |
 | `ReviewRating` | AGAIN 다시 · HARD 어려움 · GOOD 알맞음 · EASY 쉬움 |
 | `ReviewType` | RECALL 떠올리기 · BUG_SPOT 버그 찾기 · EXPLAIN 설명 · CHOICE 선택 |
-| `ReviewItemStatus` | ACTIVE 사용 중 · SUSPENDED 일시중지 · ARCHIVED 보관 |
+| `ReviewItemStatus` | ACTIVE 사용 중 · SUSPENDED 일시중지 · GRADUATED 졸업 · ARCHIVED 보관 |
 | `HintLevel` | SELF_EXPLAIN 스스로 · QUESTION_ONLY 질문 · CONCEPT_HINT 개념 힌트 · DIRECTION 방향 · PSEUDOCODE 의사코드 · PARTIAL_CODE 부분 코드 · FULL_EXAMPLE 전체 예시 |
 | `EvaluatedOutcome` | CORRECT 충족 · PARTIAL 일부 충족 · INCORRECT 보완 필요 · NOT_EVALUATED 채점 안 함 |
 | `AttemptOutcome` | SOLVED_INDEPENDENTLY 스스로 해결 · SOLVED_WITH_HINTS 힌트로 해결 · PARTIAL 일부 해결 · FAILED 다시 도전 · ABANDONED 그만둠 |
@@ -1361,6 +1361,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 
   - `evaluate=true`로 평가에 성공하면(`rubricResults` 있음) 자동으로 넘어가지 않고 정답 아래에 핵심 포인트별 충족 ✓/✗, 최종 등급, 조정 사유, 다음 복습일을 보여주고 "다음 카드" 버튼을 둔다.
   - `leechDetected=true`면 토스트에 `review.adjust.leech`를 추가한다.
+  - 응답 `status = GRADUATED`면 `다음 복습: {date}` 대신 `review.adjust.graduated`를 보여 준다(4초). 졸업 카드는 다시 due가 되지 않는다(`06` §6.4, ADR-074).
   - `adjustedBy`가 비어 있으면 `다음 복습: {date}`만 짧게(2초) 보여준다.
   - `evaluatedOutcome != NOT_EVALUATED`면 첫 줄 앞에 `AI 채점: {라벨}`을 붙인다. `evaluationSkippedReason`이 있으면 `review.adjust.evaluationSkipped`를 추가한다.
 
@@ -1424,6 +1425,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `review.summary.toToday` | Today로 |
 | `review.saveFailed` | 답을 저장하지 못했어요. |
 | `review.adjust.leech` | 여러 번 헷갈린 카드라 잠시 쉬게 했어요. 관련 학습 과제로 먼저 다뤄요. |
+| `review.adjust.graduated` | 한 달 가까이 지나도 혼자 떠올렸어요. 이 카드는 졸업해서 더 나오지 않아요. 카드 관리의 '졸업'에서 다시 쓸 수 있어요. |
 | `review.session.cardChanged` | 이 카드는 상태가 바뀌어 건너뛰었어요. |
 | `review.session.next` | 다음 카드 |
 | `review.summary.explainTitle` | 헷갈린 카드, 말로 설명해 볼까요? |
@@ -1432,10 +1434,10 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 #### SCR-REVIEW-ITEMS
 
 - **목적**: 복습 카드를 찾아 일시중지·다시 사용·보관·수정한다(FR-11). **진입**: SCR-REVIEW-HOME "카드 관리", SCR-SKILL-DETAIL "복습 카드". **Sprint**: S2.
-- **레이아웃**: 상단 상태 `SegmentedButton`(사용 중·일시중지·보관, 기본 사용 중) + skill 필터 칩(탭 → `SkillPicker`) + "추가" 아이콘 버튼. 목록 행: 문항 2줄 말줄임, `skill 이름 · 유형 라벨 · 출처 라벨`, `다음 복습 {date}` 또는 상태, 마지막 결과 라벨. 행 오른쪽 `⋮` 메뉴.
+- **레이아웃**: 상단 상태 `SegmentedButton`(사용 중·일시중지·졸업·보관, 기본 사용 중) + skill 필터 칩(탭 → `SkillPicker`) + "추가" 아이콘 버튼. 목록 행: 문항 2줄 말줄임, `skill 이름 · 유형 라벨 · 출처 라벨`, `다음 복습 {date}` 또는 상태, 마지막 결과 라벨. 행 오른쪽 `⋮` 메뉴.
 - **출처 라벨**: `SEED_CARD` 기본 카드 · `MANUAL` 직접 만듦 · `CHALLENGE_ATTEMPT` 문제 풀이 · `COACH_FINDING` 코드 리뷰 · `EVIDENCE` 증거 · `RUBBER_DUCK` 러버덕(설명하다 막힌 곳) · `REDO_TASK` 재현 과제(혼자 다시 만들 때 막힌 곳) · `TERM` 용어 사전(S3) · `TIP` 오늘의 팁(S3 — "새로 알았어요"를 고른 팁).
 - **데이터**: 진입·필터 변경 시 `GET /review-items?skillId=&status=&cursor=`. 목록 끝 80% 스크롤 시 `nextCursor`로 다음 페이지. `⋮` 메뉴 → `PATCH /review-items/{reviewItemId}` `{status, version}`.
-- **메뉴 항목**: ACTIVE → "일시중지", "보관", "수정", "러버덕으로 설명하기" / SUSPENDED → "다시 사용", "보관", "수정", "러버덕으로 설명하기" / ARCHIVED → 메뉴 없음(보관은 되돌리지 않는다, `04` §4.5). "러버덕으로 설명하기"(S3, `rubber_duck` flag, AI 가능할 때만) → `/rubber-duck/new?targetType=REVIEW_ITEM&targetId={reviewItemId}`.
+- **메뉴 항목**: ACTIVE → "일시중지", "보관", "수정", "러버덕으로 설명하기" / SUSPENDED·GRADUATED → "다시 사용", "보관", "수정", "러버덕으로 설명하기" / ARCHIVED → 메뉴 없음(보관은 되돌리지 않는다, `04` §4.5). "러버덕으로 설명하기"(S3, `rubber_duck` flag, AI 가능할 때만) → `/rubber-duck/new?targetType=REVIEW_ITEM&targetId={reviewItemId}`.
 - **상태**: Loading — 행 skeleton 6개. Empty — 필터별 `review.items.empty.{status}` + "카드 직접 추가"(ACTIVE일 때만). Error·Offline — 공통. 페이지 추가 로드 실패 — 목록 끝에 "다시 불러오기" 행.
 - **행동·검증**: "보관"은 확인 대화상자(`review.items.archive.confirm`). "다시 사용"은 즉시 실행 후 토스트 `review.items.reactivated`(다음 plan-day부터 출제). `409 CONCURRENT_MODIFICATION`이면 목록을 다시 불러오고 토스트.
 - **문구**
@@ -1453,6 +1455,7 @@ private key 정규식(서버와 동일): `-----BEGIN ((RSA|EC|DSA|OPENSSH|ENCRYP
 | `review.items.reactivated` | 내일부터 다시 출제돼요. |
 | `review.items.empty.ACTIVE` | 사용 중인 카드가 없어요. |
 | `review.items.empty.SUSPENDED` | 일시중지한 카드가 없어요. 여러 번 헷갈린 카드는 자동으로 이곳에 모여요. |
+| `review.items.empty.GRADUATED` | 졸업한 카드가 없어요. 한 달 가까이 지나도 혼자 떠올린 카드는 자동으로 이곳에 모여요. |
 | `review.items.empty.ARCHIVED` | 보관한 카드가 없어요. |
 
 #### SCR-REVIEW-ITEM-EDIT

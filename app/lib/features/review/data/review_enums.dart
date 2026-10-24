@@ -88,12 +88,16 @@ enum ReviewItemStatus {
   active,
   @JsonValue('SUSPENDED')
   suspended,
+
+  /// Recalled alone after a long interval — out of the due list (docs/06 §6.4, ADR-074).
+  @JsonValue('GRADUATED')
+  graduated,
   @JsonValue('ARCHIVED')
   archived,
   unknown;
 
-  /// The three filter segments of SCR-REVIEW-ITEMS, without [unknown].
-  static const known = [active, suspended, archived];
+  /// The four filter segments of SCR-REVIEW-ITEMS, without [unknown].
+  static const known = [active, suspended, graduated, archived];
 
   /// Wire value for `GET /review-items?status=` and the route query.
   String get wireName => _$ReviewItemStatusEnumMap[this]!;

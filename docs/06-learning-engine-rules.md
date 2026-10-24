@@ -876,7 +876,7 @@ redoCandidates(today, userId):
 
 | 학습 원리 | 이 문서에서 구현된 곳 | 어떤 형태로 |
 |---|---|---|
-| **간격 효과 (spacing)** | §6.2 간격 계산, §6.3 신규 항목 첫 due | 맞히면 간격을 2~3배로 늘려 다음 인출을 미룬다. 온보딩 카드도 하루 5장씩 나눠 첫 due를 분산한다. **혼자 푼 학습 단위도 7일 뒤 한 번 돌아온다**(ADR-051) — 그 자리에서 풀렸다는 것이 2주 뒤에도 떠오른다는 뜻은 아니다 |
+| **간격 효과 (spacing)** | §6.2 간격 계산, §6.3 신규 항목 첫 due | 맞히면 간격을 2~3배로 늘려 다음 인출을 미룬다. 온보딩 카드도 하루 5장씩 나눠 첫 due를 분산한다. **혼자 푼 학습 단위도 7일 뒤 한 번 돌아온다**(ADR-051) — 그 자리에서 풀렸다는 것이 2주 뒤에도 떠오른다는 뜻은 아니다. 반대로 **4주 넘게 비운 뒤에도 혼자 떠올린 카드는 졸업해 더는 나오지 않는다**(§6.4, ADR-074) — 이미 굳은 것을 계속 꺼내는 시간은 새 것을 배우는 데 쓴다 |
 | **인출 연습 (retrieval practice / testing effect)** | §6.1 최종 등급, §9.1 HL-1·HL-2·HL-4, §5.3 RECALL·EXPLAIN task | 자료를 다시 보는 대신 먼저 떠올려 답하게 한다. 답을 보기 전에 힌트를 받으면 `HINT_CAP_*`으로 등급 상한을 걸어 "혼자 떠올린 것"으로 세지 않는다 |
 | **교차 학습 (interleaving)** | §6.5 `RV-INTERLEAVE` | 같은 skill 카드가 3장 연속 나오지 않도록 출제 순서를 재배치한다. **꺼낼 때만** 섞는다 — 처음 배우는 구간은 §5.13대로 한 주제를 이어 간다 |
 | **생성 효과 (generation)** | §5.3 EXPLAIN·PROJECT_TASK·READ_CODE 제안, §9.5 RD-1 | 정답을 받기 전에 스스로 답·설명·구현을 만들어 보게 한다. 러버덕에서 AI는 답을 주지 않고 되묻기만 한다 |
@@ -932,21 +932,31 @@ review_count += 1, last_result = final, last_reviewed_at = now
 | 신규 seed 카드 (기존 사용자) | 기동 시 backfill이 **이미 카드가 있는 skill**에만 같은 방식으로 더한다. 아직 시작도 안 한 skill에는 미리 깔지 않는다 |
 | challenge 실패 / coach finding / 수동 생성 | `planDayStart(today + 1)` |
 | **학습 단위를 풂** (`05` §21.7) | **푼 단위는 모두 카드가 된다**(ADR-049 아님, ADR-051). 첫 due가 도움 여부로 갈린다 — `helpLevel ≠ NONE`이면 `planDayStart(today + devpilot.review.lesson-helped-first-due-days)`(기본 1), `helpLevel = NONE`이면 `… + lesson-solved-alone-first-due-days`(기본 7). **`interval_days`를 그 날수와 같게 시작한다** — 7일 뒤 처음 보는 카드가 간격 1로 시작하면 맞혀도 다음이 2일 뒤가 되어 사다리가 거꾸로 간다(§6.2). `concept_key` = 단위 key, `review_type = EXPLAIN`, `origin = SEED`, `source_type = LESSON_UNIT`, `source_id` 없음, prompt = 단위의 `problem.prompt`, `expected_answer` = `problem.modelAnswer`, `rubric_json` = `selfChecks`를 `S1`·`S2`…로. skill을 찾지 못한 노트는 카드를 만들지 않는다(`review_item.skill_id`는 not null) |
-| 같은 `concept_key`가 이미 있음 | 새로 만들지 않는다. `status=ACTIVE`, `due_at = min(기존 due_at, planDayStart(today + 1))` |
+| 같은 `concept_key`가 이미 있음 | 새로 만들지 않는다. `status=ACTIVE`, `due_at = min(기존 due_at, planDayStart(today + 1))`. **졸업한 카드(`GRADUATED`)도 이렇게 되살아난다** — 같은 개념에서 다시 막혔다는 신호다. `interval_days`는 그대로라 다음 답변을 혼자 떠올리면 바로 다시 졸업한다(§6.4) |
 
-### 6.4 Leech · Variant (답변 처리 직후)
+### 6.4 Leech · 졸업 · Variant (답변 처리 직후)
 
 ```text
 if failures ≥ 4 (suspend-after-failures):
     status = SUSPENDED; LEECH_DETECTED 이벤트
     (planner: 최근 1 plan-day 안에 해당 skill의 LEECH_DETECTED 이벤트가 있으면 §5.4 reviewUrgency = 1_000_000 — 복습 대신 학습 task 유도)
+else if prev ≥ 28 (graduate-after-days) and final ∈ {GOOD, EASY} and adjustedBy == []:   # ADR-074
+    status = GRADUATED                                   # 이벤트 없음. 응답 status로 알린다
 else if failures ≥ 2 and variant_status ∈ {NONE, FAILED} and AI 사용 가능:   # Later (아래)
     variant_status = PENDING → 커밋 후 REVIEW_VARIANT 비동기 생성
 if 답변이 variant 출제분이었으면: variant 필드 비우고 variant_status = NONE
 ```
 due 목록에서는 `variant_status=READY`이면 variant 문항을 출제한다(`wasVariant=true`).
 
-`REVIEW_VARIANT` 생성(둘째 분기)은 **Later**다(2026-09-18 범위 축소). 그 전까지 `variant_status`는 항상 `NONE`, `wasVariant=false`이며 컬럼·필드는 그대로 둔다.
+**졸업** (ADR-074) — `prev`는 이번 답변 **전**의 `interval_days`(`intervalBefore`)다. 한 달 가까이 비운 뒤 힌트·채점 하향 없이 떠올렸으면 장기 기억으로 옮겨 간 것으로 보고 due에서 뺀다. 간격 계산(§6.2)은 바꾸지 않는다 — `interval_days`·`due_at`은 §6.2대로 갱신한 값이 남고, `GRADUATED`는 §6.5 1단계(`status=ACTIVE`)에서 빠진다.
+
+- leech(실패)와 졸업(성공)은 한 답변에서 함께 일어나지 않는다.
+- 혼자 푼 학습 단위(첫 간격 7, §6.3): GOOD이면 `7 → 14 → 28 → 졸업` — 복습 3번. 도움받은 단위·seed 카드(첫 간격 1): `1 → 2 → 4 → 8 → 16 → 32 → 졸업` — 복습 6번. EASY가 섞이면 더 빨리, HARD·AGAIN이 섞이면 더 늦게 졸업한다.
+- horizon(§6.2)이 간격을 28 아래로 묶으면 그 기간에는 졸업하지 않는다.
+- 사용자는 졸업 카드를 다시 `ACTIVE`로 돌리거나 `ARCHIVED`로 치울 수 있다(`04` §4.5). 같은 `concept_key` 생성 요청도 되살린다(§6.3).
+- `K4_RECALL_LONG`(§7.2, `intervalBefore ≥ 14` 2개)은 졸업 전에 채워질 수 있다 — 혼자 푼 단위는 간격 14·28 답변이 그 2개다.
+
+`REVIEW_VARIANT` 생성(셋째 분기)은 **Later**다(2026-09-18 범위 축소). 그 전까지 `variant_status`는 항상 `NONE`, `wasVariant=false`이며 컬럼·필드는 그대로 둔다.
 
 ### 6.5 오늘의 due 선택과 교차 학습 (`RV-INTERLEAVE`)
 
@@ -1014,6 +1024,18 @@ RV-INTERLEAVE(list)                      # list = 1~2단계 결과, 0-based, 무
 | 3 | HARD | CORRECT | DIRECTION | HARD | [] | 4 |
 | 40 | EASY | CORRECT | SELF_EXPLAIN | EASY | [] | 60 (max) |
 | 10 | GOOD | CORRECT | SELF_EXPLAIN | GOOD | [] | horizon까지 5일 → **4** |
+
+**졸업** (§6.4, `graduate-after-days = 28`. 시작 status는 `ACTIVE`)
+
+| # | prev | selfRating | hint | final | adjustedBy | interval | status 후 |
+|---|---|---|---|---|---|---|---|
+| G1 | 28 | GOOD | SELF_EXPLAIN | GOOD | [] | 56 | **GRADUATED** |
+| G2 | 32 | EASY | SELF_EXPLAIN | EASY | [] | 60 (max) | **GRADUATED** |
+| G3 | 27 | GOOD | SELF_EXPLAIN | GOOD | [] | 54 | ACTIVE (prev < 28) |
+| G4 | 28 | HARD | SELF_EXPLAIN | HARD | [] | 34 | ACTIVE (HARD) |
+| G5 | 28 | EASY | QUESTION_ONLY | GOOD | [HINT_CAP_GOOD] | 56 | ACTIVE (조정됨) |
+| G6 | 28 | GOOD | CONCEPT_HINT | HARD | [HINT_CAP_HARD] | 34 | ACTIVE (조정됨) |
+| G7 | 40 | AGAIN | SELF_EXPLAIN | AGAIN | [] | 1 | ACTIVE (failures 4 미만일 때) |
 
 ---
 

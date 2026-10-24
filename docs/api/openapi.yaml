@@ -1178,6 +1178,7 @@ paths:
           enum:
           - ACTIVE
           - SUSPENDED
+          - GRADUATED
           - ARCHIVED
       - in: query
         name: limit
@@ -5257,6 +5258,7 @@ components:
           enum:
           - ACTIVE
           - SUSPENDED
+          - GRADUATED
           - ARCHIVED
       required:
       - adjustedBy
@@ -5329,6 +5331,7 @@ components:
           enum:
           - ACTIVE
           - SUSPENDED
+          - GRADUATED
           - ARCHIVED
         version:
           type: integer
@@ -5418,6 +5421,7 @@ components:
           enum:
           - ACTIVE
           - SUSPENDED
+          - GRADUATED
           - ARCHIVED
         variantStatus:
           type: string

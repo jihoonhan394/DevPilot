@@ -27,7 +27,8 @@ import org.springframework.data.domain.Persistable;
 /**
  * 복습 카드 (docs/04 §2 {@code review_item}). 사용자·개념당 1개다(I-06, {@code unique (user_id, concept_key)}).
  * 답변은 간격·연속 기록을 갱신하고, 연속 실패가 {@code suspend-after-failures}(4)에 닿으면 leech로 {@code SUSPENDED}가 된다
- * (docs/06 §6.4). 변형 문항({@code variant_*})은 Later라 쓰지 않는다.
+ * (docs/06 §6.4). 긴 간격({@code graduate-after-days}, 28)을 혼자 넘기면 {@code GRADUATED}가 된다(ADR-074). 변형
+ * 문항({@code variant_*})은 Later라 쓰지 않는다.
  */
 @Entity
 @Table(name = "review_item")
@@ -217,6 +218,28 @@ public class ReviewItem implements Persistable<UUID> {
         return true;
     }
 
+    /**
+     * 졸업: 직전 간격이 {@code graduateAfterDays} 이상인데 조정 없이 {@code GOOD}·{@code EASY}로 떠올렸으면 {@code
+     * ACTIVE → GRADUATED} (docs/04 §4.5, docs/06 §6.4, ADR-074). 간격 계산(docs/06 §6.2)은 바꾸지 않는다.
+     *
+     * @param intervalBefore 이번 답변 전의 {@code interval_days}
+     * @param adjustedBy 힌트 상한·채점 하향 — 하나라도 있으면 혼자 떠올린 것이 아니다
+     */
+    public boolean graduateIfRecalled(
+            int intervalBefore,
+            ReviewRating finalRating,
+            List<RatingAdjustment> adjustedBy,
+            int graduateAfterDays) {
+        boolean recalled =
+                (finalRating == ReviewRating.GOOD || finalRating == ReviewRating.EASY)
+                        && adjustedBy.isEmpty();
+        if (status != ReviewItemStatus.ACTIVE || intervalBefore < graduateAfterDays || !recalled) {
+            return false;
+        }
+        this.status = ReviewItemStatus.GRADUATED;
+        return true;
+    }
+
     /** 생성 카드 값 (docs/05 §9.8, docs/06 §8.3, docs/05 §11.5). */
     public record GapValues(
             UUID userId,
@@ -239,7 +262,9 @@ public class ReviewItem implements Persistable<UUID> {
      * 사용자 상태 전이 (docs/04 §4.5, docs/05 §11.6). 같은 값이면 no-op이고, 표에 없는 전이는 {@code
      * INVALID_STATE_TRANSITION}이다.
      *
-     * @param reactivatedDueAt {@code SUSPENDED → ACTIVE}에서 쓸 다음 plan-day 시작
+     * <p>{@code GRADUATED}로는 사용자가 옮길 수 없다(답변 처리만, {@link #graduateIfRecalled}).
+     *
+     * @param reactivatedDueAt {@code SUSPENDED/GRADUATED → ACTIVE}에서 쓸 다음 plan-day 시작
      */
     public void changeStatus(ReviewItemStatus target, Instant reactivatedDueAt) {
         if (status == target) {
@@ -248,10 +273,11 @@ public class ReviewItem implements Persistable<UUID> {
         boolean allowed =
                 switch (target) {
                     case SUSPENDED -> status == ReviewItemStatus.ACTIVE;
-                    case ACTIVE -> status == ReviewItemStatus.SUSPENDED;
-                    case ARCHIVED ->
-                            status == ReviewItemStatus.ACTIVE
-                                    || status == ReviewItemStatus.SUSPENDED;
+                    case ACTIVE ->
+                            status == ReviewItemStatus.SUSPENDED
+                                    || status == ReviewItemStatus.GRADUATED;
+                    case GRADUATED -> false;
+                    case ARCHIVED -> status != ReviewItemStatus.ARCHIVED;
                 };
         if (!allowed) {
             throw new ConflictException(

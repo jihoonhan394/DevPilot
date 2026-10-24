@@ -292,6 +292,7 @@
 | BL-MEM-10 | `ReviewVariantTask` | 연속 실패 ≥ 2이고 AI 사용 가능하면 커밋 후 `REVIEW_VARIANT` 비동기 생성, `variant_status` 전이(`04` §4.5), `GET /reviews/due` variant 출제, `AiPendingJobCounter` 구현(review). 2026-09-18 Later(`REVIEW_VARIANT` operation 보류; `03` §9 설정에는 남겨 둔다) | P3 | Later | BL-MEM-06, BL-FND-23, BL-AIP-07, BL-AIP-10 | AC-05 | FR-11 |
 | BL-MEM-11 | FSRS 전략 | `ReviewSchedulingStrategy` 두 번째 구현. 전환 조건은 ADR-018 | P3 | Later | — | — | FR-11 |
 | BL-MEM-12 | `RV-INTERLEAVE` 교차 학습 | **`DueReviewSelector`** 3단계 재배치(`06` §6.5): 1단계 정렬 → 2단계 cap → **재배치** — 같은 skill 카드가 3장 연속이 되는 자리에서 그 뒤쪽 카드 중 직전 카드와 skill이 다른 가장 가까운 카드와 swap, 바꿀 대상이 없으면 그대로(RV-INTERLEAVE), 무작위·셔플 없음(RV-INTERLEAVE-D), 전진 1회 통과(RV-INTERLEAVE-S), 카드 집합·장수 불변(RV-INTERLEAVE-C). `06` §6.6 RV-INTERLEAVE vector (a)·(b)·(c) parameterized test. `GET /reviews/due`(BL-MEM-05)와 Today REVIEW task의 출제 순서가 이 결과다 | P0 | S2 | BL-MEM-04 | AC-29, AC-05 | FR-11 |
+| BL-MEM-13 | **복습 카드 졸업** (ADR-074) | 답변 처리 후 `intervalBefore ≥ graduate-after-days`(28)이고 `final ∈ {GOOD, EASY}`, `adjustedBy = []`이면 `ACTIVE → GRADUATED`(`06` §6.4). 간격 계산(§6.2)은 그대로, 졸업 카드는 due에서 빠진다(§6.5 1단계). 사용자 전이 `GRADUATED → ACTIVE/ARCHIVED`, `→ GRADUATED` 금지(`04` §4.5, `05` §11.6). 같은 `concept_key` 생성은 되살린다(§6.3). `V15__review_item_graduated.sql`(CHECK 재생성), OpenAPI enum, Flutter 필터·라벨·복습 직후 안내. `06` §6.6 졸업 vector G1~G7 parameterized test | P1 | S3 | BL-MEM-06, BL-MEM-07 | AC-05 S10 | FR-11 |
 
 ### 4.9 TRN — Training
 

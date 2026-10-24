@@ -13,7 +13,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 
 /**
- * 복습 카드의 다음 일정 (docs/06 §6.2)과 leech 임계값 (docs/06 §6.4). 간격 계산 자체는 순수 도메인 전략 {@link
+ * 복습 카드의 다음 일정 (docs/06 §6.2)과 leech·졸업 임계값 (docs/06 §6.4). 간격 계산 자체는 순수 도메인 전략 {@link
  * RuleBasedV1Scheduler}가 하고, 이 클래스는 설정과 horizon(= 학습 목표일)만 채워 준다.
  */
 @Component
@@ -22,12 +22,14 @@ class ReviewSchedulingSupport {
     private final LearningGoalQueryService learningGoalQueryService;
     private final RuleBasedV1Scheduler scheduler;
     private final int suspendAfterFailures;
+    private final int graduateAfterDays;
 
     ReviewSchedulingSupport(
             LearningGoalQueryService learningGoalQueryService, DevPilotProperties properties) {
         this.learningGoalQueryService = learningGoalQueryService;
         this.scheduler = new RuleBasedV1Scheduler(ReviewRuleSettings.scheduler(properties));
         this.suspendAfterFailures = properties.review().suspendAfterFailures();
+        this.graduateAfterDays = properties.review().graduateAfterDays();
     }
 
     /** 다음 간격·due 날짜. 간격 상한 horizon = 목표일 (budget과 같은 기준). */
@@ -56,6 +58,11 @@ class ReviewSchedulingSupport {
     /** 연속 실패가 이 값에 닿으면 카드를 중단한다 (docs/06 §6.4). */
     int suspendAfterFailures() {
         return suspendAfterFailures;
+    }
+
+    /** 직전 간격이 이 값 이상인 카드를 혼자 떠올리면 졸업한다 (docs/06 §6.4, ADR-074). */
+    int graduateAfterDays() {
+        return graduateAfterDays;
     }
 
     /** 학습 목표가 없으면 상한도 없다. */

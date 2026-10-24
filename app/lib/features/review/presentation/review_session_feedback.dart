@@ -33,11 +33,23 @@ Future<void> rateReviewCard(
           return;
         }
       }
-      _showAdjustment(context, selfRating, response.finalRating, response.adjustedBy, [
-        if (response.leechDetected) l10n.reviewAdjustLeech,
-        if (response.evaluationSkippedReason != null) l10n.reviewAdjustEvaluationSkipped,
-        l10n.reviewAdjustNextDue(formatPlanDate(LocalDate.parse(response.nextDueDate), l10n)),
-      ]);
+      // 졸업한 카드는 다시 due가 되지 않으므로 다음 복습일 대신 졸업을 알린다 (docs/06 §6.4).
+      final graduated = response.status == ReviewItemStatus.graduated;
+      _showAdjustment(
+        context,
+        selfRating,
+        response.finalRating,
+        response.adjustedBy,
+        [
+          if (response.leechDetected) l10n.reviewAdjustLeech,
+          if (response.evaluationSkippedReason != null) l10n.reviewAdjustEvaluationSkipped,
+          if (graduated)
+            l10n.reviewAdjustGraduated
+          else
+            l10n.reviewAdjustNextDue(formatPlanDate(LocalDate.parse(response.nextDueDate), l10n)),
+        ],
+        long: graduated,
+      );
     case ReviewCardSkipped():
       showToast(context, l10n.reviewSessionCardChanged);
     case ReviewRateFailed():
@@ -122,8 +134,9 @@ void _showAdjustment(
   ReviewRating selfRating,
   ReviewRating finalRating,
   List<RatingAdjustment> adjustedBy,
-  List<String> trailingLines,
-) {
+  List<String> trailingLines, {
+  bool long = false,
+}) {
   final l10n = AppLocalizations.of(context);
   final adjusted = adjustedBy.isNotEmpty;
   final lines = [
@@ -138,7 +151,7 @@ void _showAdjustment(
       SnackBar(
         key: const Key('review.session.adjustment'),
         behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: adjusted || trailingLines.length > 1 ? 4 : 2),
+        duration: Duration(seconds: adjusted || long || trailingLines.length > 1 ? 4 : 2),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

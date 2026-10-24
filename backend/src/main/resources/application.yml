@@ -191,6 +191,7 @@ devpilot:
     easy-min-days: 4
     variant-after-failures: 2
     suspend-after-failures: 4
+    graduate-after-days: 28                  # ADR-074 직전 간격 ≥ 28일을 혼자 떠올리면 졸업
     lesson-helped-first-due-days: 1          # ADR-051 막혀서 도움받은 단위: 다음 날
     lesson-solved-alone-first-due-days: 7    # ADR-051 혼자 푼 단위: 7일 뒤 한 번
   tips:                                     # 06 §5.12

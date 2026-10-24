@@ -75,6 +75,7 @@ class RuleSettingsFactoryTest {
         assertThat(review.comebackMaxPerDay()).isEqualTo(10);
         assertThat(review.hardStrategy()).isEqualTo(DevPilotProperties.HardStrategy.MULTIPLY);
         assertThat(review.suspendAfterFailures()).isEqualTo(4);
+        assertThat(review.graduateAfterDays()).isEqualTo(28);
 
         DevPilotProperties.RateLimit rateLimit = properties.security().rateLimit();
         assertThat(rateLimit.requestsPerMinute()).isEqualTo(120);
