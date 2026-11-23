@@ -10,7 +10,7 @@ name: devpilot-dev
 services:
   postgres:
     # 개발·운영 DB와 같은 major 16 (Testcontainers도 postgres:16). 멀티아치 index digest 고정, Dependabot이 갱신
-    image: postgres:16@sha256:13f151d1b726b0a744b0e1e3fb6c9a3c389c3fadf78f3a9b5649f9bb8e60c4f6
+    image: postgres:16@sha256:3950ad7c3148ca2175ef1b6c36c9efbf78957ae8fbe8b3a5d7c35af50500382f
     restart: unless-stopped
     environment:
       POSTGRES_DB: devpilot
